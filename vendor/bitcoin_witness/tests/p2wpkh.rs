@@ -1,7 +1,7 @@
-use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{serialize_hex, Address, BitcoinQuantity, OutPoint, PrivateKey};
+use bitcoin_support::{serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
+use bitcoincore_rpc::RpcApi;
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::str::FromStr;
@@ -20,15 +20,15 @@ fn redeem_single_p2wpkh() {
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
     let keypair: KeyPair = private_key.key.clone().into();
 
-    let (txid, vout) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
+    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            OutPoint { txid, vout: vout.n },
+            outpoint,
             input_amount,
             keypair.p2wpkh_unlock_parameters(),
         )],
@@ -38,22 +38,17 @@ fn redeem_single_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
 
-    let rpc_redeem_txid = client
-        .send_raw_transaction(raw_redeem_tx.clone())
-        .unwrap()
-        .unwrap();
-
-    client.generate(1).unwrap().unwrap();
+    client.generate(1, None).unwrap();
 
     let actual_amount = client
         .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
         .unwrap()
-        .amount;
-    let expected_amount = (input_amount - fee).bitcoin();
+        .value;
+    let expected_amount = (input_amount - fee).satoshi();
 
-    assert_that(&actual_amount).is_close_to(expected_amount, 0.000_000_01);
+    assert_that(&actual_amount).is_equal_to(expected_amount);
 }
 
 #[test]
@@ -71,33 +66,17 @@ fn redeem_two_p2wpkh() {
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
     let keypair_2: KeyPair = private_key_2.key.clone().into();
 
-    let (txid_1, vout_1) =
-        client.create_p2wpkh_vout_at(keypair_1.public_key().clone(), input_amount);
-    let (txid_2, vout_2) =
-        client.create_p2wpkh_vout_at(keypair_2.public_key().clone(), input_amount);
+    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.public_key().clone(), input_amount);
+    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.public_key().clone(), input_amount);
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![
-            PrimedInput::new(
-                OutPoint {
-                    txid: txid_1,
-                    vout: vout_1.n,
-                },
-                input_amount,
-                keypair_1.p2wpkh_unlock_parameters(),
-            ),
-            PrimedInput::new(
-                OutPoint {
-                    txid: txid_2,
-                    vout: vout_2.n,
-                },
-                input_amount,
-                keypair_2.p2wpkh_unlock_parameters(),
-            ),
+            PrimedInput::new(vout_1, input_amount, keypair_1.p2wpkh_unlock_parameters()),
+            PrimedInput::new(vout_2, input_amount, keypair_2.p2wpkh_unlock_parameters()),
         ],
         output_address: alice_addr.clone(),
     }
@@ -105,21 +84,16 @@ fn redeem_two_p2wpkh() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
 
-    let rpc_redeem_txid = client
-        .send_raw_transaction(raw_redeem_tx.clone())
-        .unwrap()
-        .unwrap();
-
-    client.generate(1).unwrap().unwrap();
+    client.generate(1, None).unwrap();
 
     let actual_amount = client
         .find_utxo_at_tx_for_address(&rpc_redeem_txid, &alice_addr)
         .unwrap()
-        .amount;
+        .value;
     let expected_amount =
-        BitcoinQuantity::from_satoshi(input_amount.satoshi() * 2 - fee.satoshi()).bitcoin();
+        BitcoinQuantity::from_satoshi(input_amount.satoshi() * 2 - fee.satoshi()).satoshi();
 
-    assert_that(&actual_amount).is_close_to(&expected_amount, 0.000_000_01);
+    assert_that(&actual_amount).is_equal_to(&expected_amount);
 }

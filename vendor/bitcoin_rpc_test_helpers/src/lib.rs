@@ -1,84 +1,89 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-use bitcoin_rpc_client::*;
-use bitcoin_support::{Address, BitcoinQuantity, IntoP2wpkhAddress, Network, Sha256dHash};
+use bitcoin_support::{
+    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash, TransactionId,
+    TxOut,
+};
 
 pub trait RegtestHelperClient {
-    fn find_utxo_at_tx_for_address(
-        &self,
-        txid: &TransactionId,
-        address: &Address,
-    ) -> Option<rpc::UnspentTransactionOutput>;
-    fn find_vout_for_address(
-        &self,
-        txid: &TransactionId,
-        address: &Address,
-    ) -> rpc::TransactionOutput;
-
+    fn find_utxo_at_tx_for_address(&self, txid: &TransactionId, address: &Address)
+        -> Option<TxOut>;
+    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint;
     fn enable_segwit(&self);
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
         value: BitcoinQuantity,
-    ) -> (Sha256dHash, rpc::TransactionOutput);
+    ) -> (Sha256dHash, OutPoint);
 }
 
-impl<Rpc: BitcoinRpcApi> RegtestHelperClient for Rpc {
+impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
     fn find_utxo_at_tx_for_address(
         &self,
         txid: &TransactionId,
         address: &Address,
-    ) -> Option<rpc::UnspentTransactionOutput> {
+    ) -> Option<TxOut> {
         let unspent = self
-            .list_unspent(
-                rpc::TxOutConfirmations::AtLeast(1),
-                None,
-                Some(vec![address.clone()]),
-            )
-            .unwrap()
+            .list_unspent(Some(1), None, Some(vec![address]), None, None)
             .unwrap();
 
-        unspent.into_iter().find(|utxo| utxo.txid == *txid)
+        #[allow(clippy::cast_sign_loss)] // it is just for the tests
+        unspent
+            .into_iter()
+            .find(|utxo| utxo.txid == *txid)
+            .map(|result| TxOut {
+                value: result.amount.into_inner() as u64,
+                script_pubkey: result.script_pub_key,
+            })
     }
 
-    fn find_vout_for_address(
-        &self,
-        txid: &TransactionId,
-        address: &Address,
-    ) -> rpc::TransactionOutput {
-        let raw_txn = self.get_raw_transaction_serialized(&txid).unwrap().unwrap();
+    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint {
+        let tx = self.get_raw_transaction(&txid, None).unwrap();
 
-        let decoded_txn = self
-            .decode_rawtransaction(raw_txn.clone())
-            .unwrap()
-            .unwrap();
-
-        decoded_txn
-            .vout
+        #[allow(clippy::cast_possible_truncation)]
+        // there will never be tx with more than u32::MAX outputs
+        tx.output
             .iter()
-            .find(|txout| txout.script_pub_key.hex == address.script_pubkey())
+            .enumerate()
+            .find_map(|(vout, txout)| {
+                if txout.script_pubkey == address.script_pubkey() {
+                    Some(OutPoint {
+                        txid: *txid,
+                        vout: vout as u32,
+                    })
+                } else {
+                    None
+                }
+            })
             .unwrap()
-            .clone()
     }
 
     fn enable_segwit(&self) {
-        self.generate(432).unwrap().unwrap();
+        self.generate(432, None).unwrap();
     }
 
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
         value: BitcoinQuantity,
-    ) -> (Sha256dHash, rpc::TransactionOutput) {
+    ) -> (Sha256dHash, OutPoint) {
         let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self
-            .send_to_address(&address.clone(), value.bitcoin())
-            .unwrap()
+            .send_to_address(
+                &address.clone(),
+                value.bitcoin(),
+                None,
+                None,
+                None,
+                None,
+                None,
+                None,
+            )
             .unwrap();
 
-        self.generate(1).unwrap().unwrap();
+        self.generate(1, None).unwrap();
 
         let vout = self.find_vout_for_address(&txid, &address);
 

@@ -4,14 +4,15 @@
 mod htlc_harness;
 
 use crate::htlc_harness::{sleep_until, CustomSizeSecret};
-use bitcoin_rpc_client::*;
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
     serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
+    TransactionId,
 };
 use bitcoin_witness::{
     PrimedInput, PrimedTransaction, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
 };
+use bitcoincore_rpc::RpcApi;
 use comit_node::swap_protocols::{
     rfc003::{bitcoin::Htlc, Secret, SecretHash},
     Timestamp,
@@ -40,11 +41,11 @@ impl CustomSizeSecret {
 }
 
 fn fund_htlc(
-    client: &BitcoinCoreClient,
+    client: &bitcoincore_rpc::Client,
     secret_hash: SecretHash,
 ) -> (
     TransactionId,
-    rpc::TransactionOutput,
+    OutPoint,
     BitcoinQuantity,
     Htlc,
     Timestamp,
@@ -72,11 +73,19 @@ fn fund_htlc(
     let htlc_address = htlc.compute_address(Network::Regtest);
 
     let txid = client
-        .send_to_address(&htlc_address.clone().into(), amount.bitcoin())
-        .unwrap()
+        .send_to_address(
+            &htlc_address.clone().into(),
+            amount.bitcoin(),
+            None,
+            None,
+            None,
+            None,
+            None,
+            None,
+        )
         .unwrap();
 
-    client.generate(1).unwrap().unwrap();
+    client.generate(1, None).unwrap();
 
     let vout = client.find_vout_for_address(&txid, &htlc_address);
 
@@ -98,23 +107,23 @@ fn redeem_htlc_with_secret() {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap().unwrap();
+    client.generate(432, None).unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
     assert!(
         htlc.can_be_unlocked_with(secret, keypair).is_ok(),
         "Should be unlockable with the given secret and secret_key"
     );
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            OutPoint { txid, vout: vout.n },
+            vout,
             input_amount,
             htlc.unlock_with_secret(keypair, &secret),
         )],
@@ -124,11 +133,9 @@ fn redeem_htlc_with_secret() {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
 
-    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
-
-    client.generate(1).unwrap().unwrap();
+    client.generate(1, None).unwrap();
 
     assert!(
         client
@@ -145,18 +152,18 @@ fn redeem_refund_htlc() {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap().unwrap();
+    client.generate(432, None).unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
-    let (txid, vout, input_amount, htlc, refund_timestamp, _, keypair) =
+    let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
         fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            OutPoint { txid, vout: vout.n },
+            vout,
             input_amount,
             htlc.unlock_after_timeout(keypair),
         )],
@@ -165,10 +172,9 @@ fn redeem_refund_htlc() {
     .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
 
-    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap().unwrap();
-    client.generate(1).unwrap().unwrap();
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
+    client.generate(1, None).unwrap();
 
     assert!(
         client
@@ -179,7 +185,7 @@ fn redeem_refund_htlc() {
 
     sleep_until(refund_timestamp);
 
-    client.generate(1).unwrap().unwrap();
+    client.generate(1, None).unwrap();
 
     assert!(
         client
@@ -196,20 +202,20 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap().unwrap();
+    client.generate(432, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!")?;
     assert_eq!(secret.0.len(), 38);
 
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            OutPoint { txid, vout: vout.n },
+            vout,
             input_amount,
             secret.unlock_with_secret(&htlc, keypair),
         )],
@@ -219,16 +225,15 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex);
 
-    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap();
+    let error = assert_that(&rpc_redeem_txid).is_err().subject;
 
-    assert_that(&rpc_redeem_txid).is_err_containing(&RpcError {
-        code: -26,
-        message:
-            "non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)"
-                .to_string(),
-    });
+    // Can't access the type `RpcError`: https://github.com/rust-bitcoin/rust-bitcoincore-rpc/issues/50
+    assert_eq!(
+        format!("{:?}", error),
+        "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
+    );
 
     Ok(())
 }
@@ -240,20 +245,20 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432).unwrap().unwrap();
+    client.generate(432, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny")?;
     assert_eq!(secret.0.len(), 17);
 
-    let (txid, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address().unwrap().unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
-            OutPoint { txid, vout: vout.n },
+            vout,
             input_amount,
             secret.unlock_with_secret(&htlc, keypair),
         )],
@@ -263,15 +268,14 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let raw_redeem_tx = rpc::SerializedRawTransaction(redeem_tx_hex);
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex);
 
-    let rpc_redeem_txid = client.send_raw_transaction(raw_redeem_tx).unwrap();
+    let error = assert_that(&rpc_redeem_txid).is_err().subject;
 
-    assert_that(&rpc_redeem_txid).is_err_containing(&RpcError {
-        code: -26,
-        message:
-            "non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)"
-                .to_string(),
-    });
+    // Can't access the type `RpcError`: https://github.com/rust-bitcoin/rust-bitcoincore-rpc/issues/50
+    assert_eq!(
+        format!("{:?}", error),
+        "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
+    );
     Ok(())
 }

@@ -1,8 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![deny(unsafe_code)]
 
-use bitcoin_rpc_client::{rpc::BlockchainInfo, BitcoinCoreClient, BitcoinRpcApi};
 use bitcoin_support::Network as BitcoinNetwork;
+use bitcoincore_rpc::RpcApi;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
@@ -78,14 +78,26 @@ fn create_bitcoin_routes(
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
     let (client, network) = if let Some(settings) = settings {
-        let bitcoin_rpc_client = bitcoin_rpc_client::BitcoinCoreClient::new(
-            settings.node_url.as_str(),
-            settings.node_username.as_str(),
-            settings.node_password.as_str(),
-        );
+        let bitcoin_rpc_client = bitcoincore_rpc::Client::new(
+            settings.node_url.to_string(),
+            bitcoincore_rpc::Auth::UserPass(settings.node_username, settings.node_password),
+        )
+        .map_err(|e| {
+            log::debug!("failed to create bitcoincore_rpc::Client: {:?}", e);
+            Error::ConnectionError {
+                ledger: "bitcoin".to_owned(),
+            }
+        })?;
         let blockchain_info = get_bitcoin_info(&bitcoin_rpc_client)?;
         log::info!("Connected to Bitcoin: {:?}.", blockchain_info);
-        let network: &str = BitcoinNetwork::from(blockchain_info.chain).into();
+        let network = blockchain_info
+            .chain
+            .parse::<BitcoinNetwork>()
+            .map_err(|_| Error::UnknownLedgerVersion {
+                network: blockchain_info.chain,
+                ledger: "bitcoin".to_string(),
+            })?
+            .into();
 
         log::trace!("Setting up bitcoin routes to {:?}.", network);
 
@@ -258,24 +270,18 @@ fn create_ethereum_routes(
     ))
 }
 
-fn get_bitcoin_info(client: &BitcoinCoreClient) -> Result<BlockchainInfo, Error> {
-    client
-        .get_blockchain_info()
-        .map_err(|error| {
-            log::error!(
-                "Could not retrieve network version from ledger Bitcoin: {:?}",
-                error
-            );
-            Error::ConnectionError {
-                ledger: String::from("Bitcoin"),
-            }
-        })?
-        .map_err(|error| {
-            log::error!("Could not connect to ledger Bitcoin: {:?}", error);
-            Error::ConnectionError {
-                ledger: String::from("Bitcoin"),
-            }
-        })
+fn get_bitcoin_info(
+    client: &bitcoincore_rpc::Client,
+) -> Result<bitcoincore_rpc::json::GetBlockchainInfoResult, Error> {
+    client.get_blockchain_info().map_err(|error| {
+        log::error!(
+            "Could not retrieve network version from ledger Bitcoin: {:?}",
+            error
+        );
+        Error::ConnectionError {
+            ledger: String::from("Bitcoin"),
+        }
+    })
 }
 
 fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> {

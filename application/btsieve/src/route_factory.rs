@@ -12,8 +12,7 @@ use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 #[derive(Debug)]
 pub enum Error {
-    BitcoinRpcConnection(bitcoin_rpc_client::ClientError),
-    BitcoinRpcResponse(bitcoin_rpc_client::RpcError),
+    BitcoinRpc(bitcoincore_rpc::Error),
     Web3(web3::Error),
     MissingTransaction(H256),
 }
