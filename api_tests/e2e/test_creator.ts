@@ -96,9 +96,7 @@ export function createTests(
                     );
             });
 
-            it(`[${
-                actor.name
-            }] Can execute the ${action} action`, async function() {
+            it(`[${actor.name}] Can execute the ${action} action`, async function() {
                 if (action == ActionKind.Refund) {
                     this.timeout(30000);
                 } else {
@@ -111,9 +109,7 @@ export function createTests(
 
         let body: Entity = null;
         if (waitUntil) {
-            it(`[${
-                actor.name
-            }] transitions to correct state`, async function() {
+            it(`[${actor.name}] transitions to correct state`, async function() {
                 this.timeout(10000);
                 body = await actor.pollComitNodeUntil(
                     swapLocations[actor.name],
