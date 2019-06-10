@@ -6,7 +6,7 @@ use std::{fmt::Arguments, io::stdout};
 pub fn set_up_logging(settings: &Settings) {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
-        .level(settings.log_level)
+        .level(settings.log_levels.btsieve)
         .level_for("warp", LevelFilter::Info)
         .chain(stdout())
         .apply()

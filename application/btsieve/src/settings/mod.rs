@@ -8,8 +8,8 @@ use std::{ffi::OsStr, net::IpAddr, path::Path, time::Duration};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
-    #[serde(with = "self::serde_log", default = "default_log")]
-    pub log_level: LevelFilter,
+    #[serde(default = "default_log_levels")]
+    pub log_levels: LogLevels,
     pub http_api: HttpApi,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
@@ -17,6 +17,12 @@ pub struct Settings {
 
 fn default_log() -> LevelFilter {
     LevelFilter::Info
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct LogLevels {
+    #[serde(with = "self::serde_log", default = "default_log")]
+    pub btsieve: LevelFilter,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -40,6 +46,12 @@ pub struct Ethereum {
     pub node_url: url::Url,
     #[serde(with = "serde_duration")]
     pub poll_interval_secs: Duration,
+}
+
+fn default_log_levels() -> LogLevels {
+    LogLevels {
+        btsieve: default_log(),
+    }
 }
 
 impl Settings {
@@ -91,11 +103,22 @@ mod tests {
     }
 
     #[test]
-    fn can_deserialize_log_level() -> Result<(), failure::Error> {
+    fn can_read_config_without_log_levels() -> Result<(), failure::Error> {
+        let settings = Settings::read("./config/bitcoin_only.toml");
+
+        let settings = settings?;
+
+        assert_that(&settings.log_levels.btsieve).is_equal_to(LevelFilter::Info);
+
+        Ok(())
+    }
+
+    #[test]
+    fn can_deserialize_log_level_other_then_default() -> Result<(), failure::Error> {
         let settings = Settings::read("./config/btsieve.toml");
 
         let settings = settings?;
-        assert_that(&settings.log_level).is_equal_to(LevelFilter::Info);
+        assert_that(&settings.log_levels.btsieve).is_equal_to(LevelFilter::Debug);
         assert_that(&settings.bitcoin.is_some()).is_true();
 
         Ok(())
