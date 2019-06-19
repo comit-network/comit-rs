@@ -11,7 +11,6 @@ members = [
     "vendor/comit_i",
     "vendor/ethereum_support",
     "vendor/key_gen",
-    "vendor/noise_handshake",
     "vendor/secp256k1_support",
     "vendor/siren",
     "vendor/tc_bitcoincore_client",
