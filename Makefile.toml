@@ -8,6 +8,7 @@ BITCOIND_ADDITIONAL_SLEEP_PERIOD = "500"
 [tasks.default]
 description = "Format, build and run the Rust tests. No clippy nor end-to-end."
 workspace = false
+clear = true
 dependencies = [
      "format",
      "ts-format",
@@ -79,6 +80,14 @@ args = [
     "-D", "warnings"
 ]
 
+# Overridden because: workspace = false and custom toolchain
+[tasks.format]
+workspace = false
+clear = true
+script = [
+  "cargo +nightly-2019-04-30 fmt"
+]
+
 ################
 # Task aliases #
 
@@ -106,18 +115,15 @@ extend = "webgui-tests-flow"
 workspace = false
 extend = "api-tests-flow"
 
-[tasks.format]
-workspace = false
-
 ################
 # Custom tasks #
 
 [tasks.check-rs-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
-install_crate = { crate_name = "rustfmt-nightly", rustup_component_name = "rustfmt-preview", binary = "rustfmt", test_arg = "--help" }
-command = "cargo"
-args = ["fmt", "--", "--check"]
+script = [
+  "cargo +nightly-2019-04-30 fmt -- --check"
+]
 
 [tasks.ts-format]
 description = "Runs prettier to format TypeScript code."
