@@ -14,7 +14,7 @@ fn redeem_single_p2wpkh() {
     let docker = Cli::default();
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.enable_segwit();
+    client.mine_bitcoins();
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
@@ -57,7 +57,7 @@ fn redeem_two_p2wpkh() {
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
 
-    client.enable_segwit();
+    client.mine_bitcoins();
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
