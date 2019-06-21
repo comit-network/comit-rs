@@ -25,14 +25,7 @@ pub use bitcoin_hashes::{
 pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 
-pub use crate::{
-    blocks::*,
-    mined_block::*,
-    network::*,
-    pubkey::*,
-    transaction::*,
-    weight::{Error as WeightError, *},
-};
+pub use crate::{blocks::*, mined_block::*, network::*, pubkey::*, transaction::*};
 pub use bitcoin_quantity::*;
 
 mod blocks;
@@ -40,4 +33,3 @@ mod mined_block;
 mod network;
 mod pubkey;
 mod transaction;
-mod weight;
