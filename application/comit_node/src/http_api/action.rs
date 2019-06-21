@@ -136,16 +136,16 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 })?;
 
                 let network = self.network;
-                let transaction = self
-                    .spend_to(address)
-                    .sign_with_rate(fee_per_wu)
-                    .map_err(|e| {
-                        log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .set_detail("Issue encountered when signing Bitcoin transaction.")
-                    })?;
+                let transaction =
+                    self.spend_to(address)
+                        .sign_with_rate(fee_per_wu)
+                        .map_err(|e| {
+                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
+                            HttpApiProblem::with_title_and_type_from_status(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                            )
+                            .set_detail("Issue encountered when signing Bitcoin transaction.")
+                        })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
                     &transaction,
@@ -164,7 +164,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                         name: "fee_per_wu",
                         data_type: "uint",
                         description:
-                        "The fee per weight unit you want to pay for the redeem transaction in satoshis.",
+                        "The fee per weight unit you want to pay for the transaction in satoshis.",
                     },
                 ],
             )),
