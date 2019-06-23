@@ -48,16 +48,17 @@ In order to do a swap you will have to start two comit nodes.
 
 1. Install `docker` & `docker-compose`
 2. Install `node` (check the version required in package.json) & `yarn`
-3. Install `cargo-make`: `cargo install cargo-make`
-4. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as rustfmt & clippy
+3. Install Rust `nightly-2019-04-30`: `rustup install nightly-2019-04-30` (this one is only used for `rustfmt`)
+4. Install `rustfmt` for `nightly-2019-04-30`: `rustup component add rustfmt --toolchain nightly-2019-04-30`
+5. Install `cargo-make`: `cargo install cargo-make`
+6. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as clippy
    
-
 ## Testing
 
 - `cargo make` runs the whole test suite including integration tests but not end-to-end.
 - `cargo make all` also runs the whole test suite, including end-to-end tests.
 - `cargo make format` to format Rust code
-- `cargo make js-format` to format JavaScript code
+- `cargo make ts-format` to format Typescript code
 - `cargo make btsieve` to run btsieve tests
 - `cargo make dry` to run COMIT node dry tests
 - `cargo make api` to run all API tests
