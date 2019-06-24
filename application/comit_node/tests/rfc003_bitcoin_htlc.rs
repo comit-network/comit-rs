@@ -107,7 +107,7 @@ fn redeem_htlc_with_secret() {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432, None).unwrap();
+    client.generate(101, None).unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
@@ -152,7 +152,7 @@ fn redeem_refund_htlc() {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432, None).unwrap();
+    client.generate(101, None).unwrap();
 
     let secret = Secret::from(*b"hello world, you are beautiful!!");
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
@@ -202,7 +202,7 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432, None).unwrap();
+    client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!")?;
     assert_eq!(secret.0.len(), 38);
@@ -245,7 +245,7 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(432, None).unwrap();
+    client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny")?;
     assert_eq!(secret.0.len(), 17);

@@ -10,7 +10,7 @@ pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(&self, txid: &TransactionId, address: &Address)
         -> Option<TxOut>;
     fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint;
-    fn enable_segwit(&self);
+    fn mine_bitcoins(&self);
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
@@ -59,8 +59,8 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             .unwrap()
     }
 
-    fn enable_segwit(&self) {
-        self.generate(432, None).unwrap();
+    fn mine_bitcoins(&self) {
+        self.generate(101, None).unwrap();
     }
 
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
