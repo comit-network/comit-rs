@@ -1,13 +1,13 @@
 extern crate regex;
 use crate::calculate_offsets::{
+    calc_offset, concat_path,
     ethereum::rfc003::{compile_contract::compile, Error},
     metadata::Metadata,
-    offset::Offset,
     placeholder_config::{Placeholder, PlaceholderConfig},
     Contract,
 };
 use byteorder::{BigEndian, ByteOrder};
-use std::{convert::TryFrom, ffi::OsStr, path::PathBuf};
+use std::{convert::TryFrom, ffi::OsStr};
 
 pub struct EthereumContract {
     bytes: Vec<u8>,
@@ -55,7 +55,7 @@ impl EthereumContract {
             replace_pattern: replace_pattern.into(),
         };
 
-        let header_placeholder_offset = Self::calc_offset(&header_placeholder, header)?;
+        let header_placeholder_offset = calc_offset(&header_placeholder, header)?;
 
         let header_slice =
             &mut header[header_placeholder_offset.start..header_placeholder_offset.excluded_end];
@@ -63,25 +63,6 @@ impl EthereumContract {
         BigEndian::write_u16(header_slice, u16::try_from(value)?);
 
         Ok(())
-    }
-
-    fn calc_offset(placeholder: &Placeholder, contract: &[u8]) -> Result<Offset, Error> {
-        let decoded_placeholder = hex::decode(placeholder.replace_pattern.as_str())?;
-        let start_pos = Self::find_subsequence(&contract[..], &decoded_placeholder[..])
-            .ok_or(Error::PlaceholderNotFound)?;
-        let end_pos = start_pos + decoded_placeholder.len();
-        Ok(Offset::new(
-            placeholder.name.to_owned(),
-            start_pos,
-            end_pos,
-            decoded_placeholder.len(),
-        ))
-    }
-
-    fn find_subsequence(contract_template: &[u8], placeholder: &[u8]) -> Option<usize> {
-        contract_template
-            .windows(placeholder.len())
-            .position(|window| window == placeholder)
     }
 }
 
@@ -105,14 +86,6 @@ impl Contract for EthereumContract {
         })
     }
 
-    fn placeholder_offsets(&self) -> Result<Vec<Offset>, Error> {
-        self.placeholder_config
-            .placeholders
-            .iter()
-            .map(|placeholder| Self::calc_offset(placeholder, &self.bytes))
-            .collect()
-    }
-
     fn meta_data(&self) -> Metadata {
         Metadata {
             ledger_name: self.placeholder_config.ledger_name.to_owned(),
@@ -120,8 +93,12 @@ impl Contract for EthereumContract {
             contract: self.bytes.to_owned(),
         }
     }
-}
 
-fn concat_path<S: AsRef<OsStr>>(folder: S, file: &str) -> PathBuf {
-    [OsStr::new(&folder), OsStr::new(file)].iter().collect()
+    fn placeholder_config(&self) -> &PlaceholderConfig {
+        &self.placeholder_config
+    }
+
+    fn bytes(&self) -> &Vec<u8> {
+        &self.bytes
+    }
 }
