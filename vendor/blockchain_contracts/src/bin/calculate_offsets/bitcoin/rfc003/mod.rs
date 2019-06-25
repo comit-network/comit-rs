@@ -48,8 +48,12 @@ impl Contract for BitcoinScript {
         })
     }
 
-    fn meta_data(&self) -> Metadata {
-        unimplemented!()
+    fn metadata(&self) -> Metadata {
+        Metadata {
+            ledger_name: self.placeholder_config.ledger_name.to_owned(),
+            asset_name: self.placeholder_config.asset_name.to_owned(),
+            contract: self.bytes.to_owned(),
+        }
     }
 
     fn placeholder_config(&self) -> &PlaceholderConfig {

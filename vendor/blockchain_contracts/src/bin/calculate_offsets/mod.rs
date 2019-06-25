@@ -27,7 +27,7 @@ pub trait Contract: std::marker::Sized {
     type Error: From<Error>;
 
     fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<Self, Self::Error>;
-    fn meta_data(&self) -> Metadata;
+    fn metadata(&self) -> Metadata;
     fn placeholder_config(&self) -> &PlaceholderConfig;
     fn bytes(&self) -> &Vec<u8>;
 }

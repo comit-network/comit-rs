@@ -86,7 +86,7 @@ impl Contract for EthereumContract {
         })
     }
 
-    fn meta_data(&self) -> Metadata {
+    fn metadata(&self) -> Metadata {
         Metadata {
             ledger_name: self.placeholder_config.ledger_name.to_owned(),
             asset_name: self.placeholder_config.asset_name.to_owned(),

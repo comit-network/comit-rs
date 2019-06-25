@@ -35,7 +35,7 @@ fn main() -> Result<(), Error> {
 fn generate_markdown<C: Contract, S: AsRef<OsStr>>(template_folder: S) -> Result<String, C::Error> {
     let contract = C::compile(template_folder)?;
 
-    let metadata = contract.meta_data();
+    let metadata = contract.metadata();
     let offsets = placeholder_offsets(contract)?;
 
     Ok(format!(
@@ -73,7 +73,7 @@ mod tests {
         let contract = EthereumContract::compile(ETHER_TEMPLATE_FOLDER)?;
         assert_eq!(
             ether_htlc::CONTRACT_TEMPLATE.to_vec(),
-            contract.meta_data().contract,
+            contract.metadata().contract,
         );
         Ok(())
     }
@@ -83,7 +83,7 @@ mod tests {
         let contract = EthereumContract::compile(ERC20_TEMPLATE_FOLDER)?;
         assert_eq!(
             erc20_htlc::CONTRACT_TEMPLATE.to_vec(),
-            contract.meta_data().contract,
+            contract.metadata().contract,
         );
         Ok(())
     }
