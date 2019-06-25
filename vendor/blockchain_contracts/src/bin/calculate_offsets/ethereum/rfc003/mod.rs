@@ -1,6 +1,5 @@
 mod compile_contract;
 pub mod contract;
-mod placeholder_config;
 
 #[derive(Debug)]
 pub enum Error {

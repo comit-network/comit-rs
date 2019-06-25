@@ -1,12 +1,9 @@
 extern crate regex;
 use crate::calculate_offsets::{
-    ethereum::rfc003::{
-        compile_contract::compile,
-        placeholder_config::{Placeholder, PlaceholderConfig},
-        Error,
-    },
+    ethereum::rfc003::{compile_contract::compile, Error},
     metadata::Metadata,
     offset::Offset,
+    placeholder_config::{Placeholder, PlaceholderConfig},
     Contract,
 };
 use byteorder::{BigEndian, ByteOrder};

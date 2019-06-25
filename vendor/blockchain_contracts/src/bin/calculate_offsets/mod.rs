@@ -4,6 +4,7 @@ use std::ffi::OsStr;
 pub mod ethereum;
 pub mod metadata;
 pub mod offset;
+pub mod placeholder_config;
 
 pub trait Contract: std::marker::Sized {
     type Error;
