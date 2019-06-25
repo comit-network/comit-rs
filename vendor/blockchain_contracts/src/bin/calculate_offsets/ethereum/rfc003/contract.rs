@@ -1,37 +1,23 @@
 extern crate regex;
-use crate::calculate_offsets::ethereum::rfc003::{
-    compile_contract::compile,
+use crate::calculate_offsets::{
+    ethereum::rfc003::{
+        compile_contract::compile,
+        placeholder_config::{Placeholder, PlaceholderConfig},
+        Error,
+    },
     metadata::Metadata,
     offset::Offset,
-    placeholder_config::{Placeholder, PlaceholderConfig},
-    Error,
+    Contract,
 };
 use byteorder::{BigEndian, ByteOrder};
 use std::{convert::TryFrom, ffi::OsStr, path::PathBuf};
 
-pub struct Contract {
+pub struct EthereumContract {
     bytes: Vec<u8>,
     placeholder_config: PlaceholderConfig,
 }
 
-impl Contract {
-    pub fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<Contract, Error> {
-        let mut bytes = compile(concat_path(&template_folder, "deploy_header.asm"))?;
-        let mut contract_body = compile(concat_path(&template_folder, "contract.asm"))?;
-
-        Self::replace_contract_offset_parameters_in_header(&mut bytes, &contract_body)?;
-
-        bytes.append(&mut contract_body);
-
-        let placeholder_config =
-            PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
-
-        Ok(Self {
-            bytes,
-            placeholder_config,
-        })
-    }
-
+impl EthereumContract {
     fn replace_contract_offset_parameters_in_header(
         header: &mut [u8],
         body: &[u8],
@@ -82,14 +68,6 @@ impl Contract {
         Ok(())
     }
 
-    pub fn placeholder_offsets(&self) -> Result<Vec<Offset>, Error> {
-        self.placeholder_config
-            .placeholders
-            .iter()
-            .map(|placeholder| Self::calc_offset(placeholder, &self.bytes))
-            .collect()
-    }
-
     fn calc_offset(placeholder: &Placeholder, contract: &[u8]) -> Result<Offset, Error> {
         let decoded_placeholder = hex::decode(placeholder.replace_pattern.as_str())?;
         let start_pos = Self::find_subsequence(&contract[..], &decoded_placeholder[..])
@@ -108,8 +86,37 @@ impl Contract {
             .windows(placeholder.len())
             .position(|window| window == placeholder)
     }
+}
 
-    pub fn meta_data(&self) -> Metadata {
+impl Contract for EthereumContract {
+    type Error = crate::calculate_offsets::ethereum::rfc003::Error;
+
+    fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<EthereumContract, Error> {
+        let mut bytes = compile(concat_path(&template_folder, "deploy_header.asm"))?;
+        let mut contract_body = compile(concat_path(&template_folder, "contract.asm"))?;
+
+        Self::replace_contract_offset_parameters_in_header(&mut bytes, &contract_body)?;
+
+        bytes.append(&mut contract_body);
+
+        let placeholder_config =
+            PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
+
+        Ok(Self {
+            bytes,
+            placeholder_config,
+        })
+    }
+
+    fn placeholder_offsets(&self) -> Result<Vec<Offset>, Error> {
+        self.placeholder_config
+            .placeholders
+            .iter()
+            .map(|placeholder| Self::calc_offset(placeholder, &self.bytes))
+            .collect()
+    }
+
+    fn meta_data(&self) -> Metadata {
         Metadata {
             ledger_name: self.placeholder_config.ledger_name.to_owned(),
             asset_name: self.placeholder_config.asset_name.to_owned(),

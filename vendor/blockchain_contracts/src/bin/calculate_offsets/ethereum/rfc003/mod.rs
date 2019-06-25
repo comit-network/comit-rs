@@ -1,7 +1,5 @@
 mod compile_contract;
 pub mod contract;
-mod metadata;
-pub mod offset;
 mod placeholder_config;
 
 #[derive(Debug)]
