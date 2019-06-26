@@ -1,4 +1,23 @@
 #!/usr/bin/env bash
 
-cargo make check-rs-format && \
-cargo make check-ts-format
+# Run check-rs-format if Rust source files were modified.
+git status | egrep "*.rs"
+if [ $? -eq 0 ]; then
+    cargo make check-rs-format
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        exit $ret
+    fi
+fi
+
+# Run check-rs-format if Typescript source files were modified.
+git status | egrep "*.ts"
+if [ $? -eq 0 ]; then
+    cargo make check-ts-format
+    ret=$?
+    if [ $ret -ne 0 ]; then
+        exit $ret
+    fi
+fi
+
+exit 0
