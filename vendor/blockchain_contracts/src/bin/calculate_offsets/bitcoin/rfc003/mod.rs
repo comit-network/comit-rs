@@ -15,9 +15,9 @@ pub struct BitcoinScript {
 
 #[derive(Debug)]
 pub enum Error {
-    PlaceholderNotFound(String),
+    CalculateOffset(calculate_offsets::Error),
+    PlaceholderConfig(placeholder_config::Error),
     Hex(hex::FromHexError),
-    MalformedConfig(serde_json::Error),
     IO(std::io::Error),
     MalformedRegex(regex::Error),
     CannotWriteInStdin,
@@ -25,21 +25,13 @@ pub enum Error {
 
 impl From<calculate_offsets::Error> for Error {
     fn from(err: calculate_offsets::Error) -> Self {
-        match err {
-            calculate_offsets::Error::PlaceholderNotFound(placeholder) => {
-                Error::PlaceholderNotFound(placeholder)
-            }
-            calculate_offsets::Error::Hex(err) => Error::Hex(err),
-        }
+        Error::CalculateOffset(err)
     }
 }
 
 impl From<placeholder_config::Error> for Error {
     fn from(err: placeholder_config::Error) -> Self {
-        match err {
-            placeholder_config::Error::IO(err) => Error::IO(err),
-            placeholder_config::Error::MalformedConfig(err) => Error::MalformedConfig(err),
-        }
+        Error::PlaceholderConfig(err)
     }
 }
 
