@@ -18,15 +18,15 @@ fn main() -> Result<(), Error> {
 
     println!(
         "{}",
+        generate_markdown::<BitcoinScript, &str>(BITCOIN_TEMPLATE_FOLDER)?
+    );
+    println!(
+        "{}",
         generate_markdown::<EthereumContract, &str>(ETHER_TEMPLATE_FOLDER)?
     );
     println!(
         "{}",
         generate_markdown::<EthereumContract, &str>(ERC20_TEMPLATE_FOLDER)?
-    );
-    println!(
-        "{}",
-        generate_markdown::<BitcoinScript, &str>(BITCOIN_TEMPLATE_FOLDER)?
     );
 
     Ok(())

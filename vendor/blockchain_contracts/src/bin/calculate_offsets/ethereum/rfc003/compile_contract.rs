@@ -1,4 +1,4 @@
-use crate::calculate_offsets::ethereum::rfc003::Error;
+use crate::calculate_offsets::{check_bin_in_path, ethereum::rfc003::Error};
 use regex::Regex;
 use std::{
     env::var,
@@ -48,13 +48,4 @@ pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
     let bytes = hex::decode(hexcode.as_str())?;
 
     Ok(bytes)
-}
-
-fn check_bin_in_path(bin: &str) {
-    let output = Command::new("which").arg(bin).output().unwrap();
-    if output.stdout.is_empty() {
-        let mut msg = format!("`{}` cannot be found, check your path", bin);
-        msg = format!("{}\nPATH: {:?}", msg, var("PATH"));
-        panic!(msg);
-    }
 }

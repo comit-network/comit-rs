@@ -3,7 +3,7 @@ use crate::calculate_offsets::{
     offset::Offset,
     placeholder_config::{Placeholder, PlaceholderConfig},
 };
-use std::{ffi::OsStr, path::PathBuf};
+use std::{ffi::OsStr, path::PathBuf, process::Command};
 
 pub mod bitcoin;
 pub mod ethereum;
@@ -13,7 +13,7 @@ pub mod placeholder_config;
 
 #[derive(Debug)]
 pub enum Error {
-    PlaceholderNotFound,
+    PlaceholderNotFound(String),
     Hex(hex::FromHexError),
 }
 
@@ -47,8 +47,9 @@ fn concat_path<S: AsRef<OsStr>>(folder: S, file: &str) -> PathBuf {
 
 fn calc_offset(placeholder: &Placeholder, contract: &[u8]) -> Result<Offset, Error> {
     let decoded_placeholder = hex::decode(placeholder.replace_pattern.as_str())?;
-    let start_pos = find_subsequence(&contract[..], &decoded_placeholder[..])
-        .ok_or(Error::PlaceholderNotFound)?;
+    let start_pos = find_subsequence(&contract[..], &decoded_placeholder[..]).ok_or(
+        Error::PlaceholderNotFound(hex::encode(&decoded_placeholder)),
+    )?;
     let end_pos = start_pos + decoded_placeholder.len();
     Ok(Offset::new(
         placeholder.name.to_owned(),
@@ -62,4 +63,13 @@ fn find_subsequence(contract_template: &[u8], placeholder: &[u8]) -> Option<usiz
     contract_template
         .windows(placeholder.len())
         .position(|window| window == placeholder)
+}
+
+fn check_bin_in_path(bin: &str) {
+    let output = Command::new("which").arg(bin).output().unwrap();
+    if output.stdout.is_empty() {
+        let mut msg = format!("`{}` cannot be found, check your path", bin);
+        msg = format!("{}\nPATH: {:?}", msg, std::env::var("PATH"));
+        panic!(msg);
+    }
 }

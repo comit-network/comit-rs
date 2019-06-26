@@ -1,3 +1,5 @@
+use crate::calculate_offsets::{self, placeholder_config};
+
 mod compile_contract;
 pub mod contract;
 
@@ -5,7 +7,7 @@ pub mod contract;
 pub enum Error {
     IO(std::io::Error),
     Hex(hex::FromHexError),
-    PlaceholderNotFound,
+    PlaceholderNotFound(String),
     MalformedConfig(serde_json::Error),
     CaptureSolcBytecode,
     MalformedRegex(regex::Error),
@@ -36,21 +38,22 @@ impl From<std::num::TryFromIntError> for Error {
     }
 }
 
-impl From<crate::calculate_offsets::Error> for Error {
-    fn from(err: crate::calculate_offsets::Error) -> Self {
+impl From<calculate_offsets::Error> for Error {
+    fn from(err: calculate_offsets::Error) -> Self {
         match err {
-            crate::calculate_offsets::Error::PlaceholderNotFound => Error::PlaceholderNotFound,
-            crate::calculate_offsets::Error::Hex(err) => Error::Hex(err),
+            calculate_offsets::Error::PlaceholderNotFound(placeholder) => {
+                Error::PlaceholderNotFound(placeholder)
+            }
+            calculate_offsets::Error::Hex(err) => Error::Hex(err),
         }
     }
 }
 
-impl From<crate::calculate_offsets::placeholder_config::Error> for Error {
-    fn from(err: crate::calculate_offsets::placeholder_config::Error) -> Self {
-        use crate::calculate_offsets::placeholder_config::Error as PlaceholderError;
+impl From<placeholder_config::Error> for Error {
+    fn from(err: placeholder_config::Error) -> Self {
         match err {
-            PlaceholderError::IO(err) => Error::IO(err),
-            PlaceholderError::MalformedConfig(err) => Error::MalformedConfig(err),
+            placeholder_config::Error::IO(err) => Error::IO(err),
+            placeholder_config::Error::MalformedConfig(err) => Error::MalformedConfig(err),
         }
     }
 }

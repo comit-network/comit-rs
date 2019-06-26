@@ -1,7 +1,12 @@
 use crate::calculate_offsets::{
-    concat_path, metadata::Metadata, placeholder_config::PlaceholderConfig, Contract,
+    self, concat_path,
+    metadata::Metadata,
+    placeholder_config::{self, PlaceholderConfig},
+    Contract,
 };
-use std::ffi::OsStr;
+use std::{ffi::OsStr, path::Path};
+
+mod compile_contract;
 
 pub struct BitcoinScript {
     bytes: Vec<u8>,
@@ -10,28 +15,49 @@ pub struct BitcoinScript {
 
 #[derive(Debug)]
 pub enum Error {
-    PlaceholderNotFound,
+    PlaceholderNotFound(String),
     Hex(hex::FromHexError),
     MalformedConfig(serde_json::Error),
     IO(std::io::Error),
+    MalformedRegex(regex::Error),
+    CannotWriteInStdin,
 }
 
-impl From<crate::calculate_offsets::Error> for Error {
-    fn from(err: crate::calculate_offsets::Error) -> Self {
+impl From<calculate_offsets::Error> for Error {
+    fn from(err: calculate_offsets::Error) -> Self {
         match err {
-            crate::calculate_offsets::Error::PlaceholderNotFound => Error::PlaceholderNotFound,
-            crate::calculate_offsets::Error::Hex(err) => Error::Hex(err),
+            calculate_offsets::Error::PlaceholderNotFound(placeholder) => {
+                Error::PlaceholderNotFound(placeholder)
+            }
+            calculate_offsets::Error::Hex(err) => Error::Hex(err),
         }
     }
 }
 
-impl From<crate::calculate_offsets::placeholder_config::Error> for Error {
-    fn from(err: crate::calculate_offsets::placeholder_config::Error) -> Self {
-        use crate::calculate_offsets::placeholder_config::Error as PlaceholderError;
+impl From<placeholder_config::Error> for Error {
+    fn from(err: placeholder_config::Error) -> Self {
         match err {
-            PlaceholderError::IO(err) => Error::IO(err),
-            PlaceholderError::MalformedConfig(err) => Error::MalformedConfig(err),
+            placeholder_config::Error::IO(err) => Error::IO(err),
+            placeholder_config::Error::MalformedConfig(err) => Error::MalformedConfig(err),
         }
+    }
+}
+
+impl From<std::io::Error> for Error {
+    fn from(err: std::io::Error) -> Self {
+        Error::IO(err)
+    }
+}
+
+impl From<regex::Error> for Error {
+    fn from(e: regex::Error) -> Self {
+        Error::MalformedRegex(e)
+    }
+}
+
+impl From<hex::FromHexError> for Error {
+    fn from(e: hex::FromHexError) -> Self {
+        Error::Hex(e)
     }
 }
 
@@ -39,7 +65,8 @@ impl Contract for BitcoinScript {
     type Error = Error;
 
     fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<Self, Self::Error> {
-        let bytes = hex::decode("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac").unwrap();
+        let bytes = compile_contract::compile(Path::new(&template_folder).join("contract.script"))?;
+
         let placeholder_config =
             PlaceholderConfig::from_file(concat_path(&template_folder, "config.json"))?;
         Ok(Self {
