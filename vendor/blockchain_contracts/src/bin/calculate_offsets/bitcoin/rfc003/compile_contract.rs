@@ -20,20 +20,18 @@ pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
         .spawn()?;
 
     let input = std::fs::read(Path::new(&file_path))?;
-
-    // Remove new lines in the input because `bx` only accept one-line inputs
-    let regex = regex::bytes::Regex::new(r"\x0a")?;
-    let input = regex.replace_all(&input, &b" "[..]);
+    let input = String::from_utf8(input)?;
+    let input = input.replace("\n", " ").into_bytes();
 
     match bx.stdin {
         Some(ref mut stdin) => {
-            stdin.write(&input)?;
+            stdin.write_all(&input)?;
             let output = bx.wait_with_output()?;
             let stdout = String::from_utf8(output.stdout).unwrap();
             let bytes = hex::decode(stdout.trim())?;
 
             Ok(bytes)
         }
-        None => return Err(Error::CannotWriteInStdin),
+        None => Err(Error::CannotWriteInStdin),
     }
 }

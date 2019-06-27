@@ -47,9 +47,8 @@ fn concat_path<S: AsRef<OsStr>>(folder: S, file: &str) -> PathBuf {
 
 fn calc_offset(placeholder: &Placeholder, contract: &[u8]) -> Result<Offset, Error> {
     let decoded_placeholder = hex::decode(placeholder.replace_pattern.as_str())?;
-    let start_pos = find_subsequence(&contract[..], &decoded_placeholder[..]).ok_or(
-        Error::PlaceholderNotFound(hex::encode(&decoded_placeholder)),
-    )?;
+    let start_pos = find_subsequence(&contract[..], &decoded_placeholder[..])
+        .ok_or_else(|| Error::PlaceholderNotFound(hex::encode(&decoded_placeholder)))?;
     let end_pos = start_pos + decoded_placeholder.len();
     Ok(Offset::new(
         placeholder.name.to_owned(),

@@ -4,7 +4,7 @@ use crate::calculate_offsets::{
     placeholder_config::{self, PlaceholderConfig},
     Contract,
 };
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, path::Path, string::FromUtf8Error};
 
 mod compile_contract;
 
@@ -21,6 +21,7 @@ pub enum Error {
     IO(std::io::Error),
     MalformedRegex(regex::Error),
     CannotWriteInStdin,
+    MalformedInput(FromUtf8Error),
 }
 
 impl From<calculate_offsets::Error> for Error {
@@ -50,6 +51,12 @@ impl From<regex::Error> for Error {
 impl From<hex::FromHexError> for Error {
     fn from(e: hex::FromHexError) -> Self {
         Error::Hex(e)
+    }
+}
+
+impl From<FromUtf8Error> for Error {
+    fn from(err: FromUtf8Error) -> Self {
+        Error::MalformedInput(err)
     }
 }
 
