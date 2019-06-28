@@ -3,7 +3,7 @@
 check_rs=0
 check_ts=0
 
-declare -a extra_flags=("" "--cached")
+declare -a extra_flags=("--" "--cached")
 
 for flag in ${extra_flags[@]}; do
     git diff --name-only $flag | grep '.rs$' > /dev/null 2>&1
