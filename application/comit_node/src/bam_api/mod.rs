@@ -113,7 +113,7 @@ mod tests {
 
     use crate::{
         bam_ext::ToBamHeader,
-        swap_protocols::{asset::AssetKind, LedgerKind},
+        swap_protocols::{asset::AssetKind, LedgerKind, SwapProtocol},
     };
     use bam::json::Header;
     use spectral::prelude::*;
@@ -143,5 +143,25 @@ mod tests {
         let header = ledger_kind.to_bam_header();
 
         assert_that(&header).is_err();
+    }
+
+    #[test]
+    fn swap_protocol_to_bam_header() {
+        // From comit-network/RFCs/RFC-003-SWAP-Basic.md SWAP REQUEST example.
+        //
+        // "protocol": {
+        //     "value": "comit-rfc-003",
+        //     "parameters": {
+        //       "hash_function": "SHA-256"
+        //     }
+        // }
+        let header = Header::with_str_value("comit-rfc-003")
+            .with_parameter("hash_function", "SHA-256")
+            .unwrap();
+
+        let protocol = SwapProtocol::Rfc003;
+        let protocol = protocol.to_bam_header().unwrap();
+
+        assert_eq!(header, protocol);
     }
 }
