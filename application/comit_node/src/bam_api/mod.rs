@@ -42,7 +42,7 @@ impl ToBamHeader for LedgerKind {
 impl FromBamHeader for SwapProtocol {
     fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "COMIT-RFC-003" => SwapProtocol::Rfc003,
+            "comit-rfc-003" => SwapProtocol::Rfc003,
             other => SwapProtocol::Unknown(other.to_string()),
         })
     }
@@ -51,7 +51,7 @@ impl FromBamHeader for SwapProtocol {
 impl ToBamHeader for SwapProtocol {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            SwapProtocol::Rfc003 => Header::with_str_value("COMIT-RFC-003"),
+            SwapProtocol::Rfc003 => Header::with_str_value("comit-rfc-003"),
             unknown @ SwapProtocol::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
