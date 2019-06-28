@@ -10,7 +10,7 @@ if [ $? -eq 0 ]; then
     fi
 fi
 
-# Run check-rs-format if Typescript source files were modified.
+# Run check-ts-format if Typescript source files were modified.
 git status | egrep "*.{ts,json,yml}"
 if [ $? -eq 0 ]; then
     cargo make check-ts-format
