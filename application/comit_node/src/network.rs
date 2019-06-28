@@ -5,7 +5,7 @@ use crate::{
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
-        LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
+        HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
     },
 };
 use bam::{
@@ -178,7 +178,7 @@ fn handle_request<B: BobSpawner>(
                 .take_header("protocol")
                 .map(SwapProtocol::from_bam_header));
             match protocol {
-                SwapProtocol::Rfc003 => {
+                SwapProtocol::Rfc003(hash_function) => {
                     let swap_id = SwapId::default();
 
                     let alpha_ledger = bam::header!(request
@@ -209,6 +209,7 @@ fn handle_request<B: BobSpawner>(
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
+                                hash_function,
                                 bam::body!(request.take_body_as()),
                             ),
                         ),
@@ -226,6 +227,7 @@ fn handle_request<B: BobSpawner>(
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
+                                hash_function,
                                 bam::body!(request.take_body_as()),
                             ),
                         ),
@@ -243,6 +245,7 @@ fn handle_request<B: BobSpawner>(
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
+                                hash_function,
                                 bam::body!(request.take_body_as()),
                             ),
                         ),
@@ -260,6 +263,7 @@ fn handle_request<B: BobSpawner>(
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
+                                hash_function,
                                 bam::body!(request.take_body_as()),
                             ),
                         ),
@@ -290,6 +294,7 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     beta_ledger: BL,
     alpha_asset: AA,
     beta_asset: BA,
+    hash_function: HashFunction,
     body: rfc003::messages::RequestBody<AL, BL>,
 ) -> rfc003::messages::Request<AL, BL, AA, BA> {
     rfc003::messages::Request::<AL, BL, AA, BA> {
@@ -297,6 +302,7 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
         beta_asset,
         alpha_ledger,
         beta_ledger,
+        hash_function,
         alpha_ledger_refund_identity: body.alpha_ledger_refund_identity,
         beta_ledger_redeem_identity: body.beta_ledger_redeem_identity,
         alpha_expiry: body.alpha_expiry,

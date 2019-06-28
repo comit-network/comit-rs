@@ -103,6 +103,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             beta_ledger: swap_request.beta_ledger,
             alpha_asset: swap_request.alpha_asset,
             beta_asset: swap_request.beta_asset,
+            hash_function: swap_request.hash_function,
             alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: swap_request.beta_ledger_redeem_identity,
             alpha_expiry: swap_request.alpha_expiry,
