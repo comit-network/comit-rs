@@ -10,7 +10,7 @@ byteorder = "1.2"
 chrono = { version = "0.4", features = ["serde"] }
 debug_stub_derive = "0.3"
 derivative = "1"
-directories = "1.0"
+directories = "2.0"
 ethbloom = "0.5"
 failure = "0.1"
 futures = "0.1"
