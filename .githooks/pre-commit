@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
 
-# Run check-rs-format if Rust source files were modified.
-git status | egrep "*.rs"
-if [ $? -eq 0 ]; then
-    cargo make check-rs-format
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
+check_rs=0
+check_ts=0
+
+declare -a extra_flags=("" "--cached")
+
+for flag in ${extra_flags[@]}; do
+    git diff --name-only $flag | grep '.rs$' > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        check_rs=1
     fi
+
+    git diff --name-only $flag | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1
+    if [ $? -eq 0 ]; then
+        check_ts=1
+    fi
+done
+
+if (( $check_rs != 0 )); then
+    cargo make check-rs-format
 fi
 
-# Run check-ts-format if Typescript source files were modified.
-git status | egrep "*.{ts,json,yml}"
-if [ $? -eq 0 ]; then
+if (( $check_ts != 0 )); then
     cargo make check-ts-format
-    ret=$?
-    if [ $ret -ne 0 ]; then
-        exit $ret
-    fi
 fi
 
 exit 0
