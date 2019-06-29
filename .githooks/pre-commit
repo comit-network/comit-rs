@@ -21,16 +21,14 @@ if (( $check_rs != 0 )); then
     cargo make check-rs-format
     ret=$?
     if [ $? -ne 0 ]; then
-       return $ret
+       exit $ret
     fi
 fi
 
 if (( $check_ts != 0 )); then
     cargo make check-ts-format
     ret=$?
-    if [ $? -ne 0 ]; then
-       return $ret
-    fi
+    exit $ret
 fi
 
 exit 0
