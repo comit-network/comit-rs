@@ -10,7 +10,7 @@ chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
-directories = "1.0"
+directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
 failure = "0.1"
