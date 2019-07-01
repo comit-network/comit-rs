@@ -1,32 +1,40 @@
 #!/usr/bin/env bash
 
-check_rs=0
-check_ts=0
+debug=0                         # Set to 1 to enable debugging, 0 to disable.
+do_check_rs=0
+do_check_ts=0
+
+check_rs_cmd="cargo make check-rs-format"
+check_ts_cmd="cargo make check-ts-format"
+if (( debug == 1 )); then
+    check_rs_cmd="echo check_rs ran"
+    check_ts_cmd="echo check_ts ran"
+fi
 
 declare -a extra_flags=("--" "--cached")
 
 for flag in ${extra_flags[@]}; do
     git diff --name-only $flag | grep '.rs$' > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-        check_rs=1
+        do_check_rs=1
     fi
 
     git diff --name-only $flag | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1
     if [ $? -eq 0 ]; then
-        check_ts=1
+        do_check_ts=1
     fi
 done
 
-if (( $check_rs != 0 )); then
-    cargo make check-rs-format
+if (( $do_check_rs != 0 )); then
+    eval "$check_rs_cmd"
     ret=$?
     if [ $ret -ne 0 ]; then
        exit $ret
     fi
 fi
 
-if (( $check_ts != 0 )); then
-    cargo make check-ts-format
+if (( $do_check_ts != 0 )); then
+    eval "$check_ts_cmd"
     ret=$?
     if [ $ret -ne 0 ]; then
        exit $ret
