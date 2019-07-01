@@ -208,7 +208,7 @@ mod tests {
         http_api::Http,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            SwapId,
+            SwapId, SwapProtocol,
         },
     };
     use bitcoin_support::{
@@ -355,6 +355,14 @@ mod tests {
             &bitcoin_htlc_location_serialized,
             r#"{"txid":"ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024","vout":1}"#
         );
+    }
+
+    #[test]
+    fn http_swap_protocol_serializes_correctly_to_json() {
+        let protocol = SwapProtocol::Rfc003;
+        let protocol = Http(protocol);
+        let serialized = serde_json::to_string(&protocol).unwrap();
+        assert_eq!(serialized, r#""rfc003""#);
     }
 
     #[test]
