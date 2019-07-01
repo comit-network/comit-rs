@@ -11,19 +11,25 @@ if (( debug == 1 )); then
     check_ts_cmd="echo check_ts ran"
 fi
 
-declare -a extra_flags=("--" "--cached")
+git diff --name-only | grep '.rs$' > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    do_check_rs=1
+fi
 
-for flag in ${extra_flags[@]}; do
-    git diff --name-only $flag | grep '.rs$' > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        do_check_rs=1
-    fi
+git diff --name-only --cached | grep '.rs$' > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    do_check_rs=1
+fi
 
-    git diff --name-only $flag | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1
-    if [ $? -eq 0 ]; then
-        do_check_ts=1
-    fi
-done
+git diff --name-only | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    do_check_ts=1
+fi
+
+git diff --name-only --cached | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1
+if [ $? -eq 0 ]; then
+    do_check_ts=1
+fi
 
 if (( $do_check_rs != 0 )); then
     eval "$check_rs_cmd"
