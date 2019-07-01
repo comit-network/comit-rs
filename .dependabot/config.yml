@@ -3,6 +3,9 @@ update_configs:
   - package_manager: "rust:cargo"
     directory: "/"
     update_schedule: "weekly"
+    default_labels:
+      - "dependencies"
+      - "automagically-mergify-this"
     allowed_updates:
       - match:
           update_type: "all"
