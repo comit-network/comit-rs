@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{Ledger, SecretHash, SecretSource},
-    Timestamp,
+    HashFunction, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
@@ -11,6 +11,7 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub beta_ledger: BL,
     pub alpha_asset: AA,
     pub beta_asset: BA,
+    pub hash_function: HashFunction,
     pub alpha_ledger_refund_identity: AL::Identity,
     pub beta_ledger_redeem_identity: BL::Identity,
     pub alpha_expiry: Timestamp,

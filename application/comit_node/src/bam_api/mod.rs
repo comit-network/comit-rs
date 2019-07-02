@@ -40,9 +40,9 @@ impl ToBamHeader for LedgerKind {
 }
 
 impl FromBamHeader for SwapProtocol {
-    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
+    fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "COMIT-RFC-003" => SwapProtocol::Rfc003,
+            "comit-rfc-003" => SwapProtocol::Rfc003(header.take_parameter("hash_function")?),
             other => SwapProtocol::Unknown(other.to_string()),
         })
     }
@@ -51,7 +51,8 @@ impl FromBamHeader for SwapProtocol {
 impl ToBamHeader for SwapProtocol {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            SwapProtocol::Rfc003 => Header::with_str_value("COMIT-RFC-003"),
+            SwapProtocol::Rfc003(hash_function) => Header::with_str_value("comit-rfc-003")
+                .with_parameter("hash_function", hash_function)?,
             unknown @ SwapProtocol::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
@@ -113,7 +114,7 @@ mod tests {
 
     use crate::{
         bam_ext::ToBamHeader,
-        swap_protocols::{asset::AssetKind, LedgerKind},
+        swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
     use bam::json::Header;
     use spectral::prelude::*;
@@ -143,5 +144,25 @@ mod tests {
         let header = ledger_kind.to_bam_header();
 
         assert_that(&header).is_err();
+    }
+
+    #[test]
+    fn swap_protocol_to_bam_header() {
+        // From comit-network/RFCs/RFC-003-SWAP-Basic.md SWAP REQUEST example.
+        //
+        // "protocol": {
+        //     "value": "comit-rfc-003",
+        //     "parameters": {
+        //       "hash_function": "SHA-256"
+        //     }
+        // }
+        let header = Header::with_str_value("comit-rfc-003")
+            .with_parameter("hash_function", "SHA-256")
+            .unwrap();
+
+        let protocol = SwapProtocol::Rfc003(HashFunction::Sha256);
+        let protocol = protocol.to_bam_header().unwrap();
+
+        assert_eq!(header, protocol);
     }
 }

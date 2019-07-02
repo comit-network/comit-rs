@@ -5,7 +5,7 @@ use crate::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource},
-        SwapId, Timestamp,
+        HashFunction, SwapId, Timestamp,
     },
 };
 use bitcoin_support::BitcoinQuantity;
@@ -150,6 +150,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             beta_asset: self.beta_asset,
             alpha_ledger: self.alpha_ledger,
             beta_ledger: self.beta_ledger,
+            hash_function: HashFunction::Sha256,
             alpha_expiry: self.alpha_expiry,
             beta_expiry: self.beta_expiry,
             secret_hash: secret_source.secret().hash(),

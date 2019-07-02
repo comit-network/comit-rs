@@ -257,7 +257,7 @@ mod tests {
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
             rfc003::{alice, messages::Request, Secret},
-            Timestamp,
+            HashFunction, Timestamp,
         },
     };
     use bitcoin_support::BitcoinQuantity;
@@ -273,6 +273,7 @@ mod tests {
             beta_ledger: Ethereum::default(),
             alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
             beta_asset: EtherQuantity::from_eth(10.0),
+            hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: secp256k1_support::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),

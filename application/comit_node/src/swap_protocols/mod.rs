@@ -14,9 +14,16 @@ pub use self::{
     swap_id::*,
     timestamp::Timestamp,
 };
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Copy)]
+pub enum HashFunction {
+    #[serde(rename = "SHA-256")]
+    Sha256,
+}
 
 #[derive(Debug)]
 pub enum SwapProtocol {
-    Rfc003,
+    Rfc003(HashFunction),
     Unknown(String),
 }
