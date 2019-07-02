@@ -23,7 +23,7 @@ pub trait ListRequiredFields {
 pub enum ActionExecutionParameters {
     BitcoinAddressAndFee {
         address: bitcoin_support::Address,
-        fee_per_byte: String,
+        fee_per_wu: String,
     },
     None {},
 }
@@ -107,7 +107,7 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
             }
             _ => Err(problem::unexpected_query_parameters(
                 "bitcoin::SendToAddress",
-                vec!["address".into(), "fee_per_byte".into()],
+                vec!["address".into(), "fee_per_wu".into()],
             )),
         }
     }
@@ -127,25 +127,25 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
         match query_params {
             ActionExecutionParameters::BitcoinAddressAndFee {
                 address,
-                fee_per_byte,
+                fee_per_wu,
             } => {
-                let fee_per_byte = fee_per_byte.parse::<f64>().map_err(|_| {
+                let fee_per_wu = fee_per_wu.parse::<u64>().map_err(|_| {
                     HttpApiProblem::new("Invalid query parameter.")
                         .set_status(StatusCode::BAD_REQUEST)
-                        .set_detail("Query parameter fee-per-byte is not a valid float.")
+                        .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
                 })?;
 
                 let network = self.network;
-                let transaction = self
-                    .spend_to(address)
-                    .sign_with_rate(fee_per_byte)
-                    .map_err(|e| {
-                        log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                        .set_detail("Issue encountered when signing Bitcoin transaction.")
-                    })?;
+                let transaction =
+                    self.spend_to(address)
+                        .sign_with_rate(fee_per_wu)
+                        .map_err(|e| {
+                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
+                            HttpApiProblem::with_title_and_type_from_status(
+                                StatusCode::INTERNAL_SERVER_ERROR,
+                            )
+                            .set_detail("Issue encountered when signing Bitcoin transaction.")
+                        })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
                     &transaction,
@@ -161,10 +161,10 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                         description: "The bitcoin address to where the funds should be sent.",
                     },
                     &problem::MissingQueryParameter {
-                        name: "fee_per_byte",
-                        data_type: "float",
+                        name: "fee_per_wu",
+                        data_type: "uint",
                         description:
-                        "The fee-per-byte you want to pay for the redeem transaction in satoshis.",
+                        "The fee per weight unit you want to pay for the transaction in satoshis.",
                     },
                 ],
             )),
@@ -183,8 +183,14 @@ impl ListRequiredFields for bitcoin::SpendOutput {
                 title: None,
             },
             siren::Field {
-                name: "fee_per_byte".to_owned(),
-                class: vec!["bitcoin".to_owned(), "feePerByte".to_owned()],
+                name: "fee_per_wu".to_owned(),
+                class: vec![
+                    "bitcoin".to_owned(),
+                    // feePerByte is deprecated because it is actually fee per WU
+                    // Have to keep it around until clients are upgraded
+                    "feePerByte".to_owned(),
+                    "feePerWU".to_owned(),
+                ],
                 _type: Some("number".to_owned()),
                 value: None,
                 title: None,
@@ -213,7 +219,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::ContractDeploy",
-                vec!["address".into(), "fee_per_byte".into()],
+                vec!["address".into(), "fee_per_wu".into()],
             )),
         }
     }
@@ -247,7 +253,7 @@ impl IntoResponsePayload for ethereum::CallContract {
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::SendTransaction",
-                vec!["address".into(), "fee_per_byte".into()],
+                vec!["address".into(), "fee_per_wu".into()],
             )),
         }
     }
@@ -288,14 +294,14 @@ mod test {
 
     #[test]
     fn given_bitcoin_identity_and_fee_deserialize_to_ditto() {
-        let s = "address=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa&fee_per_byte=10.59";
+        let s = "address=1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa&fee_per_wu=10.59";
 
         let res = serde_urlencoded::from_str::<ActionExecutionParameters>(s);
         assert_eq!(
             res,
             Ok(ActionExecutionParameters::BitcoinAddressAndFee {
                 address: "1A1zP1eP5QGefi2DMPTfTL5SLmv7DivfNa".parse().unwrap(),
-                fee_per_byte: "10.59".to_string(),
+                fee_per_wu: "10.59".to_string(),
             })
         );
     }
