@@ -23,15 +23,12 @@ pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
     let input = String::from_utf8(input)?;
     let input = input.replace("\n", " ").into_bytes();
 
-    match bx.stdin {
-        Some(ref mut stdin) => {
-            stdin.write_all(&input)?;
-            let output = bx.wait_with_output()?;
-            let stdout = String::from_utf8(output.stdout)?;
-            let bytes = hex::decode(stdout.trim())?;
+    let stdin = bx.stdin.as_mut().ok_or(Error::CannotWriteInStdin)?;
+    stdin.write_all(&input)?;
 
-            Ok(bytes)
-        }
-        None => Err(Error::CannotWriteInStdin),
-    }
+    let output = bx.wait_with_output()?;
+    let stdout = String::from_utf8(output.stdout)?;
+    let bytes = hex::decode(stdout.trim())?;
+
+    Ok(bytes)
 }
