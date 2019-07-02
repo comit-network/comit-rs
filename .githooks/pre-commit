@@ -1,4 +1,26 @@
 #!/usr/bin/env bash
 
-cargo make check-rs-format && \
-cargo make check-ts-format
+set -e                          # grep failure does not trigger exit.
+
+dry=0                           # Set to 1 to enable dry run.
+
+function check_rs() {
+    if (( dry == 0 )); then
+        cargo make check-rs-format
+    else
+        echo "check_rs ran"
+    fi
+}
+
+function check_ts() {
+    if (( dry == 0 )); then
+        cargo make check-ts-format
+    else
+        echo "check_ts ran"
+    fi
+}
+
+git status --untracked-files=no --short | grep -E '.rs$' > /dev/null 2>&1 && check_rs
+git status --untracked-files=no --short | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1 && check_ts
+
+exit 0
