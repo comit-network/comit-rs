@@ -67,8 +67,11 @@ fn find_subsequence(contract_template: &[u8], placeholder: &[u8]) -> Option<usiz
 fn check_bin_in_path(bin: &str) {
     let output = Command::new("which").arg(bin).output().unwrap();
     if output.stdout.is_empty() {
-        let mut msg = format!("`{}` cannot be found, check your path", bin);
-        msg = format!("{}\nPATH: {:?}", msg, std::env::var("PATH"));
+        let msg = format!(
+            "`{}` cannot be found, check your path\nPATH: {:?}",
+            bin,
+            std::env::var("PATH")
+        );
         panic!(msg);
     }
 }

@@ -27,7 +27,7 @@ pub fn compile<S: AsRef<OsStr>>(file_path: S) -> Result<Vec<u8>, Error> {
         Some(ref mut stdin) => {
             stdin.write_all(&input)?;
             let output = bx.wait_with_output()?;
-            let stdout = String::from_utf8(output.stdout).unwrap();
+            let stdout = String::from_utf8(output.stdout)?;
             let bytes = hex::decode(stdout.trim())?;
 
             Ok(bytes)
