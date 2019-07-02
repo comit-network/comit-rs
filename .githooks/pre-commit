@@ -2,10 +2,10 @@
 
 set -e                          # grep failure does not trigger exit.
 
-debug=0                         # Set to 1 to enable debugging, 0 to disable.
+dry=0                           # Set to 1 to enable dry run.
 
 function check_rs() {
-    if (( debug == 0 )); then
+    if (( dry == 0 )); then
         cargo make check-rs-format
     else
         echo "check_rs ran"
@@ -13,7 +13,7 @@ function check_rs() {
 }
 
 function check_ts() {
-    if (( debug == 0 )); then
+    if (( dry == 0 )); then
         cargo make check-ts-format
     else
         echo "check_ts ran"
