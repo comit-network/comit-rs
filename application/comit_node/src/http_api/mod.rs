@@ -57,15 +57,6 @@ impl Serialize for Http<bitcoin_support::Transaction> {
     }
 }
 
-impl Serialize for Http<bitcoin_support::PubkeyHash> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
 impl_serialize_type_name_with_fields!(Ethereum { "network" => network });
 impl_from_http_ledger!(Ethereum { network });
 impl_serialize_type_name_with_fields!(EtherQuantity := "ether" { "quantity" });
@@ -92,23 +83,10 @@ impl Serialize for Http<ethereum_support::Transaction> {
     }
 }
 
-impl Serialize for Http<ethereum_support::H160> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
-
-impl Serialize for Http<bitcoin_support::OutPoint> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
-    }
-}
+impl_serialize_http!(bitcoin_support::PubkeyHash);
+impl_serialize_http!(bitcoin_support::OutPoint);
+impl_serialize_http!(ethereum_support::H160);
+impl_serialize_http!(SwapId);
 
 impl Serialize for Http<SwapProtocol> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -156,15 +134,6 @@ impl<'de> Deserialize<'de> for Http<PeerId> {
         }
 
         deserializer.deserialize_str(Visitor)
-    }
-}
-
-impl Serialize for Http<SwapId> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        self.0.serialize(serializer)
     }
 }
 
