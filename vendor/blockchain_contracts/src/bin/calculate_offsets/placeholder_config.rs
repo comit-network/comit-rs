@@ -1,4 +1,3 @@
-use crate::calculate_offsets::ethereum::rfc003::Error;
 use serde::Deserialize;
 use std::{ffi::OsStr, fs::File, io::BufReader};
 
@@ -13,6 +12,24 @@ pub struct PlaceholderConfig {
 pub struct Placeholder {
     pub name: String,
     pub replace_pattern: String,
+}
+
+#[derive(Debug)]
+pub enum Error {
+    IO(std::io::Error),
+    MalformedConfig(serde_json::Error),
+}
+
+impl From<std::io::Error> for Error {
+    fn from(e: std::io::Error) -> Self {
+        Error::IO(e)
+    }
+}
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Error::MalformedConfig(e)
+    }
 }
 
 impl PlaceholderConfig {
