@@ -43,9 +43,9 @@ use serde::{
 #[derive(Debug)]
 pub struct Http<I>(pub I);
 
-impl_serialize_http!(Bitcoin { "network" => network });
+impl_serialize_type_name_with_fields!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
-impl_serialize_http!(BitcoinQuantity := "bitcoin" { "quantity" });
+impl_serialize_type_name_with_fields!(BitcoinQuantity := "bitcoin" { "quantity" });
 impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
 
 impl Serialize for Http<bitcoin_support::Transaction> {
@@ -66,10 +66,10 @@ impl Serialize for Http<bitcoin_support::PubkeyHash> {
     }
 }
 
-impl_serialize_http!(Ethereum { "network" => network });
+impl_serialize_type_name_with_fields!(Ethereum { "network" => network });
 impl_from_http_ledger!(Ethereum { network });
-impl_serialize_http!(EtherQuantity := "ether" { "quantity" });
-impl_serialize_http!(Erc20Token := "erc20" { "quantity" => quantity, "token_contract" => token_contract });
+impl_serialize_type_name_with_fields!(EtherQuantity := "ether" { "quantity" });
+impl_serialize_type_name_with_fields!(Erc20Token := "erc20" { "quantity" => quantity, "token_contract" => token_contract });
 impl_from_http_quantity_asset!(EtherQuantity, Ether);
 
 impl FromHttpAsset for Erc20Token {
