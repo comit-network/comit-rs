@@ -29,7 +29,7 @@ pub trait Contract: std::marker::Sized {
     fn compile<S: AsRef<OsStr>>(template_folder: S) -> Result<Self, Self::Error>;
     fn metadata(&self) -> Metadata;
     fn placeholder_config(&self) -> &PlaceholderConfig;
-    fn bytes(&self) -> &Vec<u8>;
+    fn bytes(&self) -> &[u8];
 }
 
 pub fn placeholder_offsets<C: Contract>(contract: C) -> Result<Vec<Offset>, Error> {

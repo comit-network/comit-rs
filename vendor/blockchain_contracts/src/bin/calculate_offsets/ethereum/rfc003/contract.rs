@@ -98,7 +98,7 @@ impl Contract for EthereumContract {
         &self.placeholder_config
     }
 
-    fn bytes(&self) -> &Vec<u8> {
-        &self.bytes
+    fn bytes(&self) -> &[u8] {
+        self.bytes.as_slice()
     }
 }
