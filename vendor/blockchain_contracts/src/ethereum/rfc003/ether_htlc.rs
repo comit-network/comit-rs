@@ -1,4 +1,4 @@
-use crate::ethereum::{FitIntoPlaceholderSlice, SecretHash, Timestamp};
+use crate::{FitIntoPlaceholderSlice, SecretHash, Timestamp};
 use hex_literal::hex;
 use web3::types::{Address, U256};
 

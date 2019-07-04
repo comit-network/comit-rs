@@ -1,3 +1,4 @@
+use bitcoin_support::Hash160;
 use byteorder::{BigEndian, ByteOrder};
 use web3::types::{Address, U256};
 
@@ -26,6 +27,12 @@ impl FitIntoPlaceholderSlice for Timestamp {
 impl FitIntoPlaceholderSlice for SecretHash {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
         buf.copy_from_slice(&self.0[..]);
+    }
+}
+
+impl FitIntoPlaceholderSlice for Hash160 {
+    fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
+        buf.copy_from_slice(&self[..]);
     }
 }
 
