@@ -3,7 +3,7 @@ macro_rules! _count {
     ($x:tt $($xs:tt)*) => (1usize + _count!($($xs)*));
 }
 
-macro_rules! impl_serialize_http {
+macro_rules! impl_serialize_type_name_with_fields {
     ($type:ty $(:= $name:tt)? { $($field_name:tt $(=> $field_value:ident)?),* }) => {
         impl Serialize for Http<$type> {
 
@@ -27,6 +27,19 @@ macro_rules! impl_serialize_http {
                 )*
 
                 state.end()
+            }
+        }
+    };
+}
+
+macro_rules! impl_serialize_http {
+    ($type:ty) => {
+        impl Serialize for Http<$type> {
+            fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+            where
+                S: Serializer,
+            {
+                self.0.serialize(serializer)
             }
         }
     };
