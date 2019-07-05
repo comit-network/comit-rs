@@ -10,7 +10,7 @@ byteorder = "1.2"
 lazy_static = "1"
 num = "0.2"
 regex = "1.1"
-rlp = "0.3"
+rlp = "0.4"
 secp256k1_support = { path = "../secp256k1_support" }
 serde = { version = "1", features = ["derive"] }
 strum = "0.15"
