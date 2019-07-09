@@ -208,7 +208,7 @@ mod tests {
         http_api::Http,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            SwapId,
+            HashFunction, SwapId, SwapProtocol,
         },
     };
     use bitcoin_support::{
@@ -217,6 +217,7 @@ mod tests {
     use ethereum_support::{
         self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
     };
+    use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};
 
     #[test]
@@ -358,6 +359,14 @@ mod tests {
     }
 
     #[test]
+    fn http_swap_protocol_serializes_correctly_to_json() {
+        let protocol = SwapProtocol::Rfc003(HashFunction::Sha256);
+        let protocol = Http(protocol);
+        let serialized = serde_json::to_string(&protocol).unwrap();
+        assert_eq!(serialized, r#""rfc003""#);
+    }
+
+    #[test]
     fn http_swap_id_serializes_correctly_to_json() {
         let swap_id = SwapId::from_str("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
         let swap_id = Http(swap_id);
@@ -367,5 +376,17 @@ mod tests {
             swap_id_serialized,
             r#""ad2652ca-ecf2-4cc6-b35c-b4351ac28a34""#
         )
+    }
+
+    #[test]
+    fn http_peer_id_serializes_correctly_to_json() {
+        let peer_id = PeerId::from_str("QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY").unwrap();
+        let peer_id = Http(peer_id);
+
+        let serialized = serde_json::to_string(&peer_id).unwrap();
+        assert_eq!(
+            serialized,
+            r#""QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY""#
+        );
     }
 }
