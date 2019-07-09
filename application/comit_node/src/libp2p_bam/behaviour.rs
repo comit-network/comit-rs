@@ -299,7 +299,7 @@ where
 
     fn poll(
         &mut self,
-        _params: &mut PollParameters<'_>,
+        _params: &mut impl PollParameters,
     ) -> Async<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>> {
         self.events
             .poll()
