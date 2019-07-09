@@ -6,5 +6,5 @@ pub mod ethereum;
 mod fit_into_placeholder_slice;
 
 pub use self::fit_into_placeholder_slice::{
-    FitIntoPlaceholderSlice, SecretHash, Timestamp, TokenQuantity,
+    EthereumTimestamp, FitIntoPlaceholderSlice, SecretHash, TokenQuantity,
 };

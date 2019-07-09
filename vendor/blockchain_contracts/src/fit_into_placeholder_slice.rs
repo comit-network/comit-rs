@@ -1,5 +1,5 @@
 use bitcoin_support::Hash160;
-use byteorder::{BigEndian, ByteOrder};
+use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use web3::types::{Address, U256};
 
 pub trait FitIntoPlaceholderSlice {
@@ -18,9 +18,15 @@ impl FitIntoPlaceholderSlice for TokenQuantity {
     }
 }
 
-impl FitIntoPlaceholderSlice for Timestamp {
+impl FitIntoPlaceholderSlice for EthereumTimestamp {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
         BigEndian::write_u32(buf, self.0);
+    }
+}
+
+impl FitIntoPlaceholderSlice for BitcoinTimestamp {
+    fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
+        LittleEndian::write_u32(buf, self.0);
     }
 }
 
@@ -40,7 +46,10 @@ impl FitIntoPlaceholderSlice for Hash160 {
 pub struct SecretHash(pub [u8; 32]);
 
 #[derive(Debug)]
-pub struct Timestamp(pub u32);
+pub struct EthereumTimestamp(pub u32);
+
+#[derive(Debug)]
+pub struct BitcoinTimestamp(pub u32);
 
 #[derive(Debug)]
 pub struct TokenQuantity(pub U256);

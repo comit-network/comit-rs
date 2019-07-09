@@ -13,4 +13,8 @@ mod p2wpkh;
 mod primed_transaction;
 mod witness;
 
-pub use crate::{p2wpkh::*, primed_transaction::*, witness::*};
+pub use crate::{
+    p2wpkh::UnlockP2wpkh,
+    primed_transaction::{Error, PrimedInput, PrimedTransaction},
+    witness::{UnlockParameters, Witness},
+};

@@ -53,7 +53,7 @@ pub fn redeem_action(
     secret: Secret,
     network: Network,
 ) -> CallContract {
-    let data = Bytes::from(secret.raw_secret().to_vec());
+    let data = Bytes::from(secret.as_raw_secret().to_vec());
     let gas_limit = Erc20Htlc::tx_gas_limit();
 
     CallContract {

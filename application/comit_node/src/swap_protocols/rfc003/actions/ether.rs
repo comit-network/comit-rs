@@ -47,7 +47,7 @@ impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
         _secret_source: &dyn SecretSource,
         secret: Secret,
     ) -> Self::RedeemActionOutput {
-        let data = Bytes::from(secret.raw_secret().to_vec());
+        let data = Bytes::from(secret.as_raw_secret().to_vec());
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         CallContract {

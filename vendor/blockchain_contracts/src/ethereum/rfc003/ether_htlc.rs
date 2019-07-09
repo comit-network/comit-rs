@@ -1,4 +1,4 @@
-use crate::{FitIntoPlaceholderSlice, SecretHash, Timestamp};
+use crate::{EthereumTimestamp, FitIntoPlaceholderSlice, SecretHash};
 use hex_literal::hex;
 use web3::types::{Address, U256};
 
@@ -22,7 +22,7 @@ impl EtherHtlc {
         secret_hash: [u8; 32],
     ) -> Self {
         let mut contract = CONTRACT_TEMPLATE.to_vec();
-        Timestamp(expiry).fit_into_placeholder_slice(&mut contract[99..103]);
+        EthereumTimestamp(expiry).fit_into_placeholder_slice(&mut contract[99..103]);
         refund_identity.fit_into_placeholder_slice(&mut contract[214..234]);
         redeem_identity.fit_into_placeholder_slice(&mut contract[153..173]);
         SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[51..83]);

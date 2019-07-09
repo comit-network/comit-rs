@@ -17,8 +17,12 @@ pub struct SecretHash([u8; Self::LENGTH]);
 impl SecretHash {
     pub const LENGTH: usize = 32;
 
-    pub fn raw(&self) -> &[u8; Self::LENGTH] {
+    pub fn as_raw(&self) -> &[u8; Self::LENGTH] {
         &self.0
+    }
+
+    pub fn into_raw(self) -> [u8; Self::LENGTH] {
+        self.0
     }
 }
 
@@ -144,13 +148,17 @@ impl Secret {
         let mut sha = Sha256::new();
         sha.input(&self.0);
 
-        let mut result: [u8; SecretHash::LENGTH] = [0; SecretHash::LENGTH];
+        let mut result: [u8; Self::LENGTH] = [0; SecretHash::LENGTH];
         sha.result(&mut result);
         SecretHash::from(result)
     }
 
-    pub fn raw_secret(&self) -> &[u8; Self::LENGTH] {
+    pub fn as_raw_secret(&self) -> &[u8; Self::LENGTH] {
         &self.0
+    }
+
+    pub fn into_raw_secret(self) -> [u8; Self::LENGTH] {
+        self.0
     }
 }
 

@@ -1,12 +1,32 @@
-use crate::{fit_into_placeholder_slice::FitIntoPlaceholderSlice, SecretHash, Timestamp};
-use bitcoin_support::Hash160;
+use crate::{
+    fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
+    SecretHash,
+};
+use bitcoin_support::{Address, Hash160, Network, Script};
+use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
+use secp256k1_support::KeyPair;
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.md#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
 
+#[derive(Debug)]
+pub enum UnlockingError {
+    WrongSecret {
+        got: SecretHash,
+        expected: SecretHash,
+    },
+    WrongPubkeyHash {
+        got: [u8; 20],
+        expected: [u8; 20],
+    },
+}
+
 #[derive(Debug, Clone)]
-pub struct BitcoinHtlc(Vec<u8>);
+pub struct BitcoinHtlc {
+    script: Vec<u8>,
+    expiry: u32,
+}
 
 impl BitcoinHtlc {
     pub fn new(
@@ -18,10 +38,52 @@ impl BitcoinHtlc {
         let mut contract = CONTRACT_TEMPLATE.to_vec();
         SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[7..39]);
         redeem_identity.fit_into_placeholder_slice(&mut contract[43..63]);
-        Timestamp(expiry).fit_into_placeholder_slice(&mut contract[65..69]);
+        BitcoinTimestamp(expiry).fit_into_placeholder_slice(&mut contract[65..69]);
         refund_identity.fit_into_placeholder_slice(&mut contract[74..94]);
 
-        BitcoinHtlc(contract)
+        BitcoinHtlc {
+            script: contract,
+            expiry,
+        }
+    }
+
+    pub fn compute_address(&self, network: Network) -> Address {
+        Address::p2wsh(&self.to_script(), network.into())
+    }
+
+    pub fn unlock_with_secret(&self, keypair: KeyPair, secret: [u8; 32]) -> UnlockParameters {
+        let public_key = keypair.public_key();
+        UnlockParameters {
+            witness: vec![
+                Witness::Signature(keypair),
+                Witness::PublicKey(public_key),
+                Witness::Data(secret.to_vec()),
+                Witness::Bool(true),
+                Witness::PrevScript,
+            ],
+            sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            locktime: 0,
+            prev_script: self.to_script(),
+        }
+    }
+
+    pub fn unlock_after_timeout(&self, keypair: KeyPair) -> UnlockParameters {
+        let public_key = keypair.public_key();
+        UnlockParameters {
+            witness: vec![
+                Witness::Signature(keypair),
+                Witness::PublicKey(public_key),
+                Witness::Bool(false),
+                Witness::PrevScript,
+            ],
+            sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
+            locktime: self.expiry,
+            prev_script: self.to_script(),
+        }
+    }
+
+    fn to_script(&self) -> Script {
+        Script::from(self.script.clone())
     }
 }
 
@@ -42,7 +104,7 @@ mod tests {
         let htlc = BitcoinHtlc::new(3000000, Hash160::default(), Hash160::default(), SECRET_HASH);
 
         assert_eq!(
-            htlc.0.len(),
+            htlc.script.len(),
             CONTRACT_TEMPLATE.len(),
             "HTLC is the same length as template"
         );
@@ -57,11 +119,9 @@ mod tests {
             SECRET_HASH,
         );
 
-        let compiled_code = htlc.0;
-
         let _re_match = Regex::new(SECRET_HASH_REGEX)
             .expect("Could not create regex")
-            .find(&compiled_code)
+            .find(&htlc.script)
             .expect("Could not find secret hash in hex code");
     }
 }
