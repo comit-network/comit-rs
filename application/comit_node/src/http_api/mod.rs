@@ -208,7 +208,7 @@ mod tests {
         http_api::Http,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            SwapId, SwapProtocol,
+            HashFunction, SwapId, SwapProtocol,
         },
     };
     use bitcoin_support::{
@@ -360,7 +360,7 @@ mod tests {
 
     #[test]
     fn http_swap_protocol_serializes_correctly_to_json() {
-        let protocol = SwapProtocol::Rfc003;
+        let protocol = SwapProtocol::Rfc003(HashFunction::Sha256);
         let protocol = Http(protocol);
         let serialized = serde_json::to_string(&protocol).unwrap();
         assert_eq!(serialized, r#""rfc003""#);
