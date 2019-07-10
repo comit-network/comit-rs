@@ -19,12 +19,12 @@ pub fn fund_action(
     let network = htlc_params.ledger.network;
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
+    let data =
+        Erc20Htlc::transfer_erc20_tx_payload(htlc_params.asset.quantity.0, beta_htlc_location);
+
     CallContract {
         to: to_erc20_contract,
-        data: Erc20Htlc::transfer_erc20_tx_payload(
-            htlc_params.asset.quantity.0,
-            beta_htlc_location,
-        ),
+        data: Some(data),
         gas_limit,
         network,
         min_block_timestamp: None,
@@ -41,7 +41,7 @@ pub fn refund_action(
 
     CallContract {
         to: beta_htlc_location,
-        data,
+        data: Some(data),
         gas_limit,
         network,
         min_block_timestamp: Some(expiry),
@@ -58,7 +58,7 @@ pub fn redeem_action(
 
     CallContract {
         to: alpha_htlc_location,
-        data,
+        data: Some(data),
         gas_limit,
         network,
         min_block_timestamp: None,

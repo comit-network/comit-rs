@@ -50,7 +50,7 @@ pub enum ActionResponseBody {
     },
     EthereumCallContract {
         contract_address: ethereum_support::Address,
-        data: ethereum_support::Bytes,
+        data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
         min_block_timestamp: Option<Timestamp>,
