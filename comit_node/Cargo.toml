@@ -43,41 +43,41 @@ void = "1.0.2"
 warp = "0.1"
 
 [dependencies.bam]
-path = "../../vendor/bam"
+path = "../vendor/bam"
 
 [dependencies.siren]
-path = "../../vendor/siren"
+path = "../vendor/siren"
 
 [dependencies.bitcoin_rpc_test_helpers]
-path = "../../vendor/bitcoin_rpc_test_helpers"
+path = "../vendor/bitcoin_rpc_test_helpers"
 
 [dependencies.bitcoin_support]
-path = "../../vendor/bitcoin_support"
+path = "../vendor/bitcoin_support"
 
 [dependencies.bitcoin_witness]
-path = "../../vendor/bitcoin_witness"
+path = "../vendor/bitcoin_witness"
 
 [dependencies.comit_i]
-path = "../../vendor/comit_i"
+path = "../vendor/comit_i"
 
 [dependencies.ethereum_support]
-path = "../../vendor/ethereum_support"
+path = "../vendor/ethereum_support"
 
 [dependencies.fern]
 features = ["colored"]
 version = "0.5"
 
 [dependencies.secp256k1_support]
-path = "../../vendor/secp256k1_support"
+path = "../vendor/secp256k1_support"
 
 [dependencies.state_machine_future]
 version = "0.2"
 
 [dependencies.tc_bitcoincore_client]
-path = "../../vendor/tc_bitcoincore_client"
+path = "../vendor/tc_bitcoincore_client"
 
 [dependencies.blockchain_contracts]
-path = "../../vendor/blockchain_contracts"
+path = "../vendor/blockchain_contracts"
 
 [dependencies.uuid]
 features = ["serde", "v4"]
@@ -97,7 +97,7 @@ testcontainers = "0.7"
 tiny-keccak = "1.4"
 
 [dev-dependencies.key_gen]
-path = "../../vendor/key_gen"
+path = "../vendor/key_gen"
 
 [dev-dependencies.tc_web3_client]
-path = "../../vendor/tc_web3_client"
+path = "../vendor/tc_web3_client"
