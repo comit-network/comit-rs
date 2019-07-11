@@ -22,7 +22,7 @@ pub enum UnlockingError {
     },
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct BitcoinHtlc {
     script: Vec<u8>,
     expiry: u32,
@@ -48,10 +48,10 @@ impl BitcoinHtlc {
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
-        Address::p2wsh(&self.to_script(), network.into())
+        Address::p2wsh(&Script::from(self.script.clone()), network.into())
     }
 
-    pub fn unlock_with_secret(&self, keypair: KeyPair, secret: [u8; 32]) -> UnlockParameters {
+    pub fn unlock_with_secret(self, keypair: KeyPair, secret: [u8; 32]) -> UnlockParameters {
         let public_key = keypair.public_key();
         UnlockParameters {
             witness: vec![
@@ -63,11 +63,11 @@ impl BitcoinHtlc {
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             locktime: 0,
-            prev_script: self.to_script(),
+            prev_script: self.into_script(),
         }
     }
 
-    pub fn unlock_after_timeout(&self, keypair: KeyPair) -> UnlockParameters {
+    pub fn unlock_after_timeout(self, keypair: KeyPair) -> UnlockParameters {
         let public_key = keypair.public_key();
         UnlockParameters {
             witness: vec![
@@ -78,12 +78,12 @@ impl BitcoinHtlc {
             ],
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             locktime: self.expiry,
-            prev_script: self.to_script(),
+            prev_script: self.into_script(),
         }
     }
 
-    fn to_script(&self) -> Script {
-        Script::from(self.script.clone())
+    fn into_script(self) -> Script {
+        Script::from(self.script)
     }
 }
 

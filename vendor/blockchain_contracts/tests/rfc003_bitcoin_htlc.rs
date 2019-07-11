@@ -26,7 +26,7 @@ impl CustomSizeSecret {
     ///
     /// [method]: blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::
     /// BitcoinHtlc#unlock_with_secret
-    pub fn unlock_with_secret(self, htlc: &BitcoinHtlc, keypair: KeyPair) -> UnlockParameters {
+    pub fn unlock_with_secret(self, htlc: BitcoinHtlc, keypair: KeyPair) -> UnlockParameters {
         let placeholder_secret = [0u8; 32];
         // First, unlock the HTLC with a placeholder secret
         let parameters = htlc.unlock_with_secret(keypair, placeholder_secret);
@@ -241,7 +241,7 @@ fn redeem_htlc_with_long_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            secret.unlock_with_secret(&htlc, keypair),
+            secret.unlock_with_secret(htlc, keypair),
         )],
         output_address: alice_addr.clone(),
     }
@@ -282,7 +282,7 @@ fn redeem_htlc_with_short_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            secret.unlock_with_secret(&htlc, keypair),
+            secret.unlock_with_secret(htlc, keypair),
         )],
         output_address: alice_addr.clone(),
     }
