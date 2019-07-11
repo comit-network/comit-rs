@@ -23,6 +23,7 @@ dependencies = [
     "check-rs-format",
     "check-ts-format",
     "check-ts",
+    "check-cargo-toml-format",
     "clippy"
 ]
 
@@ -150,6 +151,26 @@ description = "Runs tsc to validate TypeScript syntax."
 workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = ["cd api_tests; yarn run check"]
+
+[tasks.cargo-toml-format]
+description = "Runs cargo tomlfmt to format Cargo.toml files."
+workspace = false
+install_crate = { crate_name = "cargo-tomlfmt", binary = "cargo-tomlfmt", test_arg = "--help" }
+script = [
+'''
+find . -name Cargo.toml | xargs -n1 cargo tomlfmt -p
+'''
+]
+
+[tasks.check-cargo-toml-format]
+description = "Runs cargo tomlfmt to check appropriate Cargo.toml format."
+workspace = false
+install_crate = { crate_name = "cargo-tomlfmt", binary = "cargo-tomlfmt", test_arg = "--help" }
+script = [
+'''
+find . -name Cargo.toml | xargs -n1 cargo tomlfmt -d -p
+'''
+]
 
 [tasks.ci]
 workspace = false

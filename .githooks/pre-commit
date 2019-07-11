@@ -20,7 +20,16 @@ function check_ts() {
     fi
 }
 
+function check_cargo_toml() {
+    if (( dry == 0 )); then
+        cargo make check-cargo-toml-format
+    else
+        echo "check_cargo_toml ran"
+    fi
+}
+
 git status --untracked-files=no --short | grep -E '.rs$' > /dev/null 2>&1 && check_rs
 git status --untracked-files=no --short | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1 && check_ts
+git status --untracked-files=no --short | grep -E '.toml$' > /dev/null 2>&1 && check_cargo_toml
 
 exit 0
