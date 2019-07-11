@@ -27,7 +27,9 @@ pub fn load_settings(opt: Opt) -> Result<Settings, ConfigError> {
                 "Unable to determine user's home directory".to_string(),
             )),
             Some(dirs) => {
-                let config_file = Path::join(dirs.home_dir(), ".config/comit/btsieve.toml");
+                let user_path_components: PathBuf =
+                    [".config", "comit", "btsieve.toml"].iter().collect();
+                let config_file = Path::join(dirs.home_dir(), user_path_components);
                 log::info!("Config file was not provided - looking up config file in default location at: {:?}", config_file);;
                 if config_file.exists() {
                     Settings::read(config_file)
