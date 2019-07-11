@@ -32,7 +32,8 @@ They may be separated from the repository at some point (and possibly released o
 ## Build & Run
 
 1. `cargo build`
-2. Put a [(default)](comit_node/config/comit_node.toml) config file into `~/.config/comit/comit_node.toml` or pass `--config <config_file>`.
+2. Optionally put a config file into `~/.config/comit/comit_node.toml` or pass `--config <config_file>`.
+If you do not do this, `comit_node` will use the [default](comit_node/config/comit_node.toml) config file.
 3. Put a [(default)](btsieve/config/btsieve.toml) config file into `~/.config/comit/btsieve.toml` or pass `--config <config_file>`.
 4. startup bitcoin node (port to be set according to btsieve configuration)
 5. startup ethereum node (port to be set according to btsieve configuration)
