@@ -9,17 +9,16 @@ This is a reference implementation for the COMIT protocol.
 
 ## Structure
 
-The repository contains two main folders: `vendor` and `application`.
+The repository contains three main folders: `comit_node`, `btsieve`, and`vendor`.
+
+`comit_node` and `btsieve` hold code for the primary binaries that make up the reference implementation.
+Code in these can depend on libraries located in `vendor`.
 
 ### Vendor
 
 Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
-Crates defined in here MUST NOT depend on crates in `application`. 
+Crates defined in here MUST NOT depend on `comit_node` or `btsieve`.
 They may be separated from the repository at some point (and possibly released on crates.io).
-
-### Application
-
-Contains crates specific to our application. Can depend on libraries located in `vendor`.
 
 ## Setup build environment
 
