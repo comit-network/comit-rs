@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 bigdecimal = "0.1.0"
 byteorder = "1.2"
+extern_web3 = { package = "web3", version = "0.6" }
 lazy_static = "1"
 num = "0.2"
 regex = "1.1"
@@ -16,7 +17,6 @@ serde = { version = "1", features = ["derive"] }
 strum = "0.15"
 strum_macros = "0.15"
 tiny-keccak = "1.4"
-extern_web3 = { package = "web3", version = "0.6" }
 
 [dev-dependencies]
 hex = "0.3"

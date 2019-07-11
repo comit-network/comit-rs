@@ -5,5 +5,5 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
-testcontainers = "0.7"
 bitcoincore-rpc = "0.6"
+testcontainers = "0.7"

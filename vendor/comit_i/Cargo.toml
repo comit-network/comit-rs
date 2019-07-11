@@ -13,6 +13,6 @@ doctest = false
 rust-embed = "4.4"
 
 [build-dependencies]
-unzip = "0.1"
 reqwest = "0.9"
 tempfile = "3"
+unzip = "0.1"
