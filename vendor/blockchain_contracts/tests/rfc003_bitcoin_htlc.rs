@@ -81,7 +81,7 @@ fn fund_htlc(
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
 
-    let refund_timestamp = Timestamp::from(current_time as u32).plus(10);
+    let refund_timestamp = Timestamp::from(current_time as u32).plus(5);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = BitcoinHtlc::new(
