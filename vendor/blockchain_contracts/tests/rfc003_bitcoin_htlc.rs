@@ -20,22 +20,35 @@ use std::{str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 impl CustomSizeSecret {
+    /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
+    /// except that we want to insert our "CustomSizeSecret" on the witness
+    /// stack.
+    ///
+    /// [method]: blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::
+    /// BitcoinHtlc#unlock_with_secret
     pub fn unlock_with_secret(self, htlc: &BitcoinHtlc, keypair: KeyPair) -> UnlockParameters {
+        let placeholder_secret = [0u8; 32];
+        // First, unlock the HTLC with a placeholder secret
+        let parameters = htlc.unlock_with_secret(keypair, placeholder_secret);
+
         let UnlockParameters {
             mut witness,
             sequence,
             locktime,
             prev_script,
-        } = htlc.unlock_with_secret(keypair, [0u8; 32]);
-        let secret = self.0;
+        } = parameters;
+        let actual_secret = self.0;
 
+        // Secret for the secret in the witness stack (it is the only data) and replace
+        // it with our actual secret
         for w in &mut witness {
-            if let Witness::Data(ref mut current_secret) = w {
-                current_secret.clear();
-                current_secret.extend_from_slice(&secret);
+            if let Witness::Data(ref mut placeholder_secret) = w {
+                placeholder_secret.clear();
+                placeholder_secret.extend_from_slice(&actual_secret);
             }
         }
 
+        // Return the patched `UnlockParameters`
         UnlockParameters {
             witness,
             locktime,
