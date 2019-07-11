@@ -23,7 +23,7 @@ declare var global: HarnessGlobal;
 
     const alphaAssetQuantity = 100000000;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
-    const maxFeeInSatoshi = 5000;
+    const maxFeeInSatoshi = 50000;
 
     const alphaExpiry = Math.round(Date.now() / 1000) + 13;
     const betaExpiry = Math.round(Date.now() / 1000) + 8;
