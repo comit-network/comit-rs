@@ -1,4 +1,4 @@
-use crate::ethereum::{FitIntoPlaceholderSlice, SecretHash, Timestamp, TokenQuantity};
+use crate::{EthereumTimestamp, FitIntoPlaceholderSlice, SecretHash, TokenQuantity};
 use hex_literal::hex;
 use web3::types::{Address, Bytes, U256};
 
@@ -24,7 +24,7 @@ impl Erc20Htlc {
         token_quantity: U256,
     ) -> Self {
         let mut contract = CONTRACT_TEMPLATE.to_vec();
-        Timestamp(expiry).fit_into_placeholder_slice(&mut contract[102..106]);
+        EthereumTimestamp(expiry).fit_into_placeholder_slice(&mut contract[102..106]);
         refund_identity.fit_into_placeholder_slice(&mut contract[224..244]);
         redeem_identity.fit_into_placeholder_slice(&mut contract[157..177]);
         SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[53..85]);

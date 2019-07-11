@@ -34,6 +34,12 @@ impl From<Timestamp> for u32 {
     }
 }
 
+impl From<Timestamp> for u64 {
+    fn from(item: Timestamp) -> Self {
+        item.0 as u64
+    }
+}
+
 impl From<Timestamp> for i64 {
     fn from(item: Timestamp) -> Self {
         i64::from(item.0)

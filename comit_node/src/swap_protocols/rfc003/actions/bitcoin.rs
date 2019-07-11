@@ -3,7 +3,6 @@ use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
-        bitcoin::Htlc,
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Secret,
@@ -11,6 +10,7 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint};
 use bitcoin_witness::PrimedInput;
+use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     type FundActionOutput = SendToAddress;
@@ -34,7 +34,7 @@ impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
     ) -> Self::RefundActionOutput {
-        let htlc = Htlc::from(htlc_params.clone());
+        let htlc = BitcoinHtlc::from(htlc_params.clone());
 
         SpendOutput {
             output: PrimedInput::new(
@@ -56,13 +56,13 @@ impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         secret_source: &dyn SecretSource,
         secret: Secret,
     ) -> Self::RedeemActionOutput {
-        let htlc = Htlc::from(htlc_params.clone());
+        let htlc = BitcoinHtlc::from(htlc_params.clone());
 
         SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
                 htlc_params.asset,
-                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), &secret),
+                htlc.unlock_with_secret(secret_source.secp256k1_redeem(), secret.into_raw_secret()),
             ),
             network: htlc_params.ledger.network,
         }

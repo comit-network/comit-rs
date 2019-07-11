@@ -29,11 +29,11 @@ mod test {
                 script_sig: Script::new(),
                 sequence: 0,
                 witness: vec![
-                    vec![],                       // Signature
-                    vec![],                       // Public key
-                    secret.raw_secret().to_vec(), // Secret
-                    vec![1u8],                    // Bool to enter redeem branch
-                    vec![],                       // Previous Script
+                    vec![],                          // Signature
+                    vec![],                          // Public key
+                    secret.as_raw_secret().to_vec(), // Secret
+                    vec![1u8],                       // Bool to enter redeem branch
+                    vec![],                          // Previous Script
                 ],
             }],
             output: vec![],

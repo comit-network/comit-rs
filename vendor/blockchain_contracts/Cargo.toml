@@ -5,50 +5,36 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
+bitcoin_support = { path = "../../vendor/bitcoin_support" }
+bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 byteorder = "1.3"
+ethereum_support = { path = "../../vendor/ethereum_support" }
 hex = "0.3"
 hex-literal = "0.2"
 itertools = "0.8.0"
 rand = "0.4"
 regex = "1.1"
 rust-crypto = "0.2"
+secp256k1_support = { path = "../../vendor/secp256k1_support" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.15"
 strum_macros = "0.15"
 web3 = "0.6"
 
-[dependencies.ethereum_support]
-path = "../../vendor/ethereum_support"
-
 [dev-dependencies]
-bitcoin_rpc_client = "0.5"
+bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
+bitcoincore-rpc = "0.6"
 failure = "0.1"
 lazy_static = "1.3"
 log = "0.4"
 pretty_env_logger = "0.3"
 rlp = "0.3"
 spectral = "0.6"
+tc_bitcoincore_client = {path = "../../vendor/tc_bitcoincore_client"}
+tc_web3_client = { path = "../../vendor/tc_web3_client" }
 testcontainers = "0.7"
 tiny-keccak = "1.4"
-
-[dev-dependencies.bitcoin_support]
-path = "../../vendor/bitcoin_support"
-
-[dependencies.bitcoin_rpc_test_helpers]
-path = "../../vendor/bitcoin_rpc_test_helpers"
-
-[dev-dependencies.bitcoin_witness]
-path = "../../vendor/bitcoin_witness"
-
-[dev-dependencies.secp256k1_support]
-path = "../../vendor/secp256k1_support"
-
-[dev-dependencies.tc_bitcoincore_client]
-path = "../../vendor/tc_bitcoincore_client"
-
-[dev-dependencies.tc_web3_client]
-path = "../../vendor/tc_web3_client"
 
 [build-dependencies]
 regex = "1.1"
