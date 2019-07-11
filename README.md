@@ -32,13 +32,11 @@ They may be separated from the repository at some point (and possibly released o
 ## Build & Run
 
 1. `cargo build`
-2. Optionally put a config file into `~/.config/comit/comit_node.toml` or pass `--config <config_file>`.
-If you do not do this, `comit_node` will use the [default](comit_node/config/comit_node.toml) config file.
-3. Put a [(default)](btsieve/config/btsieve.toml) config file into `~/.config/comit/btsieve.toml` or pass `--config <config_file>`.
-4. startup bitcoin node (port to be set according to btsieve configuration)
-5. startup ethereum node (port to be set according to btsieve configuration)
-6. startup btsieve: `cargo run --bin btsieve`
-7. startup comit_node: `cargo run --bin comit_node`
+2. Put a [(default)](btsieve/config/btsieve.toml) config file into `~/.config/comit/btsieve.toml` or pass `--config <config_file>`.
+3. startup bitcoin node (port to be set according to btsieve configuration)
+4. startup ethereum node (port to be set according to btsieve configuration)
+5. startup btsieve: `cargo run --bin btsieve`
+6. startup comit_node: `cargo run --bin comit_node`
 
 If the `[web_gui]` section is specified in the configuration the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once the comit node started up (served at `localhost:8080` as default).
 
