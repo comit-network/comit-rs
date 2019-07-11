@@ -122,17 +122,17 @@ fn fund_htlc(
 }
 
 #[test]
-fn redeem_htlc_with_secret() -> Result<(), failure::Error> {
+fn redeem_htlc_with_secret() {
     let _ = pretty_env_logger::try_init();
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(101, None)?;
+    client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None)?.into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -148,9 +148,9 @@ fn redeem_htlc_with_secret() -> Result<(), failure::Error> {
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
-    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex)?;
+    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
 
-    client.generate(1, None)?;
+    client.generate(1, None).unwrap();
 
     assert!(
         client
@@ -158,23 +158,21 @@ fn redeem_htlc_with_secret() -> Result<(), failure::Error> {
             .is_some(),
         "utxo should exist after redeeming htlc"
     );
-
-    Ok(())
 }
 
 #[test]
-fn refund_htlc() -> Result<(), failure::Error> {
+fn refund_htlc() {
     let _ = pretty_env_logger::try_init();
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(101, None)?;
+    client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
         fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None)?.into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let refund_tx = PrimedTransaction {
@@ -200,18 +198,18 @@ fn refund_htlc() -> Result<(), failure::Error> {
     );
 
     loop {
-        let time = client.get_blockchain_info()?.mediantime;
+        let time = client.get_blockchain_info().unwrap().mediantime;
 
         if time > u64::from(refund_timestamp) {
             break;
         }
 
         sleep(Duration::from_millis(2000));
-        client.generate(1, None)?;
+        client.generate(1, None).unwrap();
     }
 
-    let rpc_refund_txid = client.send_raw_transaction(refund_tx_hex.clone())?;
-    client.generate(1, None)?;
+    let rpc_refund_txid = client.send_raw_transaction(refund_tx_hex.clone()).unwrap();
+    client.generate(1, None).unwrap();
 
     assert!(
         client
@@ -219,25 +217,23 @@ fn refund_htlc() -> Result<(), failure::Error> {
             .is_some(),
         "utxo should exist after refunding htlc"
     );
-
-    Ok(())
 }
 
 #[test]
-fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
+fn redeem_htlc_with_long_secret() {
     let _ = pretty_env_logger::try_init();
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(101, None)?;
+    client.generate(101, None).unwrap();
 
-    let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!")?;
+    let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
     assert_eq!(secret.0.len(), 38);
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None)?.into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -262,25 +258,23 @@ fn redeem_htlc_with_long_secret() -> Result<(), failure::Error> {
         format!("{:?}", error),
         "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
     );
-
-    Ok(())
 }
 
 #[test]
-fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
+fn redeem_htlc_with_short_secret() {
     let _ = pretty_env_logger::try_init();
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
-    client.generate(101, None)?;
+    client.generate(101, None).unwrap();
 
-    let secret = CustomSizeSecret::from_str("teeny-weeny-bunny")?;
+    let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();
     assert_eq!(secret.0.len(), 17);
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None)?.into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -305,6 +299,4 @@ fn redeem_htlc_with_short_secret() -> Result<(), failure::Error> {
         format!("{:?}", error),
         "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
     );
-
-    Ok(())
 }
