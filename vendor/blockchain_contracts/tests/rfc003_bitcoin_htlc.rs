@@ -19,42 +19,43 @@ use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
-impl CustomSizeSecret {
-    /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
-    /// except that we want to insert our "CustomSizeSecret" on the witness
-    /// stack.
-    ///
-    /// [method]: blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::
-    /// BitcoinHtlc#unlock_with_secret
-    pub fn unlock_with_secret(self, htlc: BitcoinHtlc, keypair: KeyPair) -> UnlockParameters {
-        let placeholder_secret = [0u8; 32];
-        // First, unlock the HTLC with a placeholder secret
-        let parameters = htlc.unlock_with_secret(keypair, placeholder_secret);
+/// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
+/// except that we want to insert our "CustomSizeSecret" on the witness
+/// stack.
+///
+/// [method]: blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::
+/// BitcoinHtlc#unlock_with_secret
+fn unlock_with_custom_size_secret(
+    htlc: BitcoinHtlc,
+    keypair: KeyPair,
+    custom_size_secret: CustomSizeSecret,
+) -> UnlockParameters {
+    let placeholder_secret = [0u8; 32];
+    // First, unlock the HTLC with a placeholder secret
+    let parameters = htlc.unlock_with_secret(keypair, placeholder_secret);
 
-        let UnlockParameters {
-            mut witness,
-            sequence,
-            locktime,
-            prev_script,
-        } = parameters;
-        let actual_secret = self.0;
+    let UnlockParameters {
+        mut witness,
+        sequence,
+        locktime,
+        prev_script,
+    } = parameters;
 
-        // Secret for the secret in the witness stack (it is the only data) and replace
-        // it with our actual secret
-        for w in &mut witness {
-            if let Witness::Data(ref mut placeholder_secret) = w {
-                placeholder_secret.clear();
-                placeholder_secret.extend_from_slice(&actual_secret);
-            }
+    // Secret for the secret in the witness stack (it is the only data) and replace
+    // it with our custom size secret
+    for w in &mut witness {
+        if let Witness::Data(ref mut placeholder_secret) = w {
+            placeholder_secret.clear();
+            placeholder_secret.extend_from_slice(&custom_size_secret.0);
         }
+    }
 
-        // Return the patched `UnlockParameters`
-        UnlockParameters {
-            witness,
-            locktime,
-            sequence,
-            prev_script,
-        }
+    // Return the patched `UnlockParameters`
+    UnlockParameters {
+        witness,
+        locktime,
+        sequence,
+        prev_script,
     }
 }
 
@@ -241,7 +242,7 @@ fn redeem_htlc_with_long_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            secret.unlock_with_secret(htlc, keypair),
+            unlock_with_custom_size_secret(htlc, keypair, secret),
         )],
         output_address: alice_addr.clone(),
     }
@@ -282,7 +283,7 @@ fn redeem_htlc_with_short_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            secret.unlock_with_secret(htlc, keypair),
+            unlock_with_custom_size_secret(htlc, keypair, secret),
         )],
         output_address: alice_addr.clone(),
     }
