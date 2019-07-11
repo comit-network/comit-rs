@@ -1,4 +1,2 @@
 [workspace]
-
-members = ["comit_node", "btsieve", "vendor/*",
-]
+members = ["comit_node", "btsieve", "vendor/*"]
