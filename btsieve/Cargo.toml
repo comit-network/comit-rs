@@ -5,14 +5,19 @@ name = "btsieve"
 version = "0.1.0"
 
 [dependencies]
+
+bitcoin_support = { path = "../vendor/bitcoin_support" }
 bitcoincore-rpc = "0.6"
 byteorder = "1.2"
 chrono = { version = "0.4", features = ["serde"] }
+config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 directories = "2.0"
 ethbloom = "0.5"
+ethereum_support = { path = "../vendor/ethereum_support" }
 failure = "0.1"
+fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
 hex = "0.3"
 http = "0.1"
@@ -30,29 +35,11 @@ url_serde = "0.2.0"
 warp = "0.1"
 zmq-rs = "0.1"
 
-[dependencies.bitcoin_support]
-path = "../vendor/bitcoin_support"
-
-[dependencies.config]
-features = ["toml"]
-version = "0.9"
-
-[dependencies.ethereum_support]
-path = "../vendor/ethereum_support"
-
-[dependencies.fern]
-features = ["colored"]
-version = "0.5"
-
 [dev-dependencies]
 env_logger = "0.6"
 hex = "0.3"
 rand = "0.6"
+secp256k1_support = { path = "../vendor/secp256k1_support" }
 spectral = "0.6"
+tc_web3_client = { path = "../vendor/tc_web3_client" }
 testcontainers = "0.7"
-
-[dev-dependencies.secp256k1_support]
-path = "../vendor/secp256k1_support"
-
-[dev-dependencies.tc_web3_client]
-path = "../vendor/tc_web3_client"

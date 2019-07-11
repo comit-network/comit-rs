@@ -10,4 +10,3 @@ ethereum_support = { path = "../ethereum_support" }
 hex = "0.3"
 rand = "0.3"
 secp256k1_support = { path = "../secp256k1_support" }
-
