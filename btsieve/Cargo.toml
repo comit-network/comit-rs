@@ -31,14 +31,14 @@ warp = "0.1"
 zmq-rs = "0.1"
 
 [dependencies.bitcoin_support]
-path = "../../vendor/bitcoin_support"
+path = "../vendor/bitcoin_support"
 
 [dependencies.config]
 features = ["toml"]
 version = "0.9"
 
 [dependencies.ethereum_support]
-path = "../../vendor/ethereum_support"
+path = "../vendor/ethereum_support"
 
 [dependencies.fern]
 features = ["colored"]
@@ -52,7 +52,7 @@ spectral = "0.6"
 testcontainers = "0.7"
 
 [dev-dependencies.secp256k1_support]
-path = "../../vendor/secp256k1_support"
+path = "../vendor/secp256k1_support"
 
 [dev-dependencies.tc_web3_client]
-path = "../../vendor/tc_web3_client"
+path = "../vendor/tc_web3_client"

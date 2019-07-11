@@ -1,6 +1,7 @@
 [workspace]
 
 members = [
-    "application/*",
-    "vendor/*",
+        "comit_node",
+        "btsieve",
+        "vendor/*",
 ]

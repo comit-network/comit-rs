@@ -53,3 +53,7 @@ fabric.properties
 
 # Emacs
 TAGS
+
+# `cargo cov test` artifacts
+*.gcno
+*.gcda
