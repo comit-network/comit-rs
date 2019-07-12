@@ -1,6 +1,6 @@
 use crate::public_key::PublicKey;
 use rand::Rng;
-use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
+use secp256k1::{self, recovery, Message, SecretKey, Signature};
 use std::{convert::Into, fmt};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
@@ -52,7 +52,7 @@ impl KeyPair {
         super::SECP.sign(&message, &self.secret_key)
     }
 
-    pub fn sign_ecdsa_recoverable(&self, message: Message) -> RecoverableSignature {
+    pub fn sign_ecdsa_recoverable(&self, message: Message) -> recovery::RecoverableSignature {
         super::SECP.sign_recoverable(&message, &self.secret_key)
     }
 }

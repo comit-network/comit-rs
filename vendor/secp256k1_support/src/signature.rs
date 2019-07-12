@@ -1,5 +1,5 @@
 use secp256k1;
-pub use secp256k1::{Message, RecoveryId, SecretKey, Signature};
+pub use secp256k1::{recovery, Message, SecretKey, Signature};
 
 pub trait DerSerializableSignature {
     fn serialize_signature_der(&self) -> Vec<u8>;
@@ -7,16 +7,16 @@ pub trait DerSerializableSignature {
 
 impl DerSerializableSignature for Signature {
     fn serialize_signature_der(&self) -> Vec<u8> {
-        self.serialize_der()
+        self.serialize_der().to_vec()
     }
 }
 
 pub trait RecoverableSignature {
-    fn serialize_compact(&self) -> (RecoveryId, [u8; 64]);
+    fn serialize_compact(&self) -> (recovery::RecoveryId, [u8; 64]);
 }
 
-impl RecoverableSignature for secp256k1::RecoverableSignature {
-    fn serialize_compact(&self) -> (RecoveryId, [u8; 64]) {
-        secp256k1::RecoverableSignature::serialize_compact(&self)
+impl RecoverableSignature for recovery::RecoverableSignature {
+    fn serialize_compact(&self) -> (recovery::RecoveryId, [u8; 64]) {
+        recovery::RecoverableSignature::serialize_compact(&self)
     }
 }
