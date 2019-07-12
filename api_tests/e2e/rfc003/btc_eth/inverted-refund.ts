@@ -121,14 +121,7 @@ declare var global: HarnessGlobal;
         },
         {
             actor: alice,
-            test: {
-                description: "Should see that Bob refunded",
-                callback: async body => {
-                    let status = body.properties.state.beta_ledger.status;
-
-                    expect(status).to.equal("Refunded");
-                },
-            },
+            waitUntil: state => state.beta_ledger.status === "Refunded",
         },
     ];
 
