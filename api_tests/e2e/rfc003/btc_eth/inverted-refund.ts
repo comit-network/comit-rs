@@ -84,7 +84,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             test: {
-                description: "Should should see that Alice refunded",
+                description: "Should see that Alice refunded",
                 callback: async body => {
                     let status = body.properties.state.alpha_ledger.status;
 
