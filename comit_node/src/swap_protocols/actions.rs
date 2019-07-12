@@ -61,3 +61,27 @@ pub mod ethereum {
         pub min_block_timestamp: Option<Timestamp>,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use ethereum_support::{web3::types::U256, Address, Network};
+    use std::str::FromStr;
+
+    #[test]
+    fn call_contract_serializes_correctly_to_json_with_none() {
+        let addr = Address::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let contract = ethereum::CallContract {
+            to: addr,
+            data: None,
+            gas_limit: U256::from(1),
+            network: Network::Ropsten,
+            min_block_timestamp: None,
+        };
+        let serialized = serde_json::to_string(&contract).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"to":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}"#,
+        );
+    }
+}
