@@ -42,7 +42,10 @@ pub mod bitcoin {
 pub mod ethereum {
     use crate::swap_protocols::Timestamp;
     use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity, Network};
-    use serde::Serialize;
+    use serde::{
+        ser::{SerializeStruct, Serializer},
+        Serialize,
+    };
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
     pub struct DeployContract {
@@ -52,13 +55,34 @@ pub mod ethereum {
         pub network: Network,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct CallContract {
         pub to: Address,
         pub data: Option<Bytes>,
         pub gas_limit: U256,
         pub network: Network,
         pub min_block_timestamp: Option<Timestamp>,
+    }
+
+    impl Serialize for CallContract {
+        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+        where
+            S: Serializer,
+        {
+            let mut state = serializer.serialize_struct("CallContract", 5)?;
+
+            state.serialize_field("to", &self.to)?;
+            if let Some(data) = &self.data {
+                state.serialize_field("data", data)?;
+            }
+            state.serialize_field("gas_limit", &self.gas_limit)?;
+            state.serialize_field("network", &self.network)?;
+            if let Some(min_block_timestamp) = &self.min_block_timestamp {
+                state.serialize_field("min_block_timestamp", min_block_timestamp)?;
+            }
+
+            state.end()
+        }
     }
 }
 
