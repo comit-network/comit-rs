@@ -204,10 +204,7 @@ export class Actor {
                     .sendToAddress(to, parseInt(amount, 10));
             }
             case "bitcoin-broadcast-signed-transaction": {
-                action.payload.should.include.all.keys(
-                    "hex",
-                    "min_median_block_time"
-                );
+                action.payload.should.include.all.keys("hex");
 
                 const fetchMedianTime = async () => {
                     const blockchainInfo = await bitcoin.getBlockchainInfo();
@@ -256,8 +253,7 @@ export class Actor {
                 action.payload.should.include.all.keys(
                     "contract_address",
                     "data",
-                    "gas_limit",
-                    "min_block_timestamp"
+                    "gas_limit"
                 );
 
                 const {
@@ -267,7 +263,10 @@ export class Actor {
                     min_block_timestamp,
                 } = action.payload;
 
-                if (seconds_until(min_block_timestamp) > 0) {
+                if (
+                    min_block_timestamp &&
+                    seconds_until(min_block_timestamp) > 0
+                ) {
                     // Ethereum needs a buffer, otherwise the contract code is run but doesn't transfer any funds,
                     // see https://github.com/comit-network/RFCs/issues/62
                     const buffer = 2;
