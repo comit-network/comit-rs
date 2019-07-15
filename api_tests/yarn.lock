@@ -312,10 +312,10 @@ bip66@^1.1.0, bip66@^1.1.5:
   dependencies:
     safe-buffer "^5.0.1"
 
-bitcoin-core@^2.0.0:
-  version "2.0.0"
-  resolved "https://registry.yarnpkg.com/bitcoin-core/-/bitcoin-core-2.0.0.tgz#defcd4b3bfb6738ea88051b5fe5a944e32c09df0"
-  integrity sha512-I6I7ejzbXfyMtR5/z0BhfjTeN8PMQGD+1B1rpu6IoLcwqoybaSa+P4zYnja/p2xdqjdctmgbOtAaCaaqyVCycQ==
+bitcoin-core@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/bitcoin-core/-/bitcoin-core-2.2.0.tgz#151d89e935d642ff0b2dc562ef4aa329baffd3b0"
+  integrity sha512-WIEvgEbVzezbPWLddNwRLaN/mx1i3SrAqJAsFHoWMMjOOxpFWZePqEJO2R0ZjvP+H1VMtWjREc44QoX7oxfESQ==
   dependencies:
     "@uphold/request-logger" "^2.0.0"
     bluebird "^3.4.1"
