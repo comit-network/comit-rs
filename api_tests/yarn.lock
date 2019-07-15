@@ -2435,10 +2435,10 @@ typeforce@^1.11.3, typeforce@^1.11.5:
   resolved "https://registry.yarnpkg.com/typeforce/-/typeforce-1.18.0.tgz#d7416a2c5845e085034d70fcc5b6cc4a90edbfdc"
   integrity sha512-7uc1O8h1M1g0rArakJdf0uLRSSgFcYexrVoKo+bzJd32gd4gDy2L/Z+8/FjPnU9ydY3pEnVPtr9FyscYY60K1g==
 
-typescript@^3.5.1:
-  version "3.5.1"
-  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.5.1.tgz#ba72a6a600b2158139c5dd8850f700e231464202"
-  integrity sha512-64HkdiRv1yYZsSe4xC1WVgamNigVYjlssIoaH2HcZF0+ijsk5YK2g0G34w9wJkze8+5ow4STd22AynfO6ZYYLw==
+typescript@^3.5.3:
+  version "3.5.3"
+  resolved "https://registry.yarnpkg.com/typescript/-/typescript-3.5.3.tgz#c830f657f93f1ea846819e929092f5fe5983e977"
+  integrity sha512-ACzBtm/PhXBDId6a6sDJfroT2pOWt/oOnk4/dElG5G33ZL776N3Y6/6bKZJBFpd+b05F3Ct9qDjMeJmRWtE2/g==
 
 underscore@1.8.3:
   version "1.8.3"
