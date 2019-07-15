@@ -252,7 +252,6 @@ export class Actor {
             case "ethereum-call-contract": {
                 action.payload.should.include.all.keys(
                     "contract_address",
-                    "data",
                     "gas_limit"
                 );
 
