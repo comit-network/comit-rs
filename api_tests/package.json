@@ -29,7 +29,7 @@
         "multiaddr": "^6.0.6",
         "prettier": "^1.15.2",
         "satoshi-bitcoin": "^1.0.4",
-        "toml": "^2.3.3",
+        "toml": "^3.0.0",
         "typed-rest-client": "^1.4.0",
         "typedarray-to-buffer": "^3.1.5",
         "typescript": "^3.5.3",
