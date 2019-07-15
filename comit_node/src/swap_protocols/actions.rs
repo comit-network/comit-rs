@@ -42,10 +42,7 @@ pub mod bitcoin {
 pub mod ethereum {
     use crate::swap_protocols::Timestamp;
     use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity, Network};
-    use serde::{
-        ser::{SerializeStruct, Serializer},
-        Serialize,
-    };
+    use serde::Serialize;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
     pub struct DeployContract {
@@ -62,50 +59,5 @@ pub mod ethereum {
         pub gas_limit: U256,
         pub network: Network,
         pub min_block_timestamp: Option<Timestamp>,
-    }
-
-    impl Serialize for CallContract {
-        fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-        where
-            S: Serializer,
-        {
-            let mut state = serializer.serialize_struct("CallContract", 5)?;
-
-            state.serialize_field("to", &self.to)?;
-            if let Some(data) = &self.data {
-                state.serialize_field("data", data)?;
-            }
-            state.serialize_field("gas_limit", &self.gas_limit)?;
-            state.serialize_field("network", &self.network)?;
-            if let Some(min_block_timestamp) = &self.min_block_timestamp {
-                state.serialize_field("min_block_timestamp", min_block_timestamp)?;
-            }
-
-            state.end()
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use ethereum_support::{web3::types::U256, Address, Network};
-    use std::str::FromStr;
-
-    #[test]
-    fn call_contract_serializes_correctly_to_json_with_none() {
-        let addr = Address::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
-        let contract = ethereum::CallContract {
-            to: addr,
-            data: None,
-            gas_limit: U256::from(1),
-            network: Network::Ropsten,
-            min_block_timestamp: None,
-        };
-        let serialized = serde_json::to_string(&contract).unwrap();
-        assert_eq!(
-            serialized,
-            r#"{"to":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}"#,
-        );
     }
 }
