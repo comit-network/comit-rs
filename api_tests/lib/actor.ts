@@ -28,6 +28,10 @@ interface DeclineConfig {
     reason: string;
 }
 
+export interface OverrideParams {
+    bitcoinFeePerWU?: number;
+}
+
 const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
 
 export class Actor {
@@ -143,7 +147,10 @@ export class Actor {
         }
     }
 
-    public buildRequestFromAction(action: Action) {
+    public buildRequestFromAction(
+        action: Action,
+        overrideParams?: OverrideParams
+    ) {
         const data: any = {};
 
         for (const field of action.fields || []) {
@@ -163,7 +170,11 @@ export class Actor {
                     "API should be backwards compatible"
                 );
 
-                data[field.name] = 20;
+                const overrideFeePerWU = overrideParams
+                    ? overrideParams.bitcoinFeePerWU
+                    : undefined;
+
+                data[field.name] = overrideFeePerWU ? overrideFeePerWU : 20;
             }
 
             if (
