@@ -20,6 +20,8 @@ declare var global: HarnessGlobal;
     const bob = new Actor("bob", global.config, global.project_root, {
         ethereumNodeConfig: global.ledgers_config.ethereum,
         bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments:
+            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });
 
     const alphaAssetQuantity = toBN(toWei("10", "ether"));
@@ -86,8 +88,7 @@ declare var global: HarnessGlobal;
             swapRequest
         );
 
-        it("Should return a High Fee Error when getting redeem payload with a high fee", async () => {
-            // Retrieve redeem action
+        it("[alice] should return a High Fee Error when getting redeem payload with a high fee", async () => {
             const action = await alice
                 .pollComitNodeUntil(
                     swapLocations[alice.name],
@@ -107,6 +108,36 @@ declare var global: HarnessGlobal;
             });
 
             const agent = request(alice.comitNodeHttpApiUrl());
+
+            expect(method).to.equal("GET");
+
+            const response = await agent.get(url).send(body);
+
+            expect(response).to.have.status(400);
+
+            expect(response.body.title).to.equal("Fee is too high.");
+        });
+
+        it("[bob] should return a High Fee Error when getting refund payload with a high fee", async () => {
+            const action = await bob
+                .pollComitNodeUntil(
+                    swapLocations[bob.name],
+                    body =>
+                        body.actions.findIndex(
+                            candidate => candidate.name === ActionKind.Refund
+                        ) !== -1
+                )
+                .then(body =>
+                    body.actions.find(
+                        candidate => candidate.name === ActionKind.Refund
+                    )
+                );
+
+            const { url, body, method } = bob.buildRequestFromAction(action, {
+                bitcoinFeePerWU: 100000000,
+            });
+
+            const agent = request(bob.comitNodeHttpApiUrl());
 
             expect(method).to.equal("GET");
 
