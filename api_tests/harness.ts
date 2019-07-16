@@ -188,11 +188,19 @@ async function run_tests(test_files: string[]) {
 
 function validTestFile(path: string): boolean {
     return (
+        validTestPath(path) &&
         /^.*.ts$/.test(path) &&
-        !/^.*harness.ts$/.test(path) &&
+        !/^.*harness.ts$/.test(path)
+    );
+}
+
+function validTestPath(path: string): boolean {
+    return (
         !/^.*lib\/.*$/.test(path) &&
         !/^.*node_modules\/.*$/.test(path) &&
-        !/^.*gen\/.*$/.test(path)
+        !/^.*gen\/.*$/.test(path) &&
+        !/^.*log\/.*$/.test(path) &&
+        !/^.*regtest\/.*$/.test(path)
     );
 }
 
@@ -203,17 +211,19 @@ function expandPath(paths: string[], parentDir: string = ""): string[] {
 
     let result: string[] = [];
     for (let path of paths) {
-        path = parentDir + path;
-        const stats = fs.lstatSync(path);
-        if (stats.isFile()) {
-            if (validTestFile(path)) {
-                result.push(path);
+        if (validTestPath(path)) {
+            path = parentDir + path;
+            const stats = fs.lstatSync(path);
+            if (stats.isFile()) {
+                if (validTestFile(path)) {
+                    result.push(path);
+                }
+            } else if (stats.isDirectory()) {
+                const subPaths = fs.readdirSync(path);
+                const files = expandPath(subPaths, path + "/");
+                const concat = result.concat(files);
+                result = concat;
             }
-        } else if (stats.isDirectory()) {
-            const subPaths = fs.readdirSync(path);
-            const files = expandPath(subPaths, path + "/");
-            const concat = result.concat(files);
-            result = concat;
         }
     }
     return result;
