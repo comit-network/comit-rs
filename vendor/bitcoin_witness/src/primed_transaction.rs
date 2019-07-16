@@ -110,6 +110,10 @@ impl PrimedTransaction {
         let fee = weight.checked_mul(fee_per_byte).ok_or(Error::FeeTooHigh)?;
         let fee = BitcoinQuantity::from_satoshi(fee);
 
+        if self.total_input_value() < fee {
+            return Err(Error::FeeTooHigh);
+        };
+
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);

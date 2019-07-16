@@ -141,10 +141,15 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                         .sign_with_rate(fee_per_wu)
                         .map_err(|e| {
                             log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                            HttpApiProblem::with_title_and_type_from_status(
-                                StatusCode::INTERNAL_SERVER_ERROR,
-                            )
-                            .set_detail("Issue encountered when signing Bitcoin transaction.")
+                            match e {
+                                bitcoin_witness::Error::FeeTooHigh => HttpApiProblem::new(
+                                    "Fee is too high.",
+                                )
+                                .set_status(StatusCode::BAD_REQUEST)
+                                .set_detail(
+                                    "The Fee per byte/WU provided makes the total fee too high.",
+                                ),
+                            }
                         })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
