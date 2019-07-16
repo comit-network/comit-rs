@@ -4,6 +4,7 @@ import { ActionKind, SwapRequest } from "../../../lib/comit";
 import { toBN, toWei } from "web3-utils";
 import { HarnessGlobal } from "../../../lib/util";
 import { Step, createTests } from "../../test_creator";
+import { expect } from "chai";
 import "chai/register-should";
 import "../../../lib/setupChai";
 
@@ -19,42 +20,39 @@ declare var global: HarnessGlobal;
     const bob = new Actor("bob", global.config, global.project_root, {
         ethereumNodeConfig: global.ledgers_config.ethereum,
         bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments: null,
     });
 
-    const alphaAssetQuantity = toBN(toWei("10", "ether"));
-    const betaAssetQuantity = 100000000;
-    const maxFeeInSatoshi = 50000;
+    const alphaAssetQuantity = 100000000;
+    const betaAssetQuantity = toBN(toWei("10", "ether"));
 
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 13;
+    const betaExpiry = Math.round(Date.now() / 1000) + 8;
 
     await bitcoin.ensureFunding();
-    await alice.wallet.eth().fund("11");
-    await alice.wallet.btc().fund(0.1);
-    await bob.wallet.eth().fund("0.1");
-    await bob.wallet.btc().fund(10);
+    await bob.wallet.eth().fund("11");
+    await alice.wallet.eth().fund("0.1");
+    await alice.wallet.btc().fund(10);
     await bitcoin.generate();
-
-    let bobEthBalanceBefore = await bob.wallet.eth().ethBalance();
 
     let swapRequest: SwapRequest = {
         alpha_ledger: {
-            name: "ethereum",
+            name: "bitcoin",
             network: "regtest",
         },
         beta_ledger: {
-            name: "bitcoin",
+            name: "ethereum",
             network: "regtest",
         },
         alpha_asset: {
-            name: "ether",
+            name: "bitcoin",
             quantity: alphaAssetQuantity.toString(),
         },
         beta_asset: {
-            name: "bitcoin",
+            name: "ether",
             quantity: betaAssetQuantity.toString(),
         },
-        alpha_ledger_refund_identity: alice.wallet.eth().address(),
+        beta_ledger_redeem_identity: alice.wallet.eth().address(),
         alpha_expiry: alphaExpiry,
         beta_expiry: betaExpiry,
         peer: await bob.peerId(),
@@ -74,48 +72,53 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Fund,
-            waitUntil: state => state.beta_ledger.status === "Funded",
+            waitUntil: state =>
+                state.alpha_ledger.status === "Funded" &&
+                state.beta_ledger.status === "Funded",
         },
         {
             actor: alice,
-            action: ActionKind.Redeem,
-            waitUntil: state => state.beta_ledger.status === "Redeemed",
+            action: ActionKind.Refund,
+            waitUntil: state => state.alpha_ledger.status === "Refunded",
+        },
+        {
+            actor: bob,
+            waitUntil: state => state.alpha_ledger.status === "Refunded",
+        },
+        {
+            actor: alice,
             test: {
-                description:
-                    "Should have received the beta asset after the redeem",
+                description: "Should see that beta is still funded",
                 callback: async body => {
-                    let redeemTxId =
-                        body.properties.state.beta_ledger.redeem_tx;
+                    let status = body.properties.state.beta_ledger.status;
 
-                    let satoshiReceived = await alice.wallet
-                        .btc()
-                        .satoshiReceivedInTx(redeemTxId);
-                    const satoshiExpected = betaAssetQuantity - maxFeeInSatoshi;
-
-                    satoshiReceived.should.be.at.least(satoshiExpected);
+                    expect(status).to.equal("Funded");
                 },
             },
         },
         {
             actor: bob,
-            action: ActionKind.Redeem,
-            waitUntil: state => state.alpha_ledger.status === "Redeemed",
             test: {
-                description:
-                    "Should have received the alpha asset after the redeem",
-                callback: async () => {
-                    let ethBalanceAfter = await bob.wallet.eth().ethBalance();
+                description: "Should see that beta is still funded",
+                callback: async body => {
+                    let status = body.properties.state.beta_ledger.status;
 
-                    let ethBalanceExpected = bobEthBalanceBefore.add(
-                        alphaAssetQuantity
-                    );
-                    ethBalanceAfter.eq(ethBalanceExpected).should.equal(true);
+                    expect(status).to.equal("Funded");
                 },
             },
         },
+        {
+            actor: bob,
+            action: ActionKind.Refund,
+            waitUntil: state => state.beta_ledger.status === "Refunded",
+        },
+        {
+            actor: alice,
+            waitUntil: state => state.beta_ledger.status === "Refunded",
+        },
     ];
 
-    describe("RFC003: Ether for Bitcoin", () => {
+    describe("RFC003: Alice can refund before Bob", async () => {
         createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();

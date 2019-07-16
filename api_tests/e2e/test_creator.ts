@@ -107,20 +107,24 @@ export function createTests(
             });
         }
 
-        let body: Entity = null;
         if (waitUntil) {
             it(`[${actor.name}] transitions to correct state`, async function() {
                 this.timeout(10000);
-                body = await actor.pollComitNodeUntil(
+                await actor.pollComitNodeUntil(
                     swapLocations[actor.name],
                     body => waitUntil(body.properties.state)
                 );
             });
         }
 
-        if (test && body) {
+        if (test) {
             it(`[${actor.name}] ${test.description}`, async function() {
                 this.timeout(10000);
+
+                const body = await actor.pollComitNodeUntil(
+                    swapLocations[actor.name],
+                    () => true
+                );
 
                 return test.callback(body);
             });
