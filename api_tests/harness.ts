@@ -3,6 +3,7 @@
 import { ChildProcess, execSync, spawn } from "child_process";
 import commander from "commander";
 import * as fs from "fs";
+import glob from "glob";
 import Mocha from "mocha";
 import path from "path";
 import * as toml from "toml";
@@ -204,39 +205,31 @@ function validTestPath(path: string): boolean {
     );
 }
 
-function expandPath(
-    paths: string[],
-    parentDir: string = "",
-    depth: number = 5
-): string[] {
-    if (!depth) {
-        return [];
-    }
+function expandGlob(paths: string[]): string[] {
     if (!paths.length) {
-        return expandPath(["./"]);
+        return expandGlob(["**/*.ts"]);
     }
 
     let result: string[] = [];
-    for (let path of paths) {
-        if (validTestPath(path)) {
-            path = parentDir + path;
-            const stats = fs.lstatSync(path);
-            if (stats.isFile()) {
-                if (validTestFile(path)) {
-                    result.push(path);
+    for (const path of paths) {
+        if (glob.hasMagic(path)) {
+            const expandedPaths: string[] = glob.sync(path);
+            for (const expandedPath of expandedPaths) {
+                if (validTestFile(expandedPath)) {
+                    result.push(expandedPath);
                 }
-            } else if (stats.isDirectory()) {
-                const subPaths = fs.readdirSync(path);
-                const files = expandPath(subPaths, path + "/", depth - 1);
-                const concat = result.concat(files);
-                result = concat;
             }
+        } else if (fs.lstatSync(path).isDirectory()) {
+            const temp = result.concat(expandGlob([path + "/**/*.ts"]));
+            result = temp;
+        } else if (validTestFile(path)) {
+            result.push(path);
         }
     }
+
     return result;
 }
 
 const args = commander.args;
-const testFiles = expandPath(args);
-console.log(testFiles);
+const testFiles = expandGlob(args);
 run_tests(testFiles);
