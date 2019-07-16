@@ -4,10 +4,10 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint -p .",
+        "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
         "test": "ts-node ./harness.ts",
-        "fix": "tslint -p . --fix && prettier --write '**/*.{ts,js,json,yml}'"
+        "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
         "node": "^10.14"

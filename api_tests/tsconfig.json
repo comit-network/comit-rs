@@ -10,6 +10,5 @@
         "noUnusedParameters": true,
         "resolveJsonModule": true,
         "esModuleInterop": true
-    },
-    "include": ["./lib"]
+    }
 }
