@@ -142,13 +142,20 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                         .map_err(|e| {
                             log::error!("Could not sign Bitcoin transaction: {:?}", e);
                             match e {
-                                bitcoin_witness::Error::FeeTooHigh => HttpApiProblem::new(
+                                bitcoin_witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
                                     "Fee is too high.",
                                 )
                                 .set_status(StatusCode::BAD_REQUEST)
                                 .set_detail(
-                                    "The Fee per byte/WU provided makes the total fee too high.",
+                                    "The Fee per byte/WU provided makes the total fee higher than the spendable input value.",
                                 ),
+                                bitcoin_witness::Error::OverflowingFee => HttpApiProblem::new(
+                                    "Fee is too high.",
+                                )
+                                    .set_status(StatusCode::BAD_REQUEST)
+                                    .set_detail(
+                                        "The Fee per byte/WU provided makes the total fee higher than the system supports.",
+                                    )
                             }
                         })?;
 
