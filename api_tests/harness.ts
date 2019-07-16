@@ -221,5 +221,4 @@ function expandPath(paths: string[], parentDir: string = ""): string[] {
 
 const args = commander.args;
 const testFiles = expandPath(args);
-console.log(testFiles);
 run_tests(testFiles);
