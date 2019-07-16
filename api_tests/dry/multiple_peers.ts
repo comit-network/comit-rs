@@ -1,10 +1,10 @@
-import { Actor } from "../lib/actor";
-import { toWei } from "web3-utils";
-import { HarnessGlobal } from "../lib/util";
 import { expect, request } from "chai";
-import "../lib/setupChai";
 import "chai/register-should";
+import { toWei } from "web3-utils";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
+import { Actor } from "../lib/actor";
+import "../lib/setupChai";
+import { HarnessGlobal } from "../lib/util";
 
 declare var global: HarnessGlobal;
 
@@ -40,7 +40,7 @@ declare var global: HarnessGlobal;
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -60,8 +60,8 @@ declare var global: HarnessGlobal;
                         quantity: beta_asset_bob_quantity,
                     },
                     beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry: alpha_expiry,
-                    beta_expiry: beta_expiry,
+                    alpha_expiry,
+                    beta_expiry,
                     peer: bob_comit_node_address,
                 });
 
@@ -73,7 +73,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -93,8 +93,8 @@ declare var global: HarnessGlobal;
                         quantity: beta_asset_charlie_quantity,
                     },
                     beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry: alpha_expiry,
-                    beta_expiry: beta_expiry,
+                    alpha_expiry,
+                    beta_expiry,
                     peer: charlie_comit_node_address,
                 });
 
@@ -129,7 +129,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
-            let swapEntity = await charlie
+            const swapEntity = await charlie
                 .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
@@ -152,7 +152,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Charlie] Should be able to see Alice's peer-id after receiving the request", async function() {
-            let swapEntity = await charlie
+            const swapEntity = await charlie
                 .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
@@ -165,7 +165,9 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
+            const res = await request(alice.comitNodeHttpApiUrl()).get(
+                "/peers"
+            );
 
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([

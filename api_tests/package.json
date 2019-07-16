@@ -4,8 +4,10 @@
     "description": "COMIT node end-to-end testing suite",
     "main": "index.js",
     "scripts": {
-        "check": "tsc",
-        "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts"
+        "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint -p .",
+        "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
+        "test": "ts-node ./harness.ts",
+        "fix": "tslint -p . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
         "node": "^10.14"
@@ -51,7 +53,10 @@
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
         "json-schema-to-typescript": "^6.1.3",
-        "ts-node": "^8.0.3"
+        "ts-node": "^8.0.3",
+        "tslint": "^5.18.0",
+        "tslint-config-prettier": "^1.18.0",
+        "tslint-no-unused-expression-chai": "^0.1.4"
     },
     "prettier": {
         "trailingComma": "es5",

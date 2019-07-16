@@ -67,7 +67,7 @@ export enum ActionKind {
     Refund = "refund",
 }
 
-//**** Config files ****//
+// **** Config files ****//
 
 export interface MetaComitNodeConfig {
     // snake_case as it comes from TOML file

@@ -1,7 +1,7 @@
 import { expect, request } from "chai";
-import { HarnessGlobal } from "../../lib/util";
 import { Btsieve } from "../../lib/btsieve";
 import "../../lib/setupChai";
+import { HarnessGlobal } from "../../lib/util";
 
 declare var global: HarnessGlobal;
 
@@ -12,7 +12,7 @@ setTimeout(async function() {
         describe("BTsieve", () => {
             describe("Ping", () => {
                 it("btsieve ping should respond with 200", async function() {
-                    let res = await request(btsieve.url()).get("/health");
+                    const res = await request(btsieve.url()).get("/health");
 
                     expect(res).to.have.status(200);
                 });
@@ -22,7 +22,7 @@ setTimeout(async function() {
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/bitcoin/regtest/transactions/1"
                     );
 
@@ -33,10 +33,10 @@ setTimeout(async function() {
                     "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
 
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     expect(res).to.have.status(503);
@@ -47,10 +47,10 @@ setTimeout(async function() {
         describe("Ethereum", () => {
             describe("Transactions", () => {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions/1")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     expect(res).to.have.status(503);
@@ -59,10 +59,10 @@ setTimeout(async function() {
                 const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     expect(res).to.have.status(503);

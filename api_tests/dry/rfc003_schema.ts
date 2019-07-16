@@ -1,12 +1,12 @@
-import { Actor } from "../lib/actor";
-import { HarnessGlobal } from "../lib/util";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../lib/setupChai";
+import { toWei } from "web3-utils";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
+import { Actor } from "../lib/actor";
+import "../lib/setupChai";
+import { HarnessGlobal } from "../lib/util";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { toWei } from "web3-utils";
 
 declare var global: HarnessGlobal;
 
@@ -33,7 +33,7 @@ declare var global: HarnessGlobal;
 
     describe("Response shape", () => {
         before(async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -53,8 +53,8 @@ declare var global: HarnessGlobal;
                         quantity: beta_asset_quantity,
                     },
                     beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry: alpha_expiry,
-                    beta_expiry: beta_expiry,
+                    alpha_expiry,
+                    beta_expiry,
                     peer: bob_comit_node_address,
                 });
 
@@ -63,32 +63,34 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Response for GET /swaps is a valid siren document", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
+            const res = await request(alice.comitNodeHttpApiUrl()).get(
+                "/swaps"
+            );
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
         it("[Bob] Response for GET /swaps is a valid siren document", async () => {
-            let res = await request(bob.comitNodeHttpApiUrl()).get("/swaps");
+            const res = await request(bob.comitNodeHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
         it("[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
-            let swapsEntity = await alice
+            const swapsEntity = await alice
                 .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
 
-            let selfLink = swapsEntity.links.find((link: Link) =>
+            const selfLink = swapsEntity.links.find((link: Link) =>
                 link.rel.includes("self")
             ).href;
 
-            let swapResponse = await request(alice.comitNodeHttpApiUrl()).get(
+            const swapResponse = await request(alice.comitNodeHttpApiUrl()).get(
                 selfLink
             );
-            let swapEntity = swapResponse.body as Entity;
+            const swapEntity = swapResponse.body as Entity;
 
             expect(swapEntity).to.be.jsonSchema(sirenJsonSchema);
             expect(swapEntity.properties).to.be.jsonSchema(
@@ -97,20 +99,20 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
-            let swapsEntity = await bob
+            const swapsEntity = await bob
                 .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
 
-            let selfLink = swapsEntity.links.find((link: Link) =>
+            const selfLink = swapsEntity.links.find((link: Link) =>
                 link.rel.includes("self")
             ).href;
 
-            let swapResponse = await request(bob.comitNodeHttpApiUrl()).get(
+            const swapResponse = await request(bob.comitNodeHttpApiUrl()).get(
                 selfLink
             );
-            let swapEntity = swapResponse.body as Entity;
+            const swapEntity = swapResponse.body as Entity;
 
             expect(swapEntity).to.be.jsonSchema(sirenJsonSchema);
             expect(swapEntity.properties).to.be.jsonSchema(

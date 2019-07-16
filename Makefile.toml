@@ -11,7 +11,7 @@ workspace = false
 clear = true
 dependencies = [
      "format",
-     "ts-format",
+     "fix-ts",
      "build",
      "test"
 ]
@@ -21,7 +21,6 @@ dependencies = [
 workspace = false
 dependencies = [
     "check-rs-format",
-    "check-ts-format",
     "check-ts",
     "check-cargo-toml-format",
     "clippy"
@@ -126,28 +125,14 @@ script = [
   "cargo +nightly-2019-04-30 fmt -- --check"
 ]
 
-[tasks.ts-format]
-description = "Runs prettier to format TypeScript code."
+[tasks.fix-ts]
+description = "Runs prettier & tslint to format TypeScript code."
 workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
-script = [
-'''
-(cd api_tests; yarn run prettier --write '**/*.{ts,json,yml}')
-'''
-]
-
-[tasks.check-ts-format]
-description = "Runs prettier to check appropriate TypeScript code format."
-workspace = false
-install_script = ["(cd ./api_tests; yarn install;)"]
-script = [
-'''
-(cd api_tests; yarn run prettier --check '**/*.{ts,json,yml}')
-'''
-]
+script = ["cd api_tests; yarn run fix"]
 
 [tasks.check-ts]
-description = "Runs tsc to validate TypeScript syntax."
+description = "Runs tsc, prettier & tslint to validate TypeScript syntax & format."
 workspace = false
 install_script = ["(cd ./api_tests; yarn install;)"]
 script = ["cd api_tests; yarn run check"]
@@ -199,12 +184,7 @@ dependencies = [
 description = "Runs tests that don't require any external services"
 workspace = false
 private = true
-script = [
-'''
-./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts ./api_tests/dry/*.ts
-'''
-]
+script = ['cd api_tests; yarn run test ./dry/*']
 
 #########################
 # Web GUI api Test flow #
@@ -222,11 +202,7 @@ description = "Runs tests to ensure that comit_node serves comit-i"
 workspace = false
 private = true
 script = [
-'''
-./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts ./api_tests/webgui/*.ts
-'''
-]
+"cd ./api_tests; yarn run test ./webgui/*"]
 
 #################
 # E2E Test flow #
@@ -246,19 +222,20 @@ dependencies = [
 description = "Runs RFC003 end-to-end tests specified on command line. Supports GLOB."
 workspace = false
 private = true
+install_script = ["(cd ./api_tests; yarn install;)"]
 script_runner = "bash"
 script = [
 '''
+cd ./api_tests;
 glob="${1:-*}";
-for dir in api_tests/e2e/rfc003/$glob; do
+for dir in e2e/rfc003/$glob; do
     add_test_files=$(ls "$dir/"*.ts 2>/dev/null|| true);
     if test "$add_test_files"; then
         files="$files $add_test_files"
     fi
 done;
 
-./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts $files;
+yarn run test $files;
 '''
 ]
 
@@ -277,13 +254,8 @@ dependencies = [
 description = "Runs btsieve API tests."
 workspace = false
 private = true
-script_runner = "bash"
-script = [
-'''
-./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts ./api_tests/btsieve/*/*.ts
-'''
-]
+install_script = ["(cd ./api_tests; yarn install;)"]
+script = ["cd ./api_tests; yarn run test btsieve"]
 
 ######################################
 # all API Tests flow #
@@ -300,11 +272,5 @@ dependencies = [
 description = "Runs all API tests."
 workspace = false
 private = true
-script_runner = "bash"
-script = [
-'''
-./api_tests/node_modules/.bin/ts-node --project ./api_tests/tsconfig.json \
-  ./api_tests/harness.ts \
-    ./api_tests/{dry,webgui,btsieve/*,e2e/*/*}/*.ts
-'''
-]
+install_script = ["(cd ./api_tests; yarn install;)"]
+script = ["cd ./api_tests; yarn run test"]

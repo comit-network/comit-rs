@@ -1,8 +1,8 @@
-import * as bitcoin from "./bitcoin";
-import * as toml from "toml";
-import * as fs from "fs";
-import { sleep } from "./util";
 import { execSync, spawn } from "child_process";
+import * as fs from "fs";
+import * as toml from "toml";
+import * as bitcoin from "./bitcoin";
+import { sleep } from "./util";
 
 export class LedgerRunner {
     private running_ledgers: { [key: string]: boolean };
@@ -26,14 +26,14 @@ export class LedgerRunner {
         );
     }
 
-    async ensureLedgersRunning(ledgers: string[]) {
-        let running_ledgers = this.running_ledgers;
-        let to_be_started = ledgers.filter(name => !running_ledgers[name]);
+    public async ensureLedgersRunning(ledgers: string[]) {
+        const running_ledgers = this.running_ledgers;
+        const to_be_started = ledgers.filter(name => !running_ledgers[name]);
 
         if (to_be_started.length > 0) {
-            let wait_times = [0];
+            const wait_times = [0];
 
-            let images_to_start = to_be_started.map(
+            const images_to_start = to_be_started.map(
                 name => this.ledgers_config[name].docker
             );
 
@@ -49,8 +49,8 @@ export class LedgerRunner {
                 }
             );
 
-            for (let ledger of to_be_started) {
-                let ledger_config = this.ledgers_config[ledger];
+            for (const ledger of to_be_started) {
+                const ledger_config = this.ledgers_config[ledger];
                 this.running_ledgers[ledger] = true;
                 wait_times.push(
                     process.env.CARGO_MAKE_CI === "TRUE"
@@ -59,7 +59,7 @@ export class LedgerRunner {
                 );
             }
 
-            let wait_time = Math.max(...wait_times);
+            const wait_time = Math.max(...wait_times);
             console.log(
                 `Waiting ${wait_time}ms for ${to_be_started.join(
                     ", "
@@ -70,15 +70,15 @@ export class LedgerRunner {
 
             if (to_be_started.includes("bitcoin")) {
                 bitcoin.init(this.ledgers_config.bitcoin);
-                this.block_timers["bitcoin"] = global.setInterval(async () => {
+                this.block_timers.bitcoin = global.setInterval(async () => {
                     await bitcoin.generate();
                 }, 1000);
             }
         }
     }
 
-    stopLedgers() {
-        let names = Object.keys(this.running_ledgers);
+    public stopLedgers() {
+        const names = Object.keys(this.running_ledgers);
         if (names.length > 0) {
             console.log("Stopping ledgers: " + names.join(", "));
 
@@ -89,7 +89,7 @@ export class LedgerRunner {
         this.running_ledgers = {};
     }
 
-    getLedgersConfig(): any {
+    public getLedgersConfig(): any {
         return this.ledgers_config;
     }
 }

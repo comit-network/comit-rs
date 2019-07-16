@@ -1,12 +1,12 @@
-import * as bitcoin from "../../../lib/bitcoin";
-import { Actor } from "../../../lib/actor";
-import { ActionKind, SwapRequest } from "../../../lib/comit";
-import { Wallet } from "../../../lib/wallet";
-import { toBN, toWei } from "web3-utils";
-import { HarnessGlobal } from "../../../lib/util";
-import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
+import { toBN, toWei } from "web3-utils";
+import { Actor } from "../../../lib/actor";
+import * as bitcoin from "../../../lib/bitcoin";
+import { ActionKind, SwapRequest } from "../../../lib/comit";
 import "../../../lib/setupChai";
+import { HarnessGlobal } from "../../../lib/util";
+import { Wallet } from "../../../lib/wallet";
+import { createTests, Step } from "../../../lib/test_creator";
 
 declare var global: HarnessGlobal;
 
@@ -40,7 +40,7 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await bob.wallet.eth().fund("1");
 
-    let tokenContractAddress = await tobyWallet
+    const tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
     await tobyWallet
@@ -51,7 +51,7 @@ declare var global: HarnessGlobal;
             tokenContractAddress
         );
 
-    let swapRequest: SwapRequest = {
+    const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: "ethereum",
             network: "regtest",
@@ -75,7 +75,7 @@ declare var global: HarnessGlobal;
         peer: await bob.peerId(),
     };
 
-    let erc20Balance = await alice.wallet
+    const erc20Balance = await alice.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
     erc20Balance.eq(aliceInitialErc20).should.equal(true);
@@ -98,7 +98,7 @@ declare var global: HarnessGlobal;
             test: {
                 description: "Should have less alpha asset after the funding",
                 callback: async () => {
-                    let erc20BalanceAfter = await alice.wallet
+                    const erc20BalanceAfter = await alice.wallet
                         .eth()
                         .erc20Balance(tokenContractAddress);
                     erc20BalanceAfter
@@ -122,10 +122,10 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the beta asset after the refund",
                 callback: async body => {
-                    let refundTxId =
+                    const refundTxId =
                         body.properties.state.beta_ledger.refund_tx;
 
-                    let satoshiReceived = await bob.wallet
+                    const satoshiReceived = await bob.wallet
                         .btc()
                         .satoshiReceivedInTx(refundTxId);
                     const satoshiExpected = betaAssetQuantity - maxFeeInSatoshi;
@@ -142,7 +142,7 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the alpha asset after the refund",
                 callback: async () => {
-                    let erc20BalanceAfter = await alice.wallet
+                    const erc20BalanceAfter = await alice.wallet
                         .eth()
                         .erc20Balance(tokenContractAddress);
                     erc20BalanceAfter

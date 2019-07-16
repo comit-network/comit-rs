@@ -1,11 +1,11 @@
-import * as bitcoin from "../../../lib/bitcoin";
-import { Actor } from "../../../lib/actor";
-import { ActionKind, SwapRequest } from "../../../lib/comit";
-import { toBN, toWei } from "web3-utils";
-import { HarnessGlobal } from "../../../lib/util";
-import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
+import { toBN, toWei } from "web3-utils";
+import { Actor } from "../../../lib/actor";
+import * as bitcoin from "../../../lib/bitcoin";
+import { ActionKind, SwapRequest } from "../../../lib/comit";
 import "../../../lib/setupChai";
+import { HarnessGlobal } from "../../../lib/util";
+import { createTests, Step } from "../../../lib/test_creator";
 
 declare var global: HarnessGlobal;
 
@@ -35,9 +35,9 @@ declare var global: HarnessGlobal;
     await alice.wallet.btc().fund(10);
     await bitcoin.generate();
 
-    let aliceEthBalanceBefore = await alice.wallet.eth().ethBalance();
+    const aliceEthBalanceBefore = await alice.wallet.eth().ethBalance();
 
-    let swapRequest: SwapRequest = {
+    const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: "bitcoin",
             network: "regtest",
@@ -104,10 +104,10 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the alpha asset after the redeem",
                 callback: async body => {
-                    let redeemTxId =
+                    const redeemTxId =
                         body.properties.state.alpha_ledger.redeem_tx;
 
-                    let satoshiReceived = await bob.wallet
+                    const satoshiReceived = await bob.wallet
                         .btc()
                         .satoshiReceivedInTx(redeemTxId);
                     const satoshiExpected =

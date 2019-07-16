@@ -1,16 +1,15 @@
-#!/usr/bin/env ./api_tests/node_modules/.bin/ts-node --project api_tests/tsconfig.json
+///<reference path="./lib/satoshi_bitcoin.d.ts"/>
 
 import { ChildProcess, execSync, spawn } from "child_process";
-import { HarnessGlobal, sleep } from "./lib/util";
-import { MetaComitNodeConfig } from "./lib/comit";
-import * as toml from "toml";
+import commander from "commander";
 import * as fs from "fs";
-import { LedgerRunner } from "./lib/ledger_runner";
+import Mocha from "mocha";
+import path from "path";
+import * as toml from "toml";
 import { BtsieveRunner } from "./lib/btsieve_runner";
-
-const Mocha = require("mocha");
-const path = require("path");
-const commander = require("commander");
+import { MetaComitNodeConfig } from "./lib/comit";
+import { LedgerRunner } from "./lib/ledger_runner";
+import { HarnessGlobal, sleep } from "./lib/util";
 
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
@@ -47,14 +46,14 @@ class ComitRunner {
         this.running_nodes = {};
     }
 
-    async ensureComitNodesRunning(
-        comit_nodes: [string, MetaComitNodeConfig][]
+    public async ensureComitNodesRunning(
+        comit_nodes: Array<[string, MetaComitNodeConfig]>
     ) {
         console.log(
             "Starting comit node for " +
                 comit_nodes.map(([name, _]) => name).join(", ")
         );
-        for (let [name, comit_config] of comit_nodes) {
+        for (const [name, comit_config] of comit_nodes) {
             if (this.running_nodes[name]) {
                 continue;
             }
@@ -94,12 +93,12 @@ class ComitRunner {
         await sleep(2000);
     }
 
-    stopComitNodes() {
-        let names = Object.keys(this.running_nodes);
+    public stopComitNodes() {
+        const names = Object.keys(this.running_nodes);
 
         if (names.length > 0) {
             console.log("Stopping comit nodes: " + names.join(", "));
-            for (let process of Object.values(this.running_nodes)) {
+            for (const process of Object.values(this.running_nodes)) {
                 process.kill();
             }
             this.running_nodes = {};
@@ -108,15 +107,15 @@ class ComitRunner {
 }
 
 async function run_tests(test_files: string[]) {
-    let ledger_runner = new LedgerRunner(
+    const ledger_runner = new LedgerRunner(
         project_root + "/api_tests/regtest/docker-compose.yml",
         project_root + "/api_tests/regtest/ledgers.toml",
         log_dir
     );
     global.ledgers_config = ledger_runner.getLedgersConfig();
 
-    let node_runner = new ComitRunner();
-    let btsieve_runner = new BtsieveRunner(
+    const node_runner = new ComitRunner();
+    const btsieve_runner = new BtsieveRunner(
         project_root,
         project_root + "/target/debug/btsieve",
         log_dir
@@ -140,9 +139,9 @@ async function run_tests(test_files: string[]) {
         console.log("cleanup done");
     });
 
-    for (let test_file of test_files) {
-        let test_dir = path.dirname(test_file);
-        let config = toml.parse(
+    for (const test_file of test_files) {
+        const test_dir = path.dirname(test_file);
+        const config = toml.parse(
             fs.readFileSync(test_dir + "/config.toml", "utf8")
         );
         global.config = config;
@@ -163,13 +162,13 @@ async function run_tests(test_files: string[]) {
             );
         }
 
-        let runTests = new Promise(res => {
+        const runTests = new Promise(res => {
             new Mocha({ bail: true, ui: "bdd", delay: true })
                 .addFile(test_file)
                 .run((failures: number) => res(failures));
         });
 
-        let failures = await runTests;
+        const failures = await runTests;
 
         if (failures) {
             if (commander.dumpLogs || process.env.CARGO_MAKE_CI === "TRUE") {
@@ -187,6 +186,40 @@ async function run_tests(test_files: string[]) {
     process.exit(0);
 }
 
-let test_files = commander.args;
+function validTestFile(path: string): boolean {
+    return (
+        /^.*.ts$/.test(path) &&
+        !/^.*harness.ts$/.test(path) &&
+        !/^.*lib\/.*$/.test(path) &&
+        !/^.*node_modules\/.*$/.test(path) &&
+        !/^.*gen\/.*$/.test(path)
+    );
+}
 
-run_tests(test_files);
+function expandPath(paths: string[], parentDir: string = ""): string[] {
+    if (!paths.length) {
+        return expandPath(["./"]);
+    }
+
+    let result: string[] = [];
+    for (let path of paths) {
+        path = parentDir + path;
+        const stats = fs.lstatSync(path);
+        if (stats.isFile()) {
+            if (validTestFile(path)) {
+                result.push(path);
+            }
+        } else if (stats.isDirectory()) {
+            const subPaths = fs.readdirSync(path);
+            const files = expandPath(subPaths, path + "/");
+            const concat = result.concat(files);
+            result = concat;
+        }
+    }
+    return result;
+}
+
+const args = commander.args;
+const testFiles = expandPath(args);
+console.log(testFiles);
+run_tests(testFiles);

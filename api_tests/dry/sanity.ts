@@ -1,11 +1,11 @@
 // These are stateless tests -- they don't require any state of the comit node and they don't change it
 // They are mostly about checking invalid request responses
-import { Actor } from "../lib/actor";
 import { expect, request } from "chai";
 import "chai/register-should";
-import { HarnessGlobal } from "../lib/util";
 import { Entity } from "../gen/siren";
+import { Actor } from "../lib/actor";
 import "../lib/setupChai";
+import { HarnessGlobal } from "../lib/util";
 
 declare var global: HarnessGlobal;
 
@@ -17,7 +17,7 @@ const alice = new Actor("alice", global.config, global.project_root);
 setTimeout(async function() {
     describe("Sanity tests", () => {
         it("[Alice] Returns 404 when you try and GET a non-existent swap", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get(
+            const res = await request(alice.comitNodeHttpApiUrl()).get(
                 "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
@@ -25,7 +25,7 @@ setTimeout(async function() {
         });
 
         it("Returns a 404 for an action on a non-existent swap", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post(
                     "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/accept"
                 )
@@ -35,15 +35,17 @@ setTimeout(async function() {
         });
 
         it("Returns an empty list when calling GET /swaps when there are no swaps", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/swaps");
+            const res = await request(alice.comitNodeHttpApiUrl()).get(
+                "/swaps"
+            );
 
-            let body = res.body as Entity;
+            const body = res.body as Entity;
 
             expect(body.entities).to.have.lengthOf(0);
         });
 
         it("[Alice] Returns 400 Swap not supported for an unsupported combination of parameters", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -72,7 +74,7 @@ setTimeout(async function() {
         });
 
         it("[Alice] Returns 400 bad request for malformed requests", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     garbage: true,
@@ -83,20 +85,22 @@ setTimeout(async function() {
         });
 
         it("[Alice] Should have no peers before making a swap request", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/peers");
+            const res = await request(alice.comitNodeHttpApiUrl()).get(
+                "/peers"
+            );
 
             res.should.have.status(200);
             res.body.peers.should.have.length(0);
         });
 
         it("[Alice] Returns its peer ID when you GET /", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/");
+            const res = await request(alice.comitNodeHttpApiUrl()).get("/");
             expect(res.status).to.equal(200);
             expect(res.body.id).to.be.a("string");
         });
 
         it("[Alice] Returns the addresses it listens on when you GET /", async () => {
-            let res = await request(alice.comitNodeHttpApiUrl()).get("/");
+            const res = await request(alice.comitNodeHttpApiUrl()).get("/");
             expect(res.status).to.equal(200);
             expect(res.body.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface

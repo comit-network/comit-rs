@@ -14,7 +14,7 @@ function check_rs() {
 
 function check_ts() {
     if (( dry == 0 )); then
-        cargo make check-ts-format
+        cargo make check-ts
     else
         echo "check_ts ran"
     fi

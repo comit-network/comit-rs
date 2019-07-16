@@ -1,11 +1,11 @@
-import { use, request, expect } from "chai";
-import { Transaction, TransactionReceipt } from "web3-core";
-import * as toml from "toml";
-import * as fs from "fs";
-import { TestConfig } from "./actor";
+import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
-import { sleep } from "./util";
+import * as fs from "fs";
+import * as toml from "toml";
 import URI from "urijs";
+import { Transaction, TransactionReceipt } from "web3-core";
+import { TestConfig } from "./actor";
+import { sleep } from "./util";
 
 use(chaiHttp);
 
@@ -30,8 +30,8 @@ export interface MetaBtsieveConfig {
 }
 
 export class Btsieve {
-    host: string;
-    port: number;
+    public host: string;
+    public port: number;
 
     constructor(name: string, testConfig: TestConfig, root: string) {
         const metaBtsieveConfig = testConfig.btsieve;
@@ -40,7 +40,7 @@ export class Btsieve {
         }
 
         this.host = metaBtsieveConfig[name].host;
-        let btsieveConfig = toml.parse(
+        const btsieveConfig = toml.parse(
             fs.readFileSync(
                 `${root}/${metaBtsieveConfig[name].config_file}`,
                 "utf8"
@@ -49,11 +49,11 @@ export class Btsieve {
         this.port = btsieveConfig.http_api.port_bind;
     }
 
-    url() {
+    public url() {
         return `http://${this.host}:${this.port}`;
     }
 
-    absoluteLocation(relative_location: string) {
+    public absoluteLocation(relative_location: string) {
         return new URI(relative_location)
             .protocol("http")
             .host(this.host)
@@ -61,8 +61,10 @@ export class Btsieve {
             .toString();
     }
 
-    async pollUntilMatches<M>(query_url: string): Promise<IdMatchResponse<M>> {
-        let res = await request(query_url).get("");
+    public async pollUntilMatches<M>(
+        query_url: string
+    ): Promise<IdMatchResponse<M>> {
+        const res = await request(query_url).get("");
 
         expect(res).to.have.status(200);
 

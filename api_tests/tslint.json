@@ -1,0 +1,20 @@
+{
+    "defaultSeverity": "error",
+    "extends": [
+        "tslint:recommended",
+        "tslint-config-prettier",
+        "tslint-no-unused-expression-chai"
+    ],
+    "jsRules": {},
+    "rules": {
+        "interface-name": false,
+        "max-classes-per-file": false,
+        "no-console": false,
+        "no-shadowed-variable": false,
+        "object-literal-sort-keys": false,
+        "no-reference": false,
+        "only-arrow-functions": false,
+        "variable-name": false
+    },
+    "rulesDirectory": []
+}
