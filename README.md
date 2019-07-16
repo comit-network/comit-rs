@@ -56,12 +56,19 @@ In order to do a swap you will have to start two comit nodes.
 - `cargo make` runs the whole test suite including integration tests but not end-to-end.
 - `cargo make all` also runs the whole test suite, including end-to-end tests.
 - `cargo make format` to format Rust code
-- `cargo make ts-format` to format Typescript code
+- `cargo make ts-fix` to format Typescript code
 - `cargo make btsieve` to run btsieve tests
 - `cargo make dry` to run COMIT node dry tests
 - `cargo make api` to run all API tests
 - `cargo make e2e` to run COMIT node end-to-end tests
-- `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob)
+- `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob on the name)
+
+Alternatively, you can run the end-to-end tests and TypeScript related actions using `yarn` (careful! It does not recompile Rust for you):
+- `yarn run tests`: run all tests
+- `yarn run <directory>`: run all tests in the directory
+- `yarn run <path to test file>`: run all tests in this test file, supports shell glob on the path
+- `yarn run fix`: run prettier and linter to fix format
+- `yarn run chec`: run tsc (to check validity of TypeScript code) and verify format
 
 
 
