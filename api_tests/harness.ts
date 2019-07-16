@@ -204,7 +204,14 @@ function validTestPath(path: string): boolean {
     );
 }
 
-function expandPath(paths: string[], parentDir: string = ""): string[] {
+function expandPath(
+    paths: string[],
+    parentDir: string = "",
+    depth: number = 5
+): string[] {
+    if (!depth) {
+        return [];
+    }
     if (!paths.length) {
         return expandPath(["./"]);
     }
@@ -220,7 +227,7 @@ function expandPath(paths: string[], parentDir: string = ""): string[] {
                 }
             } else if (stats.isDirectory()) {
                 const subPaths = fs.readdirSync(path);
-                const files = expandPath(subPaths, path + "/");
+                const files = expandPath(subPaths, path + "/", depth - 1);
                 const concat = result.concat(files);
                 result = concat;
             }
@@ -231,4 +238,5 @@ function expandPath(paths: string[], parentDir: string = ""): string[] {
 
 const args = commander.args;
 const testFiles = expandPath(args);
+console.log(testFiles);
 run_tests(testFiles);
