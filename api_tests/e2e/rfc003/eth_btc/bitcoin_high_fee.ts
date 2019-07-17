@@ -1,4 +1,4 @@
-import { expect, request } from "chai";
+import { expect } from "chai";
 import "chai/register-should";
 import { toBN, toWei } from "web3-utils";
 import { Actor } from "../../../lib/actor";
@@ -11,18 +11,36 @@ import { HarnessGlobal } from "../../../lib/util";
 declare var global: HarnessGlobal;
 
 (async function() {
-    const alice = new Actor("alice", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
-        addressForIncomingBitcoinPayments:
-            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
-    });
-    const bob = new Actor("bob", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
-        addressForIncomingBitcoinPayments:
-            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
-    });
+    const alice = new Actor(
+        "alice",
+        global.config,
+        global.project_root,
+        {
+            ethereumNodeConfig: global.ledgers_config.ethereum,
+            bitcoinNodeConfig: global.ledgers_config.bitcoin,
+            addressForIncomingBitcoinPayments:
+                "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
+        },
+        null,
+        {
+            bitcoinFeePerWU: 100000000,
+        }
+    );
+    const bob = new Actor(
+        "bob",
+        global.config,
+        global.project_root,
+        {
+            ethereumNodeConfig: global.ledgers_config.ethereum,
+            bitcoinNodeConfig: global.ledgers_config.bitcoin,
+            addressForIncomingBitcoinPayments:
+                "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
+        },
+        null,
+        {
+            bitcoinFeePerWU: 100000000,
+        }
+    );
 
     const alphaAssetQuantity = toBN(toWei("10", "ether"));
     const betaAssetQuantity = 100000000;
@@ -76,77 +94,30 @@ declare var global: HarnessGlobal;
             action: ActionKind.Fund,
             waitUntil: state => state.beta_ledger.status === "Funded",
         },
+        {
+            actor: alice,
+            action: {
+                kind: ActionKind.Redeem,
+                test: response => {
+                    expect(response).to.have.status(400);
+                    expect(response.body.title).to.equal("Fee is too high.");
+                },
+            },
+        },
+        {
+            actor: bob,
+            action: {
+                kind: ActionKind.Refund,
+                test: response => {
+                    expect(response).to.have.status(400);
+                    expect(response.body.title).to.equal("Fee is too high.");
+                },
+            },
+        },
     ];
 
-    describe("RFC003: Ether for Bitcoin", () => {
-        const swapLocations = createTests(
-            alice,
-            bob,
-            steps,
-            "/swaps/rfc003",
-            "/swaps",
-            swapRequest
-        );
-
-        it("[alice] should return a High Fee Error when getting redeem payload with a high fee", async () => {
-            const action = await alice
-                .pollComitNodeUntil(
-                    swapLocations[alice.name],
-                    body =>
-                        body.actions.findIndex(
-                            candidate => candidate.name === ActionKind.Redeem
-                        ) !== -1
-                )
-                .then(body =>
-                    body.actions.find(
-                        candidate => candidate.name === ActionKind.Redeem
-                    )
-                );
-
-            const { url, body, method } = alice.buildRequestFromAction(action, {
-                bitcoinFeePerWU: 100000000,
-            });
-
-            const agent = request(alice.comitNodeHttpApiUrl());
-
-            expect(method).to.equal("GET");
-
-            const response = await agent.get(url).send(body);
-
-            expect(response).to.have.status(400);
-
-            expect(response.body.title).to.equal("Fee is too high.");
-        });
-
-        it("[bob] should return a High Fee Error when getting refund payload with a high fee", async () => {
-            const action = await bob
-                .pollComitNodeUntil(
-                    swapLocations[bob.name],
-                    body =>
-                        body.actions.findIndex(
-                            candidate => candidate.name === ActionKind.Refund
-                        ) !== -1
-                )
-                .then(body =>
-                    body.actions.find(
-                        candidate => candidate.name === ActionKind.Refund
-                    )
-                );
-
-            const { url, body, method } = bob.buildRequestFromAction(action, {
-                bitcoinFeePerWU: 100000000,
-            });
-
-            const agent = request(bob.comitNodeHttpApiUrl());
-
-            expect(method).to.equal("GET");
-
-            const response = await agent.get(url).send(body);
-
-            expect(response).to.have.status(400);
-
-            expect(response.body.title).to.equal("Fee is too high.");
-        });
+    describe("RFC003: Ether for Bitcoin - Redeem/Refund Bitcoin with high fee", () => {
+        createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
 })();

@@ -1,7 +1,8 @@
 import { expect, request } from "chai";
+import { Response } from "superagent";
 import { Action, EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 import { Actor } from "./actor";
-import { ActionKind } from "./comit";
+import { ActionKind, LedgerAction } from "./comit";
 import "./setupChai";
 
 export interface Test {
@@ -23,7 +24,12 @@ export interface Step {
      *
      */
     actor: Actor;
-    action?: ActionKind;
+    action?:
+        | {
+              kind: ActionKind;
+              test: (response: Response) => void;
+          }
+        | ActionKind;
     waitUntil?: (state: any) => boolean;
     test?: Test;
 }
@@ -78,8 +84,17 @@ export function createTests(
 
         let sirenAction: Action;
 
-        if (action) {
-            it(`[${actor.name}] has the ${action} action`, async function() {
+        const { kind: actionKind, test: actionTest } =
+            typeof action === "object"
+                ? action
+                : {
+                      kind: action,
+                      test: (response: Response) =>
+                          expect(response).to.have.status(200),
+                  };
+
+        if (actionKind) {
+            it(`[${actor.name}] has the ${actionKind} action`, async function() {
                 this.timeout(5000);
 
                 sirenAction = await actor
@@ -87,24 +102,40 @@ export function createTests(
                         swapLocations[actor.name],
                         body =>
                             body.actions.findIndex(
-                                candidate => candidate.name === action
+                                candidate => candidate.name === actionKind
                             ) !== -1
                     )
                     .then(body =>
                         body.actions.find(
-                            candidate => candidate.name === action
+                            candidate => candidate.name === actionKind
                         )
                     );
             });
 
-            it(`[${actor.name}] Can execute the ${action} action`, async function() {
-                if (action === ActionKind.Refund) {
+            it(`[${actor.name}] Can execute the ${actionKind} action`, async function() {
+                if (actionKind === ActionKind.Refund) {
                     this.timeout(30000);
                 } else {
                     this.timeout(5000);
                 }
 
-                await actor.doComitAction(sirenAction);
+                const response = await actor.doComitAction(sirenAction);
+
+                actionTest(response);
+
+                // We should check against our own content type here to describe "LedgerActions"
+                // Don't take it literally but something like `application/vnd.comit-ledger-action+json`
+                // For now, checking for `application/json` + the fields should do the job as well because accept & decline don't return a body
+                if (
+                    response.type === "application/json" &&
+                    response.body &&
+                    response.body.type &&
+                    response.body.payload
+                ) {
+                    const body = response.body as LedgerAction;
+
+                    await actor.doLedgerAction(body);
+                }
             });
         }
 
