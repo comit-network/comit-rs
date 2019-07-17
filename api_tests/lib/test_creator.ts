@@ -131,4 +131,6 @@ export function createTests(
             });
         }
     }
+
+    return swapLocations;
 }

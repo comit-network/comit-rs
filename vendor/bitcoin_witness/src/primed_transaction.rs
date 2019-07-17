@@ -7,7 +7,8 @@ use secp256k1_support::{DerSerializableSignature, Message};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    FeeTooHigh,
+    OverflowingFee,
+    FeeHigherThanInputValue,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -107,8 +108,14 @@ impl PrimedTransaction {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight = transaction.get_weight();
-        let fee = weight.checked_mul(fee_per_byte).ok_or(Error::FeeTooHigh)?;
+        let fee = weight
+            .checked_mul(fee_per_byte)
+            .ok_or(Error::OverflowingFee)?;
         let fee = BitcoinQuantity::from_satoshi(fee);
+
+        if self.total_input_value() < fee {
+            return Err(Error::FeeHigherThanInputValue);
+        };
 
         transaction.output[0].value = (self.total_input_value() - fee).satoshi();
 
