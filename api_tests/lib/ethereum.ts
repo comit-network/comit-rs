@@ -1,14 +1,13 @@
 import { ECPair } from "bitcoinjs-lib";
+import bitcoin from "bitcoinjs-lib";
 import BN from "bn.js";
 import EthereumTx = require("ethereumjs-tx");
+import ethutil from "ethereumjs-util";
 import * as fs from "fs";
+import Web3 from "web3";
 import { HttpProvider } from "web3-providers";
 import * as utils from "web3-utils";
 import * as util from "./util";
-
-import bitcoin from "bitcoinjs-lib";
-import ethutil from "ethereumjs-util";
-import Web3 from "web3";
 
 let _web3Client: any;
 let _ethConfig: EthereumNodeConfig;
