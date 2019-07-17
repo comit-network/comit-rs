@@ -29,8 +29,8 @@ interface DeclineConfig {
     reason: string;
 }
 
-export interface OverrideParams {
-    bitcoinFeePerWU?: number;
+export interface SirenActionAutofillParams {
+    bitcoinFeePerWU: number;
 }
 
 const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
@@ -40,17 +40,20 @@ export class Actor {
     public host: string;
     public wallet: Wallet;
     public comitNodeConfig: ComitNodeConfig;
-    private _declineConfig: DeclineConfig;
+    private readonly _declineConfig?: DeclineConfig;
+    private readonly _sirenActionAutofillParams?: SirenActionAutofillParams;
 
     constructor(
         name: string,
         testConfig?: TestConfig,
         root?: string,
         walletConfig?: WalletConfig,
-        declineConfig?: DeclineConfig
+        declineConfig?: DeclineConfig,
+        sirenActionAutofillParams?: SirenActionAutofillParams
     ) {
         this.name = name;
         this._declineConfig = declineConfig;
+        this._sirenActionAutofillParams = sirenActionAutofillParams;
         if (testConfig) {
             const metaComitNodeConfig = testConfig.comit_node[name];
             if (!metaComitNodeConfig) {
@@ -127,10 +130,7 @@ export class Actor {
         }
     }
 
-    public buildRequestFromAction(
-        action: Action,
-        overrideParams?: OverrideParams
-    ) {
+    public buildRequestFromAction(action: Action) {
         const data: any = {};
 
         for (const field of action.fields || []) {
@@ -150,11 +150,9 @@ export class Actor {
                     "API should be backwards compatible"
                 );
 
-                const overrideFeePerWU = overrideParams
-                    ? overrideParams.bitcoinFeePerWU
-                    : undefined;
-
-                data[field.name] = overrideFeePerWU ? overrideFeePerWU : 20;
+                data[field.name] = this._sirenActionAutofillParams
+                    ? this._sirenActionAutofillParams.bitcoinFeePerWU
+                    : 20;
             }
 
             if (
