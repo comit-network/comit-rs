@@ -1,3 +1,5 @@
+// @ts-ignore
+import BitcoinRpcClient from "bitcoin-core";
 import {
     address,
     ECPair,
@@ -7,10 +9,8 @@ import {
     Transaction,
     TransactionBuilder,
 } from "bitcoinjs-lib";
+import sb from "satoshi-bitcoin";
 import { test_rng } from "./util";
-
-const BitcoinRpcClient = require("bitcoin-core");
-const sb = require("satoshi-bitcoin");
 
 export interface BitcoinNodeConfig {
     // snake_case because it comes from TOML file
@@ -25,12 +25,12 @@ interface GetBlockchainInfoResponse {
 }
 
 interface VerboseRawTransactionResponse {
-    vout: {
+    vout: Array<{
         scriptPubKey: {
             addresses: string[];
         };
         value: number;
-    }[];
+    }>;
 }
 
 type HexRawTransactionResponse = string;
@@ -113,9 +113,9 @@ export async function sendRawTransaction(hexString: string) {
 }
 
 export class BitcoinWallet {
-    keypair: ECPair;
-    bitcoinUtxos: Utxo[];
-    _identity: {
+    public keypair: ECPair;
+    public bitcoinUtxos: Utxo[];
+    public _identity: {
         address: string;
         hash: Buffer;
         output: Buffer;
@@ -125,7 +125,7 @@ export class BitcoinWallet {
         witness: Buffer[];
     };
 
-    addressForIncomingPayments: string;
+    public addressForIncomingPayments: string;
 
     constructor(
         btcConfig: BitcoinNodeConfig,
@@ -142,37 +142,37 @@ export class BitcoinWallet {
         createBitcoinRpcClient(btcConfig);
     }
 
-    getNewAddress() {
+    public getNewAddress() {
         return this.addressForIncomingPayments;
     }
 
-    satoshiReceivedInTx(redeemTxId: string) {
+    public satoshiReceivedInTx(redeemTxId: string) {
         return getFirstUtxoValueTransferredTo(
             redeemTxId,
             this.addressForIncomingPayments
         );
     }
 
-    identity() {
+    public identity() {
         return this._identity;
     }
 
-    async fund(bitcoin: number) {
-        let txId = await _bitcoinRpcClient.sendToAddress(
+    public async fund(bitcoin: number) {
+        const txId = await _bitcoinRpcClient.sendToAddress(
             this.identity().address,
             bitcoin
         );
-        let raw_transaction = (await _bitcoinRpcClient.getRawTransaction(
+        const raw_transaction = (await _bitcoinRpcClient.getRawTransaction(
             txId
         )) as HexRawTransactionResponse;
-        let transaction = Transaction.fromHex(raw_transaction);
-        let entries: Out[] = transaction.outs;
+        const transaction = Transaction.fromHex(raw_transaction);
+        const entries: Out[] = transaction.outs;
         this.bitcoinUtxos.push(
             ...entries
                 .filter(entry => entry.script.equals(this.identity().output))
                 .map(entry => {
                     return {
-                        txId: txId,
+                        txId,
                         vout: entries.indexOf(entry),
                         value: entry.value,
                     };
@@ -180,7 +180,7 @@ export class BitcoinWallet {
         );
     }
 
-    async sendToAddress(to: string, value: number) {
+    public async sendToAddress(to: string, value: number) {
         const txb = new TransactionBuilder();
         const utxo = this.bitcoinUtxos.shift();
         const input_amount = utxo.value;
@@ -198,11 +198,11 @@ export class BitcoinWallet {
 
 async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
     let satoshi = 0;
-    let tx = (await _bitcoinRpcClient.getRawTransaction(
+    const tx = (await _bitcoinRpcClient.getRawTransaction(
         txId,
         true
     )) as VerboseRawTransactionResponse;
-    let vout = tx.vout[0];
+    const vout = tx.vout[0];
 
     if (
         vout.scriptPubKey.addresses.length === 1 &&

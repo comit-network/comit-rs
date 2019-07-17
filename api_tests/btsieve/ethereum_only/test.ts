@@ -1,8 +1,8 @@
-import { Wallet } from "../../lib/wallet";
 import { expect, request } from "chai";
-import { HarnessGlobal, sleep } from "../../lib/util";
 import { Btsieve, EthereumMatch, IdMatch } from "../../lib/btsieve";
 import "../../lib/setupChai";
+import { HarnessGlobal, sleep } from "../../lib/util";
+import { Wallet } from "../../lib/wallet";
 
 declare var global: HarnessGlobal;
 
@@ -44,7 +44,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/ethereum/regtest/transactions/1"
                     );
 
@@ -52,10 +52,10 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond not found when creating an ethereum transaction query for an invalid network", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/banananet/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     expect(res).to.have.status(404);
@@ -64,10 +64,10 @@ setTimeout(async function() {
                 const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
                 let location: string;
                 it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     location = res.header.location;
@@ -77,7 +77,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no match when querying an existing ethereum transaction query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -95,7 +95,7 @@ setTimeout(async function() {
                             1
                         );
 
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -110,7 +110,7 @@ setTimeout(async function() {
                         .eth()
                         .sendEthTransactionTo(to_address, "", 5);
 
-                    let body = await btsieve.pollUntilMatches<EthereumMatch>(
+                    const body = await btsieve.pollUntilMatches<EthereumMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
@@ -119,7 +119,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing ethereum transaction query", async function() {
-                    let res = await request(btsieve.url()).del(
+                    const res = await request(btsieve.url()).del(
                         "/queries/ethereum/regtest/transactions/1"
                     );
 
@@ -129,7 +129,7 @@ setTimeout(async function() {
 
             describe("Blocks", () => {
                 it("btsieve should respond not found when getting a non-existent ethereum block query", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/ethereum/regtest/blocks/1"
                     );
 
@@ -137,10 +137,10 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond not found when creating an ethereum block query for an invalid network", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/banananet/blocks")
                         .send({
-                            min_timestamp_secs: min_timestamp_secs,
+                            min_timestamp_secs,
                         });
 
                     expect(res).to.have.status(404);
@@ -151,10 +151,10 @@ setTimeout(async function() {
                 const min_timestamp_secs = epoch_seconds_now + 3;
                 it("btsieve should respond with location when creating a valid ethereum block query", async function() {
                     this.timeout(1000);
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/blocks")
                         .send({
-                            min_timestamp_secs: min_timestamp_secs,
+                            min_timestamp_secs,
                         });
 
                     location = res.header.location;
@@ -165,7 +165,7 @@ setTimeout(async function() {
 
                 it("btsieve should respond with no match when querying an existing ethereum block query", async function() {
                     this.timeout(1000);
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -189,7 +189,7 @@ setTimeout(async function() {
                             1
                         );
 
-                    let body = await btsieve.pollUntilMatches<EthereumMatch>(
+                    const body = await btsieve.pollUntilMatches<EthereumMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
@@ -200,7 +200,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing ethereum block query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).del("");
 
@@ -210,7 +210,7 @@ setTimeout(async function() {
 
             describe("Transaction Receipts", () => {
                 it("btsieve should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/ethereum/regtest/logs/1"
                     );
 
@@ -232,7 +232,7 @@ setTimeout(async function() {
                 let location: string;
                 it("btsieve should respond with location when creating a valid transaction receipt query", async function() {
                     this.timeout(1000);
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/logs")
                         .send({
                             event_matchers: [
@@ -257,7 +257,7 @@ setTimeout(async function() {
 
                 it("btsieve should respond with no match when querying an existing ethereum transaction receipt query", async function() {
                     this.timeout(1000);
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -273,7 +273,7 @@ setTimeout(async function() {
                         to_address.replace("0x", "") +
                         "0000000000000000000000000000000000000000000000000000000000000001";
 
-                    let receipt = await aliceWallet
+                    const receipt = await aliceWallet
                         .eth()
                         .sendEthTransactionTo(
                             tokenContractAddress,
@@ -281,7 +281,7 @@ setTimeout(async function() {
                             0
                         );
 
-                    let body = await btsieve.pollUntilMatches<IdMatch>(
+                    const body = await btsieve.pollUntilMatches<IdMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
@@ -293,7 +293,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should return transaction and receipt if `return_as` is given", async function() {
-                    let body = await btsieve.pollUntilMatches<EthereumMatch>(
+                    const body = await btsieve.pollUntilMatches<EthereumMatch>(
                         btsieve.absoluteLocation(location) +
                             "?return_as=transaction_and_receipt"
                     );
@@ -304,7 +304,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).del("");
 

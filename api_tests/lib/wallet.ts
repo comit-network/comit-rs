@@ -1,4 +1,4 @@
-import { BitcoinWallet, BitcoinNodeConfig } from "./bitcoin";
+import { BitcoinNodeConfig, BitcoinWallet } from "./bitcoin";
 import { EthereumNodeConfig, EthereumWallet } from "./ethereum";
 
 export interface WalletConfig {
@@ -9,9 +9,9 @@ export interface WalletConfig {
 }
 
 export class Wallet {
-    owner: string;
-    _ethWallet: EthereumWallet;
-    _btcWallet: BitcoinWallet;
+    public owner: string;
+    public _ethWallet: EthereumWallet;
+    public _btcWallet: BitcoinWallet;
 
     constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
@@ -28,11 +28,11 @@ export class Wallet {
         }
     }
 
-    eth() {
+    public eth() {
         return this._ethWallet;
     }
 
-    btc() {
+    public btc() {
         return this._btcWallet;
     }
 }

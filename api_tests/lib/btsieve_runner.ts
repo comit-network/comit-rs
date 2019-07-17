@@ -1,9 +1,9 @@
 import { ChildProcess, spawn } from "child_process";
-import { MetaBtsieveConfig } from "./btsieve";
 import * as fs from "fs";
+import { MetaBtsieveConfig } from "./btsieve";
 
 export class BtsieveRunner {
-    running_btsieves: { [key: string]: ChildProcess };
+    public running_btsieves: { [key: string]: ChildProcess };
     private readonly log_dir: string;
     private readonly btsieve_bin: string;
     private readonly project_root: string;
@@ -15,8 +15,8 @@ export class BtsieveRunner {
         this.project_root = project_root;
     }
 
-    ensureBtsievesRunning(btsieves: [string, MetaBtsieveConfig][]) {
-        for (let [name, btsieve_config] of btsieves) {
+    public ensureBtsievesRunning(btsieves: Array<[string, MetaBtsieveConfig]>) {
+        for (const [name, btsieve_config] of btsieves) {
             console.log("Starting Btsieve: " + name);
 
             if (this.running_btsieves[name]) {
@@ -45,12 +45,12 @@ export class BtsieveRunner {
         }
     }
 
-    stopBtsieves() {
-        let names = Object.keys(this.running_btsieves);
+    public stopBtsieves() {
+        const names = Object.keys(this.running_btsieves);
 
         if (names.length > 0) {
             console.log("Stopping Btsieve(s): " + names.join(", "));
-            for (let process of Object.values(this.running_btsieves)) {
+            for (const process of Object.values(this.running_btsieves)) {
                 process.kill();
             }
         }

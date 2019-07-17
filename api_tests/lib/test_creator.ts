@@ -1,9 +1,8 @@
-import { ActionKind } from "../lib/comit";
 import { expect, request } from "chai";
-import { Actor } from "../lib/actor";
-import "chai/register-should";
-import "../lib/setupChai";
 import { Action, EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
+import { Actor } from "./actor";
+import { ActionKind } from "./comit";
+import "./setupChai";
 
 export interface Test {
     /**
@@ -39,41 +38,43 @@ export function createTests(
 ) {
     // This may need to become more generic at a later stage
     // However, it would be unnecessary pre-optimisation now.
-    let swapLocations: { [key: string]: string } = {};
+    const swapLocations: { [key: string]: string } = {};
 
     it(
         "[alice] Should be able to make a request via HTTP api to " +
             initialUrl,
         async () => {
-            let res: ChaiHttp.Response = await request(
+            const res: ChaiHttp.Response = await request(
                 alice.comitNodeHttpApiUrl()
             )
                 .post(initialUrl)
                 .send(initialRequest);
-            res.should.have.status(201);
+            expect(res).to.have.status(201);
             const swapLocation: string = res.header.location;
-            swapLocation.should.not.be.empty;
-            swapLocations["alice"] = swapLocation;
+            expect(swapLocation).to.not.be.empty;
+            swapLocations.alice = swapLocation;
         }
     );
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
-        let swapEntity = await bob
+        const swapEntity = await bob
             .pollComitNodeUntil(listUrl, body => body.entities.length > 0)
             .then(body => body.entities[0] as EmbeddedRepresentationSubEntity);
 
         expect(swapEntity.properties).to.have.property("protocol", "rfc003");
         expect(swapEntity.properties).to.have.property("status", "IN_PROGRESS");
 
-        let selfLink = swapEntity.links.find(link => link.rel.includes("self"));
+        const selfLink = swapEntity.links.find(link =>
+            link.rel.includes("self")
+        );
 
         expect(selfLink).to.not.be.undefined;
 
-        swapLocations["bob"] = selfLink.href;
+        swapLocations.bob = selfLink.href;
     });
 
     while (steps.length !== 0) {
-        let { action, actor, waitUntil, test } = steps.shift();
+        const { action, actor, waitUntil, test } = steps.shift();
 
         let sirenAction: Action;
 
@@ -87,7 +88,7 @@ export function createTests(
                         body =>
                             body.actions.findIndex(
                                 candidate => candidate.name === action
-                            ) != -1
+                            ) !== -1
                     )
                     .then(body =>
                         body.actions.find(
@@ -97,7 +98,7 @@ export function createTests(
             });
 
             it(`[${actor.name}] Can execute the ${action} action`, async function() {
-                if (action == ActionKind.Refund) {
+                if (action === ActionKind.Refund) {
                     this.timeout(30000);
                 } else {
                     this.timeout(5000);

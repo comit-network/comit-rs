@@ -1,11 +1,11 @@
-import * as bitcoin from "../../../lib/bitcoin";
-import { Actor } from "../../../lib/actor";
-import { ActionKind, SwapRequest } from "../../../lib/comit";
-import { toBN, toWei } from "web3-utils";
-import { HarnessGlobal } from "../../../lib/util";
-import { Step, createTests } from "../../test_creator";
 import "chai/register-should";
+import { toBN, toWei } from "web3-utils";
+import { Actor } from "../../../lib/actor";
+import * as bitcoin from "../../../lib/bitcoin";
+import { ActionKind, SwapRequest } from "../../../lib/comit";
 import "../../../lib/setupChai";
+import { createTests, Step } from "../../../lib/test_creator";
+import { HarnessGlobal } from "../../../lib/util";
 
 declare var global: HarnessGlobal;
 
@@ -35,9 +35,9 @@ declare var global: HarnessGlobal;
     await bob.wallet.btc().fund(10);
     await bitcoin.generate();
 
-    let bobEthBalanceBefore = await bob.wallet.eth().ethBalance();
+    const bobEthBalanceBefore = await bob.wallet.eth().ethBalance();
 
-    let swapRequest: SwapRequest = {
+    const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: "ethereum",
             network: "regtest",
@@ -84,10 +84,10 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the beta asset after the redeem",
                 callback: async body => {
-                    let redeemTxId =
+                    const redeemTxId =
                         body.properties.state.beta_ledger.redeem_tx;
 
-                    let satoshiReceived = await alice.wallet
+                    const satoshiReceived = await alice.wallet
                         .btc()
                         .satoshiReceivedInTx(redeemTxId);
                     const satoshiExpected = betaAssetQuantity - maxFeeInSatoshi;
@@ -104,9 +104,9 @@ declare var global: HarnessGlobal;
                 description:
                     "Should have received the alpha asset after the redeem",
                 callback: async () => {
-                    let ethBalanceAfter = await bob.wallet.eth().ethBalance();
+                    const ethBalanceAfter = await bob.wallet.eth().ethBalance();
 
-                    let ethBalanceExpected = bobEthBalanceBefore.add(
+                    const ethBalanceExpected = bobEthBalanceBefore.add(
                         alphaAssetQuantity
                     );
                     ethBalanceAfter.eq(ethBalanceExpected).should.equal(true);

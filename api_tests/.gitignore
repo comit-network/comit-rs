@@ -2,3 +2,4 @@ node_modules
 log
 *.js
 gen/
+yarn-error.log

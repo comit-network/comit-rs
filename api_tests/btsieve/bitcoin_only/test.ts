@@ -1,9 +1,9 @@
-import * as bitcoin from "../../lib/bitcoin";
-import { Wallet } from "../../lib/wallet";
 import { expect, request } from "chai";
-import { HarnessGlobal } from "../../lib/util";
+import * as bitcoin from "../../lib/bitcoin";
 import { Btsieve, IdMatch } from "../../lib/btsieve";
 import "../../lib/setupChai";
+import { HarnessGlobal } from "../../lib/util";
+import { Wallet } from "../../lib/wallet";
 
 declare var global: HarnessGlobal;
 
@@ -25,7 +25,7 @@ setTimeout(async function() {
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/bitcoin/regtest/transactions/1"
                     );
 
@@ -37,20 +37,20 @@ setTimeout(async function() {
                 let location: string;
 
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     expect(res).to.have.status(404);
                 });
 
                 it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
                         .send({
-                            to_address: to_address,
+                            to_address,
                         });
 
                     location = res.header.location;
@@ -60,7 +60,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no match when querying an existing bitcoin transaction query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -75,7 +75,7 @@ setTimeout(async function() {
 
                     await bitcoin.generate(1);
 
-                    let body = await btsieve.pollUntilMatches<IdMatch>(
+                    const body = await btsieve.pollUntilMatches<IdMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
@@ -89,7 +89,7 @@ setTimeout(async function() {
                 it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `return_as=transaction`", async function() {
                     await bitcoin.generate(1);
 
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("?return_as=transaction");
 
@@ -104,7 +104,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).del("");
 
@@ -114,7 +114,7 @@ setTimeout(async function() {
 
             describe("Blocks", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin block query", async function() {
-                    let res = await request(btsieve.url()).get(
+                    const res = await request(btsieve.url()).get(
                         "/queries/bitcoin/regtest/blocks/1"
                     );
 
@@ -124,20 +124,20 @@ setTimeout(async function() {
                 const min_height = 200;
                 let location: string;
                 it("btsieve should respond not found when creating a bitcoin block query for an invalid network", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/blocks")
                         .send({
-                            min_height: min_height,
+                            min_height,
                         });
 
                     expect(res).to.have.status(404);
                 });
 
                 it("btsieve should respond with location when creating a valid bitcoin block query", async function() {
-                    let res = await request(btsieve.url())
+                    const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/blocks")
                         .send({
-                            min_height: min_height,
+                            min_height,
                         });
 
                     location = res.header.location;
@@ -147,7 +147,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no match when querying an existing bitcoin block query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -160,7 +160,7 @@ setTimeout(async function() {
                     this.slow(500);
                     await bitcoin.generate(50);
 
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("");
 
@@ -174,7 +174,7 @@ setTimeout(async function() {
                     this.timeout(3000);
 
                     await bitcoin.generate(50);
-                    let body = await btsieve.pollUntilMatches<IdMatch>(
+                    const body = await btsieve.pollUntilMatches<IdMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
@@ -183,7 +183,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin block query", async function() {
-                    let res = await request(
+                    const res = await request(
                         btsieve.absoluteLocation(location)
                     ).del("");
 

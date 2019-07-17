@@ -1,15 +1,16 @@
-import { Wallet, WalletConfig } from "./wallet";
-import { use, request, expect } from "chai";
-import { LedgerAction, ComitNodeConfig, MetaComitNodeConfig } from "./comit";
-import * as bitcoin from "./bitcoin";
-import * as toml from "toml";
-import * as fs from "fs";
-import { seconds_until, sleep } from "./util";
-import { MetaBtsieveConfig } from "./btsieve";
-import { Action, Entity } from "../gen/siren";
+import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
+import * as fs from "fs";
+// @ts-ignore
+import multiaddr from "multiaddr";
+import * as toml from "toml";
 import URI from "urijs";
-const multiaddr = require("multiaddr");
+import { Action, Entity } from "../gen/siren";
+import * as bitcoin from "./bitcoin";
+import { MetaBtsieveConfig } from "./btsieve";
+import { ComitNodeConfig, LedgerAction, MetaComitNodeConfig } from "./comit";
+import { seconds_until, sleep } from "./util";
+import { Wallet, WalletConfig } from "./wallet";
 
 use(chaiHttp);
 
@@ -30,10 +31,10 @@ interface DeclineConfig {
 const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
 
 export class Actor {
-    name: string;
-    host: string;
-    wallet: Wallet;
-    comitNodeConfig: ComitNodeConfig;
+    public name: string;
+    public host: string;
+    public wallet: Wallet;
+    public comitNodeConfig: ComitNodeConfig;
     private _declineConfig: DeclineConfig;
 
     constructor(
@@ -64,11 +65,11 @@ export class Actor {
         }
     }
 
-    comitNodeHttpApiUrl() {
+    public comitNodeHttpApiUrl() {
         return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
     }
 
-    comitNodeNetworkListenAddress() {
+    public comitNodeNetworkListenAddress() {
         const addr = multiaddr(this.comitNodeConfig.network.listen[0]);
         // Need to convert 0.0.0.0 to 127.0.0.1
         return `/${addr.protoNames()[0]}/${this.host}/${addr.protoNames()[1]}/${
@@ -76,21 +77,23 @@ export class Actor {
         }`;
     }
 
-    webGuiUrl() {
+    public webGuiUrl() {
         return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
     }
 
-    async peerId(): Promise<string> {
-        let response = await request(this.comitNodeHttpApiUrl()).get("/");
+    public async peerId(): Promise<string> {
+        const response = await request(this.comitNodeHttpApiUrl()).get("/");
 
         return response.body.id;
     }
 
-    async pollComitNodeUntil(
+    public async pollComitNodeUntil(
         location: string,
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
-        let response = await request(this.comitNodeHttpApiUrl()).get(location);
+        const response = await request(this.comitNodeHttpApiUrl()).get(
+            location
+        );
 
         expect(response).to.have.status(200);
 
@@ -103,10 +106,10 @@ export class Actor {
         }
     }
 
-    async doComitAction(action: Action) {
-        let { url, body, method } = this.buildRequestFromAction(action);
+    public async doComitAction(action: Action) {
+        const { url, body, method } = this.buildRequestFromAction(action);
 
-        let agent = request(this.comitNodeHttpApiUrl());
+        const agent = request(this.comitNodeHttpApiUrl());
         let response;
 
         // let's ditch this stupid HTTP library ASAP to avoid this ...
@@ -132,7 +135,7 @@ export class Actor {
             response.body.type &&
             response.body.payload
         ) {
-            let body = response.body as LedgerAction;
+            const body = response.body as LedgerAction;
 
             return this.doLedgerAction(body);
         } else {
@@ -171,7 +174,7 @@ export class Actor {
             }
         }
 
-        if (action.name == "decline" && this._declineConfig) {
+        if (action.name === "decline" && this._declineConfig) {
             data[action.fields[0].name] = this._declineConfig.reason;
         }
 
@@ -197,17 +200,19 @@ export class Actor {
         }
     }
 
-    async doLedgerAction(action: LedgerAction) {
-        let network = action.payload.network;
-        if (network != "regtest") {
+    public async doLedgerAction(action: LedgerAction) {
+        const network = action.payload.network;
+        if (network !== "regtest") {
             throw Error("Expected network regtest, found " + network);
         }
         switch (action.type) {
             case "bitcoin-send-amount-to-address": {
                 action.payload.should.include.all.keys("to", "amount");
-                let { to, amount } = action.payload;
+                const { to, amount } = action.payload;
 
-                return this.wallet.btc().sendToAddress(to, parseInt(amount));
+                return this.wallet
+                    .btc()
+                    .sendToAddress(to, parseInt(amount, 10));
             }
             case "bitcoin-broadcast-signed-transaction": {
                 action.payload.should.include.all.keys(
@@ -215,12 +220,12 @@ export class Actor {
                     "min_median_block_time"
                 );
 
-                let fetchMedianTime = async () => {
-                    let blockchainInfo = await bitcoin.getBlockchainInfo();
+                const fetchMedianTime = async () => {
+                    const blockchainInfo = await bitcoin.getBlockchainInfo();
                     return blockchainInfo.mediantime;
                 };
 
-                let { hex, min_median_block_time } = action.payload;
+                const { hex, min_median_block_time } = action.payload;
 
                 if (min_median_block_time) {
                     let currentMedianBlockTime = await fetchMedianTime();
@@ -254,7 +259,7 @@ export class Actor {
             }
             case "ethereum-deploy-contract": {
                 action.payload.should.include.all.keys("data", "amount");
-                let { data, amount } = action.payload;
+                const { data, amount } = action.payload;
 
                 return this.wallet.eth().deploy_contract(data, amount);
             }
@@ -266,7 +271,7 @@ export class Actor {
                     "min_block_timestamp"
                 );
 
-                let {
+                const {
                     contract_address,
                     data,
                     gas_limit,
@@ -276,8 +281,8 @@ export class Actor {
                 if (seconds_until(min_block_timestamp) > 0) {
                     // Ethereum needs a buffer, otherwise the contract code is run but doesn't transfer any funds,
                     // see https://github.com/comit-network/RFCs/issues/62
-                    let buffer = 2;
-                    let delay = seconds_until(min_block_timestamp) + buffer;
+                    const buffer = 2;
+                    const delay = seconds_until(min_block_timestamp) + buffer;
 
                     console.log(
                         `Waiting for %d seconds before action can be executed.`,
