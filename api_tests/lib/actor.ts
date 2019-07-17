@@ -3,6 +3,7 @@ import chaiHttp = require("chai-http");
 import * as fs from "fs";
 // @ts-ignore
 import multiaddr from "multiaddr";
+import { Response } from "superagent";
 import * as toml from "toml";
 import URI from "urijs";
 import { Action, Entity } from "../gen/siren";
@@ -110,40 +111,19 @@ export class Actor {
         }
     }
 
-    public async doComitAction(action: Action) {
+    public doComitAction(action: Action): Promise<Response> {
         const { url, body, method } = this.buildRequestFromAction(action);
 
         const agent = request(this.comitNodeHttpApiUrl());
-        let response;
 
         // let's ditch this stupid HTTP library ASAP to avoid this ...
         switch (method) {
             case "GET": {
-                response = await agent.get(url).send(body);
-                break;
+                return agent.get(url).send(body);
             }
             case "POST": {
-                response = await agent.post(url).send(body);
-                break;
+                return agent.post(url).send(body);
             }
-        }
-
-        expect(response).to.have.status(200);
-
-        // We should check against our own content type here to describe "LedgerActions"
-        // Don't take it literally but something like `application/vnd.comit-ledger-action+json`
-        // For now, checking for `application/json` + the fields should do the job as well because accept & decline don't return a body
-        if (
-            response.type === "application/json" &&
-            response.body &&
-            response.body.type &&
-            response.body.payload
-        ) {
-            const body = response.body as LedgerAction;
-
-            return this.doLedgerAction(body);
-        } else {
-            return Promise.resolve(response);
         }
     }
 
