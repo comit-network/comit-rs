@@ -65,18 +65,15 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
             .expect("This is always Some when Bob is created");
 
         self.metadata_store
-            .insert(
-                id,
-                Metadata {
-                    alpha_ledger: swap_request.alpha_ledger.into(),
-                    beta_ledger: swap_request.beta_ledger.into(),
-                    alpha_asset: swap_request.alpha_asset.into(),
-                    beta_asset: swap_request.beta_asset.into(),
-                    role: RoleKind::Bob,
-                    counterparty,
-                    swap_id: id,
-                },
-            )
+            .insert(id, Metadata {
+                alpha_ledger: swap_request.alpha_ledger.into(),
+                beta_ledger: swap_request.beta_ledger.into(),
+                alpha_asset: swap_request.alpha_asset.into(),
+                beta_asset: swap_request.beta_asset.into(),
+                role: RoleKind::Bob,
+                counterparty,
+                swap_id: id,
+            })
             .map_err(Error::Metadata)?;
 
         let (sender, receiver) = mpsc::unbounded();

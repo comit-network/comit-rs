@@ -273,13 +273,10 @@ mod tests {
 
         assert!(result.is_err());
 
-        assert_eq!(
-            result.unwrap_err(),
-            FromErr::InvalidLength {
-                expected: 32,
-                got: 31
-            }
-        );
+        assert_eq!(result.unwrap_err(), FromErr::InvalidLength {
+            expected: 32,
+            got: 31
+        });
     }
 
     #[test]
