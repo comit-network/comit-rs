@@ -80,7 +80,7 @@ async function mintErc20Tokens(
 }
 
 export class EthereumWallet {
-    public keypair: ECPair;
+    private readonly keypair: ECPair;
     private readonly account: string;
 
     constructor(ethConfig: EthereumNodeConfig) {
