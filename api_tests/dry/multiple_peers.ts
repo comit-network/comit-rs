@@ -3,40 +3,53 @@ import "chai/register-should";
 import { toWei } from "web3-utils";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import { Actor } from "../lib/actor";
-import "../lib/setupChai";
+import "../lib/setup_chai";
 import { HarnessGlobal } from "../lib/util";
 
 declare var global: HarnessGlobal;
 
 (async () => {
-    const alpha_ledger_name = "bitcoin";
-    const alpha_ledger_network = "regtest";
+    const alpha = {
+        ledger: {
+            name: "bitcoin",
+            network: "regtest",
+        },
+        asset: {
+            name: "bitcoin",
+            quantity: {
+                bob: "100000000",
+                charlie: "200000000",
+            },
+        },
+        expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+    };
 
-    const beta_ledger_name = "ethereum";
-    const beta_ledger_network = "regtest";
-
-    const alpha_asset_name = "bitcoin";
-    const alpha_asset_bob_quantity = "100000000";
-    const alpha_asset_charlie_quantity = "200000000";
-
-    const beta_asset_name = "ether";
-    const beta_asset_bob_quantity = toWei("10", "ether");
-    const beta_asset_charlie_quantity = toWei("20", "ether");
-
-    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const beta = {
+        ledger: {
+            name: "ethereum",
+            network: "regtest",
+        },
+        asset: {
+            name: "ether",
+            quantity: {
+                bob: toWei("10", "ether"),
+                charlie: toWei("20", "ether"),
+            },
+        },
+        expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+    };
 
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
     const charlie = new Actor("charlie", global.config, global.project_root);
 
-    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const alice_comit_node_address = await alice.peerId();
-    const bob_comit_node_address = await bob.peerId();
-    const charlie_comit_node_address = await charlie.peerId();
+    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const aliceCndPeerId = await alice.peerId();
+    const bobCndPeerId = await bob.peerId();
+    const charlieCndPeerId = await charlie.peerId();
 
-    let alice_swap_with_charlie_href: string;
-    let alice_swap_with_bob_href: string;
+    let aliceSwapWithCharlieHref: string;
+    let aliceSwapWithBobHref: string;
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
@@ -44,32 +57,32 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_bob_quantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.bob,
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_bob_quantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity.bob,
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry,
-                    beta_expiry,
-                    peer: bob_comit_node_address,
+                    beta_ledger_redeem_identity: aliceFinalAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: bobCndPeerId,
                 });
 
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            alice_swap_with_bob_href = res.header.location;
-            alice_swap_with_bob_href.should.be.a("string");
+            aliceSwapWithBobHref = res.header.location;
+            aliceSwapWithBobHref.should.be.a("string");
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
@@ -77,36 +90,36 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_charlie_quantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.charlie,
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_charlie_quantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity.charlie,
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry,
-                    beta_expiry,
-                    peer: charlie_comit_node_address,
+                    beta_ledger_redeem_identity: aliceFinalAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: charlieCndPeerId,
                 });
 
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            alice_swap_with_charlie_href = res.header.location;
+            aliceSwapWithCharlieHref = res.header.location;
         });
 
         it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
             return alice.pollComitNodeUntil(
-                alice_swap_with_charlie_href,
+                aliceSwapWithCharlieHref,
                 body =>
                     body.properties.status === "IN_PROGRESS" &&
                     body.properties.state.communication.status === "SENT"
@@ -115,16 +128,15 @@ declare var global: HarnessGlobal;
 
         it("[Alice] Should be able to see Bob's peer-id after sending the swap request to Bob", async function() {
             return alice.pollComitNodeUntil(
-                alice_swap_with_bob_href,
-                body => body.properties.counterparty === bob_comit_node_address
+                aliceSwapWithBobHref,
+                body => body.properties.counterparty === bobCndPeerId
             );
         });
 
         it("[Alice] Should be able to see Charlie's peer-id after sending the swap request to Charlie", async function() {
             return alice.pollComitNodeUntil(
-                alice_swap_with_charlie_href,
-                body =>
-                    body.properties.counterparty === charlie_comit_node_address
+                aliceSwapWithCharlieHref,
+                body => body.properties.counterparty === charlieCndPeerId
             );
         });
 
@@ -160,7 +172,7 @@ declare var global: HarnessGlobal;
 
             expect(swapEntity.properties).to.have.property(
                 "counterparty",
-                alice_comit_node_address
+                aliceCndPeerId
             );
         });
 
@@ -172,10 +184,10 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([
                 {
-                    id: bob_comit_node_address,
+                    id: bobCndPeerId,
                 },
                 {
-                    id: charlie_comit_node_address,
+                    id: charlieCndPeerId,
                 },
             ]);
         });

@@ -3,40 +3,40 @@ import * as fs from "fs";
 import { MetaBtsieveConfig } from "./btsieve";
 
 export class BtsieveRunner {
-    public running_btsieves: { [key: string]: ChildProcess };
-    private readonly log_dir: string;
-    private readonly btsieve_bin: string;
-    private readonly project_root: string;
+    private runningBtsieves: { [key: string]: ChildProcess };
+    private readonly logDir: string;
+    private readonly btsieveBin: string;
+    private readonly projectRoot: string;
 
-    constructor(project_root: string, btsieve_bin: string, log_dir: string) {
-        this.running_btsieves = {};
-        this.log_dir = log_dir;
-        this.btsieve_bin = btsieve_bin;
-        this.project_root = project_root;
+    constructor(projectRoot: string, btsieveBin: string, logDir: string) {
+        this.runningBtsieves = {};
+        this.logDir = logDir;
+        this.btsieveBin = btsieveBin;
+        this.projectRoot = projectRoot;
     }
 
     public ensureBtsievesRunning(btsieves: Array<[string, MetaBtsieveConfig]>) {
-        for (const [name, btsieve_config] of btsieves) {
+        for (const [name, btsieveConfig] of btsieves) {
             console.log("Starting Btsieve: " + name);
 
-            if (this.running_btsieves[name]) {
+            if (this.runningBtsieves[name]) {
                 continue;
             }
 
-            this.running_btsieves[name] = spawn(
-                this.btsieve_bin,
-                ["--config", btsieve_config.config_file],
+            this.runningBtsieves[name] = spawn(
+                this.btsieveBin,
+                ["--config", btsieveConfig.config_file],
                 {
-                    cwd: this.project_root,
-                    env: btsieve_config.env,
+                    cwd: this.projectRoot,
+                    env: btsieveConfig.env,
                     stdio: [
                         "ignore",
                         fs.openSync(
-                            this.log_dir + "/btsieve-" + name + ".log",
+                            this.logDir + "/btsieve-" + name + ".log",
                             "w"
                         ),
                         fs.openSync(
-                            this.log_dir + "/btsieve-" + name + ".log",
+                            this.logDir + "/btsieve-" + name + ".log",
                             "w"
                         ),
                     ],
@@ -46,15 +46,15 @@ export class BtsieveRunner {
     }
 
     public stopBtsieves() {
-        const names = Object.keys(this.running_btsieves);
+        const names = Object.keys(this.runningBtsieves);
 
         if (names.length > 0) {
             console.log("Stopping Btsieve(s): " + names.join(", "));
-            for (const process of Object.values(this.running_btsieves)) {
+            for (const process of Object.values(this.runningBtsieves)) {
                 process.kill();
             }
         }
 
-        this.running_btsieves = {};
+        this.runningBtsieves = {};
     }
 }

@@ -1,7 +1,7 @@
 import { expect, request } from "chai";
 import { toWei } from "web3-utils";
 import { Actor } from "../lib/actor";
-import "../lib/setupChai";
+import "../lib/setup_chai";
 import { HarnessGlobal, sleep } from "../lib/util";
 
 declare var global: HarnessGlobal;

@@ -30,8 +30,8 @@ export interface MetaBtsieveConfig {
 }
 
 export class Btsieve {
-    public host: string;
-    public port: number;
+    private readonly host: string;
+    private readonly port: number;
 
     constructor(name: string, testConfig: TestConfig, root: string) {
         const metaBtsieveConfig = testConfig.btsieve;
@@ -53,8 +53,8 @@ export class Btsieve {
         return `http://${this.host}:${this.port}`;
     }
 
-    public absoluteLocation(relative_location: string) {
-        return new URI(relative_location)
+    public absoluteLocation(relativeLocation: string) {
+        return new URI(relativeLocation)
             .protocol("http")
             .host(this.host)
             .port(this.port.toString())
@@ -62,9 +62,9 @@ export class Btsieve {
     }
 
     public async pollUntilMatches<M>(
-        query_url: string
+        queryUrl: string
     ): Promise<IdMatchResponse<M>> {
-        const res = await request(query_url).get("");
+        const res = await request(queryUrl).get("");
 
         expect(res).to.have.status(200);
 
@@ -72,7 +72,7 @@ export class Btsieve {
             return res.body;
         } else {
             await sleep(200);
-            return this.pollUntilMatches(query_url);
+            return this.pollUntilMatches(queryUrl);
         }
     }
 }

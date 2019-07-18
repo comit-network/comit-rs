@@ -1,6 +1,6 @@
 import { expect, request } from "chai";
 import { Btsieve, EthereumMatch, IdMatch } from "../../lib/btsieve";
-import "../../lib/setupChai";
+import "../../lib/setup_chai";
 import { HarnessGlobal, sleep } from "../../lib/util";
 import { Wallet } from "../../lib/wallet";
 
@@ -55,19 +55,19 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/banananet/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     expect(res).to.have.status(404);
                 });
 
-                const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+                const toAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
                 let location: string;
                 it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     location = res.header.location;
@@ -82,11 +82,11 @@ setTimeout(async function() {
                     ).get("");
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.query.to_address).to.equal(toAddress);
                     expect(res.body.matches).to.be.empty;
                 });
 
-                it("btsieve should respond with no transaction match (yet) when requesting on the `to_address` ethereum block query", async function() {
+                it("btsieve should respond with no transaction match (yet) when requesting on the `toAddress` ethereum block query", async function() {
                     await tobyWallet
                         .eth()
                         .sendEthTransactionTo(
@@ -100,21 +100,21 @@ setTimeout(async function() {
                     ).get("");
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.query.to_address).to.equal(toAddress);
                     expect(res.body.matches).to.be.empty;
                 });
 
-                it("btsieve should respond with transaction match when requesting on the `to_address` ethereum transaction query", async function() {
+                it("btsieve should respond with transaction match when requesting on the `toAddress` ethereum transaction query", async function() {
                     this.slow(2000);
                     await tobyWallet
                         .eth()
-                        .sendEthTransactionTo(to_address, "", 5);
+                        .sendEthTransactionTo(toAddress, "", 5);
 
                     const body = await btsieve.pollUntilMatches<EthereumMatch>(
                         btsieve.absoluteLocation(location)
                     );
 
-                    expect(body.query.to_address).to.equal(to_address);
+                    expect(body.query.to_address).to.equal(toAddress);
                     expect(body.matches).to.have.length(1);
                 });
 
@@ -140,21 +140,21 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/banananet/blocks")
                         .send({
-                            min_timestamp_secs,
+                            min_timestamp_secs: minTimestampSecs,
                         });
 
                     expect(res).to.have.status(404);
                 });
 
                 let location: string;
-                const epoch_seconds_now = Math.round(Date.now() / 1000);
-                const min_timestamp_secs = epoch_seconds_now + 3;
+                const epochSecondsNow = Math.round(Date.now() / 1000);
+                const minTimestampSecs = epochSecondsNow + 3;
                 it("btsieve should respond with location when creating a valid ethereum block query", async function() {
                     this.timeout(1000);
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/blocks")
                         .send({
-                            min_timestamp_secs,
+                            min_timestamp_secs: minTimestampSecs,
                         });
 
                     location = res.header.location;
@@ -171,7 +171,7 @@ setTimeout(async function() {
 
                     expect(res).to.have.status(200);
                     expect(res.body.query.min_timestamp_secs).to.equal(
-                        min_timestamp_secs
+                        minTimestampSecs
                     );
                     expect(res.body.matches).to.be.empty;
                 });
@@ -194,7 +194,7 @@ setTimeout(async function() {
                     );
 
                     expect(body.query.min_timestamp_secs).to.equal(
-                        min_timestamp_secs
+                        minTimestampSecs
                     );
                     expect(body.matches).to.have.length(1);
                 });
@@ -218,15 +218,15 @@ setTimeout(async function() {
                 });
 
                 // keccak('Transfer(address,address,uint256)')
-                const transfer_topic =
+                const transferTopic =
                     "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-                const from_address =
+                const fromAddress =
                     "0x000000000000000000000000" +
                     aliceWallet
                         .eth()
                         .address()
                         .replace("0x", "");
-                const to_address =
+                const toAddress =
                     "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
                 let location: string;
@@ -241,9 +241,9 @@ setTimeout(async function() {
                                     data:
                                         "0x0000000000000000000000000000000000000000000000000000000000000001",
                                     topics: [
-                                        transfer_topic,
-                                        from_address,
-                                        to_address,
+                                        transferTopic,
+                                        fromAddress,
+                                        toAddress,
                                     ],
                                 },
                             ],
@@ -268,16 +268,16 @@ setTimeout(async function() {
                 it("btsieve should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
                     this.slow(2000);
                     this.timeout(20000);
-                    const transfer_token_data =
+                    const transferTokenData =
                         "0xa9059cbb" +
-                        to_address.replace("0x", "") +
+                        toAddress.replace("0x", "") +
                         "0000000000000000000000000000000000000000000000000000000000000001";
 
                     const receipt = await aliceWallet
                         .eth()
                         .sendEthTransactionTo(
                             tokenContractAddress,
-                            transfer_token_data,
+                            transferTokenData,
                             0
                         );
 

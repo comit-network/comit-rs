@@ -37,11 +37,11 @@ const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
 
 export class Actor {
     public name: string;
-    public host: string;
     public wallet: Wallet;
-    public comitNodeConfig: ComitNodeConfig;
-    private readonly _declineConfig?: DeclineConfig;
-    private readonly _sirenActionAutofillParams?: SirenActionAutofillParams;
+    private readonly host: string;
+    private comitNodeConfig: ComitNodeConfig;
+    private readonly declineConfig?: DeclineConfig;
+    private readonly sirenActionAutofillParams?: SirenActionAutofillParams;
 
     constructor(
         name: string,
@@ -52,8 +52,8 @@ export class Actor {
         sirenActionAutofillParams?: SirenActionAutofillParams
     ) {
         this.name = name;
-        this._declineConfig = declineConfig;
-        this._sirenActionAutofillParams = sirenActionAutofillParams;
+        this.declineConfig = declineConfig;
+        this.sirenActionAutofillParams = sirenActionAutofillParams;
         if (testConfig) {
             const metaComitNodeConfig = testConfig.comit_node[name];
             if (!metaComitNodeConfig) {
@@ -150,8 +150,8 @@ export class Actor {
                     "API should be backwards compatible"
                 );
 
-                data[field.name] = this._sirenActionAutofillParams
-                    ? this._sirenActionAutofillParams.bitcoinFeePerWU
+                data[field.name] = this.sirenActionAutofillParams
+                    ? this.sirenActionAutofillParams.bitcoinFeePerWU
                     : 20;
             }
 
@@ -163,8 +163,8 @@ export class Actor {
             }
         }
 
-        if (action.name === "decline" && this._declineConfig) {
-            data[action.fields[0].name] = this._declineConfig.reason;
+        if (action.name === "decline" && this.declineConfig) {
+            data[action.fields[0].name] = this.declineConfig.reason;
         }
 
         const method = action.method || "GET";

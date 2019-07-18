@@ -1,7 +1,7 @@
 import { expect, request } from "chai";
 import * as bitcoin from "../../lib/bitcoin";
 import { Btsieve, IdMatch } from "../../lib/btsieve";
-import "../../lib/setupChai";
+import "../../lib/setup_chai";
 import { HarnessGlobal } from "../../lib/util";
 import { Wallet } from "../../lib/wallet";
 
@@ -32,7 +32,7 @@ setTimeout(async function() {
                     expect(res).to.have.status(404);
                 });
 
-                const to_address =
+                const toAddress =
                     "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
                 let location: string;
 
@@ -40,7 +40,7 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     expect(res).to.have.status(404);
@@ -50,7 +50,7 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     location = res.header.location;
@@ -65,13 +65,13 @@ setTimeout(async function() {
                     ).get("");
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.query.to_address).to.equal(toAddress);
                     expect(res.body.matches).to.be.empty;
                 });
 
-                it("btsieve should respond with transaction match when requesting on the `to_address` bitcoin transaction query", async function() {
+                it("btsieve should respond with transaction match when requesting on the `toAddress` bitcoin transaction query", async function() {
                     this.slow(1000);
-                    await tobyWallet.btc().sendToAddress(to_address, 100000000);
+                    await tobyWallet.btc().sendToAddress(toAddress, 100000000);
 
                     await bitcoin.generate(1);
 
@@ -79,21 +79,21 @@ setTimeout(async function() {
                         btsieve.absoluteLocation(location)
                     );
 
-                    expect(body.query.to_address).to.equal(to_address);
+                    expect(body.query.to_address).to.equal(toAddress);
                     expect(body.matches).to.have.length(1);
                     expect(body.matches)
                         .each.property("id")
                         .to.be.a("string");
                 });
 
-                it("btsieve should respond with full transaction details when requesting on the `to_address` bitcoin transaction query with `return_as=transaction`", async function() {
+                it("btsieve should respond with full transaction details when requesting on the `toAddress` bitcoin transaction query with `return_as=transaction`", async function() {
                     await bitcoin.generate(1);
 
                     const res = await request(
                         btsieve.absoluteLocation(location)
                     ).get("?return_as=transaction");
 
-                    expect(res.body.query.to_address).to.equal(to_address);
+                    expect(res.body.query.to_address).to.equal(toAddress);
                     expect(res.body.matches).to.have.length(1);
                     expect(
                         res.body.matches[0].transaction.output
@@ -121,13 +121,13 @@ setTimeout(async function() {
                     expect(res).to.have.status(404);
                 });
 
-                const min_height = 200;
+                const minHeight = 200;
                 let location: string;
                 it("btsieve should respond not found when creating a bitcoin block query for an invalid network", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/blocks")
                         .send({
-                            min_height,
+                            min_height: minHeight,
                         });
 
                     expect(res).to.have.status(404);
@@ -137,7 +137,7 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/blocks")
                         .send({
-                            min_height,
+                            min_height: minHeight,
                         });
 
                     location = res.header.location;
@@ -152,7 +152,7 @@ setTimeout(async function() {
                     ).get("");
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.min_height).to.equal(min_height);
+                    expect(res.body.query.min_height).to.equal(minHeight);
                     expect(res.body.matches).to.be.empty;
                 });
 
@@ -165,7 +165,7 @@ setTimeout(async function() {
                     ).get("");
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.min_height).to.equal(min_height);
+                    expect(res.body.query.min_height).to.equal(minHeight);
                     expect(res.body.matches).to.be.empty;
                 });
 
@@ -178,7 +178,7 @@ setTimeout(async function() {
                         btsieve.absoluteLocation(location)
                     );
 
-                    expect(body.query.min_height).to.equal(min_height);
+                    expect(body.query.min_height).to.equal(minHeight);
                     expect(body.matches).to.have.length.greaterThan(1);
                 });
 

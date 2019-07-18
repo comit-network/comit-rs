@@ -1,6 +1,6 @@
 import { expect, request } from "chai";
 import { Btsieve } from "../../lib/btsieve";
-import "../../lib/setupChai";
+import "../../lib/setup_chai";
 import { HarnessGlobal } from "../../lib/util";
 
 declare var global: HarnessGlobal;
@@ -29,14 +29,14 @@ setTimeout(async function() {
                     expect(res).to.have.status(503);
                 });
 
-                const to_address =
+                const toAddress =
                     "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
 
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     expect(res).to.have.status(503);
@@ -50,19 +50,19 @@ setTimeout(async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions/1")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     expect(res).to.have.status(503);
                 });
 
-                const to_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+                const toAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
                         .send({
-                            to_address,
+                            to_address: toAddress,
                         });
 
                     expect(res).to.have.status(503);

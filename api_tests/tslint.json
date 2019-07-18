@@ -14,7 +14,7 @@
         "object-literal-sort-keys": false,
         "no-reference": false,
         "only-arrow-functions": false,
-        "variable-name": false
+        "file-name-casing": [true, "snake-case"]
     },
     "rulesDirectory": []
 }
