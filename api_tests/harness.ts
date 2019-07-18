@@ -218,8 +218,7 @@ function expandGlob(paths: string[]): string[] {
                 }
             }
         } else if (fs.lstatSync(path).isDirectory()) {
-            const temp = result.concat(expandGlob([path + "/**/*.ts"]));
-            result = temp;
+            result = result.concat(expandGlob([path + "/**/*.ts"]));
         } else if (validTestFile(path)) {
             result.push(path);
         }
