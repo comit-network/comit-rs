@@ -272,8 +272,9 @@ export class Actor {
                     const delay = seconds_until(min_block_timestamp) + buffer;
 
                     console.log(
-                        `Waiting for %d seconds before action can be executed.`,
-                        delay
+                        `Waiting for %d seconds before action can be executed to reach %d.`,
+                        delay,
+                        min_block_timestamp
                     );
 
                     await sleep(delay * 1000);

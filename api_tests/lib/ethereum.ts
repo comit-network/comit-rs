@@ -147,7 +147,7 @@ export class EthereumWallet {
 
     public async sendEthTransactionTo(
         to: string,
-        data: string = "0x0",
+        data: string,
         value: BN | string | number = utils.toBN(0),
         gas_limit: string = "0x100000"
     ) {
