@@ -9,31 +9,44 @@ import { HarnessGlobal } from "../lib/util";
 declare var global: HarnessGlobal;
 
 (async () => {
-    const alphaLedgerName = "bitcoin";
-    const alphaLedgerNetwork = "regtest";
+    const alpha = {
+        ledger: {
+            name: "bitcoin",
+            network: "regtest",
+        },
+        asset: {
+            name: "bitcoin",
+            quantity: {
+                bob: "100000000",
+                charlie: "200000000",
+            },
+        },
+        expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+    };
 
-    const betaLedgerName = "ethereum";
-    const betaLedgerNetwork = "regtest";
-
-    const alphaAssetName = "bitcoin";
-    const alphaAssetBobQuantity = "100000000";
-    const alphaAssetCharlieQuantity = "200000000";
-
-    const betaAssetName = "ether";
-    const betaAssetBobQuantity = toWei("10", "ether");
-    const betaAssetCharlieQuantity = toWei("20", "ether");
-
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const beta = {
+        ledger: {
+            name: "ethereum",
+            network: "regtest",
+        },
+        asset: {
+            name: "ether",
+            quantity: {
+                bob: toWei("10", "ether"),
+                charlie: toWei("20", "ether"),
+            },
+        },
+        expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+    };
 
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
     const charlie = new Actor("charlie", global.config, global.project_root);
 
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const aliceCndAddress = await alice.peerId();
-    const bobCndAddress = await bob.peerId();
-    const charlieCndAddress = await charlie.peerId();
+    const aliceCndPeerId = await alice.peerId();
+    const bobCndPeerId = await bob.peerId();
+    const charlieCndPeerId = await charlie.peerId();
 
     let aliceSwapWithCharlieHref: string;
     let aliceSwapWithBobHref: string;
@@ -44,25 +57,25 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alphaLedgerName,
-                        network: alphaLedgerNetwork,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: betaLedgerName,
-                        network: betaLedgerNetwork,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alphaAssetName,
-                        quantity: alphaAssetBobQuantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.bob,
                     },
                     beta_asset: {
-                        name: betaAssetName,
-                        quantity: betaAssetBobQuantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity.bob,
                     },
                     beta_ledger_redeem_identity: aliceFinalAddress,
-                    alpha_expiry: alphaExpiry,
-                    beta_expiry: betaExpiry,
-                    peer: bobCndAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: bobCndPeerId,
                 });
 
             res.error.should.equal(false);
@@ -77,25 +90,25 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alphaLedgerName,
-                        network: alphaLedgerNetwork,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: betaLedgerName,
-                        network: betaLedgerNetwork,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alphaAssetName,
-                        quantity: alphaAssetCharlieQuantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.charlie,
                     },
                     beta_asset: {
-                        name: betaAssetName,
-                        quantity: betaAssetCharlieQuantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity.charlie,
                     },
                     beta_ledger_redeem_identity: aliceFinalAddress,
-                    alpha_expiry: alphaExpiry,
-                    beta_expiry: betaExpiry,
-                    peer: charlieCndAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: charlieCndPeerId,
                 });
 
             res.error.should.equal(false);
@@ -116,14 +129,14 @@ declare var global: HarnessGlobal;
         it("[Alice] Should be able to see Bob's peer-id after sending the swap request to Bob", async function() {
             return alice.pollComitNodeUntil(
                 aliceSwapWithBobHref,
-                body => body.properties.counterparty === bobCndAddress
+                body => body.properties.counterparty === bobCndPeerId
             );
         });
 
         it("[Alice] Should be able to see Charlie's peer-id after sending the swap request to Charlie", async function() {
             return alice.pollComitNodeUntil(
                 aliceSwapWithCharlieHref,
-                body => body.properties.counterparty === charlieCndAddress
+                body => body.properties.counterparty === charlieCndPeerId
             );
         });
 
@@ -159,7 +172,7 @@ declare var global: HarnessGlobal;
 
             expect(swapEntity.properties).to.have.property(
                 "counterparty",
-                aliceCndAddress
+                aliceCndPeerId
             );
         });
 
@@ -171,10 +184,10 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([
                 {
-                    id: bobCndAddress,
+                    id: bobCndPeerId,
                 },
                 {
-                    id: charlieCndAddress,
+                    id: charlieCndPeerId,
                 },
             ]);
         });
