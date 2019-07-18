@@ -26,12 +26,11 @@ impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
         htlc_location: EthereumAddress,
         _secret_source: &dyn SecretSource,
     ) -> Self::RefundActionOutput {
-        let data = Bytes::default();
         let gas_limit = EtherHtlc::tx_gas_limit();
 
         CallContract {
             to: htlc_location,
-            data,
+            data: None,
             gas_limit,
             network: htlc_params.ledger.network,
             min_block_timestamp: Some(htlc_params.expiry),
@@ -52,7 +51,7 @@ impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
 
         CallContract {
             to: htlc_location,
-            data,
+            data: Some(data),
             gas_limit,
             network: htlc_params.ledger.network,
             min_block_timestamp: None,

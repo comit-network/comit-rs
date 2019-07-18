@@ -52,10 +52,10 @@ pub mod ethereum {
         pub network: Network,
     }
 
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct CallContract {
         pub to: Address,
-        pub data: Bytes,
+        pub data: Option<Bytes>,
         pub gas_limit: U256,
         pub network: Network,
         pub min_block_timestamp: Option<Timestamp>,

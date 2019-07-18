@@ -40,6 +40,7 @@ pub enum ActionResponseBody {
     BitcoinBroadcastSignedTransaction {
         hex: String,
         network: bitcoin_support::Network,
+        #[serde(skip_serializing_if = "Option::is_none")]
         min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
@@ -50,9 +51,11 @@ pub enum ActionResponseBody {
     },
     EthereumCallContract {
         contract_address: ethereum_support::Address,
-        data: ethereum_support::Bytes,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
+        #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
     None,
@@ -295,6 +298,8 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
+    use ethereum_support::*;
+    use std::str::FromStr;
 
     #[test]
     fn given_no_query_parameters_deserialize_to_none() {
@@ -317,4 +322,22 @@ mod test {
             })
         );
     }
+
+    #[test]
+    fn call_contract_serializes_correctly_to_json_with_none() {
+        let addr = Address::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let contract = ActionResponseBody::EthereumCallContract {
+            contract_address: addr,
+            data: None,
+            gas_limit: U256::from(1),
+            network: Network::Ropsten,
+            min_block_timestamp: None,
+        };
+        let serialized = serde_json::to_string(&contract).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}}"#
+        );
+    }
+
 }
