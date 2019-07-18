@@ -63,8 +63,8 @@ interface Utxo {
     vout: number;
 }
 
-let _bitcoinRpcClient: BitcoinRpcClient;
-let _bitcoinConfig: BitcoinNodeConfig;
+let bitcoinRpcClient: BitcoinRpcClient;
+let bitcoinConfig: BitcoinNodeConfig;
 
 export function init(btcConfig?: BitcoinNodeConfig) {
     console.log("Initiating bitcoin");
@@ -72,50 +72,46 @@ export function init(btcConfig?: BitcoinNodeConfig) {
 }
 
 function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
-    if (!btcConfig && !_bitcoinConfig) {
+    if (!btcConfig && !bitcoinConfig) {
         throw new Error("bitcoin configuration is needed");
     }
 
-    if (!_bitcoinRpcClient || btcConfig !== _bitcoinConfig) {
-        _bitcoinRpcClient = new BitcoinRpcClient({
+    if (!bitcoinRpcClient || btcConfig !== bitcoinConfig) {
+        bitcoinRpcClient = new BitcoinRpcClient({
             network: "regtest",
             port: btcConfig.rpc_port,
             host: btcConfig.rpc_host,
             username: btcConfig.rpc_username,
             password: btcConfig.rpc_password,
         });
-        _bitcoinConfig = btcConfig;
+        bitcoinConfig = btcConfig;
     }
-    return _bitcoinRpcClient;
+    return bitcoinRpcClient;
 }
 
 export async function generate(num: number = 1) {
-    return createBitcoinRpcClient(_bitcoinConfig).generate(num);
+    return createBitcoinRpcClient(bitcoinConfig).generate(num);
 }
 
 export async function getBlockchainInfo() {
-    return createBitcoinRpcClient(_bitcoinConfig).getBlockchainInfo();
+    return createBitcoinRpcClient(bitcoinConfig).getBlockchainInfo();
 }
 
 export async function ensureFunding() {
     const blockHeight = await createBitcoinRpcClient(
-        _bitcoinConfig
+        bitcoinConfig
     ).getBlockCount();
     if (blockHeight < 101) {
-        await createBitcoinRpcClient(_bitcoinConfig).generate(
-            101 - blockHeight
-        );
+        await createBitcoinRpcClient(bitcoinConfig).generate(101 - blockHeight);
     }
 }
 
 export async function sendRawTransaction(hexString: string) {
-    return createBitcoinRpcClient(_bitcoinConfig).sendRawTransaction(hexString);
+    return createBitcoinRpcClient(bitcoinConfig).sendRawTransaction(hexString);
 }
 
 export class BitcoinWallet {
-    public keypair: ECPair;
-    public bitcoinUtxos: Utxo[];
-    public _identity: {
+    private readonly identity: {
         address: string;
         hash: Buffer;
         output: Buffer;
@@ -124,8 +120,9 @@ export class BitcoinWallet {
         input: Buffer;
         witness: Buffer[];
     };
-
-    public addressForIncomingPayments: string;
+    private readonly keypair: ECPair;
+    private readonly bitcoinUtxos: Utxo[];
+    private readonly addressForIncomingPayments: string;
 
     constructor(
         btcConfig: BitcoinNodeConfig,
@@ -134,7 +131,7 @@ export class BitcoinWallet {
         this.addressForIncomingPayments = addressForIncomingPayments;
         this.keypair = ECPair.makeRandom({ rng: test_rng });
         this.bitcoinUtxos = [];
-        this._identity = payments.p2wpkh({
+        this.identity = payments.p2wpkh({
             pubkey: this.keypair.publicKey,
             network: networks.regtest,
         });
@@ -153,23 +150,19 @@ export class BitcoinWallet {
         );
     }
 
-    public identity() {
-        return this._identity;
-    }
-
     public async fund(bitcoin: number) {
-        const txId = await _bitcoinRpcClient.sendToAddress(
-            this.identity().address,
+        const txId = await bitcoinRpcClient.sendToAddress(
+            this.identity.address,
             bitcoin
         );
-        const raw_transaction = (await _bitcoinRpcClient.getRawTransaction(
+        const rawTransaction = (await bitcoinRpcClient.getRawTransaction(
             txId
         )) as HexRawTransactionResponse;
-        const transaction = Transaction.fromHex(raw_transaction);
+        const transaction = Transaction.fromHex(rawTransaction);
         const entries: Out[] = transaction.outs;
         this.bitcoinUtxos.push(
             ...entries
-                .filter(entry => entry.script.equals(this.identity().output))
+                .filter(entry => entry.script.equals(this.identity.output))
                 .map(entry => {
                     return {
                         txId,
@@ -183,22 +176,22 @@ export class BitcoinWallet {
     public async sendToAddress(to: string, value: number) {
         const txb = new TransactionBuilder();
         const utxo = this.bitcoinUtxos.shift();
-        const input_amount = utxo.value;
-        const key_pair = this.keypair;
+        const inputAmount = utxo.value;
+        const keyPair = this.keypair;
         const fee = 2500;
-        const change = input_amount - value - fee;
-        txb.addInput(utxo.txId, utxo.vout, null, this.identity().output);
-        txb.addOutput(this.identity().output, change);
+        const change = inputAmount - value - fee;
+        txb.addInput(utxo.txId, utxo.vout, null, this.identity.output);
+        txb.addOutput(this.identity.output, change);
         txb.addOutput(address.toOutputScript(to, networks.regtest), value);
-        txb.sign(0, key_pair, null, null, input_amount);
+        txb.sign(0, keyPair, null, null, inputAmount);
 
-        return _bitcoinRpcClient.sendRawTransaction(txb.build().toHex());
+        return bitcoinRpcClient.sendRawTransaction(txb.build().toHex());
     }
 }
 
 async function getFirstUtxoValueTransferredTo(txId: string, address: string) {
     let satoshi = 0;
-    const tx = (await _bitcoinRpcClient.getRawTransaction(
+    const tx = (await bitcoinRpcClient.getRawTransaction(
         txId,
         true
     )) as VerboseRawTransactionResponse;

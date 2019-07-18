@@ -10,18 +10,18 @@ export interface WalletConfig {
 
 export class Wallet {
     public owner: string;
-    public _ethWallet: EthereumWallet;
-    public _btcWallet: BitcoinWallet;
+    private readonly ethWallet: EthereumWallet;
+    private readonly btcWallet: BitcoinWallet;
 
     constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
 
         if (config.ethereumNodeConfig) {
-            this._ethWallet = new EthereumWallet(config.ethereumNodeConfig);
+            this.ethWallet = new EthereumWallet(config.ethereumNodeConfig);
         }
 
         if (config.bitcoinNodeConfig) {
-            this._btcWallet = new BitcoinWallet(
+            this.btcWallet = new BitcoinWallet(
                 config.bitcoinNodeConfig,
                 config.addressForIncomingBitcoinPayments
             );
@@ -29,10 +29,10 @@ export class Wallet {
     }
 
     public eth() {
-        return this._ethWallet;
+        return this.ethWallet;
     }
 
     public btc() {
-        return this._btcWallet;
+        return this.btcWallet;
     }
 }

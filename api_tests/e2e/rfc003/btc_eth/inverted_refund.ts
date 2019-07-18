@@ -4,7 +4,7 @@ import { toBN, toWei } from "web3-utils";
 import { Actor } from "../../../lib/actor";
 import * as bitcoin from "../../../lib/bitcoin";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
-import "../../../lib/setupChai";
+import "../../../lib/setup_chai";
 import { createTests, Step } from "../../../lib/test_creator";
 import { HarnessGlobal } from "../../../lib/util";
 

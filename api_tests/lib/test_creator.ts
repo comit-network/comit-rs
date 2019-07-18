@@ -3,7 +3,7 @@ import { Response } from "superagent";
 import { Action, EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 import { Actor } from "./actor";
 import { ActionKind, LedgerAction } from "./comit";
-import "./setupChai";
+import "./setup_chai";
 
 export interface Test {
     /**

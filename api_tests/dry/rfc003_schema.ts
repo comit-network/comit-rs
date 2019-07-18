@@ -3,7 +3,7 @@ import "chai/register-should";
 import { toWei } from "web3-utils";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import { Actor } from "../lib/actor";
-import "../lib/setupChai";
+import "../lib/setup_chai";
 import { HarnessGlobal } from "../lib/util";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
@@ -11,25 +11,34 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
 declare var global: HarnessGlobal;
 
 (async function() {
-    const alpha_ledger_name = "bitcoin";
-    const alpha_ledger_network = "regtest";
+    const alpha = {
+        ledger: {
+            name: "bitcoin",
+            network: "regtest",
+        },
+        asset: {
+            name: "bitcoin",
+            quantity: "100000000",
+        },
+        expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+    };
 
-    const beta_ledger_name = "ethereum";
-    const beta_ledger_network = "regtest";
-
-    const alpha_asset_name = "bitcoin";
-    const alpha_asset_quantity = "100000000";
-
-    const beta_asset_name = "ether";
-    const beta_asset_quantity = toWei("10", "ether");
-
-    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const beta = {
+        ledger: {
+            name: "ethereum",
+            network: "regtest",
+        },
+        asset: {
+            name: "ether",
+            quantity: toWei("10", "ether"),
+        },
+        expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+    };
 
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
-    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bob_comit_node_address = await bob.peerId();
+    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const bobCndPeerId = await bob.peerId();
 
     describe("Response shape", () => {
         before(async () => {
@@ -37,29 +46,29 @@ declare var global: HarnessGlobal;
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_quantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity,
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_quantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity,
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry,
-                    beta_expiry,
-                    peer: bob_comit_node_address,
+                    beta_ledger_redeem_identity: aliceFinalAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: bobCndPeerId,
                 });
 
-            res.error.should.equal(false);
-            res.should.have.status(201);
+            expect(res.error).to.be.false;
+            expect(res.status).to.equal(201);
         });
 
         it("[Alice] Response for GET /swaps is a valid siren document", async () => {

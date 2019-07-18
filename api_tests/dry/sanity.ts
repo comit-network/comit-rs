@@ -4,7 +4,7 @@ import { expect, request } from "chai";
 import "chai/register-should";
 import { Entity } from "../gen/siren";
 import { Actor } from "../lib/actor";
-import "../lib/setupChai";
+import "../lib/setup_chai";
 import { HarnessGlobal } from "../lib/util";
 
 declare var global: HarnessGlobal;

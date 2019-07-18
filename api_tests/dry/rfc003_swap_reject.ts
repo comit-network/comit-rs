@@ -3,67 +3,79 @@ import "chai/register-should";
 import { toWei } from "web3-utils";
 import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 import { Actor } from "../lib/actor";
-import "../lib/setupChai";
+import "../lib/setup_chai";
 import { HarnessGlobal, sleep } from "../lib/util";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 
 declare var global: HarnessGlobal;
 
 (async function() {
-    const alpha_ledger_name = "bitcoin";
-    const alpha_ledger_network = "regtest";
+    const alpha = {
+        ledger: {
+            name: "bitcoin",
+            network: "regtest",
+        },
+        asset: {
+            name: "bitcoin",
+            quantity: {
+                reasonable: "100000000",
+                stingy: "100",
+            },
+        },
+        expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+    };
 
-    const beta_ledger_name = "ethereum";
-    const beta_ledger_network = "regtest";
+    const beta = {
+        ledger: {
+            name: "ethereum",
+            network: "regtest",
+        },
+        asset: {
+            name: "ether",
+            quantity: toWei("10", "ether"),
+        },
 
-    const alpha_asset_name = "bitcoin";
-    const alpha_asset_reasonable_quantity = "100000000";
-    const alpha_asset_stingy_quantity = "100";
-
-    const beta_asset_name = "ether";
-    const beta_asset_quantity = toWei("10", "ether");
-
-    const alpha_expiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const beta_expiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+        expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+    };
 
     const alice = new Actor("alice", global.config, global.project_root);
     const bob = new Actor("bob", global.config, global.project_root);
-    const alice_final_address = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bob_comit_node_address = await bob.peerId();
+    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+    const bobCndPeerId = await bob.peerId();
 
     describe("SWAP request REJECTED", () => {
-        let alice_reasonable_swap_href: string;
+        let aliceReasonableSwapHref: string;
         it("[Alice] Should be able to make first swap request via HTTP api", async () => {
             const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_reasonable_quantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.reasonable,
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_quantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity,
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry,
-                    beta_expiry,
-                    peer: bob_comit_node_address,
+                    beta_ledger_redeem_identity: aliceFinalAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: bobCndPeerId,
                 });
 
             res.error.should.equal(false);
             res.should.have.status(201);
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_reasonable_swap_href = swap_location;
+            const swapLocation = res.header.location;
+            swapLocation.should.be.a("string");
+            aliceReasonableSwapHref = swapLocation;
         });
 
         it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
@@ -75,7 +87,7 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.containSubset([
                 {
-                    id: bob_comit_node_address,
+                    id: bobCndPeerId,
                 },
             ]);
         });
@@ -87,39 +99,39 @@ declare var global: HarnessGlobal;
             res.body.peers.should.have.length(1);
         });
 
-        let alice_stingy_swap_href: string;
+        let aliceStingySwapHref: string;
         it("[Alice] Should be able to make second swap request via HTTP api", async () => {
             const res = await request(alice.comitNodeHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
-                        name: alpha_ledger_name,
-                        network: alpha_ledger_network,
+                        name: alpha.ledger.name,
+                        network: alpha.ledger.network,
                     },
                     beta_ledger: {
-                        name: beta_ledger_name,
-                        network: beta_ledger_network,
+                        name: beta.ledger.name,
+                        network: beta.ledger.network,
                     },
                     alpha_asset: {
-                        name: alpha_asset_name,
-                        quantity: alpha_asset_stingy_quantity,
+                        name: alpha.asset.name,
+                        quantity: alpha.asset.quantity.stingy,
                     },
                     beta_asset: {
-                        name: beta_asset_name,
-                        quantity: beta_asset_quantity,
+                        name: beta.asset.name,
+                        quantity: beta.asset.quantity,
                     },
-                    beta_ledger_redeem_identity: alice_final_address,
-                    alpha_expiry,
-                    beta_expiry,
-                    peer: bob_comit_node_address,
+                    beta_ledger_redeem_identity: aliceFinalAddress,
+                    alpha_expiry: alpha.expiry,
+                    beta_expiry: beta.expiry,
+                    peer: bobCndPeerId,
                 });
 
             res.error.should.equal(false);
             res.should.have.status(201);
 
-            const swap_location = res.header.location;
-            swap_location.should.be.a("string");
-            alice_stingy_swap_href = swap_location;
+            const swapLocation = res.header.location;
+            swapLocation.should.be.a("string");
+            aliceStingySwapHref = swapLocation;
         });
 
         it("[Alice] Should still only see Bob in her list of peers after sending a second swap request to him", async () => {
@@ -130,7 +142,7 @@ declare var global: HarnessGlobal;
             res.should.have.status(200);
             res.body.peers.should.containSubset([
                 {
-                    id: bob_comit_node_address,
+                    id: bobCndPeerId,
                 },
             ]);
         });
@@ -157,8 +169,8 @@ declare var global: HarnessGlobal;
                 .that.is.equal("IN_PROGRESS");
         });
 
-        let bob_stingy_swap_href: string;
-        let bob_reasonable_swap_href: string;
+        let bobStingySwapHref: string;
+        let bobReasonableSwapHref: string;
 
         it("[Bob] Shows the swaps as IN_PROGRESS in /swaps", async () => {
             const swapEntities = await bob
@@ -177,34 +189,34 @@ declare var global: HarnessGlobal;
                 .to.each.have.property("status")
                 .that.is.equal("IN_PROGRESS");
 
-            const stingy_swap = swapEntities.find(entity => {
+            const stingySwap = swapEntities.find(entity => {
                 return (
                     parseInt(
                         entity.properties.parameters.alpha_asset.quantity,
                         10
-                    ) === parseInt(alpha_asset_stingy_quantity, 10)
+                    ) === parseInt(alpha.asset.quantity.stingy, 10)
                 );
             });
-            const reasonable_swap = swapEntities.find(entity => {
+            const reasonableSwap = swapEntities.find(entity => {
                 return (
                     parseInt(
                         entity.properties.parameters.alpha_asset.quantity,
                         10
-                    ) === parseInt(alpha_asset_reasonable_quantity, 10)
+                    ) === parseInt(alpha.asset.quantity.reasonable, 10)
                 );
             });
 
-            bob_stingy_swap_href = stingy_swap.links.find(link =>
+            bobStingySwapHref = stingySwap.links.find(link =>
                 link.rel.includes("self")
             ).href;
-            bob_reasonable_swap_href = reasonable_swap.links.find(link =>
+            bobReasonableSwapHref = reasonableSwap.links.find(link =>
                 link.rel.includes("self")
             ).href;
         });
 
         it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
             const res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
+                bobStingySwapHref
             );
 
             res.should.have.status(200);
@@ -216,7 +228,7 @@ declare var global: HarnessGlobal;
 
         it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
             const res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
+                bobStingySwapHref
             );
 
             res.should.have.status(200);
@@ -245,21 +257,21 @@ declare var global: HarnessGlobal;
             );
 
             const res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_stingy_swap_href
+                bobStingySwapHref
             );
             const body = res.body as Entity;
 
             const decline = body.actions.find(
                 action => action.name === "decline"
             );
-            const decline_res = await bob.doComitAction(decline);
+            const declineRes = await bob.doComitAction(decline);
 
-            decline_res.should.have.status(200);
+            declineRes.should.have.status(200);
         });
 
         it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
             await bob.pollComitNodeUntil(
-                bob_stingy_swap_href,
+                bobStingySwapHref,
                 entity =>
                     entity.properties.state.communication.status === "REJECTED"
             );
@@ -267,7 +279,7 @@ declare var global: HarnessGlobal;
 
         it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
             await alice.pollComitNodeUntil(
-                alice_stingy_swap_href,
+                aliceStingySwapHref,
                 body =>
                     body.properties.state.communication.status === "REJECTED"
             );
@@ -277,21 +289,21 @@ declare var global: HarnessGlobal;
             const bob = new Actor("bob", global.config, global.project_root);
 
             const res = await request(bob.comitNodeHttpApiUrl()).get(
-                bob_reasonable_swap_href
+                bobReasonableSwapHref
             );
             const body = res.body as Entity;
 
             const decline = body.actions.find(
                 action => action.name === "decline"
             );
-            const decline_res = await bob.doComitAction(decline);
+            const declineRes = await bob.doComitAction(decline);
 
-            decline_res.should.have.status(200);
+            declineRes.should.have.status(200);
         });
 
         it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
             await bob.pollComitNodeUntil(
-                bob_reasonable_swap_href,
+                bobReasonableSwapHref,
                 entity =>
                     entity.properties.state.communication.status === "REJECTED"
             );
@@ -299,7 +311,7 @@ declare var global: HarnessGlobal;
 
         it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
             await alice.pollComitNodeUntil(
-                alice_reasonable_swap_href,
+                aliceReasonableSwapHref,
                 entity =>
                     entity.properties.state.communication.status === "REJECTED"
             );

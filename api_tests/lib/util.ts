@@ -2,11 +2,11 @@ import { TestConfig } from "./actor";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
 
-let _test_rng_counter = 0;
+let testRngCounter = 0;
 
 export function test_rng() {
-    _test_rng_counter++;
-    return Buffer.from(("" + _test_rng_counter).padStart(32, "0"));
+    testRngCounter++;
+    return Buffer.from(("" + testRngCounter).padStart(32, "0"));
 }
 
 export async function sleep(time: number) {
