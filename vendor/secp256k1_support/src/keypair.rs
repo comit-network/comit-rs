@@ -1,27 +1,12 @@
 use crate::public_key::PublicKey;
 use rand::Rng;
-use secp256k1::{self, Message, RecoverableSignature, SecretKey, Signature};
-use std::{convert::Into, fmt};
+use secp256k1::{self, Error, Message, RecoverableSignature, SecretKey, Signature};
+use std::{convert::Into, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct KeyPair {
     secret_key: SecretKey,
     public_key: PublicKey,
-}
-
-#[derive(Debug)]
-pub enum Error {
-    Secp256k1(secp256k1::Error),
-    Hex(hex::FromHexError),
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Error::Secp256k1(_) => write!(f, "Not a secp256k1 private key"),
-            Error::Hex(_) => write!(f, "Invalid hex value"),
-        }
-    }
 }
 
 impl KeyPair {
@@ -38,14 +23,11 @@ impl KeyPair {
     }
 
     pub fn from_secret_key_slice(data: &[u8]) -> Result<KeyPair, Error> {
-        SecretKey::from_slice(data)
-            .map(Into::into)
-            .map_err(Error::Secp256k1)
+        SecretKey::from_slice(data).map(Into::into)
     }
 
     pub fn from_secret_key_hex(key: &str) -> Result<KeyPair, Error> {
-        let bytes = hex::decode(key).map_err(Error::Hex)?;
-        KeyPair::from_secret_key_slice(&bytes[..])
+        SecretKey::from_str(key).map(Into::into)
     }
 
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
@@ -84,7 +66,6 @@ impl From<KeyPair> for (SecretKey, PublicKey) {
 #[cfg(test)]
 mod test {
     use super::*;
-    use hex::{self, FromHex};
 
     #[test]
     fn correct_keypair_from_secret_key_slice() {
@@ -97,7 +78,7 @@ mod test {
 
         assert_eq!(
             keypair.public_key(),
-            PublicKey::from_hex(
+            PublicKey::from_str(
                 "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352"
             )
             .unwrap(),

@@ -1,10 +1,9 @@
-use hex::{self, FromHex};
 use secp256k1;
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
 };
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct PublicKey(secp256k1::PublicKey);
@@ -27,33 +26,11 @@ impl From<PublicKey> for secp256k1::PublicKey {
     }
 }
 
-#[derive(Debug)]
-pub enum PubkeyFromHexError {
-    Secp256k1(secp256k1::Error),
-    InvalidHex(hex::FromHexError),
-}
+impl FromStr for PublicKey {
+    type Err = secp256k1::Error;
 
-impl fmt::Display for PubkeyFromHexError {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match *self {
-            PubkeyFromHexError::Secp256k1(e) => fmt.write_str(&format!("{}", e)),
-            PubkeyFromHexError::InvalidHex(e) => fmt.write_str(&format!("{}", e)),
-        }
-    }
-}
-
-impl FromHex for PublicKey {
-    type Error = PubkeyFromHexError;
-
-    fn from_hex<T: AsRef<[u8]>>(hex: T) -> Result<Self, Self::Error> {
-        Ok(PublicKey(
-            secp256k1::PublicKey::from_slice(
-                hex::decode(hex)
-                    .map_err(PubkeyFromHexError::InvalidHex)?
-                    .as_ref(),
-            )
-            .map_err(PubkeyFromHexError::Secp256k1)?,
-        ))
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        secp256k1::PublicKey::from_str(s).map(PublicKey)
     }
 }
 
@@ -75,7 +52,9 @@ impl<'de> Deserialize<'de> for PublicKey {
             where
                 E: de::Error,
             {
-                PublicKey::from_hex(hex_pubkey).map_err(E::custom)
+                secp256k1::PublicKey::from_str(hex_pubkey)
+                    .map(PublicKey)
+                    .map_err(E::custom)
             }
         }
 
@@ -88,7 +67,7 @@ impl Serialize for PublicKey {
     where
         S: Serializer,
     {
-        serializer.serialize_str(hex::encode(self.0.serialize().as_ref()).as_str())
+        serializer.serialize_str(&format!("{}", self.0))
     }
 }
 
@@ -107,7 +86,7 @@ mod test {
             .unwrap(),
         );
 
-        let from_hex = PublicKey::from_hex(
+        let from_hex = PublicKey::from_str(
             "0317b7e1ce1f9f94c32a43739229f88c0b0333296fb46e8f72865849c6ae34b84e",
         )
         .unwrap();
@@ -115,4 +94,21 @@ mod test {
         assert_eq!(pubkey, from_hex);
     }
 
+    #[test]
+    fn serialize_to_hex() {
+        let pubkey = PublicKey(
+            secp256k1::PublicKey::from_slice(&[
+                3, 23, 183, 225, 206, 31, 159, 148, 195, 42, 67, 115, 146, 41, 248, 140, 11, 3, 51,
+                41, 111, 180, 110, 143, 114, 134, 88, 73, 198, 174, 52, 184, 78,
+            ])
+            .unwrap(),
+        );
+
+        let string = serde_json::to_string(&pubkey).unwrap();
+
+        assert_eq!(
+            string,
+            r#""0317b7e1ce1f9f94c32a43739229f88c0b0333296fb46e8f72865849c6ae34b84e""#
+        )
+    }
 }
