@@ -1,6 +1,6 @@
 use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
 use ethereum_support::{Address, ToEthereumAddress};
-use secp256k1_support::{KeyPair, Message, RecoverableSignature};
+use secp256k1_support::{KeyPair, Message};
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
@@ -31,7 +31,7 @@ impl Wallet for InMemoryWallet {
         let message = Message::from_slice(&hash).expect("Cannot fail as it is a [u8; 32]");
         let signature = self.keypair.sign_ecdsa_recoverable(message);
 
-        let (rec_id, signature) = RecoverableSignature::serialize_compact(&signature);
+        let (rec_id, signature) = signature.serialize_compact();
 
         let v = rec_id.to_i32() as u8 + self.chain_replay_protection_offset();
 
