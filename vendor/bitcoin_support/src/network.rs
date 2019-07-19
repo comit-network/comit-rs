@@ -16,11 +16,11 @@ use serde::{Deserialize, Serialize};
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
-    #[strum(serialize = "mainnet")]
+    #[strum(serialize = "main")]
     Mainnet,
     #[strum(serialize = "regtest")]
     Regtest,
-    #[strum(serialize = "testnet")]
+    #[strum(serialize = "test")]
     Testnet,
 }
 
@@ -64,8 +64,8 @@ mod test {
         let regtest: &'static str = Network::Regtest.into();
         let testnet: &'static str = Network::Testnet.into();
 
-        assert_eq!(mainnet, "mainnet");
+        assert_eq!(mainnet, "main");
         assert_eq!(regtest, "regtest");
-        assert_eq!(testnet, "testnet");
+        assert_eq!(testnet, "test");
     }
 }
