@@ -183,10 +183,10 @@ impl<'de> Deserialize<'de> for DialInformation {
                             address_hint = Some(map.next_value()?)
                         }
                         _ => {
-                            return Err(de::Error::unknown_field(
-                                key,
-                                &["peer_id", "address_hint"],
-                            ));
+                            return Err(de::Error::unknown_field(key, &[
+                                "peer_id",
+                                "address_hint",
+                            ]));
                         }
                     }
                 }

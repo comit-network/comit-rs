@@ -312,12 +312,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         let state = state.take();
 
         match response {
-            Ok(swap_accepted) => transition_save!(
-                context.state_repo,
-                Accepted {
-                    swap: OngoingSwap::new(state, swap_accepted),
-                }
-            ),
+            Ok(swap_accepted) => transition_save!(context.state_repo, Accepted {
+                swap: OngoingSwap::new(state, swap_accepted),
+            }),
             Err(rejection_type) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::Rejected {
@@ -337,13 +334,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .htlc_deployed(state.swap.alpha_htlc_params())
             .poll());
         let state = state.take();
-        transition_save!(
-            context.state_repo,
-            AlphaDeployed {
-                swap: state.swap,
-                alpha_deployed,
-            }
-        )
+        transition_save!(context.state_repo, AlphaDeployed {
+            swap: state.swap,
+            alpha_deployed,
+        })
     }
 
     fn poll_alpha_deployed<'s, 'c>(
@@ -360,14 +354,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .asset
             .equal_or_greater_value(&state.swap.alpha_asset)
         {
-            transition_save!(
-                context.state_repo,
-                AlphaFunded {
-                    swap: state.swap,
-                    alpha_funded,
-                    alpha_deployed: state.alpha_deployed,
-                }
-            )
+            transition_save!(context.state_repo, AlphaFunded {
+                swap: state.swap,
+                alpha_funded,
+                alpha_deployed: state.alpha_deployed,
+            })
         } else {
             Err(rfc003::Error::InsufficientFunding)
         }
@@ -414,15 +405,12 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .htlc_deployed(state.swap.beta_htlc_params())
             .poll());
         let state = state.take();
-        transition_save!(
-            context.state_repo,
-            AlphaFundedBetaDeployed {
-                swap: state.swap,
-                alpha_funded: state.alpha_funded,
-                alpha_deployed: state.alpha_deployed,
-                beta_deployed
-            }
-        )
+        transition_save!(context.state_repo, AlphaFundedBetaDeployed {
+            swap: state.swap,
+            alpha_funded: state.alpha_funded,
+            alpha_deployed: state.alpha_deployed,
+            beta_deployed
+        })
     }
 
     fn poll_alpha_funded_beta_deployed<'s, 'c>(
@@ -471,16 +459,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .asset
             .equal_or_greater_value(&state.swap.beta_asset)
         {
-            transition_save!(
-                context.state_repo,
-                BothFunded {
-                    swap: state.swap,
-                    alpha_funded: state.alpha_funded,
-                    alpha_deployed: state.alpha_deployed,
-                    beta_deployed: state.beta_deployed,
-                    beta_funded
-                }
-            )
+            transition_save!(context.state_repo, BothFunded {
+                swap: state.swap,
+                alpha_funded: state.alpha_funded,
+                alpha_deployed: state.alpha_deployed,
+                beta_deployed: state.beta_deployed,
+                beta_funded
+            })
         } else {
             Err(rfc003::Error::InsufficientFunding)
         }
@@ -501,28 +486,26 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         {
             let state = state.take();
             match redeemed_or_refunded {
-                future::Either::A(beta_redeem_transaction) => transition_save!(
-                    context.state_repo,
-                    AlphaFundedBetaRedeemed {
+                future::Either::A(beta_redeem_transaction) => {
+                    transition_save!(context.state_repo, AlphaFundedBetaRedeemed {
                         swap: state.swap,
                         alpha_deployed: state.alpha_deployed,
                         alpha_funded: state.alpha_funded,
                         beta_deployed: state.beta_deployed,
                         beta_funded: state.beta_funded,
                         beta_redeem_transaction,
-                    }
-                ),
-                future::Either::B(beta_refund_transaction) => transition_save!(
-                    context.state_repo,
-                    AlphaFundedBetaRefunded {
+                    })
+                }
+                future::Either::B(beta_refund_transaction) => {
+                    transition_save!(context.state_repo, AlphaFundedBetaRefunded {
                         swap: state.swap,
                         alpha_deployed: state.alpha_deployed,
                         alpha_funded: state.alpha_funded,
                         beta_deployed: state.beta_deployed,
                         beta_funded: state.beta_funded,
                         beta_refund_transaction,
-                    }
-                ),
+                    })
+                }
             }
         }
 
@@ -537,31 +520,25 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         {
             future::Either::A(alpha_redeemed) => {
                 let state = state.take();
-                transition_save!(
-                    context.state_repo,
-                    AlphaRedeemedBetaFunded {
-                        swap: state.swap,
-                        alpha_deployed: state.alpha_deployed,
-                        alpha_funded: state.alpha_funded,
-                        beta_deployed: state.beta_deployed,
-                        beta_funded: state.beta_funded,
-                        alpha_redeemed,
-                    }
-                )
+                transition_save!(context.state_repo, AlphaRedeemedBetaFunded {
+                    swap: state.swap,
+                    alpha_deployed: state.alpha_deployed,
+                    alpha_funded: state.alpha_funded,
+                    beta_deployed: state.beta_deployed,
+                    beta_funded: state.beta_funded,
+                    alpha_redeemed,
+                })
             }
             future::Either::B(alpha_refunded) => {
                 let state = state.take();
-                transition_save!(
-                    context.state_repo,
-                    AlphaRefundedBetaFunded {
-                        swap: state.swap,
-                        alpha_deployed: state.alpha_deployed,
-                        alpha_funded: state.alpha_funded,
-                        beta_deployed: state.beta_deployed,
-                        beta_funded: state.beta_funded,
-                        alpha_refunded,
-                    }
-                )
+                transition_save!(context.state_repo, AlphaRefundedBetaFunded {
+                    swap: state.swap,
+                    alpha_deployed: state.alpha_deployed,
+                    alpha_funded: state.alpha_funded,
+                    beta_deployed: state.beta_deployed,
+                    beta_funded: state.beta_funded,
+                    alpha_refunded,
+                })
             }
         }
     }
