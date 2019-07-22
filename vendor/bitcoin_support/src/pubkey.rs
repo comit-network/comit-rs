@@ -205,7 +205,7 @@ mod test {
 
     #[test]
     fn roudtrip_serialization_of_pubkeyhash() {
-        let public_key = PublicKey::from_hex(
+        let public_key = PublicKey::from_str(
             "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
         )
         .unwrap();
