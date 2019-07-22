@@ -6,23 +6,11 @@ import { ActionKind, LedgerAction } from "./comit";
 import "./setup_chai";
 
 export interface Test {
-    /**
-     * To be triggered once an action is executed
-     */
     description: string;
     callback: (swapEntity: Entity) => Promise<void>;
 }
 
 export interface Step {
-    /**
-     * Triggers an action and do the callback
-     *
-     * @property actor: the actor for which/that triggers the action
-     * @property action: the name of the action that will be extracted from the COMIT-rs HTTP API
-     * @property waitUntil: a predicate passed on the test after the action is executed
-     * @property test: a test to be executed after the action is executed, the body of a swap request is passed only if `state` property is set
-     *
-     */
     actor: Actor;
     action?:
         | {
@@ -42,8 +30,6 @@ export function createTests(
     listUrl: string,
     initialRequest: object
 ) {
-    // This may need to become more generic at a later stage
-    // However, it would be unnecessary pre-optimisation now.
     const swapLocations: { [key: string]: string } = {};
 
     it(
