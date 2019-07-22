@@ -3,7 +3,7 @@ use bitcoin_support::{
     self, Address, BitcoinQuantity, Hash, OutPoint, Script, SigHashType, SighashComponents,
     Transaction, TxIn, TxOut,
 };
-use secp256k1_support::{DerSerializableSignature, Message};
+use secp256k1_support::Message;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -89,7 +89,7 @@ impl PrimedTransaction {
                         .expect("Should not fail because it is a hash");
                     let signature = keypair.sign_ecdsa(message_to_sign);
 
-                    let mut serialized_signature = signature.serialize_signature_der();
+                    let mut serialized_signature = signature.serialize_der();
                     serialized_signature.push(SigHashType::All as u8);
                     transaction.input[i].witness[j] = serialized_signature;
                 }
