@@ -195,7 +195,7 @@ mod test {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
         let keypair: KeyPair = private_key.key.clone().into();
-        let address = keypair.public_key().into_p2wpkh_address(Network::Mainnet);
+        let address = keypair.public_key().into_p2wpkh_address(Network::Main);
 
         assert_eq!(
             address,
