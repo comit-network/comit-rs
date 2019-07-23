@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
     Hash,
     strum_macros::IntoStaticStr,
     strum_macros::EnumString,
+    strum_macros::Display,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
@@ -57,6 +58,7 @@ impl From<Network> for bitcoin_bech32::constants::Network {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::fmt::Display;
 
     #[test]
     fn string_serialize() {
@@ -67,5 +69,12 @@ mod test {
         assert_eq!(mainnet, "main");
         assert_eq!(regtest, "regtest");
         assert_eq!(testnet, "test");
+    }
+
+    fn assert_display<T: Display>(t: T) {}
+
+    #[test]
+    fn test_derives_display() {
+        assert_display(Network::Regtest);
     }
 }

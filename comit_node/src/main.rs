@@ -111,9 +111,9 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
     BtsieveHttpClient::new(
         &settings.btsieve.url,
         settings.btsieve.bitcoin.poll_interval_secs,
-        settings.btsieve.bitcoin.network.as_str(),
+        settings.btsieve.bitcoin.network,
         settings.btsieve.ethereum.poll_interval_secs,
-        settings.btsieve.ethereum.network.as_str(),
+        settings.btsieve.ethereum.network,
     )
 }
 
