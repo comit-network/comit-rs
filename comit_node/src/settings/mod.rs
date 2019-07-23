@@ -49,11 +49,11 @@ impl Default for ComitNodeSettings {
                 url: btsieve_url,
                 bitcoin: PollParameters {
                     poll_interval_secs: Duration::from_secs(300),
-                    network: "regtest".into(),
+                    network: bitcoin_support::Network::Regtest,
                 },
                 ethereum: PollParameters {
                     poll_interval_secs: Duration::from_secs(20),
-                    network: "regtest".into(),
+                    network: ethereum_support::Network::Regtest,
                 },
             },
             web_gui: Some(HttpSocket {
@@ -103,15 +103,15 @@ pub struct HttpSocket {
 pub struct Btsieve {
     #[serde(with = "url_serde")]
     pub url: url::Url,
-    pub bitcoin: PollParameters,
-    pub ethereum: PollParameters,
+    pub bitcoin: PollParameters<bitcoin_support::Network>,
+    pub ethereum: PollParameters<ethereum_support::Network>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct PollParameters {
+pub struct PollParameters<T> {
     #[serde(with = "self::serde_duration")]
     pub poll_interval_secs: Duration,
-    pub network: String,
+    pub network: T,
 }
 
 impl ComitNodeSettings {

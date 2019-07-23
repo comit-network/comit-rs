@@ -1,8 +1,16 @@
 use serde::{Deserialize, Serialize};
-use strum_macros::{IntoStaticStr, ToString};
 
 #[derive(
-    Clone, Copy, Debug, Eq, PartialEq, Deserialize, Serialize, Hash, ToString, IntoStaticStr,
+    Clone,
+    Copy,
+    Debug,
+    Eq,
+    PartialEq,
+    Deserialize,
+    Serialize,
+    Hash,
+    strum_macros::IntoStaticStr,
+    strum_macros::Display,
 )]
 #[serde(rename_all = "lowercase")]
 pub enum Network {
@@ -30,6 +38,7 @@ impl Network {
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::fmt::Display;
 
     #[test]
     fn string_serialize() {
@@ -60,5 +69,12 @@ mod test {
             Network::from_network_id(String::from("-1")),
             Network::Unknown
         );
+    }
+
+    fn assert_display<T: Display>(t: T) {}
+
+    #[test]
+    fn test_derives_display() {
+        assert_display(Network::Regtest);
     }
 }

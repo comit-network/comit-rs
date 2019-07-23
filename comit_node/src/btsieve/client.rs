@@ -55,10 +55,10 @@ struct QueryResponse<T> {
 impl BtsieveHttpClient {
     pub fn new(
         endpoint: &Url,
-        ethereum_poll_interval: Duration,
-        ethereum_network: &str,
         bitcoin_poll_interval: Duration,
-        bitcoin_network: &str,
+        bitcoin_network: bitcoin_support::Network,
+        ethereum_poll_interval: Duration,
+        ethereum_network: ethereum_support::Network,
     ) -> Self {
         Self {
             client: Client::new(),
