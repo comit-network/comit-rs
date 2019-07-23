@@ -38,7 +38,6 @@ zmq-rs = "0.1"
 [dev-dependencies]
 env_logger = "0.6"
 hex = "0.3"
-rand = "0.6"
 secp256k1_support = { path = "../vendor/secp256k1_support" }
 spectral = "0.6"
 tc_web3_client = { path = "../vendor/tc_web3_client" }

@@ -36,9 +36,8 @@ impl Seed {
     }
 
     pub fn new_random() -> Result<Seed, rand::Error> {
-        let mut rng = OsRng::new()?;
         let mut arr = [0u8; 32];
-        rng.try_fill(&mut arr[..])?;
+        OsRng.try_fill(&mut arr[..])?;
         Ok(Seed(arr))
     }
 }

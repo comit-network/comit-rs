@@ -12,7 +12,6 @@ ethereum_support = { path = "../../vendor/ethereum_support" }
 hex = "0.3"
 hex-literal = "0.2"
 itertools = "0.8.0"
-rand = "0.4"
 regex = "1.1"
 rust-crypto = "0.2"
 secp256k1_support = { path = "../../vendor/secp256k1_support" }

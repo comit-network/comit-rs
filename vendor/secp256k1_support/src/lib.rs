@@ -3,7 +3,7 @@
 
 pub use crate::{keypair::*, public_key::*};
 pub use secp256k1::{
-    constants::SECRET_KEY_SIZE, All, Message, RecoveryId, Secp256k1, SecretKey, Signature,
+    constants::SECRET_KEY_SIZE, rand, All, Message, RecoveryId, Secp256k1, SecretKey, Signature,
 };
 
 mod keypair;
