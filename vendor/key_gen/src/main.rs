@@ -17,12 +17,12 @@ fn main() {
     let public_key = keypair.public_key();
     let mainnet_private_key = PrivateKey {
         compressed: true,
-        network: Network::Main.into(),
+        network: Network::Mainnet.into(),
         key: secret_key,
     };
     let testnet_private_key = PrivateKey {
         compressed: true,
-        network: Network::Test.into(),
+        network: Network::Testnet.into(),
         key: secret_key,
     };
 
@@ -46,12 +46,12 @@ fn main() {
     let eth_address = public_key.to_ethereum_address();
     println!("eth_address: {:?}", eth_address);
     {
-        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Main);
+        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Mainnet);
         println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
     }
 
     {
-        let btc_address_testnet = public_key.into_p2wpkh_address(Network::Test);
+        let btc_address_testnet = public_key.into_p2wpkh_address(Network::Testnet);
         println!("btc_address_p2wpkh_testnet: {:?}", btc_address_testnet);
     }
     {
