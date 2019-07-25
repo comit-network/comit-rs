@@ -24,6 +24,7 @@ use libp2p::core::{
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
+    fmt::Display,
 };
 use tokio::{
     codec::Framed,
@@ -34,7 +35,10 @@ use tokio::{
 #[derivative(Debug)]
 pub struct BamHandler<TSubstream> {
     #[derivative(Debug = "ignore")]
-    substreams: Vec<SubstreamState<TSubstream>>,
+    incoming_substreams: Vec<InSubstreamState<TSubstream>>,
+    #[derivative(Debug = "ignore")]
+    outgoing_substreams: Vec<OutSubstreamState<TSubstream>>,
+
     #[derivative(Debug = "ignore")]
     current_task: Option<Task>,
 
@@ -43,50 +47,78 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
-/// State of an active substream, opened either by us or by the remote.
-enum SubstreamState<TSubstream> {
+/// State of an active substream opened by us.
+enum OutSubstreamState<TSubstream> {
     /// We haven't started opening the outgoing substream yet.
-    OutWaitingOpen { req: PendingOutgoingRequest },
+    WaitingOpen { req: PendingOutgoingRequest },
     /// Waiting to send a message to the remote.
-    OutWaitingSend {
+    WaitingSend {
         msg: Frame,
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush the substream so that the data arrives to the remote.
-    OutWaitingFlush {
+    WaitingFlush {
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
     /// Waiting for the answer to our message
-    OutWaitingAnswer {
+    WaitingAnswer {
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
+    /// The substream is being closed.
+    WaitingClose { stream: BamStream<TSubstream> },
+}
+
+impl<TSubstream> CloseStream for OutSubstreamState<TSubstream> {
+    type TSubstream = TSubstream;
+
+    fn close(stream: BamStream<Self::TSubstream>) -> Self {
+        OutSubstreamState::WaitingClose { stream }
+    }
+}
+
+#[derive(strum_macros::Display)]
+#[allow(missing_debug_implementations)]
+/// State of an active substream opened by peer node.
+enum InSubstreamState<TSubstream> {
     /// Waiting for a request from the remote.
-    InWaitingMessage { stream: BamStream<TSubstream> },
+    WaitingMessage { stream: BamStream<TSubstream> },
     /// Waiting for the user to send the response back to us.
-    InWaitingUser {
+    WaitingUser {
         response_receiver: oneshot::Receiver<Response>,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
-    InWaitingSend {
+    WaitingSend {
         msg: Frame,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush an answer back to the remote.
-    InWaitingFlush { stream: BamStream<TSubstream> },
+    WaitingFlush { stream: BamStream<TSubstream> },
     /// The substream is being closed.
-    Closing { stream: BamStream<TSubstream> },
+    WaitingClose { stream: BamStream<TSubstream> },
+}
+
+impl<TSubstream> CloseStream for InSubstreamState<TSubstream> {
+    type TSubstream = TSubstream;
+
+    fn close(stream: BamStream<Self::TSubstream>) -> Self {
+        InSubstreamState::WaitingClose { stream }
+    }
 }
 
 #[allow(missing_debug_implementations)]
-struct Advanced<TSubstream> {
-    /// The optional new state we transitioned to
-    new_state: Option<SubstreamState<TSubstream>>,
-    /// The optional event we generated as part of the transition
+struct Advanced<S> {
+    /// The optional new state we transitioned to.
+    new_state: Option<S>,
+    /// The optional event we generated as part of the transition.
     event: Option<BamHandlerEvent>,
+}
+
+trait Advance: Sized {
+    fn advance(self, known_headers: &HashMap<String, HashSet<String>>) -> Advanced<Self>;
 }
 
 #[derive(Debug)]
@@ -107,8 +139,8 @@ impl From<bam::json::Error> for Error {
     }
 }
 
-impl<TSubstream> Advanced<TSubstream> {
-    fn transition_to(new_state: SubstreamState<TSubstream>) -> Self {
+impl<S> Advanced<S> {
+    fn transition_to(new_state: S) -> Self {
         Self {
             new_state: Some(new_state),
             event: None,
@@ -122,72 +154,76 @@ impl<TSubstream> Advanced<TSubstream> {
         }
     }
 
-    fn error<E: Into<Error>>(stream: BamStream<TSubstream>, error: E) -> Self {
-        let error = error.into();
-
-        Self {
-            new_state: Some(SubstreamState::Closing { stream }),
-            event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::Error { error })),
-        }
-    }
-
     fn end() -> Self {
         Self {
             new_state: None,
             event: None,
         }
     }
+}
 
-    fn closed_unexpectedly(stream: BamStream<TSubstream>) -> Self {
+impl<S: CloseStream> Advanced<S> {
+    fn error<E: Into<Error>>(stream: BamStream<S::TSubstream>, error: E) -> Self {
+        let error = error.into();
+
         Self {
-            new_state: Some(SubstreamState::Closing { stream }),
-            event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
+            new_state: Some(S::close(stream)),
+            event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::Error { error })),
         }
     }
 }
 
-impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
-    fn advance(self, known_headers: &HashMap<String, HashSet<String>>) -> Advanced<TSubstream> {
-        use self::SubstreamState::*;
+trait CloseStream: Sized {
+    type TSubstream;
+
+    fn close(stream: BamStream<Self::TSubstream>) -> Self;
+}
+
+impl<TSubstream: AsyncRead + AsyncWrite> Advance for OutSubstreamState<TSubstream> {
+    fn advance(
+        self,
+        known_headers: &HashMap<String, HashSet<String>>,
+    ) -> Advanced<OutSubstreamState<TSubstream>> {
+        use self::OutSubstreamState::*;
         match self {
-            OutWaitingOpen { req } => {
+            WaitingOpen { req } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(BamProtocol {}),
                     info: req,
                 })
             }
-            OutWaitingSend {
+            WaitingSend {
                 msg,
                 response_sender,
                 mut stream,
             } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => OutWaitingFlush {
+                Ok(AsyncSink::Ready) => WaitingFlush {
                     response_sender,
                     stream,
                 }
                 .advance(known_headers),
-                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(OutWaitingSend {
+                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(WaitingSend {
                     msg,
                     response_sender,
                     stream,
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            OutWaitingFlush {
+            WaitingFlush {
                 response_sender,
                 mut stream,
             } => match stream.poll_complete() {
-                Ok(Async::Ready(_)) => Advanced::transition_to(OutWaitingAnswer {
+                Ok(Async::Ready(_)) => Advanced::transition_to(WaitingAnswer {
                     response_sender,
                     stream,
                 }),
-                Ok(Async::NotReady) => Advanced::transition_to(OutWaitingFlush {
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush {
                     response_sender,
                     stream,
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            OutWaitingAnswer {
+            WaitingAnswer {
                 response_sender,
                 mut stream,
             } => match stream.poll() {
@@ -195,7 +231,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                     let expected_type = FrameType::Response;
                     if frame.frame_type != expected_type {
                         return Advanced {
-                            new_state: Some(Closing { stream }),
+                            new_state: Some(WaitingClose { stream }),
                             event: Some(ProtocolsHandlerEvent::Custom(
                                 InnerEvent::UnexpectedFrameType {
                                     bad_frame: frame,
@@ -223,23 +259,43 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                         });
 
                     Advanced {
-                        new_state: Some(Closing { stream }),
+                        new_state: Some(WaitingClose { stream }),
                         event: Some(ProtocolsHandlerEvent::Custom(event)),
                     }
                 }
-                Ok(Async::Ready(None)) => Advanced::closed_unexpectedly(stream),
-                Ok(Async::NotReady) => Advanced::transition_to(OutWaitingAnswer {
+                Ok(Async::Ready(None)) => Advanced {
+                    new_state: Some(OutSubstreamState::WaitingClose { stream }),
+                    event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
+                },
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingAnswer {
                     response_sender,
                     stream,
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            InWaitingMessage { mut stream } => match stream.poll() {
+
+            WaitingClose { mut stream } => match stream.close() {
+                Ok(Async::Ready(_)) => Advanced::end(),
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingClose { stream }),
+                Err(error) => Advanced::error(stream, error),
+            },
+        }
+    }
+}
+
+impl<TSubstream: AsyncRead + AsyncWrite> Advance for InSubstreamState<TSubstream> {
+    fn advance(
+        self,
+        known_headers: &HashMap<String, HashSet<String>>,
+    ) -> Advanced<InSubstreamState<TSubstream>> {
+        use self::InSubstreamState::*;
+        match self {
+            WaitingMessage { mut stream } => match stream.poll() {
                 Ok(Async::Ready(Some(frame))) => {
                     let expected_type = FrameType::Request;
                     if frame.frame_type != expected_type {
                         return Advanced {
-                            new_state: Some(Closing { stream }),
+                            new_state: Some(WaitingClose { stream }),
                             event: Some(ProtocolsHandlerEvent::Custom(
                                 InnerEvent::UnexpectedFrameType {
                                     bad_frame: frame,
@@ -268,7 +324,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                     let (sender, receiver) = oneshot::channel();
 
                     Advanced {
-                        new_state: Some(InWaitingUser {
+                        new_state: Some(WaitingUser {
                             response_receiver: receiver,
                             stream,
                         }),
@@ -286,41 +342,44 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                         })),
                     }
                 }
-                Ok(Async::Ready(None)) => Advanced::closed_unexpectedly(stream),
-                Ok(Async::NotReady) => Advanced::transition_to(InWaitingMessage { stream }),
+                Ok(Async::Ready(None)) => Advanced {
+                    new_state: Some(InSubstreamState::WaitingClose { stream }),
+                    event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
+                },
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingMessage { stream }),
                 Err(error) => Advanced::error(stream, error),
             },
-            InWaitingUser {
+            WaitingUser {
                 mut response_receiver,
                 stream,
             } => match response_receiver.poll() {
-                Ok(Async::Ready(response)) => InWaitingSend {
+                Ok(Async::Ready(response)) => WaitingSend {
                     msg: response.into_frame(),
                     stream,
                 }
                 .advance(known_headers),
-                Ok(Async::NotReady) => Advanced::transition_to(InWaitingUser {
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingUser {
                     response_receiver,
                     stream,
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            InWaitingSend { msg, mut stream } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => InWaitingFlush { stream }.advance(known_headers),
+            WaitingSend { msg, mut stream } => match stream.start_send(msg) {
+                Ok(AsyncSink::Ready) => WaitingFlush { stream }.advance(known_headers),
                 Ok(AsyncSink::NotReady(msg)) => {
-                    Advanced::transition_to(InWaitingSend { msg, stream })
+                    Advanced::transition_to(WaitingSend { msg, stream })
                 }
                 Err(error) => Advanced::error(stream, error),
             },
-            InWaitingFlush { mut stream } => match stream.poll_complete() {
-                Ok(Async::Ready(_)) => Advanced::transition_to(Closing { stream }),
-                Ok(Async::NotReady) => Advanced::transition_to(InWaitingFlush { stream }),
+            WaitingFlush { mut stream } => match stream.poll_complete() {
+                Ok(Async::Ready(_)) => Advanced::transition_to(WaitingClose { stream }),
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush { stream }), //
                 Err(error) => Advanced::error(stream, error),
             },
 
-            Closing { mut stream } => match stream.close() {
+            WaitingClose { mut stream } => match stream.close() {
                 Ok(Async::Ready(_)) => Advanced::end(),
-                Ok(Async::NotReady) => Advanced::transition_to(Closing { stream }),
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingClose { stream }),
                 Err(error) => Advanced::error(stream, error),
             },
         }
@@ -331,7 +390,8 @@ impl<TSubstream> BamHandler<TSubstream> {
     pub fn new(known_headers: HashMap<String, HashSet<String>>) -> Self {
         Self {
             known_headers,
-            substreams: Vec::new(),
+            incoming_substreams: Vec::new(),
+            outgoing_substreams: Vec::new(),
             current_task: None,
         }
     }
@@ -396,8 +456,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         &mut self,
         stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
     ) {
-        self.substreams
-            .push(SubstreamState::InWaitingMessage { stream });
+        self.incoming_substreams
+            .push(InSubstreamState::WaitingMessage { stream });
 
         if let Some(task) = &self.current_task {
             task.notify()
@@ -411,11 +471,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     ) {
         let PendingOutgoingRequest { request, channel } = pending_incoming_request;
 
-        self.substreams.push(SubstreamState::OutWaitingSend {
-            msg: request.into_frame(),
-            response_sender: channel,
-            stream,
-        });
+        self.outgoing_substreams
+            .push(OutSubstreamState::WaitingSend {
+                msg: request.into_frame(),
+                response_sender: channel,
+                stream,
+            });
 
         if let Some(task) = &self.current_task {
             task.notify()
@@ -425,8 +486,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
             BehaviourInEvent::PendingOutgoingRequest { request } => {
-                self.substreams
-                    .push(SubstreamState::OutWaitingOpen { req: request });
+                self.outgoing_substreams
+                    .push(OutSubstreamState::WaitingOpen { req: request });
 
                 if let Some(task) = &self.current_task {
                     task.notify()
@@ -447,31 +508,45 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     }
 
     fn poll(&mut self) -> Poll<BamHandlerEvent, Self::Error> {
-        log::debug!("polling {} substreams", self.substreams.len());
+        if let Some(result) = poll_substreams(&mut self.outgoing_substreams, &self.known_headers) {
+            return result;
+        }
 
-        // We remove each element from `substreams` one by one and add them back.
-        for n in (0..self.substreams.len()).rev() {
-            let substream_state = self.substreams.swap_remove(n);
-
-            let log_message = format!("transition from {}", substream_state);
-
-            let Advanced { new_state, event } = substream_state.advance(&self.known_headers);
-
-            if let Some(new_state) = new_state {
-                log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
-                self.substreams.push(new_state);
-            }
-
-            if let Some(event) = event {
-                log::trace!(target: "sub-libp2p", "emitting {:?}", event);
-                return Ok(Async::Ready(event));
-            }
+        if let Some(result) = poll_substreams(&mut self.incoming_substreams, &self.known_headers) {
+            return result;
         }
 
         self.current_task = Some(futures::task::current());
 
         Ok(Async::NotReady)
     }
+}
+
+fn poll_substreams<S: Display + Advance>(
+    substreams: &mut Vec<S>,
+    known_headers: &HashMap<String, HashSet<String>>,
+) -> Option<Poll<BamHandlerEvent, bam::json::Error>> {
+    log::debug!("polling {} substreams", substreams.len());
+
+    // We remove each element from `substreams` one by one and add them back.
+    for n in (0..substreams.len()).rev() {
+        let substream_state = substreams.swap_remove(n);
+
+        let log_message = format!("transition from {}", substream_state);
+
+        let Advanced { new_state, event } = substream_state.advance(known_headers);
+
+        if let Some(new_state) = new_state {
+            log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
+            substreams.push(new_state);
+        }
+
+        if let Some(event) = event {
+            log::trace!(target: "sub-libp2p", "emitting {:?}", event);
+            return Some(Ok(Async::Ready(event)));
+        }
+    }
+    None
 }
 
 fn malformed_request_response(error: serde_json::Error) -> Response {
