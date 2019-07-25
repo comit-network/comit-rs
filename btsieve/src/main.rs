@@ -1,5 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 use bitcoin_support::Network as BitcoinNetwork;
 use bitcoincore_rpc::RpcApi;
