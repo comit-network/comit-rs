@@ -350,10 +350,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        if alpha_funded
-            .asset
-            .equal_or_greater_value(&state.swap.alpha_asset)
-        {
+        if alpha_funded.asset.equal_value(&state.swap.alpha_asset) {
             transition_save!(context.state_repo, AlphaFunded {
                 swap: state.swap,
                 alpha_funded,
@@ -455,10 +452,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        if beta_funded
-            .asset
-            .equal_or_greater_value(&state.swap.beta_asset)
-        {
+        if beta_funded.asset.equal_value(&state.swap.beta_asset) {
             transition_save!(context.state_repo, BothFunded {
                 swap: state.swap,
                 alpha_funded: state.alpha_funded,

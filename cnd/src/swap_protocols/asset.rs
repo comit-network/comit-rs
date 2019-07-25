@@ -21,22 +21,22 @@ pub trait Asset:
     + FromHttpAsset
     + Into<AssetKind>
 {
-    fn equal_or_greater_value(&self, other: &Self) -> bool;
+    fn equal_value(&self, other: &Self) -> bool;
 }
 
 impl Asset for BitcoinQuantity {
-    fn equal_or_greater_value(&self, other: &BitcoinQuantity) -> bool {
-        self >= other
+    fn equal_value(&self, other: &BitcoinQuantity) -> bool {
+        self == other
     }
 }
 impl Asset for EtherQuantity {
-    fn equal_or_greater_value(&self, other: &EtherQuantity) -> bool {
-        self >= other
+    fn equal_value(&self, other: &EtherQuantity) -> bool {
+        self == other
     }
 }
 impl Asset for Erc20Token {
-    fn equal_or_greater_value(&self, other: &Erc20Token) -> bool {
-        self.token_contract == other.token_contract && self.quantity >= other.quantity
+    fn equal_value(&self, other: &Erc20Token) -> bool {
+        self.token_contract == other.token_contract && self.quantity == other.quantity
     }
 }
 
