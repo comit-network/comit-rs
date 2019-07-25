@@ -1,4 +1,7 @@
+#![warn(unused_extern_crates, rust_2018_idioms)]
+#![forbid(unsafe_code)]
 #![allow(clippy::print_stdout)]
+
 use bitcoin_support::{IntoP2wpkhAddress, Network, PrivateKey, PubkeyHash};
 use ethereum_support::ToEthereumAddress;
 use secp256k1_support::KeyPair;

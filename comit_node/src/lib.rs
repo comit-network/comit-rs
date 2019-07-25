@@ -1,5 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 // Cannot do `#[strum_discriminants(derive(strum_macros::EnumString))]` at the
 // moment. Hence we need to `#[macro_use]` in order to derive strum macros on
