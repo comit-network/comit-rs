@@ -32,6 +32,7 @@ enum ConnectionState {
     },
 }
 
+/// Events that occur 'out'side of this node i.e. events from a peer node.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
     PendingIncomingRequest {
@@ -40,6 +41,7 @@ pub enum BehaviourOutEvent {
     },
 }
 
+/// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum BehaviourInEvent {
     PendingOutgoingRequest { request: PendingOutgoingRequest },
