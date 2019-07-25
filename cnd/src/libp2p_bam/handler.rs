@@ -46,15 +46,15 @@ pub struct BamHandler<TSubstream> {
 /// State of an active substream, opened either by us or by the remote.
 enum SubstreamState<TSubstream> {
     /// We haven't started opening the outgoing substream yet.
-    OutPendingOpen { req: PendingOutgoingRequest },
+    OutWaitingOpen { req: PendingOutgoingRequest },
     /// Waiting to send a message to the remote.
-    OutPendingSend {
+    OutWaitingSend {
         msg: Frame,
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush the substream so that the data arrives to the remote.
-    OutPendingFlush {
+    OutWaitingFlush {
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
@@ -71,12 +71,12 @@ enum SubstreamState<TSubstream> {
         stream: BamStream<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
-    InPendingSend {
+    InWaitingSend {
         msg: Frame,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to flush an answer back to the remote.
-    InPendingFlush { stream: BamStream<TSubstream> },
+    InWaitingFlush { stream: BamStream<TSubstream> },
     /// The substream is being closed.
     Closing { stream: BamStream<TSubstream> },
 }
@@ -150,30 +150,30 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
     fn advance(self, known_headers: &HashMap<String, HashSet<String>>) -> Advanced<TSubstream> {
         use self::SubstreamState::*;
         match self {
-            OutPendingOpen { req } => {
+            OutWaitingOpen { req } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(BamProtocol {}),
                     info: req,
                 })
             }
-            OutPendingSend {
+            OutWaitingSend {
                 msg,
                 response_sender,
                 mut stream,
             } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => OutPendingFlush {
+                Ok(AsyncSink::Ready) => OutWaitingFlush {
                     response_sender,
                     stream,
                 }
                 .advance(known_headers),
-                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(OutPendingSend {
+                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(OutWaitingSend {
                     msg,
                     response_sender,
                     stream,
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            OutPendingFlush {
+            OutWaitingFlush {
                 response_sender,
                 mut stream,
             } => match stream.poll_complete() {
@@ -181,7 +181,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                     response_sender,
                     stream,
                 }),
-                Ok(Async::NotReady) => Advanced::transition_to(OutPendingFlush {
+                Ok(Async::NotReady) => Advanced::transition_to(OutWaitingFlush {
                     response_sender,
                     stream,
                 }),
@@ -294,7 +294,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                 mut response_receiver,
                 stream,
             } => match response_receiver.poll() {
-                Ok(Async::Ready(response)) => InPendingSend {
+                Ok(Async::Ready(response)) => InWaitingSend {
                     msg: response.into_frame(),
                     stream,
                 }
@@ -305,16 +305,16 @@ impl<TSubstream: AsyncRead + AsyncWrite> SubstreamState<TSubstream> {
                 }),
                 Err(error) => Advanced::error(stream, error),
             },
-            InPendingSend { msg, mut stream } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => InPendingFlush { stream }.advance(known_headers),
+            InWaitingSend { msg, mut stream } => match stream.start_send(msg) {
+                Ok(AsyncSink::Ready) => InWaitingFlush { stream }.advance(known_headers),
                 Ok(AsyncSink::NotReady(msg)) => {
-                    Advanced::transition_to(InPendingSend { msg, stream })
+                    Advanced::transition_to(InWaitingSend { msg, stream })
                 }
                 Err(error) => Advanced::error(stream, error),
             },
-            InPendingFlush { mut stream } => match stream.poll_complete() {
+            InWaitingFlush { mut stream } => match stream.poll_complete() {
                 Ok(Async::Ready(_)) => Advanced::transition_to(Closing { stream }),
-                Ok(Async::NotReady) => Advanced::transition_to(InPendingFlush { stream }),
+                Ok(Async::NotReady) => Advanced::transition_to(InWaitingFlush { stream }),
                 Err(error) => Advanced::error(stream, error),
             },
 
@@ -411,7 +411,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     ) {
         let PendingOutgoingRequest { request, channel } = pending_incoming_request;
 
-        self.substreams.push(SubstreamState::OutPendingSend {
+        self.substreams.push(SubstreamState::OutWaitingSend {
             msg: request.into_frame(),
             response_sender: channel,
             stream,
@@ -426,7 +426,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         match event {
             BehaviourInEvent::PendingOutgoingRequest { request } => {
                 self.substreams
-                    .push(SubstreamState::OutPendingOpen { req: request });
+                    .push(SubstreamState::OutWaitingOpen { req: request });
 
                 if let Some(task) = &self.current_task {
                     task.notify()
