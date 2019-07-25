@@ -42,7 +42,7 @@ pub enum BehaviourOutEvent {
 
 #[derive(Debug)]
 pub enum BehaviourInEvent {
-    PendingIncomingRequest { request: PendingOutgoingRequest },
+    PendingOutgoingRequest { request: PendingOutgoingRequest },
 }
 
 #[derive(Debug)]
@@ -95,7 +95,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     .unwrap_or_else(Vec::new);
 
                 entry.insert(ConnectionState::Connecting {
-                    pending_events: vec![BehaviourInEvent::PendingIncomingRequest { request }],
+                    pending_events: vec![BehaviourInEvent::PendingOutgoingRequest { request }],
                     address_hints,
                 });
             }
@@ -107,7 +107,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(BehaviourInEvent::PendingIncomingRequest { request });
+                        pending_events.push(BehaviourInEvent::PendingOutgoingRequest { request });
 
                         if let Some(address) = dial_information.address_hint {
                             // We insert at the front because we consider the new address to be the
@@ -121,7 +121,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
                                 peer_id: dial_information.peer_id,
-                                event: BehaviourInEvent::PendingIncomingRequest { request },
+                                event: BehaviourInEvent::PendingOutgoingRequest { request },
                             })
                             .expect("we own the receiver");
                     }

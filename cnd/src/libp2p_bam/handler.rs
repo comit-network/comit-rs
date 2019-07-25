@@ -424,7 +424,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
-            BehaviourInEvent::PendingIncomingRequest { request } => {
+            BehaviourInEvent::PendingOutgoingRequest { request } => {
                 self.substreams
                     .push(SubstreamState::OutPendingOpen { req: request });
 
