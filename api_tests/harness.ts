@@ -8,7 +8,7 @@ import Mocha from "mocha";
 import path from "path";
 import * as toml from "toml";
 import { BtsieveRunner } from "./lib/btsieve_runner";
-import { MetaComitNodeConfig } from "./lib/comit";
+import { MetaCndConfig } from "./lib/comit";
 import { LedgerRunner } from "./lib/ledger_runner";
 import { HarnessGlobal, sleep } from "./lib/util";
 
@@ -47,33 +47,24 @@ class ComitRunner {
         this.runningNodes = {};
     }
 
-    public async ensureComitNodesRunning(
-        comitNodes: Array<[string, MetaComitNodeConfig]>
-    ) {
+    public async ensureCndsRunning(cnds: Array<[string, MetaCndConfig]>) {
         console.log(
-            "Starting comit node for " +
-                comitNodes.map(([name]) => name).join(", ")
+            "Starting cnd for " + cnds.map(([name]) => name).join(", ")
         );
-        for (const [name, comitConfig] of comitNodes) {
+        for (const [name, comitConfig] of cnds) {
             if (this.runningNodes[name]) {
                 continue;
             }
 
             this.runningNodes[name] = await spawn(
-                projectRoot + "/target/debug/comit_node",
+                projectRoot + "/target/debug/cnd",
                 ["--config", comitConfig.config_file],
                 {
                     cwd: projectRoot,
                     stdio: [
                         "ignore",
-                        fs.openSync(
-                            logDir + "/comit_node-" + name + ".log",
-                            "w"
-                        ),
-                        fs.openSync(
-                            logDir + "/comit_node-" + name + ".log",
-                            "w"
-                        ),
+                        fs.openSync(logDir + "/cnd-" + name + ".log", "w"),
+                        fs.openSync(logDir + "/cnd-" + name + ".log", "w"),
                     ],
                 }
             );
@@ -84,8 +75,7 @@ class ComitRunner {
                 "exit",
                 (code: number, signal: number) => {
                     console.log(
-                        `comit-node ${name} exited with ${code ||
-                            "signal " + signal}`
+                        `cnd ${name} exited with ${code || "signal " + signal}`
                     );
                 }
             );
@@ -94,11 +84,11 @@ class ComitRunner {
         await sleep(2000);
     }
 
-    public stopComitNodes() {
+    public stopCnds() {
         const names = Object.keys(this.runningNodes);
 
         if (names.length > 0) {
-            console.log("Stopping comit nodes: " + names.join(", "));
+            console.log("Stopping cnds: " + names.join(", "));
             for (const process of Object.values(this.runningNodes)) {
                 process.kill();
             }
@@ -135,7 +125,7 @@ async function runTests(testFiles: string[]) {
     process.on("exit", () => {
         console.log("cleaning up");
         btsieveRunner.stopBtsieves();
-        nodeRunner.stopComitNodes();
+        nodeRunner.stopCnds();
         ledgerRunner.stopLedgers();
         console.log("cleanup done");
     });
@@ -155,10 +145,8 @@ async function runTests(testFiles: string[]) {
             btsieveRunner.ensureBtsievesRunning(Object.entries(config.btsieve));
         }
 
-        if (config.comit_node) {
-            await nodeRunner.ensureComitNodesRunning(
-                Object.entries(config.comit_node)
-            );
+        if (config.cnd) {
+            await nodeRunner.ensureCndsRunning(Object.entries(config.cnd));
         }
 
         const runTests = new Promise(res => {
@@ -178,7 +166,7 @@ async function runTests(testFiles: string[]) {
             process.exit(1);
         }
 
-        nodeRunner.stopComitNodes();
+        nodeRunner.stopCnds();
         btsieveRunner.stopBtsieves();
     }
 

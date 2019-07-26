@@ -42,7 +42,7 @@ declare var global: HarnessGlobal;
 
     describe("Response shape", () => {
         before(async () => {
-            const res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -72,22 +72,20 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Response for GET /swaps is a valid siren document", async () => {
-            const res = await request(alice.comitNodeHttpApiUrl()).get(
-                "/swaps"
-            );
+            const res = await request(alice.cndHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
         it("[Bob] Response for GET /swaps is a valid siren document", async () => {
-            const res = await request(bob.comitNodeHttpApiUrl()).get("/swaps");
+            const res = await request(bob.cndHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
         it("[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
             const swapsEntity = await alice
-                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
@@ -96,7 +94,7 @@ declare var global: HarnessGlobal;
                 link.rel.includes("self")
             ).href;
 
-            const swapResponse = await request(alice.comitNodeHttpApiUrl()).get(
+            const swapResponse = await request(alice.cndHttpApiUrl()).get(
                 selfLink
             );
             const swapEntity = swapResponse.body as Entity;
@@ -109,7 +107,7 @@ declare var global: HarnessGlobal;
 
         it("[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema", async () => {
             const swapsEntity = await bob
-                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
@@ -118,7 +116,7 @@ declare var global: HarnessGlobal;
                 link.rel.includes("self")
             ).href;
 
-            const swapResponse = await request(bob.comitNodeHttpApiUrl()).get(
+            const swapResponse = await request(bob.cndHttpApiUrl()).get(
                 selfLink
             );
             const swapEntity = swapResponse.body as Entity;

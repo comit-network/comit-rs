@@ -1,6 +1,6 @@
 /// HTTP API
 
-import { BtsieveForComitNodeConfig } from "./actor";
+import { BtsieveForCndConfig } from "./actor";
 
 export type LedgerAction =
     | {
@@ -69,21 +69,21 @@ export enum ActionKind {
 
 // **** Config files ****//
 
-export interface MetaComitNodeConfig {
+export interface MetaCndConfig {
     // snake_case as it comes from TOML file
     host: string;
     config_file: string;
 }
 
 /// The comit-rs config file
-export interface ComitNodeConfig {
+export interface CndConfig {
     comit: { comit_listen: string; secret_seed: string };
     http_api: { address: string; port: number };
     web_gui: { address: string; port: number };
     network: { listen: string[] };
     btsieve: {
         url: string;
-        bitcoin: BtsieveForComitNodeConfig;
-        ethereum: BtsieveForComitNodeConfig;
+        bitcoin: BtsieveForCndConfig;
+        ethereum: BtsieveForCndConfig;
     };
 }

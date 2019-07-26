@@ -1,7 +1,7 @@
 use warp::path;
 // Keep `use warp::path;` separate to stop cargo fmt changing it to
 // `warp::path::{self}`
-use crate::settings::ComitNodeSettings;
+use crate::settings::CndSettings;
 use comit_i::Asset;
 use http::Response;
 use mime_guess;
@@ -11,21 +11,21 @@ use std::{
 };
 use warp::{filters::BoxedFilter, path::Tail, Filter, Rejection, Reply};
 
-pub fn create(settings: ComitNodeSettings) -> BoxedFilter<(impl Reply,)> {
+pub fn create(settings: CndSettings) -> BoxedFilter<(impl Reply,)> {
     let settings = warp::any().map(move || settings.clone());
 
-    let comit_node_config = path!("config" / "comitNode.js")
+    let cnd_config = path!("config" / "cnd.js")
         .and(warp::get2())
         .and(warp::query::<GetConfigQueryParams>())
         .and(warp::path::end())
         .and(settings)
-        .and_then(serve_comit_node_config);
+        .and_then(serve_cnd_config);
 
     let comit_i = warp::any()
         .and(warp::path::tail())
         .and_then(|path: Tail| serve_comit_i_file(path.as_str()));
 
-    comit_node_config.or(comit_i).boxed()
+    cnd_config.or(comit_i).boxed()
 }
 
 fn serve_comit_i_file(path: &str) -> Result<impl Reply, Rejection> {
@@ -55,14 +55,14 @@ pub struct GetConfigQueryParams {
 
 #[derive(Debug, serde::Serialize)]
 #[serde(rename_all = "camelCase")]
-struct ComitNodeConnectionDetails {
+struct CndConnectionDetails {
     pub host: IpAddr,
     pub port: u16,
 }
 
-impl ComitNodeConnectionDetails {
-    fn new(settings: ComitNodeSettings) -> Self {
-        ComitNodeConnectionDetails {
+impl CndConnectionDetails {
+    fn new(settings: CndSettings) -> Self {
+        CndConnectionDetails {
             host: if settings.http_api.address.is_unspecified() {
                 IpAddr::V4(Ipv4Addr::LOCALHOST)
             } else {
@@ -73,14 +73,14 @@ impl ComitNodeConnectionDetails {
     }
 }
 
-fn serve_comit_node_config(
+fn serve_cnd_config(
     query_params: GetConfigQueryParams,
-    settings: ComitNodeSettings,
+    settings: CndSettings,
 ) -> Result<Response<String>, Rejection> {
-    let conn_details = ComitNodeConnectionDetails::new(settings);
+    let conn_details = CndConnectionDetails::new(settings);
     let conn_details = serde_json::to_string(&conn_details).map_err(|e| {
         warp::reject::custom(format!(
-            "issue deserializing comit node connection details: {:?}",
+            "issue deserializing cnd connection details: {:?}",
             e
         ))
     })?;
@@ -94,7 +94,7 @@ fn serve_comit_node_config(
         .body(body)
         .map_err(|e| {
             warp::reject::custom(format!(
-                "issue creating comit node connection details response: {:?}",
+                "issue creating cnd connection details response: {:?}",
                 e
             ))
         })

@@ -17,7 +17,7 @@ use std::{
 use url::Url;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct ComitNodeSettings {
+pub struct CndSettings {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
@@ -27,16 +27,16 @@ pub struct ComitNodeSettings {
     pub log_levels: LogLevels,
 }
 
-impl Default for ComitNodeSettings {
+impl Default for CndSettings {
     fn default() -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/8011"
             .parse()
-            .expect("comit_node listen address could not be parsed");
+            .expect("cnd listen address could not be parsed");
         let btsieve_url =
             Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
         let seed = Seed::new_random().expect("Could not generate random seed");
 
-        ComitNodeSettings {
+        CndSettings {
             comit: Comit { secret_seed: seed },
             network: Network {
                 listen: vec![comit_listen],
@@ -61,7 +61,7 @@ impl Default for ComitNodeSettings {
                 port: 8080,
             }),
             log_levels: LogLevels {
-                comit_node: LevelFilter::Debug,
+                cnd: LevelFilter::Debug,
             },
         }
     }
@@ -72,15 +72,13 @@ fn default_log() -> LevelFilter {
 }
 
 fn default_log_levels() -> LogLevels {
-    LogLevels {
-        comit_node: default_log(),
-    }
+    LogLevels { cnd: default_log() }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct LogLevels {
     #[serde(with = "self::serde_log", default = "default_log")]
-    pub comit_node: LevelFilter,
+    pub cnd: LevelFilter,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -114,18 +112,18 @@ pub struct PollParameters<T> {
     pub network: T,
 }
 
-impl ComitNodeSettings {
+impl CndSettings {
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, ConfigError> {
-        ComitNodeSettings::ensure_directory_exists(&config_file)?;
+        CndSettings::ensure_directory_exists(&config_file)?;
 
-        ComitNodeSettings::write_to_file(config_file, &self)?;
+        CndSettings::write_to_file(config_file, &self)?;
 
         Ok(self)
     }
 
     fn write_to_file(
         config_file: PathBuf,
-        default_settings: &ComitNodeSettings,
+        default_settings: &CndSettings,
     ) -> Result<(), ConfigError> {
         let toml_string = toml::to_string(&default_settings).map_err(|error| {
             ConfigError::Message(format!("Could not serialize config: {:?}", error))
@@ -188,8 +186,8 @@ mod tests {
     use spectral::prelude::*;
     use std::{env, fs};
 
-    fn comit_settings() -> Result<ComitNodeSettings, ConfigError> {
-        ComitNodeSettings::read("./config/comit_node.toml")
+    fn comit_settings() -> Result<CndSettings, ConfigError> {
+        CndSettings::read("./config/cnd.toml")
     }
 
     #[test]
@@ -212,16 +210,16 @@ mod tests {
     fn config_folder_does_not_exist_will_create_folder_and_config_file() {
         let tmp_dir = env::temp_dir();
         let config_path = Path::join(&tmp_dir, "i_am_invincible");
-        let config_file = "comit_node.toml";
+        let config_file = "cnd.toml";
 
         delete_tmp_files(&config_path, config_file);
 
         let config_file_incl_path = config_path.clone().join(config_file.clone());
 
-        let default_settings = ComitNodeSettings::default();
+        let default_settings = CndSettings::default();
 
         let default_settings = default_settings.write_to(config_file_incl_path.clone());
-        let settings = ComitNodeSettings::read(config_file_incl_path.clone());
+        let settings = CndSettings::read(config_file_incl_path.clone());
 
         delete_tmp_files(&config_path, &config_file);
 

@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use comit_node::{
+use cnd::{
     btsieve::BtsieveHttpClient,
     comit_client::Client,
     comit_i_routes,
@@ -10,7 +10,7 @@ use comit_node::{
     logging,
     network::{self, SwarmInfo},
     seed::Seed,
-    settings::ComitNodeSettings,
+    settings::CndSettings,
     swap_protocols::{
         self,
         metadata_store::MetadataStore,
@@ -107,7 +107,7 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient {
+fn create_btsieve_api_client(settings: &CndSettings) -> BtsieveHttpClient {
     BtsieveHttpClient::new(
         &settings.btsieve.url,
         settings.btsieve.bitcoin.poll_interval_secs,
@@ -118,7 +118,7 @@ fn create_btsieve_api_client(settings: &ComitNodeSettings) -> BtsieveHttpClient 
 }
 
 fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: SwarmInfo>(
-    settings: &ComitNodeSettings,
+    settings: &CndSettings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
@@ -144,7 +144,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: S
     runtime.spawn(server);
 }
 
-fn spawn_comit_i_instance(settings: ComitNodeSettings, runtime: &mut tokio::runtime::Runtime) {
+fn spawn_comit_i_instance(settings: CndSettings, runtime: &mut tokio::runtime::Runtime) {
     if let Some(comit_i_settings) = &settings.web_gui {
         let routes = comit_i_routes::create(settings.clone());
 
@@ -158,7 +158,7 @@ fn spawn_comit_i_instance(settings: ComitNodeSettings, runtime: &mut tokio::runt
     }
 }
 
-fn auth_origin(settings: &ComitNodeSettings) -> String {
+fn auth_origin(settings: &CndSettings) -> String {
     let auth_origin = match &settings.web_gui {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
         None => "http://localhost:3000".to_string(),
