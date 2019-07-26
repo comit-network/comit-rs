@@ -1,5 +1,5 @@
 // These are tests related to embedding for comit-i in comit-rs
-// They are system tests that checks that comit-i can be accessed and that comit-i can connect to comit_node
+// They are system tests that checks that comit-i can be accessed and that comit-i can connect to cnd
 // Functional tests on the GUI should only be ran in the comit-i repo!
 import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
@@ -88,7 +88,7 @@ setTimeout(async function() {
             expect(res).to.have.status(200);
         });
 
-        it("[David] returns comit_node http api settings on /config/comit_node.js for GET", async function() {
+        it("[David] returns cnd http api settings on /config/cnd.js for GET", async function() {
             const res = await request(david.webGuiUrl())
                 .get("/config/cnd.js?callback=callbackFunctionName")
                 .set("Accept", "application/javascript")

@@ -2,7 +2,7 @@
 secret_seed = "c1fd6fc5bde7fee2c2fb6d868dc0f40368051fede1d83f814839d562c210aa27"
 
 [log_levels]
-comit_node="DEBUG"
+cnd="DEBUG"
 
 [network]
 listen = [
