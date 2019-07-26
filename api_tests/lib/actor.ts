@@ -9,18 +9,18 @@ import URI from "urijs";
 import { Action, Entity } from "../gen/siren";
 import * as bitcoin from "./bitcoin";
 import { MetaBtsieveConfig } from "./btsieve";
-import { ComitNodeConfig, LedgerAction, MetaComitNodeConfig } from "./comit";
+import { CndConfig, LedgerAction, MetaCndConfig } from "./comit";
 import { seconds_until, sleep } from "./util";
 import { Wallet, WalletConfig } from "./wallet";
 
 use(chaiHttp);
 
-export interface BtsieveForComitNodeConfig {
+export interface BtsieveForCndConfig {
     poll_interval_secs: number;
 }
 
 export interface TestConfig {
-    comit_node: { [key: string]: MetaComitNodeConfig };
+    cnd: { [key: string]: MetaCndConfig };
     btsieve: { [key: string]: MetaBtsieveConfig };
 }
 
@@ -39,7 +39,7 @@ export class Actor {
     public name: string;
     public wallet: Wallet;
     private readonly host: string;
-    private comitNodeConfig: ComitNodeConfig;
+    private cndConfig: CndConfig;
     private readonly declineConfig?: DeclineConfig;
     private readonly sirenActionAutofillParams?: SirenActionAutofillParams;
 
@@ -55,15 +55,15 @@ export class Actor {
         this.declineConfig = declineConfig;
         this.sirenActionAutofillParams = sirenActionAutofillParams;
         if (testConfig) {
-            const metaComitNodeConfig = testConfig.comit_node[name];
-            if (!metaComitNodeConfig) {
-                throw new Error("comit_node configuration is needed");
+            const metaCndConfig = testConfig.cnd[name];
+            if (!metaCndConfig) {
+                throw new Error("cnd configuration is needed");
             }
 
-            this.host = metaComitNodeConfig.host;
+            this.host = metaCndConfig.host;
 
-            const configFile = metaComitNodeConfig.config_file;
-            this.comitNodeConfig = toml.parse(
+            const configFile = metaCndConfig.config_file;
+            this.cndConfig = toml.parse(
                 fs.readFileSync(`${root}/${configFile}`, "utf8")
             );
         }
@@ -73,12 +73,12 @@ export class Actor {
         }
     }
 
-    public comitNodeHttpApiUrl() {
-        return "http://" + this.host + ":" + this.comitNodeConfig.http_api.port;
+    public cndHttpApiUrl() {
+        return "http://" + this.host + ":" + this.cndConfig.http_api.port;
     }
 
-    public comitNodeNetworkListenAddress() {
-        const addr = multiaddr(this.comitNodeConfig.network.listen[0]);
+    public cndNetworkListenAddress() {
+        const addr = multiaddr(this.cndConfig.network.listen[0]);
         // Need to convert 0.0.0.0 to 127.0.0.1
         return `/${addr.protoNames()[0]}/${this.host}/${addr.protoNames()[1]}/${
             addr.nodeAddress().port
@@ -86,22 +86,20 @@ export class Actor {
     }
 
     public webGuiUrl() {
-        return "http://" + this.host + ":" + this.comitNodeConfig.web_gui.port;
+        return "http://" + this.host + ":" + this.cndConfig.web_gui.port;
     }
 
     public async peerId(): Promise<string> {
-        const response = await request(this.comitNodeHttpApiUrl()).get("/");
+        const response = await request(this.cndHttpApiUrl()).get("/");
 
         return response.body.id;
     }
 
-    public async pollComitNodeUntil(
+    public async pollCndUntil(
         location: string,
         predicate: (body: Entity) => boolean
     ): Promise<Entity> {
-        const response = await request(this.comitNodeHttpApiUrl()).get(
-            location
-        );
+        const response = await request(this.cndHttpApiUrl()).get(location);
 
         expect(response).to.have.status(200);
 
@@ -110,14 +108,14 @@ export class Actor {
         } else {
             await sleep(500);
 
-            return this.pollComitNodeUntil(location, predicate);
+            return this.pollCndUntil(location, predicate);
         }
     }
 
     public doComitAction(action: Action): Promise<Response> {
         const { url, body, method } = this.buildRequestFromAction(action);
 
-        const agent = request(this.comitNodeHttpApiUrl());
+        const agent = request(this.cndHttpApiUrl());
 
         // let's ditch this stupid HTTP library ASAP to avoid this ...
         switch (method) {

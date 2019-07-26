@@ -1,4 +1,4 @@
-use crate::settings::ComitNodeSettings;
+use crate::settings::CndSettings;
 use config::ConfigError;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
@@ -10,11 +10,11 @@ pub struct Opt {
     config_file: Option<PathBuf>,
 }
 
-pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
+pub fn load_settings(opt: Opt) -> Result<CndSettings, ConfigError> {
     match opt.config_file {
         Some(config_file) => {
             if config_file.exists() {
-                ComitNodeSettings::read(config_file)
+                CndSettings::read(config_file)
             } else {
                 Err(ConfigError::Message(format!(
                     "Could not load config file: {:?}",
@@ -28,13 +28,13 @@ pub fn load_settings(opt: Opt) -> Result<ComitNodeSettings, ConfigError> {
             )),
             Some(dirs) => {
                 let user_path_components: PathBuf =
-                    [".config", "comit", "comit_node.toml"].iter().collect();
+                    [".config", "comit", "cnd.toml"].iter().collect();
                 let config_file = Path::join(dirs.home_dir(), user_path_components);
                 if config_file.exists() {
-                    ComitNodeSettings::read(config_file)
+                    CndSettings::read(config_file)
                 } else {
                     log::info!("Config file was neither provided nor found at default location, generating default config at: {:?}", config_file);
-                    ComitNodeSettings::default().write_to(config_file)
+                    CndSettings::default().write_to(config_file)
                 }
             }
         },
@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn can_find_config_path() {
         let opt = Opt {
-            config_file: Some("./config/comit_node.toml".into()),
+            config_file: Some("./config/cnd.toml".into()),
         };
         let result = load_settings(opt);
         assert_that(&result).is_ok();

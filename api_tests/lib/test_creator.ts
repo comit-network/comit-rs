@@ -50,9 +50,7 @@ export function createTests(
         "[alice] Should be able to make a request via HTTP api to " +
             initialUrl,
         async () => {
-            const res: ChaiHttp.Response = await request(
-                alice.comitNodeHttpApiUrl()
-            )
+            const res: ChaiHttp.Response = await request(alice.cndHttpApiUrl())
                 .post(initialUrl)
                 .send(initialRequest);
             expect(res).to.have.status(201);
@@ -64,7 +62,7 @@ export function createTests(
 
     it("[bob] Shows the Swap as IN_PROGRESS in " + listUrl, async () => {
         const swapEntity = await bob
-            .pollComitNodeUntil(listUrl, body => body.entities.length > 0)
+            .pollCndUntil(listUrl, body => body.entities.length > 0)
             .then(body => body.entities[0] as EmbeddedRepresentationSubEntity);
 
         expect(swapEntity.properties).to.have.property("protocol", "rfc003");
@@ -98,7 +96,7 @@ export function createTests(
                 this.timeout(5000);
 
                 sirenAction = await actor
-                    .pollComitNodeUntil(
+                    .pollCndUntil(
                         swapLocations[actor.name],
                         body =>
                             body.actions.findIndex(
@@ -142,9 +140,8 @@ export function createTests(
         if (waitUntil) {
             it(`[${actor.name}] transitions to correct state`, async function() {
                 this.timeout(10000);
-                await actor.pollComitNodeUntil(
-                    swapLocations[actor.name],
-                    body => waitUntil(body.properties.state)
+                await actor.pollCndUntil(swapLocations[actor.name], body =>
+                    waitUntil(body.properties.state)
                 );
             });
         }
@@ -153,7 +150,7 @@ export function createTests(
             it(`[${actor.name}] ${test.description}`, async function() {
                 this.timeout(10000);
 
-                const body = await actor.pollComitNodeUntil(
+                const body = await actor.pollCndUntil(
                     swapLocations[actor.name],
                     () => true
                 );

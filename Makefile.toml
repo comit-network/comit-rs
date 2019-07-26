@@ -198,7 +198,7 @@ dependencies = [
 ]
 
 [tasks.webgui-tests]
-description = "Runs tests to ensure that comit_node serves comit-i"
+description = "Runs tests to ensure that cnd serves comit-i"
 workspace = false
 private = true
 script = [

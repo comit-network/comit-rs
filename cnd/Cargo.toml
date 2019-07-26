@@ -1,6 +1,6 @@
 [package]
 authors = ["CoBloX developers <team@coblox.tech>"]
-name = "comit_node"
+name = "cnd"
 version = "0.1.0"
 edition = "2018"
 

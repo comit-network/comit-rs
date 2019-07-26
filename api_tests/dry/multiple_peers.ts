@@ -53,7 +53,7 @@ declare var global: HarnessGlobal;
 
     describe("SWAP requests to multiple peers", () => {
         it("[Alice] Should be able to send a swap request to Bob", async () => {
-            const res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -86,7 +86,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
-            const res = await request(alice.comitNodeHttpApiUrl())
+            const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
                     alpha_ledger: {
@@ -118,7 +118,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should be IN_PROGRESS and SENT after sending the swap request to Charlie", async function() {
-            return alice.pollComitNodeUntil(
+            return alice.pollCndUntil(
                 aliceSwapWithCharlieHref,
                 body =>
                     body.properties.status === "IN_PROGRESS" &&
@@ -127,14 +127,14 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should be able to see Bob's peer-id after sending the swap request to Bob", async function() {
-            return alice.pollComitNodeUntil(
+            return alice.pollCndUntil(
                 aliceSwapWithBobHref,
                 body => body.properties.counterparty === bobCndPeerId
             );
         });
 
         it("[Alice] Should be able to see Charlie's peer-id after sending the swap request to Charlie", async function() {
-            return alice.pollComitNodeUntil(
+            return alice.pollCndUntil(
                 aliceSwapWithCharlieHref,
                 body => body.properties.counterparty === charlieCndPeerId
             );
@@ -142,7 +142,7 @@ declare var global: HarnessGlobal;
 
         it("[Charlie] Shows the Swap as IN_PROGRESS in /swaps", async () => {
             const swapEntity = await charlie
-                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
@@ -165,7 +165,7 @@ declare var global: HarnessGlobal;
 
         it("[Charlie] Should be able to see Alice's peer-id after receiving the request", async function() {
             const swapEntity = await charlie
-                .pollComitNodeUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
                 .then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
@@ -177,9 +177,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Alice] Should see both Bob and Charlie in her list of peers after sending a swap request to both of them", async () => {
-            const res = await request(alice.comitNodeHttpApiUrl()).get(
-                "/peers"
-            );
+            const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
             res.should.have.status(200);
             res.body.peers.should.have.containSubset([

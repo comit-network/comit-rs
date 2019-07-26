@@ -10,15 +10,15 @@ This is a reference implementation for the COMIT protocol.
 
 ## Structure
 
-The repository contains three main folders: `comit_node`, `btsieve`, and`vendor`.
+The repository contains three main folders: `cnd`, `btsieve`, and`vendor`.
 
-`comit_node` and `btsieve` hold code for the primary binaries that make up the reference implementation.
+`cnd` (the COMIT node daemon) and `btsieve` hold code for the primary binaries that make up the reference implementation.
 Code in these can depend on libraries located in `vendor`.
 
 ### Vendor
 
 Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
-Crates defined in here MUST NOT depend on `comit_node` or `btsieve`.
+Crates defined in here MUST NOT depend on `cnd` or `btsieve`.
 They may be separated from the repository at some point (and possibly released on crates.io).
 
 ## Setup build environment
@@ -37,11 +37,11 @@ They may be separated from the repository at some point (and possibly released o
 3. startup bitcoin node (port to be set according to btsieve configuration)
 4. startup ethereum node (port to be set according to btsieve configuration)
 5. startup btsieve: `target/debug/btsieve`
-6. startup comit_node: `target/debug/comit_node`
+6. startup cnd: `target/debug/cnd`
 
-If the `[web_gui]` section is specified in the configuration the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once the comit node started up (served at `localhost:8080` as default).
+If the `[web_gui]` section is specified in the configuration the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd started up (served at `localhost:8080` as default).
 
-In order to do a swap you will have to start two comit nodes. 
+In order to do a swap you will have to start two comit nodes (cnd & btsieve). 
 
 ## Setup testing/dev environment
 
@@ -59,10 +59,10 @@ In order to do a swap you will have to start two comit nodes.
 - `cargo make format` to format Rust code
 - `cargo make ts-fix` to format Typescript code
 - `cargo make btsieve` to run btsieve tests
-- `cargo make dry` to run COMIT node dry tests
+- `cargo make dry` to run cnd dry tests
 - `cargo make api` to run all API tests
-- `cargo make e2e` to run COMIT node end-to-end tests
-- `cargo make e2e *btc*` to run COMIT node end-to-end tests with `btc` in the folder name (supports shell glob on the name)
+- `cargo make e2e` to run cnd end-to-end tests
+- `cargo make e2e *btc*` to run cnd end-to-end tests with `btc` in the folder name (supports shell glob on the name)
 
 Alternatively, you can run the end-to-end tests and TypeScript related actions using `yarn` (careful! It does not recompile Rust for you):
 - `yarn run tests`: run all tests
