@@ -47,7 +47,7 @@
         "@types/ethereumjs-util": "^5.2.0",
         "@types/glob": "^7.1.1",
         "@types/mocha": "^5.2.6",
-        "@types/node": "^10.14",
+        "@types/node": "^12.6",
         "@types/scrypt": "^6.0.0",
         "@types/urijs": "^1.19.3",
         "chai-bignumber": "^2.0.2",
