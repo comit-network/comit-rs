@@ -1,5 +1,5 @@
 #![warn(rust_2018_idioms)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 pub mod bitcoin;
 pub mod ethereum;

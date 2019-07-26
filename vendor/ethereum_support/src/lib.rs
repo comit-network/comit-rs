@@ -1,5 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
-#![deny(unsafe_code)]
+#![forbid(unsafe_code)]
 
 pub use crate::{
     contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, key::*, network::*,
