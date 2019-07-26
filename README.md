@@ -12,7 +12,7 @@ This is a reference implementation for the COMIT protocol.
 
 The repository contains three main folders: `cnd`, `btsieve`, and`vendor`.
 
-`cnd` (the COMIT node daemon) and `btsieve` hold code for the primary binaries that make up the reference implementation.
+`cnd` (the COMIT Node Daemon) and `btsieve` hold code for the primary binaries that make up the reference implementation.
 Code in these can depend on libraries located in `vendor`.
 
 ### Vendor
