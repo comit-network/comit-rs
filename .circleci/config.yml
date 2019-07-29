@@ -9,10 +9,10 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - checkout
-      - setup_system
-      - print_current_versions
       - restore_caches
       - setup_rust
+      - setup_system
+      - print_current_versions
 
       - run:
           name: Build using cargo make
