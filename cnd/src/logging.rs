@@ -1,12 +1,11 @@
-use crate::settings::CndSettings;
 use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
 use std::{fmt::Arguments, io::stdout};
 
-pub fn set_up_logging(settings: &CndSettings) {
+pub fn set_up_logging(base_log_level: LevelFilter) {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
-        .level(settings.log_levels.cnd)
+        .level(base_log_level)
         .level_for("tokio_core::reactor", LevelFilter::Info)
         .level_for("tokio_reactor", LevelFilter::Info)
         .level_for("hyper", LevelFilter::Info)

@@ -6,7 +6,7 @@ use cnd::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
-    load_settings::{load_settings, Opt},
+    load_settings::load_settings,
     logging,
     network::{self, SwarmInfo},
     seed::Seed,
@@ -23,17 +23,31 @@ use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
+use log::LevelFilter;
+use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
 
-fn main() -> Result<(), failure::Error> {
-    let opt = Opt::from_args();
+mod cli;
 
-    let settings = load_settings(opt)?;
-    logging::set_up_logging(&settings);
+fn main() -> Result<(), failure::Error> {
+    // Setup basic logging before we know where the config file is
+    logging::set_up_logging(LevelFilter::Info);
+
+    let options = cli::Options::from_args();
+    let settings = load_settings(
+        options.config_file.as_ref(),
+        directories::UserDirs::new()
+            .as_ref()
+            .map(|dirs| dirs.home_dir()),
+        OsRng,
+    )?;
+
+    // Setup logging with values from config file
+    logging::set_up_logging(settings.log_levels.cnd);
 
     log::info!("Starting up with {:#?}", settings);
 

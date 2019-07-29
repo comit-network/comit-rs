@@ -5,6 +5,7 @@ use crate::seed::Seed;
 use config::{Config, ConfigError, File};
 use libp2p::Multiaddr;
 use log::LevelFilter;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -27,14 +28,14 @@ pub struct CndSettings {
     pub log_levels: LogLevels,
 }
 
-impl Default for CndSettings {
-    fn default() -> Self {
+impl CndSettings {
+    pub fn default<R: Rng>(rand: R) -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/8011"
             .parse()
             .expect("cnd listen address could not be parsed");
         let btsieve_url =
             Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
-        let seed = Seed::new_random().expect("Could not generate random seed");
+        let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
         CndSettings {
             comit: Comit { secret_seed: seed },
@@ -183,6 +184,7 @@ impl CndSettings {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::rngs::OsRng;
     use spectral::prelude::*;
     use std::{env, fs};
 
@@ -216,7 +218,7 @@ mod tests {
 
         let config_file_incl_path = config_path.clone().join(config_file.clone());
 
-        let default_settings = CndSettings::default();
+        let default_settings = CndSettings::default(OsRng);
 
         let default_settings = default_settings.write_to(config_file_incl_path.clone());
         let settings = CndSettings::read(config_file_incl_path.clone());

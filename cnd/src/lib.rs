@@ -19,4 +19,5 @@ pub mod logging;
 pub mod network;
 pub mod seed;
 pub mod settings;
+pub mod std_ext;
 pub mod swap_protocols;

@@ -692,6 +692,7 @@ dependencies = [
  "strum_macros 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tc_bitcoincore_client 0.1.0",
  "tc_web3_client 0.1.0",
+ "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tiny-keccak 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "tokio 0.1.22 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -717,7 +718,7 @@ version = "0.1.0"
 dependencies = [
  "reqwest 0.9.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-embed 4.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "unzip 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2292,7 +2293,7 @@ dependencies = [
  "quick-error 1.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "safemem 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "twoway 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -2324,7 +2325,7 @@ dependencies = [
  "schannel 0.1.15 (registry+https://github.com/rust-lang/crates.io-index)",
  "security-framework 0.2.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "security-framework-sys 0.2.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)",
+ "tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
@@ -3816,12 +3817,12 @@ dependencies = [
 
 [[package]]
 name = "tempfile"
-version = "3.0.8"
+version = "3.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "cfg-if 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)",
  "libc 0.2.60 (registry+https://github.com/rust-lang/crates.io-index)",
- "rand 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "redox_syscall 0.1.54 (registry+https://github.com/rust-lang/crates.io-index)",
  "remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi 0.3.7 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -5163,7 +5164,7 @@ dependencies = [
 "checksum tc_postgres 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "db1a2a51cce74f015dfb92e3be92713ddb33ecb8ed30ffb6edcd2b45c754c3b3"
 "checksum tc_redis 0.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "90aeb54954cddcdbde909ae1c75b07748034a575e950e1c1b2e6936469670c91"
 "checksum tc_trufflesuite_ganachecli 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "6dd699da5eb16d85d634943f82fd83bda8134b38f10b8bf12b4f1420f3b532d2"
-"checksum tempfile 3.0.8 (registry+https://github.com/rust-lang/crates.io-index)" = "7dc4738f2e68ed2855de5ac9cdbe05c9216773ecde4739b2f095002ab03a13ef"
+"checksum tempfile 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "7a6e24d9338a0a5be79593e2fa15a648add6138caa803e2d5bc782c371732ca9"
 "checksum termcolor 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)" = "4096add70612622289f2fdcdbd5086dc81c1e2675e6ae58d6c4f62a16c6d7f2f"
 "checksum termion 1.5.2 (registry+https://github.com/rust-lang/crates.io-index)" = "dde0593aeb8d47accea5392b39350015b5eccb12c0d98044d856983d89548dea"
 "checksum testcontainers 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)" = "edef250e8b003a58f8adb51cd945dcd3923d15390f416307effe4318b7af9a82"
