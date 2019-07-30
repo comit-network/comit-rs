@@ -2,7 +2,7 @@ mod serde_duration;
 mod serde_log;
 
 use crate::{seed::Seed, std_ext::path::PrintablePath};
-use config::{Config, ConfigError, File};
+use config as config_rs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
@@ -18,7 +18,7 @@ use std::{
 use url::Url;
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct CndSettings {
+pub struct Config {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
@@ -28,7 +28,7 @@ pub struct CndSettings {
     pub log_levels: LogLevels,
 }
 
-impl CndSettings {
+impl Config {
     pub fn default<R: Rng>(rand: R) -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/8011"
             .parse()
@@ -37,7 +37,7 @@ impl CndSettings {
             Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
         let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
-        CndSettings {
+        Config {
             comit: Comit { secret_seed: seed },
             network: Network {
                 listen: vec![comit_listen],
@@ -113,37 +113,37 @@ pub struct PollParameters<T> {
     pub network: T,
 }
 
-impl CndSettings {
-    pub fn write_to(self, config_file: PathBuf) -> Result<Self, ConfigError> {
-        CndSettings::ensure_directory_exists(&config_file)?;
+impl Config {
+    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
+        Config::ensure_directory_exists(&config_file)?;
 
-        CndSettings::write_to_file(config_file, &self)?;
+        Config::write_to_file(config_file, &self)?;
 
         Ok(self)
     }
 
     fn write_to_file(
         config_file: PathBuf,
-        default_settings: &CndSettings,
-    ) -> Result<(), ConfigError> {
+        default_settings: &Config,
+    ) -> Result<(), config_rs::ConfigError> {
         let toml_string = toml::to_string(&default_settings).map_err(|error| {
-            ConfigError::Message(format!("Could not serialize config: {:?}", error))
+            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
         })?;
         let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
-            ConfigError::Message(format!(
+            config_rs::ConfigError::Message(format!(
                 "Could not create config file: {:?} {:?}",
                 config_file, error
             ))
         })?;
         file.write_all(toml_string.as_bytes()).map_err(|error| {
-            ConfigError::Message(format!(
+            config_rs::ConfigError::Message(format!(
                 "Could not write to file: {:?}: {:?}",
                 config_file, error
             ))
         })
     }
 
-    fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), ConfigError> {
+    fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
             None => {
                 log::trace!("Config path is root path");
@@ -156,7 +156,7 @@ impl CndSettings {
                         path
                     );
                     fs::create_dir_all(path).map_err(|error| {
-                        ConfigError::Message(format!(
+                        config_rs::ConfigError::Message(format!(
                             "Could not create folders: {:?}: {:?}",
                             path, error
                         ))
@@ -168,13 +168,13 @@ impl CndSettings {
         }
     }
 
-    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, ConfigError> {
-        let mut config = Config::new();
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
+        let mut config = config_rs::Config::new();
 
         let config_file = Path::new(&config_file);
 
         // Start off by merging in the "default" configuration file
-        config.merge(File::from(config_file))?;
+        config.merge(config_rs::File::from(config_file))?;
 
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
@@ -188,19 +188,19 @@ pub fn default_path(parent: &Path) -> PathBuf {
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
-pub fn read_from(path: PathBuf) -> Result<CndSettings, ConfigError> {
+pub fn read_from(path: PathBuf) -> Result<Config, config_rs::ConfigError> {
     println!("Using config file {}", PrintablePath(&path));
-    CndSettings::read(path)
+    Config::read(path)
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 pub fn read_or_create_default<R: Rng>(
     home_dir: Option<&Path>,
     rand: R,
-) -> Result<CndSettings, ConfigError> {
+) -> Result<Config, config_rs::ConfigError> {
     let default_config_path = home_dir.map(default_path).ok_or_else(|| {
         eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
-        ConfigError::Message(
+        config_rs::ConfigError::Message(
             "Failed to determine home directory".to_owned(),
         )
     })?;
@@ -216,12 +216,12 @@ pub fn read_or_create_default<R: Rng>(
 fn create_default_at<R: Rng>(
     default_config_path: PathBuf,
     rand: R,
-) -> Result<CndSettings, ConfigError> {
+) -> Result<Config, config_rs::ConfigError> {
     println!(
         "Creating config file at {} because it does not exist yet",
         PrintablePath(&default_config_path)
     );
-    CndSettings::default(rand).write_to(default_config_path)
+    Config::default(rand).write_to(default_config_path)
 }
 
 #[cfg(test)]
@@ -231,8 +231,8 @@ mod tests {
     use spectral::prelude::*;
     use std::{env, fs};
 
-    fn comit_settings() -> Result<CndSettings, ConfigError> {
-        CndSettings::read("./config/cnd.toml")
+    fn comit_settings() -> Result<Config, config_rs::ConfigError> {
+        Config::read("./config/cnd.toml")
     }
 
     #[test]
@@ -261,10 +261,10 @@ mod tests {
 
         let config_file_incl_path = config_path.clone().join(config_file.clone());
 
-        let default_settings = CndSettings::default(OsRng);
+        let default_settings = Config::default(OsRng);
 
         let default_settings = default_settings.write_to(config_file_incl_path.clone());
-        let settings = CndSettings::read(config_file_incl_path.clone());
+        let settings = Config::read(config_file_incl_path.clone());
 
         delete_tmp_files(&config_path, &config_file);
 

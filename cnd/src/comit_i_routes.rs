@@ -1,7 +1,7 @@
 use warp::path;
 // Keep `use warp::path;` separate to stop cargo fmt changing it to
 // `warp::path::{self}`
-use crate::settings::CndSettings;
+use crate::config::Config;
 use comit_i::Asset;
 use http::Response;
 use mime_guess;
@@ -11,14 +11,14 @@ use std::{
 };
 use warp::{filters::BoxedFilter, path::Tail, Filter, Rejection, Reply};
 
-pub fn create(settings: CndSettings) -> BoxedFilter<(impl Reply,)> {
-    let settings = warp::any().map(move || settings.clone());
+pub fn create(config: Config) -> BoxedFilter<(impl Reply,)> {
+    let config = warp::any().map(move || config.clone());
 
     let cnd_config = path!("config" / "cnd.js")
         .and(warp::get2())
         .and(warp::query::<GetConfigQueryParams>())
         .and(warp::path::end())
-        .and(settings)
+        .and(config)
         .and_then(serve_cnd_config);
 
     let comit_i = warp::any()
@@ -61,23 +61,23 @@ struct CndConnectionDetails {
 }
 
 impl CndConnectionDetails {
-    fn new(settings: CndSettings) -> Self {
+    fn new(config: Config) -> Self {
         CndConnectionDetails {
-            host: if settings.http_api.address.is_unspecified() {
+            host: if config.http_api.address.is_unspecified() {
                 IpAddr::V4(Ipv4Addr::LOCALHOST)
             } else {
-                settings.http_api.address
+                config.http_api.address
             },
-            port: settings.http_api.port,
+            port: config.http_api.port,
         }
     }
 }
 
 fn serve_cnd_config(
     query_params: GetConfigQueryParams,
-    settings: CndSettings,
+    config: Config,
 ) -> Result<Response<String>, Rejection> {
-    let conn_details = CndConnectionDetails::new(settings);
+    let conn_details = CndConnectionDetails::new(config);
     let conn_details = serde_json::to_string(&conn_details).map_err(|e| {
         warp::reject::custom(format!(
             "issue deserializing cnd connection details: {:?}",
