@@ -28,7 +28,7 @@ http = "0.1"
 http-api-problem = "0.13"
 hyper = "0.12"
 libp2p = "0.10"
-log = "0.4"
+log = { version = "0.4", features = ["serde"] }
 maplit = "1"
 mime = "0.3"
 mime_guess = "1.8"
