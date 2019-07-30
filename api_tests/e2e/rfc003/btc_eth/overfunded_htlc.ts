@@ -66,17 +66,14 @@ declare var global: HarnessGlobal;
             action: ActionKind.Accept,
             waitUntil: state => state.communication.status === "ACCEPTED",
         },
-        // given an overfunded HTLC
+        // given an over-funded HTLC
         {
             actor: alice,
             action: {
                 description: "can overfund the bitcoin HTLC",
                 exec: async (actor, swapHref) => {
                     const sirenAction = await actor
-                        .pollComitNodeUntil(
-                            swapHref,
-                            hasAction(ActionKind.Fund)
-                        )
+                        .pollCndUntil(swapHref, hasAction(ActionKind.Fund))
                         .then(mapToAction(ActionKind.Fund));
 
                     const response = await actor.doComitAction(sirenAction);
@@ -108,7 +105,7 @@ declare var global: HarnessGlobal;
         // alice should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: alice,
-            waitUntil: state => state.status === "NOT_SWAPPED",
+            waitUntil: state => state.alpha_ledger.status === "InvalidFunded", // alpha ledger invalid funding and check for single refund action
         },
         // bob should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {

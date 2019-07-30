@@ -202,7 +202,7 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[state_machine_future(transitions(AlphaDeployed))]
     Accepted { swap: OngoingSwap<AL, BL, AA, BA> },
 
-    #[state_machine_future(transitions(AlphaFunded, Final))]
+    #[state_machine_future(transitions(AlphaFunded, AlphaInvalidFunded, Final))]
     AlphaDeployed {
         swap: OngoingSwap<AL, BL, AA, BA>,
         alpha_deployed: Deployed<AL>,
@@ -275,6 +275,13 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         beta_deployed: Deployed<BL>,
         beta_funded: Funded<BL, BA>,
         beta_redeem_transaction: Redeemed<BL>,
+    },
+
+    #[state_machine_future(transitions(Final))]
+    AlphaInvalidFunded {
+        swap: OngoingSwap<AL, BL, AA, BA>,
+        alpha_deployed: Deployed<AL>,
+        alpha_funded: Funded<AL, AA>,
     },
 
     #[state_machine_future(ready)]
@@ -350,14 +357,19 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        if alpha_funded.asset.equal_value(&state.swap.alpha_asset) {
+        let compared = alpha_funded.asset.compare_to(&state.swap.alpha_asset);
+        if compared == 0 {
             transition_save!(context.state_repo, AlphaFunded {
                 swap: state.swap,
                 alpha_funded,
                 alpha_deployed: state.alpha_deployed,
             })
         } else {
-            Err(rfc003::Error::InsufficientFunding)
+            transition_save!(context.state_repo, AlphaInvalidFunded {
+                swap: state.swap,
+                alpha_deployed: state.alpha_deployed,
+                alpha_funded,
+            })
         }
     }
 
@@ -410,6 +422,41 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         })
     }
 
+    fn poll_alpha_invalid_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, AlphaInvalidFunded<AL, BL, AA, BA>>,
+        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
+    ) -> Result<Async<AfterAlphaInvalidFunded<AL, BL, AA, BA>>, rfc003::Error> {
+        let alpha_redeemed_or_refunded = try_ready!(context
+            .alpha_ledger_events
+            .htlc_redeemed_or_refunded(
+                state.swap.alpha_htlc_params(),
+                &state.alpha_deployed,
+                &state.alpha_funded,
+            )
+            .poll());
+        let state = state.take();
+        match alpha_redeemed_or_refunded {
+            future::Either::A(redeem_transaction) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::AlphaRedeemed {
+                    swap: state.swap,
+                    alpha_deployed: state.alpha_deployed,
+                    alpha_funded: state.alpha_funded,
+                    alpha_redeemed: redeem_transaction
+                })
+            ),
+            future::Either::B(refund_transaction) => transition_save!(
+                context.state_repo,
+                Final(SwapOutcome::AlphaRefunded {
+                    swap: state.swap,
+                    alpha_deployed: state.alpha_deployed,
+                    alpha_funded: state.alpha_funded,
+                    alpha_refunded: refund_transaction
+                })
+            ),
+        }
+    }
+
     fn poll_alpha_funded_beta_deployed<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaFundedBetaDeployed<AL, BL, AA, BA>>,
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
@@ -452,7 +499,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        if beta_funded.asset.equal_value(&state.swap.beta_asset) {
+        let compared = beta_funded.asset.compare_to(&state.swap.beta_asset);
+        if compared == 0 {
             transition_save!(context.state_repo, BothFunded {
                 swap: state.swap,
                 alpha_funded: state.alpha_funded,
@@ -735,6 +783,7 @@ impl_display!(Start);
 impl_display!(Accepted);
 impl_display!(AlphaDeployed);
 impl_display!(AlphaFunded);
+impl_display!(AlphaInvalidFunded);
 impl_display!(AlphaFundedBetaDeployed);
 impl_display!(BothFunded);
 impl_display!(AlphaFundedBetaRefunded);

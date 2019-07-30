@@ -120,9 +120,8 @@ export function createTests(
         if (waitUntil) {
             it(`[${actor.name}] transitions to correct state`, async function() {
                 this.timeout(10000);
-                await actor.pollCndUntil(
-                    swapLocations[actor.name],
-                    body => waitUntil(body.properties.state)
+                await actor.pollCndUntil(swapLocations[actor.name], body =>
+                    waitUntil(body.properties.state)
                 );
             });
         }
@@ -167,10 +166,7 @@ function standardActionSteps(
         this.timeout(5000);
 
         sirenAction = await actor
-            .pollCndUntil(
-                swapLocations[actor.name],
-                hasAction(actionKind)
-            )
+            .pollCndUntil(swapLocations[actor.name], hasAction(actionKind))
             .then(mapToAction(actionKind));
     });
 

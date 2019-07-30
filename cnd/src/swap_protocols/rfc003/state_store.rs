@@ -4,8 +4,9 @@ use crate::swap_protocols::{
         messages::AcceptResponseBody,
         state_machine::{
             Accepted, AlphaDeployed, AlphaFunded, AlphaFundedBetaDeployed, AlphaFundedBetaRedeemed,
-            AlphaFundedBetaRefunded, AlphaRedeemedBetaFunded, AlphaRefundedBetaFunded, BothFunded,
-            Error as ErrorState, Final, SwapOutcome, SwapStates,
+            AlphaFundedBetaRefunded, AlphaInvalidFunded, AlphaRedeemedBetaFunded,
+            AlphaRefundedBetaFunded, BothFunded, Error as ErrorState, Final, SwapOutcome,
+            SwapStates,
         },
         ActorState,
     },
@@ -78,6 +79,18 @@ impl StateStore for InMemoryStateStore<SwapId> {
                 *actor_state.alpha_ledger_mut() = Deployed {
                     htlc_location: alpha_deployed.location,
                     deploy_transaction: alpha_deployed.transaction,
+                }
+            }
+
+            SS::AlphaInvalidFunded(AlphaInvalidFunded {
+                alpha_deployed,
+                alpha_funded,
+                ..
+            }) => {
+                *actor_state.alpha_ledger_mut() = InvalidFunded {
+                    htlc_location: alpha_deployed.location,
+                    deploy_transaction: alpha_deployed.transaction,
+                    fund_transaction: alpha_funded.transaction,
                 }
             }
             SS::AlphaFunded(AlphaFunded {
