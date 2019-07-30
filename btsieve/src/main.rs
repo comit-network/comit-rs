@@ -80,7 +80,7 @@ fn create_bitcoin_routes(
     let (client, network) = if let Some(settings) = settings {
         let bitcoin_rpc_client = bitcoincore_rpc::Client::new(
             settings.node_url.to_string(),
-            bitcoincore_rpc::Auth::UserPass(settings.node_username, settings.node_password),
+            settings.authentication.into(),
         )
         .map_err(|e| {
             log::debug!("failed to create bitcoincore_rpc::Client: {:?}", e);
