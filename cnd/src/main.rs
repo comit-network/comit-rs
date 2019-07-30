@@ -23,7 +23,6 @@ use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
-use log::LevelFilter;
 use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
@@ -34,9 +33,6 @@ use structopt::StructOpt;
 mod cli;
 
 fn main() -> Result<(), failure::Error> {
-    // Setup basic logging before we know where the config file is
-    logging::set_up_logging(LevelFilter::Info);
-
     let options = cli::Options::from_args();
     let settings = load_settings(
         options.config_file.as_ref(),
@@ -46,8 +42,7 @@ fn main() -> Result<(), failure::Error> {
         OsRng,
     )?;
 
-    // Setup logging with values from config file
-    logging::set_up_logging(settings.log_levels.cnd);
+    logging::set_up_logging(settings.log_levels.cnd)?;
 
     log::info!("Starting up with {:#?}", settings);
 

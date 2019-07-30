@@ -17,21 +17,30 @@ pub fn load_settings<R: Rng>(
     match (config_file_path_override, home_dir) {
         (None, Some(home_dir)) => {
             let default_config_file_path = default_config_path(home_dir);
-            log::info!(target: "config", "No config file path override was specified on the command line, defaulting to {}", PrintablePathBuf(&default_config_file_path));
+            println!(
+                "No config file path override was specified on the command line, defaulting to {}",
+                PrintablePathBuf(&default_config_file_path)
+            );
 
             if default_config_file_path.exists() {
                 CndSettings::read(default_config_file_path)
             } else {
-                log::info!(target: "config", "Creating default config file at {} because it does not exist yet", PrintablePathBuf(&default_config_file_path));
+                println!(
+                    "Creating default config file at {} because it does not exist yet",
+                    PrintablePathBuf(&default_config_file_path)
+                );
                 CndSettings::default(rand).write_to(default_config_file_path)
             }
         }
         (Some(config_file_path_override), _) => {
-            log::info!(target: "config", "Reading config file from {}", PrintablePathBuf(&config_file_path_override));
+            println!(
+                "Reading config file from {}",
+                PrintablePathBuf(&config_file_path_override)
+            );
             CndSettings::read(config_file_path_override)
         }
         (None, None) => {
-            log::error!(target: "config", "Failed to determine home directory and hence could not infer default config file location. You can directly pass a config file through `--config`.");
+            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can directly pass a config file through `--config`.");
             Err(ConfigError::Message(
                 "Failed to determine home directory".to_owned(),
             ))

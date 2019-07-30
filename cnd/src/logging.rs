@@ -2,7 +2,7 @@ use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
 use std::{fmt::Arguments, io::stdout};
 
-pub fn set_up_logging(base_log_level: LevelFilter) {
+pub fn set_up_logging(base_log_level: LevelFilter) -> Result<(), log::SetLoggerError> {
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
         .level(base_log_level)
@@ -15,7 +15,6 @@ pub fn set_up_logging(base_log_level: LevelFilter) {
         .level_for("http-api", LevelFilter::Debug) // the http-api of our application
         .chain(stdout())
         .apply()
-        .unwrap();
 }
 
 fn formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
