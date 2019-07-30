@@ -16,24 +16,25 @@ use tokio::prelude::*;
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
-/// State of an active substream opened by peer node.
+/// States of an incoming substream i.e. from peer node to us.
 pub enum State<TSubstream> {
-    /// Waiting for a request from the remote.
-    WaitingMessage { stream: BamStream<TSubstream> },
-    /// Waiting for the user to send the response back to us.
+    WaitingMessage {
+        stream: BamStream<TSubstream>,
+    },
     WaitingUser {
         response_receiver: oneshot::Receiver<Response>,
         stream: BamStream<TSubstream>,
     },
-    /// Waiting to send an answer back to the remote.
     WaitingSend {
         msg: Frame,
         stream: BamStream<TSubstream>,
     },
-    /// Waiting to flush an answer back to the remote.
-    WaitingFlush { stream: BamStream<TSubstream> },
-    /// The substream is being closed.
-    WaitingClose { stream: BamStream<TSubstream> },
+    WaitingFlush {
+        stream: BamStream<TSubstream>,
+    },
+    WaitingClose {
+        stream: BamStream<TSubstream>,
+    },
 }
 
 impl<TSubstream> CloseStream for State<TSubstream> {
