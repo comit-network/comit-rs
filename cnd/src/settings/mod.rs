@@ -1,7 +1,7 @@
 mod serde_duration;
 mod serde_log;
 
-use crate::seed::Seed;
+use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config::{Config, ConfigError, File};
 use libp2p::Multiaddr;
 use log::LevelFilter;
@@ -179,6 +179,46 @@ impl CndSettings {
         // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
     }
+}
+
+pub fn default_path(parent: &Path) -> PathBuf {
+    let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
+
+    parent.join(user_path_components)
+}
+
+pub fn read_from(path: PathBuf) -> Result<CndSettings, ConfigError> {
+    println!("Using config file {}", PrintablePath(&path));
+    CndSettings::read(path)
+}
+
+pub fn read_or_create_default<R: Rng>(
+    home_dir: Option<&Path>,
+    rand: R,
+) -> Result<CndSettings, ConfigError> {
+    let default_config_path = home_dir.map(default_path).ok_or_else(|| {
+        eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
+        ConfigError::Message(
+            "Failed to determine home directory".to_owned(),
+        )
+    })?;
+
+    if default_config_path.exists() {
+        read_from(default_config_path)
+    } else {
+        create_default_at(default_config_path, rand)
+    }
+}
+
+fn create_default_at<R: Rng>(
+    default_config_path: PathBuf,
+    rand: R,
+) -> Result<CndSettings, ConfigError> {
+    println!(
+        "Creating config file at {} because it does not exist yet",
+        PrintablePath(&default_config_path)
+    );
+    CndSettings::default(rand).write_to(default_config_path)
 }
 
 #[cfg(test)]

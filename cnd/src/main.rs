@@ -6,11 +6,10 @@ use cnd::{
     comit_client::Client,
     comit_i_routes,
     http_api::route_factory,
-    load_settings::load_settings,
     logging,
     network::{self, SwarmInfo},
     seed::Seed,
-    settings::CndSettings,
+    settings::{self, CndSettings},
     swap_protocols::{
         self,
         metadata_store::MetadataStore,
@@ -34,13 +33,18 @@ mod cli;
 
 fn main() -> Result<(), failure::Error> {
     let options = cli::Options::from_args();
-    let settings = load_settings(
-        options.config_file.as_ref(),
-        directories::UserDirs::new()
-            .as_ref()
-            .map(|dirs| dirs.home_dir()),
-        OsRng,
-    )?;
+
+    let settings = options
+        .config_file
+        .map(settings::read_from)
+        .unwrap_or_else(|| {
+            settings::read_or_create_default(
+                directories::UserDirs::new()
+                    .as_ref()
+                    .map(|dirs| dirs.home_dir()),
+                OsRng,
+            )
+        })?;
 
     logging::set_up_logging(settings.log_levels.cnd)?;
 
