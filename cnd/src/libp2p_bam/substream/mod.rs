@@ -1,5 +1,8 @@
-use crate::libp2p_bam::{handler::InnerEvent, protocol::BamStream, BamHandlerEvent};
-
+use crate::libp2p_bam::{
+    handler::{Error, InnerEvent},
+    protocol::BamStream,
+    BamHandlerEvent,
+};
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
@@ -40,7 +43,6 @@ impl<S> Advanced<S> {
         }
     }
 }
-use crate::libp2p_bam::handler::Error;
 
 impl<S: CloseStream> Advanced<S> {
     fn error<E: Into<Error>>(stream: BamStream<S::TSubstream>, error: E) -> Self {
