@@ -1,4 +1,4 @@
-use crate::{settings::CndSettings, std_ext::path::PrintablePathBuf};
+use crate::{settings::CndSettings, std_ext::path::PrintablePath};
 use config::ConfigError;
 use rand::Rng;
 use std::path::{Path, PathBuf};
@@ -10,37 +10,30 @@ pub fn default_config_path(parent: &Path) -> PathBuf {
 }
 
 pub fn load_settings<R: Rng>(
-    config_file_path_override: Option<&PathBuf>,
+    config_path_override: Option<&PathBuf>,
     home_dir: Option<&Path>,
     rand: R,
 ) -> Result<CndSettings, ConfigError> {
-    match (config_file_path_override, home_dir) {
-        (None, Some(home_dir)) => {
-            let default_config_file_path = default_config_path(home_dir);
-            println!(
-                "Using config file {}",
-                PrintablePathBuf(&default_config_file_path)
-            );
+    let default_config_path = home_dir.map(default_config_path);
 
-            if default_config_file_path.exists() {
-                CndSettings::read(default_config_file_path)
-            } else {
-                println!(
-                    "Creating config file at {} because it does not exist yet",
-                    PrintablePathBuf(&default_config_file_path)
-                );
-                CndSettings::default(rand).write_to(default_config_file_path)
-            }
+    match (config_path_override, default_config_path) {
+        (None, Some(ref default_config_path)) if default_config_path.exists() => {
+            println!("Using config file {}", PrintablePath(&default_config_path));
+            CndSettings::read(default_config_path)
         }
-        (Some(config_file_path_override), _) => {
+        (Some(config_path_override), _) => {
+            println!("Using config file {}", PrintablePath(&config_path_override));
+            CndSettings::read(config_path_override)
+        }
+        (None, Some(default_config_path)) => {
             println!(
-                "Using config file {}",
-                PrintablePathBuf(&config_file_path_override)
+                "Creating config file at {} because it does not exist yet",
+                PrintablePath(&default_config_path)
             );
-            CndSettings::read(config_file_path_override)
+            CndSettings::default(rand).write_to(default_config_path)
         }
         (None, None) => {
-            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can directly pass a config file through `--config`.");
+            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
             Err(ConfigError::Message(
                 "Failed to determine home directory".to_owned(),
             ))
