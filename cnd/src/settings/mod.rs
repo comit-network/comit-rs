@@ -187,11 +187,13 @@ pub fn default_path(parent: &Path) -> PathBuf {
     parent.join(user_path_components)
 }
 
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 pub fn read_from(path: PathBuf) -> Result<CndSettings, ConfigError> {
     println!("Using config file {}", PrintablePath(&path));
     CndSettings::read(path)
 }
 
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 pub fn read_or_create_default<R: Rng>(
     home_dir: Option<&Path>,
     rand: R,
@@ -210,6 +212,7 @@ pub fn read_or_create_default<R: Rng>(
     }
 }
 
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 fn create_default_at<R: Rng>(
     default_config_path: PathBuf,
     rand: R,
