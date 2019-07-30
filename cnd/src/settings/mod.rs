@@ -1,10 +1,11 @@
 mod serde_duration;
 mod serde_log;
 
-use crate::seed::Seed;
+use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config::{Config, ConfigError, File};
 use libp2p::Multiaddr;
 use log::LevelFilter;
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -27,14 +28,14 @@ pub struct CndSettings {
     pub log_levels: LogLevels,
 }
 
-impl Default for CndSettings {
-    fn default() -> Self {
+impl CndSettings {
+    pub fn default<R: Rng>(rand: R) -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/8011"
             .parse()
             .expect("cnd listen address could not be parsed");
         let btsieve_url =
             Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
-        let seed = Seed::new_random().expect("Could not generate random seed");
+        let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
         CndSettings {
             comit: Comit { secret_seed: seed },
@@ -180,9 +181,53 @@ impl CndSettings {
     }
 }
 
+pub fn default_path(parent: &Path) -> PathBuf {
+    let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
+
+    parent.join(user_path_components)
+}
+
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+pub fn read_from(path: PathBuf) -> Result<CndSettings, ConfigError> {
+    println!("Using config file {}", PrintablePath(&path));
+    CndSettings::read(path)
+}
+
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+pub fn read_or_create_default<R: Rng>(
+    home_dir: Option<&Path>,
+    rand: R,
+) -> Result<CndSettings, ConfigError> {
+    let default_config_path = home_dir.map(default_path).ok_or_else(|| {
+        eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
+        ConfigError::Message(
+            "Failed to determine home directory".to_owned(),
+        )
+    })?;
+
+    if default_config_path.exists() {
+        read_from(default_config_path)
+    } else {
+        create_default_at(default_config_path, rand)
+    }
+}
+
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+fn create_default_at<R: Rng>(
+    default_config_path: PathBuf,
+    rand: R,
+) -> Result<CndSettings, ConfigError> {
+    println!(
+        "Creating config file at {} because it does not exist yet",
+        PrintablePath(&default_config_path)
+    );
+    CndSettings::default(rand).write_to(default_config_path)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::rngs::OsRng;
     use spectral::prelude::*;
     use std::{env, fs};
 
@@ -216,7 +261,7 @@ mod tests {
 
         let config_file_incl_path = config_path.clone().join(config_file.clone());
 
-        let default_settings = CndSettings::default();
+        let default_settings = CndSettings::default(OsRng);
 
         let default_settings = default_settings.write_to(config_file_incl_path.clone());
         let settings = CndSettings::read(config_file_incl_path.clone());

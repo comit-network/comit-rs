@@ -1,6 +1,6 @@
 use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
-use rand::{rngs::OsRng, Rng};
+use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -35,9 +35,9 @@ impl Seed {
         result
     }
 
-    pub fn new_random() -> Result<Seed, rand::Error> {
+    pub fn new_random<R: Rng>(mut rand: R) -> Result<Seed, rand::Error> {
         let mut arr = [0u8; 32];
-        OsRng.try_fill(&mut arr[..])?;
+        rand.try_fill(&mut arr[..])?;
         Ok(Seed(arr))
     }
 }
@@ -51,6 +51,8 @@ impl From<[u8; 32]> for Seed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use rand::rngs::OsRng;
+
     #[test]
     fn data_and_seed_used_to_calculate_hash() {
         let seed1 = Seed::from(*b"hello world, you are beautiful!!");
@@ -68,15 +70,15 @@ mod tests {
 
     #[test]
     fn test_two_random_seeds_are_different() {
-        let random1 = Seed::new_random().unwrap();
-        let random2 = Seed::new_random().unwrap();
+        let random1 = Seed::new_random(OsRng).unwrap();
+        let random2 = Seed::new_random(OsRng).unwrap();
 
         assert_ne!(random1, random2);
     }
 
     #[test]
     fn test_display_and_debug_not_implemented() {
-        let seed = Seed::new_random().unwrap();
+        let seed = Seed::new_random(OsRng).unwrap();
 
         let out = format!("{}", seed);
         assert_eq!(out, "Seed([*****])".to_string());
