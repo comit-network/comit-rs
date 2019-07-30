@@ -48,7 +48,6 @@ fn main() -> Result<(), failure::Error> {
     let settings = Settings::from_config_file_and_defaults(config_file);
 
     let base_log_level = settings.log_levels.cnd;
-    println!("Initializing logging with base level {}", base_log_level);
     logging::set_up_logging(base_log_level)?;
 
     log::info!("Starting up with {:#?}", settings);
