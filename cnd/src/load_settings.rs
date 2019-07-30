@@ -18,7 +18,7 @@ pub fn load_settings<R: Rng>(
         (None, Some(home_dir)) => {
             let default_config_file_path = default_config_path(home_dir);
             println!(
-                "No config file path override was specified on the command line, defaulting to {}",
+                "Using config file {}",
                 PrintablePathBuf(&default_config_file_path)
             );
 
@@ -26,7 +26,7 @@ pub fn load_settings<R: Rng>(
                 CndSettings::read(default_config_file_path)
             } else {
                 println!(
-                    "Creating default config file at {} because it does not exist yet",
+                    "Creating config file at {} because it does not exist yet",
                     PrintablePathBuf(&default_config_file_path)
                 );
                 CndSettings::default(rand).write_to(default_config_file_path)
@@ -34,7 +34,7 @@ pub fn load_settings<R: Rng>(
         }
         (Some(config_file_path_override), _) => {
             println!(
-                "Reading config file from {}",
+                "Using config file {}",
                 PrintablePathBuf(&config_file_path_override)
             );
             CndSettings::read(config_file_path_override)
