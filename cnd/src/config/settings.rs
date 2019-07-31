@@ -1,4 +1,4 @@
-use super::config_file::{Btsieve, Comit, ConfigFile, HttpSocket, Network};
+use super::file::{Btsieve, Comit, File, HttpSocket, Network};
 use log::LevelFilter;
 
 /// This structs represents the settings as they are used through out the code.
@@ -18,8 +18,8 @@ pub struct Settings {
 }
 
 impl Settings {
-    pub fn from_config_file_and_defaults(config_file: ConfigFile) -> Self {
-        let ConfigFile {
+    pub fn from_config_file_and_defaults(config_file: File) -> Self {
+        let File {
             comit,
             network,
             http_api,

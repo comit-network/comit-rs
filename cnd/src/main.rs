@@ -36,9 +36,9 @@ fn main() -> Result<(), failure::Error> {
 
     let config_file = options
         .config_file
-        .map(config::read_from)
+        .map(config::File::read)
         .unwrap_or_else(|| {
-            config::read_or_create_default(
+            config::File::read_or_create_default(
                 directories::UserDirs::new()
                     .as_ref()
                     .map(|dirs| dirs.home_dir()),
