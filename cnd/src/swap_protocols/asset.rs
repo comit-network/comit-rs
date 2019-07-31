@@ -28,33 +28,35 @@ impl Asset for BitcoinQuantity {
     fn compare_to(&self, other: &BitcoinQuantity) -> i8 {
         if self < other {
             -1
-        }
-        if self > other {
+        } else if self > other {
             1
+        } else {
+            0
         }
-        0
     }
 }
+
 impl Asset for EtherQuantity {
     fn compare_to(&self, other: &EtherQuantity) -> i8 {
         if self < other {
             -1
-        }
-        if self > other {
+        } else if self > other {
             1
+        } else {
+            0
         }
-        0
     }
 }
+
 impl Asset for Erc20Token {
     fn compare_to(&self, other: &Erc20Token) -> i8 {
         if self.quantity < other.quantity {
             -1
-        }
-        if self.quantity > other.quantity {
+        } else if self.quantity > other.quantity {
             1
+        } else {
+            0
         }
-        0
     }
 }
 
