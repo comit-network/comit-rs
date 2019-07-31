@@ -1,4 +1,4 @@
-use super::file::{self, Btsieve, Comit, File, HttpSocket, Network};
+use super::file::{Btsieve, Comit, File, HttpSocket, Network};
 use log::LevelFilter;
 
 /// This structs represents the settings as they are used through out the code.
@@ -28,6 +28,8 @@ impl Settings {
             logging,
         } = config_file;
 
+        let default_logging = Logging::default();
+
         Self {
             comit,
             network,
@@ -36,31 +38,27 @@ impl Settings {
             web_gui,
             logging: logging
                 .map(|logging| Logging {
-                    level: logging.level.unwrap_or_else(default_logging_level),
-                    structured: logging.structured.unwrap_or(false),
+                    level: logging.level.unwrap_or(default_logging.level),
+                    structured: logging.structured.unwrap_or(default_logging.structured),
                 })
-                .unwrap_or_else(|| Logging {
-                    level: default_logging_level(),
-                    structured: false,
-                }),
+                .unwrap_or(default_logging),
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
+#[derivative(Default)]
 pub struct Logging {
+    #[derivative(Default(value = "LevelFilter::Debug"))]
     pub level: LevelFilter,
     pub structured: bool,
-}
-
-fn default_logging_level() -> LevelFilter {
-    LevelFilter::Debug
 }
 
 #[cfg(test)]
 mod tests {
 
     use super::*;
+    use crate::config::file;
     use rand::rngs::OsRng;
     use spectral::prelude::*;
 
