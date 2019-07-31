@@ -31,7 +31,7 @@ fn read_should_read_file_if_present() {
 fn read_or_create_default_should_read_file_if_present() {
     let fake_home_dir = tempfile::tempdir().unwrap().into_path();
     let expected_settings = custom_config_file(OsRng)
-        .write_to(config::File::compute_default_path(fake_home_dir.as_path()))
+        .write_to(config::File::compute_default_path(&fake_home_dir))
         .unwrap();
 
     let actual_settings = config::File::read_or_create_default(Some(&fake_home_dir), rng());
@@ -75,6 +75,31 @@ fn structured_logging_flag_in_logging_section_is_optional() {
             structured: None,
         },
     });
+}
+
+#[test]
+fn complete_logging_section_is_optional() {
+    let config_without_logging_section = config::File {
+        logging: None,
+        ..config::File::default(rng())
+    };
+    let temp_file = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+    let temp_file_path = temp_file.into_temp_path().to_path_buf();
+    config_without_logging_section
+        .write_to(temp_file_path.clone())
+        .unwrap();
+
+    let config_file_contents = std::fs::read_to_string(temp_file_path.clone()).unwrap();
+    assert!(
+        !config_file_contents.contains("[logging]"),
+        "written config file should not contain logging section"
+    );
+
+    let config_file = config::File::read(temp_file_path);
+    assert_that(&config_file)
+        .is_ok()
+        .map(|c| &c.logging)
+        .is_none();
 }
 
 /// Helper function that returns a custom config which is different from the
