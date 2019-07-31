@@ -52,7 +52,7 @@ impl Settings {
                         level: logging.level.unwrap_or(default_level),
                         structured: logging.structured.unwrap_or(default_structured),
                     })
-                    .unwrap_or(Logging::default())
+                    .unwrap_or_default()
             },
         }
     }
