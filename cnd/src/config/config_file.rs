@@ -31,7 +31,7 @@ pub struct ConfigFile {
 
 impl ConfigFile {
     pub fn default<R: Rng>(rand: R) -> Self {
-        let comit_listen = "/ip4/0.0.0.0/tcp/8011"
+        let comit_listen = "/ip4/0.0.0.0/tcp/9939"
             .parse()
             .expect("cnd listen address could not be parsed");
         let btsieve_url =
