@@ -358,15 +358,15 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         let state = state.take();
 
         match alpha_funded.asset.compare_to(&state.swap.alpha_asset) {
-            Compare::Equal => transition_save!(context.state_repo, AlphaIncorrectlyFunded {
+            Compare::Equal => transition_save!(context.state_repo, AlphaFunded {
                 swap: state.swap,
-                alpha_deployed: state.alpha_deployed,
                 alpha_funded,
+                alpha_deployed: state.alpha_deployed,
             }),
-            _ => transition_save!(context.state_repo, AlphaFunded {
+            _ => transition_save!(context.state_repo, AlphaIncorrectlyFunded {
                 swap: state.swap,
-                alpha_funded,
                 alpha_deployed: state.alpha_deployed,
+                alpha_funded,
             }),
         }
     }
