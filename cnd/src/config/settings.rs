@@ -17,6 +17,14 @@ pub struct Settings {
     pub logging: Logging,
 }
 
+#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
+#[derivative(Default)]
+pub struct Logging {
+    #[derivative(Default(value = "LevelFilter::Debug"))]
+    pub level: LevelFilter,
+    pub structured: bool,
+}
+
 impl Settings {
     pub fn from_config_file_and_defaults(config_file: File) -> Self {
         let File {
@@ -48,14 +56,6 @@ impl Settings {
             },
         }
     }
-}
-
-#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
-#[derivative(Default)]
-pub struct Logging {
-    #[derivative(Default(value = "LevelFilter::Debug"))]
-    pub level: LevelFilter,
-    pub structured: bool,
 }
 
 #[cfg(test)]
