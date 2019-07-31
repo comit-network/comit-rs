@@ -63,7 +63,7 @@ fn json_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Rec
         target = record.target(),
         line = record
             .line()
-            .map(|line| format!("{}", line))
+            .map(|line| format!(r#""{}""#, line))
             .unwrap_or_else(|| String::from("null")),
         level = record.level(),
         message = message,
@@ -117,7 +117,7 @@ mod tests {
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct JsonLogRecord {
         level: String,
-        line: String,
+        line: Option<String>,
         target: String,
         message: String,
         date: String,
@@ -158,10 +158,44 @@ mod tests {
 
         // can't compare the date because we cannot predict it and there is no
         // abstraction to mock it :(
-        assert_eq!(level, "DEBUG");
-        assert_eq!(line, "10");
-        assert_eq!(target, "test");
-        assert_eq!(message, "Hello world!");
+        assert_that(level).is_equal_to("DEBUG".to_string());
+        assert_that(line).is_some().is_equal_to("10".to_string());
+        assert_that(target).is_equal_to("test".to_string());
+        assert_that(message).is_equal_to("Hello world!".to_string());
+    }
+
+    #[test]
+    fn json_formatter_can_handle_missing_values_on_record() {
+        let (sender, receiver) = channel();
+        let (_, log) = create_logger(LevelFilter::Trace, true, sender);
+
+        log.log(&Record::builder().level(Level::Debug).build());
+
+        let messages = receiver.recv().unwrap();
+        let messages = messages
+            .split("\n")
+            .filter(|m| !m.is_empty())
+            .collect::<Vec<_>>();
+
+        assert_that(&messages).has_length(1);
+        let message = messages[0];
+
+        let json_log_record = serde_json::from_str(&message);
+
+        let JsonLogRecord {
+            level,
+            line,
+            target,
+            message,
+            ..
+        } = assert_that(&json_log_record).is_ok().subject;
+
+        // can't compare the date because we cannot predict it and there is no
+        // abstraction to mock it :(
+        assert_that(level).is_equal_to("DEBUG".to_string());
+        assert_that(line).is_none();
+        assert_that(target).is_equal_to("".to_string());
+        assert_that(message).is_equal_to("".to_string());
     }
 
 }
