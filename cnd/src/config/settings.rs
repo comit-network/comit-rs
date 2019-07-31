@@ -97,4 +97,21 @@ mod tests {
             .map(|settings| &settings.logging.structured)
             .is_true()
     }
+
+    #[test]
+    fn logging_section_defaults_to_debug_and_false() {
+        let config_file = File {
+            logging: None,
+            ..File::default(OsRng)
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .map(|settings| &settings.logging)
+            .is_equal_to(Logging {
+                level: LevelFilter::Debug,
+                structured: false,
+            })
+    }
 }
