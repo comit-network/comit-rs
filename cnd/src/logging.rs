@@ -90,16 +90,66 @@ mod tests {
 
         let pattern = r#"\[[0-9\-\s:\.]+\]\[DEBUG\]\[test:10\] Hello world!"#;
         let regex = regex::Regex::new(pattern).unwrap();
-        for message in messages {
-            if !regex.is_match(&message) {
-                panic!(
-                    "Log message didn't match expected pattern!\n\n\
-                     Pattern: {}\n\
-                     Message: {}\n",
-                    pattern, message
-                );
-            }
+        let message = messages[0];
+
+        if !regex.is_match(&message) {
+            panic!(
+                "Log message didn't match expected pattern!\n\n\
+                 Pattern: {}\n\
+                 Message: {}\n",
+                pattern, message
+            );
         }
+    }
+
+    #[derive(serde::Deserialize, PartialEq, Debug)]
+    struct JsonLogRecord {
+        level: String,
+        line: Option<u32>,
+        target: String,
+        message: String,
+        date: String,
+    }
+
+    #[test]
+    fn json_formatter_should_return_a_json_object() {
+        let (sender, receiver) = channel();
+        let (_, log) = create_logger(LevelFilter::Trace, true, sender);
+
+        log.log(
+            &Record::builder()
+                .args(format_args!("Hello {}!", "world"))
+                .level(Level::Debug)
+                .target("test")
+                .line(Some(10))
+                .build(),
+        );
+
+        let messages = receiver.recv().unwrap();
+        let messages = messages
+            .split("\n")
+            .filter(|m| !m.is_empty())
+            .collect::<Vec<_>>();
+
+        assert_that(&messages).has_length(1);
+        let message = messages[0];
+
+        let json_log_record = serde_json::from_str(&message);
+
+        let JsonLogRecord {
+            level,
+            line,
+            target,
+            message,
+            ..
+        } = assert_that(&json_log_record).is_ok().subject;
+
+        // can't compare the date because we cannot predict it and there is no
+        // abstraction to mock it :(
+        assert_eq!(level, "DEBUG");
+        assert_eq!(line, &Some(10));
+        assert_eq!(target, "test");
+        assert_eq!(message, "Hello world!");
     }
 
 }
