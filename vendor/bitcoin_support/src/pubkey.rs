@@ -215,5 +215,4 @@ mod test {
         let deserialized = serde_json::from_str::<PubkeyHash>(serialized.as_str()).unwrap();
         assert_eq!(deserialized, pubkey_hash);
     }
-
 }

@@ -47,8 +47,8 @@ In order to do a swap you will have to start two comit nodes (cnd & btsieve).
 
 1. Install `docker` & `docker-compose`
 2. Install `node` (check the version required in package.json) & `yarn`
-3. Install Rust `nightly-2019-04-30`: `rustup install nightly-2019-04-30` (this one is only used for `rustfmt`)
-4. Install `rustfmt` for `nightly-2019-04-30`: `rustup component add rustfmt --toolchain nightly-2019-04-30`
+3. Install Rust `nightly-2019-07-31`: `rustup install nightly-2019-07-31` (this one is only used for `rustfmt`)
+4. Install `rustfmt` for `nightly-2019-07-31`: `rustup component add rustfmt --toolchain nightly-2019-07-31`
 5. Install `cargo-make`: `cargo install cargo-make`
 6. Run `cargo make` in the root folder of the repository, this will install various crates & tools such as clippy
    

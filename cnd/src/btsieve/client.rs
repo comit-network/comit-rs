@@ -313,7 +313,6 @@ mod ethereum {
             })
         }
     }
-
 }
 
 mod bitcoin {

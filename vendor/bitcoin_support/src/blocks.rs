@@ -73,5 +73,4 @@ mod tests {
 
         assert_that(&blocks).is_equal_to(::std::u32::MAX);
     }
-
 }

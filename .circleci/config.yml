@@ -42,8 +42,8 @@ commands:
           name:  "Setup rust environment"
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
-            rustup install nightly-2019-04-30
-            rustup component add rustfmt --toolchain nightly-2019-04-30
+            rustup install nightly-2019-07-31
+            rustup component add rustfmt --toolchain nightly-2019-07-31
 
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
@@ -67,7 +67,7 @@ commands:
     steps:
       - restore_cache:
           keys:
-            - rustup-{{ checksum "rust-toolchain" }}-nightly-2019-04-30
+            - rustup-{{ checksum "rust-toolchain" }}-nightly-2019-07-31
             # We don't want multiple toolchains to pile up in our cache, so only restore the ones we actually use.
       - restore_cache:
           keys:
@@ -87,7 +87,7 @@ commands:
       - save_cache:
           paths:
             - ~/.rustup
-          key: rustup-{{ checksum "rust-toolchain" }}-nightly-2019-04-30
+          key: rustup-{{ checksum "rust-toolchain" }}-nightly-2019-07-31
       - save_cache:
           paths:
             - ~/.cargo

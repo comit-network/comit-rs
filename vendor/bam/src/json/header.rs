@@ -251,5 +251,4 @@ mod tests {
 
         assert_that(&actual_json).is_ok_containing(expected_json.to_string());
     }
-
 }
