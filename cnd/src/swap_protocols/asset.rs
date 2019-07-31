@@ -27,34 +27,34 @@ pub trait Asset:
 impl Asset for BitcoinQuantity {
     fn compare_to(&self, other: &BitcoinQuantity) -> i8 {
         if self < other {
-            return -1;
+            -1
         }
         if self > other {
-            return 1;
+            1
         }
-        return 0;
+        0
     }
 }
 impl Asset for EtherQuantity {
     fn compare_to(&self, other: &EtherQuantity) -> i8 {
         if self < other {
-            return -1;
+            -1
         }
         if self > other {
-            return 1;
+            1
         }
-        return 0;
+        0
     }
 }
 impl Asset for Erc20Token {
     fn compare_to(&self, other: &Erc20Token) -> i8 {
         if self.quantity < other.quantity {
-            return -1;
+            -1
         }
         if self.quantity > other.quantity {
-            return 1;
+            1
         }
-        return 0;
+        0
     }
 }
 
