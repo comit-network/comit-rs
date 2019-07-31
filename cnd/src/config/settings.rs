@@ -35,9 +35,9 @@ impl Settings {
             btsieve,
             web_gui,
             logging: logging
-                .map(|log_levels| Logging {
-                    level: log_levels.level.unwrap_or_else(default_logging_level),
-                    structured: false,
+                .map(|logging| Logging {
+                    level: logging.level.unwrap_or_else(default_logging_level),
+                    structured: logging.structured.unwrap_or(false),
                 })
                 .unwrap_or_else(|| Logging {
                     level: default_logging_level(),
@@ -81,4 +81,20 @@ mod tests {
             .is_false()
     }
 
+    #[test]
+    fn field_structured_is_correctly_mapped() {
+        let config_file = File {
+            logging: Some(file::Logging {
+                level: None,
+                structured: Some(true),
+            }),
+            ..File::default(OsRng)
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .map(|settings| &settings.logging.structured)
+            .is_true()
+    }
 }
