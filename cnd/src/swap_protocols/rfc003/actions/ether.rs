@@ -9,7 +9,7 @@ use crate::swap_protocols::{
     },
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
-use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity};
+use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity, Transaction};
 
 impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     type FundActionOutput = DeployContract;
@@ -25,6 +25,7 @@ impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         htlc_location: EthereumAddress,
         _secret_source: &dyn SecretSource,
+        _fund_transaction: &Transaction,
     ) -> Self::RefundActionOutput {
         let gas_limit = EtherHtlc::tx_gas_limit();
 

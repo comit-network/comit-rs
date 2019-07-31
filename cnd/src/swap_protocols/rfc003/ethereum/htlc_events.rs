@@ -202,7 +202,7 @@ mod erc20 {
                           }| {
                         receipt.logs.into_iter().find(|log| log.topics.contains(&TRANSFER_LOG_MSG.into())).ok_or_else(|| {
                             log::warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
-                            rfc003::Error::InsufficientFunding
+                            rfc003::Error::InvalidFunding
                         }).map(|log| {
                             let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
                             let asset = Erc20Token::new(log.address, quantity);

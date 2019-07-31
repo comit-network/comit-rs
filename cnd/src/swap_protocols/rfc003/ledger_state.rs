@@ -46,7 +46,7 @@ impl Default for HtlcState {
 #[cfg(test)]
 impl quickcheck::Arbitrary for HtlcState {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        match g.next_u32() % 5 {
+        match g.next_u32() % 6 {
             0 => HtlcState::NotDeployed,
             1 => HtlcState::Deployed,
             2 => HtlcState::Funded,

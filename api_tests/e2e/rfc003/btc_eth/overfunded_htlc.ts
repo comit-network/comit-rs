@@ -19,6 +19,8 @@ declare var global: HarnessGlobal;
     const alice = new Actor("alice", global.config, global.project_root, {
         ethereumNodeConfig: global.ledgers_config.ethereum,
         bitcoinNodeConfig: global.ledgers_config.bitcoin,
+        addressForIncomingBitcoinPayments:
+            "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });
     const bob = new Actor("bob", global.config, global.project_root, {
         ethereumNodeConfig: global.ledgers_config.ethereum,
@@ -26,10 +28,12 @@ declare var global: HarnessGlobal;
     });
 
     const alphaAssetQuantity = 100000000;
+    const overFundedAlphaAssetQuantity = 1000000000;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
+    const maxFeeInSatoshi = 50000;
 
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 13;
+    const betaExpiry = Math.round(Date.now() / 1000) + 8;
 
     await bitcoin.ensureFunding();
     await bob.wallet.eth().fund("11");
@@ -92,11 +96,9 @@ declare var global: HarnessGlobal;
 
                     // @ts-ignore
                     ledgerAction.payload.amount = new BN(
-                        ledgerAction.payload.amount,
+                        overFundedAlphaAssetQuantity,
                         10
-                    )
-                        .mul(new BN(10))
-                        .toString(10);
+                    ).toString(10);
 
                     await actor.doLedgerAction(ledgerAction);
                 },
@@ -105,12 +107,40 @@ declare var global: HarnessGlobal;
         // alice should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: alice,
-            waitUntil: state => state.alpha_ledger.status === "InvalidFunded", // alpha ledger invalid funding and check for single refund action
+            waitUntil: state => state.alpha_ledger.status === "InvalidFunded",
         },
         // bob should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: bob,
-            waitUntil: state => state.status === "NOT_SWAPPED",
+            waitUntil: state =>
+                state.alpha_ledger.status === "InvalidFunded" &&
+                state.beta_ledger.status === "NotDeployed",
+        },
+        {
+            actor: alice,
+            action: ActionKind.Refund,
+        },
+        {
+            actor: alice,
+            waitUntil: state =>
+                state.alpha_ledger.status === "Refunded" &&
+                state.beta_ledger.status === "NotDeployed",
+            test: {
+                description:
+                    "Should have received the alpha asset after the refund",
+                callback: async body => {
+                    const refundTxId =
+                        body.properties.state.alpha_ledger.refund_tx;
+
+                    const satoshiReceived = await alice.wallet
+                        .btc()
+                        .satoshiReceivedInTx(refundTxId);
+                    const satoshiExpected =
+                        overFundedAlphaAssetQuantity - maxFeeInSatoshi;
+
+                    satoshiReceived.should.be.at.least(satoshiExpected);
+                },
+            },
         },
     ];
 

@@ -46,15 +46,25 @@ where
             NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            InvalidFunded { htlc_location, .. } => vec![Action::Refund(<(AL, AA)>::refund_action(
+            InvalidFunded {
+                htlc_location,
+                fund_transaction,
+                ..
+            } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
+                fund_transaction,
             ))],
-            Funded { htlc_location, .. } => vec![Action::Refund(<(AL, AA)>::refund_action(
+            Funded {
+                htlc_location,
+                fund_transaction,
+                ..
+            } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
+                fund_transaction,
             ))],
             _ => vec![],
         };
