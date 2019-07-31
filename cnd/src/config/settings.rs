@@ -28,20 +28,24 @@ impl Settings {
             logging,
         } = config_file;
 
-        let default_logging = Logging::default();
-
         Self {
             comit,
             network,
             http_api,
             btsieve,
             web_gui,
-            logging: logging
-                .map(|logging| Logging {
-                    level: logging.level.unwrap_or(default_logging.level),
-                    structured: logging.structured.unwrap_or(default_logging.structured),
-                })
-                .unwrap_or(default_logging),
+            logging: {
+                let Logging {
+                    level: default_level,
+                    structured: default_structured,
+                } = Logging::default();
+                logging
+                    .map(|logging| Logging {
+                        level: logging.level.unwrap_or(default_level),
+                        structured: logging.structured.unwrap_or(default_structured),
+                    })
+                    .unwrap_or(Logging::default())
+            },
         }
     }
 }
