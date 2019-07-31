@@ -5,11 +5,11 @@ use cnd::{
     btsieve::BtsieveHttpClient,
     comit_client::Client,
     comit_i_routes,
+    config::{self, Settings},
     http_api::route_factory,
     logging,
     network::{self, SwarmInfo},
     seed::Seed,
-    settings::{self, CndSettings},
     swap_protocols::{
         self,
         metadata_store::MetadataStore,
@@ -34,19 +34,21 @@ mod cli;
 fn main() -> Result<(), failure::Error> {
     let options = cli::Options::from_args();
 
-    let settings = options
+    let config_file = options
         .config_file
-        .map(settings::read_from)
+        .map(config::read_from)
         .unwrap_or_else(|| {
-            settings::read_or_create_default(
+            config::read_or_create_default(
                 directories::UserDirs::new()
                     .as_ref()
                     .map(|dirs| dirs.home_dir()),
                 OsRng,
             )
         })?;
+    let settings = Settings::from_config_file_and_defaults(config_file);
 
-    logging::set_up_logging(settings.log_levels.cnd)?;
+    let base_log_level = settings.log_levels.cnd;
+    logging::set_up_logging(base_log_level)?;
 
     log::info!("Starting up with {:#?}", settings);
 
@@ -120,7 +122,7 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn create_btsieve_api_client(settings: &CndSettings) -> BtsieveHttpClient {
+fn create_btsieve_api_client(settings: &Settings) -> BtsieveHttpClient {
     BtsieveHttpClient::new(
         &settings.btsieve.url,
         settings.btsieve.bitcoin.poll_interval_secs,
@@ -131,7 +133,7 @@ fn create_btsieve_api_client(settings: &CndSettings) -> BtsieveHttpClient {
 }
 
 fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: SwarmInfo>(
-    settings: &CndSettings,
+    settings: &Settings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
@@ -157,7 +159,7 @@ fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: S
     runtime.spawn(server);
 }
 
-fn spawn_comit_i_instance(settings: CndSettings, runtime: &mut tokio::runtime::Runtime) {
+fn spawn_comit_i_instance(settings: Settings, runtime: &mut tokio::runtime::Runtime) {
     if let Some(comit_i_settings) = &settings.web_gui {
         let routes = comit_i_routes::create(settings.clone());
 
@@ -171,7 +173,7 @@ fn spawn_comit_i_instance(settings: CndSettings, runtime: &mut tokio::runtime::R
     }
 }
 
-fn auth_origin(settings: &CndSettings) -> String {
+fn auth_origin(settings: &Settings) -> String {
     let auth_origin = match &settings.web_gui {
         Some(http_socket) => format!("http://localhost:{}", http_socket.port),
         None => "http://localhost:3000".to_string(),

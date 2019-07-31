@@ -1,7 +1,7 @@
 use warp::path;
 // Keep `use warp::path;` separate to stop cargo fmt changing it to
 // `warp::path::{self}`
-use crate::settings::CndSettings;
+use crate::config::Settings;
 use comit_i::Asset;
 use http::Response;
 use mime_guess;
@@ -11,7 +11,7 @@ use std::{
 };
 use warp::{filters::BoxedFilter, path::Tail, Filter, Rejection, Reply};
 
-pub fn create(settings: CndSettings) -> BoxedFilter<(impl Reply,)> {
+pub fn create(settings: Settings) -> BoxedFilter<(impl Reply,)> {
     let settings = warp::any().map(move || settings.clone());
 
     let cnd_config = path!("config" / "cnd.js")
@@ -61,7 +61,7 @@ struct CndConnectionDetails {
 }
 
 impl CndConnectionDetails {
-    fn new(settings: CndSettings) -> Self {
+    fn new(settings: Settings) -> Self {
         CndConnectionDetails {
             host: if settings.http_api.address.is_unspecified() {
                 IpAddr::V4(Ipv4Addr::LOCALHOST)
@@ -75,7 +75,7 @@ impl CndConnectionDetails {
 
 fn serve_cnd_config(
     query_params: GetConfigQueryParams,
-    settings: CndSettings,
+    settings: Settings,
 ) -> Result<Response<String>, Rejection> {
     let conn_details = CndConnectionDetails::new(settings);
     let conn_details = serde_json::to_string(&conn_details).map_err(|e| {

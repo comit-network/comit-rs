@@ -3,6 +3,9 @@ use log::{LevelFilter, Record};
 use std::{fmt::Arguments, io::stdout};
 
 pub fn set_up_logging(base_log_level: LevelFilter) -> Result<(), log::SetLoggerError> {
+    #![allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+    println!("Initializing logging with base level {}", base_log_level);
+
     Dispatch::new()
         .format(move |out, message, record| formatter(out, message, record))
         .level(base_log_level)
