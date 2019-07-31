@@ -28,7 +28,7 @@ declare var global: HarnessGlobal;
     });
 
     const alphaAssetQuantity = 100000000;
-    const overFundedAlphaAssetQuantity = 1000000000;
+    const underFundedAlphaAssetQuantity = 10000000;
     const betaAssetQuantity = toBN(toWei("10", "ether"));
     const maxFeeInSatoshi = 50000;
 
@@ -70,11 +70,11 @@ declare var global: HarnessGlobal;
             action: ActionKind.Accept,
             waitUntil: state => state.communication.status === "ACCEPTED",
         },
-        // given an over-funded HTLC
+        // given an under-funded HTLC
         {
             actor: alice,
             action: {
-                description: "can overfund the bitcoin HTLC",
+                description: "can underfund the bitcoin HTLC",
                 exec: async (actor, swapHref) => {
                     const sirenAction = await actor
                         .pollCndUntil(swapHref, hasAction(ActionKind.Fund))
@@ -96,7 +96,7 @@ declare var global: HarnessGlobal;
 
                     // @ts-ignore
                     ledgerAction.payload.amount = new BN(
-                        overFundedAlphaAssetQuantity,
+                        underFundedAlphaAssetQuantity,
                         10
                     ).toString(10);
 
@@ -136,7 +136,7 @@ declare var global: HarnessGlobal;
                         .btc()
                         .satoshiReceivedInTx(refundTxId);
                     const satoshiExpected =
-                        overFundedAlphaAssetQuantity - maxFeeInSatoshi;
+                        underFundedAlphaAssetQuantity - maxFeeInSatoshi;
 
                     satoshiReceived.should.be.at.least(satoshiExpected);
                 },
@@ -144,7 +144,7 @@ declare var global: HarnessGlobal;
         },
     ];
 
-    describe("RFC003: Bitcoin for Ether - overfunded alpha HTLC", async () => {
+    describe("RFC003: Bitcoin for Ether - underfunded alpha HTLC", async () => {
         createTests(alice, bob, steps, "/swaps/rfc003", "/swaps", swapRequest);
     });
     run();
