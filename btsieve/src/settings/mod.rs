@@ -185,5 +185,4 @@ mod tests {
             .map(|b| &b.authentication)
             .is_equal_to(basic_authentication);
     }
-
 }

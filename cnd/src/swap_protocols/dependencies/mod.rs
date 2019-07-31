@@ -42,7 +42,6 @@ pub mod bob {
         pub state_store: Arc<S>,
         pub seed: Seed,
     }
-
 }
 
 #[allow(missing_debug_implementations)]

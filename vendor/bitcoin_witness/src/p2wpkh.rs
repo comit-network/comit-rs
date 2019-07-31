@@ -57,5 +57,4 @@ mod test {
             "prev_script should be a p2pkh"
         );
     }
-
 }

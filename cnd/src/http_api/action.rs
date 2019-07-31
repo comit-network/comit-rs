@@ -339,5 +339,4 @@ mod test {
             r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}}"#
         );
     }
-
 }

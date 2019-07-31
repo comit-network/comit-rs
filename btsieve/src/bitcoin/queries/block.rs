@@ -139,5 +139,4 @@ mod tests {
         let result = query.matches(&block);
         assert_that(&result).is_true();
     }
-
 }

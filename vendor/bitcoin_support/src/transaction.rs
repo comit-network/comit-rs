@@ -265,5 +265,4 @@ mod tests {
 
         assert_that(&tx.spends_from_with(&outpoint, &unlock_script)).is_false();
     }
-
 }

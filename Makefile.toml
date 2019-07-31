@@ -85,7 +85,7 @@ args = [
 workspace = false
 clear = true
 script = [
-  "cargo +nightly-2019-04-30 fmt"
+  "cargo +nightly-2019-07-31 fmt"
 ]
 
 ################
@@ -122,7 +122,7 @@ extend = "api-tests-flow"
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
 script = [
-  "cargo +nightly-2019-04-30 fmt -- --check"
+  "cargo +nightly-2019-07-31 fmt -- --check"
 ]
 
 [tasks.fix-ts]

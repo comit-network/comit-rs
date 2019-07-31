@@ -131,5 +131,4 @@ mod tests {
         assert_eq!(format!("{}", ActionKind::Redeem), "redeem".to_string());
         assert_eq!(format!("{}", ActionKind::Deploy), "deploy".to_string());
     }
-
 }

@@ -127,5 +127,4 @@ mod tests {
 
         assert_that(&number.to_decimal_str(16)).is_equal_to(&string);
     }
-
 }

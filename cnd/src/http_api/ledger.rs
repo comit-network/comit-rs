@@ -128,5 +128,4 @@ pub mod serde_ledger {
 
         T::from_http_ledger(ledger).map_err(D::Error::custom)
     }
-
 }
