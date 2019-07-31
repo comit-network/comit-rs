@@ -58,7 +58,7 @@ fn line_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Rec
 
 fn json_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
     out.finish(format_args!(
-        include_str!("./json_log_entry_template.json"),
+        "{{\"level\":\"{level}\",\"line\":{line},\"target\":\"{target}\",\"message\":\"{message}\",\"date\":\"{date}\"}}",
         date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
         target = record.target(),
         line = record
