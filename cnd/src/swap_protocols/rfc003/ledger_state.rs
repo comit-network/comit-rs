@@ -30,7 +30,7 @@ pub enum LedgerState<L: Ledger> {
         fund_transaction: L::Transaction,
         refund_transaction: L::Transaction,
     },
-    InvalidFunded {
+    IncorrectlyFunded {
         htlc_location: L::HtlcLocation,
         deploy_transaction: L::Transaction,
         fund_transaction: L::Transaction,
@@ -52,7 +52,7 @@ impl quickcheck::Arbitrary for HtlcState {
             2 => HtlcState::Funded,
             3 => HtlcState::Redeemed,
             4 => HtlcState::Refunded,
-            5 => HtlcState::InvalidFunded,
+            5 => HtlcState::IncorrectlyFunded,
             _ => unreachable!(),
         }
     }

@@ -46,7 +46,7 @@ where
             NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
-            InvalidFunded {
+            IncorrectlyFunded {
                 htlc_location,
                 fund_transaction,
                 ..

@@ -87,7 +87,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
                 alpha_funded,
                 ..
             }) => {
-                *actor_state.alpha_ledger_mut() = InvalidFunded {
+                *actor_state.alpha_ledger_mut() = IncorrectlyFunded {
                     htlc_location: alpha_deployed.location,
                     deploy_transaction: alpha_deployed.transaction,
                     fund_transaction: alpha_funded.transaction,

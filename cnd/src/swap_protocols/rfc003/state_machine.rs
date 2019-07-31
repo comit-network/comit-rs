@@ -457,11 +457,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         }
     }
 
-    /// This function returns an error if beta was funded invalidly (either too
-    /// much or not enough) We will need to cover this case in the future,
-    /// however, with the current design our state machine would explode and
-    /// we would need to add too many extra states to cover that case.
-    /// See issue #1155
+    /// This function returns an error if beta was incorrectly funded (either
+    /// too much or not enough) We will need to cover this case in the
+    /// future, however, with the current design our state machine would
+    /// explode and we would need to add too many extra states to cover that
+    /// case. See issue #1155
     fn poll_alpha_funded_beta_deployed<'s, 'c>(
         state: &'s mut RentToOwn<'s, AlphaFundedBetaDeployed<AL, BL, AA, BA>>,
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,

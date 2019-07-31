@@ -151,7 +151,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 refund_tx: None,
                 redeem_tx: None,
             },
-            InvalidFunded {
+            IncorrectlyFunded {
                 htlc_location,
                 deploy_transaction,
                 fund_transaction,
@@ -226,7 +226,7 @@ impl SwapStatus {
 
         match (alpha_ledger, beta_ledger) {
             (Redeemed, Redeemed) => SwapStatus::Swapped,
-            (InvalidFunded, _) => SwapStatus::NotSwapped,
+            (IncorrectlyFunded, _) => SwapStatus::NotSwapped,
             (Refunded, _) | (_, Refunded) => SwapStatus::NotSwapped,
             _ => SwapStatus::InProgress,
         }
@@ -264,7 +264,7 @@ mod tests {
     #[test]
     fn given_alpha_invalid_funded_and_beta_never_deployed_should_be_no_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, InvalidFunded, NotDeployed, &None),
+            SwapStatus::new(Accepted, IncorrectlyFunded, NotDeployed, &None),
             SwapStatus::NotSwapped
         )
     }
