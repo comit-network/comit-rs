@@ -4,7 +4,7 @@
 use crate::{
     comit_client::SwapReject,
     swap_protocols::{
-        asset::Asset,
+        asset::{Asset, Compare},
         rfc003::{
             self,
             events::{self, Deployed, Funded, Redeemed, Refunded},
@@ -202,7 +202,7 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[state_machine_future(transitions(AlphaDeployed))]
     Accepted { swap: OngoingSwap<AL, BL, AA, BA> },
 
-    #[state_machine_future(transitions(AlphaFunded, AlphaInvalidFunded, Final))]
+    #[state_machine_future(transitions(AlphaFunded, AlphaIncorrectlyFunded, Final))]
     AlphaDeployed {
         swap: OngoingSwap<AL, BL, AA, BA>,
         alpha_deployed: Deployed<AL>,
@@ -278,7 +278,7 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
 
     #[state_machine_future(transitions(Final))]
-    AlphaInvalidFunded {
+    AlphaIncorrectlyFunded {
         swap: OngoingSwap<AL, BL, AA, BA>,
         alpha_deployed: Deployed<AL>,
         alpha_funded: Funded<AL, AA>,
@@ -357,19 +357,17 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        let compared = alpha_funded.asset.compare_to(&state.swap.alpha_asset);
-        if compared != 0 {
-            transition_save!(context.state_repo, AlphaInvalidFunded {
+        match alpha_funded.asset.compare_to(&state.swap.alpha_asset) {
+            Compare::Equal => transition_save!(context.state_repo, AlphaIncorrectlyFunded {
                 swap: state.swap,
                 alpha_deployed: state.alpha_deployed,
                 alpha_funded,
-            })
-        } else {
-            transition_save!(context.state_repo, AlphaFunded {
+            }),
+            _ => transition_save!(context.state_repo, AlphaFunded {
                 swap: state.swap,
                 alpha_funded,
                 alpha_deployed: state.alpha_deployed,
-            })
+            }),
         }
     }
 
@@ -422,10 +420,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         })
     }
 
-    fn poll_alpha_invalid_funded<'s, 'c>(
-        state: &'s mut RentToOwn<'s, AlphaInvalidFunded<AL, BL, AA, BA>>,
+    fn poll_alpha_incorrectly_funded<'s, 'c>(
+        state: &'s mut RentToOwn<'s, AlphaIncorrectlyFunded<AL, BL, AA, BA>>,
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
-    ) -> Result<Async<AfterAlphaInvalidFunded<AL, BL, AA, BA>>, rfc003::Error> {
+    ) -> Result<Async<AfterAlphaIncorrectlyFunded<AL, BL, AA, BA>>, rfc003::Error> {
         let alpha_redeemed_or_refunded = try_ready!(context
             .alpha_ledger_events
             .htlc_redeemed_or_refunded(
@@ -504,17 +502,15 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        let compared = beta_funded.asset.compare_to(&state.swap.beta_asset);
-        if compared != 0 {
-            Err(rfc003::Error::InvalidFunding)
-        } else {
-            transition_save!(context.state_repo, BothFunded {
+        match beta_funded.asset.compare_to(&state.swap.beta_asset) {
+            Compare::Equal => transition_save!(context.state_repo, BothFunded {
                 swap: state.swap,
                 alpha_funded: state.alpha_funded,
                 alpha_deployed: state.alpha_deployed,
                 beta_deployed: state.beta_deployed,
                 beta_funded
-            })
+            }),
+            _ => Err(rfc003::Error::IncorrectFunding),
         }
     }
 
@@ -788,7 +784,7 @@ impl_display!(Start);
 impl_display!(Accepted);
 impl_display!(AlphaDeployed);
 impl_display!(AlphaFunded);
-impl_display!(AlphaInvalidFunded);
+impl_display!(AlphaIncorrectlyFunded);
 impl_display!(AlphaFundedBetaDeployed);
 impl_display!(BothFunded);
 impl_display!(AlphaFundedBetaRefunded);

@@ -107,13 +107,14 @@ declare var global: HarnessGlobal;
         // alice should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: alice,
-            waitUntil: state => state.alpha_ledger.status === "InvalidFunded",
+            waitUntil: state =>
+                state.alpha_ledger.status === "IncorrectlyFunded",
         },
         // bob should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: bob,
             waitUntil: state =>
-                state.alpha_ledger.status === "InvalidFunded" &&
+                state.alpha_ledger.status === "IncorrectlyFunded" &&
                 state.beta_ledger.status === "NotDeployed",
         },
         {

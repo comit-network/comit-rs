@@ -262,7 +262,7 @@ mod tests {
     }
 
     #[test]
-    fn given_alpha_invalid_funded_and_beta_never_deployed_should_be_no_swapped() {
+    fn given_alpha_incorrectly_funded_and_beta_never_deployed_should_be_no_swapped() {
         assert_eq!(
             SwapStatus::new(Accepted, IncorrectlyFunded, NotDeployed, &None),
             SwapStatus::NotSwapped

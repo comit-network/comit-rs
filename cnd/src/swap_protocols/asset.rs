@@ -21,41 +21,48 @@ pub trait Asset:
     + FromHttpAsset
     + Into<AssetKind>
 {
-    fn compare_to(&self, other: &Self) -> i8;
+    fn compare_to(&self, other: &Self) -> Compare;
+}
+
+#[derive(PartialEq, Debug)]
+pub enum Compare {
+    GreaterThan,
+    LesserThan,
+    Equal,
 }
 
 impl Asset for BitcoinQuantity {
-    fn compare_to(&self, other: &BitcoinQuantity) -> i8 {
+    fn compare_to(&self, other: &BitcoinQuantity) -> Compare {
         if self < other {
-            -1
+            Compare::LesserThan
         } else if self > other {
-            1
+            Compare::GreaterThan
         } else {
-            0
+            Compare::Equal
         }
     }
 }
 
 impl Asset for EtherQuantity {
-    fn compare_to(&self, other: &EtherQuantity) -> i8 {
+    fn compare_to(&self, other: &EtherQuantity) -> Compare {
         if self < other {
-            -1
+            Compare::LesserThan
         } else if self > other {
-            1
+            Compare::GreaterThan
         } else {
-            0
+            Compare::Equal
         }
     }
 }
 
 impl Asset for Erc20Token {
-    fn compare_to(&self, other: &Erc20Token) -> i8 {
+    fn compare_to(&self, other: &Erc20Token) -> Compare {
         if self.quantity < other.quantity {
-            -1
+            Compare::LesserThan
         } else if self.quantity > other.quantity {
-            1
+            Compare::GreaterThan
         } else {
-            0
+            Compare::Equal
         }
     }
 }
@@ -98,9 +105,9 @@ mod test {
         let quantity_1_btc = BitcoinQuantity::from_bitcoin(1.0);
         let quantity_10_btc = BitcoinQuantity::from_bitcoin(10.0);
 
-        assert_that(&quantity_1_btc.compare_to(&quantity_10_btc)).is_equal_to(-1);
-        assert_that(&quantity_1_btc.compare_to(&quantity_1_btc)).is_equal_to(0);
-        assert_that(&quantity_10_btc.compare_to(&quantity_1_btc)).is_equal_to(1);
+        assert_that(&quantity_1_btc.compare_to(&quantity_10_btc)).is_equal_to(Compare::LesserThan);
+        assert_that(&quantity_1_btc.compare_to(&quantity_1_btc)).is_equal_to(Compare::Equal);
+        assert_that(&quantity_10_btc.compare_to(&quantity_1_btc)).is_equal_to(Compare::GreaterThan);
     }
 
     #[test]
@@ -108,9 +115,9 @@ mod test {
         let quantity_1_eth = EtherQuantity::from_eth(1.0);
         let quantity_10_eth = EtherQuantity::from_eth(10.0);
 
-        assert_that(&quantity_1_eth.compare_to(&quantity_10_eth)).is_equal_to(-1);
-        assert_that(&quantity_1_eth.compare_to(&quantity_1_eth)).is_equal_to(0);
-        assert_that(&quantity_10_eth.compare_to(&quantity_1_eth)).is_equal_to(1);
+        assert_that(&quantity_1_eth.compare_to(&quantity_10_eth)).is_equal_to(Compare::LesserThan);
+        assert_that(&quantity_1_eth.compare_to(&quantity_1_eth)).is_equal_to(Compare::Equal);
+        assert_that(&quantity_10_eth.compare_to(&quantity_1_eth)).is_equal_to(Compare::GreaterThan);
     }
 
     #[test]
@@ -124,9 +131,9 @@ mod test {
             Erc20Quantity(U256::from(10u64)),
         );
 
-        assert_that(&quantity_1_pay.compare_to(&quantity_10_pay)).is_equal_to(-1);
-        assert_that(&quantity_1_pay.compare_to(&quantity_1_pay)).is_equal_to(0);
-        assert_that(&quantity_10_pay.compare_to(&quantity_1_pay)).is_equal_to(1);
+        assert_that(&quantity_1_pay.compare_to(&quantity_10_pay)).is_equal_to(Compare::LesserThan);
+        assert_that(&quantity_1_pay.compare_to(&quantity_1_pay)).is_equal_to(Compare::Equal);
+        assert_that(&quantity_10_pay.compare_to(&quantity_1_pay)).is_equal_to(Compare::GreaterThan);
     }
 
     #[test]
@@ -140,8 +147,8 @@ mod test {
             Erc20Quantity(U256::from(10u64)),
         );
 
-        assert_that(&quantity_1_pay.compare_to(&quantity_10_pay)).is_equal_to(-1);
-        assert_that(&quantity_1_pay.compare_to(&quantity_1_pay)).is_equal_to(0);
-        assert_that(&quantity_10_pay.compare_to(&quantity_1_pay)).is_equal_to(1);
+        assert_that(&quantity_1_pay.compare_to(&quantity_10_pay)).is_equal_to(Compare::LesserThan);
+        assert_that(&quantity_1_pay.compare_to(&quantity_1_pay)).is_equal_to(Compare::Equal);
+        assert_that(&quantity_10_pay.compare_to(&quantity_1_pay)).is_equal_to(Compare::GreaterThan);
     }
 }

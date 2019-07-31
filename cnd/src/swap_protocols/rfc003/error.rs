@@ -5,6 +5,6 @@ pub enum Error {
     SwapResponse(comit_client::RequestError),
     Btsieve(btsieve::Error),
     TimerError,
-    InvalidFunding,
+    IncorrectFunding,
     Internal(String),
 }

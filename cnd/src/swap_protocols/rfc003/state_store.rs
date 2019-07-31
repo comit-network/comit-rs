@@ -4,7 +4,7 @@ use crate::swap_protocols::{
         messages::AcceptResponseBody,
         state_machine::{
             Accepted, AlphaDeployed, AlphaFunded, AlphaFundedBetaDeployed, AlphaFundedBetaRedeemed,
-            AlphaFundedBetaRefunded, AlphaInvalidFunded, AlphaRedeemedBetaFunded,
+            AlphaFundedBetaRefunded, AlphaIncorrectlyFunded, AlphaRedeemedBetaFunded,
             AlphaRefundedBetaFunded, BothFunded, Error as ErrorState, Final, SwapOutcome,
             SwapStates,
         },
@@ -82,7 +82,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
                 }
             }
 
-            SS::AlphaInvalidFunded(AlphaInvalidFunded {
+            SS::AlphaIncorrectlyFunded(AlphaIncorrectlyFunded {
                 alpha_deployed,
                 alpha_funded,
                 ..
