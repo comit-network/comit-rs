@@ -2,7 +2,7 @@ use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
 use std::{fmt::Arguments, io::stdout};
 
-pub fn set_up_logging(
+pub fn initialize(
     base_log_level: LevelFilter,
     structured: bool,
 ) -> Result<(), log::SetLoggerError> {
@@ -56,12 +56,24 @@ fn line_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Rec
     ))
 }
 
-fn json_formatter(_out: FormatCallback<'_>, _message: &Arguments<'_>, _record: &Record<'_>) {}
+fn json_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
+    out.finish(format_args!(
+        include_str!("./json_log_entry_template.json"),
+        date = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f"),
+        target = record.target(),
+        line = record
+            .line()
+            .map(|line| format!("{}", line))
+            .unwrap_or_else(|| String::from("null")),
+        level = record.level(),
+        message = message,
+    ))
+}
 
 #[cfg(test)]
 mod tests {
 
-    use crate::logging::create_logger;
+    use super::*;
     use log::{Level, LevelFilter, Record};
     use spectral::prelude::*;
     use std::sync::mpsc::channel;
@@ -87,10 +99,10 @@ mod tests {
             .collect::<Vec<_>>();
 
         assert_that(&messages).has_length(1);
+        let message = messages[0];
 
         let pattern = r#"\[[0-9\-\s:\.]+\]\[DEBUG\]\[test:10\] Hello world!"#;
         let regex = regex::Regex::new(pattern).unwrap();
-        let message = messages[0];
 
         if !regex.is_match(&message) {
             panic!(
@@ -105,7 +117,7 @@ mod tests {
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct JsonLogRecord {
         level: String,
-        line: Option<u32>,
+        line: String,
         target: String,
         message: String,
         date: String,
@@ -147,7 +159,7 @@ mod tests {
         // can't compare the date because we cannot predict it and there is no
         // abstraction to mock it :(
         assert_eq!(level, "DEBUG");
-        assert_eq!(line, &Some(10));
+        assert_eq!(line, "10");
         assert_eq!(target, "test");
         assert_eq!(message, "Hello world!");
     }

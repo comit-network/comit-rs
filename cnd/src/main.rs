@@ -7,7 +7,6 @@ use cnd::{
     comit_i_routes,
     config::{self, Settings},
     http_api::route_factory,
-    logging,
     network::{self, SwarmInfo},
     seed::Seed,
     swap_protocols::{
@@ -30,6 +29,7 @@ use std::{
 use structopt::StructOpt;
 
 mod cli;
+mod logging;
 
 fn main() -> Result<(), failure::Error> {
     let options = cli::Options::from_args();
@@ -48,7 +48,7 @@ fn main() -> Result<(), failure::Error> {
     let settings = Settings::from_config_file_and_defaults(config_file);
 
     let base_log_level = settings.logging.level;
-    logging::set_up_logging(base_log_level, settings.logging.structured)?;
+    logging::initialize(base_log_level, settings.logging.structured)?;
 
     log::info!("Starting up with {:#?}", settings);
 
