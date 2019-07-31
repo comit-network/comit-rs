@@ -26,7 +26,7 @@ pub struct File {
     pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
-    pub log_levels: Option<LogLevels>,
+    pub logging: Option<Logging>,
 }
 
 impl File {
@@ -62,14 +62,15 @@ impl File {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8080,
             }),
-            log_levels: None,
+            logging: None,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct LogLevels {
-    pub cnd: Option<LevelFilter>,
+pub struct Logging {
+    pub level: Option<LevelFilter>,
+    pub structured: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

@@ -1,4 +1,5 @@
 use cnd::config;
+use log::LevelFilter;
 use rand::{
     rngs::{mock::StepRng, OsRng},
     Rng,
@@ -52,6 +53,28 @@ fn read_or_create_default_should_fail_if_no_homedir_is_given() {
     let actual_settings = config::File::read_or_create_default(None, rng());
 
     assert_that(&actual_settings).is_err();
+}
+
+#[derive(serde::Deserialize, PartialEq, Debug)]
+struct LoggingOnlyConfig {
+    logging: config::file::Logging,
+}
+
+#[test]
+fn structured_logging_flag_in_logging_section_is_optional() {
+    let file_contents = r#"
+    [logging]
+    level = "DEBUG"
+    "#;
+
+    let config_file = toml::from_str(file_contents);
+
+    assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
+        logging: config::file::Logging {
+            level: Some(LevelFilter::Debug),
+            structured: None,
+        },
+    });
 }
 
 /// Helper function that returns a custom config which is different from the

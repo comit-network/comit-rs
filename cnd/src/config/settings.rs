@@ -25,7 +25,7 @@ impl Settings {
             http_api,
             btsieve,
             web_gui,
-            log_levels,
+            logging,
         } = config_file;
 
         Self {
@@ -34,9 +34,9 @@ impl Settings {
             http_api,
             btsieve,
             web_gui,
-            log_levels: log_levels
+            log_levels: logging
                 .map(|log_levels| LogLevels {
-                    cnd: log_levels.cnd.unwrap_or_else(default_cnd_level_filter),
+                    cnd: log_levels.level.unwrap_or_else(default_cnd_level_filter),
                 })
                 .unwrap_or_else(|| LogLevels {
                     cnd: default_cnd_level_filter(),
