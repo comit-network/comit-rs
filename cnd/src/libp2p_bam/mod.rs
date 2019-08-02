@@ -4,7 +4,7 @@ mod protocol;
 mod substream;
 
 pub use self::{
-    behaviour::{BamBehaviour, BehaviourInEvent, BehaviourOutEvent},
+    behaviour::{BamBehaviour, BehaviourOutEvent},
     handler::{BamHandler, PendingIncomingRequest, PendingOutgoingRequest},
     protocol::{BamProtocol, BamStream},
 };

@@ -1,7 +1,7 @@
 use crate::libp2p_bam::{
     protocol::BamProtocol,
     substream::{self, Advance, Advanced},
-    BamHandlerEvent, BehaviourInEvent,
+    BamHandlerEvent,
 };
 use bam::{
     json::{Frame, FrameType, JsonFrameCodec, OutgoingRequest, Response, ValidatedIncomingRequest},
@@ -94,6 +94,13 @@ pub struct AutomaticallyGeneratedErrorResponse {
     pub channel: oneshot::Sender<Response>,
 }
 
+/// Events that occur 'in' this node (as opposed to events from a peer node).
+#[derive(Debug)]
+pub enum ProtocolInEvent {
+    PendingOutgoingRequest { request: PendingOutgoingRequest },
+}
+
+/// Events that occur 'out'side of this node i.e. events from a peer node.
 #[derive(Debug)]
 pub enum InnerEvent {
     IncomingRequest(PendingIncomingRequest),
@@ -111,7 +118,7 @@ pub enum InnerEvent {
 }
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
-    type InEvent = BehaviourInEvent;
+    type InEvent = ProtocolInEvent;
     type OutEvent = InnerEvent;
     type Error = bam::json::Error;
     type Substream = TSubstream;
@@ -156,7 +163,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
-            BehaviourInEvent::PendingOutgoingRequest { request } => {
+            ProtocolInEvent::PendingOutgoingRequest { request } => {
                 self.outgoing_substreams
                     .push(substream::out::State::WaitingOpen { req: request });
 

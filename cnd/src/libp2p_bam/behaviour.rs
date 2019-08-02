@@ -1,6 +1,9 @@
 use crate::{
     libp2p_bam::{
-        handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
+        handler::{
+            self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse,
+            ProtocolInEvent,
+        },
         BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
     },
     network::DialInformation,
@@ -27,12 +30,13 @@ enum ConnectionState {
         addresses: HashSet<Multiaddr>,
     },
     Connecting {
-        pending_events: Vec<BehaviourInEvent>,
+        pending_events: Vec<ProtocolInEvent>,
         address_hints: Vec<Multiaddr>,
     },
 }
 
-/// Events that occur 'out'side of this node i.e. events from a peer node.
+/// Events that are caused 'out'-side of this node and emitted by the
+/// `Behaviour` to the application.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
     PendingIncomingRequest {
@@ -41,18 +45,12 @@ pub enum BehaviourOutEvent {
     },
 }
 
-/// Events that occur 'in' this node (as opposed to events from a peer node).
-#[derive(Debug)]
-pub enum BehaviourInEvent {
-    PendingOutgoingRequest { request: PendingOutgoingRequest },
-}
-
 #[derive(Debug)]
 pub struct BamBehaviour<TSubstream> {
     marker: PhantomData<TSubstream>,
 
-    events_sender: UnboundedSender<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
-    events: UnboundedReceiver<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
+    events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
+    events: UnboundedReceiver<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
 
     known_request_headers: HashMap<String, HashSet<String>>,
     connections: HashMap<PeerId, ConnectionState>,
@@ -97,7 +95,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     .unwrap_or_else(Vec::new);
 
                 entry.insert(ConnectionState::Connecting {
-                    pending_events: vec![BehaviourInEvent::PendingOutgoingRequest { request }],
+                    pending_events: vec![ProtocolInEvent::PendingOutgoingRequest { request }],
                     address_hints,
                 });
             }
@@ -109,7 +107,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(BehaviourInEvent::PendingOutgoingRequest { request });
+                        pending_events.push(ProtocolInEvent::PendingOutgoingRequest { request });
 
                         if let Some(address) = dial_information.address_hint {
                             // We insert at the front because we consider the new address to be the
@@ -123,7 +121,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
                                 peer_id: dial_information.peer_id,
-                                event: BehaviourInEvent::PendingOutgoingRequest { request },
+                                event: ProtocolInEvent::PendingOutgoingRequest { request },
                             })
                             .expect("we own the receiver");
                     }
@@ -302,7 +300,7 @@ where
     fn poll(
         &mut self,
         _params: &mut impl PollParameters,
-    ) -> Async<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>> {
+    ) -> Async<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>> {
         self.events
             .poll()
             .expect("unbounded channel can never fail")
