@@ -8,8 +8,8 @@ pub use self::{
     handler::{BamHandler, PendingInboundRequest, PendingOutboundRequest},
     protocol::{BamProtocol, BamStream},
 };
-use crate::libp2p_bam::handler::ProtocolOutEvent;
+use crate::libp2p_bam::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
 
 pub type BamHandlerEvent =
-    ProtocolsHandlerEvent<BamProtocol, PendingOutboundRequest, ProtocolOutEvent>;
+    ProtocolsHandlerEvent<BamProtocol, ProtocolOutboundOpenInfo, ProtocolOutEvent>;

@@ -1,5 +1,7 @@
 use crate::libp2p_bam::{
-    handler::{PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent},
+    handler::{
+        PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent, ProtocolOutboundOpenInfo,
+    },
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
 };
@@ -14,10 +16,10 @@ use tokio::prelude::*;
 /// States of an outbound substream i.e. from us to peer node.
 pub enum State<TSubstream> {
     WaitingOpen {
-        req: PendingOutboundRequest,
+        request: PendingOutboundRequest,
     },
     WaitingSend {
-        msg: Frame,
+        frame: Frame,
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
@@ -49,24 +51,24 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
     ) -> Advanced<State<TSubstream>> {
         use self::State::*;
         match self {
-            WaitingOpen { req } => {
+            WaitingOpen { request } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(BamProtocol {}),
-                    info: req,
+                    info: ProtocolOutboundOpenInfo::PendingOutboundRequest { request },
                 })
             }
             WaitingSend {
-                msg,
+                frame,
                 response_sender,
                 mut stream,
-            } => match stream.start_send(msg) {
+            } => match stream.start_send(frame) {
                 Ok(AsyncSink::Ready) => WaitingFlush {
                     response_sender,
                     stream,
                 }
                 .advance(known_headers),
-                Ok(AsyncSink::NotReady(msg)) => Advanced::transition_to(WaitingSend {
-                    msg,
+                Ok(AsyncSink::NotReady(frame)) => Advanced::transition_to(WaitingSend {
+                    frame,
                     response_sender,
                     stream,
                 }),

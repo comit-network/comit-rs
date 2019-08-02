@@ -117,6 +117,13 @@ pub enum ProtocolOutEvent {
     },
 }
 
+/// Different kinds of `OutboundOpenInfo` that we may want to pass when emitted
+/// an instance of `ProtocolsHandlerEvent::OutboundSubstreamRequest`.
+#[derive(Debug)]
+pub enum ProtocolOutboundOpenInfo {
+    PendingOutboundRequest { request: PendingOutboundRequest },
+}
+
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
@@ -124,7 +131,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
-    type OutboundOpenInfo = PendingOutboundRequest;
+    type OutboundOpenInfo = ProtocolOutboundOpenInfo;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
         SubstreamProtocol::new(BamProtocol {})
@@ -145,16 +152,20 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     fn inject_fully_negotiated_outbound(
         &mut self,
         stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
-        pending_inbound_request: Self::OutboundOpenInfo,
+        outbound_open_info: Self::OutboundOpenInfo,
     ) {
-        let PendingOutboundRequest { request, channel } = pending_inbound_request;
-
-        self.outbound_substreams
-            .push(substream::outbound::State::WaitingSend {
-                msg: request.into_frame(),
-                response_sender: channel,
-                stream,
-            });
+        match outbound_open_info {
+            ProtocolOutboundOpenInfo::PendingOutboundRequest {
+                request: PendingOutboundRequest { request, channel },
+            } => {
+                self.outbound_substreams
+                    .push(substream::outbound::State::WaitingSend {
+                        frame: request.into_frame(),
+                        response_sender: channel,
+                        stream,
+                    });
+            }
+        }
 
         if let Some(task) = &self.current_task {
             task.notify()
@@ -165,12 +176,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         match event {
             ProtocolInEvent::PendingOutboundRequest { request } => {
                 self.outbound_substreams
-                    .push(substream::outbound::State::WaitingOpen { req: request });
-
-                if let Some(task) = &self.current_task {
-                    task.notify()
-                }
+                    .push(substream::outbound::State::WaitingOpen { request });
             }
+        }
+
+        if let Some(task) = &self.current_task {
+            task.notify()
         }
     }
 
