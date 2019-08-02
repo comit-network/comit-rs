@@ -56,6 +56,20 @@ fn line_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Rec
     ))
 }
 
+/// Formats each log record as a JSON statement
+///
+/// The implementation of this function on purpose does not use `serde_json` to
+/// create the JSON string. Here is why:
+/// 1. `out.finish` only accepts `std::fmt::Arguments` and hence we can only use
+/// `format_args!`
+///
+/// 2. (1) is very likely due to the fact that we don't want to
+/// unnecessarily allocate strings in this function for calls to `Log::log` with
+/// a level that is not even active (think about all the calls to `log::trace`
+/// in all our depenencies that we don't see)
+///
+/// Note that this formatter **CANNOT** handle multiline message as for example
+/// produced by: `log::info!("{:#?}", my_struct);`
 fn json_formatter(out: FormatCallback<'_>, message: &Arguments<'_>, record: &Record<'_>) {
     out.finish(format_args!(
         "{{\"level\":\"{level}\",\"line\":{line},\"target\":\"{target}\",\"message\":\"{message}\",\"date\":\"{date}\"}}",
@@ -197,5 +211,4 @@ mod tests {
         assert_that(target).is_equal_to("".to_string());
         assert_that(message).is_equal_to("".to_string());
     }
-
 }

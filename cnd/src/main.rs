@@ -50,8 +50,6 @@ fn main() -> Result<(), failure::Error> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    log::info!("Starting up with {:#?}", settings);
-
     let mut runtime = tokio::runtime::Runtime::new()?;
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
