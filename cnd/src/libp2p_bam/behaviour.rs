@@ -1,8 +1,8 @@
 use crate::{
     libp2p_bam::{
         handler::{
-            self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse,
-            ProtocolInEvent,
+            self, AutomaticallyGeneratedErrorResponse, PendingIncomingResponse, ProtocolInEvent,
+            ProtocolOutEvent,
         },
         BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
     },
@@ -246,9 +246,9 @@ where
         }
     }
 
-    fn inject_node_event(&mut self, peer: PeerId, event: InnerEvent) {
+    fn inject_node_event(&mut self, peer: PeerId, event: ProtocolOutEvent) {
         match event {
-            InnerEvent::IncomingRequest(pending_incoming_request) => {
+            ProtocolOutEvent::IncomingRequest(pending_incoming_request) => {
                 self.events_sender
                     .unbounded_send(NetworkBehaviourAction::GenerateEvent(
                         BehaviourOutEvent::PendingIncomingRequest {
@@ -258,21 +258,21 @@ where
                     ))
                     .expect("we own the receiver");
             }
-            InnerEvent::IncomingResponse(PendingIncomingResponse { response, channel }) => {
+            ProtocolOutEvent::IncomingResponse(PendingIncomingResponse { response, channel }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::BadIncomingRequest(AutomaticallyGeneratedErrorResponse {
+            ProtocolOutEvent::BadIncomingRequest(AutomaticallyGeneratedErrorResponse {
                 response,
                 channel,
             }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::Error {
+            ProtocolOutEvent::Error {
                 error: handler::Error::Stream(error),
             } => {
                 log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
             }
-            InnerEvent::Error {
+            ProtocolOutEvent::Error {
                 error: handler::Error::DroppedResponseSender(_),
             } => {
                 // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
@@ -282,16 +282,16 @@ where
                 // closing the substream.
                 log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
-            InnerEvent::BadIncomingResponse => {
+            ProtocolOutEvent::BadIncomingResponse => {
                 log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
             }
-            InnerEvent::UnexpectedFrameType {
+            ProtocolOutEvent::UnexpectedFrameType {
                 bad_frame,
                 expected_type,
             } => {
                 log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
             }
-            InnerEvent::UnexpectedEOF => {
+            ProtocolOutEvent::UnexpectedEOF => {
                 log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
             }
         }

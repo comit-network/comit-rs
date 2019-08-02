@@ -102,7 +102,7 @@ pub enum ProtocolInEvent {
 
 /// Events that occur 'out'side of this node i.e. events from a peer node.
 #[derive(Debug)]
-pub enum InnerEvent {
+pub enum ProtocolOutEvent {
     IncomingRequest(PendingIncomingRequest),
     IncomingResponse(PendingIncomingResponse),
     BadIncomingRequest(AutomaticallyGeneratedErrorResponse),
@@ -119,7 +119,7 @@ pub enum InnerEvent {
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
-    type OutEvent = InnerEvent;
+    type OutEvent = ProtocolOutEvent;
     type Error = bam::json::Error;
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;

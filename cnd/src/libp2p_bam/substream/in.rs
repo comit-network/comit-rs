@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingRequest},
+    handler::{AutomaticallyGeneratedErrorResponse, PendingIncomingRequest, ProtocolOutEvent},
     protocol::BamStream,
     substream::{Advance, Advanced, CloseStream},
 };
@@ -59,7 +59,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                         return Advanced {
                             new_state: Some(WaitingClose { stream }),
                             event: Some(ProtocolsHandlerEvent::Custom(
-                                InnerEvent::UnexpectedFrameType {
+                                ProtocolOutEvent::UnexpectedFrameType {
                                     bad_frame: frame,
                                     expected_type,
                                 },
@@ -91,11 +91,13 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                             stream,
                         }),
                         event: Some(ProtocolsHandlerEvent::Custom(match request {
-                            Ok(request) => InnerEvent::IncomingRequest(PendingIncomingRequest {
-                                request,
-                                channel: sender,
-                            }),
-                            Err(response) => InnerEvent::BadIncomingRequest(
+                            Ok(request) => {
+                                ProtocolOutEvent::IncomingRequest(PendingIncomingRequest {
+                                    request,
+                                    channel: sender,
+                                })
+                            }
+                            Err(response) => ProtocolOutEvent::BadIncomingRequest(
                                 AutomaticallyGeneratedErrorResponse {
                                     response,
                                     channel: sender,
@@ -106,7 +108,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 }
                 Ok(Async::Ready(None)) => Advanced {
                     new_state: Some(State::WaitingClose { stream }),
-                    event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
+                    event: Some(ProtocolsHandlerEvent::Custom(
+                        ProtocolOutEvent::UnexpectedEOF,
+                    )),
                 },
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingMessage { stream }),
                 Err(error) => Advanced::error(stream, error),

@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{InnerEvent, PendingIncomingResponse, PendingOutgoingRequest},
+    handler::{PendingIncomingResponse, PendingOutgoingRequest, ProtocolOutEvent},
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
 };
@@ -96,7 +96,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                         return Advanced {
                             new_state: Some(WaitingClose { stream }),
                             event: Some(ProtocolsHandlerEvent::Custom(
-                                InnerEvent::UnexpectedFrameType {
+                                ProtocolOutEvent::UnexpectedFrameType {
                                     bad_frame: frame,
                                     expected_type,
                                 },
@@ -106,7 +106,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
 
                     let event = serde_json::from_value(frame.payload)
                         .map(|response| {
-                            InnerEvent::IncomingResponse(PendingIncomingResponse {
+                            ProtocolOutEvent::IncomingResponse(PendingIncomingResponse {
                                 response,
                                 channel: response_sender,
                             })
@@ -118,7 +118,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                                 deser_error
                             );
 
-                            InnerEvent::BadIncomingResponse
+                            ProtocolOutEvent::BadIncomingResponse
                         });
 
                     Advanced {
@@ -128,7 +128,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 }
                 Ok(Async::Ready(None)) => Advanced {
                     new_state: Some(State::WaitingClose { stream }),
-                    event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::UnexpectedEOF)),
+                    event: Some(ProtocolsHandlerEvent::Custom(
+                        ProtocolOutEvent::UnexpectedEOF,
+                    )),
                 },
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingAnswer {
                     response_sender,

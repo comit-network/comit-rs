@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{Error, InnerEvent},
+    handler::{Error, ProtocolOutEvent},
     protocol::BamStream,
     BamHandlerEvent,
 };
@@ -50,7 +50,9 @@ impl<S: CloseStream> Advanced<S> {
 
         Self {
             new_state: Some(S::close(stream)),
-            event: Some(ProtocolsHandlerEvent::Custom(InnerEvent::Error { error })),
+            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error {
+                error,
+            })),
         }
     }
 }
