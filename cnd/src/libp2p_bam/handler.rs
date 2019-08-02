@@ -4,7 +4,7 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    json::{Frame, FrameType, JsonFrameCodec, OutgoingRequest, Response, ValidatedIncomingRequest},
+    json::{Frame, FrameType, JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
     IntoFrame,
 };
 use derivative::Derivative;
@@ -31,9 +31,9 @@ use tokio::{
 #[derivative(Debug)]
 pub struct BamHandler<TSubstream> {
     #[derivative(Debug = "ignore")]
-    incoming_substreams: Vec<substream::r#in::State<TSubstream>>,
+    inbound_substreams: Vec<substream::inbound::State<TSubstream>>,
     #[derivative(Debug = "ignore")]
-    outgoing_substreams: Vec<substream::out::State<TSubstream>>,
+    outbound_substreams: Vec<substream::outbound::State<TSubstream>>,
 
     #[derivative(Debug = "ignore")]
     current_task: Option<Task>,
@@ -63,27 +63,27 @@ impl<TSubstream> BamHandler<TSubstream> {
     pub fn new(known_headers: HashMap<String, HashSet<String>>) -> Self {
         Self {
             known_headers,
-            incoming_substreams: Vec::new(),
-            outgoing_substreams: Vec::new(),
+            inbound_substreams: Vec::new(),
+            outbound_substreams: Vec::new(),
             current_task: None,
         }
     }
 }
 
 #[derive(Debug)]
-pub struct PendingOutgoingRequest {
-    pub request: OutgoingRequest,
+pub struct PendingOutboundRequest {
+    pub request: OutboundRequest,
     pub channel: oneshot::Sender<Response>,
 }
 
 #[derive(Debug)]
-pub struct PendingIncomingRequest {
-    pub request: ValidatedIncomingRequest,
+pub struct PendingInboundRequest {
+    pub request: ValidatedInboundRequest,
     pub channel: oneshot::Sender<Response>,
 }
 
 #[derive(Debug)]
-pub struct PendingIncomingResponse {
+pub struct PendingInboundResponse {
     pub response: Response,
     pub channel: oneshot::Sender<Response>,
 }
@@ -97,16 +97,16 @@ pub struct AutomaticallyGeneratedErrorResponse {
 /// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum ProtocolInEvent {
-    PendingOutgoingRequest { request: PendingOutgoingRequest },
+    PendingOutboundRequest { request: PendingOutboundRequest },
 }
 
 /// Events that occur 'out'side of this node i.e. events from a peer node.
 #[derive(Debug)]
 pub enum ProtocolOutEvent {
-    IncomingRequest(PendingIncomingRequest),
-    IncomingResponse(PendingIncomingResponse),
-    BadIncomingRequest(AutomaticallyGeneratedErrorResponse),
-    BadIncomingResponse,
+    InboundRequest(PendingInboundRequest),
+    InboundResponse(PendingInboundResponse),
+    BadInboundRequest(AutomaticallyGeneratedErrorResponse),
+    BadInboundResponse,
     UnexpectedFrameType {
         bad_frame: Frame,
         expected_type: FrameType,
@@ -124,7 +124,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
-    type OutboundOpenInfo = PendingOutgoingRequest;
+    type OutboundOpenInfo = PendingOutboundRequest;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
         SubstreamProtocol::new(BamProtocol {})
@@ -134,8 +134,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         &mut self,
         stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
     ) {
-        self.incoming_substreams
-            .push(substream::r#in::State::WaitingMessage { stream });
+        self.inbound_substreams
+            .push(substream::inbound::State::WaitingMessage { stream });
 
         if let Some(task) = &self.current_task {
             task.notify()
@@ -145,12 +145,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     fn inject_fully_negotiated_outbound(
         &mut self,
         stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
-        pending_incoming_request: Self::OutboundOpenInfo,
+        pending_inbound_request: Self::OutboundOpenInfo,
     ) {
-        let PendingOutgoingRequest { request, channel } = pending_incoming_request;
+        let PendingOutboundRequest { request, channel } = pending_inbound_request;
 
-        self.outgoing_substreams
-            .push(substream::out::State::WaitingSend {
+        self.outbound_substreams
+            .push(substream::outbound::State::WaitingSend {
                 msg: request.into_frame(),
                 response_sender: channel,
                 stream,
@@ -163,9 +163,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
-            ProtocolInEvent::PendingOutgoingRequest { request } => {
-                self.outgoing_substreams
-                    .push(substream::out::State::WaitingOpen { req: request });
+            ProtocolInEvent::PendingOutboundRequest { request } => {
+                self.outbound_substreams
+                    .push(substream::outbound::State::WaitingOpen { req: request });
 
                 if let Some(task) = &self.current_task {
                     task.notify()
@@ -186,11 +186,11 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
     }
 
     fn poll(&mut self) -> Poll<BamHandlerEvent, Self::Error> {
-        if let Some(result) = poll_substreams(&mut self.outgoing_substreams, &self.known_headers) {
+        if let Some(result) = poll_substreams(&mut self.outbound_substreams, &self.known_headers) {
             return result;
         }
 
-        if let Some(result) = poll_substreams(&mut self.incoming_substreams, &self.known_headers) {
+        if let Some(result) = poll_substreams(&mut self.inbound_substreams, &self.known_headers) {
             return result;
         }
 

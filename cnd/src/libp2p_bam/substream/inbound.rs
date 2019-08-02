@@ -1,11 +1,11 @@
 use crate::libp2p_bam::{
-    handler::{AutomaticallyGeneratedErrorResponse, PendingIncomingRequest, ProtocolOutEvent},
+    handler::{AutomaticallyGeneratedErrorResponse, PendingInboundRequest, ProtocolOutEvent},
     protocol::BamStream,
     substream::{Advance, Advanced, CloseStream},
 };
 use bam::{
     json::{
-        Frame, FrameType, Header, Response, UnknownMandatoryHeaders, UnvalidatedIncomingRequest,
+        Frame, FrameType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest,
     },
     IntoFrame, Status,
 };
@@ -16,7 +16,7 @@ use tokio::prelude::*;
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
-/// States of an incoming substream i.e. from peer node to us.
+/// States of an inbound substream i.e. from peer node to us.
 pub enum State<TSubstream> {
     WaitingMessage {
         stream: BamStream<TSubstream>,
@@ -68,7 +68,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                     }
 
                     let request =
-                        serde_json::from_value::<UnvalidatedIncomingRequest>(frame.payload)
+                        serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
                             .map_err(malformed_request_response)
                             .and_then(|request| {
                                 known_headers
@@ -92,12 +92,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                         }),
                         event: Some(ProtocolsHandlerEvent::Custom(match request {
                             Ok(request) => {
-                                ProtocolOutEvent::IncomingRequest(PendingIncomingRequest {
+                                ProtocolOutEvent::InboundRequest(PendingInboundRequest {
                                     request,
                                     channel: sender,
                                 })
                             }
-                            Err(response) => ProtocolOutEvent::BadIncomingRequest(
+                            Err(response) => ProtocolOutEvent::BadInboundRequest(
                                 AutomaticallyGeneratedErrorResponse {
                                     response,
                                     channel: sender,

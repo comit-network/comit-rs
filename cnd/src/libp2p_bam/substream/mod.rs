@@ -6,8 +6,8 @@ use crate::libp2p_bam::{
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
-pub mod r#in;
-pub mod out;
+pub mod inbound;
+pub mod outbound;
 
 #[allow(missing_debug_implementations)]
 pub struct Advanced<S> {

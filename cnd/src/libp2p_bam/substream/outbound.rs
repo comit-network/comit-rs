@@ -1,5 +1,5 @@
 use crate::libp2p_bam::{
-    handler::{PendingIncomingResponse, PendingOutgoingRequest, ProtocolOutEvent},
+    handler::{PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent},
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
 };
@@ -11,10 +11,10 @@ use tokio::prelude::*;
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
-/// States of an outgoing substream i.e. from us to peer node.
+/// States of an outbound substream i.e. from us to peer node.
 pub enum State<TSubstream> {
     WaitingOpen {
-        req: PendingOutgoingRequest,
+        req: PendingOutboundRequest,
     },
     WaitingSend {
         msg: Frame,
@@ -106,7 +106,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
 
                     let event = serde_json::from_value(frame.payload)
                         .map(|response| {
-                            ProtocolOutEvent::IncomingResponse(PendingIncomingResponse {
+                            ProtocolOutEvent::InboundResponse(PendingInboundResponse {
                                 response,
                                 channel: response_sender,
                             })
@@ -118,7 +118,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                                 deser_error
                             );
 
-                            ProtocolOutEvent::BadIncomingResponse
+                            ProtocolOutEvent::BadInboundResponse
                         });
 
                     Advanced {

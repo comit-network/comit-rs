@@ -1,7 +1,7 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::SwapReject,
-    libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingIncomingRequest},
+    libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingInboundRequest},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
@@ -10,7 +10,7 @@ use crate::{
 };
 use bam::{
     self,
-    json::{OutgoingRequest, Response, ValidatedIncomingRequest},
+    json::{OutboundRequest, Response, ValidatedInboundRequest},
     Status,
 };
 use futures::future::Future;
@@ -81,7 +81,7 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
     pub fn send_request(
         &mut self,
         peer_id: DialInformation,
-        request: OutgoingRequest,
+        request: OutboundRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         self.bam.send_request(peer_id, request)
     }
@@ -127,8 +127,8 @@ impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
 {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
-            BehaviourOutEvent::PendingIncomingRequest { request, peer_id } => {
-                let PendingIncomingRequest { request, channel } = request;
+            BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
+                let PendingInboundRequest { request, channel } = request;
 
                 let generated_response = handle_request(&self.bob, peer_id, request);
 
@@ -170,7 +170,7 @@ impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
 fn handle_request<B: BobSpawner>(
     bob: &B,
     counterparty: PeerId,
-    mut request: ValidatedIncomingRequest,
+    mut request: ValidatedInboundRequest,
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
         "SWAP" => {
