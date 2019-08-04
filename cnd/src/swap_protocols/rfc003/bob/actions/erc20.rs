@@ -137,11 +137,17 @@ where
             _ => vec![],
         };
 
-        if let Funded { htlc_location, .. } = beta_state {
+        if let Funded {
+            htlc_location,
+            fund_transaction,
+            ..
+        } = beta_state
+        {
             actions.push(Action::Refund(<(BL, BA)>::refund_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,
+                fund_transaction,
             )))
         }
         actions

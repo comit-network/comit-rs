@@ -43,6 +43,7 @@ pub trait RefundAction<L: Ledger, A: Asset> {
         htlc_params: HtlcParams<L, A>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn SecretSource,
+        fund_transaction: &L::Transaction,
     ) -> Self::RefundActionOutput;
 }
 

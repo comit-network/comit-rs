@@ -30,6 +30,11 @@ pub enum LedgerState<L: Ledger> {
         fund_transaction: L::Transaction,
         refund_transaction: L::Transaction,
     },
+    IncorrectlyFunded {
+        htlc_location: L::HtlcLocation,
+        deploy_transaction: L::Transaction,
+        fund_transaction: L::Transaction,
+    },
 }
 
 impl Default for HtlcState {
@@ -41,12 +46,13 @@ impl Default for HtlcState {
 #[cfg(test)]
 impl quickcheck::Arbitrary for HtlcState {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        match g.next_u32() % 5 {
+        match g.next_u32() % 6 {
             0 => HtlcState::NotDeployed,
             1 => HtlcState::Deployed,
             2 => HtlcState::Funded,
             3 => HtlcState::Redeemed,
             4 => HtlcState::Refunded,
+            5 => HtlcState::IncorrectlyFunded,
             _ => unreachable!(),
         }
     }
