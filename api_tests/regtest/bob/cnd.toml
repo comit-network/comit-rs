@@ -3,7 +3,7 @@ secret_seed = "1a1707bb54e5fb4deddd19f07adcb4f1e022ca7879e3c8348da8d4fa496ae8e2"
 
 [network]
 listen = [
-    "/ip4/0.0.0.0/tcp/8011"
+    "/ip4/0.0.0.0/tcp/9939"
 ]
 
 [http_api]
