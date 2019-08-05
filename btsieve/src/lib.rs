@@ -17,7 +17,7 @@ pub use crate::{
     in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
     query_result_repository::*, route_factory::*, routes::*,
 };
-use bitcoin_support::MinedBlock;
+use bitcoin_support::{MinedBlock, Sha256dHash};
 pub use ethereum_support::web3;
 use std::{cmp::Ordering, sync::Arc};
 
@@ -55,12 +55,12 @@ impl Default for Bitcoin {
     }
 }
 
-struct Bitcoin(BlockchainDAG<MinedBlock, (MinedBlock, MinedBlock)>);
+struct Bitcoin(BlockchainDAG<MinedBlock, (Sha256dHash, Sha256dHash)>);
 
 struct Ethereum;
 
-trait AddBlocks<T> {
+trait AddBlock<T> {
     fn add_block(&mut self, block: T);
     fn size(&self) -> usize;
-    fn contains_precessor(&self, block: &T) -> bool;
+    fn find_predecessor(&self, block: &T) -> Option<&MinedBlock>;
 }

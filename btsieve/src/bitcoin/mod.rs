@@ -6,27 +6,34 @@ pub use self::{
     block_processor::{check_block_queries, check_transaction_queries},
     queries::{BlockQuery, TransactionQuery},
 };
-use crate::{AddBlocks, Bitcoin};
-use bitcoin_support::MinedBlock;
+use crate::{AddBlock, Bitcoin};
+use bitcoin_support::{MinedBlock, Sha256dHash};
 
-impl AddBlocks<MinedBlock> for Bitcoin {
+impl AddBlock<MinedBlock> for Bitcoin {
     fn add_block(&mut self, block: MinedBlock) {
-        if self.contains_precessor(&block) {
-            log::warn!("Could not find previous block of {:?} ", block);
-        }
         if self.0.nodes.contains(&block) {
-            log::warn!("Block already known {:?} ", block);
-        } else {
-            self.0.nodes.push(block);
+            return log::warn!("Block already known {:?} ", block);
         }
+        match self.find_predecessor(&block) {
+            Some(prev) => {
+                self.0.vertices.push((
+                    prev.block.header.merkle_root,
+                    block.clone().block.header.merkle_root,
+                ));
+            }
+            None => {
+                log::warn!("Could not find previous block for {:?} ", block);
+            }
+        }
+        self.0.nodes.push(block);
     }
 
     fn size(&self) -> usize {
         self.0.nodes.len()
     }
 
-    fn contains_precessor(&self, block: &MinedBlock) -> bool {
-        self.0.nodes.iter().any(|b| {
+    fn find_predecessor(&self, block: &MinedBlock) -> Option<&MinedBlock> {
+        self.0.nodes.iter().find(|b| {
             b.block
                 .header
                 .merkle_root
@@ -40,7 +47,7 @@ mod test {
     use super::*;
     use crate::BlockchainDAG;
     use bitcoin_support::{Block, BlockHeader, FromHex, Sha256dHash};
-    use spectral::{boolean::BooleanAssertions, *};
+    use spectral::{boolean::BooleanAssertions, option::OptionAssertions, *};
 
     fn new_mined_block(
         prev_blockhash: Sha256dHash,
@@ -153,7 +160,7 @@ mod test {
         bitcoin_chain.add_block(block2.clone());
         assert_that(&bitcoin_chain.size()).is_equal_to(&2);
 
-        assert_that(&bitcoin_chain.contains_precessor(&block1)).is_false();
-        assert_that(&bitcoin_chain.contains_precessor(&block2)).is_true();
+        assert_that(&bitcoin_chain.find_predecessor(&block1)).is_none();
+        assert_that(&bitcoin_chain.find_predecessor(&block2)).is_some();
     }
 }
