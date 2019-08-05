@@ -10,7 +10,7 @@ byteorder = "1.3"
 extern_web3 = { package = "web3", version = "0.6" }
 lazy_static = "1"
 num = "0.2"
-regex = "1.1"
+regex = "1.2"
 rlp = "0.3"
 secp256k1_support = { path = "../secp256k1_support" }
 serde = { version = "1", features = ["derive"] }
