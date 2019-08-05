@@ -17,11 +17,13 @@ pub use crate::{
     in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
     query_result_repository::*, route_factory::*, routes::*,
 };
+use bitcoin_support::MinedBlock;
 pub use ethereum_support::web3;
 use std::{cmp::Ordering, sync::Arc};
 
 #[derive(PartialEq, PartialOrd)]
 pub struct QueryId(pub u32);
+
 #[derive(PartialEq)]
 pub struct QueryMatch(pub QueryId, pub String);
 
@@ -37,4 +39,28 @@ impl PartialOrd for QueryMatch {
     fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
         self.0.partial_cmp(&other.0)
     }
+}
+
+struct BlockchainDAG<T, V> {
+    nodes: Vec<T>,
+    vertices: Vec<V>,
+}
+
+impl Default for Bitcoin {
+    fn default() -> Self {
+        Self(BlockchainDAG {
+            nodes: Vec::new(),
+            vertices: Vec::new(),
+        })
+    }
+}
+
+struct Bitcoin(BlockchainDAG<MinedBlock, (MinedBlock, MinedBlock)>);
+
+struct Ethereum;
+
+trait AddBlocks<T> {
+    fn add_block(&mut self, block: T);
+    fn size(&self) -> usize;
+    fn contains_precessor(&self, block: &T) -> bool;
 }

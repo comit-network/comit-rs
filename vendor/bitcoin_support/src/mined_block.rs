@@ -1,9 +1,9 @@
 use bitcoin::Block;
 use std::convert::AsRef;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct MinedBlock {
-    block: Block,
+    pub block: Block,
     pub height: u32,
 }
 
