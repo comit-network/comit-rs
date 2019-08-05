@@ -1,11 +1,14 @@
 use crate::{
     libp2p_bam::{
-        handler::{self, AutomaticallyGeneratedErrorResponse, InnerEvent, PendingIncomingResponse},
-        BamHandler, PendingIncomingRequest, PendingOutgoingRequest,
+        handler::{
+            self, AutomaticallyGeneratedErrorResponse, PendingInboundResponse, ProtocolInEvent,
+            ProtocolOutEvent,
+        },
+        BamHandler, PendingInboundRequest, PendingOutboundRequest,
     },
     network::DialInformation,
 };
-use bam::json::{OutgoingRequest, Response};
+use bam::json::{OutboundRequest, Response};
 use futures::{
     stream::Stream,
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
@@ -27,30 +30,27 @@ enum ConnectionState {
         addresses: HashSet<Multiaddr>,
     },
     Connecting {
-        pending_events: Vec<BehaviourInEvent>,
+        pending_events: Vec<ProtocolInEvent>,
         address_hints: Vec<Multiaddr>,
     },
 }
 
+/// Events that are caused 'out'-side of this node and emitted by the
+/// `Behaviour` to the application.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
-    PendingIncomingRequest {
-        request: PendingIncomingRequest,
+    PendingInboundRequest {
+        request: PendingInboundRequest,
         peer_id: PeerId,
     },
-}
-
-#[derive(Debug)]
-pub enum BehaviourInEvent {
-    PendingIncomingRequest { request: PendingOutgoingRequest },
 }
 
 #[derive(Debug)]
 pub struct BamBehaviour<TSubstream> {
     marker: PhantomData<TSubstream>,
 
-    events_sender: UnboundedSender<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
-    events: UnboundedReceiver<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>>,
+    events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
+    events: UnboundedReceiver<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
 
     known_request_headers: HashMap<String, HashSet<String>>,
     connections: HashMap<PeerId, ConnectionState>,
@@ -72,11 +72,11 @@ impl<TSubstream> BamBehaviour<TSubstream> {
     pub fn send_request(
         &mut self,
         dial_information: DialInformation,
-        request: OutgoingRequest,
+        request: OutboundRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
         let (sender, receiver) = futures::oneshot();
 
-        let request = PendingOutgoingRequest {
+        let request = PendingOutboundRequest {
             request,
             channel: sender,
         };
@@ -95,7 +95,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     .unwrap_or_else(Vec::new);
 
                 entry.insert(ConnectionState::Connecting {
-                    pending_events: vec![BehaviourInEvent::PendingIncomingRequest { request }],
+                    pending_events: vec![ProtocolInEvent::PendingOutboundRequest { request }],
                     address_hints,
                 });
             }
@@ -107,7 +107,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(BehaviourInEvent::PendingIncomingRequest { request });
+                        pending_events.push(ProtocolInEvent::PendingOutboundRequest { request });
 
                         if let Some(address) = dial_information.address_hint {
                             // We insert at the front because we consider the new address to be the
@@ -121,7 +121,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
                                 peer_id: dial_information.peer_id,
-                                event: BehaviourInEvent::PendingIncomingRequest { request },
+                                event: ProtocolInEvent::PendingOutboundRequest { request },
                             })
                             .expect("we own the receiver");
                     }
@@ -246,33 +246,33 @@ where
         }
     }
 
-    fn inject_node_event(&mut self, peer: PeerId, event: InnerEvent) {
+    fn inject_node_event(&mut self, peer: PeerId, event: ProtocolOutEvent) {
         match event {
-            InnerEvent::IncomingRequest(pending_incoming_request) => {
+            ProtocolOutEvent::InboundRequest(request) => {
                 self.events_sender
                     .unbounded_send(NetworkBehaviourAction::GenerateEvent(
-                        BehaviourOutEvent::PendingIncomingRequest {
-                            request: pending_incoming_request,
+                        BehaviourOutEvent::PendingInboundRequest {
+                            request,
                             peer_id: peer,
                         },
                     ))
                     .expect("we own the receiver");
             }
-            InnerEvent::IncomingResponse(PendingIncomingResponse { response, channel }) => {
+            ProtocolOutEvent::InboundResponse(PendingInboundResponse { response, channel }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::BadIncomingRequest(AutomaticallyGeneratedErrorResponse {
+            ProtocolOutEvent::BadInboundRequest(AutomaticallyGeneratedErrorResponse {
                 response,
                 channel,
             }) => {
                 let _ = channel.send(response);
             }
-            InnerEvent::Error {
+            ProtocolOutEvent::Error {
                 error: handler::Error::Stream(error),
             } => {
                 log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
             }
-            InnerEvent::Error {
+            ProtocolOutEvent::Error {
                 error: handler::Error::DroppedResponseSender(_),
             } => {
                 // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
@@ -282,16 +282,16 @@ where
                 // closing the substream.
                 log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
-            InnerEvent::BadIncomingResponse => {
+            ProtocolOutEvent::BadInboundResponse => {
                 log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
             }
-            InnerEvent::UnexpectedFrameType {
+            ProtocolOutEvent::UnexpectedFrameType {
                 bad_frame,
                 expected_type,
             } => {
                 log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
             }
-            InnerEvent::UnexpectedEOF => {
+            ProtocolOutEvent::UnexpectedEOF => {
                 log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
             }
         }
@@ -300,7 +300,7 @@ where
     fn poll(
         &mut self,
         _params: &mut impl PollParameters,
-    ) -> Async<NetworkBehaviourAction<BehaviourInEvent, BehaviourOutEvent>> {
+    ) -> Async<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>> {
         self.events
             .poll()
             .expect("unbounded channel can never fail")

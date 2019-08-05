@@ -11,24 +11,24 @@ use serde_json::{self, Value as JsonValue};
 use std::collections::HashSet;
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct UnvalidatedIncomingRequest {
+pub struct UnvalidatedInboundRequest {
     #[serde(flatten)]
     inner: Request,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct ValidatedIncomingRequest {
+pub struct ValidatedInboundRequest {
     #[serde(flatten)]
     inner: Request,
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct OutgoingRequest {
+pub struct OutboundRequest {
     #[serde(flatten)]
     inner: Request,
 }
 
-impl ValidatedIncomingRequest {
+impl ValidatedInboundRequest {
     pub fn request_type(&self) -> &str {
         self.inner.request_type.as_str()
     }
@@ -46,7 +46,7 @@ impl ValidatedIncomingRequest {
     }
 }
 
-impl OutgoingRequest {
+impl OutboundRequest {
     pub fn new<T: Into<String>>(request_type: T) -> Self {
         Self {
             inner: Request {
@@ -75,7 +75,7 @@ impl OutgoingRequest {
     }
 }
 
-impl UnvalidatedIncomingRequest {
+impl UnvalidatedInboundRequest {
     pub fn request_type(&self) -> &str {
         self.inner.request_type.as_str()
     }
@@ -83,7 +83,7 @@ impl UnvalidatedIncomingRequest {
     pub fn ensure_no_unknown_mandatory_headers(
         self,
         known_headers: &HashSet<String>,
-    ) -> Result<ValidatedIncomingRequest, UnknownMandatoryHeaders> {
+    ) -> Result<ValidatedInboundRequest, UnknownMandatoryHeaders> {
         let (parsed_headers, unknown_mandatory_headers) = self.inner.headers.into_iter().fold(
             (Headers::default(), UnknownMandatoryHeaders::default()),
             |(parsed_headers, mut unknown_headers), (key, header)| {
@@ -103,7 +103,7 @@ impl UnvalidatedIncomingRequest {
             return Err(unknown_mandatory_headers);
         }
 
-        Ok(ValidatedIncomingRequest {
+        Ok(ValidatedInboundRequest {
             inner: Request {
                 request_type: self.inner.request_type,
                 headers: parsed_headers,
@@ -144,7 +144,7 @@ impl Request {
     }
 }
 
-impl IntoFrame<json::Frame> for OutgoingRequest {
+impl IntoFrame<json::Frame> for OutboundRequest {
     fn into_frame(self) -> json::Frame {
         // Serializing Request should never fail because its members are just Strings
         // and JsonValues
