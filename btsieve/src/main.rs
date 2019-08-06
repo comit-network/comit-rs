@@ -7,8 +7,8 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     load_settings::{load_settings, Opt},
-    logging, route_factory, settings, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    QueryMatch, QueryResultRepository,
+    logging, route_factory, settings, Bitcoin, Blockchain, InMemoryQueryRepository,
+    InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
 use ethereum_support::{
     web3::{
@@ -77,6 +77,8 @@ fn create_bitcoin_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let transaction_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
+    let mut bitcoin_chain = Bitcoin::default();
+
     let (client, network) = if let Some(settings) = settings {
         let bitcoin_rpc_client = bitcoincore_rpc::Client::new(
             settings.node_url.to_string(),
@@ -115,6 +117,8 @@ fn create_bitcoin_routes(
                 .expect("Should return a Bitcoind received for MinedBlocks");
 
             let bitcoin_processor = blocks.for_each(move |block| {
+                bitcoin_chain.add_block(block.clone());
+
                 bitcoin::check_block_queries(block_query_repository.clone(), block.clone())
                     .for_each(|QueryMatch(id, block_id)| {
                         block_query_result_repository.add_result(id.0, block_id);
