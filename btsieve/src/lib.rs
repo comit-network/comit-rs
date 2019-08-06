@@ -41,25 +41,23 @@ impl PartialOrd for QueryMatch {
     }
 }
 
-struct BlockchainDAG<T, V> {
+struct BlockchainDag<T, V> {
     nodes: Vec<T>,
     vertices: Vec<V>,
 }
 
 impl Default for Bitcoin {
     fn default() -> Self {
-        Self(BlockchainDAG {
+        Self(BlockchainDag {
             nodes: Vec::new(),
             vertices: Vec::new(),
         })
     }
 }
 
-struct Bitcoin(BlockchainDAG<MinedBlock, (Sha256dHash, Sha256dHash)>);
+pub struct Bitcoin(BlockchainDag<MinedBlock, (Sha256dHash, Sha256dHash)>);
 
-struct Ethereum;
-
-trait AddBlock<T> {
+pub trait Blockchain<T> {
     fn add_block(&mut self, block: T);
     fn size(&self) -> usize;
     fn find_predecessor(&self, block: &T) -> Option<&MinedBlock>;

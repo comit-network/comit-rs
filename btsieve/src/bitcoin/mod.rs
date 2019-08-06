@@ -6,18 +6,18 @@ pub use self::{
     block_processor::{check_block_queries, check_transaction_queries},
     queries::{BlockQuery, TransactionQuery},
 };
-use crate::{AddBlock, Bitcoin};
-use bitcoin_support::{MinedBlock, Sha256dHash};
+use crate::{Bitcoin, Blockchain};
+use bitcoin_support::MinedBlock;
 
-impl AddBlock<MinedBlock> for Bitcoin {
+impl Blockchain<MinedBlock> for Bitcoin {
     fn add_block(&mut self, block: MinedBlock) {
         if self.0.nodes.contains(&block) {
             return log::warn!("Block already known {:?} ", block);
         }
         match self.find_predecessor(&block) {
-            Some(prev) => {
+            Some(_prev) => {
                 self.0.vertices.push((
-                    prev.block.header.merkle_root,
+                    block.clone().block.header.prev_blockhash,
                     block.clone().block.header.merkle_root,
                 ));
             }
@@ -45,9 +45,8 @@ impl AddBlock<MinedBlock> for Bitcoin {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::BlockchainDAG;
     use bitcoin_support::{Block, BlockHeader, FromHex, Sha256dHash};
-    use spectral::{boolean::BooleanAssertions, option::OptionAssertions, *};
+    use spectral::{option::OptionAssertions, *};
 
     fn new_mined_block(
         prev_blockhash: Sha256dHash,
@@ -90,6 +89,7 @@ mod test {
 
         assert_that(&bitcoin_chain.size()).is_equal_to(&0);
         bitcoin_chain.add_block(block);
+        assert_that(&bitcoin_chain.size()).is_equal_to(&1);
     }
 
     #[test]

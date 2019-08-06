@@ -7,8 +7,8 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     load_settings::{load_settings, Opt},
-    logging, route_factory, settings, InMemoryQueryRepository, InMemoryQueryResultRepository,
-    QueryMatch, QueryResultRepository,
+    logging, route_factory, settings, Bitcoin, Blockchain, InMemoryQueryRepository,
+    InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
 use ethereum_support::{
     web3::{
