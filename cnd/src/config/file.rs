@@ -20,16 +20,16 @@ use url::Url;
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct ConfigFile {
+pub struct File {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
-    pub log_levels: Option<LogLevels>,
+    pub logging: Option<Logging>,
 }
 
-impl ConfigFile {
+impl File {
     pub fn default<R: Rng>(rand: R) -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/9939"
             .parse()
@@ -38,7 +38,7 @@ impl ConfigFile {
             Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
         let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
-        ConfigFile {
+        File {
             comit: Comit { secret_seed: seed },
             network: Network {
                 listen: vec![comit_listen],
@@ -62,14 +62,15 @@ impl ConfigFile {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8080,
             }),
-            log_levels: None,
+            logging: None,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct LogLevels {
-    pub cnd: Option<LevelFilter>,
+pub struct Logging {
+    pub level: Option<LevelFilter>,
+    pub structured: Option<bool>,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -103,18 +104,54 @@ pub struct PollParameters<T> {
     pub network: T,
 }
 
-impl ConfigFile {
-    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        ConfigFile::ensure_directory_exists(&config_file)?;
+impl File {
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
+        let config_file = Path::new(&config_file);
+        println!(
+            "Using config file {}",
+            PrintablePath(&config_file.to_path_buf())
+        );
 
-        ConfigFile::write_to_file(config_file, &self)?;
+        let mut config = config_rs::Config::new();
+        config.merge(config_rs::File::from(config_file))?;
+        config.try_into()
+    }
+
+    pub fn read_or_create_default<R: Rng>(
+        home_dir: Option<&Path>,
+        rand: R,
+    ) -> Result<Self, config_rs::ConfigError> {
+        let default_config_path = home_dir.map(|dir| Self::compute_default_path(dir)).ok_or_else(|| {
+            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
+            config_rs::ConfigError::Message(
+                "Failed to determine home directory".to_owned(),
+            )
+        })?;
+
+        if default_config_path.exists() {
+            Self::read(default_config_path)
+        } else {
+            Self::create_default_at(default_config_path, rand)
+        }
+    }
+
+    pub fn compute_default_path(parent: &Path) -> PathBuf {
+        let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
+
+        parent.join(user_path_components)
+    }
+
+    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
+        File::ensure_directory_exists(&config_file)?;
+
+        File::write_to_file(config_file, &self)?;
 
         Ok(self)
     }
 
     fn write_to_file(
         config_file: PathBuf,
-        default_settings: &ConfigFile,
+        default_settings: &File,
     ) -> Result<(), config_rs::ConfigError> {
         let toml_string = toml::to_string(&default_settings).map_err(|error| {
             config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
@@ -131,6 +168,17 @@ impl ConfigFile {
                 config_file, error
             ))
         })
+    }
+
+    fn create_default_at<R: Rng>(
+        default_config_path: PathBuf,
+        rand: R,
+    ) -> Result<File, config_rs::ConfigError> {
+        println!(
+            "Creating config file at {} because it does not exist yet",
+            PrintablePath(&default_config_path)
+        );
+        File::default(rand).write_to(default_config_path)
     }
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
@@ -157,56 +205,4 @@ impl ConfigFile {
             }
         }
     }
-
-    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
-        let mut config = config_rs::Config::new();
-
-        let config_file = Path::new(&config_file);
-
-        // Start off by merging in the "default" configuration file
-        config.merge(config_rs::File::from(config_file))?;
-
-        // You can deserialize (and thus freeze) the entire configuration as
-        config.try_into()
-    }
-
-    pub fn compute_default_path(parent: &Path) -> PathBuf {
-        let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
-
-        parent.join(user_path_components)
-    }
-}
-
-pub fn read_from(path: PathBuf) -> Result<ConfigFile, config_rs::ConfigError> {
-    println!("Using config file {}", PrintablePath(&path));
-    ConfigFile::read(path)
-}
-
-pub fn read_or_create_default<R: Rng>(
-    home_dir: Option<&Path>,
-    rand: R,
-) -> Result<ConfigFile, config_rs::ConfigError> {
-    let default_config_path = home_dir.map(|dir| ConfigFile::compute_default_path(dir)).ok_or_else(|| {
-        eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
-        config_rs::ConfigError::Message(
-            "Failed to determine home directory".to_owned(),
-        )
-    })?;
-
-    if default_config_path.exists() {
-        read_from(default_config_path)
-    } else {
-        create_default_at(default_config_path, rand)
-    }
-}
-
-fn create_default_at<R: Rng>(
-    default_config_path: PathBuf,
-    rand: R,
-) -> Result<ConfigFile, config_rs::ConfigError> {
-    println!(
-        "Creating config file at {} because it does not exist yet",
-        PrintablePath(&default_config_path)
-    );
-    ConfigFile::default(rand).write_to(default_config_path)
 }

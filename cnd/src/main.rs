@@ -7,7 +7,6 @@ use cnd::{
     comit_i_routes,
     config::{self, Settings},
     http_api::route_factory,
-    logging,
     network::{self, SwarmInfo},
     seed::Seed,
     swap_protocols::{
@@ -30,15 +29,16 @@ use std::{
 use structopt::StructOpt;
 
 mod cli;
+mod logging;
 
 fn main() -> Result<(), failure::Error> {
     let options = cli::Options::from_args();
 
     let config_file = options
         .config_file
-        .map(config::read_from)
+        .map(config::File::read)
         .unwrap_or_else(|| {
-            config::read_or_create_default(
+            config::File::read_or_create_default(
                 directories::UserDirs::new()
                     .as_ref()
                     .map(|dirs| dirs.home_dir()),
@@ -47,10 +47,8 @@ fn main() -> Result<(), failure::Error> {
         })?;
     let settings = Settings::from_config_file_and_defaults(config_file);
 
-    let base_log_level = settings.log_levels.cnd;
-    logging::set_up_logging(base_log_level)?;
-
-    log::info!("Starting up with {:#?}", settings);
+    let base_log_level = settings.logging.level;
+    logging::initialize(base_log_level, settings.logging.structured)?;
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
