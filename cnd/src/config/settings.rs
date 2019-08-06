@@ -1,4 +1,4 @@
-use super::config_file::{Btsieve, Comit, ConfigFile, HttpSocket, Network};
+use super::file::{Btsieve, Comit, File, HttpSocket, Network};
 use log::LevelFilter;
 
 /// This structs represents the settings as they are used through out the code.
@@ -14,18 +14,26 @@ pub struct Settings {
     pub http_api: HttpSocket,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
-    pub log_levels: LogLevels,
+    pub logging: Logging,
+}
+
+#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
+#[derivative(Default)]
+pub struct Logging {
+    #[derivative(Default(value = "LevelFilter::Debug"))]
+    pub level: LevelFilter,
+    pub structured: bool,
 }
 
 impl Settings {
-    pub fn from_config_file_and_defaults(config_file: ConfigFile) -> Self {
-        let ConfigFile {
+    pub fn from_config_file_and_defaults(config_file: File) -> Self {
+        let File {
             comit,
             network,
             http_api,
             btsieve,
             web_gui,
-            log_levels,
+            logging,
         } = config_file;
 
         Self {
@@ -34,22 +42,78 @@ impl Settings {
             http_api,
             btsieve,
             web_gui,
-            log_levels: log_levels
-                .map(|log_levels| LogLevels {
-                    cnd: log_levels.cnd.unwrap_or_else(default_cnd_level_filter),
-                })
-                .unwrap_or_else(|| LogLevels {
-                    cnd: default_cnd_level_filter(),
-                }),
+            logging: {
+                let Logging {
+                    level: default_level,
+                    structured: default_structured,
+                } = Logging::default();
+                logging
+                    .map(|logging| Logging {
+                        level: logging.level.unwrap_or(default_level),
+                        structured: logging.structured.unwrap_or(default_structured),
+                    })
+                    .unwrap_or_default()
+            },
         }
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
-pub struct LogLevels {
-    pub cnd: LevelFilter,
-}
+#[cfg(test)]
+mod tests {
 
-fn default_cnd_level_filter() -> LevelFilter {
-    LevelFilter::Debug
+    use super::*;
+    use crate::config::file;
+    use rand::rngs::OsRng;
+    use spectral::prelude::*;
+
+    #[test]
+    fn field_structured_defaults_to_false() {
+        let config_file = File {
+            logging: Some(file::Logging {
+                level: None,
+                structured: None,
+            }),
+            ..File::default(OsRng)
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .map(|settings| &settings.logging.structured)
+            .is_false()
+    }
+
+    #[test]
+    fn field_structured_is_correctly_mapped() {
+        let config_file = File {
+            logging: Some(file::Logging {
+                level: None,
+                structured: Some(true),
+            }),
+            ..File::default(OsRng)
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .map(|settings| &settings.logging.structured)
+            .is_true()
+    }
+
+    #[test]
+    fn logging_section_defaults_to_debug_and_false() {
+        let config_file = File {
+            logging: None,
+            ..File::default(OsRng)
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .map(|settings| &settings.logging)
+            .is_equal_to(Logging {
+                level: LevelFilter::Debug,
+                structured: false,
+            })
+    }
 }
