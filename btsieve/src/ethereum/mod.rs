@@ -118,19 +118,18 @@ mod test {
     fn add_block_and_find_predecessor() {
         let mut blockchain = Ethereum::default();
 
-        let block = ethereum_block(H256::from(1), Some(H256::from(2)));
+        let block1 = ethereum_block(H256::from(1), Some(H256::from(2)));
         let block2 = ethereum_block(H256::from(2), Some(H256::from(3)));
 
         assert_that(&blockchain.size()).is_equal_to(&0);
-        blockchain.add_block(block.clone());
+        blockchain.add_block(block1.clone());
         assert_that(&blockchain.size()).is_equal_to(&1);
         blockchain.add_block(block2.clone());
         assert_that(&blockchain.size()).is_equal_to(&2);
 
-        assert_that(&blockchain.find_predecessor(&block)).is_none();
+        assert_that(&blockchain.find_predecessor(&block1)).is_none();
         assert_that(&blockchain.find_predecessor(&block2))
             .is_some()
-            .subject
-            .hash;
+            .is_equal_to(&block1);
     }
 }

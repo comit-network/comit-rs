@@ -161,6 +161,8 @@ mod test {
         assert_that(&bitcoin_chain.size()).is_equal_to(&2);
 
         assert_that(&bitcoin_chain.find_predecessor(&block1)).is_none();
-        assert_that(&bitcoin_chain.find_predecessor(&block2)).is_some();
+        assert_that(&bitcoin_chain.find_predecessor(&block2))
+            .is_some()
+            .is_equal_to(&block1);
     }
 }
