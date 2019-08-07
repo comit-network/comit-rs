@@ -15,25 +15,26 @@ use tokio::prelude::*;
 #[allow(missing_debug_implementations)]
 /// States of an outbound substream i.e. from us to peer node.
 pub enum State<TSubstream> {
-    WaitingOpen {
-        request: PendingOutboundRequest,
-    },
+    /// We haven't started opening the outgoing substream yet.
+    WaitingOpen { request: PendingOutboundRequest },
+    /// Waiting to send a message to the remote.
     WaitingSend {
         frame: Frame,
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
+    /// Waiting to flush the substream so that the data arrives at the remote.
     WaitingFlush {
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
+    /// Waiting for the answer to our message.
     WaitingAnswer {
         response_sender: oneshot::Sender<Response>,
         stream: BamStream<TSubstream>,
     },
-    WaitingClose {
-        stream: BamStream<TSubstream>,
-    },
+    /// The substream is being closed.
+    WaitingClose { stream: BamStream<TSubstream> },
 }
 
 impl<TSubstream> CloseStream for State<TSubstream> {
