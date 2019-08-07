@@ -177,7 +177,7 @@ fn create_ethereum_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
-    let ethereum_chain = Ethereum::default();
+    let mut ethereum_chain = Ethereum::default();
 
     let (client, network, event_loop) = if let Some(settings) = settings {
         log::info!("Starting Ethereum Listener on {}", settings.node_url);
@@ -206,7 +206,7 @@ fn create_ethereum_routes(
 
             let executor = runtime.executor();
             let web3_processor = blocks.for_each(move |block| {
-                ethereum_chain.add_block(block);
+                ethereum_chain.add_block(block.clone());
                 ethereum::check_block_queries(block_query_repository.clone(), block.clone())
                     .for_each(|QueryMatch(id, block_id)| {
                         block_query_result_repository.add_result(id.0, block_id);
