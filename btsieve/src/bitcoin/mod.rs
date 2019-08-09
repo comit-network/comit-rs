@@ -93,7 +93,7 @@ mod test {
     }
 
     #[test]
-    fn add_block_twice() {
+    fn add_block_twice_should_ignore_once() {
         let mut bitcoin_chain = Bitcoin::default();
 
         let block = new_mined_block(
@@ -127,7 +127,7 @@ mod test {
     }
 
     #[test]
-    fn add_block_and_precessor() {
+    fn add_block_and_find_predecessor() {
         let mut bitcoin_chain = Bitcoin::default();
 
         let block1 = new_mined_block(
@@ -161,6 +161,8 @@ mod test {
         assert_that(&bitcoin_chain.size()).is_equal_to(&2);
 
         assert_that(&bitcoin_chain.find_predecessor(&block1)).is_none();
-        assert_that(&bitcoin_chain.find_predecessor(&block2)).is_some();
+        assert_that(&bitcoin_chain.find_predecessor(&block2))
+            .is_some()
+            .is_equal_to(&block1);
     }
 }

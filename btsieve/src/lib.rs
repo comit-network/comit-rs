@@ -19,6 +19,7 @@ pub use crate::{
 };
 use bitcoin_support::{MinedBlock, Sha256dHash};
 pub use ethereum_support::web3;
+use ethereum_support::{Block, Transaction, H256};
 use std::{cmp::Ordering, sync::Arc};
 
 #[derive(PartialEq, PartialOrd)]
@@ -55,10 +56,20 @@ impl Default for Bitcoin {
     }
 }
 
+impl Default for Ethereum {
+    fn default() -> Self {
+        Self(BlockchainDag {
+            nodes: Vec::new(),
+            vertices: Vec::new(),
+        })
+    }
+}
+
 pub struct Bitcoin(BlockchainDag<MinedBlock, (Sha256dHash, Sha256dHash)>);
+pub struct Ethereum(BlockchainDag<Block<Transaction>, (H256, H256)>);
 
 pub trait Blockchain<T> {
     fn add_block(&mut self, block: T);
     fn size(&self) -> usize;
-    fn find_predecessor(&self, block: &T) -> Option<&MinedBlock>;
+    fn find_predecessor(&self, block: &T) -> Option<&T>;
 }

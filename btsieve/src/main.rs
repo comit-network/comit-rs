@@ -7,7 +7,7 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     load_settings::{load_settings, Opt},
-    logging, route_factory, settings, Bitcoin, Blockchain, InMemoryQueryRepository,
+    logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
 use ethereum_support::{
@@ -177,6 +177,8 @@ fn create_ethereum_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
+    let mut ethereum_chain = Ethereum::default();
+
     let (client, network, event_loop) = if let Some(settings) = settings {
         log::info!("Starting Ethereum Listener on {}", settings.node_url);
 
@@ -204,6 +206,7 @@ fn create_ethereum_routes(
 
             let executor = runtime.executor();
             let web3_processor = blocks.for_each(move |block| {
+                ethereum_chain.add_block(block.clone());
                 ethereum::check_block_queries(block_query_repository.clone(), block.clone())
                     .for_each(|QueryMatch(id, block_id)| {
                         block_query_result_repository.add_result(id.0, block_id);
