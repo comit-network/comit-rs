@@ -43,7 +43,7 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(Debug)]
 pub enum Error {
-    Stream(bam::json::Error),
+    Stream(bam::json::CodecError),
     DroppedResponseSender(Canceled),
 }
 
@@ -53,8 +53,8 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<bam::json::Error> for Error {
-    fn from(e: bam::json::Error) -> Self {
+impl From<bam::json::CodecError> for Error {
+    fn from(e: bam::json::CodecError) -> Self {
         Error::Stream(e)
     }
 }
@@ -127,7 +127,7 @@ pub enum ProtocolOutboundOpenInfo {
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = bam::json::Error;
+    type Error = bam::json::CodecError;
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
@@ -214,7 +214,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<BamHandlerEvent, bam::json::Error>> {
+) -> Option<Poll<BamHandlerEvent, bam::json::CodecError>> {
     log::debug!("polling {} substreams", substreams.len());
 
     // We remove each element from `substreams` one by one and add them back.
