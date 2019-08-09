@@ -62,7 +62,6 @@ mod test {
     #[test]
     fn add_block() {
         let mut blockchain = Ethereum::default();
-
         let block = Block {
             parent_hash: H256::from(1),
             hash: Some(H256::from(2)),
@@ -70,13 +69,13 @@ mod test {
         };
 
         blockchain.add_block(block);
+
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
 
     #[test]
     fn add_block_without_hash_should_ignore() {
         let mut blockchain = Ethereum::default();
-
         let block = Block {
             parent_hash: H256::from(1),
             hash: None,
@@ -84,13 +83,13 @@ mod test {
         };
 
         blockchain.add_block(block);
+
         assert_that(&blockchain.size()).is_equal_to(&0);
     }
 
     #[test]
     fn add_same_block_twice_should_ignore_second_one() {
         let mut blockchain = Ethereum::default();
-
         let block = Block {
             parent_hash: H256::from(1),
             hash: Some(H256::from(2)),
@@ -100,6 +99,7 @@ mod test {
 
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&1);
+
         blockchain.add_block(block_clone);
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
@@ -107,7 +107,6 @@ mod test {
     #[test]
     fn add_block_and_find_predecessor() {
         let mut blockchain = Ethereum::default();
-
         let block1 = Block {
             parent_hash: H256::from(1),
             hash: Some(H256::from(2)),
@@ -121,6 +120,7 @@ mod test {
 
         blockchain.add_block(block1.clone());
         assert_that(&blockchain.size()).is_equal_to(&1);
+
         blockchain.add_block(block2.clone());
         assert_that(&blockchain.size()).is_equal_to(&2);
 
