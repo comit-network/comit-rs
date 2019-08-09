@@ -1,4 +1,4 @@
-use crate::{json::header::Header, Frame, FrameType, IntoFrame};
+use crate::{frame::header::Header, Frame, FrameType, IntoFrame};
 use serde::{Deserialize, Serialize};
 use serde_json;
 

@@ -1,6 +1,6 @@
 use crate::{
     api,
-    json::header::{Header, Headers},
+    frame::header::{Header, Headers},
     Frame, FrameType, IntoFrame,
 };
 use serde::{Deserialize, Serialize};

@@ -5,7 +5,7 @@ use crate::libp2p_bam::{
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
 };
-use bam::{json::Response, Frame, FrameType};
+use bam::{frame::Response, Frame, FrameType};
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::{ProtocolsHandlerEvent, SubstreamProtocol};
 use std::collections::{HashMap, HashSet};

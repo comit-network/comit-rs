@@ -14,7 +14,7 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::{self, json, Status};
+use bam::{self, frame, Status};
 use futures::Future;
 use libp2p::{Swarm, Transport};
 use serde::Deserialize;
@@ -54,7 +54,7 @@ where
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         let request = build_swap_request(request)
-            .expect("constructing a bam::json::OutoingRequest should never fail!");
+            .expect("constructing a bam::frame::OutoingRequest should never fail!");
 
         let response = {
             let mut swarm = self.lock().unwrap();
@@ -141,7 +141,7 @@ fn build_swap_request<
     BA: Asset,
 >(
     request: rfc003::messages::Request<AL, BL, AA, BA>,
-) -> Result<json::OutboundRequest, serde_json::Error> {
+) -> Result<frame::OutboundRequest, serde_json::Error> {
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
     let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
     let alpha_expiry = request.alpha_expiry;
@@ -149,7 +149,7 @@ fn build_swap_request<
     let secret_hash = request.secret_hash;
     let protocol = SwapProtocol::Rfc003(request.hash_function);
 
-    Ok(json::OutboundRequest::new("SWAP")
+    Ok(frame::OutboundRequest::new("SWAP")
         .with_header("alpha_ledger", request.alpha_ledger.into().to_bam_header()?)
         .with_header("beta_ledger", request.beta_ledger.into().to_bam_header()?)
         .with_header("alpha_asset", request.alpha_asset.into().to_bam_header()?)

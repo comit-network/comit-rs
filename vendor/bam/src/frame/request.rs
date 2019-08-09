@@ -1,5 +1,5 @@
 use crate::{
-    json::header::{Header, Headers},
+    frame::header::{Header, Headers},
     Frame, FrameType, IntoFrame,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};

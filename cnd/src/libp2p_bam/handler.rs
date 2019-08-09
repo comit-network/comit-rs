@@ -4,7 +4,7 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    json::{JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
     Frame, FrameType, IntoFrame,
 };
 use derivative::Derivative;
@@ -43,7 +43,7 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(Debug)]
 pub enum Error {
-    Stream(bam::json::CodecError),
+    Stream(bam::frame::CodecError),
     DroppedResponseSender(Canceled),
 }
 
@@ -53,8 +53,8 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<bam::json::CodecError> for Error {
-    fn from(e: bam::json::CodecError) -> Self {
+impl From<bam::frame::CodecError> for Error {
+    fn from(e: bam::frame::CodecError) -> Self {
         Error::Stream(e)
     }
 }
@@ -90,8 +90,8 @@ pub struct PendingInboundResponse {
 
 #[derive(Debug)]
 pub struct AutomaticallyGeneratedErrorResponse {
-    pub error: bam::json::Error,
-    pub channel: oneshot::Sender<bam::json::Error>,
+    pub error: bam::frame::Error,
+    pub channel: oneshot::Sender<bam::frame::Error>,
 }
 
 /// Events that occur 'in' this node (as opposed to events from a peer node).
@@ -127,7 +127,7 @@ pub enum ProtocolOutboundOpenInfo {
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = bam::json::CodecError;
+    type Error = bam::frame::CodecError;
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
@@ -214,7 +214,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<BamHandlerEvent, bam::json::CodecError>> {
+) -> Option<Poll<BamHandlerEvent, bam::frame::CodecError>> {
     log::debug!("polling {} substreams", substreams.len());
 
     // We remove each element from `substreams` one by one and add them back.

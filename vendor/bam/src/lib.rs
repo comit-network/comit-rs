@@ -3,7 +3,7 @@
 
 mod api;
 #[macro_use]
-pub mod json;
+pub mod frame;
 
 pub use crate::api::*;
 

@@ -8,7 +8,7 @@ use crate::{
     },
     network::DialInformation,
 };
-use bam::json::{OutboundRequest, Response};
+use bam::frame::{OutboundRequest, Response};
 use futures::{
     stream::Stream,
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},

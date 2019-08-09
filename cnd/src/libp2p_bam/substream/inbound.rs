@@ -4,7 +4,7 @@ use crate::libp2p_bam::{
     substream::{Advance, Advanced, CloseStream},
 };
 use bam::{
-    json::{ErrorType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest},
+    frame::{ErrorType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest},
     Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
@@ -145,22 +145,22 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
 }
 
 // TODO: Revisit to check if error frame type assigned is correct
-fn malformed_request_response(error: serde_json::Error) -> bam::json::Error {
+fn malformed_request_response(error: serde_json::Error) -> bam::frame::Error {
     log::warn!(target: "sub-libp2p", "incoming request was malformed: {:?}", error);
 
-    bam::json::Error::new(ErrorType::MalformedFrame)
+    bam::frame::Error::new(ErrorType::MalformedFrame)
 }
 
-fn unknown_request_type_response(request_type: &str) -> bam::json::Error {
+fn unknown_request_type_response(request_type: &str) -> bam::frame::Error {
     log::warn!(target: "sub-libp2p", "request type '{}' is unknown", request_type);
 
-    bam::json::Error::new(ErrorType::UnknownRequestType)
+    bam::frame::Error::new(ErrorType::UnknownRequestType)
 }
 
 fn unknown_mandatory_headers_response(
     unknown_headers: UnknownMandatoryHeaders,
-) -> bam::json::Error {
-    bam::json::Error::new(ErrorType::UnknownMandatoryHeader).with_details(
+) -> bam::frame::Error {
+    bam::frame::Error::new(ErrorType::UnknownMandatoryHeader).with_details(
         Header::with_value(unknown_headers)
             .expect("list of strings should serialize to serde_json::Value"),
     )
