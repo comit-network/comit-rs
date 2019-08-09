@@ -1,10 +1,6 @@
 use crate::{
-    api::IntoFrame,
-    json::{
-        self,
-        header::{Header, Headers},
-        FrameType,
-    },
+    json::header::{Header, Headers},
+    Frame, FrameType, IntoFrame,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
@@ -144,12 +140,12 @@ impl Request {
     }
 }
 
-impl IntoFrame<json::Frame> for OutboundRequest {
-    fn into_frame(self) -> json::Frame {
+impl IntoFrame<Frame> for OutboundRequest {
+    fn into_frame(self) -> Frame {
         // Serializing Request should never fail because its members are just Strings
         // and JsonValues
         let payload = serde_json::to_value(self).unwrap();
 
-        json::Frame::new(FrameType::Request, payload)
+        Frame::new(FrameType::Request, payload)
     }
 }

@@ -4,8 +4,8 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    json::{Frame, FrameType, JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
-    IntoFrame,
+    json::{JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
+    Frame, FrameType, IntoFrame,
 };
 use derivative::Derivative;
 use futures::{

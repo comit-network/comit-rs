@@ -1,6 +1,5 @@
 mod codec;
 mod error;
-mod frame;
 mod header;
 mod request;
 mod response;
@@ -8,4 +7,4 @@ mod response;
 mod macros;
 pub mod status;
 
-pub use self::{codec::*, error::*, frame::*, header::Header, request::*, response::*, status::*};
+pub use self::{codec::*, error::*, header::Header, request::*, response::*, status::*};

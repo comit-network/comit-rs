@@ -4,11 +4,8 @@ use crate::libp2p_bam::{
     substream::{Advance, Advanced, CloseStream},
 };
 use bam::{
-    json::{
-        ErrorType, Frame, FrameType, Header, Response, UnknownMandatoryHeaders,
-        UnvalidatedInboundRequest,
-    },
-    IntoFrame,
+    json::{ErrorType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest},
+    Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
