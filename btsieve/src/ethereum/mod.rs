@@ -53,6 +53,13 @@ mod test {
     use spectral::prelude::*;
 
     #[test]
+    fn inital_size_should_be_zero() {
+        let blockchain = Ethereum::default();
+
+        assert_that(&blockchain.size()).is_equal_to(&0);
+    }
+
+    #[test]
     fn add_block() {
         let mut blockchain = Ethereum::default();
 
@@ -62,7 +69,6 @@ mod test {
             ..Block::default()
         };
 
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
@@ -77,7 +83,6 @@ mod test {
             ..Block::default()
         };
 
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&0);
     }
@@ -97,7 +102,6 @@ mod test {
             ..Block::default()
         };
 
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&1);
         blockchain.add_block(block2);
@@ -119,7 +123,6 @@ mod test {
             ..Block::default()
         };
 
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block1.clone());
         assert_that(&blockchain.size()).is_equal_to(&1);
         blockchain.add_block(block2.clone());
