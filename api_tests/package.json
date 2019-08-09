@@ -31,7 +31,7 @@
         "satoshi-bitcoin": "^1.0.4",
         "toml": "^3.0.0",
         "urijs": "^1.19.1",
-        "web3": "^1.0.0-beta.55"
+        "web3": "^1.2.1"
     },
     "devDependencies": {
         "@types/bitcoinjs-lib": "^4.0.0",
