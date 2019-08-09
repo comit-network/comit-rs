@@ -5,7 +5,7 @@ use crate::libp2p_bam::{
 };
 use bam::{
     frame::{JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
-    Frame, FrameType, IntoFrame,
+    IntoFrame,
 };
 use derivative::Derivative;
 use futures::{
@@ -88,12 +88,6 @@ pub struct PendingInboundResponse {
     pub channel: oneshot::Sender<Response>,
 }
 
-#[derive(Debug)]
-pub struct AutomaticallyGeneratedErrorResponse {
-    pub error: bam::frame::Error,
-    pub channel: oneshot::Sender<bam::frame::Error>,
-}
-
 /// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum ProtocolInEvent {
@@ -105,16 +99,9 @@ pub enum ProtocolInEvent {
 pub enum ProtocolOutEvent {
     InboundRequest(PendingInboundRequest),
     InboundResponse(PendingInboundResponse),
-    BadInboundRequest(AutomaticallyGeneratedErrorResponse),
     BadInboundResponse,
-    UnexpectedFrameType {
-        bad_frame: Frame,
-        expected_type: FrameType,
-    },
     UnexpectedEOF,
-    Error {
-        error: Error,
-    },
+    Error { error: Error },
 }
 
 /// Different kinds of `OutboundOpenInfo` that we may want to pass when emitted

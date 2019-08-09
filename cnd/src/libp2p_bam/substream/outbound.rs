@@ -3,9 +3,9 @@ use crate::libp2p_bam::{
         PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent, ProtocolOutboundOpenInfo,
     },
     protocol::{BamProtocol, BamStream},
-    substream::{Advance, Advanced, CloseStream},
+    substream::{unknown_frame_type_error, Advance, Advanced, CloseStream},
 };
-use bam::{frame::Response, Frame, FrameType};
+use bam::{frame::Response, Frame, FrameType, IntoFrame};
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::{ProtocolsHandlerEvent, SubstreamProtocol};
 use std::collections::{HashMap, HashSet};
@@ -94,17 +94,12 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 mut stream,
             } => match stream.poll() {
                 Ok(Async::Ready(Some(frame))) => {
-                    let expected_type = FrameType::Response;
-                    if frame.frame_type != expected_type {
-                        return Advanced {
-                            new_state: Some(WaitingClose { stream }),
-                            event: Some(ProtocolsHandlerEvent::Custom(
-                                ProtocolOutEvent::UnexpectedFrameType {
-                                    bad_frame: frame,
-                                    expected_type,
-                                },
-                            )),
-                        };
+                    if frame.frame_type != FrameType::Response {
+                        return Advanced::transition_to(WaitingSend {
+                            response_sender,
+                            frame: unknown_frame_type_error(frame).into_frame(),
+                            stream,
+                        });
                     }
 
                     let event = serde_json::from_value(frame.payload)

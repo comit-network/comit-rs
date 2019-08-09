@@ -27,6 +27,10 @@ pub enum FrameType {
     Request,
     Response,
     Error,
+
+    // This is currently the fallback to not fail on serialisation if the frame type is unknown
+    #[serde(other)]
+    Other,
 }
 
 impl Frame {

@@ -1,9 +1,6 @@
 use crate::{
     libp2p_bam::{
-        handler::{
-            self, AutomaticallyGeneratedErrorResponse, PendingInboundResponse, ProtocolInEvent,
-            ProtocolOutEvent,
-        },
+        handler::{self, PendingInboundResponse, ProtocolInEvent, ProtocolOutEvent},
         BamHandler, PendingInboundRequest, PendingOutboundRequest,
     },
     network::DialInformation,
@@ -261,12 +258,6 @@ where
             ProtocolOutEvent::InboundResponse(PendingInboundResponse { response, channel }) => {
                 let _ = channel.send(response);
             }
-            ProtocolOutEvent::BadInboundRequest(AutomaticallyGeneratedErrorResponse {
-                error: response,
-                channel,
-            }) => {
-                let _ = channel.send(response);
-            }
             ProtocolOutEvent::Error {
                 error: handler::Error::Stream(error),
             } => {
@@ -284,12 +275,6 @@ where
             }
             ProtocolOutEvent::BadInboundResponse => {
                 log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
-            }
-            ProtocolOutEvent::UnexpectedFrameType {
-                bad_frame,
-                expected_type,
-            } => {
-                log::error!(target: "sub-libp2p", "{:?} sent the frame {:?} even though a {:?} was expected", peer, bad_frame, expected_type);
             }
             ProtocolOutEvent::UnexpectedEOF => {
                 log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);

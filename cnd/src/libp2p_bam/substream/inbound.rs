@@ -1,10 +1,13 @@
 use crate::libp2p_bam::{
     handler::{PendingInboundRequest, ProtocolOutEvent},
     protocol::BamStream,
-    substream::{Advance, Advanced, CloseStream},
+    substream::{
+        malformed_frame_error, unknown_frame_type_error, unknown_mandatory_header_error,
+        unknown_request_type_error, Advance, Advanced, CloseStream,
+    },
 };
 use bam::{
-    frame::{ErrorType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest},
+    frame::{Response, UnvalidatedInboundRequest},
     Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
@@ -51,39 +54,33 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
         match self {
             WaitingMessage { mut stream } => match stream.poll() {
                 Ok(Async::Ready(Some(frame))) => {
-                    let expected_type = FrameType::Request;
-                    if frame.frame_type != expected_type {
-                        return Advanced {
-                            new_state: Some(WaitingClose { stream }),
-                            event: Some(ProtocolsHandlerEvent::Custom(
-                                ProtocolOutEvent::UnexpectedFrameType {
-                                    bad_frame: frame,
-                                    expected_type,
-                                },
-                            )),
-                        };
+                    if frame.frame_type != FrameType::Request {
+                        return Advanced::transition_to(WaitingSend {
+                            msg: unknown_frame_type_error(frame).into_frame(),
+                            stream,
+                        });
                     }
 
                     let request =
                         serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
-                            .map_err(malformed_request_response)
+                            .map_err(malformed_frame_error)
                             .and_then(|request| {
                                 known_headers
                                     .get(request.request_type())
                                     .ok_or_else(|| {
-                                        unknown_request_type_response(request.request_type())
+                                        unknown_request_type_error(request.request_type())
                                     })
                                     .and_then(|known_headers| {
                                         request
                                             .ensure_no_unknown_mandatory_headers(known_headers)
-                                            .map_err(unknown_mandatory_headers_response)
+                                            .map_err(unknown_mandatory_header_error)
                                     })
                             });
 
                     match request {
                         Ok(request) => {
                             let (sender, receiver) = oneshot::channel();
-                            return Advanced {
+                            Advanced {
                                 new_state: Some(WaitingUser { receiver, stream }),
                                 event: Some(ProtocolsHandlerEvent::Custom(
                                     ProtocolOutEvent::InboundRequest(PendingInboundRequest {
@@ -91,15 +88,13 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                                         channel: sender,
                                     }),
                                 )),
-                            };
+                            }
                         }
-                        Err(response) => {
-                            return Advanced::transition_to(WaitingSend {
-                                msg: response.into_frame(),
-                                stream,
-                            });
-                        }
-                    };
+                        Err(response) => Advanced::transition_to(WaitingSend {
+                            msg: response.into_frame(),
+                            stream,
+                        }),
+                    }
                 }
                 Ok(Async::Ready(None)) => Advanced {
                     new_state: Some(State::WaitingClose { stream }),
@@ -142,26 +137,4 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
             },
         }
     }
-}
-
-// TODO: Revisit to check if error frame type assigned is correct
-fn malformed_request_response(error: serde_json::Error) -> bam::frame::Error {
-    log::warn!(target: "sub-libp2p", "incoming request was malformed: {:?}", error);
-
-    bam::frame::Error::new(ErrorType::MalformedFrame)
-}
-
-fn unknown_request_type_response(request_type: &str) -> bam::frame::Error {
-    log::warn!(target: "sub-libp2p", "request type '{}' is unknown", request_type);
-
-    bam::frame::Error::new(ErrorType::UnknownRequestType)
-}
-
-fn unknown_mandatory_headers_response(
-    unknown_headers: UnknownMandatoryHeaders,
-) -> bam::frame::Error {
-    bam::frame::Error::new(ErrorType::UnknownMandatoryHeader).with_details(
-        Header::with_value(unknown_headers)
-            .expect("list of strings should serialize to serde_json::Value"),
-    )
 }
