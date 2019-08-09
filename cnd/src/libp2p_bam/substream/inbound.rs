@@ -1,13 +1,14 @@
 use crate::libp2p_bam::{
-    handler::{AutomaticallyGeneratedErrorResponse, PendingInboundRequest, ProtocolOutEvent},
+    handler::{PendingInboundRequest, ProtocolOutEvent},
     protocol::BamStream,
     substream::{Advance, Advanced, CloseStream},
 };
 use bam::{
     json::{
-        Frame, FrameType, Header, Response, UnknownMandatoryHeaders, UnvalidatedInboundRequest,
+        ErrorType, Frame, FrameType, Header, Response, UnknownMandatoryHeaders,
+        UnvalidatedInboundRequest,
     },
-    IntoFrame, Status,
+    IntoFrame,
 };
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
@@ -22,7 +23,7 @@ pub enum State<TSubstream> {
     WaitingMessage { stream: BamStream<TSubstream> },
     /// Waiting for the user to send the response back to us.
     WaitingUser {
-        response_receiver: oneshot::Receiver<Response>,
+        receiver: oneshot::Receiver<Response>,
         stream: BamStream<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
@@ -82,28 +83,26 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                                     })
                             });
 
-                    let (sender, receiver) = oneshot::channel();
-
-                    Advanced {
-                        new_state: Some(WaitingUser {
-                            response_receiver: receiver,
-                            stream,
-                        }),
-                        event: Some(ProtocolsHandlerEvent::Custom(match request {
-                            Ok(request) => {
-                                ProtocolOutEvent::InboundRequest(PendingInboundRequest {
-                                    request,
-                                    channel: sender,
-                                })
-                            }
-                            Err(response) => ProtocolOutEvent::BadInboundRequest(
-                                AutomaticallyGeneratedErrorResponse {
-                                    response,
-                                    channel: sender,
-                                },
-                            ),
-                        })),
-                    }
+                    match request {
+                        Ok(request) => {
+                            let (sender, receiver) = oneshot::channel();
+                            return Advanced {
+                                new_state: Some(WaitingUser { receiver, stream }),
+                                event: Some(ProtocolsHandlerEvent::Custom(
+                                    ProtocolOutEvent::InboundRequest(PendingInboundRequest {
+                                        request,
+                                        channel: sender,
+                                    }),
+                                )),
+                            };
+                        }
+                        Err(response) => {
+                            return Advanced::transition_to(WaitingSend {
+                                msg: response.into_frame(),
+                                stream,
+                            });
+                        }
+                    };
                 }
                 Ok(Async::Ready(None)) => Advanced {
                     new_state: Some(State::WaitingClose { stream }),
@@ -115,18 +114,15 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 Err(error) => Advanced::error(stream, error),
             },
             WaitingUser {
-                mut response_receiver,
+                mut receiver,
                 stream,
-            } => match response_receiver.poll() {
+            } => match receiver.poll() {
                 Ok(Async::Ready(response)) => WaitingSend {
                     msg: response.into_frame(),
                     stream,
                 }
                 .advance(known_headers),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingUser {
-                    response_receiver,
-                    stream,
-                }),
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingUser { receiver, stream }),
                 Err(error) => Advanced::error(stream, error),
             },
             WaitingSend { msg, mut stream } => match stream.start_send(msg) {
@@ -151,21 +147,23 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
     }
 }
 
-fn malformed_request_response(error: serde_json::Error) -> Response {
+// TODO: Revisit to check if error frame type assigned is correct
+fn malformed_request_response(error: serde_json::Error) -> bam::json::Error {
     log::warn!(target: "sub-libp2p", "incoming request was malformed: {:?}", error);
 
-    Response::new(Status::SE(0))
+    bam::json::Error::new(ErrorType::MalformedFrame)
 }
 
-fn unknown_request_type_response(request_type: &str) -> Response {
+fn unknown_request_type_response(request_type: &str) -> bam::json::Error {
     log::warn!(target: "sub-libp2p", "request type '{}' is unknown", request_type);
 
-    Response::new(Status::SE(2))
+    bam::json::Error::new(ErrorType::UnknownRequestType)
 }
 
-fn unknown_mandatory_headers_response(unknown_headers: UnknownMandatoryHeaders) -> Response {
-    Response::new(Status::SE(1)).with_header(
-        "Unsupported-Headers",
+fn unknown_mandatory_headers_response(
+    unknown_headers: UnknownMandatoryHeaders,
+) -> bam::json::Error {
+    bam::json::Error::new(ErrorType::UnknownMandatoryHeader).with_details(
         Header::with_value(unknown_headers)
             .expect("list of strings should serialize to serde_json::Value"),
     )

@@ -262,7 +262,7 @@ where
                 let _ = channel.send(response);
             }
             ProtocolOutEvent::BadInboundRequest(AutomaticallyGeneratedErrorResponse {
-                response,
+                error: response,
                 channel,
             }) => {
                 let _ = channel.send(response);

@@ -90,8 +90,8 @@ pub struct PendingInboundResponse {
 
 #[derive(Debug)]
 pub struct AutomaticallyGeneratedErrorResponse {
-    pub response: Response,
-    pub channel: oneshot::Sender<Response>,
+    pub error: bam::json::Error,
+    pub channel: oneshot::Sender<bam::json::Error>,
 }
 
 /// Events that occur 'in' this node (as opposed to events from a peer node).

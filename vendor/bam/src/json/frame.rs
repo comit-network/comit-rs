@@ -13,10 +13,7 @@ pub struct Frame {
 pub enum FrameType {
     Request,
     Response,
-
-    // Too lazy ATM to write a proper deserializer that preserves the value 🙃
-    #[serde(other)]
-    Other,
+    Error,
 }
 
 impl Frame {
