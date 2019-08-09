@@ -55,7 +55,7 @@ warp = "0.1"
 
 [dev-dependencies]
 bitcoin_rpc_test_helpers = { path = "../vendor/bitcoin_rpc_test_helpers" }
-bitcoincore-rpc = "0.6"
+bitcoincore-rpc = "0.7"
 key_gen = { path = "../vendor/key_gen" }
 lazy_static = "1"
 maplit = "1"
