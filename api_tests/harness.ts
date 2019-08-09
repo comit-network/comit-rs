@@ -1,6 +1,6 @@
 ///<reference path="./lib/satoshi_bitcoin.d.ts"/>
 
-import { ChildProcess, execSync, spawn } from "child_process";
+import { execSync } from "child_process";
 import commander from "commander";
 import * as fs from "fs";
 import glob from "glob";
@@ -8,9 +8,9 @@ import Mocha from "mocha";
 import path from "path";
 import * as toml from "toml";
 import { BtsieveRunner } from "./lib/btsieve_runner";
-import { MetaCndConfig } from "./lib/comit";
+import { CndRunner } from "./lib/cnd_runner";
 import { LedgerRunner } from "./lib/ledger_runner";
-import { HarnessGlobal, sleep } from "./lib/util";
+import { HarnessGlobal } from "./lib/util";
 
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
@@ -40,63 +40,6 @@ if (!fs.existsSync(logDir)) {
 // Start services helpers //
 // ********************** //
 
-class ComitRunner {
-    private runningNodes: { [key: string]: ChildProcess };
-
-    constructor() {
-        this.runningNodes = {};
-    }
-
-    public async ensureCndsRunning(cnds: Array<[string, MetaCndConfig]>) {
-        console.log(
-            "Starting cnd for " + cnds.map(([name]) => name).join(", ")
-        );
-        for (const [name, comitConfig] of cnds) {
-            if (this.runningNodes[name]) {
-                continue;
-            }
-
-            this.runningNodes[name] = await spawn(
-                projectRoot + "/target/debug/cnd",
-                ["--config", comitConfig.config_file],
-                {
-                    cwd: projectRoot,
-                    stdio: [
-                        "ignore",
-                        fs.openSync(logDir + "/cnd-" + name + ".log", "w"),
-                        fs.openSync(logDir + "/cnd-" + name + ".log", "w"),
-                    ],
-                }
-            );
-
-            await sleep(500);
-
-            this.runningNodes[name].on(
-                "exit",
-                (code: number, signal: number) => {
-                    console.log(
-                        `cnd ${name} exited with ${code || "signal " + signal}`
-                    );
-                }
-            );
-        }
-
-        await sleep(2000);
-    }
-
-    public stopCnds() {
-        const names = Object.keys(this.runningNodes);
-
-        if (names.length > 0) {
-            console.log("Stopping cnds: " + names.join(", "));
-            for (const process of Object.values(this.runningNodes)) {
-                process.kill();
-            }
-            this.runningNodes = {};
-        }
-    }
-}
-
 async function runTests(testFiles: string[]) {
     const ledgerRunner = new LedgerRunner(
         projectRoot + "/api_tests/regtest/docker-compose.yml",
@@ -105,7 +48,11 @@ async function runTests(testFiles: string[]) {
     );
     global.ledgers_config = ledgerRunner.getLedgersConfig();
 
-    const nodeRunner = new ComitRunner();
+    const nodeRunner = new CndRunner(
+        projectRoot,
+        projectRoot + "/target/debug/cnd",
+        logDir
+    );
     const btsieveRunner = new BtsieveRunner(
         projectRoot,
         projectRoot + "/target/debug/btsieve",
