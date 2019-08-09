@@ -88,7 +88,7 @@ mod test {
     }
 
     #[test]
-    fn add_block_twice_should_ignore_once() {
+    fn add_same_block_twice_should_ignore_second_one() {
         let mut blockchain = Ethereum::default();
 
         let block = Block {
@@ -96,15 +96,11 @@ mod test {
             hash: Some(H256::from(2)),
             ..Block::default()
         };
-        let block2 = Block {
-            parent_hash: H256::from(1),
-            hash: Some(H256::from(2)),
-            ..Block::default()
-        };
+        let block_clone = block.clone();
 
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&1);
-        blockchain.add_block(block2);
+        blockchain.add_block(block_clone);
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
 
