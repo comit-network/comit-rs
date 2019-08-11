@@ -49,81 +49,78 @@ impl Blockchain<Block<Transaction>> for Ethereum {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::web3::types::{Block, Bytes, Transaction, H160, H2048, H256, U256};
+    use crate::web3::types::{Block, H256};
     use spectral::prelude::*;
 
-    fn ethereum_block(parent_hash: H256, hash: Option<H256>) -> Block<Transaction> {
-        Block {
-            hash,
-            parent_hash,
-            uncles_hash: H256::from(123),
-            author: H160::from(7),
-            state_root: H256::from(123),
-            transactions_root: H256::from(123),
-            receipts_root: H256::from(123),
-            number: None,
-            gas_used: U256::from(0),
-            gas_limit: U256::from(0),
-            extra_data: Bytes::from(vec![]),
-            logs_bloom: H2048::from(0),
-            timestamp: U256::from(0),
-            difficulty: U256::from(0),
-            total_difficulty: U256::from(0),
-            seal_fields: vec![],
-            uncles: vec![],
-            transactions: vec![],
-            size: None,
-            mix_hash: None,
-            nonce: None,
-        }
+    #[test]
+    fn inital_size_should_be_zero() {
+        let blockchain = Ethereum::default();
+
+        assert_that(&blockchain.size()).is_equal_to(&0);
     }
 
     #[test]
     fn add_block() {
         let mut blockchain = Ethereum::default();
+        let block = Block {
+            parent_hash: H256::from(1),
+            hash: Some(H256::from(2)),
+            ..Block::default()
+        };
 
-        let block = ethereum_block(H256::from(1), Some(H256::from(2)));
-
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
+
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
 
     #[test]
     fn add_block_without_hash_should_ignore() {
         let mut blockchain = Ethereum::default();
+        let block = Block {
+            parent_hash: H256::from(1),
+            hash: None,
+            ..Block::default()
+        };
 
-        let block = ethereum_block(H256::from(1), None);
-
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
+
         assert_that(&blockchain.size()).is_equal_to(&0);
     }
 
     #[test]
-    fn add_block_twice_should_ignore_once() {
+    fn add_same_block_twice_should_ignore_second_one() {
         let mut blockchain = Ethereum::default();
+        let block = Block {
+            parent_hash: H256::from(1),
+            hash: Some(H256::from(2)),
+            ..Block::default()
+        };
+        let block_clone = block.clone();
 
-        let block = ethereum_block(H256::from(1), Some(H256::from(2)));
-        let block2 = ethereum_block(H256::from(1), Some(H256::from(2)));
-
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block);
         assert_that(&blockchain.size()).is_equal_to(&1);
-        blockchain.add_block(block2);
+
+        blockchain.add_block(block_clone);
         assert_that(&blockchain.size()).is_equal_to(&1);
     }
 
     #[test]
     fn add_block_and_find_predecessor() {
         let mut blockchain = Ethereum::default();
+        let block1 = Block {
+            parent_hash: H256::from(1),
+            hash: Some(H256::from(2)),
+            ..Block::default()
+        };
+        let block2 = Block {
+            parent_hash: H256::from(2),
+            hash: Some(H256::from(3)),
+            ..Block::default()
+        };
 
-        let block1 = ethereum_block(H256::from(1), Some(H256::from(2)));
-        let block2 = ethereum_block(H256::from(2), Some(H256::from(3)));
-
-        assert_that(&blockchain.size()).is_equal_to(&0);
         blockchain.add_block(block1.clone());
         assert_that(&blockchain.size()).is_equal_to(&1);
+
         blockchain.add_block(block2.clone());
         assert_that(&blockchain.size()).is_equal_to(&2);
 
