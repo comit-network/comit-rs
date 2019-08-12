@@ -2,6 +2,8 @@ mod behaviour;
 mod handler;
 mod protocol;
 mod substream;
+#[cfg(test)]
+pub mod test_harness;
 
 pub use self::{
     behaviour::{BamBehaviour, BehaviourOutEvent},
