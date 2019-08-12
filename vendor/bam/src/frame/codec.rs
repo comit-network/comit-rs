@@ -75,6 +75,7 @@ impl Decoder for JsonFrameCodec {
 mod tests {
 
     use super::*;
+    use crate::FrameType;
     use spectral::prelude::*;
 
     #[test]

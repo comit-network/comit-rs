@@ -192,7 +192,7 @@ impl Headers {
 
 #[cfg(test)]
 mod tests {
-    use crate::json::{header::Headers, Header};
+    use crate::frame::{header::Headers, Header};
     use spectral::prelude::*;
 
     #[test]
