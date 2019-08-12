@@ -57,3 +57,14 @@ impl quickcheck::Arbitrary for HtlcState {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn not_deployed_serializes_correctly_to_json() {
+        let state = HtlcState::NotDeployed;
+        let serialized = serde_json::to_string(&state).unwrap();
+        assert_eq!(serialized, r#""NOT_DEPLOYED""#);
+    }
+}
