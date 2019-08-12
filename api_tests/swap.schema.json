@@ -199,7 +199,8 @@
                                 "Deployed",
                                 "Funded",
                                 "Redeemed",
-                                "Refunded"
+                                "Refunded",
+                                "IncorrectlyFunded"
                             ],
                             "description": "The status of the HTLC on the alpha ledger.",
                             "default": "",
@@ -280,7 +281,8 @@
                                 "Deployed",
                                 "Funded",
                                 "Redeemed",
-                                "Refunded"
+                                "Refunded",
+                                "IncorrectlyFunded"
                             ],
                             "description": "The status of the HTLC on the beta ledger.",
                             "default": "",
