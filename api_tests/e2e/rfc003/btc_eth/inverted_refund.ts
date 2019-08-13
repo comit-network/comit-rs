@@ -67,23 +67,23 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Fund,
-            waitUntil: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "FUNDED",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
             waitUntil: state =>
-                state.alpha_ledger.status === "Funded" &&
-                state.beta_ledger.status === "Funded",
+                state.alpha_ledger.status === "FUNDED" &&
+                state.beta_ledger.status === "FUNDED",
         },
         {
             actor: alice,
             action: ActionKind.Refund,
-            waitUntil: state => state.alpha_ledger.status === "Refunded",
+            waitUntil: state => state.alpha_ledger.status === "REFUNDED",
         },
         {
             actor: bob,
-            waitUntil: state => state.alpha_ledger.status === "Refunded",
+            waitUntil: state => state.alpha_ledger.status === "REFUNDED",
         },
         {
             actor: alice,
@@ -92,7 +92,7 @@ declare var global: HarnessGlobal;
                 callback: async body => {
                     const status = body.properties.state.beta_ledger.status;
 
-                    expect(status).to.equal("Funded");
+                    expect(status).to.equal("FUNDED");
                 },
             },
         },
@@ -103,18 +103,18 @@ declare var global: HarnessGlobal;
                 callback: async body => {
                     const status = body.properties.state.beta_ledger.status;
 
-                    expect(status).to.equal("Funded");
+                    expect(status).to.equal("FUNDED");
                 },
             },
         },
         {
             actor: bob,
             action: ActionKind.Refund,
-            waitUntil: state => state.beta_ledger.status === "Refunded",
+            waitUntil: state => state.beta_ledger.status === "REFUNDED",
         },
         {
             actor: alice,
-            waitUntil: state => state.beta_ledger.status === "Refunded",
+            waitUntil: state => state.beta_ledger.status === "REFUNDED",
         },
     ];
 

@@ -93,22 +93,22 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Fund,
-            waitUntil: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "FUNDED",
         },
         {
             actor: bob,
             action: ActionKind.Deploy,
-            waitUntil: state => state.beta_ledger.status === "Deployed",
+            waitUntil: state => state.beta_ledger.status === "DEPLOYED",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            waitUntil: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "FUNDED",
         },
         {
             actor: alice,
             action: ActionKind.Redeem,
-            waitUntil: state => state.beta_ledger.status === "Redeemed",
+            waitUntil: state => state.beta_ledger.status === "REDEEMED",
             test: {
                 description:
                     "Should have received the beta asset after the redeem",
@@ -129,7 +129,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Redeem,
-            waitUntil: state => state.alpha_ledger.status === "Redeemed",
+            waitUntil: state => state.alpha_ledger.status === "REDEEMED",
             test: {
                 description:
                     "Should have received the alpha asset after the redeem",

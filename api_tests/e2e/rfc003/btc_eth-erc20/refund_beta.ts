@@ -87,17 +87,17 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Fund,
-            waitUntil: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "FUNDED",
         },
         {
             actor: bob,
             action: ActionKind.Deploy,
-            waitUntil: state => state.beta_ledger.status === "Deployed",
+            waitUntil: state => state.beta_ledger.status === "DEPLOYED",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            waitUntil: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "FUNDED",
             test: {
                 description: "Should have less beta asset after the funding",
                 callback: async () => {
@@ -114,7 +114,7 @@ declare var global: HarnessGlobal;
         {
             actor: bob,
             action: ActionKind.Refund,
-            waitUntil: state => state.beta_ledger.status === "Refunded",
+            waitUntil: state => state.beta_ledger.status === "REFUNDED",
             test: {
                 description:
                     "Should have received the beta asset after the refund",

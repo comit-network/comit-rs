@@ -108,14 +108,14 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             waitUntil: state =>
-                state.alpha_ledger.status === "IncorrectlyFunded",
+                state.alpha_ledger.status === "INCORRECTLY_FUNDED",
         },
         // bob should not consider the HTLC to be funded and terminate with NOT_SWAPPED
         {
             actor: bob,
             waitUntil: state =>
-                state.alpha_ledger.status === "IncorrectlyFunded" &&
-                state.beta_ledger.status === "NotDeployed",
+                state.alpha_ledger.status === "INCORRECTLY_FUNDED" &&
+                state.beta_ledger.status === "NOT_DEPLOYED",
         },
         {
             actor: alice,
@@ -124,8 +124,8 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             waitUntil: state =>
-                state.alpha_ledger.status === "Refunded" &&
-                state.beta_ledger.status === "NotDeployed",
+                state.alpha_ledger.status === "REFUNDED" &&
+                state.beta_ledger.status === "NOT_DEPLOYED",
             test: {
                 description:
                     "Should have received the alpha asset after the refund",
