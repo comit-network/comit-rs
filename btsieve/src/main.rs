@@ -5,7 +5,8 @@ use bitcoin_support::Network as BitcoinNetwork;
 use bitcoincore_rpc::RpcApi;
 use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
-    ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
+    blocksource::BlockSource,
+    ethereum::{self, web3_http_blocksource::Web3HttpBlockSource},
     load_settings::{load_settings, Opt},
     logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
@@ -20,7 +21,7 @@ use ethereum_support::{
 };
 use failure::Fail;
 use futures::{future::Future, stream::Stream};
-use std::{string::ToString, sync::Arc, time::Duration};
+use std::{string::ToString, sync::Arc};
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -201,47 +202,41 @@ fn create_ethereum_routes(
 
             let web3_client = web3_client.clone();
 
-            let blocks = ethereum_block_listener(
-                web3_client.clone(),
-                Duration::from_secs(match network {
-                    EthereumNetwork::Mainnet => 5,
-                    EthereumNetwork::Ropsten => 5,
-                    EthereumNetwork::Regtest => 1,
-                    EthereumNetwork::Unknown => 1,
-                }),
-            )
-            .expect("Should return a Web3 block poller");
+            let block_source = runtime.block_on(Web3HttpBlockSource::new(web3_client.clone()))?;
 
             let executor = runtime.executor();
-            let web3_processor = blocks.for_each(move |block| {
-                ethereum_chain.add_block(block.clone());
-                ethereum::check_block_queries(block_query_repository.clone(), block.clone())
-                    .for_each(|QueryMatch(id, block_id)| {
-                        block_query_result_repository.add_result(id.0, block_id);
+            let web3_processor = block_source
+                .blocks()
+                .map_err(|e| log::warn!(target: "ethereum", "error fetching latest block {:?}", e))
+                .for_each(move |block| {
+                    ethereum_chain.add_block(block.clone());
+                    ethereum::check_block_queries(block_query_repository.clone(), block.clone())
+                        .for_each(|QueryMatch(id, block_id)| {
+                            block_query_result_repository.add_result(id.0, block_id);
+                        });
+
+                    ethereum::check_transaction_queries(
+                        transaction_query_repository.clone(),
+                        block.clone(),
+                    )
+                    .for_each(|QueryMatch(id, transaction_id)| {
+                        transaction_query_result_repository.add_result(id.0, transaction_id);
                     });
 
-                ethereum::check_transaction_queries(
-                    transaction_query_repository.clone(),
-                    block.clone(),
-                )
-                .for_each(|QueryMatch(id, transaction_id)| {
-                    transaction_query_result_repository.add_result(id.0, transaction_id);
-                });
+                    let log_query_result_repository = log_query_result_repository.clone();
+                    let log_query_future = ethereum::check_log_queries(
+                        log_query_repository.clone(),
+                        web3_client.clone(),
+                        block,
+                    )
+                    .for_each(move |QueryMatch(id, transaction_id)| {
+                        log_query_result_repository.add_result(id.0, transaction_id);
+                        Ok(())
+                    });
 
-                let log_query_result_repository = log_query_result_repository.clone();
-                let log_query_future = ethereum::check_log_queries(
-                    log_query_repository.clone(),
-                    web3_client.clone(),
-                    block,
-                )
-                .for_each(move |QueryMatch(id, transaction_id)| {
-                    log_query_result_repository.add_result(id.0, transaction_id);
+                    executor.spawn(log_query_future);
                     Ok(())
                 });
-
-                executor.spawn(log_query_future);
-                Ok(())
-            });
 
             runtime.spawn(web3_processor);
         }
