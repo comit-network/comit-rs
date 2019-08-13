@@ -4,7 +4,7 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    frame::{JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{Close, JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
     IntoFrame,
 };
 use derivative::Derivative;
@@ -88,6 +88,11 @@ pub struct PendingInboundResponse {
     pub channel: oneshot::Sender<Response>,
 }
 
+#[derive(Debug)]
+pub struct PendingInboundClose {
+    pub close: Close,
+}
+
 /// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum ProtocolInEvent {
@@ -99,7 +104,8 @@ pub enum ProtocolInEvent {
 pub enum ProtocolOutEvent {
     InboundRequest(PendingInboundRequest),
     InboundResponse(PendingInboundResponse),
-    BadInboundResponse,
+    InboundClose(PendingInboundClose),
+    BadInboundFrame(serde_json::Error),
     UnexpectedEOF,
     Error { error: Error },
 }

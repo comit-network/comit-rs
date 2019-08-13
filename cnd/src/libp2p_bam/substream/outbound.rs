@@ -1,11 +1,12 @@
 use crate::libp2p_bam::{
     handler::{
-        PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent, ProtocolOutboundOpenInfo,
+        PendingInboundClose, PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent,
+        ProtocolOutboundOpenInfo,
     },
     protocol::{BamProtocol, BamStream},
-    substream::{unknown_frame_type_error, Advance, Advanced, CloseStream},
+    substream::{Advance, Advanced, CloseStream},
 };
-use bam::{frame::Response, Frame, FrameType, IntoFrame};
+use bam::{frame::Response, Frame, FrameType};
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::{ProtocolsHandlerEvent, SubstreamProtocol};
 use std::collections::{HashMap, HashSet};
@@ -93,37 +94,39 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 response_sender,
                 mut stream,
             } => match stream.poll() {
-                Ok(Async::Ready(Some(frame))) => {
-                    if frame.frame_type != FrameType::Response {
-                        return Advanced::transition_to(WaitingSend {
-                            response_sender,
-                            frame: unknown_frame_type_error(frame).into_frame(),
-                            stream,
-                        });
-                    }
-
-                    let event = serde_json::from_value(frame.payload)
-                        .map(|response| {
-                            ProtocolOutEvent::InboundResponse(PendingInboundResponse {
-                                response,
-                                channel: response_sender,
+                Ok(Async::Ready(Some(frame))) => match frame.frame_type {
+                    FrameType::Response => {
+                        let event = serde_json::from_value(frame.payload)
+                            .map(|response| {
+                                ProtocolOutEvent::InboundResponse(PendingInboundResponse {
+                                    response,
+                                    channel: response_sender,
+                                })
                             })
-                        })
-                        .unwrap_or_else(|deser_error| {
-                            log::error!(
-                                target: "bam",
-                                "payload of frame is not a well-formed RESPONSE: {:?}",
-                                deser_error
-                            );
+                            .unwrap_or_else(ProtocolOutEvent::BadInboundFrame);
 
-                            ProtocolOutEvent::BadInboundResponse
-                        });
-
-                    Advanced {
-                        new_state: Some(WaitingClose { stream }),
-                        event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        Advanced {
+                            new_state: Some(WaitingClose { stream }),
+                            event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        }
                     }
-                }
+                    FrameType::Close => {
+                        let event = serde_json::from_value(frame.payload)
+                            .map(|error| {
+                                ProtocolOutEvent::InboundClose(PendingInboundClose { close: error })
+                            })
+                            .unwrap_or_else(ProtocolOutEvent::BadInboundFrame);
+
+                        Advanced {
+                            new_state: Some(WaitingClose { stream }),
+                            event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        }
+                    }
+                    _ => {
+                        log::error!(target: "sub-libp2p", "Received unknown frame: {:?}", frame);
+                        Advanced::transition_to(WaitingClose { stream })
+                    }
+                },
                 Ok(Async::Ready(None)) => Advanced {
                     new_state: Some(State::WaitingClose { stream }),
                     event: Some(ProtocolsHandlerEvent::Custom(

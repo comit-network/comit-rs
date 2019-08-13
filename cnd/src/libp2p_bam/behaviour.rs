@@ -1,6 +1,8 @@
 use crate::{
     libp2p_bam::{
-        handler::{self, PendingInboundResponse, ProtocolInEvent, ProtocolOutEvent},
+        handler::{
+            self, PendingInboundClose, PendingInboundResponse, ProtocolInEvent, ProtocolOutEvent,
+        },
         BamHandler, PendingInboundRequest, PendingOutboundRequest,
     },
     network::DialInformation,
@@ -258,6 +260,9 @@ where
             ProtocolOutEvent::InboundResponse(PendingInboundResponse { response, channel }) => {
                 let _ = channel.send(response);
             }
+            ProtocolOutEvent::InboundClose(PendingInboundClose { close }) => {
+                log::warn!(target: "sub-libp2p", "Peer {:?} responded with close {:?}", peer, close);
+            }
             ProtocolOutEvent::Error {
                 error: handler::Error::Stream(error),
             } => {
@@ -273,8 +278,8 @@ where
                 // closing the substream.
                 log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
-            ProtocolOutEvent::BadInboundResponse => {
-                log::error!(target: "sub-libp2p", "badly formatted response from {:?}", peer);
+            ProtocolOutEvent::BadInboundFrame(error) => {
+                log::error!(target: "sub-libp2p", "bad frame received from {:?}, {:?}", peer, error);
             }
             ProtocolOutEvent::UnexpectedEOF => {
                 log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
