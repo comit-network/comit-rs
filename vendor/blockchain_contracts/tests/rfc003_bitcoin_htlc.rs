@@ -17,7 +17,7 @@ use blockchain_contracts::bitcoin::{
     pubkey_hash::{PubkeyHash, TransactionId},
     rfc003::bitcoin_htlc::BitcoinHtlc,
 };
-use secp256k1_support::KeyPair;
+use secp256k1_keypair::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};

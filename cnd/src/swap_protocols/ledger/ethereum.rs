@@ -1,6 +1,6 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use ethereum_support::{Address, EtherQuantity, Network, Transaction, H256};
-use secp256k1_support::PublicKey;
+use secp256k1_keypair::PublicKey;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Ethereum {

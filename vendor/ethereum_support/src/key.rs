@@ -1,5 +1,5 @@
 use crate::Address;
-use secp256k1_support::PublicKey;
+use secp256k1_keypair::PublicKey;
 
 pub trait ToEthereumAddress {
     fn to_ethereum_address(&self) -> Address;
@@ -25,7 +25,7 @@ impl ToEthereumAddress for PublicKey {
 mod test {
 
     use super::*;
-    use secp256k1_support::KeyPair;
+    use secp256k1_keypair::KeyPair;
     use std::str::FromStr;
 
     fn valid_pair(key: &str, address: &str) -> bool {
