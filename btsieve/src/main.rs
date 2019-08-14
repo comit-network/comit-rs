@@ -20,7 +20,7 @@ use ethereum_support::{
 };
 use failure::Fail;
 use futures::{future::Future, stream::Stream};
-use std::{string::ToString, sync::Arc};
+use std::{string::ToString, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -186,7 +186,7 @@ fn create_ethereum_routes(
             Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
         let web3_client = Arc::new(Web3::new(transport));
 
-        let network = get_ethereum_info(web3_client.clone())?.into();
+        let network = get_ethereum_info(web3_client.clone())?;
 
         log::trace!("Setting up ethereum routes to {:?}", network);
 
@@ -201,8 +201,16 @@ fn create_ethereum_routes(
 
             let web3_client = web3_client.clone();
 
-            let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
-                .expect("Should return a Web3 block poller");
+            let blocks = ethereum_block_listener(
+                web3_client.clone(),
+                Duration::from_secs(match network {
+                    EthereumNetwork::Mainnet => 5,
+                    EthereumNetwork::Ropsten => 5,
+                    EthereumNetwork::Regtest => 1,
+                    EthereumNetwork::Unknown => 1,
+                }),
+            )
+            .expect("Should return a Web3 block poller");
 
             let executor = runtime.executor();
             let web3_processor = blocks.for_each(move |block| {
@@ -237,7 +245,7 @@ fn create_ethereum_routes(
 
             runtime.spawn(web3_processor);
         }
-        (Some(web3_client), Some(network), Some(event_loop))
+        (Some(web3_client), Some(network.into()), Some(event_loop))
     } else {
         (None, None, None)
     };
