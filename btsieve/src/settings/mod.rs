@@ -1,4 +1,3 @@
-mod serde_duration;
 mod serde_log;
 
 use config::{Config, ConfigError, File};
@@ -8,7 +7,6 @@ use std::{
     ffi::OsStr,
     net::IpAddr,
     path::{Path, PathBuf},
-    time::Duration,
 };
 
 #[derive(Debug, Deserialize, Clone)]
@@ -73,8 +71,6 @@ pub struct Bitcoin {
 pub struct Ethereum {
     #[serde(with = "url_serde")]
     pub node_url: url::Url,
-    #[serde(with = "serde_duration")]
-    pub poll_interval_secs: Duration,
 }
 
 fn default_log_levels() -> LogLevels {
