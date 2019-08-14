@@ -40,11 +40,11 @@ fn main() {
     );
     println!(
         "public_key: {}",
-        hex::encode(&public_key.inner().serialize()[..])
+        hex::encode(&public_key.serialize()[..])
     );
     println!(
         "public_key_uncompressed: {}",
-        hex::encode(&public_key.inner().serialize_uncompressed()[..])
+        hex::encode(&public_key.serialize_uncompressed()[..])
     );
     let eth_address = public_key.to_ethereum_address();
     println!("eth_address: {:?}", eth_address);

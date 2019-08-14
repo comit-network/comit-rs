@@ -37,7 +37,7 @@ impl PrimedInput {
             // We can't sign it yet so we put a placeholder
             // value of the most likely signature length
             Witness::Signature(_) => vec![0u8; 71],
-            Witness::PublicKey(public_key) => public_key.inner().serialize().to_vec(),
+            Witness::PublicKey(public_key) => public_key.serialize().to_vec(),
             Witness::Bool(_bool) => {
                 if *_bool {
                     vec![1u8]
