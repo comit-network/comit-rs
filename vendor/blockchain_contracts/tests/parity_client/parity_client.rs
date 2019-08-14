@@ -1,13 +1,15 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use ethereum_support::{
-    web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
-    H256, U256,
-};
+use ethereum_support::EtherQuantity;
 use lazy_static::lazy_static;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},
+};
+use web3::{
+    futures::Future,
+    transports::Http,
+    types::{Address, Bytes, CallRequest, TransactionReceipt, TransactionRequest, H256, U256},
+    Web3,
 };
 
 #[allow(missing_debug_implementations)]

@@ -8,9 +8,10 @@ pub mod parity_client;
 use crate::htlc_harness::{
     ether_harness, sleep_until, CustomSizeSecret, EtherHarnessParams, Timestamp, SECRET,
 };
-use ethereum_support::{Bytes, EtherQuantity, H256};
+use ethereum_support::EtherQuantity;
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
+use web3::types::{Bytes, H256};
 
 // keccak256(Redeemed())
 const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";

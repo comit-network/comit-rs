@@ -4,13 +4,11 @@ use crate::{
     parity_client::ParityClient,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use ethereum_support::{
-    web3::{transports::EventLoopHandle, types::Address},
-    EtherQuantity,
-};
+use ethereum_support::EtherQuantity;
 use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
+use web3::{transports::EventLoopHandle, types::Address};
 
 #[derive(Debug, Clone)]
 pub struct EtherHarnessParams {
