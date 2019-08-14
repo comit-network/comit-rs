@@ -41,7 +41,7 @@ impl KeyPair {
 impl From<SecretKey> for KeyPair {
     fn from(secret_key: SecretKey) -> KeyPair {
         KeyPair {
-            public_key: secp256k1::PublicKey::from_secret_key(&*super::SECP, &secret_key).into(),
+            public_key: secp256k1::PublicKey::from_secret_key(&*super::SECP, &secret_key),
             secret_key,
         }
     }
