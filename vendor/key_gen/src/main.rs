@@ -4,14 +4,14 @@
 
 use bitcoin_support::{IntoP2wpkhAddress, Network, PrivateKey, PubkeyHash};
 use ethereum_support::ToEthereumAddress;
-use secp256k1_support::KeyPair;
+use secp256k1_keypair::KeyPair;
 use std::env;
 
 fn main() {
     let keypair = match env::args().nth(1) {
         Some(existing_key) => KeyPair::from_secret_key_hex(existing_key.as_ref()).unwrap(),
         None => {
-            let mut rng = secp256k1_support::rand::OsRng::new().unwrap();
+            let mut rng = secp256k1_keypair::rand::OsRng::new().unwrap();
             KeyPair::new(&mut rng)
         }
     };

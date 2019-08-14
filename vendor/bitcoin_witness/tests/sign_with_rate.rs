@@ -2,7 +2,7 @@ use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{serialize_hex, Address, BitcoinQuantity, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
-use secp256k1_support::KeyPair;
+use secp256k1_keypair::KeyPair;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 

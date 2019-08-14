@@ -5,7 +5,7 @@ use crate::{
 use bitcoin_support::{Address, Hash160, Network, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
-use secp256k1_support::KeyPair;
+use secp256k1_keypair::KeyPair;
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");

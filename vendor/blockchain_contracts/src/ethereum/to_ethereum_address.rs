@@ -1,4 +1,4 @@
-use secp256k1_support::PublicKey;
+use secp256k1_keypair::PublicKey;
 use web3::types::Address;
 
 // TODO: Should/Can this be contributed back?

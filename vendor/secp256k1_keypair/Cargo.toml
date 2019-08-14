@@ -1,5 +1,5 @@
 [package]
-name = "secp256k1_support"
+name = "secp256k1_keypair"
 version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
