@@ -8,10 +8,9 @@ pub mod parity_client;
 use crate::htlc_harness::{
     ether_harness, sleep_until, CustomSizeSecret, EtherHarnessParams, Timestamp, SECRET,
 };
-use ethereum_support::EtherQuantity;
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
-use web3::types::{Bytes, H256};
+use web3::types::{Bytes, H256, U256};
 
 // keccak256(Redeemed())
 const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
@@ -24,14 +23,11 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
     let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams::default());
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     // Send correct secret to contract
@@ -39,12 +35,9 @@ fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
-    assert_eq!(
-        client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(htlc), U256::from(0));
 }
 
 #[test]
@@ -54,27 +47,18 @@ fn given_deployed_htlc_when_refunded_after_expiry_time_then_money_is_refunded() 
     let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, harness_params.clone());
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     // Wait for the contract to expire
     sleep_until(harness_params.htlc_refund_timestamp);
     client.send_data(htlc, None);
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
-    assert_eq!(
-        client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
+    assert_eq!(client.eth_balance_of(htlc), U256::from(0));
 }
 
 #[test]
@@ -86,25 +70,19 @@ fn given_htlc_and_refund_before_expiry_nothing_happens() {
             ..Default::default()
         });
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     // Don't wait for the timeout and don't send a secret
     client.send_data(htlc, None);
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 }
 
@@ -159,14 +137,11 @@ fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_tr
         EtherHarnessParams::default().with_secret_hash(secret.hash()),
     );
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     client.send_data(
@@ -174,14 +149,11 @@ fn given_deployed_htlc_when_redeem_with_short_secret_then_ether_should_not_be_tr
         Some(Bytes(vec![1u8, 2u8, 3u8, 4u8, 6u8, 6u8, 7u8, 9u8, 10u8])),
     );
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 }
 
@@ -199,27 +171,21 @@ fn given_correct_zero_secret_htlc_should_redeem() {
         EtherHarnessParams::default().with_secret_hash(secret.hash()),
     );
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     client.send_data(htlc, Some(Bytes(secret_vec)));
 
     assert_eq!(
         client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
-    assert_eq!(
-        client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(htlc), U256::from(0));
 }
 
 #[test]
@@ -235,14 +201,11 @@ fn given_short_zero_secret_htlc_should_not_redeem() {
         EtherHarnessParams::default().with_secret_hash(secret.hash()),
     );
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 
     client.send_data(
@@ -253,13 +216,10 @@ fn given_short_zero_secret_htlc_should_not_redeem() {
         ])),
     );
 
-    assert_eq!(
-        client.eth_balance_of(bob),
-        EtherQuantity::from_eth(0.0).wei()
-    );
+    assert_eq!(client.eth_balance_of(bob), U256::from(0));
 
     assert_eq!(
         client.eth_balance_of(htlc),
-        EtherQuantity::from_eth(0.4).wei()
+        U256::from("0400000000000000000")
     );
 }

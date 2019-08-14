@@ -1,5 +1,4 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use ethereum_support::EtherQuantity;
 use lazy_static::lazy_static;
 use std::{
     ops::DerefMut,
@@ -41,7 +40,7 @@ impl ParityClient {
         }
     }
 
-    pub fn give_eth_to(&self, to: Address, amount: EtherQuantity) {
+    pub fn give_eth_to(&self, to: Address, wei_amount: U256) {
         self.client
             .personal()
             .send_transaction(
@@ -50,7 +49,7 @@ impl ParityClient {
                     to: Some(to),
                     gas: None,
                     gas_price: None,
-                    value: Some(amount.wei()),
+                    value: Some(wei_amount),
                     data: None,
                     nonce: None,
                     condition: None,
