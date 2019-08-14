@@ -1,5 +1,4 @@
-use crate::public_key::PublicKey;
-use secp256k1::{self, rand::Rng, Error, Message, RecoverableSignature, SecretKey, Signature};
+use secp256k1::{self, rand::Rng, Error, Message, RecoverableSignature, SecretKey, PublicKey, Signature};
 use std::{convert::Into, str::FromStr};
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]

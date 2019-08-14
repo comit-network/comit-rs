@@ -25,7 +25,7 @@ impl IntoP2wpkhAddress for PublicKey {
         Address::p2wpkh(
             &BitcoinPublicKey {
                 compressed: true, // Only used for serialization
-                key: *self.inner(),
+                key: self,
             },
             network.into(),
         )
@@ -61,7 +61,7 @@ impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
             <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
-                &public_key.inner().serialize(),
+                &public_key.serialize(),
             ),
         )
     }
