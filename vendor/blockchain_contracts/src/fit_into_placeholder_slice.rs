@@ -1,6 +1,6 @@
+use bitcoin_hashes::hash160;
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use web3::types::{Address, U256};
-use bitcoin_hashes::hash160;
 
 pub trait FitIntoPlaceholderSlice {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]);

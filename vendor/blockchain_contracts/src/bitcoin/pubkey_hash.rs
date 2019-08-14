@@ -1,5 +1,5 @@
-pub use bitcoin_hashes::sha256d::Hash as TransactionId;
 use bitcoin_hashes::hash160;
+pub use bitcoin_hashes::sha256d::Hash as TransactionId;
 use secp256k1::PublicKey;
 
 // TODO: Contribute back to rust-bitcoin
@@ -15,9 +15,7 @@ impl From<hash160::Hash> for PubkeyHash {
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
-            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
-                &public_key.serialize(),
-            ),
+            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(&public_key.serialize()),
         )
     }
 }

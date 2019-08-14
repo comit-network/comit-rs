@@ -2,12 +2,11 @@ use crate::{
     fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
     SecretHash,
 };
+use bitcoin::{network::constants::Network, Address, Script};
+use bitcoin_hashes::hash160;
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
 use secp256k1_support::KeyPair;
-use bitcoin::{Address, Script};
-use bitcoin::network::constants::Network;
-use bitcoin_hashes::hash160;
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
@@ -92,8 +91,8 @@ impl BitcoinHtlc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use regex::bytes::Regex;
     use bitcoin_hashes::hash160;
+    use regex::bytes::Regex;
 
     const SECRET_HASH: [u8; 32] = [
         0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
@@ -104,7 +103,12 @@ mod tests {
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let htlc = BitcoinHtlc::new(3000000, hash160::Hash::default(), hash160::Hash::default(), SECRET_HASH);
+        let htlc = BitcoinHtlc::new(
+            3000000,
+            hash160::Hash::default(),
+            hash160::Hash::default(),
+            SECRET_HASH,
+        );
 
         assert_eq!(
             htlc.script.len(),
