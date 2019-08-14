@@ -431,6 +431,8 @@ dependencies = [
 name = "blockchain_contracts"
 version = "0.1.0"
 dependencies = [
+ "bitcoin 0.18.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "bitcoin_hashes 0.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
@@ -446,6 +448,7 @@ dependencies = [
  "regex 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlp 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rust-crypto 0.2.36 (registry+https://github.com/rust-lang/crates.io-index)",
+ "secp256k1 0.12.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "secp256k1_support 0.1.0",
  "serde 1.0.97 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde_json 1.0.39 (registry+https://github.com/rust-lang/crates.io-index)",

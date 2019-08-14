@@ -5,6 +5,8 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
+bitcoin = "0.18.0"
+bitcoin_hashes = "0.3.2"
 bitcoin_support = { path = "../../vendor/bitcoin_support" }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 byteorder = "1.3"
@@ -13,6 +15,7 @@ hex-literal = "0.2"
 itertools = "0.8.0"
 regex = "1.2"
 rust-crypto = "0.2"
+secp256k1 = { version = "0.12", features = ["rand"] }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"

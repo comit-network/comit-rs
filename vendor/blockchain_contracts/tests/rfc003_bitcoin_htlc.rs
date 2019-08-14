@@ -8,8 +8,7 @@ pub mod parity_client;
 use crate::htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH};
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{
-    serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
-    TransactionId,
+    BitcoinQuantity,
 };
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
@@ -18,6 +17,10 @@ use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
+use bitcoin::{Address, PrivateKey, OutPoint};
+use bitcoin::consensus::encode::serialize_hex;
+use blockchain_contracts::bitcoin::pubkey_hash::{PubkeyHash, TransactionId};
+use bitcoin::network::constants::Network;
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness
