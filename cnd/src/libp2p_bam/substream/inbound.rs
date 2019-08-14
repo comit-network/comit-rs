@@ -1,10 +1,7 @@
 use crate::libp2p_bam::{
-    handler::{PendingInboundRequest, ProtocolOutEvent},
+    handler::{self, InboundMessage, PendingInboundRequest, ProtocolOutEvent},
     protocol::BamStream,
-    substream::{
-        malformed_frame_error, unknown_frame_type_error, unknown_mandatory_header_error,
-        unknown_request_type_error, Advance, Advanced, CloseStream,
-    },
+    substream::{Advance, Advanced, CloseStream},
 };
 use bam::{
     frame::{Response, UnvalidatedInboundRequest},
@@ -53,56 +50,51 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
         use self::State::*;
         match self {
             WaitingMessage { mut stream } => match stream.poll() {
-                Ok(Async::Ready(Some(frame))) => {
-                    if frame.frame_type != FrameType::Request {
-                        return Advanced::transition_to(WaitingSend {
-                            msg: unknown_frame_type_error(frame).into_frame(),
-                            stream,
-                        });
-                    }
+                Ok(Async::Ready(Some(frame))) => match frame.frame_type {
+                    FrameType::Request => {
+                        let request =
+                            serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
+                                .map_err(handler::Error::MalformedFrame)
+                                .and_then(|request| {
+                                    known_headers
+                                        .get(request.request_type())
+                                        .ok_or_else(|| {
+                                            handler::Error::UnknownRequestType(
+                                                request.request_type().to_owned(),
+                                            )
+                                        })
+                                        .and_then(|known_headers| {
+                                            request
+                                                .ensure_no_unknown_mandatory_headers(known_headers)
+                                                .map_err(handler::Error::UnknownMandatoryHeader)
+                                        })
+                                });
 
-                    let request =
-                        serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
-                            .map_err(malformed_frame_error)
-                            .and_then(|request| {
-                                known_headers
-                                    .get(request.request_type())
-                                    .ok_or_else(|| {
-                                        unknown_request_type_error(request.request_type())
-                                    })
-                                    .and_then(|known_headers| {
-                                        request
-                                            .ensure_no_unknown_mandatory_headers(known_headers)
-                                            .map_err(unknown_mandatory_header_error)
-                                    })
-                            });
-
-                    match request {
-                        Ok(request) => {
-                            let (sender, receiver) = oneshot::channel();
-                            Advanced {
-                                new_state: Some(WaitingUser { receiver, stream }),
-                                event: Some(ProtocolsHandlerEvent::Custom(
-                                    ProtocolOutEvent::InboundRequest(PendingInboundRequest {
-                                        request,
-                                        channel: sender,
-                                    }),
-                                )),
+                        match request {
+                            Ok(request) => {
+                                let (sender, receiver) = oneshot::channel();
+                                Advanced {
+                                    new_state: Some(WaitingUser { receiver, stream }),
+                                    event: Some(ProtocolsHandlerEvent::Custom(
+                                        ProtocolOutEvent::Message(InboundMessage::Request(
+                                            PendingInboundRequest {
+                                                request,
+                                                channel: sender,
+                                            },
+                                        )),
+                                    )),
+                                }
                             }
+                            Err(error) => Advanced::error(stream, error),
                         }
-                        Err(response) => Advanced::transition_to(WaitingSend {
-                            msg: response.into_frame(),
-                            stream,
-                        }),
                     }
-                }
-                Ok(Async::Ready(None)) => Advanced {
-                    new_state: Some(State::WaitingClose { stream }),
-                    event: Some(ProtocolsHandlerEvent::Custom(
-                        ProtocolOutEvent::UnexpectedEOF,
-                    )),
+                    FrameType::Response => {
+                        Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
+                    }
+                    FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
                 },
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingMessage { stream }),
+                Ok(Async::Ready(None)) => Advanced::error(stream, handler::Error::UnexpectedEOF),
                 Err(error) => Advanced::error(stream, error),
             },
             WaitingUser {

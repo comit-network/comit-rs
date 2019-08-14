@@ -4,8 +4,10 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    frame::{Close, JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
-    IntoFrame,
+    frame::{
+        JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest,
+    },
+    Frame, IntoFrame,
 };
 use derivative::Derivative;
 use futures::{
@@ -45,6 +47,12 @@ pub struct BamHandler<TSubstream> {
 pub enum Error {
     Stream(bam::frame::CodecError),
     DroppedResponseSender(Canceled),
+    UnknownMandatoryHeader(UnknownMandatoryHeaders),
+    UnknownRequestType(String),
+    UnknownFrameType,
+    UnexpectedFrame(Frame),
+    MalformedFrame(serde_json::Error),
+    UnexpectedEOF,
 }
 
 impl From<Canceled> for Error {
@@ -88,33 +96,36 @@ pub struct PendingInboundResponse {
     pub channel: oneshot::Sender<Response>,
 }
 
-#[derive(Debug)]
-pub struct PendingInboundClose {
-    pub close: Close,
-}
-
 /// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum ProtocolInEvent {
-    PendingOutboundRequest { request: PendingOutboundRequest },
-}
-
-/// Events that occur 'out'side of this node i.e. events from a peer node.
-#[derive(Debug)]
-pub enum ProtocolOutEvent {
-    InboundRequest(PendingInboundRequest),
-    InboundResponse(PendingInboundResponse),
-    InboundClose(PendingInboundClose),
-    BadInboundFrame(serde_json::Error),
-    UnexpectedEOF,
-    Error { error: Error },
+    Message(OutboundMessage),
 }
 
 /// Different kinds of `OutboundOpenInfo` that we may want to pass when emitted
 /// an instance of `ProtocolsHandlerEvent::OutboundSubstreamRequest`.
 #[derive(Debug)]
 pub enum ProtocolOutboundOpenInfo {
-    PendingOutboundRequest { request: PendingOutboundRequest },
+    Message(OutboundMessage),
+}
+
+/// Events emitted after processing a message from the 'out'side of this node
+/// i.e. from a peer
+#[derive(Debug)]
+pub enum ProtocolOutEvent {
+    Message(InboundMessage),
+    Error(Error),
+}
+
+#[derive(Debug)]
+pub enum InboundMessage {
+    Request(PendingInboundRequest),
+    Response(PendingInboundResponse),
+}
+
+#[derive(Debug)]
+pub enum OutboundMessage {
+    Request(PendingOutboundRequest),
 }
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
@@ -148,9 +159,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         outbound_open_info: Self::OutboundOpenInfo,
     ) {
         match outbound_open_info {
-            ProtocolOutboundOpenInfo::PendingOutboundRequest {
-                request: PendingOutboundRequest { request, channel },
-            } => {
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(
+                PendingOutboundRequest { request, channel },
+            )) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingSend {
                         frame: request.into_frame(),
@@ -167,7 +178,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
-            ProtocolInEvent::PendingOutboundRequest { request } => {
+            ProtocolInEvent::Message(OutboundMessage::Request(request)) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingOpen { request });
             }

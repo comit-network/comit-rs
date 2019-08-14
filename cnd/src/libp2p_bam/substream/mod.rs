@@ -3,10 +3,6 @@ use crate::libp2p_bam::{
     protocol::BamStream,
     BamHandlerEvent,
 };
-use bam::{
-    frame::{CloseType, Header, UnknownMandatoryHeaders},
-    Frame,
-};
 use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
@@ -54,9 +50,9 @@ impl<S: CloseStream> Advanced<S> {
 
         Self {
             new_state: Some(S::close(stream)),
-            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error {
+            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
                 error,
-            })),
+            ))),
         }
     }
 }
@@ -65,31 +61,4 @@ pub trait CloseStream: Sized {
     type TSubstream;
 
     fn close(stream: BamStream<Self::TSubstream>) -> Self;
-}
-
-pub fn malformed_frame_error(error: serde_json::Error) -> bam::frame::Close {
-    log::warn!(target: "sub-libp2p", "incoming request was malformed: {:?}", error);
-
-    bam::frame::Close::new(CloseType::MalformedFrame)
-}
-
-pub fn unknown_request_type_error(request_type: &str) -> bam::frame::Close {
-    log::warn!(target: "sub-libp2p", "request type '{}' is unknown", request_type);
-
-    bam::frame::Close::new(CloseType::UnknownRequestType)
-}
-
-pub fn unknown_mandatory_header_error(
-    unknown_headers: UnknownMandatoryHeaders,
-) -> bam::frame::Close {
-    bam::frame::Close::new(CloseType::UnknownMandatoryHeader).with_details(
-        Header::with_value(unknown_headers)
-            .expect("list of strings should serialize to serde_json::Value"),
-    )
-}
-
-pub fn unknown_frame_type_error(bad_frame: Frame) -> bam::frame::Close {
-    log::error!(target: "sub-libp2p", "unknown type for frame {:?}", bad_frame);
-
-    bam::frame::Close::new(CloseType::UnknownFrameType)
 }

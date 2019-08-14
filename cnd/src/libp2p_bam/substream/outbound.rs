@@ -1,7 +1,7 @@
 use crate::libp2p_bam::{
     handler::{
-        PendingInboundClose, PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent,
-        ProtocolOutboundOpenInfo,
+        self, InboundMessage, OutboundMessage, PendingInboundResponse, PendingOutboundRequest,
+        ProtocolOutEvent, ProtocolOutboundOpenInfo,
     },
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
@@ -56,7 +56,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
             WaitingOpen { request } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(BamProtocol {}),
-                    info: ProtocolOutboundOpenInfo::PendingOutboundRequest { request },
+                    info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
                 })
             }
             WaitingSend {
@@ -98,45 +98,31 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                     FrameType::Response => {
                         let event = serde_json::from_value(frame.payload)
                             .map(|response| {
-                                ProtocolOutEvent::InboundResponse(PendingInboundResponse {
-                                    response,
-                                    channel: response_sender,
-                                })
+                                ProtocolOutEvent::Message(InboundMessage::Response(
+                                    PendingInboundResponse {
+                                        response,
+                                        channel: response_sender,
+                                    },
+                                ))
                             })
-                            .unwrap_or_else(ProtocolOutEvent::BadInboundFrame);
+                            .map_err(handler::Error::MalformedFrame)
+                            .unwrap_or_else(ProtocolOutEvent::Error);
 
                         Advanced {
                             new_state: Some(WaitingClose { stream }),
                             event: Some(ProtocolsHandlerEvent::Custom(event)),
                         }
                     }
-                    FrameType::Close => {
-                        let event = serde_json::from_value(frame.payload)
-                            .map(|error| {
-                                ProtocolOutEvent::InboundClose(PendingInboundClose { close: error })
-                            })
-                            .unwrap_or_else(ProtocolOutEvent::BadInboundFrame);
-
-                        Advanced {
-                            new_state: Some(WaitingClose { stream }),
-                            event: Some(ProtocolsHandlerEvent::Custom(event)),
-                        }
+                    FrameType::Request => {
+                        Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
                     }
-                    _ => {
-                        log::error!(target: "sub-libp2p", "Received unknown frame: {:?}", frame);
-                        Advanced::transition_to(WaitingClose { stream })
-                    }
-                },
-                Ok(Async::Ready(None)) => Advanced {
-                    new_state: Some(State::WaitingClose { stream }),
-                    event: Some(ProtocolsHandlerEvent::Custom(
-                        ProtocolOutEvent::UnexpectedEOF,
-                    )),
+                    FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
                 },
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingAnswer {
                     response_sender,
                     stream,
                 }),
+                Ok(Async::Ready(None)) => Advanced::error(stream, handler::Error::UnexpectedEOF),
                 Err(error) => Advanced::error(stream, error),
             },
 

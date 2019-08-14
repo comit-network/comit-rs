@@ -1,7 +1,8 @@
 use crate::{
     libp2p_bam::{
         handler::{
-            self, PendingInboundClose, PendingInboundResponse, ProtocolInEvent, ProtocolOutEvent,
+            self, InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent,
+            ProtocolOutEvent,
         },
         BamHandler, PendingInboundRequest, PendingOutboundRequest,
     },
@@ -94,7 +95,9 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     .unwrap_or_else(Vec::new);
 
                 entry.insert(ConnectionState::Connecting {
-                    pending_events: vec![ProtocolInEvent::PendingOutboundRequest { request }],
+                    pending_events: vec![ProtocolInEvent::Message(OutboundMessage::Request(
+                        request,
+                    ))],
                     address_hints,
                 });
             }
@@ -106,7 +109,8 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_events,
                         address_hints,
                     } => {
-                        pending_events.push(ProtocolInEvent::PendingOutboundRequest { request });
+                        pending_events
+                            .push(ProtocolInEvent::Message(OutboundMessage::Request(request)));
 
                         if let Some(address) = dial_information.address_hint {
                             // We insert at the front because we consider the new address to be the
@@ -120,7 +124,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
                                 peer_id: dial_information.peer_id,
-                                event: ProtocolInEvent::PendingOutboundRequest { request },
+                                event: ProtocolInEvent::Message(OutboundMessage::Request(request)),
                             })
                             .expect("we own the receiver");
                     }
@@ -247,7 +251,7 @@ where
 
     fn inject_node_event(&mut self, peer: PeerId, event: ProtocolOutEvent) {
         match event {
-            ProtocolOutEvent::InboundRequest(request) => {
+            ProtocolOutEvent::Message(InboundMessage::Request(request)) => {
                 self.events_sender
                     .unbounded_send(NetworkBehaviourAction::GenerateEvent(
                         BehaviourOutEvent::PendingInboundRequest {
@@ -257,20 +261,16 @@ where
                     ))
                     .expect("we own the receiver");
             }
-            ProtocolOutEvent::InboundResponse(PendingInboundResponse { response, channel }) => {
+            ProtocolOutEvent::Message(InboundMessage::Response(PendingInboundResponse {
+                response,
+                channel,
+            })) => {
                 let _ = channel.send(response);
             }
-            ProtocolOutEvent::InboundClose(PendingInboundClose { close }) => {
-                log::warn!(target: "sub-libp2p", "Peer {:?} responded with close {:?}", peer, close);
-            }
-            ProtocolOutEvent::Error {
-                error: handler::Error::Stream(error),
-            } => {
+            ProtocolOutEvent::Error(handler::Error::Stream(error)) => {
                 log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
             }
-            ProtocolOutEvent::Error {
-                error: handler::Error::DroppedResponseSender(_),
-            } => {
+            ProtocolOutEvent::Error(handler::Error::DroppedResponseSender(_)) => {
                 // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
                 // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
                 // the application or the application consciously does not want to answer the
@@ -278,10 +278,22 @@ where
                 // closing the substream.
                 log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
             }
-            ProtocolOutEvent::BadInboundFrame(error) => {
-                log::error!(target: "sub-libp2p", "bad frame received from {:?}, {:?}", peer, error);
+            ProtocolOutEvent::Error(handler::Error::UnknownMandatoryHeader(error)) => {
+                log::error!(target: "sub-libp2p", "received frame with unexpected mandatory header from {:?}, {:?}", peer, error);
             }
-            ProtocolOutEvent::UnexpectedEOF => {
+            ProtocolOutEvent::Error(handler::Error::UnknownRequestType(error)) => {
+                log::error!(target: "sub-libp2p", "received frame with unknown request type from {:?}, {:?}", peer, error);
+            }
+            ProtocolOutEvent::Error(handler::Error::UnknownFrameType) => {
+                log::error!(target: "sub-libp2p", "received frame with unknown type from {:?}", peer);
+            }
+            ProtocolOutEvent::Error(handler::Error::UnexpectedFrame(frame)) => {
+                log::error!(target: "sub-libp2p", "received unexpected frame of type from {:?}, {:?}", peer, frame);
+            }
+            ProtocolOutEvent::Error(handler::Error::MalformedFrame(error)) => {
+                log::error!(target: "sub-libp2p", "received malformed frame from {:?}, {:?}", peer, error);
+            }
+            ProtocolOutEvent::Error(handler::Error::UnexpectedEOF) => {
                 log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
             }
         }

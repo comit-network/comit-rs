@@ -26,11 +26,11 @@ pub struct Frame {
 pub enum FrameType {
     Request,
     Response,
-    Close,
 
     // This is currently the fallback to not fail on serialisation if the frame type is unknown
+    // Unfortunately serde does not support deserialization into a String when using other
     #[serde(other)]
-    Other,
+    Unknown,
 }
 
 impl Frame {
