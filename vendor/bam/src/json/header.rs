@@ -139,7 +139,7 @@ impl Header {
     }
 }
 
-#[derive(Default, Debug, PartialEq, Serialize, Deserialize)]
+#[derive(Default, Debug, PartialEq, Serialize, Deserialize, Clone)]
 #[serde(transparent)]
 pub struct Headers {
     inner: HashMap<String, Header>,
