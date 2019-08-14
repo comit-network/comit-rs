@@ -256,7 +256,7 @@ mod tests {
     use tokio::codec::LinesCodec;
 
     #[test]
-    fn given_inbound_substream_when_receiving_unknown_request_should_emit_bad_inbound_request() {
+    fn given_inbound_substream_when_receiving_unknown_request_should_emit_unknown_request_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
         let mut handler = BamHandler::new(HashMap::new());
@@ -275,7 +275,9 @@ mod tests {
         // then we emit a BadInboundRequest
         matches::assert_matches!(
             events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::BadInboundRequest(_)))
+            Some(
+                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnknownRequestType(_))),
+            )
         )
     }
 
@@ -306,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_not_a_response_should_emit_unexpected_frame_type() {
+    fn given_an_outbound_request_when_receiving_not_a_response_should_emit_unknown_frame_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -320,12 +322,10 @@ mod tests {
         let (sender, _receiver) = oneshot::channel();
         handler.inject_fully_negotiated_outbound(
             dialer,
-            ProtocolOutboundOpenInfo::PendingOutboundRequest {
-                request: PendingOutboundRequest {
-                    request: OutboundRequest::new("PING"),
-                    channel: sender,
-                },
-            },
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
+                request: OutboundRequest::new("PING"),
+                channel: sender,
+            })),
         );
 
         // when receiving something else than a response
@@ -342,10 +342,9 @@ mod tests {
         // then we emit a UnexpectedFrameType
         matches::assert_matches!(
             events.get(0),
-             Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::UnexpectedFrameType {
-                bad_frame: _,
-                expected_type: _,
-            }))
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
+                Error::UnknownFrameType
+            )))
         )
     }
 }
