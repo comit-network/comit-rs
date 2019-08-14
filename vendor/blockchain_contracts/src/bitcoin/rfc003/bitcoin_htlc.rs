@@ -49,7 +49,7 @@ impl BitcoinHtlc {
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
-        Address::p2wsh(&Script::from(self.script.clone()), network.into())
+        Address::p2wsh(&Script::from(self.script.clone()), network)
     }
 
     pub fn unlock_with_secret(self, keypair: KeyPair, secret: [u8; 32]) -> UnlockParameters {
