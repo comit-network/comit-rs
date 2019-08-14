@@ -39,10 +39,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/chai-json-schema@^1.4.4":
-  version "1.4.4"
-  resolved "https://registry.yarnpkg.com/@types/chai-json-schema/-/chai-json-schema-1.4.4.tgz#769fd975d9fa637e59d210d2fd9b0d1505925c8e"
-  integrity sha512-3+GtjSthKlmurP0KTgyoGS0berEq8UsXiFFFY/tNuAV/BK5cPiDnLHnjROVwtS846OQ6owR7pmp29FTVeYSeeg==
+"@types/chai-json-schema@^1.4.5":
+  version "1.4.5"
+  resolved "https://registry.yarnpkg.com/@types/chai-json-schema/-/chai-json-schema-1.4.5.tgz#fa1b11e10a87f0a189cfcfb8bd08a7f1e50a6d90"
+  integrity sha512-PqN4sKijtS3lgpbKySkGoft/0aMkyrd+awmi0kSyL4pttqmjm9Gz2s1Rp1sx6wrhWPpOjE/xU/M7KdONAqHw5A==
   dependencies:
     "@types/tv4" "*"
 
