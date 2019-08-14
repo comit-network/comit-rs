@@ -87,12 +87,12 @@ declare var global: HarnessGlobal;
         {
             actor: alice,
             action: ActionKind.Fund,
-            waitUntil: state => state.alpha_ledger.status === "Funded",
+            waitUntil: state => state.alpha_ledger.status === "FUNDED",
         },
         {
             actor: bob,
             action: ActionKind.Fund,
-            waitUntil: state => state.beta_ledger.status === "Funded",
+            waitUntil: state => state.beta_ledger.status === "FUNDED",
         },
         {
             actor: alice,

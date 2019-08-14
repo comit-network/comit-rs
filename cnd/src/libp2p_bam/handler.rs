@@ -241,3 +241,111 @@ fn poll_substreams<S: Display + Advance>(
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::libp2p_bam::test_harness::{
+        request_with_no_headers, setup_substream, setup_substream_with_json_codec, IntoEventStream,
+        IntoFutureWithResponse, WaitForFrame,
+    };
+    use bam::Status;
+    use futures::{Future, Sink, Stream};
+    use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
+    use spectral::prelude::*;
+    use tokio::codec::LinesCodec;
+
+    #[test]
+    fn given_inbound_substream_when_receiving_unknown_request_should_emit_bad_inbound_request() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
+        let mut handler = BamHandler::new(HashMap::new());
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer.send(OutboundRequest::new("PING").into_frame());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then we emit a BadInboundRequest
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::BadInboundRequest(_)))
+        )
+    }
+
+    #[test]
+    fn given_an_inbound_request_handler_sends_response() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given an inbound substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // and we receive a request
+        let send = dialer.send(OutboundRequest::new("PING").into_frame());
+        let dialer = runtime.block_on(send).unwrap();
+
+        // and we provide an answer
+        let future = handler.into_future_with_response(Response::new(Status::OK(127)));
+        runtime.spawn(future);
+
+        // then we send the response back to the dialer
+        let response = runtime.block_on(dialer.wait_for_frame());
+
+        assert_that(&response)
+            .is_ok()
+            .is_some()
+            .is_equal_to(Response::new(Status::OK(127)).into_frame());
+    }
+
+    #[test]
+    fn given_an_outbound_request_when_receiving_not_a_response_should_emit_unexpected_frame_type() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                JsonFrameCodec::default(),
+                LinesCodec::new(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given an outbound substream
+        let (sender, _receiver) = oneshot::channel();
+        handler.inject_fully_negotiated_outbound(
+            dialer,
+            ProtocolOutboundOpenInfo::PendingOutboundRequest {
+                request: PendingOutboundRequest {
+                    request: OutboundRequest::new("PING"),
+                    channel: sender,
+                },
+            },
+        );
+
+        // when receiving something else than a response
+        let send = listener
+            .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.spawn(send);
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then we emit a UnexpectedFrameType
+        matches::assert_matches!(
+            events.get(0),
+             Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::UnexpectedFrameType {
+                bad_frame: _,
+                expected_type: _,
+            }))
+        )
+    }
+}

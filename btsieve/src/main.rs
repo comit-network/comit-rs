@@ -7,7 +7,7 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     ethereum::{self, ethereum_web3_block_poller::ethereum_block_listener},
     load_settings::{load_settings, Opt},
-    logging, route_factory, settings, Bitcoin, Blockchain, InMemoryQueryRepository,
+    logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
 use ethereum_support::{
@@ -20,7 +20,7 @@ use ethereum_support::{
 };
 use failure::Fail;
 use futures::{future::Future, stream::Stream};
-use std::{string::ToString, sync::Arc};
+use std::{string::ToString, sync::Arc, time::Duration};
 use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -177,6 +177,8 @@ fn create_ethereum_routes(
     let block_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
     let log_query_result_repository = Arc::new(InMemoryQueryResultRepository::default());
 
+    let mut ethereum_chain = Ethereum::default();
+
     let (client, network, event_loop) = if let Some(settings) = settings {
         log::info!("Starting Ethereum Listener on {}", settings.node_url);
 
@@ -184,7 +186,7 @@ fn create_ethereum_routes(
             Http::new(settings.node_url.as_str()).expect("unable to connect to Ethereum node");
         let web3_client = Arc::new(Web3::new(transport));
 
-        let network = get_ethereum_info(web3_client.clone())?.into();
+        let network = get_ethereum_info(web3_client.clone())?;
 
         log::trace!("Setting up ethereum routes to {:?}", network);
 
@@ -199,11 +201,20 @@ fn create_ethereum_routes(
 
             let web3_client = web3_client.clone();
 
-            let blocks = ethereum_block_listener(web3_client.clone(), settings.poll_interval_secs)
-                .expect("Should return a Web3 block poller");
+            let blocks = ethereum_block_listener(
+                web3_client.clone(),
+                Duration::from_secs(match network {
+                    EthereumNetwork::Mainnet => 5,
+                    EthereumNetwork::Ropsten => 5,
+                    EthereumNetwork::Regtest => 1,
+                    EthereumNetwork::Unknown => 1,
+                }),
+            )
+            .expect("Should return a Web3 block poller");
 
             let executor = runtime.executor();
             let web3_processor = blocks.for_each(move |block| {
+                ethereum_chain.add_block(block.clone());
                 ethereum::check_block_queries(block_query_repository.clone(), block.clone())
                     .for_each(|QueryMatch(id, block_id)| {
                         block_query_result_repository.add_result(id.0, block_id);
@@ -234,7 +245,7 @@ fn create_ethereum_routes(
 
             runtime.spawn(web3_processor);
         }
-        (Some(web3_client), Some(network), Some(event_loop))
+        (Some(web3_client), Some(network.into()), Some(event_loop))
     } else {
         (None, None, None)
     };

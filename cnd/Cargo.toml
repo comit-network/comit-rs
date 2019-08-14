@@ -55,11 +55,13 @@ warp = "0.1"
 
 [dev-dependencies]
 bitcoin_rpc_test_helpers = { path = "../vendor/bitcoin_rpc_test_helpers" }
-bitcoincore-rpc = "0.6"
+bitcoincore-rpc = "0.7"
 key_gen = { path = "../vendor/key_gen" }
 lazy_static = "1"
 maplit = "1"
+matches = "0.1.8"
 memsocket = "0.1"
+multistream-select = "0.4.0"
 pretty_env_logger = "0.3"
 quickcheck = "0.8.5"
 quickcheck_macros = "0.8.0"

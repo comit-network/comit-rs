@@ -118,10 +118,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
             },
             WaitingFlush { mut stream } => match stream.poll_complete() {
                 Ok(Async::Ready(_)) => Advanced::transition_to(WaitingClose { stream }),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush { stream }), //
+                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush { stream }),
                 Err(error) => Advanced::error(stream, error),
             },
-
             WaitingClose { mut stream } => match stream.close() {
                 Ok(Async::Ready(_)) => Advanced::end(),
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingClose { stream }),

@@ -5,7 +5,8 @@ use strum_macros::EnumDiscriminants;
 #[derive(Clone, Debug, PartialEq, EnumDiscriminants)]
 #[strum_discriminants(
     name(HtlcState),
-    derive(Serialize, rename_all = "SCREAMING_SNAKE_CASE")
+    derive(Serialize),
+    serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum LedgerState<L: Ledger> {
     NotDeployed,
@@ -55,5 +56,16 @@ impl quickcheck::Arbitrary for HtlcState {
             5 => HtlcState::IncorrectlyFunded,
             _ => unreachable!(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn not_deployed_serializes_correctly_to_json() {
+        let state = HtlcState::NotDeployed;
+        let serialized = serde_json::to_string(&state).unwrap();
+        assert_eq!(serialized, r#""NOT_DEPLOYED""#);
     }
 }

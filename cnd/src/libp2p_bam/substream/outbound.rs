@@ -80,10 +80,11 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 response_sender,
                 mut stream,
             } => match stream.poll_complete() {
-                Ok(Async::Ready(_)) => Advanced::transition_to(WaitingAnswer {
+                Ok(Async::Ready(_)) => WaitingAnswer {
                     response_sender,
                     stream,
-                }),
+                }
+                .advance(&known_headers),
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush {
                     response_sender,
                     stream,

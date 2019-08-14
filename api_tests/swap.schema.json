@@ -195,15 +195,16 @@
                         "status": {
                             "$id": "#/properties/state/properties/alpha_ledger/properties/status",
                             "enum": [
-                                "NotDeployed",
-                                "Deployed",
-                                "Funded",
-                                "Redeemed",
-                                "Refunded"
+                                "NOT_DEPLOYED",
+                                "DEPLOYED",
+                                "FUNDED",
+                                "REDEEMED",
+                                "REFUNDED",
+                                "INCORRECTLY_FUNDED"
                             ],
                             "description": "The status of the HTLC on the alpha ledger.",
                             "default": "",
-                            "examples": ["NotDeployed"]
+                            "examples": ["NOT_DEPLOYED"]
                         }
                     }
                 },
@@ -276,15 +277,16 @@
                         "status": {
                             "$id": "#/properties/state/properties/beta_ledger/properties/status",
                             "enum": [
-                                "NotDeployed",
-                                "Deployed",
-                                "Funded",
-                                "Redeemed",
-                                "Refunded"
+                                "NOT_DEPLOYED",
+                                "DEPLOYED",
+                                "FUNDED",
+                                "REDEEMED",
+                                "REFUNDED",
+                                "INCORRECTLY_FUNDED"
                             ],
                             "description": "The status of the HTLC on the beta ledger.",
                             "default": "",
-                            "examples": ["NotDeployed"]
+                            "examples": ["NOT_DEPLOYED"]
                         }
                     }
                 },
