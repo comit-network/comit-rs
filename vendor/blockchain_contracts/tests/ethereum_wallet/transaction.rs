@@ -1,7 +1,7 @@
-use ethereum_support::{Address, Bytes, H256, U256};
 use rlp::{Encodable, RlpStream};
 use std::fmt;
 use tiny_keccak::keccak256;
+use web3::types::{Address, Bytes, H256, U256};
 
 #[derive(Debug)]
 pub struct UnsignedTransaction {

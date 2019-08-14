@@ -1,6 +1,7 @@
 use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
-use ethereum_support::{Address, ToEthereumAddress};
+use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 use secp256k1_support::{KeyPair, Message};
+use web3::types::Address;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;

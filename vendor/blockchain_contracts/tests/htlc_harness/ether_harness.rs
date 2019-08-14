@@ -4,29 +4,29 @@ use crate::{
     parity_client::ParityClient,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use ethereum_support::{
-    web3::{transports::EventLoopHandle, types::Address},
-    EtherQuantity,
-};
 use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
+use web3::{
+    transports::EventLoopHandle,
+    types::{Address, U256},
+};
 
 #[derive(Debug, Clone)]
 pub struct EtherHarnessParams {
-    pub alice_initial_ether: EtherQuantity,
+    pub alice_initial_wei: U256,
     pub htlc_refund_timestamp: Timestamp,
     pub htlc_secret_hash: [u8; 32],
-    pub htlc_eth_value: EtherQuantity,
+    pub htlc_wei_value: U256,
 }
 
 impl Default for EtherHarnessParams {
     fn default() -> Self {
         Self {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
+            alice_initial_wei: U256::from("1000000000000000000"),
             htlc_refund_timestamp: Timestamp::now().plus(10),
             htlc_secret_hash: SECRET_HASH,
-            htlc_eth_value: EtherQuantity::from_eth(0.4),
+            htlc_wei_value: U256::from("0400000000000000000"),
         }
     }
 }
@@ -68,7 +68,7 @@ pub fn ether_harness<D: Docker>(
         0,
     );
 
-    alice_client.give_eth_to(alice, params.alice_initial_ether);
+    alice_client.give_eth_to(alice, params.alice_initial_wei);
 
     let tx_id = alice_client.deploy_htlc(
         EtherHtlc::new(
@@ -78,7 +78,7 @@ pub fn ether_harness<D: Docker>(
             params.htlc_secret_hash.into(),
         )
         .into(),
-        params.htlc_eth_value.wei(),
+        params.htlc_wei_value,
     );
 
     (

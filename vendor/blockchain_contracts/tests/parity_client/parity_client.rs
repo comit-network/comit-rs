@@ -1,13 +1,14 @@
 use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
-use ethereum_support::{
-    web3::{transports::Http, Web3},
-    Address, Bytes, CallRequest, EtherQuantity, Future, TransactionReceipt, TransactionRequest,
-    H256, U256,
-};
 use lazy_static::lazy_static;
 use std::{
     ops::DerefMut,
     sync::{Arc, Mutex},
+};
+use web3::{
+    futures::Future,
+    transports::Http,
+    types::{Address, Bytes, CallRequest, TransactionReceipt, TransactionRequest, H256, U256},
+    Web3,
 };
 
 #[allow(missing_debug_implementations)]
@@ -39,7 +40,7 @@ impl ParityClient {
         }
     }
 
-    pub fn give_eth_to(&self, to: Address, amount: EtherQuantity) {
+    pub fn give_eth_to(&self, to: Address, wei_amount: U256) {
         self.client
             .personal()
             .send_transaction(
@@ -48,7 +49,7 @@ impl ParityClient {
                     to: Some(to),
                     gas: None,
                     gas_price: None,
-                    value: Some(amount.wei()),
+                    value: Some(wei_amount),
                     data: None,
                     nonce: None,
                     condition: None,

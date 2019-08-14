@@ -1,9 +1,9 @@
 use crypto::{digest::Digest, sha2::Sha256};
-use ethereum_support::{Address as EthereumAddress, ToEthereumAddress};
 use hex::FromHexError;
 use hex_literal::hex;
 use secp256k1_support::KeyPair;
 use std::{str::FromStr, thread::sleep, time::Duration};
+use web3::types::Address as EthereumAddress;
 
 mod erc20_harness;
 mod ether_harness;
@@ -14,6 +14,7 @@ pub use self::{
     ether_harness::{ether_harness, EtherHarnessParams},
     timestamp::Timestamp,
 };
+use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 
 pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
     let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();
