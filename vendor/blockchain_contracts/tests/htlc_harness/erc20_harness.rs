@@ -4,20 +4,17 @@ use crate::{
     parity_client::ParityClient,
 };
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
-use ethereum_support::{
-    web3::{
-        transports::EventLoopHandle,
-        types::{Address, U256},
-    },
-    EtherQuantity,
-};
 use std::sync::Arc;
 use tc_web3_client;
 use testcontainers::{images::parity_parity::ParityEthereum, Container, Docker};
+use web3::{
+    transports::EventLoopHandle,
+    types::{Address, U256},
+};
 
 #[derive(Debug, Clone)]
 pub struct Erc20HarnessParams {
-    pub alice_initial_ether: EtherQuantity,
+    pub alice_initial_wei: U256,
     pub htlc_refund_timestamp: Timestamp,
     pub htlc_secret_hash: [u8; 32],
     pub alice_initial_tokens: U256,
@@ -27,7 +24,7 @@ pub struct Erc20HarnessParams {
 impl Default for Erc20HarnessParams {
     fn default() -> Self {
         Self {
-            alice_initial_ether: EtherQuantity::from_eth(1.0),
+            alice_initial_wei: "1000000000000000000".into(),
             htlc_refund_timestamp: Timestamp::now().plus(10),
             htlc_secret_hash: SECRET_HASH,
             alice_initial_tokens: U256::from(1000),
@@ -75,7 +72,7 @@ pub fn erc20_harness<D: Docker>(
         0,
     );
 
-    alice_client.give_eth_to(alice, params.alice_initial_ether);
+    alice_client.give_eth_to(alice, params.alice_initial_wei);
 
     let token_contract = alice_client.deploy_erc20_token_contract();
 

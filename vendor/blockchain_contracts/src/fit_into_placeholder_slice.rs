@@ -1,4 +1,4 @@
-use bitcoin_support::Hash160;
+use bitcoin_hashes::hash160;
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use web3::types::{Address, U256};
 
@@ -36,7 +36,7 @@ impl FitIntoPlaceholderSlice for SecretHash {
     }
 }
 
-impl FitIntoPlaceholderSlice for Hash160 {
+impl FitIntoPlaceholderSlice for hash160::Hash {
     fn fit_into_placeholder_slice(self, buf: &mut [u8]) {
         buf.copy_from_slice(&self[..]);
     }
