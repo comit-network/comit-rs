@@ -1,4 +1,4 @@
-use crate::ethereum_wallet::{UnsignedTransaction, Wallet};
+use crate::ethereum_helper::{UnsignedTransaction, Wallet};
 use lazy_static::lazy_static;
 use std::{
     ops::DerefMut,

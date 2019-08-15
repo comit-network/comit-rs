@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod ethereum_wallet;
+pub mod ethereum_helper;
 pub mod htlc_harness;
 pub mod parity_client;
 

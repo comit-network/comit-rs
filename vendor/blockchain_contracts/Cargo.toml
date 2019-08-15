@@ -32,7 +32,6 @@ log = "0.4"
 pretty_env_logger = "0.3"
 rlp = "0.3"
 spectral = "0.6"
-tc_web3_client = { path = "../../vendor/tc_web3_client" }
 testcontainers = "0.7"
 tiny-keccak = "1.5"
 
