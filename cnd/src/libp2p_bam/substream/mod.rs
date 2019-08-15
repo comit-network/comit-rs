@@ -50,9 +50,9 @@ impl<S: CloseStream> Advanced<S> {
 
         Self {
             new_state: Some(S::close(stream)),
-            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error {
+            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
                 error,
-            })),
+            ))),
         }
     }
 }

@@ -83,10 +83,12 @@ args = [
 # Overridden because: workspace = false and custom toolchain
 [tasks.format]
 workspace = false
-clear = true
 toolchain = "nightly-2019-07-31"
-args = ["fmt"]
 
+# Overridden because: workspace = false and custom toolchain
+[tasks.check-format]
+workspace = false
+toolchain = "nightly-2019-07-31"
 
 ################
 # Task aliases #
@@ -119,10 +121,7 @@ extend = "api-tests-flow"
 # Custom tasks #
 
 [tasks.check-rs-format]
-description = "Runs cargo fmt to check appropriate code format."
-workspace = false
-toolchain = "nightly-2019-07-31"
-args = ["fmt", "--", "--check"]
+alias = "check-format"
 
 [tasks.fix-ts]
 description = "Runs prettier & tslint to format TypeScript code."

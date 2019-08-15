@@ -1,8 +1,7 @@
 use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
-use web3::types::Address;
-use secp256k1::{Message, SecretKey};
-use secp256k1::PublicKey;
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
+use secp256k1::{Message, PublicKey, SecretKey};
+use web3::types::Address;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
@@ -12,14 +11,20 @@ pub trait Wallet: Send + Sync {
 #[derive(Debug)]
 pub struct InMemoryWallet {
     secret_key: SecretKey,
-    public_key : PublicKey,
+    public_key: PublicKey,
     chain_id: u8,
 }
 
 impl InMemoryWallet {
     pub fn new(secret_key: SecretKey, chain_id: u8) -> Self {
-
-        InMemoryWallet { secret_key,public_key: secp256k1::PublicKey::from_secret_key(&*blockchain_contracts::SECP, &secret_key), chain_id }
+        InMemoryWallet {
+            secret_key,
+            public_key: secp256k1::PublicKey::from_secret_key(
+                &*blockchain_contracts::SECP,
+                &secret_key,
+            ),
+            chain_id,
+        }
     }
 
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification

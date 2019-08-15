@@ -76,7 +76,11 @@ pub fn erc20_harness<D: Docker>(
 
     let token_contract = alice_client.deploy_erc20_token_contract();
 
-    alice_client.mint_tokens(token_contract.clone(), params.alice_initial_tokens, alice.clone());
+    alice_client.mint_tokens(
+        token_contract.clone(),
+        params.alice_initial_tokens,
+        alice.clone(),
+    );
 
     let erc20_htlc = Erc20Htlc::new(
         params.htlc_refund_timestamp.into(),

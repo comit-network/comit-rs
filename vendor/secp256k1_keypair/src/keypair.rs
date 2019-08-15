@@ -1,6 +1,9 @@
-use secp256k1::{self, rand::Rng, Error, Message, RecoverableSignature, SecretKey, PublicKey, Signature};
+use secp256k1::{
+    self, rand::Rng, Error, Message, PublicKey, RecoverableSignature, SecretKey, Signature,
+};
 use std::{convert::Into, str::FromStr};
 
+// TODO: Contribute back to secp256k1
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
 pub struct KeyPair {
     secret_key: SecretKey,

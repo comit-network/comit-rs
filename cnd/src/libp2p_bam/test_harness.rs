@@ -1,7 +1,8 @@
 use crate::libp2p_bam::{
-    handler::ProtocolOutEvent, BamHandler, BamHandlerEvent, PendingInboundRequest,
+    handler::{InboundMessage, ProtocolOutEvent},
+    BamHandler, BamHandlerEvent, PendingInboundRequest,
 };
-use bam::json::{JsonFrameCodec, Response};
+use bam::frame::{JsonFrameCodec, Response};
 use futures::{Future, Stream};
 use libp2p::core::{ProtocolsHandler, ProtocolsHandlerEvent};
 use multistream_select::Negotiated;
@@ -96,8 +97,8 @@ impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoFutureWithResponse
         let future = self.into_event_stream().for_each(move |event| {
             // assume we only want to handle requests
             match event {
-                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::InboundRequest(
-                    PendingInboundRequest { channel, .. },
+                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Message(
+                    InboundMessage::Request(PendingInboundRequest { channel, .. }),
                 )) => {
                     channel.send(response.clone()).unwrap();
                 }
@@ -129,13 +130,13 @@ impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoEventStream
 pub trait WaitForFrame {
     fn wait_for_frame(
         self,
-    ) -> Box<dyn Future<Item = Option<bam::json::Frame>, Error = bam::json::Error> + Send>;
+    ) -> Box<dyn Future<Item = Option<bam::Frame>, Error = bam::frame::CodecError> + Send>;
 }
 
 impl WaitForFrame for Framed<Negotiated<TcpStream>, JsonFrameCodec> {
     fn wait_for_frame(
         self,
-    ) -> Box<dyn Future<Item = Option<bam::json::Frame>, Error = bam::json::Error> + Send> {
+    ) -> Box<dyn Future<Item = Option<bam::Frame>, Error = bam::frame::CodecError> + Send> {
         Box::new(
             self.into_future()
                 .map(|(item, _stream)| item)

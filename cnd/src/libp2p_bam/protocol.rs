@@ -1,4 +1,4 @@
-use bam::json::{self, JsonFrameCodec};
+use bam::frame::{self, JsonFrameCodec};
 use futures::future::FutureResult;
 use libp2p::{
     core::{upgrade::Negotiated, InboundUpgrade, UpgradeInfo},
@@ -34,7 +34,7 @@ where
 
     #[inline]
     fn upgrade_inbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
-        let codec = json::JsonFrameCodec::default();
+        let codec = frame::JsonFrameCodec::default();
         futures::future::ok(codec.framed(socket))
     }
 }
@@ -49,7 +49,7 @@ where
 
     #[inline]
     fn upgrade_outbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
-        let codec = json::JsonFrameCodec::default();
+        let codec = frame::JsonFrameCodec::default();
         futures::future::ok(codec.framed(socket))
     }
 }

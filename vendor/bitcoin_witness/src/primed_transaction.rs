@@ -3,8 +3,7 @@ use bitcoin_support::{
     self, Address, BitcoinQuantity, Hash, OutPoint, Script, SigHashType, SighashComponents,
     Transaction, TxIn, TxOut,
 };
-use secp256k1_keypair::Message;
-use secp256k1_keypair::SECP;
+use secp256k1_keypair::{Message, SECP};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {

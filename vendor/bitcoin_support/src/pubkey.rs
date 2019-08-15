@@ -60,9 +60,7 @@ impl From<Hash160> for PubkeyHash {
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
-            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
-                &public_key.serialize(),
-            ),
+            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(&public_key.serialize()),
         )
     }
 }

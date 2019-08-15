@@ -65,7 +65,10 @@ impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
             output: PrimedInput::new(
                 htlc_location,
                 htlc_params.asset,
-                htlc.unlock_with_secret(secret_source.secp256k1_redeem().secret_key(), secret.into_raw_secret()),
+                htlc.unlock_with_secret(
+                    secret_source.secp256k1_redeem().secret_key(),
+                    secret.into_raw_secret(),
+                ),
             ),
             network: htlc_params.ledger.network,
         }

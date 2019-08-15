@@ -1,34 +1,34 @@
-use crate::json;
+use crate::Frame;
 use bytes::BytesMut;
 use std::{error::Error as StdError, fmt, io};
 use tokio_codec::{Decoder, Encoder};
 
 #[derive(Debug)]
-pub enum Error {
+pub enum CodecError {
     Json(serde_json::Error),
     IO(io::Error),
 }
 
-impl StdError for Error {}
+impl StdError for CodecError {}
 
-impl fmt::Display for Error {
+impl fmt::Display for CodecError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
-            Error::Json(e) => write!(f, "failed to decode JSON {:?}", e),
-            Error::IO(e) => write!(f, "IO error {:?}", e),
+            CodecError::Json(e) => write!(f, "failed to decode JSON {:?}", e),
+            CodecError::IO(e) => write!(f, "IO error {:?}", e),
         }
     }
 }
 
-impl From<io::Error> for Error {
+impl From<io::Error> for CodecError {
     fn from(e: io::Error) -> Self {
-        Error::IO(e)
+        CodecError::IO(e)
     }
 }
 
-impl From<serde_json::Error> for Error {
+impl From<serde_json::Error> for CodecError {
     fn from(e: serde_json::Error) -> Self {
-        Error::Json(e)
+        CodecError::Json(e)
     }
 }
 
@@ -42,10 +42,10 @@ impl Default for JsonFrameCodec {
 }
 
 impl Encoder for JsonFrameCodec {
-    type Item = json::Frame;
-    type Error = Error;
+    type Item = Frame;
+    type Error = CodecError;
 
-    fn encode(&mut self, item: json::Frame, dst: &mut BytesMut) -> Result<(), Error> {
+    fn encode(&mut self, item: Frame, dst: &mut BytesMut) -> Result<(), CodecError> {
         let mut bytes = serde_json::to_vec(&item)?;
         bytes.push(b'\n');
 
@@ -56,10 +56,10 @@ impl Encoder for JsonFrameCodec {
 }
 
 impl Decoder for JsonFrameCodec {
-    type Item = json::Frame;
-    type Error = Error;
+    type Item = Frame;
+    type Error = CodecError;
 
-    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<json::Frame>, Error> {
+    fn decode(&mut self, src: &mut BytesMut) -> Result<Option<Frame>, CodecError> {
         match src.iter().position(|b| *b == b'\n') {
             Some(position) => {
                 let frame_bytes = src.split_to(position + 1);
@@ -75,12 +75,12 @@ impl Decoder for JsonFrameCodec {
 mod tests {
 
     use super::*;
-    use crate::json::FrameType;
+    use crate::FrameType;
     use spectral::prelude::*;
 
     #[test]
     fn should_encode_frame_to_bytes() {
-        let frame = json::Frame::new(FrameType::Request, serde_json::Value::Null);
+        let frame = Frame::new(FrameType::Request, serde_json::Value::Null);
 
         let mut codec = JsonFrameCodec::default();
 
@@ -106,7 +106,7 @@ mod tests {
         let mut bytes = BytesMut::new();
         bytes.extend([frame_bytes, newline].concat());
 
-        let expected_frame = json::Frame::new(FrameType::Response, serde_json::Value::Null);
+        let expected_frame = Frame::new(FrameType::Response, serde_json::Value::Null);
 
         assert_that(&codec.decode(&mut bytes))
             .is_ok()
@@ -145,7 +145,7 @@ mod tests {
         let first = codec.decode(&mut bytes);
         let second = codec.decode(&mut bytes);
 
-        let expected_frame = json::Frame::new(FrameType::Response, serde_json::Value::Null);
+        let expected_frame = Frame::new(FrameType::Response, serde_json::Value::Null);
 
         assert_that(&first)
             .is_ok()

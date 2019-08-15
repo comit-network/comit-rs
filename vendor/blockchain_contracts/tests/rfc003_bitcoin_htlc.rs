@@ -6,18 +6,21 @@ pub mod htlc_harness;
 pub mod parity_client;
 
 use crate::htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH};
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{
-    serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
-    TransactionId,
+use bitcoin::{
+    consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
+use bitcoin_quantity::BitcoinQuantity;
+use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::{
+    pubkey_hash::{PubkeyHash, TransactionId},
+    rfc003::bitcoin_htlc::BitcoinHtlc,
+};
+use secp256k1::{PublicKey, SecretKey};
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
-use secp256k1::{SecretKey, PublicKey};
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness
@@ -32,7 +35,7 @@ fn unlock_with_custom_size_secret(
 ) -> UnlockParameters {
     let placeholder_secret = [0u8; 32];
     // First, unlock the HTLC with a placeholder secret
-let parameters = htlc.unlock_with_secret(secret_key, placeholder_secret);
+    let parameters = htlc.unlock_with_secret(secret_key, placeholder_secret);
 
     let UnlockParameters {
         mut witness,
@@ -74,11 +77,13 @@ fn fund_htlc(
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
     let redeem_secret_key = redeem_privkey.key.clone();
-    let redeem_pubkey_hash: PubkeyHash = PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
+    let redeem_pubkey_hash: PubkeyHash =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_secret_key = refund_privkey.key.clone();
-    let refund_pubkey_hash: PubkeyHash = PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key).into();
+    let refund_pubkey_hash: PubkeyHash =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key).into();
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
 

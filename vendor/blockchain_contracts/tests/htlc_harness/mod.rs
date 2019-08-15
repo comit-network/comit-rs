@@ -13,8 +13,8 @@ pub use self::{
     ether_harness::{ether_harness, EtherHarnessParams},
     timestamp::Timestamp,
 };
-use secp256k1::{PublicKey, SecretKey};
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
+use secp256k1::{PublicKey, SecretKey};
 
 pub fn new_account(secret_key: &str) -> (SecretKey, EthereumAddress) {
     let secret_key = SecretKey::from_str(secret_key).unwrap();

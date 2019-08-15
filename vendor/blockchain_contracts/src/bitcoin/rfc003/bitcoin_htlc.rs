@@ -2,7 +2,8 @@ use crate::{
     fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
     SecretHash,
 };
-use bitcoin_support::{Address, Hash160, Network, Script};
+use bitcoin::{network::constants::Network, Address, Script};
+use bitcoin_hashes::hash160;
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
 use secp256k1::{PublicKey, SecretKey};
@@ -31,8 +32,8 @@ pub struct BitcoinHtlc {
 impl BitcoinHtlc {
     pub fn new(
         expiry: u32,
-        refund_identity: Hash160,
-        redeem_identity: Hash160,
+        refund_identity: hash160::Hash,
+        redeem_identity: hash160::Hash,
         secret_hash: [u8; 32],
     ) -> Self {
         let mut contract = CONTRACT_TEMPLATE.to_vec();
@@ -48,7 +49,7 @@ impl BitcoinHtlc {
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
-        Address::p2wsh(&Script::from(self.script.clone()), network.into())
+        Address::p2wsh(&Script::from(self.script.clone()), network)
     }
 
     pub fn unlock_with_secret(self, secret_key: SecretKey, secret: [u8; 32]) -> UnlockParameters {
@@ -68,7 +69,7 @@ impl BitcoinHtlc {
     }
 
     pub fn unlock_after_timeout(self, secret_key: SecretKey) -> UnlockParameters {
-        let public_key =  PublicKey::from_secret_key(&*crate::SECP, &secret_key);
+        let public_key = PublicKey::from_secret_key(&*crate::SECP, &secret_key);
         UnlockParameters {
             witness: vec![
                 Witness::Signature(secret_key),
@@ -90,6 +91,7 @@ impl BitcoinHtlc {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bitcoin_hashes::hash160;
     use regex::bytes::Regex;
 
     const SECRET_HASH: [u8; 32] = [
@@ -101,7 +103,12 @@ mod tests {
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let htlc = BitcoinHtlc::new(3000000, Hash160::default(), Hash160::default(), SECRET_HASH);
+        let htlc = BitcoinHtlc::new(
+            3000000,
+            hash160::Hash::default(),
+            hash160::Hash::default(),
+            SECRET_HASH,
+        );
 
         assert_eq!(
             htlc.script.len(),
@@ -114,8 +121,8 @@ mod tests {
     fn given_input_data_when_compiled_should_contain_given_data() {
         let htlc = BitcoinHtlc::new(
             2000000000,
-            Hash160::default(),
-            Hash160::default(),
+            hash160::Hash::default(),
+            hash160::Hash::default(),
             SECRET_HASH,
         );
 

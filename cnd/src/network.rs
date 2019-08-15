@@ -10,7 +10,7 @@ use crate::{
 };
 use bam::{
     self,
-    json::{OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{OutboundRequest, Response, ValidatedInboundRequest},
     Status,
 };
 use futures::future::Future;
