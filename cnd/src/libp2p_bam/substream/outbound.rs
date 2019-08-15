@@ -1,11 +1,12 @@
 use crate::libp2p_bam::{
     handler::{
-        PendingInboundResponse, PendingOutboundRequest, ProtocolOutEvent, ProtocolOutboundOpenInfo,
+        self, InboundMessage, OutboundMessage, PendingInboundResponse, PendingOutboundRequest,
+        ProtocolOutEvent, ProtocolOutboundOpenInfo,
     },
     protocol::{BamProtocol, BamStream},
     substream::{Advance, Advanced, CloseStream},
 };
-use bam::json::{Frame, FrameType, Response};
+use bam::{frame::Response, Frame, FrameType};
 use futures::sync::oneshot;
 use libp2p::core::protocols_handler::{ProtocolsHandlerEvent, SubstreamProtocol};
 use std::collections::{HashMap, HashSet};
@@ -55,7 +56,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
             WaitingOpen { request } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
                     protocol: SubstreamProtocol::new(BamProtocol {}),
-                    info: ProtocolOutboundOpenInfo::PendingOutboundRequest { request },
+                    info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
                 })
             }
             WaitingSend {
@@ -94,52 +95,35 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                 response_sender,
                 mut stream,
             } => match stream.poll() {
-                Ok(Async::Ready(Some(frame))) => {
-                    let expected_type = FrameType::Response;
-                    if frame.frame_type != expected_type {
-                        return Advanced {
-                            new_state: Some(WaitingClose { stream }),
-                            event: Some(ProtocolsHandlerEvent::Custom(
-                                ProtocolOutEvent::UnexpectedFrameType {
-                                    bad_frame: frame,
-                                    expected_type,
-                                },
-                            )),
-                        };
-                    }
-
-                    let event = serde_json::from_value(frame.payload)
-                        .map(|response| {
-                            ProtocolOutEvent::InboundResponse(PendingInboundResponse {
-                                response,
-                                channel: response_sender,
+                Ok(Async::Ready(Some(frame))) => match frame.frame_type {
+                    FrameType::Response => {
+                        let event = serde_json::from_value(frame.payload)
+                            .map(|response| {
+                                ProtocolOutEvent::Message(InboundMessage::Response(
+                                    PendingInboundResponse {
+                                        response,
+                                        channel: response_sender,
+                                    },
+                                ))
                             })
-                        })
-                        .unwrap_or_else(|deser_error| {
-                            log::error!(
-                                target: "bam",
-                                "payload of frame is not a well-formed RESPONSE: {:?}",
-                                deser_error
-                            );
+                            .map_err(handler::Error::MalformedFrame)
+                            .unwrap_or_else(ProtocolOutEvent::Error);
 
-                            ProtocolOutEvent::BadInboundResponse
-                        });
-
-                    Advanced {
-                        new_state: Some(WaitingClose { stream }),
-                        event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        Advanced {
+                            new_state: Some(WaitingClose { stream }),
+                            event: Some(ProtocolsHandlerEvent::Custom(event)),
+                        }
                     }
-                }
-                Ok(Async::Ready(None)) => Advanced {
-                    new_state: Some(State::WaitingClose { stream }),
-                    event: Some(ProtocolsHandlerEvent::Custom(
-                        ProtocolOutEvent::UnexpectedEOF,
-                    )),
+                    FrameType::Request => {
+                        Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
+                    }
+                    FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
                 },
                 Ok(Async::NotReady) => Advanced::transition_to(WaitingAnswer {
                     response_sender,
                     stream,
                 }),
+                Ok(Async::Ready(None)) => Advanced::error(stream, handler::Error::UnexpectedEOF),
                 Err(error) => Advanced::error(stream, error),
             },
 

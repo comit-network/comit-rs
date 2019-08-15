@@ -7,7 +7,7 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::json::Header;
+use bam::frame::Header;
 use ethereum_support::Erc20Token;
 use std::fmt;
 
@@ -116,7 +116,7 @@ mod tests {
         bam_ext::ToBamHeader,
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
-    use bam::json::Header;
+    use bam::frame::Header;
     use spectral::prelude::*;
 
     #[test]

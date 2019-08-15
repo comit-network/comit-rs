@@ -1,4 +1,4 @@
-use bam::json::Header;
+use bam::frame::Header;
 
 pub trait FromBamHeader
 where

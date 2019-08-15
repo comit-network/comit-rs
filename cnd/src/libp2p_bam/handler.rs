@@ -4,8 +4,10 @@ use crate::libp2p_bam::{
     BamHandlerEvent,
 };
 use bam::{
-    json::{Frame, FrameType, JsonFrameCodec, OutboundRequest, Response, ValidatedInboundRequest},
-    IntoFrame,
+    frame::{
+        JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest,
+    },
+    Frame, IntoFrame,
 };
 use derivative::Derivative;
 use futures::{
@@ -43,8 +45,14 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(Debug)]
 pub enum Error {
-    Stream(bam::json::Error),
+    MalformedJson(bam::frame::CodecError),
     DroppedResponseSender(Canceled),
+    UnknownMandatoryHeader(UnknownMandatoryHeaders),
+    UnknownRequestType(String),
+    UnknownFrameType,
+    UnexpectedFrame(Frame),
+    MalformedFrame(serde_json::Error),
+    UnexpectedEOF,
 }
 
 impl From<Canceled> for Error {
@@ -53,9 +61,9 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<bam::json::Error> for Error {
-    fn from(e: bam::json::Error) -> Self {
-        Error::Stream(e)
+impl From<bam::frame::CodecError> for Error {
+    fn from(e: bam::frame::CodecError) -> Self {
+        Error::MalformedJson(e)
     }
 }
 
@@ -88,46 +96,42 @@ pub struct PendingInboundResponse {
     pub channel: oneshot::Sender<Response>,
 }
 
-#[derive(Debug)]
-pub struct AutomaticallyGeneratedErrorResponse {
-    pub response: Response,
-    pub channel: oneshot::Sender<Response>,
-}
-
 /// Events that occur 'in' this node (as opposed to events from a peer node).
 #[derive(Debug)]
 pub enum ProtocolInEvent {
-    PendingOutboundRequest { request: PendingOutboundRequest },
-}
-
-/// Events that occur 'out'side of this node i.e. events from a peer node.
-#[derive(Debug)]
-pub enum ProtocolOutEvent {
-    InboundRequest(PendingInboundRequest),
-    InboundResponse(PendingInboundResponse),
-    BadInboundRequest(AutomaticallyGeneratedErrorResponse),
-    BadInboundResponse,
-    UnexpectedFrameType {
-        bad_frame: Frame,
-        expected_type: FrameType,
-    },
-    UnexpectedEOF,
-    Error {
-        error: Error,
-    },
+    Message(OutboundMessage),
 }
 
 /// Different kinds of `OutboundOpenInfo` that we may want to pass when emitted
 /// an instance of `ProtocolsHandlerEvent::OutboundSubstreamRequest`.
 #[derive(Debug)]
 pub enum ProtocolOutboundOpenInfo {
-    PendingOutboundRequest { request: PendingOutboundRequest },
+    Message(OutboundMessage),
+}
+
+/// Events emitted after processing a message from the 'out'side of this node
+/// i.e. from a peer
+#[derive(Debug)]
+pub enum ProtocolOutEvent {
+    Message(InboundMessage),
+    Error(Error),
+}
+
+#[derive(Debug)]
+pub enum InboundMessage {
+    Request(PendingInboundRequest),
+    Response(PendingInboundResponse),
+}
+
+#[derive(Debug)]
+pub enum OutboundMessage {
+    Request(PendingOutboundRequest),
 }
 
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = bam::json::Error;
+    type Error = bam::frame::CodecError;
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
@@ -155,9 +159,9 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         outbound_open_info: Self::OutboundOpenInfo,
     ) {
         match outbound_open_info {
-            ProtocolOutboundOpenInfo::PendingOutboundRequest {
-                request: PendingOutboundRequest { request, channel },
-            } => {
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(
+                PendingOutboundRequest { request, channel },
+            )) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingSend {
                         frame: request.into_frame(),
@@ -174,7 +178,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
-            ProtocolInEvent::PendingOutboundRequest { request } => {
+            ProtocolInEvent::Message(OutboundMessage::Request(request)) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingOpen { request });
             }
@@ -214,7 +218,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<BamHandlerEvent, bam::json::Error>> {
+) -> Option<Poll<BamHandlerEvent, bam::frame::CodecError>> {
     log::debug!("polling {} substreams", substreams.len());
 
     // We remove each element from `substreams` one by one and add them back.
@@ -245,35 +249,11 @@ mod tests {
         request_with_no_headers, setup_substream, setup_substream_with_json_codec, IntoEventStream,
         IntoFutureWithResponse, WaitForFrame,
     };
-    use bam::Status;
+    use bam::{frame::Header, Status};
     use futures::{Future, Sink, Stream};
     use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
     use spectral::prelude::*;
     use tokio::codec::LinesCodec;
-
-    #[test]
-    fn given_inbound_substream_when_receiving_unknown_request_should_emit_bad_inbound_request() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = BamHandler::new(HashMap::new());
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer.send(OutboundRequest::new("PING").into_frame());
-        let _ = runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then we emit a BadInboundRequest
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::BadInboundRequest(_)))
-        )
-    }
 
     #[test]
     fn given_an_inbound_request_handler_sends_response() {
@@ -302,7 +282,235 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_not_a_response_should_emit_unexpected_frame_type() {
+    fn given_inbound_substream_when_unknown_request_should_emit_unknown_request_type() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
+        let mut handler = BamHandler::new(HashMap::new());
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer.send(OutboundRequest::new("PING").into_frame());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(
+                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnknownRequestType(_))),
+            )
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_request_with_unknown_headers_should_emit_unknown_mandatory_headers(
+    ) {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer.send(
+            OutboundRequest::new("PING")
+                .with_header(
+                    "foo",
+                    Header::with_str_value("foo")
+                        .with_parameter("bar", "foobar")
+                        .unwrap(),
+                )
+                .into_frame(),
+        );
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(
+                ProtocolsHandlerEvent::Custom(
+                    ProtocolOutEvent::Error(Error::UnknownMandatoryHeader(_)),
+                ),
+            )
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_request_without_type_should_emit_malformed_frame() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                LinesCodec::new(),
+                JsonFrameCodec::default(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer
+            .send(r#"{"type": "REQUEST", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedFrame(_))))
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_request_without_header_and_body_should_emit_request() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                LinesCodec::new(),
+                JsonFrameCodec::default(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer
+            .send(r#"{"type": "REQUEST", "payload":{"type": "PING", "foo": "bar"}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(
+                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Message(InboundMessage::Request(_))),
+            )
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_response_should_emit_unexpected_frame() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                LinesCodec::new(),
+                JsonFrameCodec::default(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer
+            .send(r#"{"type": "RESPONSE", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnexpectedFrame(_))))
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                LinesCodec::new(),
+                JsonFrameCodec::default(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer
+            .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
+                Error::UnknownFrameType
+            )))
+        )
+    }
+
+    #[test]
+    fn given_inbound_substream_when_invalid_json_should_emit_malformed_json() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                LinesCodec::new(),
+                JsonFrameCodec::default(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given a substream
+        handler.inject_fully_negotiated_inbound(listener);
+
+        // when receiving a request
+        let send = dialer
+            .send(r#"invlid json"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.block_on(send).unwrap();
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedJson(_))))
+        )
+    }
+
+    #[test]
+    fn given_an_outbound_request_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -316,15 +524,13 @@ mod tests {
         let (sender, _receiver) = oneshot::channel();
         handler.inject_fully_negotiated_outbound(
             dialer,
-            ProtocolOutboundOpenInfo::PendingOutboundRequest {
-                request: PendingOutboundRequest {
-                    request: OutboundRequest::new("PING"),
-                    channel: sender,
-                },
-            },
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
+                request: OutboundRequest::new("PING"),
+                channel: sender,
+            })),
         );
 
-        // when receiving something else than a response
+        // when receiving a frame with unknown type
         let send = listener
             .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
             .map(|_| ())
@@ -335,13 +541,129 @@ mod tests {
             .block_on(handler.into_event_stream().take(1).collect())
             .unwrap();
 
-        // then we emit a UnexpectedFrameType
+        // then
         matches::assert_matches!(
             events.get(0),
-             Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::UnexpectedFrameType {
-                bad_frame: _,
-                expected_type: _,
-            }))
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
+                Error::UnknownFrameType
+            )))
+        )
+    }
+
+    #[test]
+    fn given_an_outbound_request_when_request_should_emit_unexpected_frame() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                JsonFrameCodec::default(),
+                LinesCodec::new(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given an outbound substream
+        let (sender, _receiver) = oneshot::channel();
+        handler.inject_fully_negotiated_outbound(
+            dialer,
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
+                request: OutboundRequest::new("PING"),
+                channel: sender,
+            })),
+        );
+
+        // when receiving a known type (REQUEST) that is unexpected
+        let send = listener
+            .send(r#"{"type": "REQUEST", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.spawn(send);
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnexpectedFrame(_))))
+        )
+    }
+
+    #[test]
+    fn given_an_outbound_request_when_malformed_response_should_emit_malformed_frame() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                JsonFrameCodec::default(),
+                LinesCodec::new(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given an outbound substream
+        let (sender, _receiver) = oneshot::channel();
+        handler.inject_fully_negotiated_outbound(
+            dialer,
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
+                request: OutboundRequest::new("PING"),
+                channel: sender,
+            })),
+        );
+
+        // when receiving a known type (REQUEST) that is unexpected
+        let send = listener
+            .send(r#"{"type": "RESPONSE", "payload":{}}"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.spawn(send);
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedFrame(_))))
+        )
+    }
+
+    #[test]
+    fn given_an_outbound_request_when_invalid_json_should_emit_malformed_json() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+        let (dialer, listener) = runtime
+            .block_on(setup_substream(
+                JsonFrameCodec::default(),
+                LinesCodec::new(),
+            ))
+            .unwrap();
+        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+
+        // given an outbound substream
+        let (sender, _receiver) = oneshot::channel();
+        handler.inject_fully_negotiated_outbound(
+            dialer,
+            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
+                request: OutboundRequest::new("PING"),
+                channel: sender,
+            })),
+        );
+
+        // when receiving invalid json
+        let send = listener
+            .send(r#"invalid json"#.to_owned())
+            .map(|_| ())
+            .map_err(|_| ());
+        let _ = runtime.spawn(send);
+
+        let events = runtime
+            .block_on(handler.into_event_stream().take(1).collect())
+            .unwrap();
+
+        // then
+        matches::assert_matches!(
+            events.get(0),
+            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedJson(_))))
         )
     }
 }
