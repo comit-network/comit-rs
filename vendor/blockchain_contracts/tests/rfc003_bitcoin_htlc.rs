@@ -23,7 +23,22 @@ use blockchain_contracts::bitcoin::{
 use secp256k1_keypair::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
-use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
+
+pub fn new_tc_bitcoincore_client<D: Docker>(
+    container: &Container<'_, D, BitcoinCore>,
+) -> bitcoincore_rpc::Client {
+    let port = container.get_host_port(18443).unwrap();
+    let auth = container.image().auth();
+
+    let endpoint = format!("http://localhost:{}", port);
+
+    bitcoincore_rpc::Client::new(
+        endpoint,
+        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
+    )
+    .unwrap()
+}
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness
@@ -134,7 +149,7 @@ fn redeem_htlc_with_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
@@ -173,7 +188,7 @@ fn refund_htlc() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
@@ -232,7 +247,7 @@ fn redeem_htlc_with_long_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
@@ -273,7 +288,7 @@ fn redeem_htlc_with_short_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();
