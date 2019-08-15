@@ -1,4 +1,4 @@
-use secp256k1_support::PublicKey;
+use secp256k1_keypair::PublicKey;
 use web3::types::Address;
 
 // TODO: Should/Can this be contributed back?
@@ -8,7 +8,7 @@ pub trait ToEthereumAddress {
 
 impl ToEthereumAddress for PublicKey {
     fn to_ethereum_address(&self) -> Address {
-        let serialized_public_key = self.inner().serialize_uncompressed();
+        let serialized_public_key = self.serialize_uncompressed();
         // Remove the silly openssl 0x04 byte from the front of the
         // serialized public key. This is a bitcoin thing that
         // ethereum doesn't want. Eth pubkey should be 32 + 32 = 64 bytes.

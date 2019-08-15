@@ -1,7 +1,7 @@
 use crypto::{digest::Digest, sha2::Sha256};
 use hex::FromHexError;
 use hex_literal::hex;
-use secp256k1_support::KeyPair;
+use secp256k1_keypair::KeyPair;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use web3::types::Address as EthereumAddress;
 

@@ -6,7 +6,7 @@ use bitcoin::{
 use bitcoin_bech32;
 use bitcoin_hashes::Hash;
 use hex::{self, FromHex};
-use secp256k1_support::{KeyPair, PublicKey};
+use secp256k1_keypair::{KeyPair, PublicKey};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -25,7 +25,7 @@ impl IntoP2wpkhAddress for PublicKey {
         Address::p2wpkh(
             &BitcoinPublicKey {
                 compressed: true, // Only used for serialization
-                key: *self.inner(),
+                key: self,
             },
             network.into(),
         )
@@ -60,9 +60,7 @@ impl From<Hash160> for PubkeyHash {
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
-            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
-                &public_key.inner().serialize(),
-            ),
+            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(&public_key.serialize()),
         )
     }
 }
@@ -170,7 +168,7 @@ impl Serialize for PubkeyHash {
 mod test {
     use super::*;
     use crate::PrivateKey;
-    use secp256k1_support::KeyPair;
+    use secp256k1_keypair::KeyPair;
     use std::str::FromStr;
 
     #[test]

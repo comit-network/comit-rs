@@ -1,5 +1,6 @@
-use crate::public_key::PublicKey;
-use secp256k1::{self, rand::Rng, Error, Message, RecoverableSignature, SecretKey, Signature};
+use secp256k1::{
+    self, rand::Rng, Error, Message, PublicKey, RecoverableSignature, SecretKey, Signature,
+};
 use std::{convert::Into, str::FromStr};
 
 // TODO: Contribute back to secp256k1
@@ -42,7 +43,7 @@ impl KeyPair {
 impl From<SecretKey> for KeyPair {
     fn from(secret_key: SecretKey) -> KeyPair {
         KeyPair {
-            public_key: secp256k1::PublicKey::from_secret_key(&*super::SECP, &secret_key).into(),
+            public_key: secp256k1::PublicKey::from_secret_key(&*super::SECP, &secret_key),
             secret_key,
         }
     }

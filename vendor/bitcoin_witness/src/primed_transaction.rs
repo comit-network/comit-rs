@@ -3,7 +3,7 @@ use bitcoin_support::{
     self, Address, BitcoinQuantity, Hash, OutPoint, Script, SigHashType, SighashComponents,
     Transaction, TxIn, TxOut,
 };
-use secp256k1_support::Message;
+use secp256k1_keypair::Message;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -37,7 +37,7 @@ impl PrimedInput {
             // We can't sign it yet so we put a placeholder
             // value of the most likely signature length
             Witness::Signature(_) => vec![0u8; 71],
-            Witness::PublicKey(public_key) => public_key.inner().serialize().to_vec(),
+            Witness::PublicKey(public_key) => public_key.serialize().to_vec(),
             Witness::Bool(_bool) => {
                 if *_bool {
                     vec![1u8]
@@ -173,7 +173,7 @@ mod test {
     use super::*;
     use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_support::KeyPair;
+    use secp256k1_keypair::KeyPair;
     use std::str::FromStr;
 
     #[test]

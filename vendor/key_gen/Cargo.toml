@@ -8,4 +8,4 @@ edition = "2018"
 bitcoin_support  = { path = "../bitcoin_support" }
 ethereum_support = { path = "../ethereum_support" }
 hex = "0.3"
-secp256k1_support = { path = "../secp256k1_support" }
+secp256k1_keypair = { path = "../secp256k1_keypair" }
