@@ -5,7 +5,7 @@ use crate::{
 use bitcoin_support::{Address, Hash160, Network, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
-use secp256k1_keypair::KeyPair;
+use secp256k1::{PublicKey, SecretKey};
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
@@ -51,11 +51,11 @@ impl BitcoinHtlc {
         Address::p2wsh(&Script::from(self.script.clone()), network.into())
     }
 
-    pub fn unlock_with_secret(self, keypair: KeyPair, secret: [u8; 32]) -> UnlockParameters {
-        let public_key = keypair.public_key();
+    pub fn unlock_with_secret(self, secret_key: SecretKey, secret: [u8; 32]) -> UnlockParameters {
+        let public_key = PublicKey::from_secret_key(&*crate::SECP, &secret_key);
         UnlockParameters {
             witness: vec![
-                Witness::Signature(keypair),
+                Witness::Signature(secret_key),
                 Witness::PublicKey(public_key),
                 Witness::Data(secret.to_vec()),
                 Witness::Bool(true),
@@ -67,11 +67,11 @@ impl BitcoinHtlc {
         }
     }
 
-    pub fn unlock_after_timeout(self, keypair: KeyPair) -> UnlockParameters {
-        let public_key = keypair.public_key();
+    pub fn unlock_after_timeout(self, secret_key: SecretKey) -> UnlockParameters {
+        let public_key =  PublicKey::from_secret_key(&*crate::SECP, &secret_key);
         UnlockParameters {
             witness: vec![
-                Witness::Signature(keypair),
+                Witness::Signature(secret_key),
                 Witness::PublicKey(public_key),
                 Witness::Bool(false),
                 Witness::PrevScript,

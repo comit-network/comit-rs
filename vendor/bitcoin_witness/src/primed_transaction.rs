@@ -4,6 +4,7 @@ use bitcoin_support::{
     Transaction, TxIn, TxOut,
 };
 use secp256k1_keypair::Message;
+use secp256k1_keypair::SECP;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -76,7 +77,7 @@ impl PrimedTransaction {
         for (i, primed_input) in self.inputs.into_iter().enumerate() {
             let input_parameters = primed_input.input_parameters;
             for (j, witness) in input_parameters.witness.iter().enumerate() {
-                if let Witness::Signature(keypair) = witness {
+                if let Witness::Signature(secret_key) = witness {
                     let sighash_components = SighashComponents::new(transaction);
                     let hash_to_sign = sighash_components.sighash_all(
                         &transaction.input[i],
@@ -87,7 +88,7 @@ impl PrimedTransaction {
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
                     let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
                         .expect("Should not fail because it is a hash");
-                    let signature = keypair.sign_ecdsa(message_to_sign);
+                    let signature = SECP.sign(&message_to_sign, &secret_key);
 
                     let mut serialized_signature = signature.serialize_der();
                     serialized_signature.push(SigHashType::All as u8);

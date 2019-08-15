@@ -1,7 +1,8 @@
 use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
-use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
-use secp256k1_keypair::{KeyPair, Message};
 use web3::types::Address;
+use secp256k1::{Message, SecretKey};
+use secp256k1::PublicKey;
+use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 
 pub trait Wallet: Send + Sync {
     fn sign<'a>(&self, tx: &'a UnsignedTransaction) -> SignedTransaction<'a>;
@@ -10,13 +11,15 @@ pub trait Wallet: Send + Sync {
 
 #[derive(Debug)]
 pub struct InMemoryWallet {
-    keypair: KeyPair,
+    secret_key: SecretKey,
+    public_key : PublicKey,
     chain_id: u8,
 }
 
 impl InMemoryWallet {
-    pub fn new(keypair: KeyPair, chain_id: u8) -> Self {
-        InMemoryWallet { keypair, chain_id }
+    pub fn new(secret_key: SecretKey, chain_id: u8) -> Self {
+
+        InMemoryWallet { secret_key,public_key: secp256k1::PublicKey::from_secret_key(&*blockchain_contracts::SECP, &secret_key), chain_id }
     }
 
     // https://github.com/ethereum/EIPs/blob/master/EIPS/eip-155.md#specification
@@ -30,7 +33,7 @@ impl Wallet for InMemoryWallet {
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
         // `from_slice` can be replaced with `from` once https://github.com/rust-bitcoin/rust-secp256k1/issues/106 is done
         let message = Message::from_slice(&hash).expect("Cannot fail as it is a [u8; 32]");
-        let signature = self.keypair.sign_ecdsa_recoverable(message);
+        let signature = blockchain_contracts::SECP.sign_recoverable(&message, &self.secret_key);
 
         let (rec_id, signature) = signature.serialize_compact();
 
@@ -40,6 +43,6 @@ impl Wallet for InMemoryWallet {
     }
 
     fn address(&self) -> Address {
-        self.keypair.public_key().to_ethereum_address()
+        self.public_key.to_ethereum_address()
     }
 }

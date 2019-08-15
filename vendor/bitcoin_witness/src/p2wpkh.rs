@@ -29,7 +29,7 @@ impl UnlockP2wpkh for KeyPair {
     fn p2wpkh_unlock_parameters(self) -> UnlockParameters {
         UnlockParameters {
             witness: vec![
-                Witness::Signature(self),
+                Witness::Signature(self.secret_key()),
                 Witness::PublicKey(self.public_key()),
             ],
             sequence: super::SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
