@@ -38,10 +38,7 @@ fn main() {
         "WIF_testnet_private_key: {}",
         testnet_private_key.to_string()
     );
-    println!(
-        "public_key: {}",
-        hex::encode(&public_key.serialize()[..])
-    );
+    println!("public_key: {}", hex::encode(&public_key.serialize()[..]));
     println!(
         "public_key_uncompressed: {}",
         hex::encode(&public_key.serialize_uncompressed()[..])

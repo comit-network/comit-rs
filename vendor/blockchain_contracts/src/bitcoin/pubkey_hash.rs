@@ -20,16 +20,6 @@ impl From<PublicKey> for PubkeyHash {
     }
 }
 
-impl From<secp256k1_support::PublicKey> for PubkeyHash {
-    fn from(public_key: secp256k1_support::PublicKey) -> PubkeyHash {
-        PubkeyHash(
-            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(
-                &public_key.inner().serialize(),
-            ),
-        )
-    }
-}
-
 impl From<PubkeyHash> for hash160::Hash {
     fn from(pubkey_hash: PubkeyHash) -> Self {
         pubkey_hash.0
