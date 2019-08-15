@@ -50,11 +50,16 @@ mod tests {
         0, 1,
     ];
 
-    const SECRET_HASH_REGEX: &'static str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01";
+    const SECRET_HASH_REGEX: &str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01";
 
     #[test]
     fn compiled_contract_is_same_length_as_template() {
-        let htlc = EtherHtlc::new(3000000, Address::default(), Address::default(), SECRET_HASH);
+        let htlc = EtherHtlc::new(
+            3_000_000,
+            Address::default(),
+            Address::default(),
+            SECRET_HASH,
+        );
 
         assert_eq!(
             htlc.0.len(),
@@ -66,7 +71,7 @@ mod tests {
     #[test]
     fn given_input_data_when_compiled_should_contain_given_data() {
         let htlc = EtherHtlc::new(
-            2000000000,
+            2_000_000_000,
             Address::default(),
             Address::default(),
             SECRET_HASH,
@@ -74,6 +79,9 @@ mod tests {
 
         let compiled_code = htlc.0;
 
+        // Allowed because `str::contains` (clippy's suggestion) does not apply to bytes
+        // array
+        #[allow(clippy::trivial_regex)]
         let _re_match = Regex::new(SECRET_HASH_REGEX)
             .expect("Could not create regex")
             .find(&compiled_code)

@@ -66,7 +66,7 @@ fn given_htlc_and_refund_before_expiry_nothing_happens() {
     let docker = Cli::default();
     let (_alice, bob, htlc, client, _handle, _container) =
         ether_harness(&docker, EtherHarnessParams {
-            htlc_refund_timestamp: Timestamp::now().plus(1000000),
+            htlc_refund_timestamp: Timestamp::now().plus(1_000_000),
             ..Default::default()
         });
 

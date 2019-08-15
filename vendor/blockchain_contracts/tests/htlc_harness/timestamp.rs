@@ -36,7 +36,7 @@ impl From<Timestamp> for u32 {
 
 impl From<Timestamp> for u64 {
     fn from(item: Timestamp) -> Self {
-        item.0 as u64
+        u64::from(item.0)
     }
 }
 

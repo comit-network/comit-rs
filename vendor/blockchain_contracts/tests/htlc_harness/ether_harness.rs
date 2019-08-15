@@ -62,11 +62,7 @@ pub fn ether_harness<D: Docker>(
     let (event_loop, web3) = tc_web3_client::new(&container);
     let web3 = Arc::new(web3);
 
-    let alice_client = ParityClient::new(
-        Arc::new(InMemoryWallet::new(alice_keypair.clone(), 1)),
-        web3,
-        0,
-    );
+    let alice_client = ParityClient::new(Arc::new(InMemoryWallet::new(alice_keypair, 1)), web3, 0);
 
     alice_client.give_eth_to(alice, params.alice_initial_wei);
 
@@ -75,7 +71,7 @@ pub fn ether_harness<D: Docker>(
             params.htlc_refund_timestamp.into(),
             alice,
             bob,
-            params.htlc_secret_hash.into(),
+            params.htlc_secret_hash,
         )
         .into(),
         params.htlc_wei_value,

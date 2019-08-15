@@ -17,11 +17,11 @@ fn sign_with_rate() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = private_key.key.clone().into();
+    let keypair: KeyPair = private_key.key.into();
 
-    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
+    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let rate = 42;
 

@@ -217,8 +217,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
+            alpha_expiry: Timestamp::from(2_000_000_000),
+            beta_expiry: Timestamp::from(2_000_000_000),
             partial_identities: OnlyRedeem::<Ethereum> {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",
@@ -265,8 +265,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
+            alpha_expiry: Timestamp::from(2_000_000_000),
+            beta_expiry: Timestamp::from(2_000_000_000),
             partial_identities: OnlyRedeem::<Ethereum> {
                 beta_ledger_redeem_identity: ethereum_support::Address::from(
                     "0x00a329c0648769a73afac7f9381e08fb43dbea72",

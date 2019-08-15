@@ -176,7 +176,7 @@ fn given_deployed_erc20_htlc_when_expiry_time_not_yet_reached_and_wrong_secret_t
     let docker = Cli::default();
     let (alice, bob, htlc_address, token_contract, token_amount, client, _handle, _container) =
         erc20_harness(&docker, Erc20HarnessParams {
-            htlc_refund_timestamp: Timestamp::now().plus(1000000),
+            htlc_refund_timestamp: Timestamp::now().plus(1_000_000),
             ..Default::default()
         });
 
