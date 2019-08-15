@@ -1,6 +1,6 @@
-use crate::libp2p_bam::handler::InboundMessage;
 use crate::libp2p_bam::{
-    handler::ProtocolOutEvent, BamHandler, BamHandlerEvent, PendingInboundRequest,
+    handler::{InboundMessage, ProtocolOutEvent},
+    BamHandler, BamHandlerEvent, PendingInboundRequest,
 };
 use bam::frame::{JsonFrameCodec, Response};
 use futures::{Future, Stream};

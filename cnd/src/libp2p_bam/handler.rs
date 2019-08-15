@@ -249,8 +249,7 @@ mod tests {
         request_with_no_headers, setup_substream, setup_substream_with_json_codec, IntoEventStream,
         IntoFutureWithResponse, WaitForFrame,
     };
-    use bam::frame::Header;
-    use bam::Status;
+    use bam::{frame::Header, Status};
     use futures::{Future, Sink, Stream};
     use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
     use spectral::prelude::*;
@@ -283,7 +282,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_unknown_request_should_emit_unknown_request_type() {
+    fn given_inbound_substream_when_unknown_request_should_emit_unknown_request_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
         let mut handler = BamHandler::new(HashMap::new());
@@ -309,7 +308,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_request_with_unknown_headers_should_emit_unknown_mandatory_headers(
+    fn given_inbound_substream_when_request_with_unknown_headers_should_emit_unknown_mandatory_headers(
     ) {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
@@ -347,7 +346,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_request_without_type_should_emit_malformed_frame() {
+    fn given_inbound_substream_when_request_without_type_should_emit_malformed_frame() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -379,8 +378,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_request_without_header_and_body_should_emit_request()
-    {
+    fn given_inbound_substream_when_request_without_header_and_body_should_emit_request() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -414,7 +412,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_response_should_emit_unexpected_frame() {
+    fn given_inbound_substream_when_response_should_emit_unexpected_frame() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -446,8 +444,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_frame_with_unknown_type_should_emit_unknown_frame_type(
-    ) {
+    fn given_inbound_substream_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -481,7 +478,7 @@ mod tests {
     }
 
     #[test]
-    fn given_inbound_substream_when_receiving_invalid_json_should_emit_malformed_json() {
+    fn given_inbound_substream_when_invalid_json_should_emit_malformed_json() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -513,8 +510,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_frame_with_unknown_type_should_emit_unknown_frame_type(
-    ) {
+    fn given_an_outbound_request_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -555,7 +551,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_request_should_emit_unexpected_frame() {
+    fn given_an_outbound_request_when_request_should_emit_unexpected_frame() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -594,7 +590,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_malformed_response_should_emit_malformed_frame() {
+    fn given_an_outbound_request_when_malformed_response_should_emit_malformed_frame() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
@@ -633,7 +629,7 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_receiving_invalid_json_should_emit_malformed_json() {
+    fn given_an_outbound_request_when_invalid_json_should_emit_malformed_json() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime
             .block_on(setup_substream(
