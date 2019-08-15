@@ -8,7 +8,7 @@ edition = "2018"
 bitcoin = "0.18.0"
 bitcoin_hashes = "0.3.2"
 bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
-bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
+bitcoin_witness = { path = "../../internal/bitcoin_witness" }
 byteorder = "1.3"
 hex = "0.3"
 hex-literal = "0.2"
@@ -16,7 +16,7 @@ itertools = "0.8.0"
 regex = "1.2"
 rust-crypto = "0.2"
 secp256k1 = { version = "0.12", features = ["rand"] }
-secp256k1_support = { path = "../../vendor/secp256k1_support" }
+secp256k1_support = { path = "../../internal/secp256k1_support" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.15"
@@ -25,7 +25,7 @@ tiny-keccak = "1.5"
 web3 = "0.6"
 
 [dev-dependencies]
-bitcoin_rpc_test_helpers = { path = "../../vendor/bitcoin_rpc_test_helpers" }
+bitcoin_rpc_test_helpers = { path = "../../internal/bitcoin_rpc_test_helpers" }
 bitcoincore-rpc = "0.7"
 failure = "0.1"
 lazy_static = "1.3"
@@ -33,8 +33,8 @@ log = "0.4"
 pretty_env_logger = "0.3"
 rlp = "0.3"
 spectral = "0.6"
-tc_bitcoincore_client = { path = "../../vendor/tc_bitcoincore_client" }
-tc_web3_client = { path = "../../vendor/tc_web3_client" }
+tc_bitcoincore_client = { path = "../../internal/tc_bitcoincore_client" }
+tc_web3_client = { path = "../../internal/tc_web3_client" }
 testcontainers = "0.7"
 tiny-keccak = "1.5"
 
