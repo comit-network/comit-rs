@@ -71,7 +71,7 @@ mod test {
         assert_eq!(testnet, "test");
     }
 
-    fn assert_display<T: Display>(t: T) {}
+    fn assert_display<T: Display>(_t: T) {}
 
     #[test]
     fn test_derives_display() {
