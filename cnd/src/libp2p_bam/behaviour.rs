@@ -267,7 +267,7 @@ where
             })) => {
                 let _ = channel.send(response);
             }
-            ProtocolOutEvent::Error(handler::Error::Stream(error)) => {
+            ProtocolOutEvent::Error(handler::Error::MalformedJson(error)) => {
                 log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
             }
             ProtocolOutEvent::Error(handler::Error::DroppedResponseSender(_)) => {
