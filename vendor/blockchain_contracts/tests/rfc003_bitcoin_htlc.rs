@@ -19,7 +19,7 @@ use blockchain_contracts::bitcoin::{
 };
 use secp256k1_keypair::KeyPair;
 use spectral::prelude::*;
-use std::{str::FromStr, thread::sleep, time::Duration};
+use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
@@ -76,16 +76,16 @@ fn fund_htlc(
 ) {
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let redeem_keypair: KeyPair = redeem_privkey.key.clone().into();
-    let redeem_pubkey_hash: PubkeyHash = redeem_keypair.public_key().clone().into();
+    let redeem_keypair: KeyPair = redeem_privkey.key.into();
+    let redeem_pubkey_hash: PubkeyHash = redeem_keypair.public_key().into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-    let refund_keypair: KeyPair = refund_privkey.key.clone().into();
-    let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().clone().into();
+    let refund_keypair: KeyPair = refund_privkey.key.into();
+    let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().into();
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
-
-    let refund_timestamp = Timestamp::from(current_time as u32).plus(5);
+    let current_time = u32::try_from(current_time).unwrap();
+    let refund_timestamp = Timestamp::from(current_time).plus(5);
     let amount = BitcoinQuantity::from_satoshi(100_000_001);
 
     let htlc = BitcoinHtlc::new(
@@ -99,7 +99,7 @@ fn fund_htlc(
 
     let txid = client
         .send_to_address(
-            &htlc_address.clone().into(),
+            &htlc_address.clone(),
             amount.bitcoin(),
             None,
             None,
@@ -116,7 +116,7 @@ fn fund_htlc(
 
     (
         txid,
-        vout.clone(),
+        vout,
         amount,
         htlc,
         refund_timestamp,
@@ -136,7 +136,7 @@ fn redeem_htlc_with_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -176,7 +176,7 @@ fn refund_htlc() {
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
         fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let refund_tx = PrimedTransaction {
@@ -237,7 +237,7 @@ fn redeem_htlc_with_long_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -278,7 +278,7 @@ fn redeem_htlc_with_short_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 

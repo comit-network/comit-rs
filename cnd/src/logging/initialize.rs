@@ -108,7 +108,7 @@ mod tests {
 
         let messages = receiver.recv().unwrap();
         let messages = messages
-            .split("\n")
+            .split('\n')
             .filter(|m| !m.is_empty())
             .collect::<Vec<_>>();
 
@@ -153,7 +153,7 @@ mod tests {
 
         let messages = receiver.recv().unwrap();
         let messages = messages
-            .split("\n")
+            .split('\n')
             .filter(|m| !m.is_empty())
             .collect::<Vec<_>>();
 
@@ -187,7 +187,7 @@ mod tests {
 
         let messages = receiver.recv().unwrap();
         let messages = messages
-            .split("\n")
+            .split('\n')
             .filter(|m| !m.is_empty())
             .collect::<Vec<_>>();
 
