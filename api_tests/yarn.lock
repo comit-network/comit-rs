@@ -39,10 +39,10 @@
   dependencies:
     "@types/node" "*"
 
-"@types/chai-json-schema@^1.4.4":
-  version "1.4.4"
-  resolved "https://registry.yarnpkg.com/@types/chai-json-schema/-/chai-json-schema-1.4.4.tgz#769fd975d9fa637e59d210d2fd9b0d1505925c8e"
-  integrity sha512-3+GtjSthKlmurP0KTgyoGS0berEq8UsXiFFFY/tNuAV/BK5cPiDnLHnjROVwtS846OQ6owR7pmp29FTVeYSeeg==
+"@types/chai-json-schema@^1.4.5":
+  version "1.4.5"
+  resolved "https://registry.yarnpkg.com/@types/chai-json-schema/-/chai-json-schema-1.4.5.tgz#fa1b11e10a87f0a189cfcfb8bd08a7f1e50a6d90"
+  integrity sha512-PqN4sKijtS3lgpbKySkGoft/0aMkyrd+awmi0kSyL4pttqmjm9Gz2s1Rp1sx6wrhWPpOjE/xU/M7KdONAqHw5A==
   dependencies:
     "@types/tv4" "*"
 
@@ -53,10 +53,15 @@
   dependencies:
     "@types/chai" "*"
 
-"@types/chai@*", "@types/chai@4", "@types/chai@^4.1.7":
+"@types/chai@*", "@types/chai@4":
   version "4.1.7"
   resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.1.7.tgz#1b8e33b61a8c09cbe1f85133071baa0dbf9fa71a"
   integrity sha512-2Y8uPt0/jwjhQ6EiluT0XCri1Dbplr0ZxfFXUz+ye13gaqE8u5gL5ppao1JrUYr9cIip5S6MvQzBS7Kke7U9VA==
+
+"@types/chai@^4.2.0":
+  version "4.2.0"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.0.tgz#2478260021408dec32c123a7cad3414beb811a07"
+  integrity sha512-zw8UvoBEImn392tLjxoavuonblX/4Yb9ha4KBU10FirCfwgzhKO0dvyJSF9ByxV1xK1r2AgnAi/tvQaLgxQqxA==
 
 "@types/cookiejar@*":
   version "2.1.1"

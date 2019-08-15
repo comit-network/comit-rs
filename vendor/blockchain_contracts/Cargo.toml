@@ -5,20 +5,23 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
-bitcoin_support = { path = "../../vendor/bitcoin_support" }
+bitcoin = "0.18.0"
+bitcoin_hashes = "0.3.2"
+bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
 bitcoin_witness = { path = "../../vendor/bitcoin_witness" }
 byteorder = "1.3"
-ethereum_support = { path = "../../vendor/ethereum_support" }
 hex = "0.3"
 hex-literal = "0.2"
 itertools = "0.8.0"
 regex = "1.2"
 rust-crypto = "0.2"
+secp256k1 = { version = "0.12", features = ["rand"] }
 secp256k1_support = { path = "../../vendor/secp256k1_support" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 strum = "0.15"
 strum_macros = "0.15"
+tiny-keccak = "1.5"
 web3 = "0.6"
 
 [dev-dependencies]

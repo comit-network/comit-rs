@@ -84,9 +84,9 @@ args = [
 [tasks.format]
 workspace = false
 clear = true
-script = [
-  "cargo +nightly-2019-07-31 fmt"
-]
+toolchain = "nightly-2019-07-31"
+args = ["fmt"]
+
 
 ################
 # Task aliases #
@@ -121,9 +121,8 @@ extend = "api-tests-flow"
 [tasks.check-rs-format]
 description = "Runs cargo fmt to check appropriate code format."
 workspace = false
-script = [
-  "cargo +nightly-2019-07-31 fmt -- --check"
-]
+toolchain = "nightly-2019-07-31"
+args = ["fmt", "--", "--check"]
 
 [tasks.fix-ts]
 description = "Runs prettier & tslint to format TypeScript code."

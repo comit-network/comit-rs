@@ -27,6 +27,6 @@ impl From<HtlcParams<Bitcoin, BitcoinQuantity>> for BitcoinHtlc {
 
 impl HtlcParams<Bitcoin, BitcoinQuantity> {
     pub fn compute_address(&self) -> Address {
-        BitcoinHtlc::from(self.clone()).compute_address(self.ledger.network)
+        BitcoinHtlc::from(self.clone()).compute_address(self.ledger.network.into())
     }
 }

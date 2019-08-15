@@ -13,9 +13,9 @@ use crate::{
 };
 
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
-use ethereum_support::{Bytes, H256, U256};
 use spectral::prelude::*;
 use testcontainers::clients::Cli;
+use web3::types::{Bytes, H256, U256};
 
 // keccak256(Redeemed())
 const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";

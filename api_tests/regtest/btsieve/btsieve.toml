@@ -8,7 +8,6 @@ node_password = "54pLR_f7-G6is32LP-7nbhzZSbJs_2zSATtZV_r05yg="
 
 [ethereum]
 node_url = "http://localhost:8545"
-poll_interval_secs = 1
 
 [http_api]
 address_bind="0.0.0.0"

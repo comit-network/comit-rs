@@ -6,14 +6,17 @@ pub mod htlc_harness;
 pub mod parity_client;
 
 use crate::htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH};
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{
-    serialize_hex, Address, BitcoinQuantity, Network, OutPoint, PrivateKey, PubkeyHash,
-    TransactionId,
+use bitcoin::{
+    consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
+use bitcoin_quantity::BitcoinQuantity;
+use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::{
+    pubkey_hash::{PubkeyHash, TransactionId},
+    rfc003::bitcoin_htlc::BitcoinHtlc,
+};
 use secp256k1_support::KeyPair;
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};

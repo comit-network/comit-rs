@@ -1,5 +1,5 @@
-use ethereum_support::Bytes;
 use serde::{Deserialize, Serialize};
+use web3::types::Bytes;
 
 pub mod rfc003;
 
