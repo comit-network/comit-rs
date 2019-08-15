@@ -1,16 +1,19 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+pub mod bitcoin_helper;
 pub mod ethereum_wallet;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH};
+use crate::{
+    bitcoin_helper::RegtestHelperClient,
+    htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
+};
 use bitcoin::{
     consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
 use bitcoin_quantity::BitcoinQuantity;
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::{
