@@ -1,2 +1,2 @@
 [workspace]
-members = ["cnd", "btsieve", "vendor/*"]
+members = ["cnd", "btsieve", "internal/*"]
