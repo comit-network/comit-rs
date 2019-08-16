@@ -46,7 +46,22 @@ impl BlockSource for Web3HttpBlockSource {
         let stream = Interval::new_interval(Duration::from_secs(poll_interval))
             .map_err(Error::Timer)
             .and_then(move |_| {
-                web.eth().block_with_txs(BlockId::Number(BlockNumber::Latest)).map_err(Error::Source)
+                web.eth()
+                    .block_with_txs(BlockId::Number(BlockNumber::Latest))
+                    .or_else(|error| {
+                        match error.kind() {
+                            web3::ErrorKind::Io(e) => {
+                                log::debug!(target: "ethereum::blocksource", "IO error encountered during polling: {:?}", e);
+                                Ok(None)
+                            },
+                            web3::ErrorKind::Transport(e)  => {
+                                log::debug!(target: "ethereum::blocksource", "Transport error encountered during polling: {:?}", e);
+                                Ok(None)
+                            },
+                            _ => Err(error)
+                        }
+                    })
+                    .map_err(Error::Source)
             })
             .filter_map(|maybe_block| maybe_block)
             .inspect(|block| {
