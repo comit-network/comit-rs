@@ -56,7 +56,7 @@ pub fn erc20_harness<D: Docker>(
 ) {
     let _ = pretty_env_logger::try_init();
 
-    let (alice_keypair, alice) =
+    let (alice_secret_key, alice) =
         new_account("63be4b0d638d44b5fee5b050ab0beeeae7b68cde3d829a3321f8009cdd76b992");
     let (_, bob) = new_account("f8218ebf6e2626bd1415c18321496e0c5725f0e1d774c7c2eab69f7650ad6e82");
 
@@ -65,7 +65,8 @@ pub fn erc20_harness<D: Docker>(
     let (event_loop, web3) = tc_web3_client::new(&container);
     let web3 = Arc::new(web3);
 
-    let alice_client = ParityClient::new(Arc::new(InMemoryWallet::new(alice_keypair, 1)), web3, 0);
+    let alice_client =
+        ParityClient::new(Arc::new(InMemoryWallet::new(alice_secret_key, 1)), web3, 0);
 
     alice_client.give_eth_to(alice, params.alice_initial_wei);
 

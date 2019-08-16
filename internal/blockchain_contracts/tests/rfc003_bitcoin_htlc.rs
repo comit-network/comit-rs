@@ -20,7 +20,7 @@ use blockchain_contracts::bitcoin::{
     pubkey_hash::{PubkeyHash, TransactionId},
     rfc003::bitcoin_htlc::BitcoinHtlc,
 };
-use secp256k1_keypair::KeyPair;
+use secp256k1::{PublicKey, SecretKey};
 use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
@@ -48,12 +48,12 @@ pub fn new_tc_bitcoincore_client<D: Docker>(
 /// BitcoinHtlc#unlock_with_secret
 fn unlock_with_custom_size_secret(
     htlc: BitcoinHtlc,
-    keypair: KeyPair,
+    secret_key: SecretKey,
     custom_size_secret: CustomSizeSecret,
 ) -> UnlockParameters {
     let placeholder_secret = [0u8; 32];
     // First, unlock the HTLC with a placeholder secret
-    let parameters = htlc.unlock_with_secret(keypair, placeholder_secret);
+    let parameters = htlc.unlock_with_secret(secret_key, placeholder_secret);
 
     let UnlockParameters {
         mut witness,
@@ -89,17 +89,19 @@ fn fund_htlc(
     BitcoinQuantity,
     BitcoinHtlc,
     Timestamp,
-    KeyPair,
-    KeyPair,
+    SecretKey,
+    SecretKey,
 ) {
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let redeem_keypair: KeyPair = redeem_privkey.key.into();
-    let redeem_pubkey_hash: PubkeyHash = redeem_keypair.public_key().into();
+    let redeem_secret_key = redeem_privkey.key;
+    let redeem_pubkey_hash: PubkeyHash =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-    let refund_keypair: KeyPair = refund_privkey.key.into();
-    let refund_pubkey_hash: PubkeyHash = refund_keypair.public_key().into();
+    let refund_secret_key = refund_privkey.key;
+    let refund_pubkey_hash: PubkeyHash =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key).into();
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
@@ -138,8 +140,8 @@ fn fund_htlc(
         amount,
         htlc,
         refund_timestamp,
-        redeem_keypair,
-        refund_keypair,
+        redeem_secret_key,
+        refund_secret_key,
     )
 }
 

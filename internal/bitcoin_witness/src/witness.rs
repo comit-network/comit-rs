@@ -1,10 +1,10 @@
 use bitcoin_support::Script;
-use secp256k1_keypair::{KeyPair, PublicKey};
+use secp256k1_keypair::{PublicKey, SecretKey};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Witness {
     Data(Vec<u8>),
-    Signature(KeyPair),
+    Signature(SecretKey),
     PublicKey(PublicKey),
     Bool(bool),
     PrevScript,

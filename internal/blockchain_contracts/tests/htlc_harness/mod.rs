@@ -1,7 +1,6 @@
 use crypto::{digest::Digest, sha2::Sha256};
 use hex::FromHexError;
 use hex_literal::hex;
-use secp256k1_keypair::KeyPair;
 use std::{str::FromStr, thread::sleep, time::Duration};
 use web3::types::Address as EthereumAddress;
 
@@ -15,12 +14,12 @@ pub use self::{
     timestamp::Timestamp,
 };
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
+use secp256k1::{PublicKey, SecretKey};
 
-pub fn new_account(secret_key: &str) -> (KeyPair, EthereumAddress) {
-    let keypair = KeyPair::from_secret_key_hex(secret_key).unwrap();
-    let address = keypair.public_key().to_ethereum_address();
-
-    (keypair, address)
+pub fn new_account(secret_key: &str) -> (SecretKey, EthereumAddress) {
+    let secret_key = SecretKey::from_str(secret_key).unwrap();
+    let public_key = PublicKey::from_secret_key(&*blockchain_contracts::SECP, &secret_key);
+    (secret_key, public_key.to_ethereum_address())
 }
 
 pub const SECRET: &[u8; 32] = b"hello world, you are beautiful!!";
