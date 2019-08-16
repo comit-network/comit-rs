@@ -24,7 +24,7 @@
         "chai-json-schema": "^1.5.0",
         "commander": "^2.19.0",
         "ethereumjs-tx": "^1.3.7",
-        "ethereumjs-util": "^5.2.0",
+        "ethereumjs-util": "^6.1.0",
         "glob": "^7.1.4",
         "mocha": "^6.2.0",
         "multiaddr": "^6.0.6",
