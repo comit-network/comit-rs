@@ -1,12 +1,12 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod ethereum_wallet;
+pub mod ethereum_helper;
 pub mod htlc_harness;
 pub mod parity_client;
 
 use crate::{
-    ethereum_wallet::transaction::UnsignedTransaction,
+    ethereum_helper::transaction::UnsignedTransaction,
     htlc_harness::{
         erc20_harness, sleep_until, CustomSizeSecret, Erc20HarnessParams, Timestamp, SECRET,
     },
