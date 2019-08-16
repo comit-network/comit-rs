@@ -5,20 +5,20 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-bam = { path = "../vendor/bam" }
+bam = { path = "../internal/bam" }
 binary_macros = "0.6"
-bitcoin_support = { path = "../vendor/bitcoin_support" }
-bitcoin_witness = { path = "../vendor/bitcoin_witness" }
-blockchain_contracts = { path = "../vendor/blockchain_contracts" }
+bitcoin_support = { path = "../internal/bitcoin_support" }
+bitcoin_witness = { path = "../internal/bitcoin_witness" }
+blockchain_contracts = { path = "../internal/blockchain_contracts" }
 chrono = { version = "0.4", features = ["serde"] }
-comit_i = { path = "../vendor/comit_i" }
+comit_i = { path = "../internal/comit_i" }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
-ethereum_support = { path = "../vendor/ethereum_support" }
+ethereum_support = { path = "../internal/ethereum_support" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
@@ -37,10 +37,10 @@ reqwest = "0.9"
 rlp = "0.3"
 rust-crypto = "0.2"
 rustic_hal = "0.2"
-secp256k1_keypair = { path = "../vendor/secp256k1_keypair" }
+secp256k1_keypair = { path = "../internal/secp256k1_keypair" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
-siren = { path = "../vendor/siren" }
+siren = { path = "../internal/siren" }
 state_machine_future = { version = "0.2" }
 structopt = "0.2"
 strum = "0.15"
@@ -54,9 +54,9 @@ void = "1.0.2"
 warp = "0.1"
 
 [dev-dependencies]
-bitcoin_rpc_test_helpers = { path = "../vendor/bitcoin_rpc_test_helpers" }
+bitcoin_rpc_test_helpers = { path = "../internal/bitcoin_rpc_test_helpers" }
 bitcoincore-rpc = "0.7"
-key_gen = { path = "../vendor/key_gen" }
+key_gen = { path = "../internal/key_gen" }
 lazy_static = "1"
 maplit = "1"
 matches = "0.1.8"
@@ -68,8 +68,8 @@ quickcheck_macros = "0.8.0"
 regex = "1.2.0"
 serde_urlencoded = "0.5"
 spectral = "0.6"
-tc_bitcoincore_client = { path = "../vendor/tc_bitcoincore_client" }
-tc_web3_client = { path = "../vendor/tc_web3_client" }
+tc_bitcoincore_client = { path = "../internal/tc_bitcoincore_client" }
+tc_web3_client = { path = "../internal/tc_web3_client" }
 tempfile = "3.1.0"
 testcontainers = "0.7"
 tiny-keccak = "1.5"

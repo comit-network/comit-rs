@@ -1,4 +1,4 @@
-use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
+use crate::ethereum_helper::transaction::{SignedTransaction, UnsignedTransaction};
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 use secp256k1_keypair::{KeyPair, Message};
 use std::convert::TryFrom;
