@@ -18,11 +18,11 @@ fn redeem_single_p2wpkh() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = private_key.key.clone().into();
+    let keypair: KeyPair = private_key.key.into();
 
-    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key().clone(), input_amount);
+    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
@@ -61,15 +61,15 @@ fn redeem_two_p2wpkh() {
     let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair_1: KeyPair = private_key_1.key.clone().into();
+    let keypair_1: KeyPair = private_key_1.key.into();
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
-    let keypair_2: KeyPair = private_key_2.key.clone().into();
+    let keypair_2: KeyPair = private_key_2.key.into();
 
-    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.public_key().clone(), input_amount);
-    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.public_key().clone(), input_amount);
+    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.public_key(), input_amount);
+    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap().into();
+    let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 

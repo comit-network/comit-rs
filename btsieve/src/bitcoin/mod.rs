@@ -61,14 +61,13 @@ mod test {
             bits: 1,
             nonce: 0,
         };
-        let block = MinedBlock::new(
+        MinedBlock::new(
             Block {
                 header: block_header,
                 txdata: vec![],
             },
             height,
-        );
-        block
+        )
     }
 
     #[test]

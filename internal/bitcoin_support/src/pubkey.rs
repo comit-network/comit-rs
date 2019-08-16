@@ -175,7 +175,7 @@ mod test {
     fn correct_pubkeyhash_from_private_key() {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
-        let keypair: KeyPair = private_key.key.clone().into();
+        let keypair: KeyPair = private_key.key.into();
         let pubkey_hash: PubkeyHash = keypair.public_key().into();
 
         assert_eq!(
@@ -192,7 +192,7 @@ mod test {
         // https://kimbatt.github.io/btc-address-generator/
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-        let keypair: KeyPair = private_key.key.clone().into();
+        let keypair: KeyPair = private_key.key.into();
         let address = keypair.public_key().into_p2wpkh_address(Network::Mainnet);
 
         assert_eq!(

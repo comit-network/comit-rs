@@ -296,8 +296,8 @@ mod tests {
             beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
-            alpha_expiry: Timestamp::from(2000000000),
-            beta_expiry: Timestamp::from(2000000000),
+            alpha_expiry: Timestamp::from(2_000_000_000),
+            beta_expiry: Timestamp::from(2_000_000_000),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),
         };
         let id = SwapId::default();

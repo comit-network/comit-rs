@@ -283,7 +283,7 @@ mod tests {
             output: vec![],
         };
         let ethereum_tx = ethereum_support::Transaction {
-            hash: H256::from(348924802),
+            hash: H256::from(348_924_802),
             nonce: U256::from(0),
             block_hash: None,
             block_number: None,

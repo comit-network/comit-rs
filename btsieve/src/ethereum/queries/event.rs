@@ -287,7 +287,7 @@ mod tests {
         }
 
         fn for_contract(mut self, address: Address) -> Self {
-            self.address = Some(address.into());
+            self.address = Some(address);
             self
         }
 
