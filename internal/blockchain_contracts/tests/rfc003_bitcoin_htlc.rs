@@ -1,16 +1,19 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub mod ethereum_wallet;
+pub mod bitcoin_helper;
+pub mod ethereum_helper;
 pub mod htlc_harness;
 pub mod parity_client;
 
-use crate::htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH};
+use crate::{
+    bitcoin_helper::RegtestHelperClient,
+    htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
+};
 use bitcoin::{
     consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
 use bitcoin_quantity::BitcoinQuantity;
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::{
@@ -20,7 +23,22 @@ use blockchain_contracts::bitcoin::{
 use secp256k1::{PublicKey, SecretKey};
 use spectral::prelude::*;
 use std::{str::FromStr, thread::sleep, time::Duration};
-use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
+
+pub fn new_tc_bitcoincore_client<D: Docker>(
+    container: &Container<'_, D, BitcoinCore>,
+) -> bitcoincore_rpc::Client {
+    let port = container.get_host_port(18443).unwrap();
+    let auth = container.image().auth();
+
+    let endpoint = format!("http://localhost:{}", port);
+
+    bitcoincore_rpc::Client::new(
+        endpoint,
+        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
+    )
+    .unwrap()
+}
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness
@@ -133,7 +151,7 @@ fn redeem_htlc_with_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
@@ -172,7 +190,7 @@ fn refund_htlc() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
@@ -231,7 +249,7 @@ fn redeem_htlc_with_long_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
@@ -272,7 +290,7 @@ fn redeem_htlc_with_short_secret() {
     let docker = Cli::default();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();

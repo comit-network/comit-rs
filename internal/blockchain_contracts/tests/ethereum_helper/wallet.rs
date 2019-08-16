@@ -1,4 +1,4 @@
-use crate::ethereum_wallet::transaction::{SignedTransaction, UnsignedTransaction};
+use crate::ethereum_helper::transaction::{SignedTransaction, UnsignedTransaction};
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 use secp256k1::{Message, PublicKey, SecretKey};
 use web3::types::Address;
