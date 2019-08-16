@@ -364,7 +364,7 @@ mod tests {
             .send(r#"{"type": "REQUEST", "payload":{}}"#.to_owned())
             .map(|_| ())
             .map_err(|_| ());
-        let _ = runtime.block_on(send).unwrap();
+        runtime.block_on(send).unwrap();
 
         let events = runtime
             .block_on(handler.into_event_stream().take(1).collect())
@@ -396,7 +396,7 @@ mod tests {
             .send(r#"{"type": "REQUEST", "payload":{"type": "PING", "foo": "bar"}}"#.to_owned())
             .map(|_| ())
             .map_err(|_| ());
-        let _ = runtime.block_on(send).unwrap();
+        runtime.block_on(send).unwrap();
 
         let events = runtime
             .block_on(handler.into_event_stream().take(1).collect())
@@ -430,7 +430,7 @@ mod tests {
             .send(r#"{"type": "RESPONSE", "payload":{}}"#.to_owned())
             .map(|_| ())
             .map_err(|_| ());
-        let _ = runtime.block_on(send).unwrap();
+        runtime.block_on(send).unwrap();
 
         let events = runtime
             .block_on(handler.into_event_stream().take(1).collect())
@@ -462,7 +462,7 @@ mod tests {
             .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
             .map(|_| ())
             .map_err(|_| ());
-        let _ = runtime.block_on(send).unwrap();
+        runtime.block_on(send).unwrap();
 
         let events = runtime
             .block_on(handler.into_event_stream().take(1).collect())
@@ -496,7 +496,7 @@ mod tests {
             .send(r#"invlid json"#.to_owned())
             .map(|_| ())
             .map_err(|_| ());
-        let _ = runtime.block_on(send).unwrap();
+        runtime.block_on(send).unwrap();
 
         let events = runtime
             .block_on(handler.into_event_stream().take(1).collect())

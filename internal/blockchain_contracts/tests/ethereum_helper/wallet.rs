@@ -1,6 +1,7 @@
 use crate::ethereum_helper::transaction::{SignedTransaction, UnsignedTransaction};
 use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
 use secp256k1::{Message, PublicKey, SecretKey};
+use std::convert::TryFrom;
 use web3::types::Address;
 
 pub trait Wallet: Send + Sync {
@@ -42,7 +43,8 @@ impl Wallet for InMemoryWallet {
 
         let (rec_id, signature) = signature.serialize_compact();
 
-        let v = rec_id.to_i32() as u8 + self.chain_replay_protection_offset();
+        let rec_id = u8::try_from(rec_id.to_i32()).unwrap();
+        let v = rec_id + self.chain_replay_protection_offset();
 
         SignedTransaction::new(tx, v, signature)
     }

@@ -65,27 +65,20 @@ pub fn erc20_harness<D: Docker>(
     let (event_loop, web3) = tc_web3_client::new(&container);
     let web3 = Arc::new(web3);
 
-    let alice_client = ParityClient::new(
-        Arc::new(InMemoryWallet::new(alice_secret_key.clone(), 1)),
-        web3,
-        0,
-    );
+    let alice_client =
+        ParityClient::new(Arc::new(InMemoryWallet::new(alice_secret_key, 1)), web3, 0);
 
-    alice_client.give_eth_to(alice.clone(), params.alice_initial_wei);
+    alice_client.give_eth_to(alice, params.alice_initial_wei);
 
     let token_contract = alice_client.deploy_erc20_token_contract();
 
-    alice_client.mint_tokens(
-        token_contract.clone(),
-        params.alice_initial_tokens,
-        alice.clone(),
-    );
+    alice_client.mint_tokens(token_contract, params.alice_initial_tokens, alice);
 
     let erc20_htlc = Erc20Htlc::new(
         params.htlc_refund_timestamp.into(),
         alice,
         bob,
-        params.htlc_secret_hash.into(),
+        params.htlc_secret_hash,
         token_contract,
         params.htlc_token_value,
     );
