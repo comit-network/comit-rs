@@ -176,7 +176,7 @@ export class EthereumWallet {
             fs
                 .readFileSync(
                     projectRoot +
-                        "/vendor/blockchain_contracts/tests/parity_client/erc20_token_contract.asm.hex",
+                        "/internal/blockchain_contracts/tests/parity_client/erc20_token_contract.asm.hex",
                     "utf8"
                 )
                 .trim();
