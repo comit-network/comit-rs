@@ -65,7 +65,7 @@ multistream-select = "0.4.0"
 pretty_env_logger = "0.3"
 quickcheck = "0.8.5"
 quickcheck_macros = "0.8.0"
-regex = "1.2.0"
+regex = "1.2.1"
 serde_urlencoded = "0.5"
 spectral = "0.6"
 tc_bitcoincore_client = { path = "../internal/tc_bitcoincore_client" }
