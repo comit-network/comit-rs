@@ -200,3 +200,76 @@ impl File {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::LevelFilter;
+    use rand::rngs::mock::StepRng;
+    use spectral::prelude::*;
+
+    #[derive(serde::Deserialize, PartialEq, Debug)]
+    struct LoggingOnlyConfig {
+        logging: Logging,
+    }
+
+    fn rng() -> StepRng {
+        StepRng::new(0, 0)
+    }
+
+    #[test]
+    fn structured_logging_flag_in_logging_section_is_optional() {
+        let file_contents = r#"
+        [logging]
+        level = "DEBUG"
+        "#;
+
+        let config_file = toml::from_str(file_contents);
+
+        assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
+            logging: Logging {
+                level: Some(LevelFilter::Debug),
+                structured: None,
+            },
+        });
+    }
+
+    #[test]
+    fn complete_logging_section_is_optional() {
+        let config_without_logging_section = File {
+            logging: None,
+            ..File::default(rng())
+        };
+        let temp_file = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+        let temp_file_path = temp_file.into_temp_path().to_path_buf();
+        config_without_logging_section
+            .write_to(temp_file_path.clone())
+            .unwrap();
+
+        let config_file_contents = std::fs::read_to_string(temp_file_path.clone()).unwrap();
+        assert!(
+            !config_file_contents.contains("[logging]"),
+            "written config file should not contain logging section"
+        );
+
+        let config_file = File::read(temp_file_path);
+        assert_that(&config_file)
+            .is_ok()
+            .map(|c| &c.logging)
+            .is_none();
+    }
+
+    #[test]
+    fn read_and_write_config_work() {
+        let config = File::default(rng());
+        let tmp = "/tmp/cnd.toml";
+        let path = Path::new(tmp).to_path_buf(); //
+
+        let expected = config.write_to(path.clone()).unwrap();
+        let actual = File::read(path);
+
+        assert_that(&actual).is_ok_containing(&expected);
+
+        std::fs::remove_file(tmp).expect("failed to remove temporary config file");
+    }
+}
