@@ -1,5 +1,6 @@
 use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config as config_rs;
+use directories::ProjectDirs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
@@ -105,34 +106,22 @@ pub struct PollParameters<T> {
 }
 
 impl File {
-    pub fn read_or_create_default<R: Rng>(
-        home_dir: Option<&Path>,
-        rand: R,
-    ) -> Result<Self, config_rs::ConfigError> {
-        let default_config_path = home_dir.map(|dir| Self::compute_default_path(dir)).ok_or_else(|| {
-            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
-            config_rs::ConfigError::Message(
-                "Failed to determine home directory".to_owned(),
-            )
-        })?;
+    pub fn read_or_create_default<R: Rng>(rand: R) -> Result<Self, config_rs::ConfigError> {
+        let path = Self::default_config_path()?;
 
-        if default_config_path.exists() {
-            println!("Using config file {}", PrintablePath(&default_config_path));
-
-            Self::read(default_config_path)
+        if path.exists() {
+            println!(
+                "Found configuration file, reading from {}",
+                PrintablePath(&path)
+            );
+            Self::read(path)
         } else {
             println!(
-                "Creating config file at {} because it does not exist yet",
-                PrintablePath(&default_config_path)
+                "No configuration file found, creating default at {}",
+                PrintablePath(&path)
             );
-            Self::default(rand).write_to(default_config_path)
+            Self::default(rand).write_to(path)
         }
-    }
-
-    pub fn compute_default_path(parent: &Path) -> PathBuf {
-        let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
-
-        parent.join(user_path_components)
     }
 
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
@@ -149,6 +138,20 @@ impl File {
         Self::write_to_file(config_file, &self)?;
 
         Ok(self)
+    }
+
+    fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
+        // Linux: /home/<user>/.config/cnd/cnd.toml
+        // Windows: C:\Users\<user>\AppData\Roaming\comit-network\cnd\config\cnd.toml
+        // OSX: /Users/<user>/Library/Preferences/comit-network.cnd/cnd.toml
+        if let Some(proj_dirs) = ProjectDirs::from("", "comit-network", "cnd") {
+            let path = proj_dirs.config_dir();
+            return Ok(Path::join(path, "cnd.toml"));
+        }
+
+        Err(config_rs::ConfigError::Message(
+            "Could not generate configuration directory".to_string(),
+        ))
     }
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {

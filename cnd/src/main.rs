@@ -37,14 +37,7 @@ fn main() -> Result<(), failure::Error> {
     let config_file = options
         .config_file
         .map(config::File::read)
-        .unwrap_or_else(|| {
-            config::File::read_or_create_default(
-                directories::UserDirs::new()
-                    .as_ref()
-                    .map(|dirs| dirs.home_dir()),
-                OsRng,
-            )
-        })?;
+        .unwrap_or_else(|| config::File::read_or_create_default(OsRng))?;
     let settings = Settings::from_config_file_and_defaults(config_file);
 
     let base_log_level = settings.logging.level;
