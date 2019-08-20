@@ -125,7 +125,7 @@ impl File {
                 "Creating config file at {} because it does not exist yet",
                 PrintablePath(&default_config_path)
             );
-            Self::create_default_at(default_config_path, rand)
+            Self::default(rand).write_to(default_config_path)
         }
     }
 
@@ -141,13 +141,6 @@ impl File {
         let mut config = config_rs::Config::new();
         config.merge(config_rs::File::from(config_file))?;
         config.try_into()
-    }
-
-    fn create_default_at<R: Rng>(
-        default_config_path: PathBuf,
-        rand: R,
-    ) -> Result<Self, config_rs::ConfigError> {
-        Self::default(rand).write_to(default_config_path)
     }
 
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
