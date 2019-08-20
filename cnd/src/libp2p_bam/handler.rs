@@ -249,7 +249,7 @@ mod tests {
         request_with_no_headers, setup_substream, setup_substream_with_json_codec, IntoEventStream,
         IntoFutureWithResponse, WaitForFrame,
     };
-    use bam::{frame::Header, Status};
+    use bam::frame::Header;
     use futures::{Future, Sink, Stream};
     use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
     use spectral::prelude::*;
@@ -269,7 +269,7 @@ mod tests {
         let dialer = runtime.block_on(send).unwrap();
 
         // and we provide an answer
-        let future = handler.into_future_with_response(Response::new(Status::OK(127)));
+        let future = handler.into_future_with_response(Response::default());
         runtime.spawn(future);
 
         // then we send the response back to the dialer
@@ -278,7 +278,7 @@ mod tests {
         assert_that(&response)
             .is_ok()
             .is_some()
-            .is_equal_to(Response::new(Status::OK(127)).into_frame());
+            .is_equal_to(Response::default().into_frame());
     }
 
     #[test]

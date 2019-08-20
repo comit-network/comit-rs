@@ -1,13 +1,12 @@
 use crate::{
-    comit_client::SwapDeclineReason,
     http_api::action::ListRequiredFields,
-    swap_protocols::rfc003::{actions::Decline, Ledger},
+    swap_protocols::rfc003::{actions::Decline, messages::SwapDeclineReason, Ledger},
 };
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct DeclineBody {
-    pub reason: Option<SwapDeclineReason>,
+    pub reason: SwapDeclineReason,
 }
 
 impl<AL: Ledger, BL: Ledger> ListRequiredFields for Decline<AL, BL> {

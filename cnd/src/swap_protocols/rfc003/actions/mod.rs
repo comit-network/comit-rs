@@ -2,14 +2,14 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::{
-    comit_client::{SwapDeclineReason, SwapReject},
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            bob::ResponseSender, messages::IntoAcceptResponseBody, secret_source::SecretSource,
-            state_machine::HtlcParams, Ledger, Secret,
-        },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        bob::ResponseSender,
+        messages::{DeclineResponseBody, IntoAcceptResponseBody, SwapDeclineReason},
+        secret_source::SecretSource,
+        state_machine::HtlcParams,
+        Ledger, Secret,
     },
 };
 use std::sync::Arc;
@@ -104,12 +104,12 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
         Self { sender }
     }
 
-    pub fn decline(&self, reason: Option<SwapDeclineReason>) -> Result<(), ()> {
+    pub fn decline(&self, reason: SwapDeclineReason) -> Result<(), ()> {
         let mut sender = self.sender.lock().unwrap();
         match sender.take() {
             Some(sender) => {
                 sender
-                    .send(Err(SwapReject::Declined { reason }))
+                    .send(Err(DeclineResponseBody { reason }))
                     .expect("Action shouldn't outlive BobToAlice");
                 Ok(())
             }

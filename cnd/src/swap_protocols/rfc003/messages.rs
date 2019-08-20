@@ -19,10 +19,31 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub secret_hash: SecretHash,
 }
 
+#[derive(Debug, PartialEq, Copy, Clone)]
+pub enum Decision {
+    Accepted,
+    Declined,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
     pub beta_ledger_refund_identity: BL::Identity,
     pub alpha_ledger_redeem_identity: AL::Identity,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+pub struct DeclineResponseBody {
+    pub reason: SwapDeclineReason,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum SwapDeclineReason {
+    UnsatisfactoryRate,
+    UnsupportedProtocol,
+    UnsupportedSwap,
+    MissingHeader,
+    MalformedJson,
+    Unknown(String),
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]

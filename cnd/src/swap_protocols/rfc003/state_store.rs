@@ -72,7 +72,7 @@ impl StateStore for InMemoryStateStore<SwapId> {
                 alpha_ledger_redeem_identity: swap.alpha_ledger_redeem_identity,
                 beta_ledger_refund_identity: swap.beta_ledger_refund_identity,
             })),
-            SS::Final(Final(SwapOutcome::Rejected { rejection_type, .. })) => {
+            SS::Final(Final(SwapOutcome::Declined { rejection_type, .. })) => {
                 actor_state.set_response(Err(rejection_type))
             }
             SS::AlphaDeployed(AlphaDeployed { alpha_deployed, .. }) => {

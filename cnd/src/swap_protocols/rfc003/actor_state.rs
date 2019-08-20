@@ -1,9 +1,6 @@
-use crate::{
-    comit_client::SwapReject,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{self, ledger_state::LedgerState, messages::*, secret::Secret, Ledger},
-    },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{self, ledger_state::LedgerState, messages::*, secret::Secret, Ledger},
 };
 use std::fmt::Debug;
 
@@ -15,7 +12,7 @@ pub trait ActorState: Debug + Clone + Send + Sync + 'static {
 
     fn set_response(
         &mut self,
-        response: Result<AcceptResponseBody<Self::AL, Self::BL>, SwapReject>,
+        response: Result<AcceptResponseBody<Self::AL, Self::BL>, DeclineResponseBody>,
     );
     fn set_secret(&mut self, secret: Secret);
     fn set_error(&mut self, error: rfc003::Error);

@@ -5,7 +5,7 @@ mod spawner;
 pub use self::{actions::*, communication_events::*, spawner::*};
 
 use crate::{
-    comit_client::{self, SwapReject},
+    comit_client,
     network::DialInformation,
     swap_protocols::{
         asset::Asset,
@@ -14,7 +14,7 @@ use crate::{
             events::LedgerEvents,
             ledger::Ledger,
             ledger_state::LedgerState,
-            messages::{AcceptResponseBody, Request},
+            messages::{AcceptResponseBody, DeclineResponseBody, Request},
             save_state::SaveState,
             secret_source::SecretSource,
             state_machine::{Context, FutureSwapOutcome, Start, Swap},
@@ -45,9 +45,9 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
     },
-    Rejected {
+    Declined {
         request: Request<AL, BL, AA, BA>,
-        response: SwapReject,
+        response: DeclineResponseBody,
     },
 }
 
@@ -88,7 +88,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request }
-            | SwapCommunication::Rejected { request, .. } => request.clone(),
+            | SwapCommunication::Declined { request, .. } => request.clone(),
         }
     }
 
@@ -109,7 +109,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     type AA = AA;
     type BA = BA;
 
-    fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, SwapReject>) {
+    fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>) {
         match self.swap_communication {
             SwapCommunication::Proposed { ref request } => match response {
                 Ok(response) => {
@@ -119,7 +119,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
                     }
                 }
                 Err(response) => {
-                    self.swap_communication = SwapCommunication::Rejected {
+                    self.swap_communication = SwapCommunication::Declined {
                         request: request.clone(),
                         response,
                     }

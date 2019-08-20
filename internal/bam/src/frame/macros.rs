@@ -18,8 +18,20 @@ macro_rules! try_header {
 macro_rules! header {
     ($e:expr) => {
         header_internal!($e, {
-            log::info!("Header was not present, early returning with error response (SE00)!");
-            return Box::new(futures::future::ok(Response::new(Status::SE(0))));
+            log::info!("Header was not present, early returning with decline response!");
+            let decline_body = DeclineResponseBody {
+                reason: SwapDeclineReason::MissingHeader,
+            };
+
+            return Box::new(futures::future::ok(Response::default().with_header(
+                "decision",
+                Decision::Declined
+                    .to_bam_header()
+                    .expect("Decision should not fail to serialize"),
+            )
+            .with_body(serde_json::to_value(decline_body).expect(
+                "decline body should always serialize into serde_json::Value",
+            ))));
         })
     };
 }
@@ -31,7 +43,19 @@ macro_rules! body {
             Ok(body) => body,
             Err(e) => {
                 log::error!("Failed to deserialize body: {:?}", e);
-                return Box::new(futures::future::ok(Response::new(Status::SE(0))));
+                let decline_body = DeclineResponseBody {
+                    reason: SwapDeclineReason::MalformedJson,
+                };
+
+                return Box::new(futures::future::ok(Response::default().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                )
+                .with_body(serde_json::to_value(decline_body).expect(
+                    "decline body should always serialize into serde_json::Value",
+                ))));
             }
         }
     };
@@ -44,7 +68,21 @@ macro_rules! header_internal {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
                 log::error!("Failed to deserialize header: {:?}", e);
-                return Box::new(futures::future::ok(Response::new(Status::SE(0))));
+
+                let decline_body = DeclineResponseBody {
+                    reason: SwapDeclineReason::MalformedJson,
+                };
+
+                return Box::new(futures::future::ok(Response::default().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                )
+                .with_body(serde_json::to_value(decline_body).expect(
+                    "decline body should always serialize into serde_json::Value",
+                ))));
+
             },
             None => $none,
         }
