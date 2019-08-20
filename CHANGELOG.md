@@ -10,3 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 [Unreleased]: https://github.com/comit-network/comit-rs/compare/1625533e04119e8496b14d5e18786f150b4fce4d...HEAD
 
+- Update handling of config files
+
+[Changed]: For configuration files we now use the standard location as expected on each platform (OSX, Windows, Linux).
+
+
