@@ -105,18 +105,6 @@ pub struct PollParameters<T> {
 }
 
 impl File {
-    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
-        let config_file = Path::new(&config_file);
-        println!(
-            "Using config file {}",
-            PrintablePath(&config_file.to_path_buf())
-        );
-
-        let mut config = config_rs::Config::new();
-        config.merge(config_rs::File::from(config_file))?;
-        config.try_into()
-    }
-
     pub fn read_or_create_default<R: Rng>(
         home_dir: Option<&Path>,
         rand: R,
@@ -141,33 +129,16 @@ impl File {
         parent.join(user_path_components)
     }
 
-    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        File::ensure_directory_exists(&config_file)?;
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
+        let config_file = Path::new(&config_file);
+        println!(
+            "Using config file {}",
+            PrintablePath(&config_file.to_path_buf())
+        );
 
-        File::write_to_file(config_file, &self)?;
-
-        Ok(self)
-    }
-
-    fn write_to_file(
-        config_file: PathBuf,
-        default_settings: &File,
-    ) -> Result<(), config_rs::ConfigError> {
-        let toml_string = toml::to_string(&default_settings).map_err(|error| {
-            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
-        })?;
-        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
-            config_rs::ConfigError::Message(format!(
-                "Could not create config file: {:?} {:?}",
-                config_file, error
-            ))
-        })?;
-        file.write_all(toml_string.as_bytes()).map_err(|error| {
-            config_rs::ConfigError::Message(format!(
-                "Could not write to file: {:?}: {:?}",
-                config_file, error
-            ))
-        })
+        let mut config = config_rs::Config::new();
+        config.merge(config_rs::File::from(config_file))?;
+        config.try_into()
     }
 
     fn create_default_at<R: Rng>(
@@ -179,6 +150,14 @@ impl File {
             PrintablePath(&default_config_path)
         );
         File::default(rand).write_to(default_config_path)
+    }
+
+    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
+        File::ensure_directory_exists(&config_file)?;
+
+        File::write_to_file(config_file, &self)?;
+
+        Ok(self)
     }
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
@@ -204,5 +183,26 @@ impl File {
                 }
             }
         }
+    }
+
+    fn write_to_file(
+        config_file: PathBuf,
+        default_settings: &File,
+    ) -> Result<(), config_rs::ConfigError> {
+        let toml_string = toml::to_string(&default_settings).map_err(|error| {
+            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
+        })?;
+        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
+            config_rs::ConfigError::Message(format!(
+                "Could not create config file: {:?} {:?}",
+                config_file, error
+            ))
+        })?;
+        file.write_all(toml_string.as_bytes()).map_err(|error| {
+            config_rs::ConfigError::Message(format!(
+                "Could not write to file: {:?}: {:?}",
+                config_file, error
+            ))
+        })
     }
 }
