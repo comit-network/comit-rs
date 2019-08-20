@@ -1,34 +1,6 @@
-use crate::{
-    bitcoin::queries::{BlockQuery, TransactionQuery},
-    ArcQueryRepository, QueryMatch,
-};
-use bitcoin_support::{BitcoinHash, MinedBlock as Block};
+use crate::{bitcoin::queries::TransactionQuery, ArcQueryRepository, QueryMatch};
+use bitcoin_support::MinedBlock as Block;
 use itertools::Itertools;
-
-pub fn check_block_queries(
-    block_queries: ArcQueryRepository<BlockQuery>,
-    block: Block,
-) -> impl Iterator<Item = QueryMatch> {
-    log::trace!("Processing {:?}", block);
-
-    let block_id = block.as_ref().bitcoin_hash().to_string();
-
-    block_queries.all().filter_map(move |(query_id, query)| {
-        log::trace!("Matching query {:#?} against block {:#?}", query, block);
-
-        let block = block.clone();
-
-        if query.matches(&block) {
-            let block_id = block_id.clone();
-
-            log::trace!("Query {:?} matches block {}", query_id, block_id);
-
-            Some(QueryMatch(query_id.into(), block_id))
-        } else {
-            None
-        }
-    })
-}
 
 pub fn check_transaction_queries(
     transaction_queries: ArcQueryRepository<TransactionQuery>,

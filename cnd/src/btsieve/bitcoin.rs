@@ -14,9 +14,6 @@ pub enum BitcoinQuery {
         from_outpoint: Option<bitcoin_support::OutPoint>,
         unlock_script: Option<Vec<Vec<u8>>>,
     },
-    Block {
-        min_height: Option<u32>,
-    },
 }
 
 impl BitcoinQuery {
@@ -107,15 +104,6 @@ mod tests {
             query,
             r#"{"to_address":null,"from_outpoint":null,"unlock_script":null}"#
         )
-    }
-
-    #[test]
-    fn given_a_bitcoin_block_query_with_min_height_it_serializes_ok() {
-        let query = BitcoinQuery::Block {
-            min_height: Some(42),
-        };
-        let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"min_height":42}"#)
     }
 
     #[test]

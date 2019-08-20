@@ -19,9 +19,6 @@ pub enum EthereumQuery {
         transaction_data: Option<Bytes>,
         transaction_data_length: Option<usize>,
     },
-    Block {
-        min_timestamp_secs: u32,
-    },
     Event {
         event_matchers: Vec<EventMatcher>,
     },
@@ -112,15 +109,6 @@ mod tests {
             query,
             r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
         )
-    }
-
-    #[test]
-    fn given_a_ethereum_block_query_with_min_timestamp_it_serializes_ok() {
-        let query = EthereumQuery::Block {
-            min_timestamp_secs: 10u32,
-        };
-        let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"min_timestamp_secs":10}"#)
     }
 
     #[test]

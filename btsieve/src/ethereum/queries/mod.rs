@@ -1,8 +1,7 @@
-pub mod block;
 pub mod event;
 pub mod transaction;
 
-pub use self::{block::BlockQuery, event::EventQuery, transaction::TransactionQuery};
+pub use self::{event::EventQuery, transaction::TransactionQuery};
 use crate::route_factory::Error;
 use ethereum_support::{
     clean_0x,
