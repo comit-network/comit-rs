@@ -79,7 +79,7 @@ mod tests {
 
     #[test]
     fn given_a_ethereum_transaction_query_with_toaddress_it_serializes_ok() {
-        let to_address = Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into());
+        let to_address = Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap());
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address,
@@ -144,10 +144,12 @@ mod tests {
     fn events_query_with_data_serializes_correctly() {
         let query = EthereumQuery::Event {
             event_matchers: vec![EventMatcher {
-                address: Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into()),
+                address: Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap()),
                 data: Some(Bytes::from(vec![1])),
                 topics: vec![Some(Topic(
-                    "0x0000000000000000000000000000000000000000000000000000000000000001".into(),
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                        .parse()
+                        .unwrap(),
                 ))],
             }],
         };

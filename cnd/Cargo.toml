@@ -27,6 +27,7 @@ hex-serde = "0.1.0"
 http = "0.1"
 http-api-problem = "0.13"
 hyper = "0.12"
+lazy_static = "1"
 libp2p = "0.10"
 log = { version = "0.4", features = ["serde"] }
 maplit = "1"
@@ -57,7 +58,6 @@ warp = "0.1"
 bitcoin_rpc_test_helpers = { path = "../internal/bitcoin_rpc_test_helpers" }
 bitcoincore-rpc = "0.7"
 key_gen = { path = "../internal/key_gen" }
-lazy_static = "1"
 maplit = "1"
 matches = "0.1.8"
 memsocket = "0.1"

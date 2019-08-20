@@ -123,11 +123,11 @@ mod test {
     #[test]
     fn test_erc20_quantity_compare_to() {
         let quantity_1_pay = Erc20Token::new(
-            Address::from("0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"),
+            "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
             Erc20Quantity(U256::from(1u64)),
         );
         let quantity_10_pay = Erc20Token::new(
-            Address::from("0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"),
+            "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
             Erc20Quantity(U256::from(10u64)),
         );
 
@@ -138,14 +138,10 @@ mod test {
 
     #[test]
     fn test_different_erc20_quantity_compare_to() {
-        let quantity_1_pay = Erc20Token::new(
-            Address::from("0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB"),
-            Erc20Quantity(U256::from(1u64)),
-        );
-        let quantity_10_pay = Erc20Token::new(
-            Address::from("0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"),
-            Erc20Quantity(U256::from(10u64)),
-        );
+        let quantity_1_pay =
+            Erc20Token::new(Address::repeat_byte(1), Erc20Quantity(U256::from(1u64)));
+        let quantity_10_pay =
+            Erc20Token::new(Address::repeat_byte(2), Erc20Quantity(U256::from(10u64)));
 
         assert_that(&quantity_1_pay.compare_to(&quantity_10_pay)).is_equal_to(Compare::LesserThan);
         assert_that(&quantity_1_pay.compare_to(&quantity_1_pay)).is_equal_to(Compare::Equal);

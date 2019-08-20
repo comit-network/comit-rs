@@ -21,7 +21,7 @@ serde_json = "1.0"
 strum = "0.15"
 strum_macros = "0.15"
 tiny-keccak = "1.5"
-web3 = "0.6"
+web3 = "0.8"
 
 [dev-dependencies]
 bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
@@ -30,10 +30,17 @@ failure = "0.1"
 lazy_static = "1.3"
 log = "0.4"
 pretty_env_logger = "0.3"
-rlp = "0.3"
 spectral = "0.6"
 testcontainers = "0.7"
 tiny-keccak = "1.5"
+
+# These versions need to be changed together with web3, depends on what version of primitive-types ships with web3
+[dev-dependencies.primitive-types]
+features = ["rlp"]
+version = "0.3.0"
+
+[dev-dependencies.rlp]
+version = "0.4.2"
 
 [build-dependencies]
 regex = "1.2"

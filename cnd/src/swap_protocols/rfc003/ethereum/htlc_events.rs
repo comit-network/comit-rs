@@ -16,7 +16,7 @@ use crate::{
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
-    TransactionAndReceipt,
+    TransactionAndReceipt, H256,
 };
 use futures::{
     future::{self, Either},
@@ -24,12 +24,14 @@ use futures::{
 };
 use std::sync::Arc;
 
-// keccak256(Redeemed())
-pub const REDEEM_LOG_MSG: &str =
-    "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
-// keccak256(Refunded())
-pub const REFUND_LOG_MSG: &str =
-    "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
+lazy_static::lazy_static! {
+    /// keccak256(Redeemed())
+    pub static ref REDEEM_LOG_MSG: H256 = "B8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413".parse().expect("to be valid hex");
+    /// keccak256(Refunded())
+    pub static ref REFUND_LOG_MSG: H256 = "5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178".parse().expect("to be valid hex");
+    /// keccak('Transfer(address,address,uint256)')
+    pub static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
+}
 
 impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync + 'static> {
     fn htlc_deployed(
@@ -92,7 +94,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 event_matchers: vec![EventMatcher {
                     address: Some(htlc_deployment.location),
                     data: None,
-                    topics: vec![Some(Topic(REFUND_LOG_MSG.into()))],
+                    topics: vec![Some(Topic(*REFUND_LOG_MSG))],
                 }],
             })
             .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
@@ -107,7 +109,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 event_matchers: vec![EventMatcher {
                     address: Some(htlc_deployment.location),
                     data: None,
-                    topics: vec![Some(Topic(REDEEM_LOG_MSG.into()))],
+                    topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
                 }],
             })
             .and_then(move |query_id| query_ethereum.transaction_and_receipt_first_result(&query_id))
@@ -116,7 +118,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 receipt
                     .logs
                     .into_iter()
-                    .find(|log| log.topics.contains(&REDEEM_LOG_MSG.into()))
+                    .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
                     .ok_or_else(|| {
                         rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
                     }).and_then(|log| {
@@ -151,10 +153,6 @@ mod erc20 {
     use super::*;
     use ethereum_support::{Erc20Quantity, U256};
 
-    // keccak('Transfer(address,address,uint256)')
-    const TRANSFER_LOG_MSG: &str =
-        "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef";
-
     impl HtlcEvents<Ethereum, Erc20Token> for Arc<dyn QueryEthereum + Send + Sync + 'static> {
         fn htlc_deployed(
             &self,
@@ -185,7 +183,7 @@ mod erc20 {
                         address: Some(htlc_params.asset.token_contract),
                         data: None,
                         topics: vec![
-                            Some(Topic(TRANSFER_LOG_MSG.into())),
+                            Some(Topic(*super::TRANSFER_LOG_MSG)),
                             None,
                             Some(Topic(deployment.location.into())),
                         ],
@@ -200,7 +198,7 @@ mod erc20 {
                               transaction,
                               receipt,
                           }| {
-                        receipt.logs.into_iter().find(|log| log.topics.contains(&TRANSFER_LOG_MSG.into())).ok_or_else(|| {
+                        receipt.logs.into_iter().find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG)).ok_or_else(|| {
                             log::warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
                             rfc003::Error::IncorrectFunding
                         }).map(|log| {

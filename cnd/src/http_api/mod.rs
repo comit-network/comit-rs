@@ -214,9 +214,7 @@ mod tests {
     use bitcoin_support::{
         self, BitcoinQuantity, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn,
     };
-    use ethereum_support::{
-        self, Address, Bytes, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
-    };
+    use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};
 
@@ -225,7 +223,7 @@ mod tests {
         let bitcoin = BitcoinQuantity::from_bitcoin(1.0);
         let ether = EtherQuantity::from_eth(1.0);
         let pay = Erc20Token::new(
-            Address::from("0xB97048628DB6B661D4C2aA833e95Dbe1A905B280"),
+            "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
             Erc20Quantity(U256::from(100_000_000_000u64)),
         );
 
@@ -283,17 +281,8 @@ mod tests {
             output: vec![],
         };
         let ethereum_tx = ethereum_support::Transaction {
-            hash: H256::from(348_924_802),
-            nonce: U256::from(0),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: H160::from(0),
-            to: None,
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            hash: H256::repeat_byte(1),
+            ..ethereum_support::Transaction::default()
         };
 
         let bitcoin_tx = Http(bitcoin_tx);
@@ -308,7 +297,7 @@ mod tests {
         );
         assert_eq!(
             &ethereum_tx_serialized,
-            r#""0x0000000000000000000000000000000000000000000000000000000014cc2b82""#
+            r#""0x0101010101010101010101010101010101010101010101010101010101010101""#
         );
     }
 
@@ -317,7 +306,7 @@ mod tests {
         let bitcoin_identity: Vec<u8> =
             hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
         let bitcoin_identity = PubkeyHash::try_from(&bitcoin_identity[..]).unwrap();
-        let ethereum_identity = H160::from(7);
+        let ethereum_identity = H160::repeat_byte(7);
 
         let bitcoin_identity = Http(bitcoin_identity);
         let ethereum_identity = Http(ethereum_identity);
@@ -331,7 +320,7 @@ mod tests {
         );
         assert_eq!(
             &ethereum_identity_serialized,
-            r#""0x0000000000000000000000000000000000000007""#
+            r#""0x0707070707070707070707070707070707070707""#
         );
     }
 

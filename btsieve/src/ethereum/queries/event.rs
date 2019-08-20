@@ -65,7 +65,9 @@ impl EventQuery {
         self.event_matchers.iter().all(|log_matcher| {
             log_matcher.topics.iter().all(|topic| {
                 topic.as_ref().map_or(true, |topic| {
-                    block.logs_bloom.contains_input(Input::Raw(&topic.0))
+                    block
+                        .logs_bloom
+                        .contains_input(Input::Raw(topic.0.as_ref()))
                 })
             })
         })
@@ -176,106 +178,48 @@ fn to_payload(
 mod tests {
     use super::*;
     use crate::web3::types::{
-        Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256, U128, U256,
+        Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
     };
-    use ethbloom::Bloom;
     use spectral::prelude::*;
     use std::str::FromStr;
 
-    fn ethereum_block(bloom: H2048, transactions: Vec<Transaction>) -> Block<Transaction> {
-        Block {
-            hash: None,
-            parent_hash: H256::from(123),
-            uncles_hash: H256::from(123),
-            author: H160::from(7),
-            state_root: H256::from(123),
-            transactions_root: H256::from(123),
-            receipts_root: H256::from(123),
-            number: None,
-            gas_used: U256::from(0),
-            gas_limit: U256::from(0),
-            extra_data: Bytes::from(vec![]),
-            logs_bloom: bloom,
-            timestamp: U256::from(0),
-            difficulty: U256::from(0),
-            total_difficulty: U256::from(0),
-            seal_fields: vec![],
-            uncles: vec![],
-            transactions,
-            size: None,
-            mix_hash: None,
-            nonce: None,
-        }
+    lazy_static::lazy_static! {
+        pub static ref REDEEM_BLOOM: H2048 = {
+        H2048::from_str(
+           "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000000000000000100\
+            000000000000000000000000000000000000000000000000000000000000000800000000000000000000000\
+            000000000000000000000000000000000000000000000000000000000000000000000000408000000000000\
+            000000000000000000000000000000000000000000000000000100000000040000000000000000000000000\
+            00000000000000000000000000000000000000000000000000000000000000000000000000000").unwrap()
+        };
+    }
+    lazy_static::lazy_static! {
+        pub static ref CONTRACT_ADDRESS: H160 = Address::from_str("e46FB33e4DB653De84cB0E0E8b810A6c4cD39d59").unwrap();
+    }
+    lazy_static::lazy_static! {
+        pub static ref REDEEM_LOG_MSG: H256 = H256::from_str("B8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413").unwrap();
+    }
+    lazy_static::lazy_static! {
+        pub static ref UNKNOWN_LOG_MSG: H256 = H256::from_str("0000000000000000000000000000000000000000000000000000000000000001").unwrap();
     }
 
-    fn transaction(address: Address) -> Transaction {
-        Transaction {
-            hash: H256::from(0),
-            nonce: U256::from(0),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: H160::from(0),
-            to: Some(address),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
-        }
-    }
-
-    fn log(address: Address, topics: Vec<H256>, data: Bytes) -> Log {
+    // unfortunately, Log doesn't derive Default
+    fn default_log() -> Log {
         Log {
-            address,
-            topics,
-            data,
-            block_hash: Some(2.into()),
-            block_number: Some(1.into()),
-            transaction_hash: Some(3.into()),
-            transaction_index: Some(0.into()),
-            log_index: Some(0.into()),
-            transaction_log_index: Some(0.into()),
-            log_type: None,
-            removed: Some(false),
-        }
-    }
-
-    fn transaction_receipt(logs: Vec<Log>) -> TransactionReceipt {
-        TransactionReceipt {
-            transaction_hash: H256::from(0),
-            transaction_index: U128::from(0),
+            address: Default::default(),
+            topics: vec![],
+            data: Default::default(),
             block_hash: None,
             block_number: None,
-            cumulative_gas_used: U256::from(0),
-            gas_used: None,
-            contract_address: None,
-            logs,
-            status: None,
-            logs_bloom: Bloom::default(),
+            transaction_hash: None,
+            transaction_index: None,
+            log_index: None,
+            transaction_log_index: None,
+            log_type: None,
+            removed: None,
         }
     }
-
-    const REDEEM_BLOOM: &str =
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000100\
-         000000000000000000000000000000000000000000000000000000000000000800000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000408000000000000\
-         000000000000000000000000000000000000000000000000000100000000040000000000000000000000000\
-         00000000000000000000000000000000000000000000000000000000000000000000000000000";
-
-    const EMPTY_BLOOM: &str =
-        "000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         000000000000000000000000000000000000000000000000000000000000000000000000000000000000000\
-         00000000000000000000000000000000000000000000000000000000000000000000000000000";
-
-    const CONTRACT_ADDRESS: &str = "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59";
-    const REDEEM_LOG_MSG: &str =
-        "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
-    const UNKNOWN_LOG_MSG: &str =
-        "0x0000000000000000000000000000000000000000000000000000000000000001";
 
     impl EventMatcher {
         fn new() -> Self {
@@ -298,15 +242,22 @@ mod tests {
 
         fn for_token_contract_with_transfer_topics() -> Self {
             Self::new()
-                .for_contract(CONTRACT_ADDRESS.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])
+                .for_contract(*CONTRACT_ADDRESS)
+                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])
         }
     }
 
     #[test]
     fn given_a_block_with_bloom_filter_should_match_query() {
-        let tx = transaction(CONTRACT_ADDRESS.into());
-        let block = ethereum_block(H2048::from_str(REDEEM_BLOOM).unwrap(), vec![tx.clone()]);
+        let tx = Transaction {
+            to: Some(*CONTRACT_ADDRESS),
+            ..Transaction::default()
+        };
+        let block = Block {
+            logs_bloom: *REDEEM_BLOOM,
+            transactions: vec![tx.clone()],
+            ..Block::default()
+        };
 
         let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
@@ -319,8 +270,15 @@ mod tests {
 
     #[test]
     fn given_a_block_without_bloom_filter_should_not_match_query() {
-        let tx = transaction(CONTRACT_ADDRESS.into());
-        let block = ethereum_block(H2048::from_str(EMPTY_BLOOM).unwrap(), vec![tx.clone()]);
+        let tx = Transaction {
+            to: Some(*CONTRACT_ADDRESS),
+            ..Transaction::default()
+        };
+        let block = Block {
+            logs_bloom: H2048::zero(),
+            transactions: vec![tx.clone()],
+            ..Block::default()
+        };
 
         let matcher = EventMatcher::for_token_contract_with_transfer_topics();
 
@@ -338,13 +296,16 @@ mod tests {
         let query = EventQuery {
             event_matchers: vec![matcher],
         };
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG],
+            ..default_log()
+        };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let receipt = transaction_receipt(vec![log]);
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
     }
@@ -357,7 +318,7 @@ mod tests {
             event_matchers: vec![matcher],
         };
 
-        let receipt = transaction_receipt(vec![]);
+        let receipt = TransactionReceipt::default();
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_false()
     }
@@ -368,23 +329,28 @@ mod tests {
             event_matchers: vec![
                 EventMatcher::for_token_contract_with_transfer_topics(),
                 EventMatcher::new()
-                    .for_contract(CONTRACT_ADDRESS.into())
-                    .with_topics(vec![Some(Topic(UNKNOWN_LOG_MSG.into()))]),
+                    .for_contract(*CONTRACT_ADDRESS)
+                    .with_topics(vec![Some(Topic(*UNKNOWN_LOG_MSG))]),
             ],
         };
 
-        let log1 = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let log2 = log(
-            CONTRACT_ADDRESS.into(),
-            vec![UNKNOWN_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
+        let log1 = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG],
+            data: Bytes::default(),
+            ..default_log()
+        };
+        let log2 = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*UNKNOWN_LOG_MSG],
+            data: Bytes::default(),
+            ..default_log()
+        };
 
-        let receipt = transaction_receipt(vec![log1, log2]);
+        let receipt = TransactionReceipt {
+            logs: vec![log1, log2],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
     }
@@ -393,16 +359,20 @@ mod tests {
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
         let query = EventQuery {
             event_matchers: vec![EventMatcher::new()
-                .for_contract(1.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
+                .for_contract(Address::repeat_byte(1))
+                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])],
         };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![REDEEM_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
-        let receipt = transaction_receipt(vec![log]);
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG],
+            data: Bytes::default(),
+            ..default_log()
+        };
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_false()
     }
@@ -411,103 +381,119 @@ mod tests {
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
         let query = EventQuery {
             event_matchers: vec![EventMatcher::new()
-                .for_contract(1.into())
-                .with_topics(vec![Some(Topic(REDEEM_LOG_MSG.into()))])],
+                .for_contract(Address::repeat_byte(1))
+                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])],
         };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![UNKNOWN_LOG_MSG.into()],
-            Bytes(vec![]),
-        );
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*UNKNOWN_LOG_MSG],
+            data: Bytes::default(),
+            ..default_log()
+        };
 
-        let receipt = transaction_receipt(vec![log]);
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_false()
     }
 
     #[test]
     fn given_a_transfer_log_should_match_transfer_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+        let from_address =
+            H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
+                .unwrap();
+        let to_address =
+            H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
+                .unwrap();
 
         let query = EventQuery {
             event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
+                address: Some(*CONTRACT_ADDRESS),
                 data: Some(Bytes::from(vec![1, 2, 3])),
                 topics: vec![
-                    Some(Topic(REDEEM_LOG_MSG.into())),
-                    Some(Topic(from_address.into())),
-                    Some(Topic(to_address.into())),
+                    Some(Topic(*REDEEM_LOG_MSG)),
+                    Some(Topic(from_address)),
+                    Some(Topic(to_address)),
                 ],
             }],
         };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG, from_address, to_address],
+            data: Bytes::from(vec![1, 2, 3]),
+            ..default_log()
+        };
 
-        let receipt = transaction_receipt(vec![log]);
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
     }
 
     #[test]
     fn given_a_transfer_log_should_match_partial_topics_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+        let from_address =
+            H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
+                .unwrap();
+        let to_address =
+            H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
+                .unwrap();
 
         let query = EventQuery {
             event_matchers: vec![EventMatcher::new()
-                .for_contract(CONTRACT_ADDRESS.into())
-                .with_topics(vec![None, None, Some(Topic(to_address.into()))])],
+                .for_contract(*CONTRACT_ADDRESS)
+                .with_topics(vec![None, None, Some(Topic(to_address))])],
         };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG, from_address, to_address],
+            data: Bytes::from(vec![1, 2, 3]),
+            ..default_log()
+        };
 
-        let receipt = transaction_receipt(vec![log]);
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_true()
     }
 
     #[test]
     fn given_a_transfer_log_should_not_match_short_query() {
-        let from_address = "0x00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72";
-        let to_address = "0x0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8";
+        let from_address =
+            H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
+                .unwrap();
+        let to_address =
+            H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
+                .unwrap();
 
         let query = EventQuery {
             event_matchers: vec![EventMatcher {
-                address: Some(CONTRACT_ADDRESS.into()),
+                address: Some(*CONTRACT_ADDRESS),
                 data: None,
-                topics: vec![Some(Topic(to_address.into()))],
+                topics: vec![Some(Topic(to_address))],
             }],
         };
 
-        let log = log(
-            CONTRACT_ADDRESS.into(),
-            vec![
-                REDEEM_LOG_MSG.into(),
-                from_address.into(),
-                to_address.into(),
-            ],
-            Bytes::from(vec![1, 2, 3]),
-        );
+        let log = Log {
+            address: *CONTRACT_ADDRESS,
+            topics: vec![*REDEEM_LOG_MSG, from_address, to_address],
+            data: Bytes::from(vec![1, 2, 3]),
+            ..default_log()
+        };
 
-        let receipt = transaction_receipt(vec![log]);
+        let receipt = TransactionReceipt {
+            logs: vec![log],
+            ..TransactionReceipt::default()
+        };
 
         assert_that!(query.matches_transaction_receipt(receipt)).is_false()
     }

@@ -16,13 +16,7 @@ mod network;
 mod u256_ext;
 
 pub mod web3 {
-    pub use extern_web3::{
-        api,
-        error::{Error, ErrorKind},
-        futures, types,
-    };
-
-    pub use extern_web3::Web3;
+    pub use extern_web3::{api, error::Error, futures, types, Web3};
 
     pub mod transports {
         pub use extern_web3::transports::{EventLoopHandle, Http};
