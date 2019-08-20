@@ -117,8 +117,14 @@ impl File {
         })?;
 
         if default_config_path.exists() {
+            println!("Using config file {}", PrintablePath(&default_config_path));
+
             Self::read(default_config_path)
         } else {
+            println!(
+                "Creating config file at {} because it does not exist yet",
+                PrintablePath(&default_config_path)
+            );
             Self::create_default_at(default_config_path, rand)
         }
     }
@@ -131,10 +137,6 @@ impl File {
 
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
         let config_file = Path::new(&config_file);
-        println!(
-            "Using config file {}",
-            PrintablePath(&config_file.to_path_buf())
-        );
 
         let mut config = config_rs::Config::new();
         config.merge(config_rs::File::from(config_file))?;
@@ -145,10 +147,6 @@ impl File {
         default_config_path: PathBuf,
         rand: R,
     ) -> Result<File, config_rs::ConfigError> {
-        println!(
-            "Creating config file at {} because it does not exist yet",
-            PrintablePath(&default_config_path)
-        );
         File::default(rand).write_to(default_config_path)
     }
 
