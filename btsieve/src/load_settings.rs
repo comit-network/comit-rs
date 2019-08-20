@@ -12,22 +12,25 @@ pub struct Opt {
 }
 
 pub fn load_settings(opt: Opt) -> Result<Settings, ConfigError> {
-    match opt.config_file {
-        Some(file) => parse_config_file(file),
-        None => match ProjectDirs::from("tech", "CoBloX", "btsieve") {
-            // Linux: /home/<user>/.config/btsieve
-            // Windows: C:\Users\<user>\AppData\Roaming\CoBloX\btsieve\config
-            // OSX: /Users/<user>/Library/Preferences/tech.CoBloX.btsieve
-            Some(proj_dirs) => {
-                let file = Path::join(proj_dirs.config_dir(), "btsieve.toml");
-                log::info!("Config file was not provided - looking up config file in default location at: {:?}", file);;
-                parse_config_file(file)
-            }
-            None => Err(ConfigError::Message(
-                "Could not generate configuration directory".to_string(),
-            )),
-        },
+    if let Some(file) = opt.config_file {
+        return parse_config_file(file);
     }
+
+    // Linux: /home/<user>/.config/btsieve
+    // Windows: C:\Users\<user>\AppData\Roaming\comit-network\btsieve\config
+    // OSX: /Users/<user>/Library/Preferences/comit-network.btsieve
+    if let Some(proj_dirs) = ProjectDirs::from("", "comit-network", "btsieve") {
+        let file = Path::join(proj_dirs.config_dir(), "btsieve.toml");
+        log::info!(
+            "Config file was not provided - looking up config file in default location at: {:?}",
+            file
+        );
+        return parse_config_file(file);
+    }
+
+    Err(ConfigError::Message(
+        "Could not generate configuration directory".to_string(),
+    ))
 }
 
 fn parse_config_file(file: PathBuf) -> Result<Settings, ConfigError> {
