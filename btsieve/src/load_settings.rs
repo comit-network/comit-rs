@@ -1,5 +1,6 @@
 use crate::settings::Settings;
 use config::ConfigError;
+use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
 use structopt::StructOpt;
 
@@ -11,35 +12,34 @@ pub struct Opt {
 }
 
 pub fn load_settings(opt: Opt) -> Result<Settings, ConfigError> {
-    match opt.config_file {
-        Some(config_file) => {
-            if config_file.exists() {
-                Settings::read(config_file)
-            } else {
-                Err(ConfigError::Message(format!(
-                    "Could not load config file: {:?}",
-                    config_file
-                )))
-            }
-        }
-        None => match directories::UserDirs::new() {
-            None => Err(ConfigError::Message(
-                "Unable to determine user's home directory".to_string(),
-            )),
-            Some(dirs) => {
-                let user_path_components: PathBuf =
-                    [".config", "comit", "btsieve.toml"].iter().collect();
-                let config_file = Path::join(dirs.home_dir(), user_path_components);
-                log::info!("Config file was not provided - looking up config file in default location at: {:?}", config_file);;
-                if config_file.exists() {
-                    Settings::read(config_file)
-                } else {
-                    Err(ConfigError::Message(format!(
-                        "Could not load config file: {:?}",
-                        config_file
-                    )))
-                }
-            }
-        },
+    if let Some(file) = opt.config_file {
+        return parse_config_file(file);
+    }
+
+    // Linux: /home/<user>/.config/btsieve
+    // Windows: C:\Users\<user>\AppData\Roaming\comit-network\btsieve\config
+    // OSX: /Users/<user>/Library/Preferences/comit-network.btsieve
+    if let Some(proj_dirs) = ProjectDirs::from("", "comit-network", "btsieve") {
+        let file = Path::join(proj_dirs.config_dir(), "btsieve.toml");
+        log::info!(
+            "Config file was not provided - looking up config file in default location at: {:?}",
+            file
+        );
+        return parse_config_file(file);
+    }
+
+    Err(ConfigError::Message(
+        "Could not generate configuration directory".to_string(),
+    ))
+}
+
+fn parse_config_file(file: PathBuf) -> Result<Settings, ConfigError> {
+    if file.exists() {
+        Settings::read(file)
+    } else {
+        Err(ConfigError::Message(format!(
+            "Could not load config file: {:?}",
+            file
+        )))
     }
 }
