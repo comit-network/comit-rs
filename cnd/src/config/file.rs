@@ -146,14 +146,14 @@ impl File {
     fn create_default_at<R: Rng>(
         default_config_path: PathBuf,
         rand: R,
-    ) -> Result<File, config_rs::ConfigError> {
-        File::default(rand).write_to(default_config_path)
+    ) -> Result<Self, config_rs::ConfigError> {
+        Self::default(rand).write_to(default_config_path)
     }
 
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        File::ensure_directory_exists(&config_file)?;
+        Self::ensure_directory_exists(&config_file)?;
 
-        File::write_to_file(config_file, &self)?;
+        Self::write_to_file(config_file, &self)?;
 
         Ok(self)
     }
