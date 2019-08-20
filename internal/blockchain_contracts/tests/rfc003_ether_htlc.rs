@@ -13,9 +13,9 @@ use testcontainers::clients::Cli;
 use web3::types::{Bytes, H256, U256};
 
 // keccak256(Redeemed())
-const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+const REDEEMED_LOG_MSG: &str = "B8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
 // keccak256(Refunded())
-const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
+const REFUNDED_LOG_MSG: &str = "5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
 
 #[test]
 fn given_deployed_htlc_when_redeemed_with_secret_then_money_is_transferred() {
@@ -100,7 +100,7 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
     let transaction_receipt = client.send_data(htlc, Some(Bytes(SECRET.to_vec())));
 
     assert_that(&transaction_receipt.logs).has_length(1);
-    let topic: H256 = REDEEMED_LOG_MSG.into();
+    let topic: H256 = REDEEMED_LOG_MSG.parse().unwrap();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
     assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(SECRET.to_vec()));
@@ -118,7 +118,7 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     let transaction_receipt = client.send_data(htlc, None);
 
     assert_that(&transaction_receipt.logs).has_length(1);
-    let topic: H256 = REFUNDED_LOG_MSG.into();
+    let topic: H256 = REFUNDED_LOG_MSG.parse().unwrap();
     assert_that(&transaction_receipt.logs[0].topics).has_length(1);
     assert_that(&transaction_receipt.logs[0].topics).contains(topic);
     assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(vec![]));

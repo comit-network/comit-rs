@@ -16,7 +16,7 @@ impl ToEthereumAddress for PublicKey {
         // Ethereum address is the last twenty bytes of the keccak256 hash
         let ethereum_address_bytes = &hash[12..];
         let mut address = Address::default();
-        address.copy_from_slice(ethereum_address_bytes);
+        address.assign_from_slice(ethereum_address_bytes);
         address
     }
 }

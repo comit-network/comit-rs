@@ -16,7 +16,7 @@ impl CalculateContractAddress for Address {
         let value = tiny_keccak::keccak256(raw_stream);
 
         let mut address = Address::default();
-        address.copy_from_slice(&value[12..]);
+        address.assign_from_slice(&value[12..]);
         address
     }
 }
@@ -35,13 +35,13 @@ mod tests {
         let contract_address = address.calculate_contract_address(&U256::from(0));
         assert_eq!(
             contract_address,
-            "ad5768f87c7cb54477cb36d1fc9fdee740810661".into()
+            Address::from_str("ad5768f87c7cb54477cb36d1fc9fdee740810661").unwrap()
         );
 
         let contract_address = address.calculate_contract_address(&U256::from(1));
         assert_eq!(
             contract_address,
-            "994a1e7928556ba81b85bf3c665a3f4a0f0d4cd9".into()
+            Address::from_str("994a1e7928556ba81b85bf3c665a3f4a0f0d4cd9").unwrap()
         );
     }
 }

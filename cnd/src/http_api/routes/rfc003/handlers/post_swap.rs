@@ -220,9 +220,9 @@ mod tests {
             alpha_expiry: Timestamp::from(2_000_000_000),
             beta_expiry: Timestamp::from(2_000_000_000),
             partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: ethereum_support::Address::from(
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                ),
+                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                    .parse()
+                    .unwrap(),
             },
             peer: DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
@@ -268,9 +268,9 @@ mod tests {
             alpha_expiry: Timestamp::from(2_000_000_000),
             beta_expiry: Timestamp::from(2_000_000_000),
             partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: ethereum_support::Address::from(
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                ),
+                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                    .parse()
+                    .unwrap(),
             },
             peer: DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
