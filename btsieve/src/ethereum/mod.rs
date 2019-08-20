@@ -1,10 +1,10 @@
 pub mod block_processor;
-pub mod ethereum_web3_block_poller;
 pub mod queries;
+pub mod web3_http_blocksource;
 
 pub use self::{
-    block_processor::{check_block_queries, check_log_queries, check_transaction_queries},
-    queries::{BlockQuery, EventQuery, TransactionQuery},
+    block_processor::{check_log_queries, check_transaction_queries},
+    queries::{EventQuery, TransactionQuery},
 };
 use crate::{Blockchain, Ethereum};
 use ethereum_support::{Block, Transaction};

@@ -1,5 +1,5 @@
 use crate::{
-    ethereum::{BlockQuery, EventQuery, TransactionQuery},
+    ethereum::{EventQuery, TransactionQuery},
     web3::types::{Block, Transaction},
     ArcQueryRepository, QueryMatch,
 };
@@ -10,31 +10,6 @@ use futures::{
 };
 use itertools::Itertools;
 use std::sync::Arc;
-
-pub fn check_block_queries(
-    block_queries: ArcQueryRepository<BlockQuery>,
-    block: Block<Transaction>,
-) -> impl Iterator<Item = QueryMatch> {
-    log::trace!("Processing {:?}", block);
-
-    let block_id = block.hash.map(|block_hash| format!("{:x}", block_hash));
-
-    block_queries
-        .all()
-        .filter_map(move |(query_id, query)| {
-            block_id.clone().map(|block_id| (query_id, query, block_id))
-        })
-        .filter_map(move |(query_id, query, block_id)| {
-            log::trace!("Matching query {:#?} against block {:#?}", query, block);
-
-            if query.matches(&block) {
-                log::trace!("Query {:?} matches block {:?}", query_id, block_id);
-                Some(QueryMatch(query_id.into(), block_id.clone()))
-            } else {
-                None
-            }
-        })
-}
 
 pub fn check_transaction_queries(
     transaction_queries: ArcQueryRepository<TransactionQuery>,

@@ -1,7 +1,7 @@
 import { expect, request } from "chai";
 import { Btsieve, EthereumMatch, IdMatch } from "../../lib/btsieve";
 import "../../lib/setup_chai";
-import { HarnessGlobal, sleep } from "../../lib/util";
+import { HarnessGlobal } from "../../lib/util";
 import { Wallet } from "../../lib/wallet";
 
 declare var global: HarnessGlobal;
@@ -122,87 +122,6 @@ setTimeout(async function() {
                     const res = await request(btsieve.url()).del(
                         "/queries/ethereum/regtest/transactions/1"
                     );
-
-                    expect(res).to.have.status(204);
-                });
-            });
-
-            describe("Blocks", () => {
-                it("btsieve should respond not found when getting a non-existent ethereum block query", async function() {
-                    const res = await request(btsieve.url()).get(
-                        "/queries/ethereum/regtest/blocks/1"
-                    );
-
-                    expect(res).to.have.status(404);
-                });
-
-                it("btsieve should respond not found when creating an ethereum block query for an invalid network", async function() {
-                    const res = await request(btsieve.url())
-                        .post("/queries/ethereum/banananet/blocks")
-                        .send({
-                            min_timestamp_secs: minTimestampSecs,
-                        });
-
-                    expect(res).to.have.status(404);
-                });
-
-                let location: string;
-                const epochSecondsNow = Math.round(Date.now() / 1000);
-                const minTimestampSecs = epochSecondsNow + 3;
-                it("btsieve should respond with location when creating a valid ethereum block query", async function() {
-                    this.timeout(1000);
-                    const res = await request(btsieve.url())
-                        .post("/queries/ethereum/regtest/blocks")
-                        .send({
-                            min_timestamp_secs: minTimestampSecs,
-                        });
-
-                    location = res.header.location;
-
-                    expect(res).to.have.status(201);
-                    expect(location).to.not.be.empty;
-                });
-
-                it("btsieve should respond with no match when querying an existing ethereum block query", async function() {
-                    this.timeout(1000);
-                    const res = await request(
-                        btsieve.absoluteLocation(location)
-                    ).get("");
-
-                    expect(res).to.have.status(200);
-                    expect(res.body.query.min_timestamp_secs).to.equal(
-                        minTimestampSecs
-                    );
-                    expect(res.body.matches).to.be.empty;
-                });
-
-                it("btsieve should respond with block match when requesting on the timestamp ethereum block query after waiting 3 seconds", async function() {
-                    this.timeout(80000);
-                    this.slow(6000);
-
-                    await sleep(3000);
-                    await tobyWallet
-                        .eth()
-                        .sendEthTransactionTo(
-                            "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
-                            "",
-                            1
-                        );
-
-                    const body = await btsieve.pollUntilMatches<EthereumMatch>(
-                        btsieve.absoluteLocation(location)
-                    );
-
-                    expect(body.query.min_timestamp_secs).to.equal(
-                        minTimestampSecs
-                    );
-                    expect(body.matches).to.have.length(1);
-                });
-
-                it("btsieve should respond with no content when deleting an existing ethereum block query", async function() {
-                    const res = await request(
-                        btsieve.absoluteLocation(location)
-                    ).del("");
 
                     expect(res).to.have.status(204);
                 });
