@@ -103,6 +103,45 @@ setTimeout(async function() {
                     );
                 });
 
+                it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
+                    const res = await request(btsieve.url())
+                        .put(location)
+                        .send({
+                            to_address: toAddress,
+                        });
+
+                    expect(res).to.have.status(200);
+                });
+
+                it('btsieve should respond with 409 CONFLICT when "getting-or-creating" an existing query ID with a different query body', async function() {
+                    const differentToAddress =
+                        "mzkdMKoki1hoP3ogT2oGSJ4pBTC9UGDLfM";
+
+                    const res = await request(btsieve.url())
+                        .put(location)
+                        .send({
+                            to_address: differentToAddress,
+                        });
+
+                    expect(res).to.have.status(409);
+                });
+
+                it('btsieve should respond with 201 CREATED when "getting-or-creating" a new query', async function() {
+                    const newQueryId =
+                        "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
+                    const newLocation =
+                        "/queries/bitcoin/regtest/transactions/" + newQueryId;
+                    const newQuery = {
+                        to_address: "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5",
+                    };
+
+                    const res = await request(btsieve.url())
+                        .put(newLocation)
+                        .send(newQuery);
+
+                    expect(res).to.have.status(201);
+                });
+
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
