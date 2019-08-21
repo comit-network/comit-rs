@@ -3,7 +3,7 @@ use crate::libp2p_bam::{
     protocol::BamStream,
     BamHandlerEvent,
 };
-use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
 pub mod inbound;
