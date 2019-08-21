@@ -1,10 +1,10 @@
 use crate::query_repository::{Error, QueryRepository};
+use rand::{distributions::Alphanumeric, thread_rng, Rng};
 use std::{collections::HashMap, sync::RwLock};
 
 #[derive(Debug)]
 struct State<T> {
-    storage: HashMap<u32, T>,
-    next_index: u32,
+    storage: HashMap<String, T>,
 }
 
 #[derive(Debug)]
@@ -17,37 +17,35 @@ impl<Q> Default for InMemoryQueryRepository<Q> {
         Self {
             state: RwLock::new(State {
                 storage: HashMap::new(),
-                next_index: 1,
             }),
         }
     }
 }
 
 impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepository<T> {
-    fn all(&self) -> Box<dyn Iterator<Item = (u32, T)>> {
+    fn all(&self) -> Box<dyn Iterator<Item = (String, T)>> {
         let state = self.state.read().unwrap();
 
         Box::new(state.storage.clone().into_iter())
     }
 
-    fn get(&self, id: u32) -> Option<T> {
+    fn get(&self, id: String) -> Option<T> {
         let state = self.state.read().unwrap();
 
         state.storage.get(&id).cloned()
     }
 
-    fn save(&self, entity: T) -> Result<u32, Error<T>> {
+    fn save(&self, entity: T) -> Result<String, Error<T>> {
         let mut state = self.state.write().unwrap();
 
-        let id = state.next_index;
+        let id: String = thread_rng().sample_iter(&Alphanumeric).take(40).collect();
 
-        state.storage.insert(id, entity);
-        state.next_index += 1;
+        state.storage.insert(id.clone(), entity);
 
         Ok(id)
     }
 
-    fn delete(&self, id: u32) {
+    fn delete(&self, id: String) {
         let mut state = self.state.write().unwrap();
 
         state.storage.remove(&id);
@@ -79,7 +77,7 @@ mod tests {
         let repository = InMemoryQueryRepository::default();
 
         let id = repository.save(MyEntity).unwrap();
-        repository.delete(id);
+        repository.delete(id.clone());
 
         assert_that(&repository.get(id)).is_none()
     }

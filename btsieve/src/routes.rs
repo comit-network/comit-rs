@@ -111,7 +111,7 @@ pub fn retrieve_query<
     _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    id: u32,
+    id: String,
     query_params: QueryParams<R>,
 ) -> Result<impl Reply, Rejection>
 where
@@ -119,11 +119,11 @@ where
     QueryResult: ToHttpPayload<R, Client = C>,
 {
     query_repository
-        .get(id)
+        .get(id.clone())
         .ok_or(Error::QueryNotFound)
         .and_then(|query| {
             query_result_repository
-                .get(id)
+                .get(id.clone())
                 .unwrap_or_default()
                 .to_http_payload(&query_params.return_as, &client)
                 .map(|matches| RetrieveQueryResponse { query, matches })
@@ -156,9 +156,9 @@ pub fn delete_query<
     _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    id: u32,
+    id: String,
 ) -> Result<impl Reply, Rejection> {
-    query_repository.delete(id);
+    query_repository.delete(id.clone());
     query_result_repository.delete(id);
 
     Ok(warp::reply::with_status(

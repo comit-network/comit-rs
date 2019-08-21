@@ -120,7 +120,7 @@ where
         .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
-        .and(warp::path::param::<u32>())
+        .and(warp::path::param::<String>())
         .and(warp::query::<QueryParams<R>>())
         .and_then(routes::retrieve_query);
 
@@ -128,7 +128,7 @@ where
         .and(path)
         .and(query_repository)
         .and(query_result_repository)
-        .and(warp::path::param::<u32>())
+        .and(warp::path::param::<String>())
         .and_then(routes::delete_query);
 
     create
