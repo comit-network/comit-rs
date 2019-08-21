@@ -21,6 +21,7 @@ pub enum Error {
     NetworkNotFound,
     LedgerNotConnected,
     QueryMismatch,
+    QueryIdTooLong,
 }
 
 #[derive(Debug)]
@@ -63,6 +64,10 @@ impl From<Error> for HttpApiProblem {
             }
             QueryMismatch => HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
                 .set_detail("The query exists but is not equivalent to the request."),
+            QueryIdTooLong => {
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
+                    .set_detail("The query ID supplied exceeds the 40 character limit.")
+            }
         }
     }
 }
