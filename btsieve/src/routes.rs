@@ -20,6 +20,7 @@ pub enum Error {
     QueryNotFound,
     NetworkNotFound,
     LedgerNotConnected,
+    QueryMismatch,
 }
 
 #[derive(Debug)]
@@ -60,6 +61,8 @@ impl From<Error> for HttpApiProblem {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::SERVICE_UNAVAILABLE)
                     .set_detail("The requested ledger is not connected.")
             }
+            QueryMismatch => HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
+                .set_detail("The query exists but is not equivalent to the request."),
         }
     }
 }
@@ -165,6 +168,38 @@ pub fn delete_query<
         warp::reply(),
         warp::http::StatusCode::NO_CONTENT,
     ))
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
+    _client: Arc<C>,
+    _network: String,
+    query_repository: Arc<QR>,
+    id: String,
+    query: Q,
+) -> Result<impl Reply, Rejection> {
+    match query_repository.get(id.clone()) {
+        Some(ref saved_query) if saved_query == &query => Ok(warp::reply::with_status(
+            warp::reply(),
+            warp::http::StatusCode::OK,
+        )),
+        Some(_) => Err(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: Error::QueryMismatch.into(),
+        })),
+        None => {
+            let result = query_repository.save(query);
+
+            match result {
+                Ok(_) => Ok(warp::reply::with_status(
+                    warp::reply(),
+                    warp::http::StatusCode::CREATED,
+                )),
+                Err(_) => Err(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: Error::QuerySave.into(),
+                })),
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Default)]

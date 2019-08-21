@@ -40,7 +40,7 @@ pub struct QueryParams<R> {
 
 pub fn create_endpoints<
     R,
-    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
+    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
@@ -125,15 +125,23 @@ where
         .and_then(routes::retrieve_query);
 
     let delete = warp::delete2()
-        .and(path)
-        .and(query_repository)
+        .and(path.clone())
+        .and(query_repository.clone())
         .and(query_result_repository)
         .and(warp::path::param::<String>())
         .and_then(routes::delete_query);
 
+    let get_or_create = warp::put2()
+        .and(path)
+        .and(query_repository)
+        .and(warp::path::param::<String>())
+        .and(warp::body::json())
+        .and_then(routes::get_or_create_query);
+
     create
         .or(retrieve)
         .or(delete)
+        .or(get_or_create)
         .recover(routes::customize_error)
         .boxed()
 }
