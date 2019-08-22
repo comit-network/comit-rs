@@ -15,9 +15,9 @@ use futures::{
     task::Task,
     Async, Poll,
 };
-use libp2p::core::{
-    protocols_handler::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol},
-    upgrade::Negotiated,
+use libp2p::{
+    core::upgrade::Negotiated,
+    swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol},
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -251,7 +251,7 @@ mod tests {
     };
     use bam::{frame::Header, Status};
     use futures::{Future, Sink, Stream};
-    use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
+    use libp2p::swarm::ProtocolsHandlerEvent;
     use spectral::prelude::*;
     use tokio::codec::LinesCodec;
 

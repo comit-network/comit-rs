@@ -3,20 +3,20 @@ use std::{collections::HashMap, marker::PhantomData, sync::RwLock};
 
 #[derive(Debug, Default)]
 pub struct InMemoryQueryResultRepository<Q> {
-    storage: RwLock<HashMap<u32, QueryResult>>,
+    storage: RwLock<HashMap<String, QueryResult>>,
     phantom: PhantomData<Q>,
 }
 
 impl<Q: Send + Sync + Clone + 'static> QueryResultRepository<Q>
     for InMemoryQueryResultRepository<Q>
 {
-    fn get(&self, id: u32) -> Option<QueryResult> {
+    fn get(&self, id: String) -> Option<QueryResult> {
         let storage = self.storage.read().unwrap();
 
         storage.get(&id).cloned()
     }
 
-    fn add_result(&self, id: u32, tx_id: String) {
+    fn add_result(&self, id: String, tx_id: String) {
         let mut storage = self.storage.write().unwrap();
 
         let mut query_result = storage.remove(&id).unwrap_or_default();
@@ -26,7 +26,7 @@ impl<Q: Send + Sync + Clone + 'static> QueryResultRepository<Q>
         storage.insert(id, query_result);
     }
 
-    fn delete(&self, id: u32) {
+    fn delete(&self, id: String) {
         let mut storage = self.storage.write().unwrap();
 
         storage.remove(&id);
@@ -42,11 +42,11 @@ mod tests {
     fn given_no_entry_can_add_result() {
         let repository = InMemoryQueryResultRepository::<()>::default();
 
-        assert_that(&repository.get(1)).is_none();
+        assert_that(&repository.get(String::from("1"))).is_none();
 
-        repository.add_result(1, String::from("foobar"));
+        repository.add_result(String::from("1"), String::from("foobar"));
 
-        assert_that(&repository.get(1))
+        assert_that(&repository.get(String::from("1")))
             .is_some()
             .map(|r| &r.0)
             .contains(String::from("foobar"));
@@ -56,10 +56,10 @@ mod tests {
     fn given_existing_entry_adds_result() {
         let repository = InMemoryQueryResultRepository::<()>::default();
 
-        repository.add_result(1, String::from("foobar"));
-        repository.add_result(1, String::from("baz"));
+        repository.add_result(String::from("1"), String::from("foobar"));
+        repository.add_result(String::from("1"), String::from("baz"));
 
-        let result = repository.get(1);
+        let result = repository.get(String::from("1"));
 
         let mut query_results = assert_that(&result).is_some().map(|r| &r.0);
 

@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    route_factory::{QueryParams, ToHttpPayload},
+    route_factory::{QueryParams, ToHttpPayload, MAX_QUERY_ID_LENGTH},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -20,6 +20,8 @@ pub enum Error {
     QueryNotFound,
     NetworkNotFound,
     LedgerNotConnected,
+    QueryMismatch,
+    QueryIdTooLong,
 }
 
 #[derive(Debug)]
@@ -60,6 +62,15 @@ impl From<Error> for HttpApiProblem {
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::SERVICE_UNAVAILABLE)
                     .set_detail("The requested ledger is not connected.")
             }
+            QueryMismatch => HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
+                .set_detail("The query exists but is not equivalent to the request."),
+            QueryIdTooLong => HttpApiProblem::with_title_and_type_from_status(
+                StatusCode::BAD_REQUEST,
+            )
+            .set_detail(format!(
+                "The query ID supplied exceeds the {} character limit.",
+                MAX_QUERY_ID_LENGTH
+            )),
         }
     }
 }
@@ -111,7 +122,7 @@ pub fn retrieve_query<
     _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    id: u32,
+    id: String,
     query_params: QueryParams<R>,
 ) -> Result<impl Reply, Rejection>
 where
@@ -119,11 +130,11 @@ where
     QueryResult: ToHttpPayload<R, Client = C>,
 {
     query_repository
-        .get(id)
+        .get(id.clone())
         .ok_or(Error::QueryNotFound)
         .and_then(|query| {
             query_result_repository
-                .get(id)
+                .get(id.clone())
                 .unwrap_or_default()
                 .to_http_payload(&query_params.return_as, &client)
                 .map(|matches| RetrieveQueryResponse { query, matches })
@@ -156,15 +167,47 @@ pub fn delete_query<
     _network: String,
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    id: u32,
+    id: String,
 ) -> Result<impl Reply, Rejection> {
-    query_repository.delete(id);
+    query_repository.delete(id.clone());
     query_result_repository.delete(id);
 
     Ok(warp::reply::with_status(
         warp::reply(),
         warp::http::StatusCode::NO_CONTENT,
     ))
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
+    _client: Arc<C>,
+    _network: String,
+    query_repository: Arc<QR>,
+    id: String,
+    query: Q,
+) -> Result<impl Reply, Rejection> {
+    match query_repository.get(id.clone()) {
+        Some(ref saved_query) if saved_query == &query => Ok(warp::reply::with_status(
+            warp::reply(),
+            warp::http::StatusCode::OK,
+        )),
+        Some(_) => Err(warp::reject::custom(HttpApiProblemStdError {
+            http_api_problem: Error::QueryMismatch.into(),
+        })),
+        None => {
+            let result = query_repository.save(query);
+
+            match result {
+                Ok(_) => Ok(warp::reply::with_status(
+                    warp::reply(),
+                    warp::http::StatusCode::NO_CONTENT,
+                )),
+                Err(_) => Err(warp::reject::custom(HttpApiProblemStdError {
+                    http_api_problem: Error::QuerySave.into(),
+                })),
+            }
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone, Default)]

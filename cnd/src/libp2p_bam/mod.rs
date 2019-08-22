@@ -11,7 +11,7 @@ pub use self::{
     protocol::{BamProtocol, BamStream},
 };
 use crate::libp2p_bam::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
-use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 
 pub type BamHandlerEvent =
     ProtocolsHandlerEvent<BamProtocol, ProtocolOutboundOpenInfo, ProtocolOutEvent>;

@@ -19,10 +19,10 @@ use futures::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
 struct Topic(H256);
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
 pub struct EventQuery {
     event_matchers: Vec<EventMatcher>,
 }
@@ -53,7 +53,7 @@ pub struct EventQuery {
 /// .. ] //Other data omitted
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
 struct EventMatcher {
     address: Option<Address>,
     data: Option<Bytes>,

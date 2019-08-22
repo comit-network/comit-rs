@@ -24,15 +24,15 @@ use ethereum_support::{Block, Transaction, H256};
 use std::{cmp::Ordering, sync::Arc};
 
 #[derive(PartialEq, PartialOrd)]
-pub struct QueryId(pub u32);
+pub struct QueryId(pub String);
 
 #[derive(PartialEq)]
 pub struct QueryMatch(pub QueryId, pub String);
 
 type ArcQueryRepository<Q> = Arc<dyn QueryRepository<Q>>;
 
-impl From<u32> for QueryId {
-    fn from(item: u32) -> Self {
+impl From<String> for QueryId {
+    fn from(item: String) -> Self {
         Self(item)
     }
 }

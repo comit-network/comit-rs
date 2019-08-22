@@ -15,11 +15,9 @@ use bam::{
 };
 use futures::future::Future;
 use libp2p::{
-    core::{
-        muxing::{StreamMuxer, SubstreamRef},
-        swarm::NetworkBehaviourEventProcess,
-    },
+    core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
+    swarm::NetworkBehaviourEventProcess,
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
 use std::{

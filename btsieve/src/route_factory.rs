@@ -10,6 +10,9 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+// value chosen to accommodate eventual use of 32 byte hashes for id generation
+pub const MAX_QUERY_ID_LENGTH: usize = 100;
+
 #[derive(Debug)]
 pub enum Error {
     BitcoinRpc(bitcoincore_rpc::Error),
@@ -40,7 +43,7 @@ pub struct QueryParams<R> {
 
 pub fn create_endpoints<
     R,
-    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + 'static,
+    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
@@ -108,6 +111,17 @@ where
     let query_repository = warp::any().map(move || Arc::clone(&query_repository));
     let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
 
+    // validate query id length function
+    let validate_query_id_length = warp::path::param::<String>().and_then(|id: String| {
+        if id.len() > MAX_QUERY_ID_LENGTH {
+            Err(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::QueryIdTooLong.into(),
+            }))
+        } else {
+            Ok(id)
+        }
+    });
+
     let create = warp::post2()
         .and(path.clone())
         .and(query_repository.clone())
@@ -120,20 +134,28 @@ where
         .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
-        .and(warp::path::param::<u32>())
+        .and(validate_query_id_length)
         .and(warp::query::<QueryParams<R>>())
         .and_then(routes::retrieve_query);
 
     let delete = warp::delete2()
+        .and(path.clone())
+        .and(query_repository.clone())
+        .and(query_result_repository)
+        .and(warp::path::param::<String>())
+        .and_then(routes::delete_query);
+
+    let get_or_create = warp::put2()
         .and(path)
         .and(query_repository)
-        .and(query_result_repository)
-        .and(warp::path::param::<u32>())
-        .and_then(routes::delete_query);
+        .and(validate_query_id_length)
+        .and(warp::body::json())
+        .and_then(routes::get_or_create_query);
 
     create
         .or(retrieve)
         .or(delete)
+        .or(get_or_create)
         .recover(routes::customize_error)
         .boxed()
 }

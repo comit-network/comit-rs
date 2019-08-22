@@ -15,8 +15,8 @@ use futures::{
     Async, Future,
 };
 use libp2p::{
-    core::swarm::{ConnectedPoint, NetworkBehaviour, NetworkBehaviourAction, PollParameters},
-    Multiaddr, PeerId,
+    core::{ConnectedPoint, Multiaddr, PeerId},
+    swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters},
 };
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},

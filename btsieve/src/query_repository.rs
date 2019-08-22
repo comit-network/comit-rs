@@ -6,8 +6,8 @@ pub enum Error<T> {
 }
 
 pub trait QueryRepository<T>: Send + Sync + 'static {
-    fn all(&self) -> Box<dyn Iterator<Item = (u32, T)>>;
-    fn get(&self, id: u32) -> Option<T>;
-    fn save(&self, entity: T) -> Result<u32, Error<T>>;
-    fn delete(&self, id: u32);
+    fn all(&self) -> Box<dyn Iterator<Item = (String, T)>>;
+    fn get(&self, id: String) -> Option<T>;
+    fn save(&self, entity: T) -> Result<String, Error<T>>;
+    fn delete(&self, id: String);
 }
