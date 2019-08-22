@@ -10,7 +10,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
-pub const MAX_QUERY_ID_LENGTH: usize = 40;
+// value chosen to accommodate eventual use of 32 byte hashes for id generation
+pub const MAX_QUERY_ID_LENGTH: usize = 100;
 
 #[derive(Debug)]
 pub enum Error {
