@@ -126,7 +126,7 @@ setTimeout(async function() {
                     expect(res).to.have.status(409);
                 });
 
-                it('btsieve should respond with 201 CREATED when "getting-or-creating" a new query', async function() {
+                it('btsieve should respond with 204 NO_CONTENT when "getting-or-creating" a new query', async function() {
                     const newQueryId =
                         "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
                     const newLocation =
@@ -139,7 +139,7 @@ setTimeout(async function() {
                         .put(newLocation)
                         .send(newQuery);
 
-                    expect(res).to.have.status(201);
+                    expect(res).to.have.status(204);
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {

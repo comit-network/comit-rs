@@ -200,7 +200,7 @@ pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Se
             match result {
                 Ok(_) => Ok(warp::reply::with_status(
                     warp::reply(),
-                    warp::http::StatusCode::CREATED,
+                    warp::http::StatusCode::NO_CONTENT,
                 )),
                 Err(_) => Err(warp::reject::custom(HttpApiProblemStdError {
                     http_api_problem: Error::QuerySave.into(),
