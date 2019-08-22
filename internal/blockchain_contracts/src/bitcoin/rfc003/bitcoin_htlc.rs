@@ -23,50 +23,62 @@ pub struct BitcoinHtlc {
     expiry: u32,
 }
 
-struct Satisfier {
-    redeem_secret_key: Option<SecretKey>,
-    refund_secret_key: Option<SecretKey>,
+struct RedeemStatisfier {
+    secret_key: SecretKey,
     signature: secp256k1::Signature,
-    secret: Option<[u8; 32]>,
+    secret: [u8; 32],
 }
 
-impl miniscript::Satisfier<bitcoin::PublicKey> for Satisfier {
+struct RefundSatisfier {
+    secret_key: SecretKey,
+    signature: secp256k1::Signature,
+}
+
+impl miniscript::Satisfier<bitcoin::PublicKey> for RedeemStatisfier {
     fn lookup_pkh(
         &self,
-        target_pubkey_hash: &<bitcoin::PublicKey as miniscript::MiniscriptKey>::Hash,
+        _: &<bitcoin::PublicKey as miniscript::MiniscriptKey>::Hash,
     ) -> Option<(
         bitcoin::PublicKey,
         (secp256k1::Signature, bitcoin::SigHashType),
     )> {
-        if let Some(redeem_secret_key) = self.redeem_secret_key {
-            let redeem_public_key = PublicKey::from_secret_key(&*crate::SECP, &redeem_secret_key);
+        let public_key = PublicKey::from_secret_key(&*crate::SECP, &self.secret_key);
 
-            return Some((
-                bitcoin::PublicKey {
-                    compressed: true,
-                    key: redeem_public_key,
-                },
-                (self.signature, bitcoin::SigHashType::All),
-            ));
-        }
-
-        if let Some(refund_secret_key) = self.refund_secret_key {
-            let refund_public_key = PublicKey::from_secret_key(&*crate::SECP, &refund_secret_key);
-
-            return Some((
-                bitcoin::PublicKey {
-                    compressed: true,
-                    key: refund_public_key,
-                },
-                (self.signature, bitcoin::SigHashType::All),
-            ));
-        }
-
-        None
+        return Some((
+            bitcoin::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            (self.signature, bitcoin::SigHashType::All),
+        ));
     }
 
     fn lookup_sha256(&self, _: miniscript::bitcoin_hashes::sha256::Hash) -> Option<[u8; 32]> {
-        self.secret
+        Some(self.secret)
+    }
+}
+
+impl miniscript::Satisfier<bitcoin::PublicKey> for RefundSatisfier {
+    fn lookup_pkh(
+        &self,
+        _: &<bitcoin::PublicKey as miniscript::MiniscriptKey>::Hash,
+    ) -> Option<(
+        bitcoin::PublicKey,
+        (secp256k1::Signature, bitcoin::SigHashType),
+    )> {
+        let public_key = PublicKey::from_secret_key(&*crate::SECP, &self.secret_key);
+
+        return Some((
+            bitcoin::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            (self.signature, bitcoin::SigHashType::All),
+        ));
+    }
+
+    fn lookup_sha256(&self, _: miniscript::bitcoin_hashes::sha256::Hash) -> Option<[u8; 32]> {
+        None
     }
 }
 
@@ -141,10 +153,9 @@ impl BitcoinHtlc {
             (signature, spending_transaction)
         };
 
-        let satisfier = Satisfier {
-            redeem_secret_key: Some(redeem_secret_key),
-            refund_secret_key: None,
-            secret: Some(secret),
+        let satisfier = RedeemStatisfier {
+            secret_key: redeem_secret_key,
+            secret,
             signature,
         };
 
@@ -199,10 +210,8 @@ impl BitcoinHtlc {
             (signature, spending_transaction)
         };
 
-        let satisfier = Satisfier {
-            redeem_secret_key: None,
-            refund_secret_key: Some(refund_secret_key),
-            secret: None,
+        let satisfier = RefundSatisfier {
+            secret_key: refund_secret_key,
             signature,
         };
 
