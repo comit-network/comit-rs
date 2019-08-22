@@ -225,20 +225,58 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for RefundSatisfier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_hashes::{hash160, Hash};
+    use bitcoin_hashes::{hash160, sha256d, Hash};
+    use secp256k1::rand::thread_rng;
 
-    #[test]
-    fn constructor_does_not_panic() {
-        BitcoinHtlc::new(
-            141241,
-            hash160::Hash::from_slice(&[0u8; 20]).unwrap(),
-            hash160::Hash::from_slice(&[0u8; 20]).unwrap(),
-            [0u8; 32],
-        );
+    fn zero_identity() -> hash160::Hash {
+        hash160::Hash::from_slice(&[0u8; 20]).unwrap()
     }
 
     #[test]
-    fn add_quickcheck_test() {
-        unimplemented!()
+    fn constructor_does_not_panic() {
+        BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn unlock_for_redeem_doesnt_panic(input_value: u64, fee_per_wu: u64) {
+        let htlc = BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+        let out_point = OutPoint {
+            txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
+            vout: 0,
+        };
+        let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
+        let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
+
+        htlc.unlock(
+            out_point,
+            input_value,
+            address,
+            fee_per_wu,
+            UnlockStrategy::Redeem {
+                key: public_key,
+                secret: [0u8; 32],
+            },
+        )
+        .unwrap();
+    }
+
+    #[quickcheck_macros::quickcheck]
+    fn unlock_for_refund_doesnt_panic(input_value: u64, fee_per_wu: u64) {
+        let htlc = BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+        let out_point = OutPoint {
+            txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
+            vout: 0,
+        };
+        let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
+        let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
+
+        htlc.unlock(
+            out_point,
+            input_value,
+            address,
+            fee_per_wu,
+            UnlockStrategy::Refund { key: public_key },
+        )
+        .unwrap();
     }
 }
