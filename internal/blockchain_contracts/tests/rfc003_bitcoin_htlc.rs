@@ -15,7 +15,10 @@ use bitcoin::{
 };
 use bitcoin_quantity::BitcoinQuantity;
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::{pubkey_hash::PubkeyHash, rfc003::bitcoin_htlc::BitcoinHtlc};
+use blockchain_contracts::bitcoin::{
+    pubkey_hash::PubkeyHash,
+    rfc003::bitcoin_htlc::{BitcoinHtlc, UnlockStrategy},
+};
 use secp256k1::{PublicKey, SecretKey};
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
@@ -112,7 +115,6 @@ fn redeem_htlc_with_secret() {
         amount: input_amount,
         htlc,
         redeem_secret_key,
-        refund_secret_key,
         ..
     } = fund_htlc(&client, SECRET_HASH);
 
@@ -121,14 +123,15 @@ fn redeem_htlc_with_secret() {
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let redeem_tx = htlc
-        .unlock_with_secret(
+        .unlock(
             location,
             input_amount.satoshi(),
             alice_addr.clone(),
             (input_amount - fee).satoshi(),
-            redeem_secret_key,
-            refund_secret_key,
-            *SECRET,
+            UnlockStrategy::Redeem {
+                key: redeem_secret_key,
+                secret: *SECRET,
+            },
         )
         .unwrap();
     let redeem_tx_hex = serialize_hex(&redeem_tx);
@@ -158,7 +161,6 @@ fn refund_htlc() {
         location,
         amount: input_amount,
         htlc,
-        redeem_secret_key,
         refund_secret_key,
         refund_timestamp,
         ..
@@ -168,13 +170,14 @@ fn refund_htlc() {
     let fee = BitcoinQuantity::from_satoshi(1000);
 
     let refund_tx = htlc
-        .unlock_after_timeout(
+        .unlock(
             location,
             input_amount.satoshi(),
             alice_addr.clone(),
             (input_amount - fee).satoshi(),
-            redeem_secret_key,
-            refund_secret_key,
+            UnlockStrategy::Refund {
+                key: refund_secret_key,
+            },
         )
         .unwrap();
     let refund_tx_hex = serialize_hex(&refund_tx);
