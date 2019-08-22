@@ -10,6 +10,8 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+pub const MAX_QUERY_ID_LENGTH: usize = 40;
+
 #[derive(Debug)]
 pub enum Error {
     BitcoinRpc(bitcoincore_rpc::Error),
@@ -110,7 +112,7 @@ where
 
     // validate query id length function
     let validate_query_id_length = warp::path::param::<String>().and_then(|id: String| {
-        if id.len() > 40 {
+        if id.len() > MAX_QUERY_ID_LENGTH {
             Err(warp::reject::custom(HttpApiProblemStdError {
                 http_api_problem: RouteError::QueryIdTooLong.into(),
             }))

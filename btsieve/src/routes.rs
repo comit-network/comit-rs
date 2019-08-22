@@ -1,7 +1,7 @@
 use crate::{
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
-    route_factory::{QueryParams, ToHttpPayload},
+    route_factory::{QueryParams, ToHttpPayload, MAX_QUERY_ID_LENGTH},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -64,10 +64,13 @@ impl From<Error> for HttpApiProblem {
             }
             QueryMismatch => HttpApiProblem::with_title_and_type_from_status(StatusCode::CONFLICT)
                 .set_detail("The query exists but is not equivalent to the request."),
-            QueryIdTooLong => {
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-                    .set_detail("The query ID supplied exceeds the 40 character limit.")
-            }
+            QueryIdTooLong => HttpApiProblem::with_title_and_type_from_status(
+                StatusCode::BAD_REQUEST,
+            )
+            .set_detail(format!(
+                "The query ID supplied exceeds the {} character limit.",
+                MAX_QUERY_ID_LENGTH
+            )),
         }
     }
 }
