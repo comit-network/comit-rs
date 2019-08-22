@@ -9,7 +9,11 @@ use crate::{
 };
 use core::time::Duration;
 use futures::{stream::Stream, Async};
-use reqwest::{header::LOCATION, r#async::Client, StatusCode, Url};
+use reqwest::{
+    header::{HeaderMap, HeaderValue, LOCATION},
+    r#async::Client,
+    StatusCode, Url,
+};
 use serde::Deserialize;
 use tokio::prelude::future::Future;
 
@@ -95,6 +99,7 @@ impl BtsieveHttpClient {
             .client
             .post(create_endpoint)
             .json(&query)
+            .headers(construct_headers())
             .send()
             .map_err(move |e| {
                 Error::FailedRequest(format!("Failed to create {:?} because {:?}", query, e))
@@ -155,6 +160,7 @@ impl BtsieveHttpClient {
         let transactions = self
             .client
             .get(url.clone())
+            .headers(construct_headers())
             .send()
             .and_then(|mut response| {
                 response.json::<QueryResponse<payloads::TransactionId<L::TxId>>>()
@@ -186,6 +192,7 @@ impl BtsieveHttpClient {
         let transactions = self
             .client
             .get(url.clone())
+            .headers(construct_headers())
             .send()
             .and_then(|mut response| {
                 response.json::<QueryResponse<payloads::Transaction<L::Transaction>>>()
@@ -214,6 +221,7 @@ impl BtsieveHttpClient {
         Box::new(
             self.client
                 .delete(query.as_ref().clone())
+                .headers(construct_headers())
                 .send()
                 .map(|_| ())
                 .map_err(|e| {
@@ -221,6 +229,15 @@ impl BtsieveHttpClient {
                 }),
         )
     }
+}
+
+fn construct_headers() -> HeaderMap {
+    let mut headers = HeaderMap::new();
+    headers.insert(
+        "Expected-Version",
+        HeaderValue::from_static(env!("CARGO_PKG_VERSION")),
+    );
+    headers
 }
 
 mod ethereum {
@@ -285,6 +302,7 @@ mod ethereum {
 
                 let results = poll_client
                     .get(url.clone())
+                    .headers(construct_headers())
                     .send()
                     .and_then(|mut response| {
                         response.json::<QueryResponse<
