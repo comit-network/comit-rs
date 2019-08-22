@@ -70,6 +70,7 @@ pub fn check_log_queries(
 
             block.transactions.iter().map(move |transaction| {
                 let query = query.clone();
+                let query_id = query_id.clone();
                 let transaction_id = transaction.hash;
                 client
                     .eth()

@@ -14,7 +14,7 @@ use futures::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TransactionQuery {
     from_address: Option<Address>,
     to_address: Option<Address>,
