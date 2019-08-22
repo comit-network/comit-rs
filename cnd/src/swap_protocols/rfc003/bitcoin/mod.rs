@@ -18,8 +18,8 @@ impl From<HtlcParams<Bitcoin, BitcoinQuantity>> for BitcoinHtlc {
     fn from(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self {
         BitcoinHtlc::new(
             htlc_params.expiry.into(),
-            htlc_params.refund_identity.into(),
             htlc_params.redeem_identity.into(),
+            htlc_params.refund_identity.into(),
             htlc_params.secret_hash.into_raw(),
         )
     }

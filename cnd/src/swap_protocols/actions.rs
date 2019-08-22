@@ -11,7 +11,10 @@ pub trait Actions {
 }
 
 pub mod bitcoin {
-    use bitcoin_support::{Address, BitcoinQuantity, Network, Transaction};
+    use crate::swap_protocols::rfc003::Secret;
+    use bitcoin_support::{Address, BitcoinQuantity, Network, OutPoint};
+    use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+    use secp256k1_keypair::SecretKey;
     use serde::Serialize;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -21,21 +24,14 @@ pub mod bitcoin {
         pub network: Network,
     }
 
-    #[derive(Debug, Clone, PartialEq)]
-    pub struct SpendOutput {
-        // Remember: One man's input is another man's output!
-        pub output: (),
+    #[derive(Debug)]
+    pub struct SpendHtlc {
         pub network: Network,
-    }
-
-    impl SpendOutput {
-        pub fn spend_to(self, to_address: Address) -> Transaction {
-            //            PrimedTransaction {
-            //                inputs: vec![self.output],
-            //                output_address: to_address,
-            //            }
-            unimplemented!()
-        }
+        pub outpoint: OutPoint,
+        pub amount: BitcoinQuantity,
+        pub key: SecretKey,
+        pub secret: Option<Secret>,
+        pub htlc: BitcoinHtlc,
     }
 }
 

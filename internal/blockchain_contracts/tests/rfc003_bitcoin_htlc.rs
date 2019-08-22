@@ -120,14 +120,12 @@ fn redeem_htlc_with_secret() {
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
-    let fee = BitcoinQuantity::from_satoshi(1000);
-
     let redeem_tx = htlc
         .unlock(
             location,
             input_amount.satoshi(),
             alice_addr.clone(),
-            (input_amount - fee).satoshi(),
+            20,
             UnlockStrategy::Redeem {
                 key: redeem_secret_key,
                 secret: *SECRET,
@@ -167,14 +165,13 @@ fn refund_htlc() {
     } = fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
-    let fee = BitcoinQuantity::from_satoshi(1000);
 
     let refund_tx = htlc
         .unlock(
             location,
             input_amount.satoshi(),
             alice_addr.clone(),
-            (input_amount - fee).satoshi(),
+            10,
             UnlockStrategy::Refund {
                 key: refund_secret_key,
             },

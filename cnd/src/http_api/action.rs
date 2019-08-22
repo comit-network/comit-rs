@@ -5,6 +5,7 @@ use crate::{
         SwapId, Timestamp,
     },
 };
+use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::UnlockStrategy;
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
@@ -122,7 +123,7 @@ impl ListRequiredFields for bitcoin::SendToAddress {
     }
 }
 
-impl IntoResponsePayload for bitcoin::SpendOutput {
+impl IntoResponsePayload for bitcoin::SpendHtlc {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
@@ -139,30 +140,57 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 })?;
 
                 let network = self.network;
-                let transaction = unimplemented!();
-                //                    self.spend_to(address)
-                //                        .sign_with_rate(fee_per_wu)
-                //                        .map_err(|e| {
-                //                            log::error!("Could not sign Bitcoin transaction:
-                // {:?}", e);                            match e {
-                //
-                // bitcoin_witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
-                //                                    "Fee is too high.",
-                //                                )
-                //                                .set_status(StatusCode::BAD_REQUEST)
-                //                                .set_detail(
-                //                                    "The Fee per byte/WU provided makes the
-                // total fee higher than the spendable input value.",
-                //                                ),
-                //                                bitcoin_witness::Error::OverflowingFee =>
-                // HttpApiProblem::new(                                    "Fee
-                // is too high.",                                )
-                //                                    .set_status(StatusCode::BAD_REQUEST)
-                //                                    .set_detail(
-                //                                        "The Fee per byte/WU provided makes
-                // the total fee higher than the system supports.",
-                // )                            }
-                //                        })?;
+
+                let strategy = if let Some(secret) = self.secret {
+                    UnlockStrategy::Redeem {
+                        key: self.key,
+                        secret: secret.into_raw_secret(),
+                    }
+                } else {
+                    UnlockStrategy::Refund { key: self.key }
+                };
+
+                let transaction = self
+                    .htlc
+                    .unlock(
+                        self.outpoint,
+                        self.amount.satoshi(),
+                        address,
+                        fee_per_wu,
+                        strategy,
+                    )
+                    .map_err(|e| {
+                        log::error!("Could not sign Bitcoin transaction: {:?}", e);
+                        HttpApiProblem::new("Unable to sign bitcoin transaction.")
+                            .set_status(StatusCode::INTERNAL_SERVER_ERROR)
+                        //                        match e {
+                        //
+                        // bitcoin_witness::Error::FeeHigherThanInputValue => {
+                        //
+                        // HttpApiProblem::new("Fee is too high.")
+                        //
+                        // .set_status(StatusCode::BAD_REQUEST)
+                        //                                    .set_detail(
+                        //                                        "The Fee per
+                        // byte/WU provided makes the
+                        //                 total fee higher than the spendable
+                        // input value.",
+                        // )
+                        // }
+                        // bitcoin_witness::Error::OverflowingFee =>
+                        // HttpApiProblem::new(
+                        //                                "Fee
+                        //                 is too high.",
+                        //                            )
+                        //
+                        // .set_status(StatusCode::BAD_REQUEST)
+                        //                            .set_detail(
+                        //                                "The Fee per byte/WU
+                        // provided makes
+                        // the total fee higher than the system supports.",
+                        //                            ),
+                        //                        }
+                    })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
                     &transaction,
@@ -189,7 +217,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
     }
 }
 
-impl ListRequiredFields for bitcoin::SpendOutput {
+impl ListRequiredFields for bitcoin::SpendHtlc {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![
             siren::Field {

@@ -24,6 +24,18 @@ pub enum UnlockStrategy {
     Refund { key: SecretKey },
 }
 
+impl UnlockStrategy {
+    fn expected_witness_stack_weight(&self) -> u64 {
+        match self {
+            UnlockStrategy::Redeem { .. } => REDEEM_TX_WITNESS_WEIGHT,
+            UnlockStrategy::Refund { .. } => REFUND_TX_WITNESS_WEIGHT,
+        }
+    }
+}
+
+const REDEEM_TX_WITNESS_WEIGHT: u64 = 245;
+const REFUND_TX_WITNESS_WEIGHT: u64 = 210;
+
 impl BitcoinHtlc {
     pub fn new(
         expiry: u32,
@@ -56,7 +68,7 @@ impl BitcoinHtlc {
         htlc_location: OutPoint,
         input_value: u64,
         spend_to: bitcoin::Address,
-        output_value: u64,
+        fee_per_wu: u64,
         strategy: UnlockStrategy,
     ) -> Result<Transaction, miniscript::Error> {
         use UnlockStrategy::*;
@@ -77,10 +89,19 @@ impl BitcoinHtlc {
             lock_time,
             input: vec![htlc_tx_in.clone()],
             output: vec![TxOut {
-                value: output_value,
+                value: 0, // overwritten once we estimated the weight
                 script_pubkey: spend_to.script_pubkey(),
             }],
         };
+
+        let base_tx_weight = spending_transaction.get_weight();
+        let output_value = {
+            let expected_weight = base_tx_weight + strategy.expected_witness_stack_weight();
+            let fee = expected_weight * fee_per_wu;
+
+            input_value - fee
+        };
+        spending_transaction.output[0].value = output_value;
 
         let sighash_components = SighashComponents::new(&spending_transaction);
         let hash_to_sign = sighash_components.sighash_all(
@@ -117,7 +138,29 @@ impl BitcoinHtlc {
         // Overwrite our input with the one containing the satisfied witness stack
         spending_transaction.input = vec![htlc_tx_in];
 
+        let final_tx_weight = spending_transaction.get_weight();
+        let final_tx_witness_stack_weight = final_tx_weight - base_tx_weight;
+        let diff = diff(
+            final_tx_witness_stack_weight,
+            strategy.expected_witness_stack_weight(),
+        );
+
+        debug_assert!(
+            diff < 10,
+            "actual witness stack weight is {} and not {}, please update the const",
+            final_tx_witness_stack_weight,
+            strategy.expected_witness_stack_weight()
+        );
+
         Ok(spending_transaction)
+    }
+}
+
+fn diff(actual: u64, expected: u64) -> u64 {
+    if actual > expected {
+        actual - expected
+    } else {
+        expected - actual
     }
 }
 
@@ -192,5 +235,10 @@ mod tests {
             hash160::Hash::from_slice(&[0u8; 20]).unwrap(),
             [0u8; 32],
         );
+    }
+
+    #[test]
+    fn add_quickcheck_test() {
+        unimplemented!()
     }
 }
