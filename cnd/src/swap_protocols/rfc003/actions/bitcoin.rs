@@ -9,7 +9,6 @@ use crate::swap_protocols::{
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction};
-use bitcoin_witness::PrimedInput;
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
@@ -38,13 +37,7 @@ impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         let htlc = BitcoinHtlc::from(htlc_params.clone());
 
         SpendOutput {
-            output: PrimedInput::new(
-                htlc_location,
-                BitcoinQuantity::from_satoshi(
-                    fund_transaction.output[htlc_location.vout as usize].value,
-                ),
-                htlc.unlock_after_timeout(secret_source.secp256k1_refund().secret_key()),
-            ),
+            output: unimplemented!(),
             network: htlc_params.ledger.network,
         }
     }
@@ -62,14 +55,7 @@ impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         let htlc = BitcoinHtlc::from(htlc_params.clone());
 
         SpendOutput {
-            output: PrimedInput::new(
-                htlc_location,
-                htlc_params.asset,
-                htlc.unlock_with_secret(
-                    secret_source.secp256k1_redeem().secret_key(),
-                    secret.into_raw_secret(),
-                ),
-            ),
+            output: unimplemented!(),
             network: htlc_params.ledger.network,
         }
     }

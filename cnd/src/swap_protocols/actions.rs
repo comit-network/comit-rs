@@ -11,8 +11,7 @@ pub trait Actions {
 }
 
 pub mod bitcoin {
-    use bitcoin_support::{Address, BitcoinQuantity, Network};
-    use bitcoin_witness::{PrimedInput, PrimedTransaction};
+    use bitcoin_support::{Address, BitcoinQuantity, Network, Transaction};
     use serde::Serialize;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
@@ -25,16 +24,17 @@ pub mod bitcoin {
     #[derive(Debug, Clone, PartialEq)]
     pub struct SpendOutput {
         // Remember: One man's input is another man's output!
-        pub output: PrimedInput,
+        pub output: (),
         pub network: Network,
     }
 
     impl SpendOutput {
-        pub fn spend_to(self, to_address: Address) -> PrimedTransaction {
-            PrimedTransaction {
-                inputs: vec![self.output],
-                output_address: to_address,
-            }
+        pub fn spend_to(self, to_address: Address) -> Transaction {
+            //            PrimedTransaction {
+            //                inputs: vec![self.output],
+            //                output_address: to_address,
+            //            }
+            unimplemented!()
         }
     }
 }

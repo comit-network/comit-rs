@@ -139,28 +139,30 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 })?;
 
                 let network = self.network;
-                let transaction =
-                    self.spend_to(address)
-                        .sign_with_rate(fee_per_wu)
-                        .map_err(|e| {
-                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                            match e {
-                                bitcoin_witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
-                                    "Fee is too high.",
-                                )
-                                .set_status(StatusCode::BAD_REQUEST)
-                                .set_detail(
-                                    "The Fee per byte/WU provided makes the total fee higher than the spendable input value.",
-                                ),
-                                bitcoin_witness::Error::OverflowingFee => HttpApiProblem::new(
-                                    "Fee is too high.",
-                                )
-                                    .set_status(StatusCode::BAD_REQUEST)
-                                    .set_detail(
-                                        "The Fee per byte/WU provided makes the total fee higher than the system supports.",
-                                    )
-                            }
-                        })?;
+                let transaction = unimplemented!();
+                //                    self.spend_to(address)
+                //                        .sign_with_rate(fee_per_wu)
+                //                        .map_err(|e| {
+                //                            log::error!("Could not sign Bitcoin transaction:
+                // {:?}", e);                            match e {
+                //
+                // bitcoin_witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
+                //                                    "Fee is too high.",
+                //                                )
+                //                                .set_status(StatusCode::BAD_REQUEST)
+                //                                .set_detail(
+                //                                    "The Fee per byte/WU provided makes the
+                // total fee higher than the spendable input value.",
+                //                                ),
+                //                                bitcoin_witness::Error::OverflowingFee =>
+                // HttpApiProblem::new(                                    "Fee
+                // is too high.",                                )
+                //                                    .set_status(StatusCode::BAD_REQUEST)
+                //                                    .set_detail(
+                //                                        "The Fee per byte/WU provided makes
+                // the total fee higher than the system supports.",
+                // )                            }
+                //                        })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(
                     &transaction,

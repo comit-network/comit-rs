@@ -1,97 +1,228 @@
-use crate::{
-    fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
-    SecretHash,
+use bitcoin::{
+    network::constants::Network, util::bip143::SighashComponents, Address, OutPoint, Transaction,
+    TxIn, TxOut,
 };
-use bitcoin::{network::constants::Network, Address, Script};
-use bitcoin_hashes::hash160;
-use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
+use bitcoin_hashes::{hash160, hex::ToHex};
 use hex_literal::hex;
-use secp256k1::{PublicKey, SecretKey};
+use miniscript::bitcoin_hashes::Hash;
+use secp256k1::{Message, PublicKey, SecretKey};
+use std::{borrow::Borrow, str::FromStr};
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
 
-#[derive(Debug)]
-pub enum UnlockingError {
-    WrongSecret {
-        got: SecretHash,
-        expected: SecretHash,
-    },
-    WrongPubkeyHash {
-        got: [u8; 20],
-        expected: [u8; 20],
-    },
-}
+// https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
+// Wallets that don't want to signal replaceability should use either a
+// max sequence number (0xffffffff) or a sequence number of
+//(0xffffffff-1) when then also want to use locktime;
+pub const SEQUENCE_ALLOW_NTIMELOCK_NO_RBF: u32 = 0xFFFF_FFFE;
 
 #[derive(Debug)]
 pub struct BitcoinHtlc {
-    script: Vec<u8>,
+    miniscript: miniscript::Descriptor<bitcoin::PublicKey>,
     expiry: u32,
+}
+
+struct Satisfier {
+    redeem_secret_key: SecretKey,
+    refund_secret_key: SecretKey,
+    signature: secp256k1::Signature,
+    secret: Option<[u8; 32]>,
+}
+
+impl miniscript::Satisfier<bitcoin::PublicKey> for Satisfier {
+    fn lookup_pkh(
+        &self,
+        target_pubkey_hash: &<bitcoin::PublicKey as miniscript::MiniscriptKey>::Hash,
+    ) -> Option<(
+        bitcoin::PublicKey,
+        (secp256k1::Signature, bitcoin::SigHashType),
+    )> {
+        let redeem_public_key = PublicKey::from_secret_key(&*crate::SECP, &self.redeem_secret_key);
+        let redeem_pubkey_hash =
+            miniscript::bitcoin_hashes::hash160::Hash::hash(&redeem_public_key.serialize());
+
+        let refund_public_key = PublicKey::from_secret_key(&*crate::SECP, &self.refund_secret_key);
+        let refund_pubkey_hash =
+            miniscript::bitcoin_hashes::hash160::Hash::hash(&refund_public_key.serialize());
+
+        if &redeem_pubkey_hash == target_pubkey_hash {
+            return Some((
+                bitcoin::PublicKey {
+                    compressed: true,
+                    key: redeem_public_key,
+                },
+                (self.signature, bitcoin::SigHashType::All),
+            ));
+        }
+
+        if &refund_pubkey_hash == target_pubkey_hash {
+            return Some((
+                bitcoin::PublicKey {
+                    compressed: true,
+                    key: refund_public_key,
+                },
+                (self.signature, bitcoin::SigHashType::All),
+            ));
+        }
+
+        None
+    }
+
+    fn lookup_sha256(&self, _: miniscript::bitcoin_hashes::sha256::Hash) -> Option<[u8; 32]> {
+        self.secret
+    }
 }
 
 impl BitcoinHtlc {
     pub fn new(
         expiry: u32,
-        refund_identity: hash160::Hash,
         redeem_identity: hash160::Hash,
+        refund_identity: hash160::Hash,
         secret_hash: [u8; 32],
     ) -> Self {
-        let mut contract = CONTRACT_TEMPLATE.to_vec();
-        SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[7..39]);
-        redeem_identity.fit_into_placeholder_slice(&mut contract[43..63]);
-        BitcoinTimestamp(expiry).fit_into_placeholder_slice(&mut contract[65..69]);
-        refund_identity.fit_into_placeholder_slice(&mut contract[74..94]);
+        let descriptor = format!(
+            "wsh(c:or_i(and_v(v:sha256({secret_hash}),pk_h({redeem_identity})),and_v(v:after({expiry}),pk_h({refund_identity}))))",
+            secret_hash = secret_hash.to_hex(),
+            redeem_identity = redeem_identity,
+            refund_identity = refund_identity,
+            expiry = expiry,
+        );
 
-        BitcoinHtlc {
-            script: contract,
-            expiry,
-        }
+        let miniscript =
+            miniscript::Descriptor::from_str(&descriptor).expect("descriptor to be valid");
+
+        BitcoinHtlc { miniscript, expiry }
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
-        Address::p2wsh(&Script::from(self.script.clone()), network)
+        self.miniscript
+            .address(network)
+            .expect("script to be encodable to address")
     }
 
-    pub fn unlock_with_secret(self, secret_key: SecretKey, secret: [u8; 32]) -> UnlockParameters {
-        let public_key = PublicKey::from_secret_key(&*crate::SECP, &secret_key);
-        UnlockParameters {
-            witness: vec![
-                Witness::Signature(secret_key),
-                Witness::PublicKey(public_key),
-                Witness::Data(secret.to_vec()),
-                Witness::Bool(true),
-                Witness::PrevScript,
-            ],
+    pub fn unlock_with_secret(
+        self,
+        htlc_location: OutPoint,
+        input_value: u64,
+        spend_to: bitcoin::Address,
+        output_value: u64,
+        redeem_secret_key: SecretKey,
+        refund_secret_key: SecretKey,
+        secret: [u8; 32],
+    ) -> Result<Transaction, miniscript::Error> {
+        let mut htlc_tx_in = TxIn {
+            previous_output: htlc_location,
+            script_sig: self.miniscript.unsigned_script_sig(),
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            locktime: 0,
-            prev_script: self.into_script(),
-        }
+            witness: vec![],
+        };
+
+        let (signature, mut spending_transaction) = {
+            let spending_transaction = Transaction {
+                version: 2,
+                lock_time: 0,
+                input: vec![htlc_tx_in.clone()],
+                output: vec![TxOut {
+                    value: output_value,
+                    script_pubkey: spend_to.script_pubkey(),
+                }],
+            };
+
+            let sighash_components = SighashComponents::new(&spending_transaction);
+            let hash_to_sign = sighash_components.sighash_all(
+                &htlc_tx_in,
+                &self.miniscript.witness_script(),
+                input_value,
+            );
+
+            // `from` should be used instead of `from_slice` once `ThirtyTwoByteHash` is
+            // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
+            let message_to_sign = Message::from_slice(hash_to_sign.borrow())
+                .expect("Should not fail because it is a hash");
+            let signature = crate::SECP.sign(&message_to_sign, &redeem_secret_key);
+
+            (signature, spending_transaction)
+        };
+
+        let satisfier = Satisfier {
+            redeem_secret_key,
+            refund_secret_key,
+            secret: Some(secret),
+            signature,
+        };
+
+        self.miniscript.satisfy(&mut htlc_tx_in, &satisfier, 0, 0)?;
+
+        // Overwrite our input with the one containing the satisfied witness stack
+        spending_transaction.input = vec![htlc_tx_in];
+
+        Ok(spending_transaction)
     }
 
-    pub fn unlock_after_timeout(self, secret_key: SecretKey) -> UnlockParameters {
-        let public_key = PublicKey::from_secret_key(&*crate::SECP, &secret_key);
-        UnlockParameters {
-            witness: vec![
-                Witness::Signature(secret_key),
-                Witness::PublicKey(public_key),
-                Witness::Bool(false),
-                Witness::PrevScript,
-            ],
+    pub fn unlock_after_timeout(
+        self,
+        htlc_location: OutPoint,
+        input_value: u64,
+        spend_to: bitcoin::Address,
+        output_value: u64,
+        redeem_secret_key: SecretKey,
+        refund_secret_key: SecretKey,
+    ) -> Result<Transaction, miniscript::Error> {
+        let mut htlc_tx_in = TxIn {
+            previous_output: htlc_location,
+            script_sig: self.miniscript.unsigned_script_sig(),
             sequence: SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
-            locktime: self.expiry,
-            prev_script: self.into_script(),
-        }
-    }
+            witness: vec![],
+        };
 
-    fn into_script(self) -> Script {
-        Script::from(self.script)
+        let (signature, mut spending_transaction) = {
+            let spending_transaction = Transaction {
+                version: 2,
+                lock_time: self.expiry,
+                input: vec![htlc_tx_in.clone()],
+                output: vec![TxOut {
+                    value: output_value,
+                    script_pubkey: spend_to.script_pubkey(),
+                }],
+            };
+
+            let sighash_components = SighashComponents::new(&spending_transaction);
+            let hash_to_sign = sighash_components.sighash_all(
+                &htlc_tx_in,
+                &self.miniscript.witness_script(),
+                input_value,
+            );
+
+            // `from` should be used instead of `from_slice` once `ThirtyTwoByteHash` is
+            // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
+            let message_to_sign = Message::from_slice(hash_to_sign.borrow())
+                .expect("Should not fail because it is a hash");
+            let signature = crate::SECP.sign(&message_to_sign, &refund_secret_key);
+
+            (signature, spending_transaction)
+        };
+
+        let satisfier = Satisfier {
+            redeem_secret_key,
+            refund_secret_key,
+            secret: None,
+            signature,
+        };
+
+        self.miniscript.satisfy(&mut htlc_tx_in, &satisfier, 0, 0)?;
+
+        // Overwrite our input with the one containing the satisfied witness stack
+        spending_transaction.input = vec![htlc_tx_in];
+
+        Ok(spending_transaction)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_hashes::hash160;
+    use bitcoin_hashes::{hash160, Hash};
     use regex::bytes::Regex;
 
     const SECRET_HASH: [u8; 32] = [
@@ -102,36 +233,18 @@ mod tests {
     const SECRET_HASH_REGEX: &str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01";
 
     #[test]
-    fn compiled_contract_is_same_length_as_template() {
-        let htlc = BitcoinHtlc::new(
-            3_000_000,
-            hash160::Hash::default(),
-            hash160::Hash::default(),
+    fn constructor_does_not_panic() {
+        BitcoinHtlc::new(
+            141241,
+            hash160::Hash::from_slice(&[
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ])
+            .unwrap(),
+            hash160::Hash::from_slice(&[
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            ])
+            .unwrap(),
             SECRET_HASH,
         );
-
-        assert_eq!(
-            htlc.script.len(),
-            CONTRACT_TEMPLATE.len(),
-            "HTLC is the same length as template"
-        );
-    }
-
-    #[test]
-    fn given_input_data_when_compiled_should_contain_given_data() {
-        let htlc = BitcoinHtlc::new(
-            2_000_000_000,
-            hash160::Hash::default(),
-            hash160::Hash::default(),
-            SECRET_HASH,
-        );
-
-        // Allowed because `str::contains` (clippy's suggestion) does not apply to bytes
-        // array
-        #[allow(clippy::trivial_regex)]
-        let _re_match = Regex::new(SECRET_HASH_REGEX)
-            .expect("Could not create regex")
-            .find(&htlc.script)
-            .expect("Could not find secret hash in hex code");
     }
 }

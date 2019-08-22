@@ -8,20 +8,15 @@ pub mod parity_client;
 
 use crate::{
     bitcoin_helper::RegtestHelperClient,
-    htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
+    htlc_harness::{Timestamp, SECRET, SECRET_HASH},
 };
 use bitcoin::{
     consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
 use bitcoin_quantity::BitcoinQuantity;
-use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::{
-    pubkey_hash::{PubkeyHash, TransactionId},
-    rfc003::bitcoin_htlc::BitcoinHtlc,
-};
+use blockchain_contracts::bitcoin::{pubkey_hash::PubkeyHash, rfc003::bitcoin_htlc::BitcoinHtlc};
 use secp256k1::{PublicKey, SecretKey};
-use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
 
@@ -40,63 +35,22 @@ pub fn new_tc_bitcoincore_client<D: Docker>(
     .unwrap()
 }
 
-/// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
-/// except that we want to insert our "CustomSizeSecret" on the witness
-/// stack.
-///
-/// [method]: blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::
-/// BitcoinHtlc#unlock_with_secret
-fn unlock_with_custom_size_secret(
+struct HtlcSetup {
+    location: OutPoint,
+    amount: BitcoinQuantity,
     htlc: BitcoinHtlc,
-    secret_key: SecretKey,
-    custom_size_secret: CustomSizeSecret,
-) -> UnlockParameters {
-    let placeholder_secret = [0u8; 32];
-    // First, unlock the HTLC with a placeholder secret
-    let parameters = htlc.unlock_with_secret(secret_key, placeholder_secret);
-
-    let UnlockParameters {
-        mut witness,
-        sequence,
-        locktime,
-        prev_script,
-    } = parameters;
-
-    // Secret for the secret in the witness stack (it is the only data) and replace
-    // it with our custom size secret
-    for w in &mut witness {
-        if let Witness::Data(ref mut placeholder_secret) = w {
-            placeholder_secret.clear();
-            placeholder_secret.extend_from_slice(&custom_size_secret.0);
-        }
-    }
-
-    // Return the patched `UnlockParameters`
-    UnlockParameters {
-        witness,
-        locktime,
-        sequence,
-        prev_script,
-    }
+    refund_timestamp: Timestamp,
+    redeem_secret_key: SecretKey,
+    refund_secret_key: SecretKey,
 }
 
-fn fund_htlc(
-    client: &bitcoincore_rpc::Client,
-    secret_hash: [u8; 32],
-) -> (
-    TransactionId,
-    OutPoint,
-    BitcoinQuantity,
-    BitcoinHtlc,
-    Timestamp,
-    SecretKey,
-    SecretKey,
-) {
+fn fund_htlc(client: &bitcoincore_rpc::Client, secret_hash: [u8; 32]) -> HtlcSetup {
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
     let redeem_secret_key = redeem_privkey.key;
     let redeem_pubkey_hash: PubkeyHash =
         PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
+
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_secret_key = refund_privkey.key;
@@ -110,8 +64,8 @@ fn fund_htlc(
 
     let htlc = BitcoinHtlc::new(
         refund_timestamp.into(),
-        refund_pubkey_hash.into(),
         redeem_pubkey_hash.into(),
+        refund_pubkey_hash.into(),
         secret_hash,
     );
 
@@ -132,17 +86,16 @@ fn fund_htlc(
 
     client.generate(1, None).unwrap();
 
-    let vout = client.find_vout_for_address(&txid, &htlc_address);
+    let location = client.find_vout_for_address(&txid, &htlc_address);
 
-    (
-        txid,
-        vout,
+    HtlcSetup {
+        location,
         amount,
         htlc,
         refund_timestamp,
         redeem_secret_key,
         refund_secret_key,
-    )
+    }
 }
 
 #[test]
@@ -154,22 +107,30 @@ fn redeem_htlc_with_secret() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
+    let HtlcSetup {
+        location,
+        amount: input_amount,
+        htlc,
+        redeem_secret_key,
+        refund_secret_key,
+        ..
+    } = fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
     let fee = BitcoinQuantity::from_satoshi(1000);
 
-    let redeem_tx = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            vout,
-            input_amount,
-            htlc.unlock_with_secret(keypair, SECRET.clone()),
-        )],
-        output_address: alice_addr.clone(),
-    }
-    .sign_with_fee(fee);
-
+    let redeem_tx = htlc
+        .unlock_with_secret(
+            location,
+            input_amount.satoshi(),
+            alice_addr.clone(),
+            (input_amount - fee).satoshi(),
+            redeem_secret_key,
+            refund_secret_key,
+            *SECRET,
+        )
+        .unwrap();
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
     let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex).unwrap();
@@ -193,22 +154,29 @@ fn refund_htlc() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
-        fund_htlc(&client, SECRET_HASH);
+    let HtlcSetup {
+        location,
+        amount: input_amount,
+        htlc,
+        redeem_secret_key,
+        refund_secret_key,
+        refund_timestamp,
+        ..
+    } = fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
     let fee = BitcoinQuantity::from_satoshi(1000);
 
-    let refund_tx = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            vout,
-            input_amount,
-            htlc.unlock_after_timeout(keypair),
-        )],
-        output_address: alice_addr.clone(),
-    }
-    .sign_with_fee(fee);
-
+    let refund_tx = htlc
+        .unlock_after_timeout(
+            location,
+            input_amount.satoshi(),
+            alice_addr.clone(),
+            (input_amount - fee).satoshi(),
+            redeem_secret_key,
+            refund_secret_key,
+        )
+        .unwrap();
     let refund_tx_hex = serialize_hex(&refund_tx);
 
     let error = client
@@ -240,87 +208,5 @@ fn refund_htlc() {
             .find_utxo_at_tx_for_address(&rpc_refund_txid, &alice_addr)
             .is_some(),
         "utxo should exist after refunding htlc"
-    );
-}
-
-#[test]
-fn redeem_htlc_with_long_secret() {
-    let _ = pretty_env_logger::try_init();
-    let docker = Cli::default();
-
-    let container = docker.run(BitcoinCore::default());
-    let client = new_tc_bitcoincore_client(&container);
-    client.generate(101, None).unwrap();
-
-    let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
-    assert_eq!(secret.0.len(), 38);
-
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
-
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
-
-    let fee = BitcoinQuantity::from_satoshi(1000);
-
-    let redeem_tx = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            vout,
-            input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
-        )],
-        output_address: alice_addr.clone(),
-    }
-    .sign_with_fee(fee);
-
-    let redeem_tx_hex = serialize_hex(&redeem_tx);
-
-    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex);
-
-    let error = assert_that(&rpc_redeem_txid).is_err().subject;
-
-    // Can't access the type `RpcError`: https://github.com/rust-bitcoin/rust-bitcoincore-rpc/issues/50
-    assert_eq!(
-        format!("{:?}", error),
-        "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
-    );
-}
-
-#[test]
-fn redeem_htlc_with_short_secret() {
-    let _ = pretty_env_logger::try_init();
-    let docker = Cli::default();
-
-    let container = docker.run(BitcoinCore::default());
-    let client = new_tc_bitcoincore_client(&container);
-    client.generate(101, None).unwrap();
-
-    let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();
-    assert_eq!(secret.0.len(), 17);
-
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
-
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
-
-    let fee = BitcoinQuantity::from_satoshi(1000);
-
-    let redeem_tx = PrimedTransaction {
-        inputs: vec![PrimedInput::new(
-            vout,
-            input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
-        )],
-        output_address: alice_addr.clone(),
-    }
-    .sign_with_fee(fee);
-
-    let redeem_tx_hex = serialize_hex(&redeem_tx);
-
-    let rpc_redeem_txid = client.send_raw_transaction(redeem_tx_hex);
-
-    let error = assert_that(&rpc_redeem_txid).is_err().subject;
-
-    // Can't access the type `RpcError`: https://github.com/rust-bitcoin/rust-bitcoincore-rpc/issues/50
-    assert_eq!(
-        format!("{:?}", error),
-        "JsonRpc(Rpc(RpcError { code: -26, message: \"non-mandatory-script-verify-flag (Script failed an OP_EQUALVERIFY operation) (code 64)\", data: None }))"
     );
 }

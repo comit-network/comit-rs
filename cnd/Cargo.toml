@@ -8,7 +8,6 @@ edition = "2018"
 bam = { path = "../internal/bam" }
 binary_macros = "0.6"
 bitcoin_support = { path = "../internal/bitcoin_support" }
-bitcoin_witness = { path = "../internal/bitcoin_witness" }
 blockchain_contracts = { path = "../internal/blockchain_contracts" }
 chrono = { version = "0.4", features = ["serde"] }
 comit_i = { path = "../internal/comit_i" }
