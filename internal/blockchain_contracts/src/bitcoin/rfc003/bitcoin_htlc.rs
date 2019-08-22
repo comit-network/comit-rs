@@ -24,8 +24,8 @@ pub struct BitcoinHtlc {
 }
 
 struct Satisfier {
-    redeem_secret_key: SecretKey,
-    refund_secret_key: SecretKey,
+    redeem_secret_key: Option<SecretKey>,
+    refund_secret_key: Option<SecretKey>,
     signature: secp256k1::Signature,
     secret: Option<[u8; 32]>,
 }
@@ -38,15 +38,9 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for Satisfier {
         bitcoin::PublicKey,
         (secp256k1::Signature, bitcoin::SigHashType),
     )> {
-        let redeem_public_key = PublicKey::from_secret_key(&*crate::SECP, &self.redeem_secret_key);
-        let redeem_pubkey_hash =
-            miniscript::bitcoin_hashes::hash160::Hash::hash(&redeem_public_key.serialize());
+        if let Some(redeem_secret_key) = self.redeem_secret_key {
+            let redeem_public_key = PublicKey::from_secret_key(&*crate::SECP, &redeem_secret_key);
 
-        let refund_public_key = PublicKey::from_secret_key(&*crate::SECP, &self.refund_secret_key);
-        let refund_pubkey_hash =
-            miniscript::bitcoin_hashes::hash160::Hash::hash(&refund_public_key.serialize());
-
-        if &redeem_pubkey_hash == target_pubkey_hash {
             return Some((
                 bitcoin::PublicKey {
                     compressed: true,
@@ -56,7 +50,9 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for Satisfier {
             ));
         }
 
-        if &refund_pubkey_hash == target_pubkey_hash {
+        if let Some(refund_secret_key) = self.refund_secret_key {
+            let refund_public_key = PublicKey::from_secret_key(&*crate::SECP, &refund_secret_key);
+
             return Some((
                 bitcoin::PublicKey {
                     compressed: true,
@@ -82,7 +78,7 @@ impl BitcoinHtlc {
         secret_hash: [u8; 32],
     ) -> Self {
         let descriptor = format!(
-            "wsh(c:or_i(and_v(v:sha256({secret_hash}),pk_h({redeem_identity})),and_v(v:after({expiry}),pk_h({refund_identity}))))",
+            "wsh(c:or_i(and_v(v:sha256({secret_hash}),pk_h({redeem_identity})),and_v(v:older({expiry}),pk_h({refund_identity}))))",
             secret_hash = secret_hash.to_hex(),
             redeem_identity = redeem_identity,
             refund_identity = refund_identity,
@@ -146,8 +142,8 @@ impl BitcoinHtlc {
         };
 
         let satisfier = Satisfier {
-            redeem_secret_key,
-            refund_secret_key,
+            redeem_secret_key: Some(redeem_secret_key),
+            refund_secret_key: None,
             secret: Some(secret),
             signature,
         };
@@ -204,13 +200,14 @@ impl BitcoinHtlc {
         };
 
         let satisfier = Satisfier {
-            redeem_secret_key,
-            refund_secret_key,
+            redeem_secret_key: None,
+            refund_secret_key: Some(refund_secret_key),
             secret: None,
             signature,
         };
 
-        self.miniscript.satisfy(&mut htlc_tx_in, &satisfier, 0, 0)?;
+        self.miniscript
+            .satisfy(&mut htlc_tx_in, &satisfier, 0, self.expiry)?;
 
         // Overwrite our input with the one containing the satisfied witness stack
         spending_transaction.input = vec![htlc_tx_in];
