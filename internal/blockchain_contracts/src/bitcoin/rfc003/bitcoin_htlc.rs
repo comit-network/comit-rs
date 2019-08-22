@@ -3,12 +3,8 @@ use bitcoin::{
     TxIn, TxOut,
 };
 use bitcoin_hashes::{hash160, hex::ToHex};
-use hex_literal::hex;
 use secp256k1::{Message, PublicKey, SecretKey};
 use std::{borrow::Borrow, str::FromStr};
-
-// contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
-pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
 
 // https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
 // Wallets that don't want to signal replaceability should use either a
@@ -187,14 +183,6 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for RefundSatisfier {
 mod tests {
     use super::*;
     use bitcoin_hashes::{hash160, Hash};
-    use regex::bytes::Regex;
-
-    const SECRET_HASH: [u8; 32] = [
-        0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9,
-        0, 1,
-    ];
-
-    const SECRET_HASH_REGEX: &str = "\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01\x02\x03\x04\x05\x06\x07\x08\x09\x00\x01";
 
     #[test]
     fn constructor_does_not_panic() {
@@ -202,7 +190,7 @@ mod tests {
             141241,
             hash160::Hash::from_slice(&[0u8; 20]).unwrap(),
             hash160::Hash::from_slice(&[0u8; 20]).unwrap(),
-            SECRET_HASH,
+            [0u8; 32],
         );
     }
 }

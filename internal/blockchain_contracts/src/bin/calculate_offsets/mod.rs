@@ -5,7 +5,6 @@ use crate::calculate_offsets::{
 };
 use std::{ffi::OsStr, path::PathBuf, process::Command};
 
-pub mod bitcoin;
 pub mod ethereum;
 pub mod metadata;
 pub mod offset;
