@@ -108,8 +108,8 @@ where
     let query_repository = warp::any().map(move || Arc::clone(&query_repository));
     let query_result_repository = warp::any().map(move || Arc::clone(&query_result_repository));
 
-    // validate query id function
-    let validate_query_id = warp::path::param::<String>().and_then(|id: String| {
+    // validate query id length function
+    let validate_query_id_length = warp::path::param::<String>().and_then(|id: String| {
         if id.len() > 40 {
             Err(warp::reject::custom(HttpApiProblemStdError {
                 http_api_problem: RouteError::QueryIdTooLong.into(),
@@ -131,7 +131,7 @@ where
         .and(path.clone())
         .and(query_repository.clone())
         .and(query_result_repository.clone())
-        .and(validate_query_id)
+        .and(validate_query_id_length)
         .and(warp::query::<QueryParams<R>>())
         .and_then(routes::retrieve_query);
 
@@ -145,7 +145,7 @@ where
     let get_or_create = warp::put2()
         .and(path)
         .and(query_repository)
-        .and(validate_query_id)
+        .and(validate_query_id_length)
         .and(warp::body::json())
         .and_then(routes::get_or_create_query);
 
