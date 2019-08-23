@@ -10,7 +10,7 @@ use bitcoincore_rpc::RpcApi;
 use derivative::Derivative;
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TransactionQuery {
     pub to_address: Option<Address>,
     pub from_outpoint: Option<OutPoint>,

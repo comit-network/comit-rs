@@ -1,5 +1,6 @@
 use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config as config_rs;
+use directories::ProjectDirs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
@@ -105,80 +106,52 @@ pub struct PollParameters<T> {
 }
 
 impl File {
+    pub fn read_or_create_default<R: Rng>(rand: R) -> Result<Self, config_rs::ConfigError> {
+        let path = Self::default_config_path()?;
+
+        if path.exists() {
+            println!(
+                "Found configuration file, reading from {}",
+                PrintablePath(&path)
+            );
+            Self::read(path)
+        } else {
+            println!(
+                "No configuration file found, creating default at {}",
+                PrintablePath(&path)
+            );
+            Self::default(rand).write_to(path)
+        }
+    }
+
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
         let config_file = Path::new(&config_file);
-        println!(
-            "Using config file {}",
-            PrintablePath(&config_file.to_path_buf())
-        );
 
         let mut config = config_rs::Config::new();
         config.merge(config_rs::File::from(config_file))?;
         config.try_into()
     }
 
-    pub fn read_or_create_default<R: Rng>(
-        home_dir: Option<&Path>,
-        rand: R,
-    ) -> Result<Self, config_rs::ConfigError> {
-        let default_config_path = home_dir.map(|dir| Self::compute_default_path(dir)).ok_or_else(|| {
-            eprintln!("Failed to determine home directory and hence could not infer default config file location. You can specify a config file with `--config`.");
-            config_rs::ConfigError::Message(
-                "Failed to determine home directory".to_owned(),
-            )
-        })?;
-
-        if default_config_path.exists() {
-            Self::read(default_config_path)
-        } else {
-            Self::create_default_at(default_config_path, rand)
-        }
-    }
-
-    pub fn compute_default_path(parent: &Path) -> PathBuf {
-        let user_path_components: PathBuf = [".config", "comit", "cnd.toml"].iter().collect();
-
-        parent.join(user_path_components)
-    }
-
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        File::ensure_directory_exists(&config_file)?;
+        Self::ensure_directory_exists(&config_file)?;
 
-        File::write_to_file(config_file, &self)?;
+        Self::write_to_file(config_file, &self)?;
 
         Ok(self)
     }
 
-    fn write_to_file(
-        config_file: PathBuf,
-        default_settings: &File,
-    ) -> Result<(), config_rs::ConfigError> {
-        let toml_string = toml::to_string(&default_settings).map_err(|error| {
-            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
-        })?;
-        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
-            config_rs::ConfigError::Message(format!(
-                "Could not create config file: {:?} {:?}",
-                config_file, error
-            ))
-        })?;
-        file.write_all(toml_string.as_bytes()).map_err(|error| {
-            config_rs::ConfigError::Message(format!(
-                "Could not write to file: {:?}: {:?}",
-                config_file, error
-            ))
-        })
-    }
+    fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
+        // Linux: /home/<user>/.config/cnd/cnd.toml
+        // Windows: C:\Users\<user>\AppData\Roaming\comit-network\cnd\config\cnd.toml
+        // OSX: /Users/<user>/Library/Preferences/comit-network.cnd/cnd.toml
+        if let Some(proj_dirs) = ProjectDirs::from("", "comit-network", "cnd") {
+            let path = proj_dirs.config_dir();
+            return Ok(Path::join(path, "cnd.toml"));
+        }
 
-    fn create_default_at<R: Rng>(
-        default_config_path: PathBuf,
-        rand: R,
-    ) -> Result<File, config_rs::ConfigError> {
-        println!(
-            "Creating config file at {} because it does not exist yet",
-            PrintablePath(&default_config_path)
-        );
-        File::default(rand).write_to(default_config_path)
+        Err(config_rs::ConfigError::Message(
+            "Could not generate configuration directory".to_string(),
+        ))
     }
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
@@ -204,5 +177,99 @@ impl File {
                 }
             }
         }
+    }
+
+    fn write_to_file(
+        config_file: PathBuf,
+        default_settings: &File,
+    ) -> Result<(), config_rs::ConfigError> {
+        let toml_string = toml::to_string(&default_settings).map_err(|error| {
+            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
+        })?;
+        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
+            config_rs::ConfigError::Message(format!(
+                "Could not create config file: {:?} {:?}",
+                config_file, error
+            ))
+        })?;
+        file.write_all(toml_string.as_bytes()).map_err(|error| {
+            config_rs::ConfigError::Message(format!(
+                "Could not write to file: {:?}: {:?}",
+                config_file, error
+            ))
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use log::LevelFilter;
+    use rand::rngs::mock::StepRng;
+    use spectral::prelude::*;
+
+    #[derive(serde::Deserialize, PartialEq, Debug)]
+    struct LoggingOnlyConfig {
+        logging: Logging,
+    }
+
+    fn rng() -> StepRng {
+        StepRng::new(0, 0)
+    }
+
+    #[test]
+    fn structured_logging_flag_in_logging_section_is_optional() {
+        let file_contents = r#"
+        [logging]
+        level = "DEBUG"
+        "#;
+
+        let config_file = toml::from_str(file_contents);
+
+        assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
+            logging: Logging {
+                level: Some(LevelFilter::Debug),
+                structured: None,
+            },
+        });
+    }
+
+    #[test]
+    fn complete_logging_section_is_optional() {
+        let config_without_logging_section = File {
+            logging: None,
+            ..File::default(rng())
+        };
+        let temp_file = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+        let temp_file_path = temp_file.into_temp_path().to_path_buf();
+        config_without_logging_section
+            .write_to(temp_file_path.clone())
+            .unwrap();
+
+        let config_file_contents = std::fs::read_to_string(temp_file_path.clone()).unwrap();
+        assert!(
+            !config_file_contents.contains("[logging]"),
+            "written config file should not contain logging section"
+        );
+
+        let config_file = File::read(temp_file_path);
+        assert_that(&config_file)
+            .is_ok()
+            .map(|c| &c.logging)
+            .is_none();
+    }
+
+    #[test]
+    fn read_and_write_config_work() {
+        let config = File::default(rng());
+        let tmp = "/tmp/cnd.toml";
+        let path = Path::new(tmp).to_path_buf(); //
+
+        let expected = config.write_to(path.clone()).unwrap();
+        let actual = File::read(path);
+
+        assert_that(&actual).is_ok_containing(&expected);
+
+        std::fs::remove_file(tmp).expect("failed to remove temporary config file");
     }
 }

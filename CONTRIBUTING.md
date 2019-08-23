@@ -20,7 +20,6 @@ First, please check that no user has already reported the same problem by [searc
 To report a bug, just head over to the [create issue](/issues/new/choose) page.
 Please try to provide as much information as possible by following the GitHub template.
 
-
 ### Reporting a Security Issue
 
 If you think that you found a security vulnerability in the COMIT protocol, implementation or any of the smart contracts used, please send an encrypted email to [security@coblox.tech](mailto:security@coblox.tech).
@@ -35,15 +34,6 @@ Thank you for taking the time to make COMIT safer!
 To request a change on the way COMIT works, please head over to the [RFCs repository](https://github.com/comit-network/rfc) and checkout the [RFC contributing guidelines](https://github.com/comit-network/rfc/blob/master/CONTRIBUTING.md).
  
 For changes related to our implementation, please [create a feature request](/issues/new/choose) and follow the GitHub template.
-
-## Fixing an issue
-
-If you wish to pick up an existing issue and resolve it, please be aware of the following labels:
-- [Unlabelled](https://github.com/comit-network/comit-rs/issues?q=is%3Aopen+no%3Alabel): it has not yet been reviewed for design, please avoid
-- [`icebox`](https://github.com/comit-network/comit-rs/labels/icebox): it is not the right time to proceed with this issue, please do not pick it
-- [`groomed`](https://github.com/comit-network/comit-rs/labels/groomed): it has been discussed and should contain enough details to get started
-- [`sprint-backlog`](https://github.com/comit-network/comit-rs/labels/sprint-backlog): it will be picked up in our next sprint, you can get started only if it is **not** assigned
-- [`candidate-contribution`](https://github.com/comit-network/comit-rs/labels/candidate-contribution): it has been groomed to be used as part of our hiring process; [keen to join?](https://coblox.tech/#hiring)
 
 ## Pull Requests
 
@@ -62,7 +52,7 @@ Please be sure to double check your commit history and try to keep it clean, esp
 New code needs to be accompanied by **new tests**. Please use existing tests as example.
 We are using Continuous Integration and having tests will not only ensure that your code is correct but also that no-one else is breaking it unintentionally.
 
-Finally, when reviewing Pull Requests we use [Dawehner`s emoji code review](https://dawehner.github.io/github,/code/review/2017/09/08/emoji-code-review.html).
+Finally, do not forget to update the [changelog](./CHANGELOG.md)
 
 ## Public Key
 Public Key for [security@coblox.tech](mailto:security@coblox.tech)

@@ -1,7 +1,6 @@
-pub mod block;
 pub mod transaction;
 
-pub use self::{block::BlockQuery, transaction::TransactionQuery};
+pub use self::transaction::TransactionQuery;
 use bitcoin_support::{FromHex, Sha256dHash, Transaction};
 use serde::Serialize;
 

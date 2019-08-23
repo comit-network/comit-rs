@@ -49,12 +49,12 @@ impl BlockSource for Web3HttpBlockSource {
                 web.eth()
                     .block_with_txs(BlockId::Number(BlockNumber::Latest))
                     .or_else(|error| {
-                        match error.kind() {
-                            web3::ErrorKind::Io(e) => {
+                        match error {
+                            web3::Error::Io(e) => {
                                 log::debug!(target: "ethereum::blocksource", "IO error encountered during polling: {:?}", e);
                                 Ok(None)
                             },
-                            web3::ErrorKind::Transport(e)  => {
+                            web3::Error::Transport(e)  => {
                                 log::debug!(target: "ethereum::blocksource", "Transport error encountered during polling: {:?}", e);
                                 Ok(None)
                             },

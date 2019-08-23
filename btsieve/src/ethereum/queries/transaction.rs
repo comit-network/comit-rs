@@ -14,7 +14,7 @@ use futures::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug)]
+#[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
 pub struct TransactionQuery {
     from_address: Option<Address>,
     to_address: Option<Address>,
@@ -114,12 +114,12 @@ fn to_payload(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::web3::types::{Bytes, Transaction, H256, U256};
+    use crate::web3::types::{Bytes, Transaction};
     use spectral::prelude::*;
 
     #[test]
     fn given_query_from_address_contract_creation_transaction_matches() {
-        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".into();
+        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
         let query = TransactionQuery {
             from_address: Some(from_address),
@@ -130,17 +130,9 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
             from: from_address,
             to: None, // None = contract creation
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            ..Transaction::default()
         };
 
         let result = query.matches(&transaction);
@@ -149,8 +141,10 @@ mod tests {
 
     #[test]
     fn given_query_from_address_doesnt_match() {
+        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
+
         let query = TransactionQuery {
-            from_address: Some("a00f2cac7bad9285ecfd59e8860f5b2d8622e099".into()),
+            from_address: Some(from_address),
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,
@@ -158,17 +152,8 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
             from: "a00f2cac7bad9285ecfd59e8860f5b2dffffffff".parse().unwrap(),
-            to: None, // None = contract creation
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            ..Transaction::default()
         };
 
         let result = query.matches(&transaction);
@@ -188,17 +173,9 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
             from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
             to: Some(to_address),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            ..Transaction::default()
         };
 
         let result = query.matches(&transaction);
@@ -218,17 +195,9 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
             from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
             to: Some("0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap()),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            ..Transaction::default()
         };
 
         let result = query.matches(&transaction);
@@ -248,17 +217,8 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
             to: None,
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
-            input: Bytes::from(vec![]),
+            ..Transaction::default()
         };
 
         let result = query.matches(&transaction);
@@ -292,17 +252,9 @@ mod tests {
         };
 
         let transaction = Transaction {
-            hash: H256::from(123),
-            nonce: U256::from(1),
-            block_hash: None,
-            block_number: None,
-            transaction_index: None,
-            from: "0aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa".parse().unwrap(),
             to: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
-            value: U256::from(0),
-            gas_price: U256::from(0),
-            gas: U256::from(0),
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
         };
 
         let result = query_data.matches(&transaction);

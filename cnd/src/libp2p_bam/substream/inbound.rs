@@ -8,7 +8,7 @@ use bam::{
     Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
-use libp2p::core::protocols_handler::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 use tokio::prelude::*;
 

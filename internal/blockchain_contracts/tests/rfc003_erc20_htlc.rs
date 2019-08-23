@@ -18,9 +18,9 @@ use testcontainers::clients::Cli;
 use web3::types::{Bytes, H256, U256};
 
 // keccak256(Redeemed())
-const REDEEMED_LOG_MSG: &str = "0xB8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
+const REDEEMED_LOG_MSG: &str = "B8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413";
 // keccak256(Refunded())
-const REFUNDED_LOG_MSG: &str = "0x5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
+const REFUNDED_LOG_MSG: &str = "5D26862916391BF49478B2F5103B0720A842B45EF145A268F2CD1FB2AED55178";
 
 #[test]
 fn given_erc20_token_should_deploy_erc20_htlc_and_fund_htlc() {
@@ -294,8 +294,8 @@ fn given_htlc_and_redeem_should_emit_redeem_log_msg_with_secret() {
     assert_that(&transaction_receipt.logs.len()).is_equal_to(2);
     assert_that(&transaction_receipt.logs[0].data).is_equal_to(Bytes(SECRET.to_vec()));
 
-    let redeem_topic: H256 = REDEEMED_LOG_MSG.into();
-    let refund_topic: H256 = REFUNDED_LOG_MSG.into();
+    let redeem_topic: H256 = REDEEMED_LOG_MSG.parse().unwrap();
+    let refund_topic: H256 = REFUNDED_LOG_MSG.parse().unwrap();
 
     let topics: Vec<H256> = transaction_receipt
         .logs
@@ -335,8 +335,8 @@ fn given_htlc_and_refund_should_emit_refund_log_msg() {
     // Should contain 2 logs: 1 for token transfer 1 for redeeming the htlc
     assert_that(&transaction_receipt.logs.len()).is_equal_to(2);
 
-    let redeem_topic: H256 = REDEEMED_LOG_MSG.into();
-    let refund_topic: H256 = REFUNDED_LOG_MSG.into();
+    let redeem_topic: H256 = REDEEMED_LOG_MSG.parse().unwrap();
+    let refund_topic: H256 = REFUNDED_LOG_MSG.parse().unwrap();
 
     let topics: Vec<H256> = transaction_receipt
         .clone()

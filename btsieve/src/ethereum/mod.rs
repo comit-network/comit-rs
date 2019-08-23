@@ -3,8 +3,8 @@ pub mod queries;
 pub mod web3_http_blocksource;
 
 pub use self::{
-    block_processor::{check_block_queries, check_log_queries, check_transaction_queries},
-    queries::{BlockQuery, EventQuery, TransactionQuery},
+    block_processor::{check_log_queries, check_transaction_queries},
+    queries::{EventQuery, TransactionQuery},
 };
 use crate::{Blockchain, Ethereum};
 use ethereum_support::{Block, Transaction};
@@ -63,8 +63,8 @@ mod test {
     fn add_block() {
         let mut blockchain = Ethereum::default();
         let block = Block {
-            parent_hash: H256::from(1),
-            hash: Some(H256::from(2)),
+            parent_hash: H256::repeat_byte(1),
+            hash: Some(H256::repeat_byte(2)),
             ..Block::default()
         };
 
@@ -77,7 +77,7 @@ mod test {
     fn add_block_without_hash_should_ignore() {
         let mut blockchain = Ethereum::default();
         let block = Block {
-            parent_hash: H256::from(1),
+            parent_hash: H256::repeat_byte(1),
             hash: None,
             ..Block::default()
         };
@@ -91,8 +91,8 @@ mod test {
     fn add_same_block_twice_should_ignore_second_one() {
         let mut blockchain = Ethereum::default();
         let block = Block {
-            parent_hash: H256::from(1),
-            hash: Some(H256::from(2)),
+            parent_hash: H256::repeat_byte(1),
+            hash: Some(H256::repeat_byte(2)),
             ..Block::default()
         };
         let block_clone = block.clone();
@@ -108,13 +108,13 @@ mod test {
     fn add_block_and_find_predecessor() {
         let mut blockchain = Ethereum::default();
         let block1 = Block {
-            parent_hash: H256::from(1),
-            hash: Some(H256::from(2)),
+            parent_hash: H256::repeat_byte(1),
+            hash: Some(H256::repeat_byte(2)),
             ..Block::default()
         };
         let block2 = Block {
-            parent_hash: H256::from(2),
-            hash: Some(H256::from(3)),
+            parent_hash: H256::repeat_byte(2),
+            hash: Some(H256::repeat_byte(3)),
             ..Block::default()
         };
 

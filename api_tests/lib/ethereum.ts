@@ -2,7 +2,7 @@ import { ECPair } from "bitcoinjs-lib";
 import bitcoin from "bitcoinjs-lib";
 import BN from "bn.js";
 import EthereumTx = require("ethereumjs-tx");
-import ethutil from "ethereumjs-util";
+import { privateToAddress } from "ethereumjs-util";
 import * as fs from "fs";
 import Web3 from "web3";
 import { HttpProvider } from "web3-providers";
@@ -86,8 +86,7 @@ export class EthereumWallet {
     constructor(ethConfig: EthereumNodeConfig) {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this.account =
-            "0x" +
-            ethutil.privateToAddress(this.keypair.privateKey).toString("hex");
+            "0x" + privateToAddress(this.keypair.privateKey).toString("hex");
         createWeb3Client(ethConfig);
     }
 

@@ -236,7 +236,6 @@ mod ethereum {
                 EthereumQuery::Transaction { .. } => {
                     self.create_ethereum_transaction_query_endpoint.clone()
                 }
-                EthereumQuery::Block { .. } => self.create_ethereum_block_query_endpoint.clone(),
                 EthereumQuery::Event { .. } => self.create_ethereum_event_query_endpoint.clone(),
             };
             self._create(endpoint, query)
@@ -327,7 +326,6 @@ mod bitcoin {
                 BitcoinQuery::Transaction { .. } => {
                     self.create_bitcoin_transaction_query_endpoint.clone()
                 }
-                BitcoinQuery::Block { .. } => self.create_bitcoin_block_query_endpoint.clone(),
             };
             self._create(endpoint, query)
         }

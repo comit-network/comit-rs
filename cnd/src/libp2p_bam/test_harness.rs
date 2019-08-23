@@ -4,7 +4,7 @@ use crate::libp2p_bam::{
 };
 use bam::frame::{JsonFrameCodec, Response};
 use futures::{Future, Stream};
-use libp2p::core::{ProtocolsHandler, ProtocolsHandlerEvent};
+use libp2p::swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
 use multistream_select::Negotiated;
 use std::collections::{HashMap, HashSet};
 use tokio::{
@@ -12,21 +12,6 @@ use tokio::{
     net::{TcpListener, TcpStream},
     prelude::{AsyncRead, AsyncWrite},
 };
-
-// Copied from multistream_select crate
-#[derive(Debug)]
-struct VecRefIntoIter<T>(Vec<T>);
-
-impl<'a, T> IntoIterator for &'a VecRefIntoIter<T>
-where
-    T: Clone,
-{
-    type Item = T;
-    type IntoIter = std::vec::IntoIter<T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.clone().into_iter()
-    }
-}
 
 pub fn setup_substream<CD: Encoder + Decoder, CL: Encoder + Decoder>(
     codec_dialer: CD,
@@ -36,7 +21,7 @@ pub fn setup_substream<CD: Encoder + Decoder, CL: Encoder + Decoder>(
         Framed<Negotiated<TcpStream>, CD>,
         Framed<Negotiated<TcpStream>, CL>,
     ),
-    Error = multistream_select::ProtocolChoiceError,
+    Error = multistream_select::NegotiationError,
 > {
     let listener = TcpListener::bind(&"127.0.0.1:0".parse().unwrap()).unwrap();
     let listener_addr = listener.local_addr().unwrap();
@@ -44,19 +29,21 @@ pub fn setup_substream<CD: Encoder + Decoder, CL: Encoder + Decoder>(
     let listener = listener
         .incoming()
         .into_future()
-        .map(|s| s.0.unwrap())
-        .map_err(|(e, _)| e.into())
-        .and_then(move |connec| {
-            multistream_select::listener_select_proto(connec, VecRefIntoIter(vec![b"/proto1"]))
-                .map(|result| result.1)
+        .map(|(connection, _stream)| connection.unwrap())
+        .map_err(|(stream_error, _stream)| stream_error)
+        .from_err()
+        .and_then(move |connection| {
+            multistream_select::listener_select_proto(connection, vec![b"/proto1"])
         })
+        .and_then(|(_proto, substream)| substream.complete())
         .map(move |substream| codec_listener.framed(substream));
 
     let dialer = TcpStream::connect(&listener_addr)
         .from_err()
-        .and_then(move |connec| {
-            multistream_select::dialer_select_proto(connec, vec![b"/proto1"]).map(|result| result.1)
+        .and_then(move |connection| {
+            multistream_select::dialer_select_proto(connection, vec![b"/proto1"])
         })
+        .and_then(|(_proto, substream)| substream.complete())
         .map(move |substream| codec_dialer.framed(substream));
 
     dialer.join(listener)
@@ -67,7 +54,7 @@ pub fn setup_substream_with_json_codec() -> impl Future<
         Framed<Negotiated<TcpStream>, JsonFrameCodec>,
         Framed<Negotiated<TcpStream>, JsonFrameCodec>,
     ),
-    Error = multistream_select::ProtocolChoiceError,
+    Error = multistream_select::NegotiationError,
 > {
     setup_substream(JsonFrameCodec::default(), JsonFrameCodec::default())
 }

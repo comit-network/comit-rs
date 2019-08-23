@@ -19,9 +19,6 @@ pub enum EthereumQuery {
         transaction_data: Option<Bytes>,
         transaction_data_length: Option<usize>,
     },
-    Block {
-        min_timestamp_secs: u32,
-    },
     Event {
         event_matchers: Vec<EventMatcher>,
     },
@@ -82,7 +79,7 @@ mod tests {
 
     #[test]
     fn given_a_ethereum_transaction_query_with_toaddress_it_serializes_ok() {
-        let to_address = Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into());
+        let to_address = Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap());
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address,
@@ -112,15 +109,6 @@ mod tests {
             query,
             r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
         )
-    }
-
-    #[test]
-    fn given_a_ethereum_block_query_with_min_timestamp_it_serializes_ok() {
-        let query = EthereumQuery::Block {
-            min_timestamp_secs: 10u32,
-        };
-        let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"min_timestamp_secs":10}"#)
     }
 
     #[test]
@@ -156,10 +144,12 @@ mod tests {
     fn events_query_with_data_serializes_correctly() {
         let query = EthereumQuery::Event {
             event_matchers: vec![EventMatcher {
-                address: Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".into()),
+                address: Some("8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap()),
                 data: Some(Bytes::from(vec![1])),
                 topics: vec![Some(Topic(
-                    "0x0000000000000000000000000000000000000000000000000000000000000001".into(),
+                    "0000000000000000000000000000000000000000000000000000000000000001"
+                        .parse()
+                        .unwrap(),
                 ))],
             }],
         };
