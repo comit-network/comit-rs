@@ -1,6 +1,5 @@
 import { ECPair } from "bitcoinjs-lib";
 import bitcoin from "bitcoinjs-lib";
-import { privateToAddress } from "ethereumjs-util";
 import { ethers } from "ethers";
 import { JsonRpcProvider, TransactionRequest } from "ethers/providers";
 import { BigNumber } from "ethers/utils";
@@ -75,8 +74,7 @@ export class EthereumWallet {
 
     constructor(ethConfig: EthereumNodeConfig) {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
-        this.account =
-            "0x" + privateToAddress(this.keypair.privateKey).toString("hex");
+        this.account = new ethers.Wallet(this.keypair.privateKey).address;
         createEthereumClient(ethConfig);
     }
 

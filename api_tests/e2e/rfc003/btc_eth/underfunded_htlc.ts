@@ -1,4 +1,3 @@
-import BN = require("bn.js");
 import "chai/register-should";
 import { ethers } from "ethers";
 import { Actor } from "../../../lib/actor";
@@ -94,11 +93,9 @@ declare var global: HarnessGlobal;
                         );
                     }
 
-                    // @ts-ignore
-                    ledgerAction.payload.amount = new BN(
-                        underFundedAlphaAssetQuantity,
-                        10
-                    ).toString(10);
+                    ledgerAction.payload.amount = new ethers.utils.BigNumber(
+                        underFundedAlphaAssetQuantity
+                    ).toString();
 
                     await actor.doLedgerAction(ledgerAction);
                 },
