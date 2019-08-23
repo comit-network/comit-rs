@@ -4,6 +4,7 @@
 pub mod bitcoin;
 pub mod blocksource;
 pub mod ethereum;
+pub mod expected_version_header;
 mod in_memory_query_repository;
 mod in_memory_query_result_repository;
 pub mod load_settings;

@@ -25,9 +25,9 @@ setTimeout(async function() {
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond not found when getting a non-existent bitcoin transaction query", async function() {
-                    const res = await request(btsieve.url()).get(
-                        "/queries/bitcoin/regtest/transactions/1"
-                    );
+                    const res = await request(btsieve.url())
+                        .get("/queries/bitcoin/regtest/transactions/1")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(404);
                 });
@@ -39,6 +39,7 @@ setTimeout(async function() {
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/banananet/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -49,6 +50,7 @@ setTimeout(async function() {
                 it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -62,7 +64,9 @@ setTimeout(async function() {
                 it("btsieve should respond with no match when querying an existing bitcoin transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).get("");
+                    )
+                        .get("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
                     expect(res.body.query.to_address).to.equal(toAddress);
@@ -91,7 +95,9 @@ setTimeout(async function() {
 
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).get("?return_as=transaction");
+                    )
+                        .get("?return_as=transaction")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res.body.query.to_address).to.equal(toAddress);
                     expect(res.body.matches).to.have.length(1);
@@ -106,6 +112,7 @@ setTimeout(async function() {
                 it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
                     const res = await request(btsieve.url())
                         .put(location)
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -119,6 +126,7 @@ setTimeout(async function() {
 
                     const res = await request(btsieve.url())
                         .put(location)
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: differentToAddress,
                         });
@@ -137,6 +145,7 @@ setTimeout(async function() {
 
                     const res = await request(btsieve.url())
                         .put(newLocation)
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send(newQuery);
 
                     expect(res).to.have.status(204);
@@ -145,7 +154,9 @@ setTimeout(async function() {
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).del("");
+                    )
+                        .del("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(204);
                 });

@@ -44,9 +44,9 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
-                    const res = await request(btsieve.url()).get(
-                        "/queries/ethereum/regtest/transactions/1"
-                    );
+                    const res = await request(btsieve.url())
+                        .get("/queries/ethereum/regtest/transactions/1")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(404);
                 });
@@ -54,6 +54,7 @@ setTimeout(async function() {
                 it("btsieve should respond not found when creating an ethereum transaction query for an invalid network", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/banananet/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -66,6 +67,7 @@ setTimeout(async function() {
                 it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -79,7 +81,9 @@ setTimeout(async function() {
                 it("btsieve should respond with no match when querying an existing ethereum transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).get("");
+                    )
+                        .get("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
                     expect(res.body.query.to_address).to.equal(toAddress);
@@ -97,7 +101,9 @@ setTimeout(async function() {
 
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).get("");
+                    )
+                        .get("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
                     expect(res.body.query.to_address).to.equal(toAddress);
@@ -119,9 +125,9 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with no content when deleting an existing ethereum transaction query", async function() {
-                    const res = await request(btsieve.url()).del(
-                        "/queries/ethereum/regtest/transactions/1"
-                    );
+                    const res = await request(btsieve.url())
+                        .del("/queries/ethereum/regtest/transactions/1")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(204);
                 });
@@ -129,9 +135,9 @@ setTimeout(async function() {
 
             describe("Transaction Receipts", () => {
                 it("btsieve should respond not found when getting a non-existent ethereum transaction receipt query", async function() {
-                    const res = await request(btsieve.url()).get(
-                        "/queries/ethereum/regtest/logs/1"
-                    );
+                    const res = await request(btsieve.url())
+                        .get("/queries/ethereum/regtest/logs/1")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(404);
                 });
@@ -153,6 +159,7 @@ setTimeout(async function() {
                     this.timeout(1000);
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/logs")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             event_matchers: [
                                 {
@@ -178,7 +185,9 @@ setTimeout(async function() {
                     this.timeout(1000);
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).get("");
+                    )
+                        .get("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
                     expect(res.body.matches).to.be.empty;
@@ -225,7 +234,9 @@ setTimeout(async function() {
                 it("btsieve should respond with no content when deleting an existing ethereum transaction receipt query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
-                    ).del("");
+                    )
+                        .del("")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(204);
                 });
