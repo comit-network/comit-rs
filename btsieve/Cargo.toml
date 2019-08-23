@@ -14,7 +14,7 @@ config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 directories = "2.0"
-ethbloom = "0.6.4"
+ethbloom = "0.7.0"
 ethereum_support = { path = "../internal/ethereum_support" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
