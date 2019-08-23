@@ -590,45 +590,6 @@ mod tests {
     }
 
     #[test]
-    fn given_an_outbound_request_when_malformed_response_should_emit_malformed_frame() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                JsonFrameCodec::default(),
-                LinesCodec::new(),
-            ))
-            .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
-
-        // given an outbound substream
-        let (sender, _receiver) = oneshot::channel();
-        handler.inject_fully_negotiated_outbound(
-            dialer,
-            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
-                request: OutboundRequest::new("PING"),
-                channel: sender,
-            })),
-        );
-
-        // when receiving a known type (REQUEST) that is unexpected
-        let send = listener
-            .send(r#"{"type": "RESPONSE", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        let _ = runtime.spawn(send);
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedFrame(_))))
-        )
-    }
-
-    #[test]
     fn given_an_outbound_request_when_invalid_json_should_emit_malformed_json() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime

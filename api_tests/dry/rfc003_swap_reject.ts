@@ -243,7 +243,7 @@ declare var global: HarnessGlobal;
                 global.project_root,
                 null,
                 {
-                    reason: "BadRate",
+                    reason: "UnsatisfactoryRate",
                 }
             );
 

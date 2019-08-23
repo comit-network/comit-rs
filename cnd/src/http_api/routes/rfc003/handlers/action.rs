@@ -6,7 +6,7 @@ use crate::{
         },
         problem,
         route_factory::new_action_link,
-        routes::rfc003::decline::DeclineBody,
+        routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
     swap_protocols::{
         actions::Actions,
@@ -59,7 +59,7 @@ pub fn handle_action<T: MetadataStore<SwapId>, S: StateStore>(
                         .map_err(problem::deserialize)
                         .and_then(|body| {
                             action
-                                .decline(body.reason)
+                                .decline(to_swap_decline_reason(body.reason))
                                 .map(|_| ActionResponseBody::None)
                                 .map_err(|_| problem::action_already_done(action_kind))
                         }),

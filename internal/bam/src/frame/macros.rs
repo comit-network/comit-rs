@@ -20,7 +20,7 @@ macro_rules! header {
         header_internal!($e, {
             log::info!("Header was not present, early returning with decline response!");
             let decline_body = DeclineResponseBody {
-                reason: SwapDeclineReason::MissingHeader,
+                reason: Some(SwapDeclineReason::MissingMandatoryHeader),
             };
 
             return Box::new(futures::future::ok(Response::default().with_header(
@@ -42,9 +42,9 @@ macro_rules! body {
         match $e {
             Ok(body) => body,
             Err(e) => {
-                log::error!("Failed to deserialize body: {:?}", e);
+                log::error!("Failed to deserialize body because of unexpected field: {:?}", e);
                 let decline_body = DeclineResponseBody {
-                    reason: SwapDeclineReason::MalformedJson,
+                    reason: Some(SwapDeclineReason::UnexpectedJsonField),
                 };
 
                 return Box::new(futures::future::ok(Response::default().with_header(
@@ -67,10 +67,10 @@ macro_rules! header_internal {
         match $e {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
-                log::error!("Failed to deserialize header: {:?}", e);
+                log::error!("Failed to deserialize header because of unexpected field: {:?}", e);
 
                 let decline_body = DeclineResponseBody {
-                    reason: SwapDeclineReason::MalformedJson,
+                    reason: Some(SwapDeclineReason::UnexpectedJsonField),
                 };
 
                 return Box::new(futures::future::ok(Response::default().with_header(

@@ -118,7 +118,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 pub enum SwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     Declined {
         start: Start<AL, BL, AA, BA>,
-        rejection_type: DeclineResponseBody,
+        reason: DeclineResponseBody,
     },
     AlphaRefunded {
         swap: OngoingSwap<AL, BL, AA, BA>,
@@ -319,11 +319,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             Ok(swap_accepted) => transition_save!(context.state_repo, Accepted {
                 swap: OngoingSwap::new(state, swap_accepted),
             }),
-            Err(rejection_type) => transition_save!(
+            Err(reason) => transition_save!(
                 context.state_repo,
                 Final(SwapOutcome::Declined {
                     start: state,
-                    rejection_type
+                    reason
                 })
             ),
         }

@@ -33,7 +33,7 @@ pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
 
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
 pub struct DeclineResponseBody {
-    pub reason: SwapDeclineReason,
+    pub reason: Option<SwapDeclineReason>,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
@@ -41,8 +41,8 @@ pub enum SwapDeclineReason {
     UnsatisfactoryRate,
     UnsupportedProtocol,
     UnsupportedSwap,
-    MissingHeader,
-    MalformedJson,
+    MissingMandatoryHeader,
+    UnexpectedJsonField,
     Unknown(String),
 }
 

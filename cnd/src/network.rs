@@ -276,7 +276,7 @@ fn handle_request<B: BobSpawner>(
                             );
 
                             let decline_body = DeclineResponseBody {
-                                reason: SwapDeclineReason::UnsupportedSwap,
+                                reason: Some(SwapDeclineReason::UnsupportedSwap),
                             };
 
                             Box::new(futures::future::ok(
@@ -298,7 +298,7 @@ fn handle_request<B: BobSpawner>(
                     log::warn!("the swap protocol {} is currently not supported", protocol);
 
                     let decline_body = DeclineResponseBody {
-                        reason: SwapDeclineReason::UnsupportedProtocol,
+                        reason: Some(SwapDeclineReason::UnsupportedProtocol),
                     };
                     Box::new(futures::future::ok(
                         Response::default()
