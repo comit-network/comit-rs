@@ -1,6 +1,6 @@
 import { expect } from "chai";
 import "chai/register-should";
-import { toBN, toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { Actor } from "../../../lib/actor";
 import * as bitcoin from "../../../lib/bitcoin";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
@@ -24,7 +24,7 @@ declare var global: HarnessGlobal;
     });
 
     const alphaAssetQuantity = 100000000;
-    const betaAssetQuantity = toBN(toWei("10", "ether"));
+    const betaAssetQuantity = ethers.utils.parseEther("10");
 
     const alphaExpiry = Math.round(Date.now() / 1000) + 13;
     const betaExpiry = Math.round(Date.now() / 1000) + 8;

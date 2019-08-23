@@ -1,5 +1,5 @@
 import "chai/register-should";
-import { toBN, toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { Actor } from "../../../lib/actor";
 import * as bitcoin from "../../../lib/bitcoin";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
@@ -25,9 +25,9 @@ declare var global: HarnessGlobal;
             "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });
 
-    const bobInitialErc20 = toBN(toWei("10000", "ether"));
+    const bobInitialErc20 = ethers.utils.parseEther("10000");
     const alphaAssetQuantity = 100000000;
-    const betaAssetQuantity = toBN(toWei("5000", "ether"));
+    const betaAssetQuantity = ethers.utils.parseEther("5000");
     const maxFeeInSatoshi = 50000;
 
     const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
@@ -40,9 +40,11 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await alice.wallet.eth().fund("1");
 
+    console.log("got here1");
     const tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
+    console.log("got here1.2");
     await tobyWallet
         .eth()
         .mintErc20To(
@@ -50,6 +52,8 @@ declare var global: HarnessGlobal;
             bobInitialErc20,
             tokenContractAddress
         );
+
+    console.log("got here2");
 
     const swapRequest: SwapRequest = {
         alpha_ledger: {
@@ -78,6 +82,8 @@ declare var global: HarnessGlobal;
     const erc20Balance = await bob.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
+    console.log(erc20Balance);
+    console.log(bobInitialErc20);
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
     const aliceErc20BalanceBefore = await alice.wallet

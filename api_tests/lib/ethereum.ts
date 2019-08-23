@@ -1,38 +1,31 @@
 import { ECPair } from "bitcoinjs-lib";
 import bitcoin from "bitcoinjs-lib";
-import BN from "bn.js";
-import EthereumTx = require("ethereumjs-tx");
 import { privateToAddress } from "ethereumjs-util";
+import { ethers } from "ethers";
+import { JsonRpcProvider, TransactionRequest } from "ethers/providers";
+import { BigNumber } from "ethers/utils";
 import * as fs from "fs";
-import Web3 from "web3";
-import { HttpProvider } from "web3-providers";
-import * as utils from "web3-utils";
 import * as util from "./util";
 
-let web3Client: any;
+let ethersClient: JsonRpcProvider;
 
 export interface EthereumNodeConfig {
     rpc_url: string;
 }
 
-function createWeb3Client(ethConfig?: EthereumNodeConfig) {
-    if (!ethConfig && web3Client) {
+function createEthereumClient(ethConfig?: EthereumNodeConfig) {
+    if (!ethConfig && ethersClient) {
         throw new Error("ethereum configuration is needed");
     }
-    if (!web3Client || ethConfig !== ethConfig) {
-        const httpProvider = new HttpProvider(ethConfig.rpc_url);
-        web3Client = new Web3(httpProvider);
-
-        // https://github.com/ethereum/web3.js/issues/2822
-        web3Client.eth.transactionConfirmationBlocks = 1;
+    if (!ethersClient || ethConfig !== ethConfig) {
+        ethersClient = new ethers.providers.JsonRpcProvider(ethConfig.rpc_url);
     }
 
-    return web3Client;
+    return ethersClient;
 }
 
 async function ethBalance(address: string) {
-    const balance: string = await web3Client.eth.getBalance(address);
-    return utils.toBN(balance);
+    return ethersClient.getBalance(address);
 }
 
 async function erc20Balance(
@@ -52,26 +45,23 @@ async function erc20Balance(
         data: payload,
     };
 
-    const hexBalance = await web3Client.eth.call(tx);
-    return utils.toBN(hexBalance);
+    const transactionReceipt = await ethersClient.call(tx);
+    return ethers.utils.bigNumberify(transactionReceipt);
 }
 
 async function mintErc20Tokens(
     ownerWallet: EthereumWallet,
     contractAddress: string,
     toAddress: string,
-    amount: BN | string | number
+    amount: BigNumber | string | number
 ) {
     const functionIdentifier = "40c10f19";
 
     toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
 
-    if (typeof amount === "string" || typeof amount === "number") {
-        amount = utils.toBN(amount);
-    }
-
-    const hexAmount = utils
-        .numberToHex(amount)
+    const bigNumber = ethers.utils.bigNumberify(amount);
+    const hexAmount = bigNumber
+        .toHexString()
         .replace(/^0x/, "")
         .padStart(64, "0");
     const payload = "0x" + functionIdentifier + toAddress + hexAmount;
@@ -87,7 +77,7 @@ export class EthereumWallet {
         this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
         this.account =
             "0x" + privateToAddress(this.keypair.privateKey).toString("hex");
-        createWeb3Client(ethConfig);
+        createEthereumClient(ethConfig);
     }
 
     public address() {
@@ -103,23 +93,24 @@ export class EthereumWallet {
     }
 
     public async fund(ether: string) {
-        const parityDevAccount = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-        const parityDevPassword = "";
+        const parityPrivateKey =
+            "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7";
 
-        const weiAmount = utils.toWei(ether, "ether");
-        const weiAmountBN = utils.toBN(weiAmount);
+        const weiAmount = ethers.utils.parseEther(ether);
 
         const tx = {
-            from: parityDevAccount,
             to: this.address(),
-            value: utils.numberToHex(weiAmountBN),
+            value: weiAmount.toHexString(),
+            gasLimit: 21000,
         };
-        return web3Client.eth.personal.sendTransaction(tx, parityDevPassword);
+
+        const wallet = new ethers.Wallet(parityPrivateKey, ethersClient);
+        return wallet.sendTransaction(tx);
     }
 
     public async mintErc20To(
         toAddress: string,
-        amount: BN | string | number,
+        amount: BigNumber | string | number,
         contractAddress: string
     ) {
         const receipt = await mintErc20Tokens(
@@ -141,29 +132,26 @@ export class EthereumWallet {
     public async sendEthTransactionTo(
         to: string,
         data: string,
-        value: BN | string | number = utils.toBN(0),
+        value: BigNumber | string | number = 0,
         gasLimit: string = "0x100000"
     ) {
         if (!to) {
             throw new Error("`to` cannot be null");
         }
 
-        if (typeof value === "string" || typeof value === "number") {
-            value = utils.toBN(value);
-        }
+        value = ethers.utils.bigNumberify(value);
 
-        const nonce = await web3Client.eth.getTransactionCount(this.address());
+        const nonce = await ethersClient.getTransactionCount(this.address());
 
-        const tx = new EthereumTx({
+        const tx: TransactionRequest = {
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x0",
             gasLimit,
             to,
             data,
-            value: utils.numberToHex(value),
+            value: value.toHexString(),
             chainId: 1,
-        });
-
+        };
         return this.signAndSend(tx);
     }
 
@@ -179,39 +167,37 @@ export class EthereumWallet {
                     "utf8"
                 )
                 .trim();
-        const receipt = await this.deploy_contract(tokenContractDeploy);
-        return receipt.contractAddress;
+        const transactionReceipt = await this.deploy_contract(
+            tokenContractDeploy
+        );
+
+        return transactionReceipt.contractAddress;
     }
 
     public async deploy_contract(
         data: string = "0x0",
-        value: BN | number | string = utils.toBN(0),
+        value: BigNumber | number | string = "0",
         gasLimit = "0x3D0900"
     ) {
-        const nonce = await web3Client.eth.getTransactionCount(this.address());
+        const nonce = await ethersClient.getTransactionCount(this.address());
 
-        if (typeof value === "number" || typeof value === "string") {
-            value = utils.toBN(value);
-        }
+        value = ethers.utils.bigNumberify(value);
 
-        const tx = new EthereumTx({
+        const tx: TransactionRequest = {
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x0",
             gasLimit,
-            to: null,
             data,
-            value: utils.numberToHex(value),
+            value: value.toHexString(),
             chainId: 1,
-        });
+        };
 
         return this.signAndSend(tx);
     }
 
-    public async signAndSend(tx: EthereumTx) {
-        tx.sign(this.keypair.privateKey);
-        const serializedTx = tx.serialize();
-        const hex = "0x" + serializedTx.toString("hex");
-
-        return web3Client.eth.sendSignedTransaction(hex);
+    public async signAndSend(tx: TransactionRequest) {
+        const wallet = new ethers.Wallet(this.keypair.privateKey, ethersClient);
+        const transactionResponse = await wallet.sendTransaction(tx);
+        return transactionResponse.wait(1);
     }
 }

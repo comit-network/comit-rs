@@ -1,9 +1,10 @@
 import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
+import { TransactionReceipt } from "ethers/providers";
+import { Transaction } from "ethers/utils";
 import * as fs from "fs";
 import * as toml from "toml";
 import URI from "urijs";
-import { Transaction, TransactionReceipt } from "web3-core";
 import { TestConfig } from "./actor";
 import { sleep } from "./util";
 
