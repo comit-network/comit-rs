@@ -26,7 +26,7 @@ version = "0.8"
 
 [dependencies.primitive-types]
 features = ["rlp"]
-version = "0.3.0"
+version = "0.5.0"
 
 [dev-dependencies]
 hex = "0.3"
