@@ -35,7 +35,7 @@ mime = "0.3"
 mime_guess = "1.8"
 rand = "0.7"
 reqwest = "0.9"
-rlp = "0.3"
+rlp = "0.4"
 rust-crypto = "0.2"
 rustic_hal = "0.2"
 secp256k1_keypair = { path = "../internal/secp256k1_keypair" }
