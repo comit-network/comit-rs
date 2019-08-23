@@ -65,11 +65,11 @@ In order to do a swap you will have to start two comit nodes (cnd & btsieve).
 - `cargo make e2e *btc*` to run cnd end-to-end tests with `btc` in the folder name (supports shell glob on the name)
 
 Alternatively, you can run the end-to-end tests and TypeScript related actions using `yarn` (careful! It does not recompile Rust for you):
-- `yarn run tests`: run all tests
-- `yarn run <directory>`: run all tests in the directory
-- `yarn run <path to test file>`: run all tests in this test file, supports shell glob on the path
+- `yarn run test`: run all tests
+- `yarn run test <directory>`: run all tests in the directory
+- `yarn run test <path to test file>`: run all tests in this test file, supports shell glob on the path
 - `yarn run fix`: run prettier and linter to fix format
-- `yarn run chec`: run tsc (to check validity of TypeScript code) and verify format
+- `yarn run check`: run tsc (to check validity of TypeScript code) and verify format
 
 
 
