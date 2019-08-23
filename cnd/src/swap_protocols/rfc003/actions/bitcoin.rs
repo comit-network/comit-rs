@@ -9,7 +9,7 @@ use crate::swap_protocols::{
     },
 };
 use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction};
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::rfc003::BitcoinHtlc;
 
 impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     type FundActionOutput = SendToAddress;

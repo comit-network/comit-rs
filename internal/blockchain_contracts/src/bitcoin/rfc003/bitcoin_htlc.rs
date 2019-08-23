@@ -19,6 +19,17 @@ pub struct BitcoinHtlc {
 }
 
 #[derive(Debug)]
+pub enum Error {
+    FailedToSign(miniscript::Error),
+    /// Subtracting the required fee from the input resulted in an underflow
+    ///
+    /// Encountering this error means there is not enough value in the HTLC to
+    /// actually spend it. Redeeming or refunding such an HTLC is currently not
+    /// supported and would require a child-pays-for-parent construct.
+    FeeHigherThanInputValue,
+}
+
+#[derive(Debug)]
 pub enum UnlockStrategy {
     Redeem { key: SecretKey, secret: [u8; 32] },
     Refund { key: SecretKey },
@@ -68,9 +79,9 @@ impl BitcoinHtlc {
         htlc_location: OutPoint,
         input_value: u64,
         spend_to: bitcoin::Address,
-        fee_per_wu: u64,
+        fee_per_wu: u16,
         strategy: UnlockStrategy,
-    ) -> Result<Transaction, miniscript::Error> {
+    ) -> Result<Transaction, Error> {
         use UnlockStrategy::*;
 
         let mut htlc_tx_in = TxIn {
@@ -97,9 +108,13 @@ impl BitcoinHtlc {
         let base_tx_weight = spending_transaction.get_weight();
         let output_value = {
             let expected_weight = base_tx_weight + strategy.expected_witness_stack_weight();
-            let fee = expected_weight * fee_per_wu;
+            // This could potentially overflow but that would mean with have `weight` and
+            // `fee` with absurd
+            let fee = expected_weight * u64::from(fee_per_wu);
 
-            input_value - fee
+            input_value
+                .checked_sub(fee)
+                .ok_or(Error::FeeHigherThanInputValue)?
         };
         spending_transaction.output[0].value = output_value;
 
@@ -123,7 +138,8 @@ impl BitcoinHtlc {
                     signature: crate::SECP.sign(&message_to_sign, &key),
                 };
                 self.miniscript
-                    .satisfy(&mut htlc_tx_in, &statisfier, 0, 0)?;
+                    .satisfy(&mut htlc_tx_in, &statisfier, 0, 0)
+                    .map_err(Error::FailedToSign)?;
             }
             Refund { key } => {
                 let satisfier = RefundSatisfier {
@@ -131,7 +147,8 @@ impl BitcoinHtlc {
                     signature: crate::SECP.sign(&message_to_sign, &key),
                 };
                 self.miniscript
-                    .satisfy(&mut htlc_tx_in, &satisfier, 0, self.expiry)?;
+                    .satisfy(&mut htlc_tx_in, &satisfier, 0, self.expiry)
+                    .map_err(Error::FailedToSign)?;
             }
         }
 
@@ -192,10 +209,10 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for RedeemStatisfier {
         bitcoin::PublicKey,
         (secp256k1::Signature, bitcoin::SigHashType),
     )> {
-        return Some((
+        Some((
             to_bitcoin_public_key(&self.secret_key),
             (self.signature, bitcoin::SigHashType::All),
-        ));
+        ))
     }
 
     fn lookup_sha256(&self, _: miniscript::bitcoin_hashes::sha256::Hash) -> Option<[u8; 32]> {
@@ -211,10 +228,10 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for RefundSatisfier {
         bitcoin::PublicKey,
         (secp256k1::Signature, bitcoin::SigHashType),
     )> {
-        return Some((
+        Some((
             to_bitcoin_public_key(&self.secret_key),
             (self.signature, bitcoin::SigHashType::All),
-        ));
+        ))
     }
 
     fn lookup_sha256(&self, _: miniscript::bitcoin_hashes::sha256::Hash) -> Option<[u8; 32]> {
@@ -234,12 +251,12 @@ mod tests {
 
     #[test]
     fn constructor_does_not_panic() {
-        BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+        BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
     }
 
     #[quickcheck_macros::quickcheck]
-    fn unlock_for_redeem_doesnt_panic(input_value: u64, fee_per_wu: u64) {
-        let htlc = BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+    fn unlock_for_redeem_doesnt_panic(input_value: u64, fee_per_wu: u16) {
+        let htlc = BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
         let out_point = OutPoint {
             txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
             vout: 0,
@@ -247,7 +264,7 @@ mod tests {
         let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
         let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
 
-        htlc.unlock(
+        let _ = htlc.unlock(
             out_point,
             input_value,
             address,
@@ -256,13 +273,12 @@ mod tests {
                 key: public_key,
                 secret: [0u8; 32],
             },
-        )
-        .unwrap();
+        );
     }
 
     #[quickcheck_macros::quickcheck]
-    fn unlock_for_refund_doesnt_panic(input_value: u64, fee_per_wu: u64) {
-        let htlc = BitcoinHtlc::new(141241, zero_identity(), zero_identity(), [0u8; 32]);
+    fn unlock_for_refund_doesnt_panic(input_value: u64, fee_per_wu: u16) {
+        let htlc = BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
         let out_point = OutPoint {
             txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
             vout: 0,
@@ -270,13 +286,12 @@ mod tests {
         let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
         let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
 
-        htlc.unlock(
+        let _ = htlc.unlock(
             out_point,
             input_value,
             address,
             fee_per_wu,
             UnlockStrategy::Refund { key: public_key },
-        )
-        .unwrap();
+        );
     }
 }

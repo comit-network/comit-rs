@@ -17,7 +17,7 @@ use bitcoin_quantity::BitcoinQuantity;
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::{
     pubkey_hash::PubkeyHash,
-    rfc003::bitcoin_htlc::{BitcoinHtlc, UnlockStrategy},
+    rfc003::{BitcoinHtlc, UnlockStrategy},
 };
 use secp256k1::{PublicKey, SecretKey};
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};

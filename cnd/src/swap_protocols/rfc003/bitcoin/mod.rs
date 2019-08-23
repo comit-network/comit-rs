@@ -6,7 +6,7 @@ use crate::swap_protocols::{
     rfc003::{state_machine::HtlcParams, Ledger},
 };
 use bitcoin_support::{Address, BitcoinQuantity, OutPoint};
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::rfc003::BitcoinHtlc;
 
 pub use self::htlc_events::*;
 

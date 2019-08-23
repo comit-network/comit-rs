@@ -5,7 +5,7 @@ use crate::{
         SwapId, Timestamp,
     },
 };
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::UnlockStrategy;
+use blockchain_contracts::bitcoin::rfc003::UnlockStrategy;
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
@@ -133,10 +133,10 @@ impl IntoResponsePayload for bitcoin::SpendHtlc {
                 address,
                 fee_per_wu,
             } => {
-                let fee_per_wu = fee_per_wu.parse::<u64>().map_err(|_| {
+                let fee_per_wu = fee_per_wu.parse::<u16>().map_err(|_| {
                     HttpApiProblem::new("Invalid query parameter.")
                         .set_status(StatusCode::BAD_REQUEST)
-                        .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
+                        .set_detail("Query parameter fee-per-byte is not a valid unsigned u16.")
                 })?;
 
                 let network = self.network;
@@ -150,46 +150,23 @@ impl IntoResponsePayload for bitcoin::SpendHtlc {
                     UnlockStrategy::Refund { key: self.key }
                 };
 
+                let input_value = self.amount.satoshi();
+
                 let transaction = self
                     .htlc
                     .unlock(
                         self.outpoint,
-                        self.amount.satoshi(),
+                        input_value,
                         address,
                         fee_per_wu,
                         strategy,
                     )
                     .map_err(|e| {
-                        log::error!("Could not sign Bitcoin transaction: {:?}", e);
-                        HttpApiProblem::new("Unable to sign bitcoin transaction.")
-                            .set_status(StatusCode::INTERNAL_SERVER_ERROR)
-                        //                        match e {
-                        //
-                        // bitcoin_witness::Error::FeeHigherThanInputValue => {
-                        //
-                        // HttpApiProblem::new("Fee is too high.")
-                        //
-                        // .set_status(StatusCode::BAD_REQUEST)
-                        //                                    .set_detail(
-                        //                                        "The Fee per
-                        // byte/WU provided makes the
-                        //                 total fee higher than the spendable
-                        // input value.",
-                        // )
-                        // }
-                        // bitcoin_witness::Error::OverflowingFee =>
-                        // HttpApiProblem::new(
-                        //                                "Fee
-                        //                 is too high.",
-                        //                            )
-                        //
-                        // .set_status(StatusCode::BAD_REQUEST)
-                        //                            .set_detail(
-                        //                                "The Fee per byte/WU
-                        // provided makes
-                        // the total fee higher than the system supports.",
-                        //                            ),
-                        //                        }
+                        log::warn!("unable to create unlock transaction for htlc {:?}", e);
+                        match e {
+                         blockchain_contracts::bitcoin::rfc003::Error::FeeHigherThanInputValue => HttpApiProblem::new("Fee is too high.").set_status(StatusCode::BAD_REQUEST).set_detail(format!("The Fee per byte/WU ({}) provided makes the total fee higher than the spendable input value ({}).", fee_per_wu, input_value)),
+                         blockchain_contracts::bitcoin::rfc003::Error::FailedToSign(_) => HttpApiProblem::new("Failed to sign transaction").set_status(StatusCode::INTERNAL_SERVER_ERROR).set_detail("An unexpected internal error occured while trying to sign the spending transaction.")
+                        }
                     })?;
 
                 Ok(ActionResponseBody::bitcoin_broadcast_signed_transaction(

@@ -13,7 +13,7 @@ pub trait Actions {
 pub mod bitcoin {
     use crate::swap_protocols::rfc003::Secret;
     use bitcoin_support::{Address, BitcoinQuantity, Network, OutPoint};
-    use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+    use blockchain_contracts::bitcoin::rfc003::BitcoinHtlc;
     use secp256k1_keypair::SecretKey;
     use serde::Serialize;
 
