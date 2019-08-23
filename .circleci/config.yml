@@ -30,6 +30,10 @@ commands:
           name:  "Setup system environment"
           command: |
             rm -rf /opt/circleci/.nvm
+            sudo systemctl stop apt-daily.service
+            sudo systemctl kill --kill-who=all apt-daily.service
+            # wait until `apt-get updated` has been killed
+            while ! (sudo systemctl list-units --all apt-daily.service | egrep -q '(dead|failed)') ; do sleep 1; done
             curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
             curl -sL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
