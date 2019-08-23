@@ -19,6 +19,20 @@ setTimeout(async function() {
                     expect(res).to.have.status(200);
                 });
             });
+            describe("Expected-Version header", () => {
+                it("btsieve should respond 400 BAD_REQUEST when the header is not set", async function() {
+                    const res = await request(btsieve.url()).get("/health");
+
+                    expect(res).to.have.status(400);
+                });
+                it("btsieve should respond 400 BAD_REQUEST when the expected version doesn't match the actual version", async function() {
+                    const res = await request(btsieve.url())
+                        .get("/health")
+                        .set("Expected-Version", "0.0.0");
+
+                    expect(res).to.have.status(400);
+                });
+            });
         });
 
         describe("Bitcoin", () => {
