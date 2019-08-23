@@ -5,7 +5,7 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
-bitcoin = "0.18.0"
+bitcoin = "0.19.2"
 bitcoin_hashes = "0.3.2"
 bitcoin_witness = { path = "../../internal/bitcoin_witness" }
 byteorder = "1.3"
