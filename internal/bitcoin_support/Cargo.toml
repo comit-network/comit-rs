@@ -7,7 +7,7 @@ edition = "2018"
 [dependencies]
 bigdecimal = "0.1.0"
 bitcoin = { version = "0.18", features = ["use-serde"] }
-bitcoin-bech32 = "0.9"
+bitcoin-bech32 = "0.11"
 bitcoin_hashes = "0.3.2"
 bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
 hex = "0.3"
