@@ -40,11 +40,9 @@ declare var global: HarnessGlobal;
     await bitcoin.generate();
     await alice.wallet.eth().fund("1");
 
-    console.log("got here1");
     const tokenContractAddress = await tobyWallet
         .eth()
         .deployErc20TokenContract(global.project_root);
-    console.log("got here1.2");
     await tobyWallet
         .eth()
         .mintErc20To(
@@ -52,8 +50,6 @@ declare var global: HarnessGlobal;
             bobInitialErc20,
             tokenContractAddress
         );
-
-    console.log("got here2");
 
     const swapRequest: SwapRequest = {
         alpha_ledger: {
