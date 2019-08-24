@@ -61,7 +61,7 @@ git config core.hooksPath .githooks
 ]
 
 # Overridden because: workspace = false
-[tasks.install-clippy-any]
+[tasks.install-clippy-rustup]
 workspace = false
 
 # Overridden because: we want to fail if there are warnings (-D warn)
