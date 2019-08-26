@@ -1,9 +1,10 @@
 import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
+import { TransactionReceipt } from "ethers/providers";
+import { Transaction } from "ethers/utils";
 import * as fs from "fs";
 import * as toml from "toml";
 import URI from "urijs";
-import { Transaction, TransactionReceipt } from "web3-core";
 import { TestConfig } from "./actor";
 import { sleep } from "./util";
 
@@ -30,6 +31,8 @@ export interface MetaBtsieveConfig {
 }
 
 export class Btsieve {
+    public readonly expectedVersion: string;
+
     private readonly host: string;
     private readonly port: number;
 
@@ -47,6 +50,11 @@ export class Btsieve {
             )
         );
         this.port = btsieveConfig.http_api.port_bind;
+
+        const cndCargoToml = toml.parse(
+            fs.readFileSync(`${root}/cnd/Cargo.toml`, "utf8")
+        );
+        this.expectedVersion = cndCargoToml.package.version;
     }
 
     public url() {
@@ -64,7 +72,9 @@ export class Btsieve {
     public async pollUntilMatches<M>(
         queryUrl: string
     ): Promise<IdMatchResponse<M>> {
-        const res = await request(queryUrl).get("");
+        const res = await request(queryUrl)
+            .get("")
+            .set("Expected-Version", this.expectedVersion);
 
         expect(res).to.have.status(200);
 
