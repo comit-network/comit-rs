@@ -49,6 +49,12 @@ fn main() -> Result<(), failure::Error> {
     let state_store = Arc::new(InMemoryStateStore::default());
     let btsieve_client = create_btsieve_api_client(&settings);
 
+    log::info!(
+        "Running health check on btsieve at: {}",
+        settings.btsieve.url
+    );
+    runtime.spawn(btsieve_client.health());
+
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
         ledger_events: btsieve_client.clone().into(),
         metadata_store: Arc::clone(&metadata_store),
