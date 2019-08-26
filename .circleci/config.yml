@@ -3,13 +3,25 @@ workflows:
   version: 2
   main:
     jobs:
-      - build:
-          filters: # required since `publish_github_release` has tag filters AND requires `build`
+      - setup:
+          filters: # required since other jobs has tag filters AND require `setup`
             tags:
               only: /.*/
+      - debug-build-test:
+          requires:
+            - setup
+          filters: # Do not run when tagged for a release
+            tags:
+              ignore: /^\d+\.\d+\.\d+$/
+      - release-build-test:
+          requires:
+            - setup
+          filters:
+            tags:
+              only: /^\d+\.\d+\.\d+$/
       - publish-github-release:
           requires:
-            - build
+            - release-build-test
           filters:
             branches:
               ignore: /.*/
@@ -17,7 +29,7 @@ workflows:
               only: /^\d+\.\d+\.\d+$/
 
 jobs:
-  build:
+  setup:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
@@ -30,16 +42,49 @@ jobs:
       - setup_rust
       - setup_system
       - print_current_versions
+      - persist_to_workspace:
+          root: ./
+          paths:
+            - ./
+
+  debug-build-test:
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      RUST_TEST_THREADS: "8"
+    steps:
+      - attach_workspace:
+          at: ./
       - run:
-          name: Build using cargo make
+          name: Debug build and test using cargo make
           command: cargo make ci
+      - store_artifacts:
+          path: api_tests/log
+      - save_caches
+
+  release-build-test:
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      RUST_TEST_THREADS: "8"
+    steps:
+      - attach_workspace:
+          at: ./
+      - run:
+          name: Debug build and test using cargo make
+          command: |
+            export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all-features --release"
+            cargo make ci
       - store_artifacts:
           path: api_tests/log
       - persist_to_workspace:
           root: ./
           paths:
-            - "[^target]"
-      - save_caches
+            - ./
 
   publish-github-release:
     working_directory: ~/comit
