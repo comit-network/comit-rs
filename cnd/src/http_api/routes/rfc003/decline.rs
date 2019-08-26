@@ -24,12 +24,9 @@ impl<AL: Ledger, BL: Ledger> ListRequiredFields for Decline<AL, BL> {
 pub fn to_swap_decline_reason(
     reason: Option<HttpApiSwapDeclineReason>,
 ) -> Option<SwapDeclineReason> {
-    match reason {
-        Some(HttpApiSwapDeclineReason::UnsatisfactoryRate) => {
-            Some(SwapDeclineReason::UnsatisfactoryRate)
-        }
-        None => None,
-    }
+    reason.map(|reason| match reason {
+        HttpApiSwapDeclineReason::UnsatisfactoryRate => SwapDeclineReason::UnsatisfactoryRate,
+    })
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
