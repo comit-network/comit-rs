@@ -1,4 +1,21 @@
 version: 2.1
+workflows:
+  version: 2
+  main:
+    jobs:
+      - build:
+          filters: # required since `publish_github_release` has tag filters AND requires `build`
+            tags:
+              only: /.*/
+      - publish-github-release:
+          requires:
+            - build
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+
 jobs:
   build:
     working_directory: ~/comit
@@ -13,28 +30,18 @@ jobs:
       - setup_rust
       - setup_system
       - print_current_versions
-
       - run:
           name: Build using cargo make
           command: cargo make ci
-
       - store_artifacts:
           path: api_tests/log
-
       - persist_to_workspace:
-          root: ./target/release
+          root: ./
           paths:
-            - btsieve
-            - cnd
-
+            - "[^target]"
       - save_caches
 
   publish-github-release:
-    filters:
-      branches:
-        ignore: /.*/
-      tags:
-        only: /^\d+\.\d+\.\d+$/
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
@@ -43,12 +50,18 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - attach_workspace:
-          at: ./target/release
+          at: ./
+      - run:
+          name: "Build release binary for btsieve"
+          command: cargo install --path ./btsieve --root ./artifacts
+      - run:
+          name: "Build release binary for cnd"
+          command: cargo install --path ./cnd --root ./artifacts
       - run:
           name: "Publish Release on GitHub"
           command: |
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./target/release
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/bin
 
 commands:
   setup_system:
