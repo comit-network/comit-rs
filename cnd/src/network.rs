@@ -278,7 +278,7 @@ fn handle_request<B: BobSpawner>(
                             };
 
                             Box::new(futures::future::ok(
-                                Response::default()
+                                Response::empty()
                                     .with_header(
                                         "decision",
                                         Decision::Declined
@@ -299,7 +299,7 @@ fn handle_request<B: BobSpawner>(
                         reason: Some(SwapDeclineReason::UnsupportedProtocol),
                     };
                     Box::new(futures::future::ok(
-                        Response::default()
+                        Response::empty()
                             .with_header(
                                 "decision",
                                 Decision::Declined
@@ -321,7 +321,14 @@ fn handle_request<B: BobSpawner>(
         request_type => {
             log::warn!("request type '{}' is unknown", request_type);
 
-            Box::new(futures::future::ok(Response::default()))
+            Box::new(futures::future::ok(
+                Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                ),
+            ))
         }
     }
 }
@@ -365,7 +372,7 @@ where
                         beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
                         alpha_ledger_redeem_identity: accept_body.alpha_ledger_redeem_identity,
                     };
-                    Response::default()
+                    Response::empty()
                         .with_header(
                             "decision",
                             Decision::Accepted
@@ -377,7 +384,7 @@ where
                                 .expect("body should always serialize into serde_json::Value"),
                         )
                 }
-                Ok(Err(decline_body)) => Response::default()
+                Ok(Err(decline_body)) => Response::empty()
                     .with_header(
                         "decision",
                         Decision::Declined
@@ -393,7 +400,12 @@ where
                         "Failed to receive from oneshot channel for swap {}",
                         swap_id
                     );
-                    Response::default()
+                    Response::empty().with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_bam_header()
+                            .expect("Decision should not fail to serialize"),
+                    )
                 }
             };
 
@@ -401,7 +413,14 @@ where
         })),
         Err(e) => {
             log::error!("Unable to spawn Bob: {:?}", e);
-            Box::new(futures::future::ok(Response::default()))
+            Box::new(futures::future::ok(
+                Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                ),
+            ))
         }
     }
 }

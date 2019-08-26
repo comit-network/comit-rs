@@ -23,7 +23,7 @@ macro_rules! header {
                 reason: Some(SwapDeclineReason::MissingMandatoryHeader),
             };
 
-            return Box::new(futures::future::ok(Response::default().with_header(
+            return Box::new(futures::future::ok(Response::empty().with_header(
                 "decision",
                 Decision::Declined
                     .to_bam_header()
@@ -44,10 +44,10 @@ macro_rules! body {
             Err(e) => {
                 log::error!("Failed to deserialize body because of unexpected field: {:?}", e);
                 let decline_body = DeclineResponseBody {
-                    reason: Some(SwapDeclineReason::UnexpectedJsonField),
+                    reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Box::new(futures::future::ok(Response::default().with_header(
+                return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_bam_header()
@@ -70,10 +70,10 @@ macro_rules! header_internal {
                 log::error!("Failed to deserialize header because of unexpected field: {:?}", e);
 
                 let decline_body = DeclineResponseBody {
-                    reason: Some(SwapDeclineReason::UnexpectedJsonField),
+                    reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Box::new(futures::future::ok(Response::default().with_header(
+                return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_bam_header()

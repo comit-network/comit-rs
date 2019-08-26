@@ -44,7 +44,7 @@ pub enum SwapDeclineReason {
     UnsupportedProtocol,
     UnsupportedSwap,
     MissingMandatoryHeader,
-    UnexpectedJsonField,
+    BadJsonField,
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
@@ -120,7 +120,7 @@ mod tests {
     #[test]
     fn serialize_decline_body_unexpected_json_field() {
         let decline_response_body = DeclineResponseBody {
-            reason: Some(SwapDeclineReason::UnexpectedJsonField),
+            reason: Some(SwapDeclineReason::BadJsonField),
         };
 
         let response = serde_json::to_string(&decline_response_body).unwrap();
