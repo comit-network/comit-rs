@@ -12,7 +12,7 @@ export interface EthereumNodeConfig {
     rpc_url: string;
 }
 
-function createEthereumClient(ethConfig?: EthereumNodeConfig) {
+function createEthereumClient(ethConfig: EthereumNodeConfig) {
     if (!ethConfig && ethersClient) {
         throw new Error("ethereum configuration is needed");
     }
