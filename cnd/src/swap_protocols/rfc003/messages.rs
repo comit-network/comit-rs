@@ -45,7 +45,6 @@ pub enum SwapDeclineReason {
     UnsupportedSwap,
     MissingMandatoryHeader,
     UnexpectedJsonField,
-    Unknown(String),
 }
 
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
