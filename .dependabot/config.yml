@@ -5,18 +5,24 @@ update_configs:
     update_schedule: "weekly"
     default_labels:
       - "dependencies"
-      - "automagically-mergify-this"
     allowed_updates:
       - match:
           update_type: "all"
           dependency_type: "direct"
+    automerged_updates:
+      - match:
+          dependency_type: "all"
+          update_type: "all"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "weekly"
     default_labels:
       - "dependencies"
-      - "automagically-mergify-this"
     allowed_updates:
       - match:
           update_type: "all"
           dependency_type: "direct"
+    automerged_updates:
+      - match:
+          dependency_type: "all"
+          update_type: "all"

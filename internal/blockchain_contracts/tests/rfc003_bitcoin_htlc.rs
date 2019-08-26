@@ -13,13 +13,11 @@ use crate::{
 use bitcoin::{
     consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
 };
+use bitcoin_hashes::{hash160, sha256d, Hash};
 use bitcoin_quantity::BitcoinQuantity;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::{
-    pubkey_hash::{PubkeyHash, TransactionId},
-    rfc003::bitcoin_htlc::BitcoinHtlc,
-};
+use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 use secp256k1::{PublicKey, SecretKey};
 use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
@@ -80,11 +78,17 @@ fn unlock_with_custom_size_secret(
     }
 }
 
+fn pubkey_hash(secret_key: &SecretKey) -> hash160::Hash {
+    let public_key = PublicKey::from_secret_key(&*blockchain_contracts::SECP, &secret_key);
+
+    hash160::Hash::hash(&public_key.serialize())
+}
+
 fn fund_htlc(
     client: &bitcoincore_rpc::Client,
     secret_hash: [u8; 32],
 ) -> (
-    TransactionId,
+    sha256d::Hash,
     OutPoint,
     BitcoinQuantity,
     BitcoinHtlc,
@@ -94,14 +98,10 @@ fn fund_htlc(
 ) {
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let redeem_secret_key = redeem_privkey.key;
-    let redeem_pubkey_hash: PubkeyHash =
-        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-    let refund_secret_key = refund_privkey.key;
-    let refund_pubkey_hash: PubkeyHash =
-        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key).into();
+    let redeem_pubkey_hash = pubkey_hash(&redeem_privkey.key);
+    let refund_pubkey_hash = pubkey_hash(&refund_privkey.key);
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
@@ -110,8 +110,8 @@ fn fund_htlc(
 
     let htlc = BitcoinHtlc::new(
         refund_timestamp.into(),
-        refund_pubkey_hash.into(),
-        redeem_pubkey_hash.into(),
+        refund_pubkey_hash,
+        redeem_pubkey_hash,
         secret_hash,
     );
 
@@ -140,8 +140,8 @@ fn fund_htlc(
         amount,
         htlc,
         refund_timestamp,
-        redeem_secret_key,
-        refund_secret_key,
+        redeem_privkey.key,
+        refund_privkey.key,
     )
 }
 
