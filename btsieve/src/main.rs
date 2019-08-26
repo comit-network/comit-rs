@@ -7,6 +7,7 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     blocksource::BlockSource,
     ethereum::{self, web3_http_blocksource::Web3HttpBlockSource},
+    expected_version_header,
     load_settings::{load_settings, Opt},
     logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
@@ -60,7 +61,10 @@ fn main() -> Result<(), failure::Error> {
     let ping_200 = warp::path("health").map(warp::reply);
     let ping_route = warp::get2().and(ping_200);
 
-    let routes = ping_route.or(bitcoin_routes.or(ethereum_routes)).with(log);
+    let routes = expected_version_header::validate()
+        .and(ping_route.or(bitcoin_routes.or(ethereum_routes)))
+        .recover(expected_version_header::customize_error)
+        .with(log);
 
     warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
     Ok(())

@@ -12,9 +12,25 @@ setTimeout(async function() {
         describe("BTsieve", () => {
             describe("Ping", () => {
                 it("btsieve ping should respond with 200", async function() {
-                    const res = await request(btsieve.url()).get("/health");
+                    const res = await request(btsieve.url())
+                        .get("/health")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
+                });
+            });
+            describe("Expected-Version header", () => {
+                it("btsieve should respond 400 BAD_REQUEST when the header is not set", async function() {
+                    const res = await request(btsieve.url()).get("/health");
+
+                    expect(res).to.have.status(400);
+                });
+                it("btsieve should respond 400 BAD_REQUEST when the expected version doesn't match the actual version", async function() {
+                    const res = await request(btsieve.url())
+                        .get("/health")
+                        .set("Expected-Version", "0.0.0");
+
+                    expect(res).to.have.status(400);
                 });
             });
         });
@@ -22,9 +38,9 @@ setTimeout(async function() {
         describe("Bitcoin", () => {
             describe("Transactions", () => {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
-                    const res = await request(btsieve.url()).get(
-                        "/queries/bitcoin/regtest/transactions/1"
-                    );
+                    const res = await request(btsieve.url())
+                        .get("/queries/bitcoin/regtest/transactions/1")
+                        .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(503);
                 });
@@ -35,6 +51,7 @@ setTimeout(async function() {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/bitcoin/regtest/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -49,6 +66,7 @@ setTimeout(async function() {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if queried for transaction", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions/1")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
@@ -61,6 +79,7 @@ setTimeout(async function() {
                 it("btsieve should respond `SERVICE UNAVAILABLE` as ledger is not connected if posted new query", async function() {
                     const res = await request(btsieve.url())
                         .post("/queries/ethereum/regtest/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
                         });
