@@ -1,5 +1,5 @@
 import { expect, request } from "chai";
-import { toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
 import { HarnessGlobal, sleep } from "../lib/util";
@@ -41,7 +41,7 @@ declare var global: HarnessGlobal;
                     },
                     beta_asset: {
                         name: "ether",
-                        quantity: toWei("10", "ether"),
+                        quantity: ethers.utils.parseEther("10").toString(),
                     },
                     beta_ledger_redeem_identity:
                         "0x00a329c0648769a73afac7f9381e08fb43dbea72",
@@ -105,7 +105,7 @@ declare var global: HarnessGlobal;
                     },
                     beta_asset: {
                         name: "ether",
-                        quantity: toWei("10", "ether"),
+                        quantity: ethers.utils.parseEther("10").toString(),
                     },
                     beta_ledger_redeem_identity:
                         "0x00a329c0648769a73afac7f9381e08fb43dbea72",

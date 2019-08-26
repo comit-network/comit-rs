@@ -10,7 +10,6 @@ declare var global: HarnessGlobal;
 const btsieve = new Btsieve("main", global.config, global.project_root);
 
 const tobyWallet = new Wallet("toby", {
-    ethereumNodeConfig: global.ledgers_config.ethereum,
     bitcoinNodeConfig: global.ledgers_config.bitcoin,
 });
 

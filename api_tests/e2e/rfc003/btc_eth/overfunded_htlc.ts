@@ -1,6 +1,5 @@
-import BN = require("bn.js");
 import "chai/register-should";
-import { toBN, toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { Actor } from "../../../lib/actor";
 import * as bitcoin from "../../../lib/bitcoin";
 import { ActionKind, LedgerAction, SwapRequest } from "../../../lib/comit";
@@ -29,7 +28,7 @@ declare var global: HarnessGlobal;
 
     const alphaAssetQuantity = 100000000;
     const overFundedAlphaAssetQuantity = 1000000000;
-    const betaAssetQuantity = toBN(toWei("10", "ether"));
+    const betaAssetQuantity = ethers.utils.parseEther("10");
     const maxFeeInSatoshi = 50000;
 
     const alphaExpiry = Math.round(Date.now() / 1000) + 13;
@@ -94,11 +93,9 @@ declare var global: HarnessGlobal;
                         );
                     }
 
-                    // @ts-ignore
-                    ledgerAction.payload.amount = new BN(
-                        overFundedAlphaAssetQuantity,
-                        10
-                    ).toString(10);
+                    ledgerAction.payload.amount = new ethers.utils.BigNumber(
+                        overFundedAlphaAssetQuantity
+                    ).toString();
 
                     await actor.doLedgerAction(ledgerAction);
                 },
