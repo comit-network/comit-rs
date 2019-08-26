@@ -2,19 +2,19 @@
 #![forbid(unsafe_code)]
 
 use bitcoin::{Address, OutPoint, TxOut};
-use blockchain_contracts::bitcoin::pubkey_hash::TransactionId;
+use bitcoin_hashes::sha256d;
 use std::convert::TryFrom;
 
 pub trait RegtestHelperClient {
-    fn find_utxo_at_tx_for_address(&self, txid: &TransactionId, address: &Address)
+    fn find_utxo_at_tx_for_address(&self, txid: &sha256d::Hash, address: &Address)
         -> Option<TxOut>;
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint;
+    fn find_vout_for_address(&self, txid: &sha256d::Hash, address: &Address) -> OutPoint;
 }
 
 impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
     fn find_utxo_at_tx_for_address(
         &self,
-        txid: &TransactionId,
+        txid: &sha256d::Hash,
         address: &Address,
     ) -> Option<TxOut> {
         let unspent = self
@@ -34,7 +34,7 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             })
     }
 
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint {
+    fn find_vout_for_address(&self, txid: &sha256d::Hash, address: &Address) -> OutPoint {
         let tx = self.get_raw_transaction(&txid, None).unwrap();
 
         tx.output
