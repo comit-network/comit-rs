@@ -3,7 +3,6 @@ use crate::{
     swap_protocols::{self, asset::Asset},
 };
 use futures::Future;
-use serde::{Deserialize, Serialize};
 use std::io;
 
 pub trait Client: Send + Sync + 'static {
@@ -20,7 +19,7 @@ pub trait Client: Send + Sync + 'static {
         dyn Future<
                 Item = Result<
                     swap_protocols::rfc003::messages::AcceptResponseBody<AL, BL>,
-                    SwapReject,
+                    swap_protocols::rfc003::messages::DeclineResponseBody,
                 >,
                 Error = RequestError,
             > + Send,
@@ -37,16 +36,4 @@ pub enum RequestError {
     Connecting(io::ErrorKind),
     /// We were unable to send the data on the existing connection
     Connection,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum SwapReject {
-    Declined { reason: Option<SwapDeclineReason> },
-    Rejected,
-}
-
-#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum SwapDeclineReason {
-    BadRate,
-    Unknown(String),
 }

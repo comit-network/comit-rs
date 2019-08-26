@@ -43,7 +43,7 @@ declare var global: HarnessGlobal;
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bobCndPeerId = await bob.peerId();
 
-    describe("SWAP request REJECTED", () => {
+    describe("SWAP request DECLINED", () => {
         let aliceReasonableSwapHref: string;
         it("[Alice] Should be able to make first swap request via HTTP api", async () => {
             const res = await request(alice.cndHttpApiUrl())
@@ -243,7 +243,7 @@ declare var global: HarnessGlobal;
                 global.project_root,
                 null,
                 {
-                    reason: "BadRate",
+                    reason: "UnsatisfactoryRate",
                 }
             );
 
@@ -260,19 +260,19 @@ declare var global: HarnessGlobal;
             declineRes.should.have.status(200);
         });
 
-        it("[Bob] Should be in the Rejected State after declining a swap request providing a reason", async function() {
+        it("[Bob] Should be in the Declined State after declining a swap request providing a reason", async function() {
             await bob.pollCndUntil(
                 bobStingySwapHref,
                 entity =>
-                    entity.properties.state.communication.status === "REJECTED"
+                    entity.properties.state.communication.status === "DECLINED"
             );
         });
 
-        it("[Alice] Should be in the Rejected State after Bob declines a swap request providing a reason", async () => {
+        it("[Alice] Should be in the Declined State after Bob declines a swap request providing a reason", async () => {
             await alice.pollCndUntil(
                 aliceStingySwapHref,
                 body =>
-                    body.properties.state.communication.status === "REJECTED"
+                    body.properties.state.communication.status === "DECLINED"
             );
         });
 
@@ -292,19 +292,19 @@ declare var global: HarnessGlobal;
             declineRes.should.have.status(200);
         });
 
-        it("[Bob] Should be in the Rejected State after declining a swap request without a reason", async () => {
+        it("[Bob] Should be in the Declined State after declining a swap request without a reason", async () => {
             await bob.pollCndUntil(
                 bobReasonableSwapHref,
                 entity =>
-                    entity.properties.state.communication.status === "REJECTED"
+                    entity.properties.state.communication.status === "DECLINED"
             );
         });
 
-        it("[Alice] Should be in the Rejected State after Bob declines a swap request without a reason", async () => {
+        it("[Alice] Should be in the Declined State after Bob declines a swap request without a reason", async () => {
             await alice.pollCndUntil(
                 aliceReasonableSwapHref,
                 entity =>
-                    entity.properties.state.communication.status === "REJECTED"
+                    entity.properties.state.communication.status === "DECLINED"
             );
         });
     });

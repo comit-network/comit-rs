@@ -1,5 +1,4 @@
 use crate::{
-    api,
     frame::header::{Header, Headers},
     Frame, FrameType, IntoFrame,
 };
@@ -8,7 +7,6 @@ use serde_json::{self, Value as JsonValue};
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Clone)]
 pub struct Response {
-    status: api::Status,
     #[serde(default)]
     #[serde(skip_serializing_if = "Headers::is_empty")]
     headers: Headers,
@@ -18,16 +16,11 @@ pub struct Response {
 }
 
 impl Response {
-    pub fn new(status: api::Status) -> Self {
+    pub fn empty() -> Self {
         Response {
-            status,
             headers: Headers::default(),
             body: JsonValue::Null,
         }
-    }
-
-    pub fn status(&self) -> &api::Status {
-        &self.status
     }
 
     pub fn with_header(self, key: &str, header: Header) -> Self {
