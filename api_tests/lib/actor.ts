@@ -192,6 +192,10 @@ export class Actor {
         if (network !== "regtest") {
             throw Error("Expected network regtest, found " + network);
         }
+
+        // ensure that both parties are watching for the action
+        await sleep(1000);
+
         switch (action.type) {
             case "bitcoin-send-amount-to-address": {
                 action.payload.should.include.all.keys("to", "amount");
