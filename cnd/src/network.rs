@@ -1,17 +1,20 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    comit_client::SwapReject,
     libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingInboundRequest},
     swap_protocols::{
         asset::{Asset, AssetKind},
-        rfc003::{self, bob::BobSpawner, CreateLedgerEvents},
+        rfc003::{
+            self,
+            bob::BobSpawner,
+            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            CreateLedgerEvents,
+        },
         HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
     },
 };
 use bam::{
     self,
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    Status,
 };
 use futures::future::Future;
 use libp2p::{
@@ -269,20 +272,63 @@ fn handle_request<B: BobSpawner>(
                             log::warn!(
                                 "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
                             );
-                            Box::new(futures::future::ok(Response::new(Status::RE(21))))
+
+                            let decline_body = DeclineResponseBody {
+                                reason: Some(SwapDeclineReason::UnsupportedSwap),
+                            };
+
+                            Box::new(futures::future::ok(
+                                Response::empty()
+                                    .with_header(
+                                        "decision",
+                                        Decision::Declined
+                                            .to_bam_header()
+                                            .expect("Decision should not fail to serialize"),
+                                    )
+                                    .with_body(serde_json::to_value(decline_body).expect(
+                                        "decline body should always serialize into serde_json::Value",
+                                    )),
+                            ))
                         }
                     }
                 }
                 SwapProtocol::Unknown(protocol) => {
                     log::warn!("the swap protocol {} is currently not supported", protocol);
-                    Box::new(futures::future::ok(Response::new(Status::RE(21))))
+
+                    let decline_body = DeclineResponseBody {
+                        reason: Some(SwapDeclineReason::UnsupportedProtocol),
+                    };
+                    Box::new(futures::future::ok(
+                        Response::empty()
+                            .with_header(
+                                "decision",
+                                Decision::Declined
+                                    .to_bam_header()
+                                    .expect("Decision should not fail to serialize"),
+                            )
+                            .with_body(serde_json::to_value(decline_body).expect(
+                                "decline body should always serialize into serde_json::Value",
+                            )),
+                    ))
                 }
             }
         }
+
+        // This case is just catered for, because of rust. It can only happen
+        // if there is a typo in the request_type within the program. The request
+        // type is checked on the messaging layer and will be handled there if
+        // an unknown request_type is passed in.
         request_type => {
             log::warn!("request type '{}' is unknown", request_type);
 
-            Box::new(futures::future::ok(Response::new(Status::SE(2))))
+            Box::new(futures::future::ok(
+                Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                ),
+            ))
         }
     }
 }
@@ -321,39 +367,45 @@ where
     match bob_spawner.spawn(swap_id, counterparty, swap_request) {
         Ok(response_future) => Box::new(response_future.then(move |result| {
             let response = match result {
-                Ok(Ok(response)) => {
+                Ok(Ok(accept_body)) => {
                     let body = rfc003::messages::AcceptResponseBody::<AL, BL> {
-                        beta_ledger_refund_identity: response.beta_ledger_refund_identity,
-                        alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity,
+                        beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
+                        alpha_ledger_redeem_identity: accept_body.alpha_ledger_redeem_identity,
                     };
-                    Response::new(Status::OK(20)).with_body(
-                        serde_json::to_value(body)
-                            .expect("body should always serialize into serde_json::Value"),
-                    )
+                    Response::empty()
+                        .with_header(
+                            "decision",
+                            Decision::Accepted
+                                .to_bam_header()
+                                .expect("Decision should not fail to serialize"),
+                        )
+                        .with_body(
+                            serde_json::to_value(body)
+                                .expect("body should always serialize into serde_json::Value"),
+                        )
                 }
-                // FIXME: the called code should not be able to produce a "Rejected" here
-                // Rejected is for cases were we can automatically determine that a given swap
-                // request cannot be processes. As soon as we can dispatch the
-                // request (and therefore these branches here are activated), the
-                // only valid negative outcome should be "Declined"
-                //
-                // As long as Alice and Bob use the same state machine, this is not possible though.
-                Ok(Err(SwapReject::Rejected)) => Response::new(Status::SE(21)),
-                Ok(Err(SwapReject::Declined { reason: None })) => Response::new(Status::SE(20)),
-                Ok(Err(SwapReject::Declined {
-                    reason: Some(reason),
-                })) => Response::new(Status::SE(20)).with_header(
-                    "REASON",
-                    reason
-                        .to_bam_header()
-                        .expect("reason header shouldn't fail to serialize"),
-                ),
+                Ok(Err(decline_body)) => Response::empty()
+                    .with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_bam_header()
+                            .expect("Decision shouldn't fail to serialize"),
+                    )
+                    .with_body(
+                        serde_json::to_value(decline_body)
+                            .expect("decline body should always serialize into serde_json::Value"),
+                    ),
                 Err(_) => {
                     log::warn!(
                         "Failed to receive from oneshot channel for swap {}",
                         swap_id
                     );
-                    Response::new(Status::SE(0))
+                    Response::empty().with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_bam_header()
+                            .expect("Decision should not fail to serialize"),
+                    )
                 }
             };
 
@@ -361,7 +413,14 @@ where
         })),
         Err(e) => {
             log::error!("Unable to spawn Bob: {:?}", e);
-            Box::new(futures::future::ok(Response::new(Status::RE(0))))
+            Box::new(futures::future::ok(
+                Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_bam_header()
+                        .expect("Decision should not fail to serialize"),
+                ),
+            ))
         }
     }
 }

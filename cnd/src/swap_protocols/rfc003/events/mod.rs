@@ -6,13 +6,14 @@ mod ledger_event_futures;
 
 pub use self::ledger_event_futures::*;
 
-use crate::{
-    comit_client::SwapReject,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            self, ledger::Ledger, messages::AcceptResponseBody, state_machine::HtlcParams, Secret,
-        },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self,
+        ledger::Ledger,
+        messages::{AcceptResponseBody, DeclineResponseBody},
+        state_machine::HtlcParams,
+        Secret,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -21,7 +22,7 @@ use tokio::{self, prelude::future::Either};
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
 #[allow(type_alias_bounds)]
-pub type ResponseFuture<AL, BL> = Future<Result<AcceptResponseBody<AL, BL>, SwapReject>>;
+pub type ResponseFuture<AL, BL> = Future<Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Funded<L: Ledger, A: Asset> {

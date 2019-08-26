@@ -5,16 +5,20 @@
 // open up a new connection and decide how to respond to requests?
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    comit_client::{Client, RequestError, SwapDeclineReason, SwapReject},
+    comit_client::{Client, RequestError},
     network::{Behaviour, DialInformation},
     swap_protocols::{
         self,
         asset::Asset,
-        rfc003::{self, bob::BobSpawner},
+        rfc003::{
+            self,
+            bob::BobSpawner,
+            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+        },
         SwapProtocol,
     },
 };
-use bam::{self, frame, Status};
+use bam::{self, frame};
 use futures::Future;
 use libp2p::{Swarm, Transport};
 use serde::Deserialize;
@@ -29,7 +33,7 @@ pub struct Reason {
 #[allow(type_alias_bounds)]
 type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003::Ledger> = Box<
     dyn Future<
-            Item = Result<rfc003::messages::AcceptResponseBody<AL, BL>, SwapReject>,
+            Item = Result<rfc003::messages::AcceptResponseBody<AL, BL>, DeclineResponseBody>,
             Error = RequestError,
         > + Send,
 >;
@@ -68,58 +72,38 @@ where
         };
 
         let response = response.then(move |result| match result {
-            Ok(mut response) => match response.status() {
-                Status::OK(_) => {
-                    log::info!(
-                        "{} accepted swap request: {:?}",
-                        dial_information.clone(),
-                        response
-                    );
-                    match serde_json::from_value(response.body().clone()) {
-                        Ok(response) => Ok(Ok(response)),
-                        Err(_e) => Err(RequestError::InvalidResponse),
-                    }
-                }
-                Status::SE(20) => {
-                    log::info!(
-                        "{} declined swap request: {:?}",
-                        dial_information.clone(),
-                        response
-                    );
-                    Ok(Err({
-                        let reason = response
-                            .take_header("REASON")
-                            .map(SwapDeclineReason::from_bam_header)
-                            .map_or(Ok(None), |x| x.map(Some))
-                            .map_err(|e| {
-                                log::error!(
-                                    "Could not deserialize header in response {:?}: {}",
-                                    response,
-                                    e,
-                                );
-                                RequestError::InvalidResponse
-                            })?;
+            Ok(mut response) => {
+                let decision = response
+                    .take_header("decision")
+                    .map(Decision::from_bam_header)
+                    .map_or(Ok(None), |x| x.map(Some))
+                    .map_err(|e| {
+                        log::error!(
+                            "Could not deserialize header in response {:?}: {}",
+                            response,
+                            e,
+                        );
+                        RequestError::InvalidResponse
+                    })?;
 
-                        SwapReject::Declined { reason }
-                    }))
+                match decision {
+                    Some(Decision::Accepted) => {
+                        match serde_json::from_value(response.body().clone()) {
+                            Ok(body) => Ok(Ok(body)),
+                            Err(_e) => Err(RequestError::InvalidResponse),
+                        }
+                    }
+
+                    Some(Decision::Declined) => {
+                        match serde_json::from_value(response.body().clone()) {
+                            Ok(body) => Ok(Err(body)),
+                            Err(_e) => Err(RequestError::InvalidResponse),
+                        }
+                    }
+
+                    None => Err(RequestError::InvalidResponse),
                 }
-                Status::SE(_) => {
-                    log::info!(
-                        "{} rejected swap request: {:?}",
-                        dial_information.clone(),
-                        response
-                    );
-                    Ok(Err(SwapReject::Rejected))
-                }
-                Status::RE(_) => {
-                    log::error!(
-                        "{} rejected swap request because of an internal error: {:?}",
-                        dial_information.clone(),
-                        response
-                    );
-                    Err(RequestError::InternalError)
-                }
-            },
+            }
             Err(e) => {
                 log::error!(
                     "Unable to request over connection {:?}:{:?}",

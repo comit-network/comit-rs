@@ -1,9 +1,9 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    comit_client::SwapDeclineReason,
     swap_protocols::{
         asset::AssetKind,
         ledger::{Bitcoin, Ethereum, LedgerKind},
+        rfc003::messages::Decision,
         SwapProtocol,
     },
 };
@@ -89,20 +89,21 @@ impl ToBamHeader for AssetKind {
     }
 }
 
-impl FromBamHeader for SwapDeclineReason {
-    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
-        Ok(match header.value::<String>()?.as_str() {
-            "bad-rate" => SwapDeclineReason::BadRate,
-            other => SwapDeclineReason::Unknown(other.to_string()),
+impl ToBamHeader for Decision {
+    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+        Ok(match self {
+            Decision::Accepted => Header::with_str_value("accepted"),
+            Decision::Declined => Header::with_str_value("declined"),
         })
     }
 }
 
-impl ToBamHeader for SwapDeclineReason {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
-        Ok(match self {
-            SwapDeclineReason::BadRate => Header::with_str_value("bad-rate"),
-            unknown @ SwapDeclineReason::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
+impl FromBamHeader for Decision {
+    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
+        Ok(match header.value::<String>()?.as_str() {
+            "accepted" => Decision::Accepted,
+            "declined" => Decision::Declined,
+            _ => return Err(serde::de::Error::custom("failed to deserialize decision")),
         })
     }
 }

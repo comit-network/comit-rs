@@ -27,6 +27,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
+use url::Url;
 
 mod cli;
 mod logging;
@@ -48,6 +49,8 @@ fn main() -> Result<(), failure::Error> {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
     let btsieve_client = create_btsieve_api_client(&settings);
+
+    ping_btsieve(&settings.btsieve.url, &mut runtime, btsieve_client.clone());
 
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
         ledger_events: btsieve_client.clone().into(),
@@ -171,4 +174,13 @@ fn auth_origin(settings: &Settings) -> String {
     };
     log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
+}
+
+fn ping_btsieve(
+    url: &Url,
+    runtime: &mut tokio::runtime::Runtime,
+    btsieve_client: BtsieveHttpClient,
+) {
+    log::trace!("Running health check on btsieve at: {}", url);
+    runtime.spawn(btsieve_client.health());
 }

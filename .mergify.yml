@@ -5,8 +5,18 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - label!=work-in-progress
       - label!=blocked
-      - label=automagically-mergify-this
+      - label!=no-mergify
       - "#changes-requested-reviews-by=0"
+    actions:
+      merge:
+        method: merge
+        strict: smart
+        strict_method: merge
+      delete_head_branch:
+  - name: merge green dependabot PRs
+    conditions:
+      - "status-success=ci/circleci: build"
+      - "author:dependabot-preview"
     actions:
       merge:
         method: merge

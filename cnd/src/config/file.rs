@@ -207,6 +207,7 @@ mod tests {
     use log::LevelFilter;
     use rand::rngs::mock::StepRng;
     use spectral::prelude::*;
+    use tempfile::NamedTempFile;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -234,13 +235,17 @@ mod tests {
         });
     }
 
+    fn temp_toml_file() -> NamedTempFile {
+        tempfile::Builder::new().suffix(".toml").tempfile().unwrap()
+    }
+
     #[test]
     fn complete_logging_section_is_optional() {
         let config_without_logging_section = File {
             logging: None,
             ..File::default(rng())
         };
-        let temp_file = tempfile::Builder::new().suffix(".toml").tempfile().unwrap();
+        let temp_file = temp_toml_file();
         let temp_file_path = temp_file.into_temp_path().to_path_buf();
         config_without_logging_section
             .write_to(temp_file_path.clone())
@@ -262,14 +267,12 @@ mod tests {
     #[test]
     fn read_and_write_config_work() {
         let config = File::default(rng());
-        let tmp = "/tmp/cnd.toml";
-        let path = Path::new(tmp).to_path_buf(); //
+        let temp_file = temp_toml_file();
+        let path = temp_file.into_temp_path().to_path_buf();
 
         let expected = config.write_to(path.clone()).unwrap();
         let actual = File::read(path);
 
         assert_that(&actual).is_ok_containing(&expected);
-
-        std::fs::remove_file(tmp).expect("failed to remove temporary config file");
     }
 }
