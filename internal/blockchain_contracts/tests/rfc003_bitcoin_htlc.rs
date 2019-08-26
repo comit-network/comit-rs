@@ -15,10 +15,7 @@ use bitcoin::{
 };
 use bitcoin_quantity::BitcoinQuantity;
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::{
-    pubkey_hash::PubkeyHash,
-    rfc003::{BitcoinHtlc, UnlockStrategy},
-};
+use blockchain_contracts::bitcoin::rfc003::{BitcoinHtlc, UnlockStrategy};
 use secp256k1::{PublicKey, SecretKey};
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
@@ -51,14 +48,14 @@ fn fund_htlc(client: &bitcoincore_rpc::Client, secret_hash: [u8; 32]) -> HtlcSet
     let redeem_privkey =
         PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
     let redeem_secret_key = redeem_privkey.key;
-    let redeem_pubkey_hash: PubkeyHash =
-        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key).into();
+    let redeem_public_key =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &redeem_secret_key);
 
     let refund_privkey =
         PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
     let refund_secret_key = refund_privkey.key;
-    let refund_pubkey_hash: PubkeyHash =
-        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key).into();
+    let refund_public_key =
+        PublicKey::from_secret_key(&*blockchain_contracts::SECP, &refund_secret_key);
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
@@ -67,8 +64,8 @@ fn fund_htlc(client: &bitcoincore_rpc::Client, secret_hash: [u8; 32]) -> HtlcSet
 
     let htlc = BitcoinHtlc::new(
         refund_timestamp.into(),
-        redeem_pubkey_hash.into(),
-        refund_pubkey_hash.into(),
+        redeem_public_key,
+        refund_public_key,
         secret_hash,
     );
 

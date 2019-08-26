@@ -1,10 +1,13 @@
+use crate::{fit_into_placeholder_slice::BitcoinTimestamp, FitIntoPlaceholderSlice, SecretHash};
 use bitcoin::{
-    network::constants::Network, util::bip143::SighashComponents, Address, OutPoint, Transaction,
-    TxIn, TxOut,
+    network::constants::Network, util::bip143::SighashComponents, Address, OutPoint, Script,
+    Transaction, TxIn, TxOut,
 };
-use bitcoin_hashes::{hash160, hex::ToHex};
 use secp256k1::{Message, PublicKey, SecretKey};
-use std::{borrow::Borrow, str::FromStr};
+use std::borrow::Borrow;
+
+// contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
+pub const CONTRACT_TEMPLATE: [u8;118] = hex_literal::hex!("6382012088a82011111111111111111111111111111111111111111111111111111111111111118821033333333333333333333333333333333333333333333333333333333333333333ac6721022222222222222222222222222222222222222222222222222222222222222222ad0455a0fc01b168");
 
 // https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
 // Wallets that don't want to signal replaceability should use either a
@@ -50,22 +53,27 @@ const REFUND_TX_WITNESS_WEIGHT: u64 = 210;
 impl BitcoinHtlc {
     pub fn new(
         expiry: u32,
-        redeem_identity: hash160::Hash,
-        refund_identity: hash160::Hash,
+        redeem_identity: secp256k1::PublicKey,
+        refund_identity: secp256k1::PublicKey,
         secret_hash: [u8; 32],
     ) -> Self {
-        let descriptor = format!(
-            "wsh(c:or_i(and_v(v:sha256({secret_hash}),pk_h({redeem_identity})),and_v(v:older({expiry}),pk_h({refund_identity}))))",
-            secret_hash = secret_hash.to_hex(),
-            redeem_identity = redeem_identity,
-            refund_identity = refund_identity,
-            expiry = expiry,
-        );
+        let mut contract = CONTRACT_TEMPLATE.to_vec();
+        SecretHash(secret_hash).fit_into_placeholder_slice(&mut contract[7..39]);
+        redeem_identity.fit_into_placeholder_slice(&mut contract[41..74]);
+        BitcoinTimestamp(expiry).fit_into_placeholder_slice(&mut contract[112..116]);
+        refund_identity.fit_into_placeholder_slice(&mut contract[77..110]);
 
-        let miniscript =
-            miniscript::Descriptor::from_str(&descriptor).expect("descriptor to be valid");
+        let script = Script::from(contract);
 
-        BitcoinHtlc { miniscript, expiry }
+        // TODO: this fails at the moment. find a way to re-construct the miniscript
+        // from the compiled version so that we can rely on the hex but at the same time
+        // use miniscript to create the spending input for us
+        let miniscript = miniscript::Miniscript::parse(&script).expect("miniscript to parse");
+
+        BitcoinHtlc {
+            miniscript: miniscript::Descriptor::Wsh(miniscript),
+            expiry,
+        }
     }
 
     pub fn compute_address(&self, network: Network) -> Address {
@@ -242,27 +250,32 @@ impl miniscript::Satisfier<bitcoin::PublicKey> for RefundSatisfier {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_hashes::{hash160, sha256d, Hash};
+    use bitcoin_hashes::{sha256d, Hash};
     use secp256k1::rand::thread_rng;
 
-    fn zero_identity() -> hash160::Hash {
-        hash160::Hash::from_slice(&[0u8; 20]).unwrap()
+    // just someone's public key
+    fn an_identity() -> secp256k1::PublicKey {
+        PublicKey::from_slice(&[
+            3, 23, 183, 225, 206, 31, 159, 148, 195, 42, 67, 115, 146, 41, 248, 140, 11, 3, 51, 41,
+            111, 180, 110, 143, 114, 134, 88, 73, 198, 174, 52, 184, 78,
+        ])
+        .unwrap()
     }
 
     #[test]
     fn constructor_does_not_panic() {
-        BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
+        BitcoinHtlc::new(100_000, an_identity(), an_identity(), [0u8; 32]);
     }
 
     #[quickcheck_macros::quickcheck]
     fn unlock_for_redeem_doesnt_panic(input_value: u64, fee_per_wu: u16) {
-        let htlc = BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
+        let htlc = BitcoinHtlc::new(0, an_identity(), an_identity(), [0u8; 32]);
         let out_point = OutPoint {
             txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
             vout: 0,
         };
         let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
-        let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
+        let address = "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k".parse().unwrap();
 
         let _ = htlc.unlock(
             out_point,
@@ -278,13 +291,13 @@ mod tests {
 
     #[quickcheck_macros::quickcheck]
     fn unlock_for_refund_doesnt_panic(input_value: u64, fee_per_wu: u16) {
-        let htlc = BitcoinHtlc::new(0, zero_identity(), zero_identity(), [0u8; 32]);
+        let htlc = BitcoinHtlc::new(100_000, an_identity(), an_identity(), [0u8; 32]);
         let out_point = OutPoint {
             txid: sha256d::Hash::from_slice(&[0u8; 32]).unwrap(),
             vout: 0,
         };
         let (public_key, _) = crate::SECP.generate_keypair(&mut thread_rng());
-        let address = Address::from_str("33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k").unwrap();
+        let address = "33iFwdLuRpW1uK1RTRqsoi8rR4NpDzk66k".parse().unwrap();
 
         let _ = htlc.unlock(
             out_point,

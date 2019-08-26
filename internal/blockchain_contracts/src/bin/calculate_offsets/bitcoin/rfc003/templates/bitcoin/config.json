@@ -1,0 +1,22 @@
+{
+  "ledger_name": "Bitcoin",
+  "asset_name": "Bitcoin",
+  "placeholders": [
+    {
+      "name": "secret_hash",
+      "replace_pattern": "1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "name": "refund_timestamp",
+      "replace_pattern": "55a0fc01"
+    },
+    {
+      "name": "redeem_identity",
+      "replace_pattern": "033333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "name": "refund_identity",
+      "replace_pattern": "022222222222222222222222222222222222222222222222222222222222222222"
+    }
+  ]
+}
