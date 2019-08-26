@@ -31,7 +31,7 @@ pub fn create(settings: Settings) -> BoxedFilter<(impl Reply,)> {
 fn serve_comit_i_file(path: &str) -> Result<impl Reply, Rejection> {
     Asset::get(path)
         .map(|asset| {
-            let mime = mime_guess::guess_mime_type(path);
+            let mime = mime_guess::from_path(path).first_or_octet_stream();
             Response::builder()
                 .header("content-type", mime.to_string())
                 .body(asset)
