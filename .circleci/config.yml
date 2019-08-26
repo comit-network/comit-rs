@@ -21,7 +21,34 @@ jobs:
       - store_artifacts:
           path: api_tests/log
 
+      - persist_to_workspace:
+          root: ./target/release
+          paths:
+            - btsieve
+            - cnd
+
       - save_caches
+
+  publish-github-release:
+    filters:
+      branches:
+        ignore: /.*/
+      tags:
+        only: /^\d+\.\d+\.\d+$/
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      RUST_TEST_THREADS: "8"
+    steps:
+      - attach_workspace:
+          at: ./target/release
+      - run:
+          name: "Publish Release on GitHub"
+          command: |
+            VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./target/release
 
 commands:
   setup_system:
