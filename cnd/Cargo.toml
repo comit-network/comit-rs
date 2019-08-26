@@ -48,7 +48,6 @@ strum = "0.15"
 strum_macros = "0.15"
 tokio = "0.1"
 toml = "0.5"
-url = "2.1"
 url_serde = "0.2.0"
 uuid = { version = "0.7", features = ["serde", "v4"] }
 void = "1.0.2"
