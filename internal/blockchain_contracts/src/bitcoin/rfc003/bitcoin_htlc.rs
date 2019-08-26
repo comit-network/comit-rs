@@ -32,23 +32,11 @@ pub enum Error {
     FeeHigherThanInputValue,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum UnlockStrategy {
     Redeem { key: SecretKey, secret: [u8; 32] },
     Refund { key: SecretKey },
 }
-
-impl UnlockStrategy {
-    fn expected_witness_stack_weight(&self) -> u64 {
-        match self {
-            UnlockStrategy::Redeem { .. } => REDEEM_TX_WITNESS_WEIGHT,
-            UnlockStrategy::Refund { .. } => REFUND_TX_WITNESS_WEIGHT,
-        }
-    }
-}
-
-const REDEEM_TX_WITNESS_WEIGHT: u64 = 245;
-const REFUND_TX_WITNESS_WEIGHT: u64 = 210;
 
 impl BitcoinHtlc {
     pub fn new(
@@ -82,12 +70,58 @@ impl BitcoinHtlc {
             .expect("script to be encodable to address")
     }
 
+    /// Creates a transaction that unlocks the given HTLC and transfers the
+    /// given value to the given address
+    ///
+    /// In order to calculate the fee, we first create a transaction without a
+    /// fee (output_value = input_value). This allows us to calculate the
+    /// weight of the transaction including the final witness stack.
+    /// We use this information to calculate a fee based on the rate passed and
+    /// create a new transaction.
     pub fn unlock(
         self,
         htlc_location: OutPoint,
         input_value: u64,
         spend_to: bitcoin::Address,
         fee_per_wu: u16,
+        strategy: UnlockStrategy,
+    ) -> Result<Transaction, Error> {
+        let transaction_without_fee = self.create_unlock_transaction(
+            htlc_location,
+            input_value,
+            spend_to.clone(),
+            input_value,
+            strategy.clone(),
+        )?;
+
+        let output_value = {
+            let weight = transaction_without_fee.get_weight();
+            // This could potentially overflow but that would mean with have `weight` and
+            // `fee` with absurd
+            let fee = weight * u64::from(fee_per_wu);
+
+            input_value
+                .checked_sub(fee)
+                .ok_or(Error::FeeHigherThanInputValue)?
+        };
+
+        let transaction_with_fee = self.create_unlock_transaction(
+            htlc_location,
+            input_value,
+            spend_to,
+            output_value,
+            strategy,
+        )?;
+
+        Ok(transaction_with_fee)
+    }
+
+    fn create_unlock_transaction(
+        &self,
+        htlc_location: OutPoint,
+        input_value: u64,
+        spend_to: bitcoin::Address,
+        output_value: u64,
         strategy: UnlockStrategy,
     ) -> Result<Transaction, Error> {
         use UnlockStrategy::*;
@@ -108,23 +142,10 @@ impl BitcoinHtlc {
             lock_time,
             input: vec![htlc_tx_in.clone()],
             output: vec![TxOut {
-                value: 0, // overwritten once we estimated the weight
+                value: output_value,
                 script_pubkey: spend_to.script_pubkey(),
             }],
         };
-
-        let base_tx_weight = spending_transaction.get_weight();
-        let output_value = {
-            let expected_weight = base_tx_weight + strategy.expected_witness_stack_weight();
-            // This could potentially overflow but that would mean with have `weight` and
-            // `fee` with absurd
-            let fee = expected_weight * u64::from(fee_per_wu);
-
-            input_value
-                .checked_sub(fee)
-                .ok_or(Error::FeeHigherThanInputValue)?
-        };
-        spending_transaction.output[0].value = output_value;
 
         let sighash_components = SighashComponents::new(&spending_transaction);
         let hash_to_sign = sighash_components.sighash_all(
@@ -163,29 +184,7 @@ impl BitcoinHtlc {
         // Overwrite our input with the one containing the satisfied witness stack
         spending_transaction.input = vec![htlc_tx_in];
 
-        let final_tx_weight = spending_transaction.get_weight();
-        let final_tx_witness_stack_weight = final_tx_weight - base_tx_weight;
-        let diff = diff(
-            final_tx_witness_stack_weight,
-            strategy.expected_witness_stack_weight(),
-        );
-
-        debug_assert!(
-            diff < 10,
-            "actual witness stack weight is {} and not {}, please update the const",
-            final_tx_witness_stack_weight,
-            strategy.expected_witness_stack_weight()
-        );
-
         Ok(spending_transaction)
-    }
-}
-
-fn diff(actual: u64, expected: u64) -> u64 {
-    if actual > expected {
-        actual - expected
-    } else {
-        expected - actual
     }
 }
 
