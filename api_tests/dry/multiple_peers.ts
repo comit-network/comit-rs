@@ -32,8 +32,8 @@ declare var global: HarnessGlobal;
         asset: {
             name: "ether",
             quantity: {
-                bob: ethers.utils.parseEther("10"),
-                charlie: ethers.utils.parseEther("20"),
+                bob: ethers.utils.parseEther("10").toString(),
+                charlie: ethers.utils.parseEther("20").toString(),
             },
         },
         expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
