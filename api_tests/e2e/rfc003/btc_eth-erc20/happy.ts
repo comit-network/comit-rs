@@ -78,8 +78,7 @@ declare var global: HarnessGlobal;
     const erc20Balance = await bob.wallet
         .eth()
         .erc20Balance(tokenContractAddress);
-    console.log(erc20Balance);
-    console.log(bobInitialErc20);
+
     erc20Balance.eq(bobInitialErc20).should.equal(true);
 
     const aliceErc20BalanceBefore = await alice.wallet
