@@ -1,19 +1,16 @@
 // The state_machine_future derive generates quite complex code...
 #![allow(clippy::too_many_arguments)]
 
-use crate::{
-    comit_client::SwapReject,
-    swap_protocols::{
-        asset::{Asset, Compare},
-        rfc003::{
-            self,
-            events::{self, Deployed, Funded, Redeemed, Refunded},
-            ledger::Ledger,
-            messages::AcceptResponseBody,
-            SaveState, SecretHash,
-        },
-        HashFunction, Timestamp,
+use crate::swap_protocols::{
+    asset::{Asset, Compare},
+    rfc003::{
+        self,
+        events::{self, Deployed, Funded, Redeemed, Refunded},
+        ledger::Ledger,
+        messages::{AcceptResponseBody, DeclineResponseBody},
+        SaveState, SecretHash,
     },
+    HashFunction, Timestamp,
 };
 use either::Either;
 use futures::{future, try_ready, Async, Future};
@@ -119,9 +116,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    Rejected {
+    Declined {
         start: Start<AL, BL, AA, BA>,
-        rejection_type: SwapReject,
+        reason: DeclineResponseBody,
     },
     AlphaRefunded {
         swap: OngoingSwap<AL, BL, AA, BA>,
@@ -322,11 +319,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             Ok(swap_accepted) => transition_save!(context.state_repo, Accepted {
                 swap: OngoingSwap::new(state, swap_accepted),
             }),
-            Err(rejection_type) => transition_save!(
+            Err(reason) => transition_save!(
                 context.state_repo,
-                Final(SwapOutcome::Rejected {
+                Final(SwapOutcome::Declined {
                     start: state,
-                    rejection_type
+                    reason
                 })
             ),
         }

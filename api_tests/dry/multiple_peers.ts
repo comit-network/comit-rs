@@ -1,6 +1,6 @@
 import { expect, request } from "chai";
 import "chai/register-should";
-import { toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
@@ -32,8 +32,8 @@ declare var global: HarnessGlobal;
         asset: {
             name: "ether",
             quantity: {
-                bob: toWei("10", "ether"),
-                charlie: toWei("20", "ether"),
+                bob: ethers.utils.parseEther("10").toString(),
+                charlie: ethers.utils.parseEther("20").toString(),
             },
         },
         expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
