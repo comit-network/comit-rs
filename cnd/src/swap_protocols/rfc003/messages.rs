@@ -118,13 +118,13 @@ mod tests {
     }
 
     #[test]
-    fn serialize_decline_body_unexpected_json_field() {
+    fn serialize_decline_body_bad_json_field() {
         let decline_response_body = DeclineResponseBody {
             reason: Some(SwapDeclineReason::BadJsonField),
         };
 
         let response = serde_json::to_string(&decline_response_body).unwrap();
-        let expected_response = r#"{"reason":"unexpected-json-field"}"#;
+        let expected_response = r#"{"reason":"bad-json-field"}"#;
 
         assert_eq!(response, expected_response);
     }
