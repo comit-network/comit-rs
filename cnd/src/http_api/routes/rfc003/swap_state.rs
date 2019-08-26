@@ -51,7 +51,7 @@ pub struct LedgerState<H, T> {
 pub enum SwapCommunicationState {
     Sent,
     Accepted,
-    Rejected,
+    Declined,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication<AL, BL, AA, BA>>
@@ -80,8 +80,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
                 secret_hash: request.secret_hash,
             },
-            Rejected { request, .. } => Self {
-                status: SwapCommunicationState::Rejected,
+            Declined { request, .. } => Self {
+                status: SwapCommunicationState::Declined,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -120,8 +120,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
                 secret_hash: request.secret_hash,
             },
-            Rejected { request, .. } => Self {
-                status: SwapCommunicationState::Rejected,
+            Declined { request, .. } => Self {
+                status: SwapCommunicationState::Declined,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
                 alpha_redeem_identity: None,
@@ -220,7 +220,7 @@ impl SwapStatus {
             return SwapStatus::InternalFailure;
         }
 
-        if swap_communication_state == Rejected {
+        if swap_communication_state == Declined {
             return SwapStatus::NotSwapped;
         }
 
@@ -237,7 +237,7 @@ impl SwapStatus {
 impl quickcheck::Arbitrary for SwapCommunicationState {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         match g.next_u32() % 3 {
-            0 => SwapCommunicationState::Rejected,
+            0 => SwapCommunicationState::Declined,
             1 => SwapCommunicationState::Accepted,
             2 => SwapCommunicationState::Sent,
             _ => unreachable!(),
@@ -278,9 +278,9 @@ mod tests {
     }
 
     #[test]
-    fn given_rejected_should_not_be_swapped() {
+    fn given_declined_should_not_be_swapped() {
         assert_eq!(
-            SwapStatus::new(Rejected, NotDeployed, NotDeployed, &None),
+            SwapStatus::new(Declined, NotDeployed, NotDeployed, &None),
             SwapStatus::NotSwapped
         )
     }

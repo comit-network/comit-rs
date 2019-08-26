@@ -1,13 +1,12 @@
 use crate::{
-    comit_client::SwapDeclineReason,
     http_api::action::ListRequiredFields,
-    swap_protocols::rfc003::{actions::Decline, Ledger},
+    swap_protocols::rfc003::{actions::Decline, messages::SwapDeclineReason, Ledger},
 };
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
 pub struct DeclineBody {
-    pub reason: Option<SwapDeclineReason>,
+    pub reason: Option<HttpApiSwapDeclineReason>,
 }
 
 impl<AL: Ledger, BL: Ledger> ListRequiredFields for Decline<AL, BL> {
@@ -20,4 +19,20 @@ impl<AL: Ledger, BL: Ledger> ListRequiredFields for Decline<AL, BL> {
             title: None,
         }]
     }
+}
+
+pub fn to_swap_decline_reason(
+    reason: Option<HttpApiSwapDeclineReason>,
+) -> Option<SwapDeclineReason> {
+    match reason {
+        Some(HttpApiSwapDeclineReason::UnsatisfactoryRate) => {
+            Some(SwapDeclineReason::UnsatisfactoryRate)
+        }
+        None => None,
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+pub enum HttpApiSwapDeclineReason {
+    UnsatisfactoryRate,
 }

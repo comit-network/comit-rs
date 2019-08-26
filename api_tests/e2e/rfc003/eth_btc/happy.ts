@@ -1,5 +1,5 @@
 import "chai/register-should";
-import { toBN, toWei } from "web3-utils";
+import { ethers } from "ethers";
 import { Actor } from "../../../lib/actor";
 import * as bitcoin from "../../../lib/bitcoin";
 import { ActionKind, SwapRequest } from "../../../lib/comit";
@@ -21,7 +21,7 @@ declare var global: HarnessGlobal;
         bitcoinNodeConfig: global.ledgers_config.bitcoin,
     });
 
-    const alphaAssetQuantity = toBN(toWei("10", "ether"));
+    const alphaAssetQuantity = ethers.utils.parseEther("10");
     const betaAssetQuantity = 100000000;
     const maxFeeInSatoshi = 50000;
 

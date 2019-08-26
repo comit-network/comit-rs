@@ -4,22 +4,19 @@ mod spawner;
 
 pub use self::{communication_events::*, spawner::*};
 
-use crate::{
-    comit_client::SwapReject,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            self,
-            actions::{Accept, Decline},
-            events::{LedgerEvents, ResponseFuture},
-            ledger::Ledger,
-            ledger_state::LedgerState,
-            messages::{AcceptResponseBody, Request},
-            save_state::SaveState,
-            secret_source::SecretSource,
-            state_machine::{Context, FutureSwapOutcome, Start, Swap},
-            ActorState, Secret,
-        },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self,
+        actions::{Accept, Decline},
+        events::{LedgerEvents, ResponseFuture},
+        ledger::Ledger,
+        ledger_state::LedgerState,
+        messages::{AcceptResponseBody, DeclineResponseBody, Request},
+        save_state::SaveState,
+        secret_source::SecretSource,
+        state_machine::{Context, FutureSwapOutcome, Start, Swap},
+        ActorState, Secret,
     },
 };
 use derivative::Derivative;
@@ -28,7 +25,7 @@ use std::sync::{Arc, Mutex};
 
 #[allow(type_alias_bounds)]
 pub type ResponseSender<AL: Ledger, BL: Ledger> =
-    Arc<Mutex<Option<oneshot::Sender<Result<AcceptResponseBody<AL, BL>, SwapReject>>>>>;
+    Arc<Mutex<Option<oneshot::Sender<Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>>>>>;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
@@ -54,9 +51,9 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
     },
-    Rejected {
+    Declined {
         request: Request<AL, BL, AA, BA>,
-        response: SwapReject,
+        response: DeclineResponseBody,
     },
 }
 
@@ -148,7 +145,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request, .. }
-            | SwapCommunication::Rejected { request, .. } => request.clone(),
+            | SwapCommunication::Declined { request, .. } => request.clone(),
         }
     }
 
@@ -171,7 +168,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     type AA = AA;
     type BA = BA;
 
-    fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, SwapReject>) {
+    fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>) {
         match self.swap_communication {
             SwapCommunication::Proposed { ref request, .. } => match response {
                 Ok(response) => {
@@ -181,7 +178,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
                     }
                 }
                 Err(response) => {
-                    self.swap_communication = SwapCommunication::Rejected {
+                    self.swap_communication = SwapCommunication::Declined {
                         request: request.clone(),
                         response,
                     }
