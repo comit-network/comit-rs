@@ -5,7 +5,7 @@ pull_request_rules:
       - "#approved-reviews-by>=2"
       - label!=work-in-progress
       - label!=blocked
-      - label=automagically-mergify-this
+      - label!=no-mergify
       - "#changes-requested-reviews-by=0"
     actions:
       merge:
