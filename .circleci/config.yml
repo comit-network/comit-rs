@@ -43,9 +43,11 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - persist_to_workspace:
-          root: ./
+          root: ~/
           paths:
-            - ./
+            - comit
+            - .cargo
+            - .local
 
   debug-build-test:
     working_directory: ~/comit
@@ -56,7 +58,7 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - attach_workspace:
-          at: ./
+          at: ~/
       - setup_rust_env
       - run:
           name: Debug build and test using cargo make
@@ -74,7 +76,7 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - attach_workspace:
-          at: ./
+          at: ~/
       - setup_rust_env
       - run:
           name: Debug build and test using cargo make
@@ -97,7 +99,7 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - attach_workspace:
-          at: ./
+          at: ~/
       - setup_rust_env
       - run:
           name: "Build release binary for btsieve"
