@@ -3,12 +3,7 @@ workflows:
   version: 2
   main:
     jobs:
-      - debug-build-test:
-          filters: # Do not run when tagged for a release
-            tags:
-              ignore: /^\d+\.\d+\.\d+$/
-            branches:
-              ignore: /^release\/\d+\.\d+\.\d+$/
+      - debug-build-test
       - release-build-test:
           filters:
             branches:
