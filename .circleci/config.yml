@@ -63,6 +63,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - setup_rust_env
+      - install_node_devlibs
+      - print_current_versions
       - run:
           name: Debug build and test using cargo make
           command: cargo make ci
@@ -81,6 +83,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - setup_rust_env
+      - install_node_devlibs
+      - print_current_versions
       - run:
           name: Debug build and test using cargo make
           command: |
@@ -104,6 +108,8 @@ jobs:
       - attach_workspace:
           at: ~/
       - setup_rust_env
+      - install_node_devlibs
+      - print_current_versions
       - run:
           name: "Build release binary for btsieve"
           command: cargo install --path ./btsieve --root ./artifacts
