@@ -7,16 +7,16 @@ workflows:
           filters: # Do not run when tagged for a release
             tags:
               ignore: /^\d+\.\d+\.\d+$/
+            branches:
+              ignore: /^release\/\d+\.\d+\.\d+$/
       - release-build-test:
           filters:
-            tags:
-              only: /^\d+\.\d+\.\d+$/
+            branches:
+              only: /^release\/\d+\.\d+\.\d+$/
       - publish-github-release:
           requires:
             - release-build-test
           filters:
-            branches:
-              ignore: /.*/
             tags:
               only: /^\d+\.\d+\.\d+$/
 
@@ -40,11 +40,6 @@ jobs:
       - store_artifacts:
           path: api_tests/log
       - save_caches
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - comit/target/debug/cnd
-            - comit/target/debug/btsieve
 
   release-build-test:
     working_directory: ~/comit
@@ -99,7 +94,7 @@ commands:
   install_node_devlibs:
     steps:
       - run:
-          name:  "Setup system environment"
+          name:  "Install node and development libraries"
           command: |
             rm -rf /opt/circleci/.nvm
             sudo systemctl stop apt-daily.service
