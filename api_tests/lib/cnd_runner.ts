@@ -25,7 +25,7 @@ export class CndRunner {
                 continue;
             }
 
-            this.runningNodes[name] = await spawn(
+            this.runningNodes[name] = spawn(
                 this.cndBin,
                 ["--config", comitConfig.config_file],
                 {
