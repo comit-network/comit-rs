@@ -52,7 +52,7 @@ jobs:
       - run:
           name: Release build and test using cargo make
           command: |
-            export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all-features --release"
+            export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --all-features --release"
             cargo make ci
       - run:
           name: Ensure binaries were generated for release
