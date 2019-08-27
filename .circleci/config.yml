@@ -48,6 +48,9 @@ jobs:
             - comit
             - .cargo
             - .local
+            - .rustup
+            - .npm
+            - .nvm
 
   debug-build-test:
     working_directory: ~/comit

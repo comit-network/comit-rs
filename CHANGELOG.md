@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - All the code since the dawn of comit-rs.
 - Check if btsieve's version matches the expected version, on every request.
 - Ping btsieve on cnd startup, checking for presence and version compatibility.
+- Add hook to generate release binaries when a release is tagged.
 
 ### Changed
 - Move config files to standard location based on platform (OSX, Windows, Linux).
