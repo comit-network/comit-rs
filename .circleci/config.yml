@@ -120,7 +120,8 @@ commands:
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
-            which cargo-make && test "$(cargo make --version)" = "cargo-make 0.19.4" || cargo install cargo-make --force
+            CARGO_MAKE_VERSION="0.22.1"
+            which cargo-make && test "$(cargo make --version)" = "cargo-make ${CARGO_MAKE_VERSION}" || cargo install cargo-make --version 0.22.0
   setup_rust_env:
     steps:
       - run:
