@@ -39,8 +39,8 @@ jobs:
     steps:
       - checkout
       - restore_caches
-      - setup_rust
-      - setup_system
+      - install_rust
+      - install_node_devlibs
       - print_current_versions
       - persist_to_workspace:
           root: ./
@@ -57,6 +57,7 @@ jobs:
     steps:
       - attach_workspace:
           at: ./
+      - setup_rust_env
       - run:
           name: Debug build and test using cargo make
           command: cargo make ci
@@ -74,6 +75,7 @@ jobs:
     steps:
       - attach_workspace:
           at: ./
+      - setup_rust_env
       - run:
           name: Debug build and test using cargo make
           command: |
@@ -96,6 +98,7 @@ jobs:
     steps:
       - attach_workspace:
           at: ./
+      - setup_rust_env
       - run:
           name: "Build release binary for btsieve"
           command: cargo install --path ./btsieve --root ./artifacts
@@ -109,7 +112,7 @@ jobs:
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/bin
 
 commands:
-  setup_system:
+  install_node_devlibs:
     steps:
       - run:
           name:  "Setup system environment"
@@ -125,10 +128,10 @@ commands:
             echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
             sudo apt-get update
             sudo apt-get install -y nodejs=10.* yarn libzmq3-dev
-  setup_rust:
+  install_rust:
     steps:
       - run:
-          name:  "Setup rust environment"
+          name:  "Install Rust"
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
             rustup install nightly-2019-07-31
@@ -136,9 +139,13 @@ commands:
 
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
-
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
             which cargo-make && test "$(cargo make --version)" = "cargo-make 0.19.4" || cargo install cargo-make --force
+  setup_rust_env:
+    steps:
+      - run:
+          name: "Setup Rust environment"
+          command: echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
   print_current_versions:
     steps:
       - run:
