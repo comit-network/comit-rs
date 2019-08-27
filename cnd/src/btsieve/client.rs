@@ -253,7 +253,7 @@ impl BtsieveHttpClient {
                     }
                 })
                 .map_err(move |_| {
-                    log::error!("No btsieve found at {}", btsieve_endpoint);
+                    log::warn!("No btsieve found at {}", btsieve_endpoint);
                 }),
         )
     }
