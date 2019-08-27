@@ -3,19 +3,11 @@ workflows:
   version: 2
   main:
     jobs:
-      - setup:
-          filters: # required since other jobs has tag filters AND require `setup`
-            tags:
-              only: /.*/
       - debug-build-test:
-          requires:
-            - setup
           filters: # Do not run when tagged for a release
             tags:
               ignore: /^\d+\.\d+\.\d+$/
       - release-build-test:
-          requires:
-            - setup
           filters:
             tags:
               only: /^\d+\.\d+\.\d+$/
@@ -29,7 +21,7 @@ workflows:
               only: /^\d+\.\d+\.\d+$/
 
 jobs:
-  setup:
+  debug-build-test:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
@@ -42,35 +34,17 @@ jobs:
       - install_rust
       - install_node_devlibs
       - print_current_versions
-      - persist_to_workspace:
-          root: ~/
-          paths:
-            - comit
-            - .cargo
-            - .local
-            - .rustup
-            - .npm
-            - .nvm
-
-  debug-build-test:
-    working_directory: ~/comit
-    machine:
-      image: ubuntu-1604:201903-01
-      docker_layer_caching: true
-    environment:
-      RUST_TEST_THREADS: "8"
-    steps:
-      - attach_workspace:
-          at: ~/
-      - setup_rust_env
-      - install_node_devlibs
-      - print_current_versions
       - run:
           name: Debug build and test using cargo make
           command: cargo make ci
       - store_artifacts:
           path: api_tests/log
       - save_caches
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - comit/target/debug/cnd
+            - comit/target/debug/btsieve
 
   release-build-test:
     working_directory: ~/comit
@@ -80,22 +54,25 @@ jobs:
     environment:
       RUST_TEST_THREADS: "8"
     steps:
-      - attach_workspace:
-          at: ~/
-      - setup_rust_env
+      - checkout
+      - restore_caches
+      - install_rust
       - install_node_devlibs
       - print_current_versions
       - run:
-          name: Debug build and test using cargo make
+          name: Release build and test using cargo make
           command: |
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all-features --release"
             cargo make ci
       - store_artifacts:
           path: api_tests/log
       - persist_to_workspace:
-          root: ./
+          root: ~/
           paths:
-            - ./
+            - comit/target/release/cnd
+            - comit/target/release/btsieve
+            - .rustup
+            - .cargo
 
   publish-github-release:
     working_directory: ~/comit
@@ -108,19 +85,15 @@ jobs:
       - attach_workspace:
           at: ~/
       - setup_rust_env
-      - install_node_devlibs
       - print_current_versions
-      - run:
-          name: "Build release binary for btsieve"
-          command: cargo install --path ./btsieve --root ./artifacts
-      - run:
-          name: "Build release binary for cnd"
-          command: cargo install --path ./cnd --root ./artifacts
       - run:
           name: "Publish Release on GitHub"
           command: |
+            mkdir ./artifacts
+            mv -v ./target/release/cnd ./artifacts/
+            mv -v ./target/release/btsieve ./artifacts/
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/bin
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
 
 commands:
   install_node_devlibs:
