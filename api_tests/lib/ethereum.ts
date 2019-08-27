@@ -1,5 +1,4 @@
-import { ECPair } from "bitcoinjs-lib";
-import bitcoin from "bitcoinjs-lib";
+import { ECPair, ECPairInterface } from "bitcoinjs-lib";
 import { ethers } from "ethers";
 import { JsonRpcProvider, TransactionRequest } from "ethers/providers";
 import { BigNumber } from "ethers/utils";
@@ -69,11 +68,11 @@ async function mintErc20Tokens(
 }
 
 export class EthereumWallet {
-    private readonly keypair: ECPair;
+    private readonly keypair: ECPairInterface;
     private readonly account: string;
 
     constructor(ethConfig: EthereumNodeConfig) {
-        this.keypair = bitcoin.ECPair.makeRandom({ rng: util.test_rng });
+        this.keypair = ECPair.makeRandom({ rng: util.test_rng });
         this.account = new ethers.Wallet(this.keypair.privateKey).address;
         createEthereumClient(ethConfig);
     }

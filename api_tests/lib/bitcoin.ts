@@ -3,8 +3,9 @@ import BitcoinRpcClient from "bitcoin-core";
 import {
     address,
     ECPair,
+    ECPairInterface,
     networks,
-    Out,
+    Payment,
     payments,
     Transaction,
     TransactionBuilder,
@@ -111,16 +112,8 @@ export async function sendRawTransaction(hexString: string) {
 }
 
 export class BitcoinWallet {
-    private readonly identity: {
-        address: string;
-        hash: Buffer;
-        output: Buffer;
-        pubkey: Buffer;
-        signature: Buffer;
-        input: Buffer;
-        witness: Buffer[];
-    };
-    private readonly keypair: ECPair;
+    private readonly identity: Payment;
+    private readonly keypair: ECPairInterface;
     private readonly bitcoinUtxos: Utxo[];
     private readonly addressForIncomingPayments: string;
 
@@ -159,14 +152,17 @@ export class BitcoinWallet {
             txId
         )) as HexRawTransactionResponse;
         const transaction = Transaction.fromHex(rawTransaction);
-        const entries: Out[] = transaction.outs;
+
+        const entries = transaction.outs;
         this.bitcoinUtxos.push(
-            ...entries
+            ...transaction.outs
                 .filter(entry => entry.script.equals(this.identity.output))
+                .filter(entry => "value" in entry && entry.value > 0)
                 .map(entry => {
                     return {
                         txId,
                         vout: entries.indexOf(entry),
+                        // @ts-ignore: we filtered out all outputs that don't have a value
                         value: entry.value,
                     };
                 })
