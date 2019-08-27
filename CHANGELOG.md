@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 ### Added
 - All the code since the dawn of comit-rs.
+- Add idempotent get-or-create endpoint for btsieve queries.
 - Check if btsieve's version matches the expected version, on every request.
 - Ping btsieve on cnd startup, checking for presence and version compatibility.
 
