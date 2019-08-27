@@ -54,6 +54,12 @@ jobs:
           command: |
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all-features --release"
             cargo make ci
+      - run:
+          name: Ensure binaries were generated for release
+          command: |
+            ls ./
+            ls ./target
+            ls ./target/release
       - store_artifacts:
           path: api_tests/log
       - persist_to_workspace:
