@@ -16,7 +16,6 @@ use reqwest::{
 };
 use serde::Deserialize;
 use tokio::prelude::future::Future;
-use url::Position;
 
 #[derive(Debug, Clone)]
 pub struct BtsieveHttpClient {
@@ -242,12 +241,12 @@ impl BtsieveHttpClient {
                 .headers(construct_headers())
                 .send()
                 .map(|response| {
-                    let endpoint = &response.url()[Position::BeforeScheme..Position::BeforePath];
+                    let endpoint = &response.url().origin().unicode_serialization();
 
                     if response.status().is_success() {
                         log::info!("Btsieve running at {}", endpoint)
                     } else {
-                        log::error!(
+                        log::warn!(
                             "Version of btsieve at {} does not match expected version",
                             endpoint
                         )
