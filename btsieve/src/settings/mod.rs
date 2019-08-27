@@ -62,14 +62,12 @@ impl From<BitcoinAuth> for bitcoincore_rpc::Auth {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
     pub zmq_endpoint: String,
-    #[serde(with = "url_serde")]
     pub node_url: url::Url,
     pub authentication: BitcoinAuth,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Ethereum {
-    #[serde(with = "url_serde")]
     pub node_url: url::Url,
 }
 

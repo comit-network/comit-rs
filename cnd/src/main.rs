@@ -22,12 +22,12 @@ use libp2p::{
     PeerId, Swarm,
 };
 use rand::rngs::OsRng;
+use reqwest::Url;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
-use url::Url;
 
 mod cli;
 mod logging;

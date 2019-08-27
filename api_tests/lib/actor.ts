@@ -192,6 +192,12 @@ export class Actor {
         if (network !== "regtest") {
             throw Error("Expected network regtest, found " + network);
         }
+
+        // wait 1 second to make sure that both parties have created a btsieve
+        // query to watch for the action that is about to be performed. Should
+        // be removed with https://github.com/comit-network/comit-rs/issues/1289
+        await sleep(1000);
+
         switch (action.type) {
             case "bitcoin-send-amount-to-address": {
                 action.payload.should.include.all.keys("to", "amount");
