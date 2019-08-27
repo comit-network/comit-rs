@@ -9,6 +9,7 @@ use crate::{
 };
 use core::time::Duration;
 use futures::{stream::Stream, Async};
+use http_api_problem::HttpApiProblem;
 use reqwest::{
     header::{HeaderMap, HeaderValue, LOCATION},
     r#async::Client,
@@ -234,26 +235,45 @@ impl BtsieveHttpClient {
         let mut url = self.endpoint.clone();
         url.set_path("health");
 
-        let btsieve_endpoint = self.endpoint.clone();
         Box::new(
             self.client
                 .get(url.clone())
                 .headers(construct_headers())
                 .send()
-                .map(|response| {
-                    let endpoint = &response.url().origin().unicode_serialization();
-
-                    if response.status().is_success() {
-                        log::info!("Btsieve running at {}", endpoint)
-                    } else {
-                        log::warn!(
-                            "Version of btsieve at {} does not match expected version",
-                            endpoint
-                        )
+                .and_then({
+                    let endpoint = self.endpoint.clone();
+                    move |mut response| {
+                        if response.status().is_success() {
+                            log::info!("Btsieve running at {}", endpoint);
+                        } else {
+                            let _ = response
+                                .json()
+                                .map({
+                                    let endpoint = endpoint.clone();
+                                    move |problem: HttpApiProblem| match problem {
+                                        HttpApiProblem {
+                                            status: Some(status),
+                                            detail: Some(detail),
+                                            ..
+                                        } => {
+                                            log::warn!(
+                                                "Health check on btsieve at {} failed with status {} because: {}",
+                                                endpoint,
+                                                status,
+                                                detail
+                                            );
+                                        }
+                                        _ => {
+                                            log::warn!("Health check on btsieve at {} failed: {}", endpoint, problem);
+                                        }
+                                    }}).map_err(|_| log::warn!("Health check on btsieve at {} failed: {:?}", endpoint, response));
+                        }
+                        Ok(())
                     }
                 })
-                .map_err(move |_| {
-                    log::warn!("No btsieve found at {}", btsieve_endpoint);
+                .map_err({
+                    let endpoint = self.endpoint.clone();
+                    move |_| log::warn!("No btsieve found at {}", endpoint)
                 }),
         )
     }
