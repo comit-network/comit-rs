@@ -48,19 +48,19 @@ async function runTests(testFiles: string[]) {
     );
     global.ledgers_config = ledgerRunner.getLedgersConfig();
 
-    const nodeRunner = new CndRunner(
-        projectRoot,
-        projectRoot + "/target/debug/cnd",
-        logDir
-    );
-    const btsieveRunner = new BtsieveRunner(
-        projectRoot,
-        projectRoot + "/target/debug/btsieve",
-        logDir
-    );
+    let cndPath = projectRoot + "/target/debug/cnd";
+    let btsievePath = projectRoot + "/target/debug/btsieve";
+
+    if (!fs.existsSync(cndPath)) {
+        cndPath = projectRoot + "/target/release/cnd";
+        btsievePath = projectRoot + "/target/release/btsieve";
+    }
+
+    const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
+    const btsieveRunner = new BtsieveRunner(projectRoot, btsievePath, logDir);
 
     process.on("SIGINT", () => {
-        console.log("SIGINT RECEIEVED");
+        console.log("SIGINT RECEIVED");
         process.exit(0);
     });
 
