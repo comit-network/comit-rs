@@ -11,9 +11,11 @@ use crate::{
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
 use bitcoin::{
-    consensus::encode::serialize_hex, network::constants::Network, Address, OutPoint, PrivateKey,
+    consensus::encode::serialize_hex,
+    hashes::{hash160, sha256d, Hash},
+    network::constants::Network,
+    Address, Amount, OutPoint, PrivateKey,
 };
-use bitcoin_hashes::{hash160, sha256d, Hash};
 use bitcoin_quantity::BitcoinQuantity;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
@@ -120,7 +122,9 @@ fn fund_htlc(
     let txid = client
         .send_to_address(
             &htlc_address.clone(),
-            amount.bitcoin(),
+            // TODO: natively use bitcoin::Amount
+            Amount::from_btc(amount.bitcoin())
+                .expect("Should not fail to convert to bitcoin::Amount"),
             None,
             None,
             None,

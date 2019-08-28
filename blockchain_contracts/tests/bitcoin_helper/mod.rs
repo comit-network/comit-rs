@@ -1,8 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use bitcoin::{Address, OutPoint, TxOut};
-use bitcoin_hashes::sha256d;
+use bitcoin::{hashes::sha256d, Address, OutPoint, TxOut};
 use std::convert::TryFrom;
 
 pub trait RegtestHelperClient {
@@ -17,8 +16,9 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         txid: &sha256d::Hash,
         address: &Address,
     ) -> Option<TxOut> {
+        let address = address.clone();
         let unspent = self
-            .list_unspent(Some(1), None, Some(vec![address]), None, None)
+            .list_unspent(Some(1), None, Some(&[address]), None, None)
             .unwrap();
 
         #[allow(clippy::cast_sign_loss)] // it is just for the tests
@@ -26,7 +26,7 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             .into_iter()
             .find(|utxo| utxo.txid == *txid)
             .map(|result| {
-                let value = u64::try_from(result.amount.into_inner()).unwrap();
+                let value = u64::try_from(result.amount.as_sat()).unwrap();
                 TxOut {
                     value,
                     script_pubkey: result.script_pub_key,

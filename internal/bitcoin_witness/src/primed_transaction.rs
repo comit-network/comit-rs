@@ -89,7 +89,7 @@ impl PrimedTransaction {
                         .expect("Should not fail because it is a hash");
                     let signature = SECP.sign(&message_to_sign, &secret_key);
 
-                    let mut serialized_signature = signature.serialize_der();
+                    let mut serialized_signature = signature.serialize_der().to_vec();
                     serialized_signature.push(SigHashType::All as u8);
                     transaction.input[i].witness[j] = serialized_signature;
                 }
@@ -104,14 +104,14 @@ impl PrimedTransaction {
             .max()
     }
 
-    pub fn sign_with_rate(self, fee_per_byte: u64) -> Result<Transaction, Error> {
+    pub fn sign_with_rate(self, fee_per_byte: usize) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight = transaction.get_weight();
         let fee = weight
             .checked_mul(fee_per_byte)
             .ok_or(Error::OverflowingFee)?;
-        let fee = BitcoinQuantity::from_satoshi(fee);
+        let fee = BitcoinQuantity::from_satoshi(fee as u64);
 
         if self.total_input_value() < fee {
             return Err(Error::FeeHigherThanInputValue);
@@ -162,7 +162,7 @@ impl PrimedTransaction {
         }
     }
 
-    pub fn estimate_weight(&self) -> u64 {
+    pub fn estimate_weight(&self) -> usize {
         self._transaction_without_signatures_or_output_values()
             .get_weight()
     }

@@ -1,4 +1,4 @@
-use bitcoin_hashes::hash160;
+use bitcoin::hashes::hash160;
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
 use web3::types::{Address, U256};
 

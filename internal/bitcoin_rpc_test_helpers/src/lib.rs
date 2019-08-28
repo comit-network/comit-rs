@@ -2,8 +2,8 @@
 #![forbid(unsafe_code)]
 
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash, TransactionId,
-    TxOut,
+    amount::Amount, Address, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash,
+    TransactionId, TxOut,
 };
 
 pub trait RegtestHelperClient {
@@ -24,8 +24,9 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<TxOut> {
+        let address = address.clone();
         let unspent = self
-            .list_unspent(Some(1), None, Some(vec![address]), None, None)
+            .list_unspent(Some(1), None, Some(&[address]), None, None)
             .unwrap();
 
         #[allow(clippy::cast_sign_loss)] // it is just for the tests
@@ -33,7 +34,7 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             .into_iter()
             .find(|utxo| utxo.txid == *txid)
             .map(|result| TxOut {
-                value: result.amount.into_inner() as u64,
+                value: result.amount.as_sat(),
                 script_pubkey: result.script_pub_key,
             })
     }
@@ -73,7 +74,9 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         let txid = self
             .send_to_address(
                 &address.clone(),
-                value.bitcoin(),
+                // TODO: natively use bitcoin::Amount
+                Amount::from_btc(value.bitcoin())
+                    .expect("Should not fail to convert to bitcoin::Amount"),
                 None,
                 None,
                 None,

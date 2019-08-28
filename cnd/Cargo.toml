@@ -55,7 +55,7 @@ warp = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 bitcoin_rpc_test_helpers = { path = "../internal/bitcoin_rpc_test_helpers" }
-bitcoincore-rpc = "0.7"
+bitcoincore-rpc = "0.8.0-rc1"
 key_gen = { path = "../internal/key_gen" }
 maplit = "1"
 matches = "0.1.8"

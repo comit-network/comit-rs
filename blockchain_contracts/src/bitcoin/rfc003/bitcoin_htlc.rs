@@ -2,8 +2,7 @@ use crate::{
     fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
     SecretHash,
 };
-use bitcoin::{network::constants::Network, Address, Script};
-use bitcoin_hashes::hash160;
+use bitcoin::{hashes::hash160, network::constants::Network, Address, Script};
 use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
 use secp256k1::{PublicKey, SecretKey};
@@ -91,7 +90,7 @@ impl BitcoinHtlc {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_hashes::hash160;
+    use bitcoin::hashes::hash160;
     use regex::bytes::Regex;
 
     const SECRET_HASH: [u8; 32] = [

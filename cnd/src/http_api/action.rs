@@ -132,7 +132,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 address,
                 fee_per_wu,
             } => {
-                let fee_per_wu = fee_per_wu.parse::<u64>().map_err(|_| {
+                let fee_per_wu = fee_per_wu.parse::<usize>().map_err(|_| {
                     HttpApiProblem::new("Invalid query parameter.")
                         .set_status(StatusCode::BAD_REQUEST)
                         .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
