@@ -1,6 +1,6 @@
 [env]
 BITCOIND_ADDITIONAL_SLEEP_PERIOD = "500"
-CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = { source = "${CARGO_MAKE_CARGO_BUILD_TEST_FLAGS}", default_value = "--all" }
+CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = { script = ["echo ${CARGO_MAKE_CARGO_BUILD_TEST_FLAGS:-'--all'}"] }
 
 # ###########################################################
 # Override defaults tasks to allow the use of default flows #
