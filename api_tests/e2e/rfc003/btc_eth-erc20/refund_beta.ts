@@ -12,15 +12,13 @@ declare var global: HarnessGlobal;
 
 (async function() {
     const tobyWallet = new Wallet("toby", {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
+        ledgerConfig: global.ledgerConfigs,
     });
-    const alice = new Actor("alice", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    const alice = new Actor("alice", {
+        ledgerConfig: global.ledgerConfigs,
     });
-    const bob = new Actor("bob", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    const bob = new Actor("bob", {
+        ledgerConfig: global.ledgerConfigs,
     });
 
     const alphaAssetQuantity = 100000000;
@@ -39,7 +37,7 @@ declare var global: HarnessGlobal;
 
     const tokenContractAddress = await tobyWallet
         .eth()
-        .deployErc20TokenContract(global.project_root);
+        .deployErc20TokenContract(global.projectRoot);
     await tobyWallet.eth().fund("10");
     await tobyWallet
         .eth()

@@ -1,7 +1,5 @@
 /// HTTP API
 
-import { BtsieveForCndConfig } from "./actor";
-
 export type LedgerAction =
     | {
           type: "bitcoin-send-amount-to-address";
@@ -65,25 +63,4 @@ export enum ActionKind {
     Fund = "fund",
     Redeem = "redeem",
     Refund = "refund",
-}
-
-// **** Config files ****//
-
-export interface MetaCndConfig {
-    // snake_case as it comes from TOML file
-    host: string;
-    config_file: string;
-}
-
-/// The comit-rs config file
-export interface CndConfig {
-    comit: { comit_listen: string; secret_seed: string };
-    http_api: { address: string; port: number };
-    web_gui: { address: string; port: number };
-    network: { listen: string[] };
-    btsieve: {
-        url: string;
-        bitcoin: BtsieveForCndConfig;
-        ethereum: BtsieveForCndConfig;
-    };
 }
