@@ -8,7 +8,8 @@ use crate::{
     swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
 };
 use core::time::Duration;
-use futures::{stream::Stream, Async};
+use futures::{stream::Stream, Async, Poll};
+use http_api_problem::HttpApiProblem;
 use reqwest::{
     header::{HeaderMap, HeaderValue, LOCATION},
     r#async::Client,
@@ -234,26 +235,48 @@ impl BtsieveHttpClient {
         let mut url = self.endpoint.clone();
         url.set_path("health");
 
-        let btsieve_endpoint = self.endpoint.clone();
         Box::new(
             self.client
                 .get(url.clone())
                 .headers(construct_headers())
                 .send()
-                .map(|response| {
-                    let endpoint = &response.url().origin().unicode_serialization();
-
-                    if response.status().is_success() {
-                        log::info!("Btsieve running at {}", endpoint)
-                    } else {
-                        log::warn!(
-                            "Version of btsieve at {} does not match expected version",
-                            endpoint
-                        )
-                    }
+                .map_err(HealthCheckError::Reqwest)
+                .and_then(|response| HealthCheckResponse {
+                    response,
+                    body: None,
                 })
-                .map_err(move |_| {
-                    log::warn!("No btsieve found at {}", btsieve_endpoint);
+                .map({
+                    let endpoint = self.endpoint.clone();
+                    move |_| log::info!("Found btsieve at {}", endpoint)
+                })
+                .map_err({
+                    let endpoint = self.endpoint.clone();
+                    move |e| match e {
+                        HealthCheckError::ApiProblem(HttpApiProblem {
+                            status: Some(status),
+                            detail: Some(detail),
+                            ..
+                        }) => log::warn!(
+                            "Health check on btsieve at {} failed with status {} because: {}",
+                            endpoint,
+                            status,
+                            detail
+                        ),
+                        HealthCheckError::ApiProblem(problem) => log::warn!(
+                            "Health check on btsieve at {} failed: {}",
+                            endpoint,
+                            problem
+                        ),
+                        HealthCheckError::Reqwest(ref error) if error.is_serialization() => {
+                            log::error!(
+                                "Could not deserialize response from btsieve at {}",
+                                endpoint
+                            )
+                        }
+                        HealthCheckError::Reqwest(_) => {
+                            log::warn!("No btsieve found at {}", endpoint)
+                        }
+                    }
                 }),
         )
     }
@@ -266,6 +289,35 @@ fn construct_headers() -> HeaderMap {
         HeaderValue::from_static(env!("CARGO_PKG_VERSION")),
     );
     headers
+}
+
+struct HealthCheckResponse {
+    response: reqwest::r#async::Response,
+    body: Option<Box<dyn Future<Item = HttpApiProblem, Error = reqwest::Error> + Send>>,
+}
+
+impl Future for HealthCheckResponse {
+    type Item = ();
+    type Error = HealthCheckError;
+
+    fn poll(&mut self) -> Poll<Self::Item, Self::Error> {
+        if self.response.status().is_success() {
+            Ok(Async::Ready(()))
+        } else {
+            let problem = futures::try_ready!(self
+                .body
+                .get_or_insert(Box::new(self.response.json()))
+                .poll()
+                .map_err(HealthCheckError::Reqwest));
+
+            Err(HealthCheckError::ApiProblem(problem))
+        }
+    }
+}
+
+enum HealthCheckError {
+    Reqwest(reqwest::Error),
+    ApiProblem(HttpApiProblem),
 }
 
 mod ethereum {
