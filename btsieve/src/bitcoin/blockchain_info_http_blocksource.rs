@@ -1,154 +1,34 @@
 use crate::blocksource::{self, BlockSource};
-use bitcoin_support::{
-    Block, BlockHeader, FromHex, Network, OutPoint, Sha256dHash, Transaction, TxIn,
-};
-use failure::Fail;
+use bitcoin_support::{deserialize, MinedBlock, Network};
 use futures::{Future, Stream};
-use http::StatusCode;
 use reqwest::r#async::Client;
 use serde::Deserialize;
 use std::time::Duration;
 use tokio::timer::Interval;
-use url::Url;
-use warp::Filter;
+use url::{ParseError, Url};
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
     hash: String,
-    time: u32,
-    block_index: u32,
     height: u32,
-    tx_indexes: Vec<u32>,
 }
 
-#[derive(Deserialize)]
-struct BlockchainInfoRawBlock {
-    hash: String,
-    ver: u32,
-    prev_block: String,
-    next_block: Vec<String>,
-    mrkl_root: String,
-    time: u32,
-    bits: u32,
-    fee: u32,
-    nonce: u32,
-    n_tx: u32,
-    size: u32,
-    block_index: u32,
-    main_chain: bool,
-    height: u32,
-    received_time: u32,
-    relayed_by: String,
-    tx: Vec<BlockchainInfoRawBlockTransaction>,
-}
-
-#[derive(Deserialize)]
-struct BlockchainInfoRawBlockTransaction {
-    lock_time: u32,
-    ver: u32,
-    size: u32,
-    inputs: Vec<BlockchainInfoRawBlockTransactionInput>,
-    weight: u32,
-    time: u32,
-    tx_index: u32,
-    vin_sz: u32,
-    hash: String,
-    vout_sz: u32,
-    relayed_by: String,
-    out: Vec<BlockchainInfoRawBlockTransactionOutput>,
-}
-
-#[derive(Deserialize)]
-struct BlockchainInfoRawBlockTransactionInput {
-    sequence: u32,
-    witness: Vec<u8>,
-    prev_out: Option<BlockchainInfoRawBlockTransactionOutput>,
-    script: Vec<u8>,
-}
-
-#[derive(Deserialize)]
-struct BlockchainInfoRawBlockTransactionOutput {
-    addr_tag: Option<String>,
-    spent: bool,
-    spending_outpoints: Vec<BlockchainInfoRawBlockTransactionOutputSpendingOutpoint>,
-    tx_index: u32,
-    #[serde(alias = "type")]
-    tx_out_type: u32,
-    addr: String,
-    value: u32,
-    n: u32,
-    script: String,
-}
-
-#[derive(Deserialize)]
-struct BlockchainInfoRawBlockTransactionOutputSpendingOutpoint {
-    tx_index: u32,
-    n: u32,
-}
-
-// TODO: USE ?format=hex INSTEAD
-// Validate that it uses consensus encoding
-impl From<BlockchainInfoRawBlock> for Block {
-    fn from(raw_block: BlockchainInfoRawBlock) -> Self {
-        Block {
-            header: BlockHeader {
-                version: raw_block.ver,
-                prev_blockhash: Sha256dHash::from_hex(raw_block.prev_block.as_str()).map_err(|e| {
-                    // TODO: Handle err
-                }),
-                merkle_root: Sha256dHash::from_hex(raw_block.mrkl_root.as_str()).map_err(|e| {
-                    // TODO: Handle err
-                }),
-                time: raw_block.time,
-                bits: raw_block.bits,
-                nonce: raw_block.nonce,
-            },
-            txdata: raw_block
-                .tx
-                .iter()
-                .map(|raw_block_tx| {
-                    Transaction {
-                        version: raw_block_tx.ver,
-                        lock_time: raw_block_tx.lock_time,
-                        input: raw_block_tx
-                            .inputs
-                            .iter()
-                            .map(|raw_block_tx_in| {
-                                TxIn {
-                                    previous_output: raw_block_tx_in
-                                        .prev_out
-                                        .map(|prev_out| {
-                                            OutPoint::null() // TODO: map properly, matching problems
-                                        })
-                                        .unwrap(), // TODO: fix unwrap
-                                    script_sig: Default::default(), // TODO: map properly, matching problems
-                                    sequence: raw_block_tx_in.sequence,
-                                    witness: vec![], // TODO: map properly, matching problems
-                                }
-                            })
-                            .collect::<Vec<_>>(),
-                        output: vec![],
-                    }
-                })
-                .collect::<Vec<_>>(),
-        }
-    }
-}
-
-#[derive(Fail, Debug, PartialEq, Clone)]
+#[derive(Debug)]
 pub enum Error {
-    #[fail(display = "The request failed to send.")]
-    FailedRequest(String),
-    #[fail(display = "The response was somehow malformed.")]
-    MalformedResponse(String),
+    Reqwest(reqwest::Error),
+    Hex(hex::FromHexError),
+    BlockDeserialization(String),
+    ParseUrl(ParseError),
 }
 
+#[derive(Clone)]
 pub struct BlockchainInfoHttpBlockSource {
     bitcoin_block_http_api: url::Url,
     network: Network,
     client: Client,
 }
 
+// and return None in some scenarios
 impl BlockchainInfoHttpBlockSource {
     pub fn new(network: Network) -> Self {
         // blockchain.info and blockchain.com are not really the same
@@ -160,13 +40,16 @@ impl BlockchainInfoHttpBlockSource {
 
         match network {
             Network::Mainnet => {
-                bitcoin_block_http_api = Url::parse("https://blockchain.info").unwrap();
+                bitcoin_block_http_api = Url::parse("https://blockchain.info")
+                    .map_err(Error::ParseUrl)
+                    .unwrap();
             }
             Network::Testnet => {
-                bitcoin_block_http_api = Url::parse("https://testnet.blockchain.info").unwrap();
+                bitcoin_block_http_api = Url::parse("https://testnet.blockchain.info")
+                    .map_err(Error::ParseUrl)
+                    .unwrap();
             }
             _ => {
-                // TODO: better error handling
                 log::error!(
                     "Network {} not supported for bitcoin http blocksource",
                     network
@@ -185,77 +68,84 @@ impl BlockchainInfoHttpBlockSource {
         }
     }
 
-    pub fn latest_block() -> Box<dyn Future<Item = Block, Error = blocksource::Error<Error>>> {
-        let latest_block_hash = Self::latest_block_hash(Self);
+    pub fn latest_block(&self) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
+        let cloned_self = self.clone();
 
-        latest_block_hash.and_then(|hash| Self::raw_block_by_hash(Self, hash))
+        self.latest_block_without_tx()
+            .and_then(move |latest_block| {
+                cloned_self.raw_hex_block(latest_block.hash, latest_block.height)
+            })
     }
 
-    fn latest_block_hash(
+    fn latest_block_without_tx(
         &self,
-    ) -> Box<dyn Future<Item = String, Error = blocksource::Error<Error>> + Send> {
+    ) -> impl Future<Item = BlockchainInfoLatestBlock, Error = Error> + Send + 'static {
         // https://blockchain.info/q/latesthash only works for mainnet, there is no testnet endpoint
-        // we fall-back to [testnet.]blockchain.info/latestblock to retrieve the latest block hash
+        // we fall-back to [testnet.]blockchain.info/latestblock to retrieve the latest
+        // block hash
 
-        let latest_block_url = self.bitcoin_block_http_api.join("latestblock").unwrap();
+        let latest_block_url = self
+            .bitcoin_block_http_api
+            .join("latestblock")
+            .map_err(Error::ParseUrl)
+            .unwrap();
 
-        let latest_block_hash = self
-            .client
+        self.client
             .get(latest_block_url)
             .send()
-            .map_err(move |e| {
-                Error::FailedRequest(format!(
-                    "Failed to retrieve latest block hash from blockchain.info"
-                ))
+            .map_err(Error::Reqwest)
+            .and_then(move |mut response| {
+                response
+                    .json::<BlockchainInfoLatestBlock>()
+                    .map_err(Error::Reqwest)
             })
-            .and_then(move |response| {
-                if response.status() != StatusCode::OK {
-                    // TODO: Error handling for case where the resource is unavailable (e.g. URL changed, ...)
-                }
-
-                let
-            })
-            .inspect(|latest_block_hash| {
-                // TODO: can be removed, does not need logging here
-                log::info!("Latest block hash for bitcoin is {}", latest_block_hash);
-            })
-            .map(String::new());
-
-        Box::new(latest_block_hash)
     }
 
-    fn raw_block_by_hash(
+    fn raw_hex_block(
         &self,
         block_hash: String,
-    ) -> Box<dyn Future<Item = BlockchainInfoRawBlock, Error = blocksource::Error<Error>> + Send>
-    {
-        let raw_block_url = self.bitcoin_block_http_api.join("rawblock").unwrap();
-        let raw_block_by_hash_url = raw_block_url.join(block_hash.as_str()).unwrap();
+        block_height: u32,
+    ) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
+        // TODO: Put this in the constructor, let the constructor return a result, then
+        // cascade these using ?
+        let block_url = self
+            .bitcoin_block_http_api
+            .join("rawblock/")
+            .map_err(Error::ParseUrl)
+            .unwrap();
+        let block_by_hash_url = block_url
+            .join(block_hash.as_str())
+            .map_err(Error::ParseUrl)
+            .unwrap();
+        let raw_block_by_hash_url = block_by_hash_url
+            .join("?format=hex")
+            .map_err(Error::ParseUrl)
+            .unwrap();
 
-        let raw_block = self
-            .client
+        self.client
             .get(raw_block_by_hash_url)
             .send()
-            .map_err(move |e| {
-                Error::FailedRequest(format!(
-                    "Failed to retrieve latest block hash from blockchain.info"
-                ))
+            .map_err(Error::Reqwest)
+            .and_then(|mut response| response.text().map_err(Error::Reqwest))
+            .and_then(|response_text| hex::decode(response_text).map_err(Error::Hex))
+            .and_then(move |bytes| {
+                deserialize(bytes.as_ref())
+                    .map(|block| {
+                        log::trace!("Got {:?}", block);
+                        MinedBlock::new(block, block_height)
+                    })
+                    .map_err(|e| {
+                        log::error!("Got new block but failed to deserialize it because {:?}", e);
+                        Error::BlockDeserialization(format!(
+                            "Failed to deserialize the resonse from blockchain.info into a block: {}", e
+                        ))
+                    })
             })
-            .and_then(move |response| {
-                if response.status() != StatusCode::OK {
-                    // TODO: Error handling for case where the resource is unavailable (e.g. URL changed, ...)
-                }
-
-                response.json::<BlockchainInfoRawBlock>()
-            })
-            .map(Block::from);
-
-        Box::new(raw_block)
     }
 }
 
 impl BlockSource for BlockchainInfoHttpBlockSource {
-    type Block = Block;
+    type Block = MinedBlock;
     type Error = Error;
 
     fn blocks(
@@ -264,8 +154,8 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
         // https://www.blockchain.com/api/q (= https://www.blockchain.info/api/q) states:
         //  "Please limit your queries to a maximum of 1 every 10 seconds." (29/08/2019)
         //
-        // Since bitcoin blocks have a mining interval of about 10 minutes the poll interval
-        // is configured to once every 5 minutes.
+        // The Bitcoin blockchain has a mining interval of about 10 minutes.
+        // The poll interval is configured to once every 5 minutes.
         let poll_interval = match self.network {
             Network::Mainnet => 300,
             Network::Testnet => 300,
@@ -274,26 +164,34 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from {} on {} every {} seconds", self.bitcoin_block_http_api, self.network, poll_interval);
 
+        let cloned_self = self.clone();
+
         let stream = Interval::new_interval(Duration::from_secs(poll_interval))
-            .map_err(Error::Timer)
-            .and_then(move |_| Self::latest_block());
-        //            .filter_map(|maybe_block| maybe_block) // TODO: might be obsolete
-        //            .inspect(|block| {
-        //                if let Block { hash: Some(hash), number: Some(number), .. } = block {
-        //                    log::trace!(target: "bitcoin::blocksource", "latest block is {:?} at height {}", hash, number);
-        //                }
-        //            });
+            .map_err(blocksource::Error::Timer)
+            .and_then(move |_| {
+                cloned_self
+                    .latest_block()
+                    .map(Some)
+                        .or_else(|error| {
+                            match error {
+                                Error::Reqwest(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                Error::Hex(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                Error::BlockDeserialization(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                _ => Err(error)
+                            }
+                        })
+                        .map_err(blocksource::Error::Source)
+            }).filter_map(|maybe_block| maybe_block);
 
         Box::new(stream)
     }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn latest_block() {}
-
 }
