@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use bitcoin::{hashes::sha256d, Address, OutPoint, TxOut};
+use rust_bitcoin::{hashes::sha256d, Address, OutPoint, TxOut};
 use std::convert::TryFrom;
 
 pub trait RegtestHelperClient {
