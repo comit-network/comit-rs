@@ -123,7 +123,7 @@ impl Serialize for Http<ethereum_support::Transaction> {
 }
 
 impl_serialize_http!(bitcoin_support::PubkeyHash);
-impl_serialize_http!(bitcoin_support::OutPoint);
+impl_serialize_type_with_fields!(bitcoin_support::OutPoint { "txid" => txid, "vout" => vout });
 impl_serialize_http!(ethereum_support::H160);
 impl_serialize_http!(SwapId);
 
