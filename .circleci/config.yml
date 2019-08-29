@@ -53,6 +53,8 @@ jobs:
           name: Release build and test using cargo make
           command: |
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
+            export BTSIEVE_BIN=~/comit/target/release/btsieve
+            export CND_BIN=~/comit/target/release/cnd
             cargo make ci
       - run:
           name: Ensure binaries were generated for release

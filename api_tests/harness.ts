@@ -48,13 +48,12 @@ async function runTests(testFiles: string[]) {
     );
     global.ledgers_config = ledgerRunner.getLedgersConfig();
 
-    let cndPath = projectRoot + "/target/debug/cnd";
-    let btsievePath = projectRoot + "/target/debug/btsieve";
-
-    if (!fs.existsSync(cndPath)) {
-        cndPath = projectRoot + "/target/release/cnd";
-        btsievePath = projectRoot + "/target/release/btsieve";
-    }
+    const cndPath = process.env.CND_BIN
+        ? process.env.CND_BIN
+        : projectRoot + "/target/debug/cnd";
+    const btsievePath = process.env.BTSIEVE_BIN
+        ? process.env.BTSIEVE_BIN
+        : projectRoot + "/target/debug/btsieve";
 
     const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
     const btsieveRunner = new BtsieveRunner(projectRoot, btsievePath, logDir);
