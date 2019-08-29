@@ -6,11 +6,14 @@ use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
 use futures::Future;
 use serde::Serialize;
 
+mod ser_outpoint;
+
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]
 pub enum BitcoinQuery {
     Transaction {
         to_address: Option<bitcoin_support::Address>,
+        #[serde(with = "self::ser_outpoint")]
         from_outpoint: Option<bitcoin_support::OutPoint>,
         unlock_script: Option<Vec<Vec<u8>>>,
     },
