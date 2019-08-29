@@ -31,9 +31,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-// TODO: use bitcoin_support::Amount in the file instead of importing here to
-// avoid ambiguity
-use bitcoin_support::Amount;
+use bitcoin_support::Amount as BitcoinAmount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -48,7 +46,7 @@ pub struct Http<I>(pub I);
 impl_serialize_type_name_with_fields!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
 
-impl FromHttpAsset for Amount {
+impl FromHttpAsset for BitcoinAmount {
     fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
         let name = String::from("bitcoin");
         asset.is_asset(name.as_ref())?;
@@ -60,7 +58,7 @@ impl FromHttpAsset for Amount {
     }
 }
 
-impl Serialize for Http<Amount> {
+impl Serialize for Http<BitcoinAmount> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -225,6 +223,7 @@ impl<'de> Deserialize<'de> for DialInformation {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         http_api::Http,
         swap_protocols::{
@@ -232,14 +231,14 @@ mod tests {
             HashFunction, SwapId, SwapProtocol,
         },
     };
-    use bitcoin_support::{self, Amount, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
+    use bitcoin_support::{self, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = Amount::from_btc(1.0).unwrap();
+        let bitcoin = BitcoinAmount::from_btc(1.0).unwrap();
         let ether = EtherQuantity::from_eth(1.0);
         let pay = Erc20Token::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
