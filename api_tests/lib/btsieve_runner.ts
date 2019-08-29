@@ -17,12 +17,17 @@ export class BtsieveRunner {
 
     public ensureBtsievesRunning(btsieves: Array<[string, MetaBtsieveConfig]>) {
         for (const [name, btsieveConfig] of btsieves) {
-            console.log("Starting Btsieve: " + name);
+            console.log("Ensuring Btsieve: " + name + " is started");
 
             if (this.runningBtsieves[name]) {
+                console.log("Btsieve is already started");
                 continue;
             }
 
+            console.log(
+                "Starting Btsieve: " + name + "; path:",
+                this.btsieveBin
+            );
             this.runningBtsieves[name] = spawn(
                 this.btsieveBin,
                 ["--config", btsieveConfig.config_file],
