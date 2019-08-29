@@ -58,12 +58,32 @@ impl FromHttpAsset for BitcoinAmount {
     }
 }
 
+// This function's signature needs to match serde::serialize_with's expectations
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn serialize_amount_to_json_string<S: Serializer>(
+    value: &BitcoinAmount,
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    String::serialize(&value.as_sat().to_string(), s)
+}
+
+#[derive(Serialize)]
+struct HttpBitcoinAmount {
+    name: String,
+    #[serde(serialize_with = "serialize_amount_to_json_string")]
+    quantity: BitcoinAmount,
+}
+
 impl Serialize for Http<BitcoinAmount> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        bitcoin_support::amount::serde::as_sat::serialize(&self.0, serializer)
+        let value = HttpBitcoinAmount {
+            name: String::from("bitcoin"),
+            quantity: self.0,
+        };
+        value.serialize(serializer)
     }
 }
 
