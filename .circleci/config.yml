@@ -69,8 +69,6 @@ jobs:
           paths:
             - comit/target/release/cnd
             - comit/target/release/btsieve
-            - .rustup
-            - .cargo
 
   publish-github-release:
     working_directory: ~/comit
@@ -82,16 +80,22 @@ jobs:
     steps:
       - attach_workspace:
           at: ~/
-      - setup_rust_env
+      - run:
+          name: "Consolidate release binaries"
+          command: |
+            mkdir ~/artifacts
+            mv -v ./target/release/cnd ~/artifacts/
+            mv -v ./target/release/btsieve ~/artifacts/
+      - checkout
+      - restore_caches
+      - install_rust
+      - install_node_devlibs
       - print_current_versions
       - run:
           name: "Publish Release on GitHub"
           command: |
-            mkdir ./artifacts
-            mv -v ./target/release/cnd ./artifacts/
-            mv -v ./target/release/btsieve ./artifacts/
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/artifacts/
 
 commands:
   install_node_devlibs:
@@ -124,11 +128,6 @@ commands:
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
             export CARGO_MAKE_VERSION="0.22.1"
             which cargo-make && test "$(cargo make --version)" = "cargo-make ${CARGO_MAKE_VERSION}" || cargo install cargo-make --force --version ${CARGO_MAKE_VERSION}
-  setup_rust_env:
-    steps:
-      - run:
-          name: "Setup Rust environment"
-          command: echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
   print_current_versions:
     steps:
       - run:
