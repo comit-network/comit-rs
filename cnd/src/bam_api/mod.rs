@@ -9,6 +9,7 @@ use crate::{
 };
 use bam::frame::Header;
 use ethereum_support::Erc20Token;
+use serde::{Deserialize, Serialize};
 use std::fmt;
 
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
@@ -61,7 +62,10 @@ impl ToBamHeader for SwapProtocol {
 impl FromBamHeader for AssetKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "bitcoin" => AssetKind::Bitcoin(header.take_parameter("quantity")?),
+            "bitcoin" => {
+                let serde_amount: SerdeAmount = header.take_parameter("quantity")?;
+                AssetKind::Bitcoin(bitcoin_support::Amount::from(serde_amount))
+            }
             "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
             "erc20" => AssetKind::Erc20(Erc20Token::new(
                 header.take_parameter("address")?,
@@ -76,7 +80,8 @@ impl ToBamHeader for AssetKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             AssetKind::Bitcoin(bitcoin) => {
-                Header::with_str_value("bitcoin").with_parameter("quantity", bitcoin)?
+                let serde_amount = SerdeAmount::from(*bitcoin);
+                Header::with_str_value("bitcoin").with_parameter("quantity", serde_amount)?
             }
             AssetKind::Ether(ether) => {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
@@ -105,6 +110,24 @@ impl FromBamHeader for Decision {
             "declined" => Decision::Declined,
             _ => return Err(serde::de::Error::custom("failed to deserialize decision")),
         })
+    }
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub struct SerdeAmount {
+    #[serde(with = "bitcoin_support::amount::serde::as_sat")]
+    inner: bitcoin_support::Amount,
+}
+
+impl From<bitcoin_support::Amount> for SerdeAmount {
+    fn from(amount: bitcoin_support::Amount) -> Self {
+        SerdeAmount { inner: amount }
+    }
+}
+
+impl From<SerdeAmount> for bitcoin_support::Amount {
+    fn from(serde_amount: SerdeAmount) -> Self {
+        serde_amount.inner
     }
 }
 

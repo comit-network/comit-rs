@@ -34,7 +34,8 @@ pub enum ActionExecutionParameters {
 pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
-        amount: bitcoin_support::BitcoinQuantity,
+        #[serde(with = "bitcoin_support::amount::serde::as_sat")]
+        amount: bitcoin_support::Amount,
         network: bitcoin_support::Network,
     },
     BitcoinBroadcastSignedTransaction {

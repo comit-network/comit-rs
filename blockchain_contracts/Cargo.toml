@@ -22,7 +22,6 @@ tiny-keccak = "1.5"
 web3 = "0.8"
 
 [dev-dependencies]
-bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
 bitcoincore-rpc = "0.8.0-rc1"
 failure = "0.1"
 lazy_static = "1.3"

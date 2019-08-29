@@ -11,14 +11,15 @@ pub trait Actions {
 }
 
 pub mod bitcoin {
-    use bitcoin_support::{Address, BitcoinQuantity, Network};
+    use bitcoin_support::{Address, Amount, Network};
     use bitcoin_witness::{PrimedInput, PrimedTransaction};
     use serde::Serialize;
 
     #[derive(Debug, Clone, PartialEq, Serialize)]
     pub struct SendToAddress {
         pub to: Address,
-        pub amount: BitcoinQuantity,
+        #[serde(with = "bitcoin_support::amount::serde::as_sat")]
+        pub amount: Amount,
         pub network: Network,
     }
 

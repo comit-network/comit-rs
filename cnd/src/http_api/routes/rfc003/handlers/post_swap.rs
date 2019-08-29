@@ -8,7 +8,7 @@ use crate::{
         HashFunction, SwapId, Timestamp,
     },
 };
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::Amount as BitcoinAmount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
@@ -20,16 +20,16 @@ pub fn handle_post_swap<A: AliceSpawner>(
     let id = SwapId::default();
 
     match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityErc20Token(body) => {
+        SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
             alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
-        SwapRequestBodyKind::BitcoinEthereumBitcoinQuantityEtherQuantity(body) => {
+        SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
             alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
-        SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinQuantity(body) => {
+        SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
             alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
-        SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinQuantity(body) => {
+        SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
             alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
@@ -66,17 +66,17 @@ pub struct SwapCreated {
 #[derive(Clone, Debug, Deserialize)]
 #[serde(untagged)]
 pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinQuantityErc20Token(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, Erc20Token, OnlyRedeem<Ethereum>>,
+    BitcoinEthereumBitcoinErc20Token(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, Erc20Token, OnlyRedeem<Ethereum>>,
     ),
-    BitcoinEthereumBitcoinQuantityEtherQuantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity, OnlyRedeem<Ethereum>>,
+    BitcoinEthereumBitcoinAmountEtherQuantity(
+        SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, EtherQuantity, OnlyRedeem<Ethereum>>,
     ),
-    EthereumBitcoinErc20TokenBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Token, BitcoinQuantity, OnlyRefund<Ethereum>>,
+    EthereumBitcoinErc20TokenBitcoinAmount(
+        SwapRequestBody<Ethereum, Bitcoin, Erc20Token, BitcoinAmount, OnlyRefund<Ethereum>>,
     ),
-    EthereumBitcoinEtherQuantityBitcoinQuantity(
-        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinQuantity, OnlyRefund<Ethereum>>,
+    EthereumBitcoinEtherQuantityBitcoinAmount(
+        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinAmount, OnlyRefund<Ethereum>>,
     ),
     // It is important that these two come last because untagged enums are tried in order
     UnsupportedCombination(Box<UnsupportedSwapRequestBody>),
@@ -213,7 +213,7 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
@@ -261,7 +261,7 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),

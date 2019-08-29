@@ -26,6 +26,22 @@ impl HttpAsset {
         serde_json::from_value(parameter).map_err(Error::Serde)
     }
 
+    pub fn parameter_custom_deser<
+        P,
+        F: Fn(serde_json::value::Value) -> Result<P, serde_json::Error>,
+    >(
+        &mut self,
+        key: &'static str,
+        deser: F,
+    ) -> Result<P, Error> {
+        let parameter = self
+            .parameters
+            .remove(key)
+            .ok_or(Error::ParameterNotFound)?;
+
+        deser(parameter).map_err(Error::Serde)
+    }
+
     pub fn with_asset(name: &'static str) -> HttpAsset {
         HttpAsset {
             name: String::from(name),

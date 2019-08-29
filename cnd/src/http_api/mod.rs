@@ -31,7 +31,9 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin_support::BitcoinQuantity;
+// TODO: use bitcoin_support::Amount in the file instead of importing here to
+// avoid ambiguity
+use bitcoin_support::Amount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -45,8 +47,27 @@ pub struct Http<I>(pub I);
 
 impl_serialize_type_name_with_fields!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
-impl_serialize_type_name_with_fields!(BitcoinQuantity := "bitcoin" { "quantity" });
-impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+
+impl FromHttpAsset for Amount {
+    fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
+        let name = String::from("bitcoin");
+        asset.is_asset(name.as_ref())?;
+
+        asset.parameter_custom_deser(
+            "quantity",
+            bitcoin_support::amount::serde::as_sat::deserialize,
+        )
+    }
+}
+
+impl Serialize for Http<Amount> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        bitcoin_support::amount::serde::as_sat::serialize(&self.0, serializer)
+    }
+}
 
 impl Serialize for Http<bitcoin_support::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -211,16 +232,14 @@ mod tests {
             HashFunction, SwapId, SwapProtocol,
         },
     };
-    use bitcoin_support::{
-        self, BitcoinQuantity, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn,
-    };
+    use bitcoin_support::{self, Amount, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = BitcoinQuantity::from_bitcoin(1.0);
+        let bitcoin = Amount::from_btc(1.0).unwrap();
         let ether = EtherQuantity::from_eth(1.0);
         let pay = Erc20Token::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),

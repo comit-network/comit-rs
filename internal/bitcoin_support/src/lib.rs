@@ -20,9 +20,8 @@ pub use bitcoin::{
         key::PrivateKey,
         Error,
     },
-    Address,
+    Address, Amount,
 };
-pub use bitcoin_quantity::*;
 pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 

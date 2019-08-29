@@ -1,7 +1,7 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{
-    self, Address, BitcoinQuantity, Hash, OutPoint, Script, SigHashType, SighashComponents,
-    Transaction, TxIn, TxOut,
+    self, Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction,
+    TxIn, TxOut,
 };
 use secp256k1_keypair::{Message, SECP};
 
@@ -14,14 +14,14 @@ pub enum Error {
 #[derive(Clone, Debug, PartialEq)]
 pub struct PrimedInput {
     input_parameters: UnlockParameters,
-    value: BitcoinQuantity,
+    value: Amount,
     previous_output: OutPoint,
 }
 
 impl PrimedInput {
     pub fn new(
         previous_output: OutPoint,
-        value: BitcoinQuantity,
+        value: Amount,
         input_parameters: UnlockParameters,
     ) -> PrimedInput {
         PrimedInput {
@@ -81,7 +81,7 @@ impl PrimedTransaction {
                     let hash_to_sign = sighash_components.sighash_all(
                         &transaction.input[i],
                         &input_parameters.prev_script,
-                        primed_input.value.satoshi(),
+                        primed_input.value.as_sat(),
                     );
                     // `from` should be used instead of `from_slice` once `ThirtyTwoByteHash` is
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
@@ -111,13 +111,13 @@ impl PrimedTransaction {
         let fee = weight
             .checked_mul(fee_per_byte)
             .ok_or(Error::OverflowingFee)?;
-        let fee = BitcoinQuantity::from_satoshi(fee as u64);
+        let fee = Amount::from_sat(fee as u64);
 
         if self.total_input_value() < fee {
             return Err(Error::FeeHigherThanInputValue);
         };
 
-        transaction.output[0].value = (self.total_input_value() - fee).satoshi();
+        transaction.output[0].value = (self.total_input_value() - fee).as_sat();
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
@@ -125,10 +125,10 @@ impl PrimedTransaction {
         Ok(transaction)
     }
 
-    pub fn sign_with_fee(self, fee: BitcoinQuantity) -> Transaction {
+    pub fn sign_with_fee(self, fee: Amount) -> Transaction {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
-        transaction.output[0].value = (self.total_input_value() - fee).satoshi();
+        transaction.output[0].value = (self.total_input_value() - fee).as_sat();
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
@@ -136,11 +136,11 @@ impl PrimedTransaction {
         transaction
     }
 
-    pub fn total_input_value(&self) -> BitcoinQuantity {
-        BitcoinQuantity::from_satoshi(
+    pub fn total_input_value(&self) -> Amount {
+        Amount::from_sat(
             self.inputs
                 .iter()
-                .fold(0, |acc, input| acc + input.value.satoshi()),
+                .fold(0, |acc, input| acc + input.value.as_sat()),
         )
     }
 
@@ -190,7 +190,7 @@ mod test {
                     txid,
                     vout: 1, // First number I found that gave me a 71 byte signature
                 },
-                BitcoinQuantity::from_bitcoin(1.0),
+                Amount::from_btc(1.0).expect("Should convert 1.0 in bitcoin amount"),
                 keypair.p2wpkh_unlock_parameters(),
             )],
             output_address: dst_addr,
@@ -203,7 +203,7 @@ mod test {
         let transaction = primed_txn.sign_with_rate(rate).unwrap();
 
         let actual_weight = transaction.get_weight();
-        let fee = total_input_value.satoshi() - transaction.output[0].value;
+        let fee = total_input_value.as_sat() - transaction.output[0].value;
 
         assert_eq!(estimated_weight, actual_weight, "weight is correct");
         assert_eq!(fee, 18354, "actual fee paid is correct");

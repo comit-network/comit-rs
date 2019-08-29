@@ -10,7 +10,6 @@ use crate::{
     bitcoin_helper::RegtestHelperClient,
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
-use bitcoin_quantity::BitcoinQuantity;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
@@ -92,7 +91,7 @@ fn fund_htlc(
 ) -> (
     sha256d::Hash,
     OutPoint,
-    BitcoinQuantity,
+    Amount,
     BitcoinHtlc,
     Timestamp,
     SecretKey,
@@ -108,7 +107,7 @@ fn fund_htlc(
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
     let refund_timestamp = Timestamp::from(current_time).plus(5);
-    let amount = BitcoinQuantity::from_satoshi(100_000_001);
+    let amount = Amount::from_sat(100_000_001);
 
     let htlc = BitcoinHtlc::new(
         refund_timestamp.into(),
@@ -122,9 +121,7 @@ fn fund_htlc(
     let txid = client
         .send_to_address(
             &htlc_address.clone(),
-            // TODO: natively use bitcoin::Amount
-            Amount::from_btc(amount.bitcoin())
-                .expect("Should not fail to convert to bitcoin::Amount"),
+            amount,
             None,
             None,
             None,
@@ -162,7 +159,7 @@ fn redeem_htlc_with_secret() {
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
-    let fee = BitcoinQuantity::from_satoshi(1000);
+    let fee = Amount::from_sat(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
@@ -201,7 +198,7 @@ fn refund_htlc() {
         fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
-    let fee = BitcoinQuantity::from_satoshi(1000);
+    let fee = Amount::from_sat(1000);
 
     let refund_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
@@ -263,7 +260,7 @@ fn redeem_htlc_with_long_secret() {
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
-    let fee = BitcoinQuantity::from_satoshi(1000);
+    let fee = Amount::from_sat(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(
@@ -304,7 +301,7 @@ fn redeem_htlc_with_short_secret() {
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
-    let fee = BitcoinQuantity::from_satoshi(1000);
+    let fee = Amount::from_sat(1000);
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![PrimedInput::new(

@@ -7,7 +7,6 @@ edition = "2018"
 [dependencies]
 bigdecimal = "0.1.0"
 bitcoin = { version = "0.19.1", features = ["use-serde"] }
-bitcoin_quantity = { git = "https://github.com/coblox/bitcoin-quantity", features = ["serde"] }
 hex = "0.3"
 lazy_static = "1"
 secp256k1_keypair = { path = "../secp256k1_keypair" }
