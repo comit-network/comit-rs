@@ -4,19 +4,11 @@ use crate::settings::Settings;
 use config::ConfigError;
 use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
-use structopt::StructOpt;
 
-#[derive(StructOpt, Debug)]
-pub struct Opt {
-    /// Path to configuration folder
-    #[structopt(short = "c", long = "config", parse(from_os_str))]
-    config_file: Option<PathBuf>,
-}
-
-pub fn load_settings(opt: Opt) -> Result<Settings, ConfigError> {
-    if let Some(file) = opt.config_file {
-        println!("Using config file at {:?}", file);
-        return parse_config_file(file);
+pub fn load_settings(config_file: Option<PathBuf>) -> Result<Settings, ConfigError> {
+    // Allow config_file to override the default configuration file.
+    if let Some(config_file) = config_file {
+        return parse_config_file(config_file);
     }
 
     let path = config_dir()
