@@ -114,29 +114,34 @@ fn to_payload(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::web3::types::{Bytes, Transaction};
+    use crate::{
+        ethereum::queries::quickcheck::Quickcheck,
+        web3::types::{Bytes, Transaction},
+    };
     use spectral::prelude::*;
 
     #[test]
-    fn given_query_from_address_contract_creation_transaction_matches() {
-        let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
+    fn given_query_from_arbitrary_address_contract_creation_transaction_matches() {
+        fn prop(from_address: Quickcheck<Address>, transaction: Quickcheck<Transaction>) -> bool {
+            let from_address = from_address.0;
 
-        let query = TransactionQuery {
-            from_address: Some(from_address),
-            to_address: None,
-            is_contract_creation: Some(true),
-            transaction_data: None,
-            transaction_data_length: None,
-        };
+            let query = TransactionQuery {
+                from_address: Some(from_address),
+                to_address: None,
+                is_contract_creation: Some(true),
+                transaction_data: None,
+                transaction_data_length: None,
+            };
 
-        let transaction = Transaction {
-            from: from_address,
-            to: None, // None = contract creation
-            ..Transaction::default()
-        };
+            let mut transaction = transaction.0;
 
-        let result = query.matches(&transaction);
-        assert_that(&result).is_true();
+            transaction.from = from_address;
+            transaction.to = None;
+
+            query.matches(&transaction)
+        }
+
+        quickcheck::quickcheck(prop as fn(Quickcheck<H160>, Quickcheck<Transaction>) -> bool)
     }
 
     #[test]
