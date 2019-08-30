@@ -5,7 +5,6 @@ use reqwest::r#async::Client;
 use serde::Deserialize;
 use std::time::Duration;
 use tokio::timer::Interval;
-use url::{ParseError, Url};
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
@@ -15,56 +14,37 @@ struct BlockchainInfoLatestBlock {
 
 #[derive(Debug)]
 pub enum Error {
+    UnsupportedNetwork(String),
     Reqwest(reqwest::Error),
     Hex(hex::FromHexError),
     BlockDeserialization(String),
-    ParseUrl(ParseError),
 }
 
 #[derive(Clone)]
-pub struct BlockchainInfoHttpBlockSource {
-    bitcoin_block_http_api: url::Url,
+pub struct BlockchainInfoHexHttpBlockSource {
     network: Network,
     client: Client,
 }
 
-// and return None in some scenarios
-impl BlockchainInfoHttpBlockSource {
-    pub fn new(network: Network) -> Self {
-        // blockchain.info and blockchain.com are not really the same
-        // The API is only available under blockchain.info
-        // Mainnet: blockchain.info
-        // Testnet: testnet.blockchain.info
-
-        let bitcoin_block_http_api: Url;
+impl BlockchainInfoHexHttpBlockSource {
+    pub fn new(network: Network) -> Result<Self, Error> {
+        // Currently configured for Mainnet only because no support for hex-encoded
 
         match network {
-            Network::Mainnet => {
-                bitcoin_block_http_api = Url::parse("https://blockchain.info")
-                    .map_err(Error::ParseUrl)
-                    .unwrap();
-            }
-            Network::Testnet => {
-                bitcoin_block_http_api = Url::parse("https://testnet.blockchain.info")
-                    .map_err(Error::ParseUrl)
-                    .unwrap();
-            }
+            Network::Mainnet => Ok(Self {
+                network,
+                client: Client::new(),
+            }),
             _ => {
                 log::error!(
                     "Network {} not supported for bitcoin http blocksource",
                     network
                 );
-                panic!(
-                    "Network {} not supported for bitcoin http blocksource",
+                Err(Error::UnsupportedNetwork(format!(
+                    "Network {} currently not supported for bitcoin http plocksource",
                     network
-                )
+                )))
             }
-        };
-
-        Self {
-            bitcoin_block_http_api,
-            network,
-            client: Client::new(),
         }
     }
 
@@ -77,6 +57,16 @@ impl BlockchainInfoHttpBlockSource {
             })
     }
 
+    fn base_url(&self) -> String {
+        match self.network {
+            Network::Mainnet => "https://blockchain.info".to_string(),
+            _ => panic!(
+                "Network {} not supported for bitcoin.info blocksource",
+                self.network
+            ),
+        }
+    }
+
     fn latest_block_without_tx(
         &self,
     ) -> impl Future<Item = BlockchainInfoLatestBlock, Error = Error> + Send + 'static {
@@ -84,14 +74,10 @@ impl BlockchainInfoHttpBlockSource {
         // we fall-back to [testnet.]blockchain.info/latestblock to retrieve the latest
         // block hash
 
-        let latest_block_url = self
-            .bitcoin_block_http_api
-            .join("latestblock")
-            .map_err(Error::ParseUrl)
-            .unwrap();
+        let latest_block_url = format!("{}/latestblock", self.base_url());
 
         self.client
-            .get(latest_block_url)
+            .get(latest_block_url.as_str())
             .send()
             .map_err(Error::Reqwest)
             .and_then(move |mut response| {
@@ -106,24 +92,11 @@ impl BlockchainInfoHttpBlockSource {
         block_hash: String,
         block_height: u32,
     ) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
-        // TODO: Put this in the constructor, let the constructor return a result, then
-        // cascade these using ?
-        let block_url = self
-            .bitcoin_block_http_api
-            .join("rawblock/")
-            .map_err(Error::ParseUrl)
-            .unwrap();
-        let block_by_hash_url = block_url
-            .join(block_hash.as_str())
-            .map_err(Error::ParseUrl)
-            .unwrap();
-        let raw_block_by_hash_url = block_by_hash_url
-            .join("?format=hex")
-            .map_err(Error::ParseUrl)
-            .unwrap();
+        let raw_block_by_hash_url =
+            format!("{}/rawblock/{}?format=hex", self.base_url(), block_hash);
 
         self.client
-            .get(raw_block_by_hash_url)
+            .get(raw_block_by_hash_url.as_str())
             .send()
             .map_err(Error::Reqwest)
             .and_then(|mut response| response.text().map_err(Error::Reqwest))
@@ -137,14 +110,14 @@ impl BlockchainInfoHttpBlockSource {
                     .map_err(|e| {
                         log::error!("Got new block but failed to deserialize it because {:?}", e);
                         Error::BlockDeserialization(format!(
-                            "Failed to deserialize the resonse from blockchain.info into a block: {}", e
+                            "Failed to deserialize the response from blockchain.info into a block: {}", e
                         ))
                     })
             })
     }
 }
 
-impl BlockSource for BlockchainInfoHttpBlockSource {
+impl BlockSource for BlockchainInfoHexHttpBlockSource {
     type Block = MinedBlock;
     type Error = Error;
 
@@ -158,11 +131,10 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
         // The poll interval is configured to once every 5 minutes.
         let poll_interval = match self.network {
             Network::Mainnet => 300,
-            Network::Testnet => 300,
-            Network::Regtest => 1,
+            _ => 0,
         };
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from {} on {} every {} seconds", self.bitcoin_block_http_api, self.network, poll_interval);
+        log::info!(target: "bitcoin::blocksource", "polling for new blocks from blockchain.info on {} every {} seconds", self.network, poll_interval);
 
         let cloned_self = self.clone();
 
