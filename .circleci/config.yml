@@ -12,6 +12,8 @@ workflows:
           requires:
             - release-build-test
           filters:
+            branches:
+              ignore: /^.*$/
             tags:
               only: /^\d+\.\d+\.\d+$/
 
@@ -56,19 +58,19 @@ jobs:
             export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
             cargo make ci
-      - run:
-          name: Ensure binaries were generated for release
-          command: |
-            ls ./
-            ls ./target
-            ls ./target/release
       - store_artifacts:
           path: api_tests/log
+      - run:
+          name: Consolidate release binaries
+          command: |
+            mkdir ~/artifacts
+            mv -v ~/comit/target/release/cnd ~/artifacts
+            mv -v ~/comit/target/release/btsieve ~/artifacts
       - persist_to_workspace:
-          root: ~/
+          root: ~/artifacts
           paths:
-            - comit/target/release/cnd
-            - comit/target/release/btsieve
+            - cnd
+            - btsieve
 
   publish-github-release:
     working_directory: ~/comit
@@ -79,13 +81,7 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - attach_workspace:
-          at: ~/
-      - run:
-          name: "Consolidate release binaries"
-          command: |
-            mkdir ~/artifacts
-            mv -v ./target/release/cnd ~/artifacts/
-            mv -v ./target/release/btsieve ~/artifacts/
+          at: ~/artifacts
       - checkout
       - restore_caches
       - install_rust
