@@ -71,7 +71,7 @@ export class E2ETestActorConfig {
                 secret_seed: this.seed,
             },
             btsieve: {
-                url: "http://localhost:8181",
+                url: `http://localhost:${BTSIEVE_BASE_CONFIG.http_api.port_bind}`,
                 bitcoin: {
                     poll_interval_secs: 1,
                     network: "regtest",

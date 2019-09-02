@@ -29,8 +29,7 @@ export class Btsieve {
     private readonly port: number;
 
     constructor(root: string) {
-        const config = BTSIEVE_BASE_CONFIG;
-        this.port = config.http_api.port_bind;
+        this.port = BTSIEVE_BASE_CONFIG.http_api.port_bind;
 
         const cndCargoToml: any = parse(
             fs.readFileSync(`${root}/cnd/Cargo.toml`, "utf8")
