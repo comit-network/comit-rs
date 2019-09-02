@@ -8,6 +8,8 @@ workflows:
           filters:
             branches:
               only: /^release\/\d+\.\d+\.\d+$/
+            tags:
+              ignore: /^.*$/
       - publish-github-release:
           requires:
             - release-build-test
