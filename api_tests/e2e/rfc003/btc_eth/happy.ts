@@ -10,14 +10,12 @@ import { HarnessGlobal } from "../../../lib/util";
 declare var global: HarnessGlobal;
 
 (async function() {
-    const alice = new Actor("alice", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    const alice = new Actor("alice", {
+        ledgerConfig: global.ledgerConfigs,
         addressForIncomingBitcoinPayments: null,
     });
-    const bob = new Actor("bob", global.config, global.project_root, {
-        ethereumNodeConfig: global.ledgers_config.ethereum,
-        bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    const bob = new Actor("bob", {
+        ledgerConfig: global.ledgerConfigs,
         addressForIncomingBitcoinPayments:
             "bcrt1qs2aderg3whgu0m8uadn6dwxjf7j3wx97kk2qqtrum89pmfcxknhsf89pj0",
     });

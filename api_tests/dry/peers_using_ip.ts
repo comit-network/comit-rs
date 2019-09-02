@@ -2,14 +2,12 @@ import { expect, request } from "chai";
 import { ethers } from "ethers";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
-import { HarnessGlobal, sleep } from "../lib/util";
-
-declare var global: HarnessGlobal;
+import { sleep } from "../lib/util";
 
 (async () => {
-    const alice = new Actor("alice", global.config, global.project_root);
-    const bob = new Actor("bob", global.config, global.project_root);
-    const charlie = new Actor("charlie", global.config, global.project_root);
+    const alice = new Actor("alice");
+    const bob = new Actor("bob");
+    const charlie = new Actor("charlie");
     const alicePeerId = await alice.peerId();
     const bobMultiAddress = bob.cndNetworkListenAddress();
     const charliePeerId = await charlie.peerId();
