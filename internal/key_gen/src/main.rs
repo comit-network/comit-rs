@@ -3,8 +3,8 @@
 #![allow(clippy::print_stdout)]
 
 use bitcoin_support::{IntoP2wpkhAddress, Network, PrivateKey, PubkeyHash};
-use ethereum_support::ToEthereumAddress;
-use secp256k1_keypair::KeyPair;
+use ethereum_support::Address;
+use secp256k1_keypair::{KeyPair, PublicKey};
 use std::env;
 
 fn main() {
@@ -43,7 +43,7 @@ fn main() {
         "public_key_uncompressed: {}",
         hex::encode(&public_key.serialize_uncompressed()[..])
     );
-    let eth_address = public_key.to_ethereum_address();
+    let eth_address = to_ethereum_address(&public_key);
     println!("eth_address: {:?}", eth_address);
     {
         let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Mainnet);
@@ -59,4 +59,18 @@ fn main() {
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
     println!("pubkey_hash: {:x}", PubkeyHash::from(public_key));
+}
+
+fn to_ethereum_address(key: &PublicKey) -> Address {
+    let serialized_public_key = key.serialize_uncompressed();
+    // Remove the silly openssl 0x04 byte from the front of the
+    // serialized public key. This is a bitcoin thing that
+    // ethereum doesn't want. Eth pubkey should be 32 + 32 = 64 bytes.
+    let actual_public_key = &serialized_public_key[1..];
+    let hash = tiny_keccak::keccak256(actual_public_key);
+    // Ethereum address is the last twenty bytes of the keccak256 hash
+    let ethereum_address_bytes = &hash[12..];
+    let mut address = Address::default();
+    address.assign_from_slice(ethereum_address_bytes);
+    address
 }
