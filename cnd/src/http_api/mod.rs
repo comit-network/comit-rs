@@ -31,7 +31,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin_support::Amount as BitcoinAmount;
+use bitcoin_support::{amount::Denomination, Amount as BitcoinAmount};
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -51,10 +51,10 @@ impl FromHttpAsset for BitcoinAmount {
         let name = String::from("bitcoin");
         asset.is_asset(name.as_ref())?;
 
-        asset.parameter_custom_deser(
-            "quantity",
-            bitcoin_support::amount::serde::as_sat::deserialize,
-        )
+        asset.parameter_custom_deser("quantity", |value| {
+            let string = String::deserialize(value)?;
+            Ok(BitcoinAmount::from_str_in(string.as_str(), Denomination::Satoshi).unwrap())
+        })
     }
 }
 
