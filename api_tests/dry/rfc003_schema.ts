@@ -4,11 +4,8 @@ import { ethers } from "ethers";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
-import { HarnessGlobal } from "../lib/util";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-
-declare var global: HarnessGlobal;
 
 (async function() {
     const alpha = {
@@ -35,8 +32,8 @@ declare var global: HarnessGlobal;
         expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
     };
 
-    const alice = new Actor("alice", global.config, global.project_root);
-    const bob = new Actor("bob", global.config, global.project_root);
+    const alice = new Actor("alice");
+    const bob = new Actor("bob");
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bobCndPeerId = await bob.peerId();
 

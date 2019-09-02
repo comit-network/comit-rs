@@ -1,6 +1,4 @@
-import { TestConfig } from "./actor";
-import { BitcoinNodeConfig } from "./bitcoin";
-import { EthereumNodeConfig } from "./ethereum";
+import { LedgerConfig } from "./ledger_runner";
 
 let testRngCounter = 0;
 
@@ -29,11 +27,7 @@ export function seconds_until(time: number): number {
 import Global = NodeJS.Global;
 
 export interface HarnessGlobal extends Global {
-    config: TestConfig;
-    ledgers_config: {
-        bitcoin: BitcoinNodeConfig;
-        ethereum: EthereumNodeConfig;
-    };
-    test_root: string;
-    project_root: string;
+    ledgerConfigs: LedgerConfig;
+    testRoot: string;
+    projectRoot: string;
 }

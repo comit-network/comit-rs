@@ -1,28 +1,16 @@
 import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
-import * as fs from "fs";
 // @ts-ignore
-import multiaddr from "multiaddr";
 import { Response } from "superagent";
-import * as toml from "toml";
 import URI from "urijs";
 import { Action, Entity } from "../gen/siren";
 import * as bitcoin from "./bitcoin";
-import { MetaBtsieveConfig } from "./btsieve";
-import { CndConfig, LedgerAction, MetaCndConfig } from "./comit";
+import { LedgerAction } from "./comit";
+import { CND_CONFIGS, E2ETestActorConfig } from "./config";
 import { seconds_until, sleep } from "./util";
 import { Wallet, WalletConfig } from "./wallet";
 
 use(chaiHttp);
-
-export interface BtsieveForCndConfig {
-    poll_interval_secs: number;
-}
-
-export interface TestConfig {
-    cnd: { [key: string]: MetaCndConfig };
-    btsieve: { [key: string]: MetaBtsieveConfig };
-}
 
 /// If declined, what is the reason?
 interface DeclineConfig {
@@ -38,15 +26,12 @@ const MOVE_CURSOR_UP_ONE_LINE = "\x1b[1A";
 export class Actor {
     public name: string;
     public wallet: Wallet;
-    private readonly host: string;
-    private cndConfig: CndConfig;
+    private cndConfig: E2ETestActorConfig;
     private readonly declineConfig?: DeclineConfig;
     private readonly sirenActionAutofillParams?: SirenActionAutofillParams;
 
     constructor(
-        name: string,
-        testConfig?: TestConfig,
-        root?: string,
+        name: "alice" | "bob" | "charlie" | "david",
         walletConfig?: WalletConfig,
         declineConfig?: DeclineConfig,
         sirenActionAutofillParams?: SirenActionAutofillParams
@@ -54,19 +39,7 @@ export class Actor {
         this.name = name;
         this.declineConfig = declineConfig;
         this.sirenActionAutofillParams = sirenActionAutofillParams;
-        if (testConfig) {
-            const metaCndConfig = testConfig.cnd[name];
-            if (!metaCndConfig) {
-                throw new Error("cnd configuration is needed");
-            }
-
-            this.host = metaCndConfig.host;
-
-            const configFile = metaCndConfig.config_file;
-            this.cndConfig = toml.parse(
-                fs.readFileSync(`${root}/${configFile}`, "utf8")
-            );
-        }
+        this.cndConfig = CND_CONFIGS[name];
 
         if (walletConfig) {
             this.wallet = new Wallet(name, walletConfig);
@@ -74,19 +47,15 @@ export class Actor {
     }
 
     public cndHttpApiUrl() {
-        return "http://" + this.host + ":" + this.cndConfig.http_api.port;
+        return `http://127.0.0.1:${this.cndConfig.httpApiPort}`;
     }
 
     public cndNetworkListenAddress() {
-        const addr = multiaddr(this.cndConfig.network.listen[0]);
-        // Need to convert 0.0.0.0 to 127.0.0.1
-        return `/${addr.protoNames()[0]}/${this.host}/${addr.protoNames()[1]}/${
-            addr.nodeAddress().port
-        }`;
+        return `/ip4/0.0.0.0/tcp/${this.cndConfig.comitPort}`;
     }
 
     public webGuiUrl() {
-        return "http://" + this.host + ":" + this.cndConfig.web_gui.port;
+        return `http://127.0.0.1:${this.cndConfig.webGuiPort}`;
     }
 
     public async peerId(): Promise<string> {

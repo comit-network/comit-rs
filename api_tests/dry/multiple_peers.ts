@@ -4,9 +4,6 @@ import { ethers } from "ethers";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
-import { HarnessGlobal } from "../lib/util";
-
-declare var global: HarnessGlobal;
 
 (async () => {
     const alpha = {
@@ -39,9 +36,9 @@ declare var global: HarnessGlobal;
         expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
     };
 
-    const alice = new Actor("alice", global.config, global.project_root);
-    const bob = new Actor("bob", global.config, global.project_root);
-    const charlie = new Actor("charlie", global.config, global.project_root);
+    const alice = new Actor("alice");
+    const bob = new Actor("bob");
+    const charlie = new Actor("charlie");
 
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const aliceCndPeerId = await alice.peerId();

@@ -14,11 +14,11 @@ import sb from "satoshi-bitcoin";
 import { test_rng } from "./util";
 
 export interface BitcoinNodeConfig {
-    // snake_case because it comes from TOML file
-    rpc_username: string;
-    rpc_password: string;
-    rpc_host: string;
-    rpc_port: number;
+    username: string;
+    password: string;
+    host: string;
+    rpcPort: number;
+    zmqPort: number;
 }
 
 interface GetBlockchainInfoResponse {
@@ -67,7 +67,7 @@ interface Utxo {
 let bitcoinRpcClient: BitcoinRpcClient;
 let bitcoinConfig: BitcoinNodeConfig;
 
-export function init(btcConfig?: BitcoinNodeConfig) {
+export function init(btcConfig: BitcoinNodeConfig) {
     console.log("Initiating bitcoin");
     createBitcoinRpcClient(btcConfig);
 }
@@ -80,10 +80,10 @@ function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
     if (!bitcoinRpcClient || btcConfig !== bitcoinConfig) {
         bitcoinRpcClient = new BitcoinRpcClient({
             network: "regtest",
-            port: btcConfig.rpc_port,
-            host: btcConfig.rpc_host,
-            username: btcConfig.rpc_username,
-            password: btcConfig.rpc_password,
+            port: btcConfig.rpcPort,
+            host: btcConfig.host,
+            username: btcConfig.username,
+            password: btcConfig.password,
         });
         bitcoinConfig = btcConfig;
     }

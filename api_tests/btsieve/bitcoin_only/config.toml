@@ -1,8 +1,1 @@
 ledgers = ["bitcoin"]
-
-[btsieve.main]
-host = "127.0.0.1"
-config_file = "./api_tests/regtest/btsieve/bitcoin_only/btsieve.toml"
-
-[btsieve.main.env]
-RUST_LOG = "btsieve=debug,warp=debug,btsieve::api"

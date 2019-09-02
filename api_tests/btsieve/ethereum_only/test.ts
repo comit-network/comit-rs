@@ -6,15 +6,13 @@ import { Wallet } from "../../lib/wallet";
 
 declare var global: HarnessGlobal;
 
-const btsieve = new Btsieve("main", global.config, global.project_root);
+const btsieve = new Btsieve(global.projectRoot);
 
 const tobyWallet = new Wallet("toby", {
-    ethereumNodeConfig: global.ledgers_config.ethereum,
-    bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    ledgerConfig: global.ledgerConfigs,
 });
-
 const aliceWallet = new Wallet("alice", {
-    ethereumNodeConfig: global.ledgers_config.ethereum,
+    ledgerConfig: global.ledgerConfigs,
 });
 
 setTimeout(async function() {
@@ -27,7 +25,7 @@ setTimeout(async function() {
 
             tokenContractAddress = await tobyWallet
                 .eth()
-                .deployErc20TokenContract(global.project_root);
+                .deployErc20TokenContract(global.projectRoot);
             await tobyWallet
                 .eth()
                 .mintErc20To(
