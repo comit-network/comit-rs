@@ -90,11 +90,13 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
-          name: "Publish Release on GitHub"
+          name: "Package & Publish Release on GitHub"
           command: |
             go get github.com/tcnksm/ghr
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/artifacts/
+            mkdir ~/package
+            cd ~/artifacts && tar czvf ~/package/comit-rs_v${VERSION}_$(uname -s)_$(uname -m).tar.gz *
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
 
 commands:
   install_node_devlibs:
