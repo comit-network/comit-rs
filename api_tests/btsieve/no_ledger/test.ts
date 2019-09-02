@@ -5,7 +5,7 @@ import { HarnessGlobal } from "../../lib/util";
 
 declare var global: HarnessGlobal;
 
-const btsieve = new Btsieve("main", global.config, global.project_root);
+const btsieve = new Btsieve(global.projectRoot);
 
 setTimeout(async function() {
     describe("Test btsieve API - no ledger connected", () => {

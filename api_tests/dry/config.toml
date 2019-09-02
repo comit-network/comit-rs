@@ -1,11 +1,1 @@
-[cnd.alice]
-host = "127.0.0.1"
-config_file = "./api_tests/regtest/alice/cnd.toml"
-
-[cnd.bob]
-host = "127.0.0.1"
-config_file = "./api_tests/regtest/bob/cnd.toml"
-
-[cnd.charlie]
-host = "127.0.0.1"
-config_file = "./api_tests/regtest/charlie/cnd.toml"
+actors = ["alice", "bob", "charlie"]

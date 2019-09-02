@@ -1,3 +1,1 @@
-[cnd.david]
-host = "127.0.0.1"
-config_file = "./api_tests/regtest/david/cnd.toml"
+actors = ["david"]

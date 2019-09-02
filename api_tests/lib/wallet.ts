@@ -1,10 +1,9 @@
-import { BitcoinNodeConfig, BitcoinWallet } from "./bitcoin";
-import { EthereumNodeConfig, EthereumWallet } from "./ethereum";
+import { BitcoinWallet } from "./bitcoin";
+import { EthereumWallet } from "./ethereum";
+import { LedgerConfig } from "./ledger_runner";
 
 export interface WalletConfig {
-    ethereumNodeConfig?: EthereumNodeConfig;
-    bitcoinNodeConfig?: BitcoinNodeConfig;
-
+    ledgerConfig: LedgerConfig;
     addressForIncomingBitcoinPayments?: string;
 }
 
@@ -16,13 +15,13 @@ export class Wallet {
     constructor(owner: string, config: WalletConfig) {
         this.owner = owner;
 
-        if (config.ethereumNodeConfig) {
-            this.ethWallet = new EthereumWallet(config.ethereumNodeConfig);
+        if (config.ledgerConfig.ethereum) {
+            this.ethWallet = new EthereumWallet(config.ledgerConfig.ethereum);
         }
 
-        if (config.bitcoinNodeConfig) {
+        if (config.ledgerConfig.bitcoin) {
             this.btcWallet = new BitcoinWallet(
-                config.bitcoinNodeConfig,
+                config.ledgerConfig.bitcoin,
                 config.addressForIncomingBitcoinPayments
             );
         }
