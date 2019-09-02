@@ -15,7 +15,7 @@ workflows:
             - release-build-test
           filters:
             branches:
-              ignore: /^.*$/
+              only: /^release\/\d+\.\d+\.\d+$/
             tags:
               only: /^\d+\.\d+\.\d+$/
 
