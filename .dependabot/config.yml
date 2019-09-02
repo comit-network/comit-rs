@@ -9,6 +9,12 @@ update_configs:
       - match:
           update_type: "all"
           dependency_type: "direct"
+    ignored_updates:
+      # as per https://github.com/comit-network/comit-rs/issues/1316
+      - match:
+          - dependency_name: "primitive-types"
+      - match:
+          - dependency_name: "rlp"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "weekly"
