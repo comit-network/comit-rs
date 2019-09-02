@@ -9,7 +9,7 @@ workflows:
             branches:
               only: /^release\/\d+\.\d+\.\d+$/
             tags:
-              ignore: /^.*$/
+              only: /^.*$/
       - publish-github-release:
           requires:
             - release-build-test
