@@ -94,6 +94,9 @@ jobs:
           command: |
             go get github.com/tcnksm/ghr
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
+
+            # Let's abort if the git tag does not match the version in Cargo.toml as it would be fishy
+            test "${VERSION}" = "${CIRCLE_TAG}"
             mkdir ~/package
             cd ~/artifacts && tar czvf ~/package/comit-rs_v${VERSION}_$(uname -s)_$(uname -m).tar.gz *
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
