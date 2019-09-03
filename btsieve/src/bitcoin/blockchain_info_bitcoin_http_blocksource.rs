@@ -21,11 +21,11 @@ pub enum Error {
 }
 
 #[derive(Clone)]
-pub struct BlockchainInfoHexHttpBlockSource {
+pub struct BlockchainInfoHttpBlockSource {
     client: Client,
 }
 
-impl BlockchainInfoHexHttpBlockSource {
+impl BlockchainInfoHttpBlockSource {
     pub fn new(network: Network) -> Result<Self, Error> {
         // Currently configured for Mainnet only because blockchain.info does not
         // support hex-encoded block retrieval for testnet.
@@ -46,7 +46,7 @@ impl BlockchainInfoHexHttpBlockSource {
         })
     }
 
-    pub fn latest_block(&self) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
+    fn latest_block(&self) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
         let cloned_self = self.clone();
 
         self.latest_block_without_tx()
@@ -101,7 +101,7 @@ impl BlockchainInfoHexHttpBlockSource {
     }
 }
 
-impl BlockSource for BlockchainInfoHexHttpBlockSource {
+impl BlockSource for BlockchainInfoHttpBlockSource {
     type Block = MinedBlock;
     type Error = Error;
 
@@ -146,5 +146,30 @@ impl BlockSource for BlockchainInfoHexHttpBlockSource {
             }).filter_map(|maybe_block| maybe_block);
 
         Box::new(stream)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn serialize_block() {
+        let mut runtime = tokio::runtime::Runtime::new().unwrap();
+
+        let block_source = BlockchainInfoHttpBlockSource::new(Network::Mainnet).unwrap();
+
+        let future = block_source
+            .latest_block()
+            .map(|block| {
+                println!(
+                    "height: {}, block.header.version: {}",
+                    block.height, block.block.header.version
+                );
+                assert_eq!(593_009, block.height);
+            })
+            .map_err(|e| panic!(e));
+
+        runtime.block_on(future);
     }
 }
