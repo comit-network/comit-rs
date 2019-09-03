@@ -6,6 +6,7 @@ use cnd::{
     comit_client::Client,
     comit_i_routes,
     config::{self, Settings},
+    db::SqliteMetadataStore,
     http_api::route_factory,
     network::{self, SwarmInfo},
     seed::Seed,
@@ -13,7 +14,6 @@ use cnd::{
         self,
         metadata_store::MetadataStore,
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        InMemoryMetadataStore,
     },
 };
 use futures::{stream, Future, Stream};
@@ -46,7 +46,8 @@ fn main() -> Result<(), failure::Error> {
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
-    let metadata_store = Arc::new(InMemoryMetadataStore::default());
+    let db = SqliteMetadataStore::new(settings.database.clone().map(|db| db.sqlite))?;
+    let metadata_store = Arc::new(db);
     let state_store = Arc::new(InMemoryStateStore::default());
     let btsieve_client = create_btsieve_api_client(&settings);
 

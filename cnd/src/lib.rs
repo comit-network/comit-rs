@@ -7,12 +7,16 @@
 #[macro_use]
 extern crate strum_macros;
 
+#[macro_use]
+extern crate diesel;
+
 pub mod bam_api;
 pub mod bam_ext;
 pub mod btsieve;
 pub mod comit_client;
 pub mod comit_i_routes;
 pub mod config;
+pub mod db;
 pub mod http_api;
 pub mod libp2p_bam;
 pub mod logging;
@@ -29,4 +33,11 @@ use std::path::PathBuf;
 // OSX: /Users/<user>/Library/Preferences/comit/
 fn config_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+}
+
+// Linux: /home/<user>/.local/share/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\
+// OSX: /Users/<user>/Library/Application Support/comit/
+fn data_dir() -> Option<PathBuf> {
+    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }

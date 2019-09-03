@@ -24,6 +24,7 @@ pub struct File {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
+    pub database: Option<Database>,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Option<Logging>,
@@ -47,6 +48,7 @@ impl File {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8000,
             },
+            database: None,
             btsieve: Btsieve {
                 url: btsieve_url,
                 bitcoin: PollParameters {
@@ -102,6 +104,11 @@ pub struct PollParameters<T> {
     #[serde(with = "super::serde_duration")]
     pub poll_interval_secs: Duration,
     pub network: T,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Database {
+    pub sqlite: PathBuf,
 }
 
 impl File {

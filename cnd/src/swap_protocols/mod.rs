@@ -10,7 +10,7 @@ mod timestamp;
 pub use self::{
     dependencies::{alice, bob, LedgerEventDependencies},
     ledger::{Ledger, LedgerKind},
-    metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore, Role},
+    metadata_store::{Metadata, MetadataStore, Role},
     swap_id::*,
     timestamp::Timestamp,
 };

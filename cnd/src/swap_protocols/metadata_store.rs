@@ -1,15 +1,17 @@
 use crate::swap_protocols::{asset, ledger, swap_id::SwapId};
-use failure::Fail;
-use libp2p::PeerId;
-use std::{collections::HashMap, sync::Mutex};
+use libp2p::{self, PeerId};
+use std::{collections::HashMap, fmt, sync::Mutex};
+use strum;
+use strum_macros::{Display, EnumString};
+use uuid::parser;
 
-#[derive(Clone, Copy, Debug, strum_macros::Display)]
+#[derive(Clone, Copy, Debug, Display, EnumString)]
 pub enum Role {
     Alice,
     Bob,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Display, EnumString)]
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
@@ -27,7 +29,7 @@ impl From<ledger::LedgerKind> for LedgerKind {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Display, EnumString)]
 pub enum AssetKind {
     Bitcoin,
     Ether,
@@ -80,10 +82,51 @@ impl Metadata {
     }
 }
 
-#[derive(Debug, Fail)]
+#[derive(Debug)]
 pub enum Error {
-    #[fail(display = "Metadata already exists")]
-    DuplicateKey,
+    Path(String),
+    Init(String),
+    Connect(String),
+    Load(String),
+    Insert(String),
+    Parse(String),
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            // FIXME: is this idiomatic [CoBloX] Rust?
+            Error::Path(msg) => write!(f, "Datastore path error: {}", msg),
+            Error::Init(msg) => write!(f, "Failed to initialize datastore : {}", msg),
+            Error::Connect(msg) => write!(f, "Failed to connect to datastore: {}", msg),
+            Error::Load(msg) => write!(f, "Failed to load record: {}", msg),
+            Error::Insert(msg) => write!(f, "Failed to insert new record: {}", msg),
+            Error::Parse(msg) => write!(f, "Failed to parse stored record: {}", msg),
+        }
+    }
+}
+
+// FIXME: Do we need this?
+impl std::error::Error for Error {
+    fn description(&self) -> &str {
+        "MetadataStore error"
+    }
+
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        None // FIXME: What goes here?
+    }
+}
+
+impl From<strum::ParseError> for Error {
+    fn from(err: strum::ParseError) -> Error {
+        Error::Parse(err.to_string())
+    }
+}
+
+impl From<parser::ParseError> for Error {
+    fn from(err: parser::ParseError) -> Error {
+        Error::Parse(err.to_string())
+    }
 }
 
 pub trait MetadataStore: Send + Sync + 'static {
@@ -111,7 +154,7 @@ impl MetadataStore for InMemoryMetadataStore {
         let key = value.swap_id;
 
         if metadata.contains_key(&key) {
-            return Err(Error::DuplicateKey);
+            return Err(Error::Insert("key (swap id) already exists".to_string()));
         }
 
         let _ = metadata.insert(key, value.into());

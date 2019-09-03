@@ -15,6 +15,7 @@ comit_i = { path = "../internal/comit_i" }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
+diesel = { version = "1.4", features = ["sqlite"] }
 directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
@@ -31,6 +32,7 @@ lazy_static = "1"
 libp2p = "0.12"
 log = { version = "0.4", features = ["serde"] }
 maplit = "1"
+migrations_internals= "1.4"
 mime = "0.3"
 mime_guess = "2.0"
 rand = "0.7"
