@@ -141,6 +141,7 @@ mod tests {
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
     use bam::frame::Header;
+    use bitcoin_support::Amount;
     use spectral::prelude::*;
 
     #[test]
@@ -188,5 +189,18 @@ mod tests {
         let protocol = protocol.to_bam_header().unwrap();
 
         assert_eq!(header, protocol);
+    }
+
+    #[test]
+    fn bitcoin_quantity_to_bam_header() {
+        let quantity = Amount::from_btc(1.0).unwrap();
+        let header = AssetKind::from(quantity).to_bam_header().unwrap();
+
+        assert_eq!(
+            header,
+            Header::with_str_value("bitcoin")
+                .with_parameter("quantity", "100000000")
+                .unwrap()
+        );
     }
 }
