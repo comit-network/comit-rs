@@ -27,7 +27,8 @@ pub struct BlockchainInfoHexHttpBlockSource {
 
 impl BlockchainInfoHexHttpBlockSource {
     pub fn new(network: Network) -> Result<Self, Error> {
-        // Currently configured for Mainnet only because no support for hex-encoded
+        // Currently configured for Mainnet only because blockchain.info does not
+        // support hex-encoded block retrieval for testnet.
 
         if network != Network::Mainnet {
             log::error!(
@@ -57,10 +58,6 @@ impl BlockchainInfoHexHttpBlockSource {
     fn latest_block_without_tx(
         &self,
     ) -> impl Future<Item = BlockchainInfoLatestBlock, Error = Error> + Send + 'static {
-        // https://blockchain.info/q/latesthash only works for mainnet, there is no testnet endpoint
-        // we fall-back to [testnet.]blockchain.info/latestblock to retrieve the latest
-        // block hash
-
         let latest_block_url = "https://blockchain.info/latestblock";
 
         self.client
