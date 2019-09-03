@@ -85,18 +85,18 @@ impl BlockchainInfoHttpBlockSource {
             .map_err(Error::Reqwest)
             .and_then(|mut response| response.text().map_err(Error::Reqwest))
             .and_then(|response_text| hex::decode(response_text).map_err(Error::Hex))
-            .and_then(move |bytes| {
-                deserialize(bytes.as_ref())
-                    .map(|block| {
-                        log::trace!("Got {:?}", block);
-                        MinedBlock::new(block, block_height)
-                    })
-                    .map_err(|e| {
-                        log::error!("Got new block but failed to deserialize it because {:?}", e);
-                        Error::BlockDeserialization(format!(
-                            "Failed to deserialize the response from blockchain.info into a block: {}", e
-                        ))
-                    })
+            .and_then(|bytes| {
+                deserialize(bytes.as_ref()).map_err(|e| {
+                    log::error!("Got new block but failed to deserialize it because {:?}", e);
+                    Error::BlockDeserialization(format!(
+                        "Failed to deserialize the response from blockchain.info into a block: {}",
+                        e
+                    ))
+                })
+            })
+            .map(move |block| {
+                log::trace!("Got {:?}", block);
+                MinedBlock::new(block, block_height)
             })
     }
 }
@@ -125,51 +125,26 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
                 cloned_self
                     .latest_block()
                     .map(Some)
-                        .or_else(|error| {
-                            match error {
-                                Error::Reqwest(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                Error::Hex(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                Error::BlockDeserialization(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                _ => Err(error)
-                            }
-                        })
-                        .map_err(blocksource::Error::Source)
+                    .or_else(|error| {
+                        match error {
+                            Error::Reqwest(e) => {
+                                log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
+                                Ok(None)
+                            },
+                            Error::Hex(e) => {
+                                log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
+                                Ok(None)
+                            },
+                            Error::BlockDeserialization(e) => {
+                                log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
+                                Ok(None)
+                            },
+                            _ => Err(error)
+                        }
+                    })
+                    .map_err(blocksource::Error::Source)
             }).filter_map(|maybe_block| maybe_block);
 
         Box::new(stream)
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn serialize_block() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-
-        let block_source = BlockchainInfoHttpBlockSource::new(Network::Mainnet).unwrap();
-
-        let future = block_source
-            .latest_block()
-            .map(|block| {
-                println!(
-                    "height: {}, block.header.version: {}",
-                    block.height, block.block.header.version
-                );
-                assert_eq!(593_009, block.height);
-            })
-            .map_err(|e| panic!(e));
-
-        runtime.block_on(future);
     }
 }
