@@ -9,7 +9,7 @@ use crate::{
 };
 use bam::frame::Header;
 use ethereum_support::Erc20Token;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
@@ -113,10 +113,27 @@ impl FromBamHeader for Decision {
     }
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug)]
 pub struct SerdeAmount {
-    #[serde(with = "bitcoin_support::amount::serde::as_sat")]
     inner: bitcoin_support::Amount,
+}
+
+impl Serialize for SerdeAmount {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&format!("{}", self.inner.as_sat()))
+    }
+}
+
+impl<'de> Deserialize<'de> for SerdeAmount {
+    fn deserialize<D>(_deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        unimplemented!()
+    }
 }
 
 impl From<bitcoin_support::Amount> for SerdeAmount {
