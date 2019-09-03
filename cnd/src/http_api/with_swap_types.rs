@@ -24,10 +24,8 @@ macro_rules! _match_role {
 macro_rules! with_swap_types {
     ($metadata:expr, $fn:tt) => {{
         use crate::swap_protocols::{
-            asset::AssetKind,
             ledger::{Bitcoin, Ethereum},
-            metadata_store::Metadata,
-            LedgerKind,
+            metadata_store::{AssetKind, LedgerKind, Metadata},
         };
         use bitcoin_support::BitcoinQuantity;
         use ethereum_support::{Erc20Token, EtherQuantity};
@@ -35,10 +33,10 @@ macro_rules! with_swap_types {
 
         match metadata {
             Metadata {
-                alpha_ledger: LedgerKind::Bitcoin(_),
-                beta_ledger: LedgerKind::Ethereum(_),
-                alpha_asset: AssetKind::Bitcoin(_),
-                beta_asset: AssetKind::Ether(_),
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Ether,
                 role,
                 ..
             } => {
@@ -56,10 +54,10 @@ macro_rules! with_swap_types {
                 _match_role!(role, $fn)
             }
             Metadata {
-                alpha_ledger: LedgerKind::Bitcoin(_),
-                beta_ledger: LedgerKind::Ethereum(_),
-                alpha_asset: AssetKind::Bitcoin(_),
-                beta_asset: AssetKind::Erc20(_),
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Erc20,
                 role,
                 ..
             } => {
@@ -77,10 +75,10 @@ macro_rules! with_swap_types {
                 _match_role!(role, $fn)
             }
             Metadata {
-                alpha_ledger: LedgerKind::Ethereum(_),
-                beta_ledger: LedgerKind::Bitcoin(_),
-                alpha_asset: AssetKind::Ether(_),
-                beta_asset: AssetKind::Bitcoin(_),
+                alpha_ledger: LedgerKind::Ethereum,
+                beta_ledger: LedgerKind::Bitcoin,
+                alpha_asset: AssetKind::Ether,
+                beta_asset: AssetKind::Bitcoin,
                 role,
                 ..
             } => {
@@ -98,10 +96,10 @@ macro_rules! with_swap_types {
                 _match_role!(role, $fn)
             }
             Metadata {
-                alpha_ledger: LedgerKind::Ethereum(_),
-                beta_ledger: LedgerKind::Bitcoin(_),
-                alpha_asset: AssetKind::Erc20(_),
-                beta_asset: AssetKind::Bitcoin(_),
+                alpha_ledger: LedgerKind::Ethereum,
+                beta_ledger: LedgerKind::Bitcoin,
+                alpha_asset: AssetKind::Erc20,
+                beta_asset: AssetKind::Bitcoin,
                 role,
                 ..
             } => {
