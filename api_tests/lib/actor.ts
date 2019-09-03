@@ -51,7 +51,7 @@ export class Actor {
     }
 
     public cndNetworkListenAddress() {
-        return `/ip4/0.0.0.0/tcp/${this.cndConfig.comitPort}`;
+        return `/ip4/127.0.0.1/tcp/${this.cndConfig.comitPort}`;
     }
 
     public webGuiUrl() {
