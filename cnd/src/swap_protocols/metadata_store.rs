@@ -1,4 +1,4 @@
-use crate::swap_protocols::{asset::AssetKind, rfc003::Ledger, swap_id::SwapId, LedgerKind};
+use crate::swap_protocols::{asset, ledger, swap_id::SwapId};
 use failure::Fail;
 use libp2p::PeerId;
 use std::{
@@ -12,6 +12,40 @@ use std::{
 pub enum RoleKind {
     Alice,
     Bob,
+}
+
+#[derive(Debug, Clone)]
+pub enum LedgerKind {
+    Bitcoin,
+    Ethereum,
+}
+
+impl From<ledger::LedgerKind> for LedgerKind {
+    fn from(ledger: ledger::LedgerKind) -> LedgerKind {
+        match ledger {
+            ledger::LedgerKind::Bitcoin(_) => LedgerKind::Bitcoin,
+            ledger::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
+            _ => unimplemented!(""), // FIXME: How to handle the unknown variant?
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub enum AssetKind {
+    Bitcoin,
+    Ether,
+    Erc20,
+}
+
+impl From<asset::AssetKind> for AssetKind {
+    fn from(asset: asset::AssetKind) -> AssetKind {
+        match asset {
+            asset::AssetKind::Bitcoin(_) => AssetKind::Bitcoin,
+            asset::AssetKind::Ether(_) => AssetKind::Ether,
+            asset::AssetKind::Erc20(_) => AssetKind::Erc20,
+            _ => unimplemented!(""), // FIXME: How to handle the unknown variant?
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
