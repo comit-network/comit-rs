@@ -54,6 +54,11 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
+          name: "Check that the branch name holds the correct version"
+          command: |
+            VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
+            test "release/${VERSION}" = "${CIRCLE_BRANCH}"
+      - run:
           name: Release build and test using cargo make
           command: |
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
@@ -92,13 +97,14 @@ jobs:
       - run:
           name: "Package & Publish Release on GitHub"
           command: |
-            go get github.com/tcnksm/ghr
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
 
             # Let's abort if the git tag does not match the version in Cargo.toml as it would be fishy
             test "${VERSION}" = "${CIRCLE_TAG}"
+
             mkdir ~/package
             cd ~/artifacts && tar czvf ~/package/comit-rs_v${VERSION}_$(uname -s)_$(uname -m).tar.gz *
+            go get github.com/tcnksm/ghr
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
 
 commands:
