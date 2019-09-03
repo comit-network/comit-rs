@@ -63,16 +63,18 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
         let swap_request = partial_swap_request.to_request(swap_seed.as_ref());
         let alice = alice::State::new(swap_request.clone(), swap_seed);
 
+        let metadata = Metadata::new(
+            id,
+            swap_request.alpha_ledger.into(),
+            swap_request.beta_ledger.into(),
+            swap_request.alpha_asset.into(),
+            swap_request.beta_asset.into(),
+            RoleKind::Alice,
+            bob_dial_info.peer_id.to_owned(),
+        );
+
         self.metadata_store
-            .insert(id, Metadata {
-                swap_id: id,
-                alpha_ledger: swap_request.alpha_ledger.into(),
-                beta_ledger: swap_request.beta_ledger.into(),
-                alpha_asset: swap_request.alpha_asset.into(),
-                beta_asset: swap_request.beta_asset.into(),
-                role: RoleKind::Alice,
-                counterparty: bob_dial_info.peer_id.to_owned(),
-            })
+            .insert(id, metadata)
             .map_err(Error::Metadata)?;
 
         let (sender, receiver) = mpsc::unbounded();

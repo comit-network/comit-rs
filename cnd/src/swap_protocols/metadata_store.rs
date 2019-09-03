@@ -1,4 +1,4 @@
-use crate::swap_protocols::{asset::AssetKind, swap_id::SwapId, LedgerKind};
+use crate::swap_protocols::{asset::AssetKind, rfc003::Ledger, swap_id::SwapId, LedgerKind};
 use failure::Fail;
 use libp2p::PeerId;
 use std::{
@@ -23,6 +23,28 @@ pub struct Metadata {
     pub beta_asset: AssetKind,
     pub role: RoleKind,
     pub counterparty: PeerId,
+}
+
+impl Metadata {
+    pub fn new(
+        swap_id: SwapId,
+        al: ledger::LedgerKind,
+        bl: ledger::LedgerKind,
+        aa: asset::AssetKind,
+        ba: asset::AssetKind,
+        role: RoleKind,
+        counterparty: PeerId,
+    ) -> Metadata {
+        Metadata {
+            swap_id,
+            alpha_ledger: al.into(),
+            beta_ledger: bl.into(),
+            alpha_asset: aa.into(),
+            beta_asset: ba.into(),
+            role,
+            counterparty,
+        }
+    }
 }
 
 #[derive(Debug, Fail)]
