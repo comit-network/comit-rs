@@ -12,9 +12,9 @@ update_configs:
     ignored_updates:
       # as per https://github.com/comit-network/comit-rs/issues/1316
       - match:
-          - dependency_name: "primitive-types"
+          dependency_name: "primitive-types"
       - match:
-          - dependency_name: "rlp"
+          dependency_name: "rlp"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "weekly"
