@@ -6,14 +6,11 @@ use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
 use futures::Future;
 use serde::Serialize;
 
-mod ser_outpoint;
-
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]
 pub enum BitcoinQuery {
     Transaction {
         to_address: Option<bitcoin_support::Address>,
-        #[serde(with = "self::ser_outpoint")]
         from_outpoint: Option<bitcoin_support::OutPoint>,
         unlock_script: Option<Vec<Vec<u8>>>,
     },
@@ -129,7 +126,7 @@ mod tests {
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(
             query,
-            r#"{"to_address":null,"from_outpoint":{"txid":"02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d","vout":0},"unlock_script":null}"#
+            r#"{"to_address":null,"from_outpoint":"02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d:0","unlock_script":null}"#
         )
     }
 

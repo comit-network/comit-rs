@@ -159,6 +159,22 @@ setTimeout(async function() {
 
                     expect(res).to.have.status(204);
                 });
+
+                it("btsieve should respond OK with a location when creating a valid bitcoin transaction query with an outpoint", async function() {
+                    const res = await request(btsieve.url())
+                        .post("/queries/bitcoin/regtest/transactions")
+                        .set("Expected-Version", btsieve.expectedVersion)
+                        .send({
+                            to_address: toAddress,
+                            from_outpoint:
+                                "02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d:0",
+                        });
+
+                    location = res.header.location;
+
+                    expect(res).to.have.status(201);
+                    expect(location).to.not.be.empty;
+                });
             });
         });
     });
