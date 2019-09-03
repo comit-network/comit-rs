@@ -17,7 +17,7 @@ pub fn load_settings(config_file: Option<PathBuf>) -> Result<Settings, ConfigErr
             ConfigError::Message("Could not generate default configuration path".to_string())
         })?;
 
-    log::info!(
+    println!(
         "Config file was not provided - looking up config file in default location at: {:?}",
         path
     );
