@@ -13,7 +13,7 @@ use cnd::{
         self,
         metadata_store::MetadataStore,
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        InMemoryMetadataStore, SwapId,
+        InMemoryMetadataStore,
     },
 };
 use futures::{stream, Future, Stream};
@@ -126,7 +126,7 @@ fn create_btsieve_api_client(settings: &Settings) -> BtsieveHttpClient {
     )
 }
 
-fn spawn_warp_instance<T: MetadataStore<SwapId>, S: StateStore, C: Client, SI: SwarmInfo>(
+fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo>(
     settings: &Settings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,

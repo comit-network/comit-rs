@@ -18,7 +18,7 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<T: MetadataStore<SwapId>, S: state_store::StateStore, C: Client, SI: SwarmInfo>(
+pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: SwarmInfo>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,

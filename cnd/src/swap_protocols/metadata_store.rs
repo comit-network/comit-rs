@@ -1,12 +1,7 @@
 use crate::swap_protocols::{asset, ledger, swap_id::SwapId};
 use failure::Fail;
 use libp2p::PeerId;
-use std::{
-    collections::HashMap,
-    fmt::{Debug, Display},
-    hash::Hash,
-    sync::Mutex,
-};
+use std::{collections::HashMap, sync::Mutex};
 
 #[derive(Clone, Copy, Debug, strum_macros::Display)]
 pub enum Role {
@@ -91,29 +86,29 @@ pub enum Error {
     DuplicateKey,
 }
 
-pub trait MetadataStore<K>: Send + Sync + 'static {
-    fn get(&self, key: &K) -> Result<Option<Metadata>, Error>;
-    fn insert<M: Into<Metadata>>(&self, key: K, metadata: M) -> Result<(), Error>;
-    fn all(&self) -> Result<Vec<(K, Metadata)>, Error>;
+pub trait MetadataStore: Send + Sync + 'static {
+    fn get(&self, key: SwapId) -> Result<Option<Metadata>, Error>;
+    fn insert<M: Into<Metadata>>(&self, metadata: M) -> Result<(), Error>;
+    fn all(&self) -> Result<Vec<Metadata>, Error>;
 }
 
 #[derive(Debug, Default)]
-pub struct InMemoryMetadataStore<K: Hash + Eq> {
-    metadata: Mutex<HashMap<K, Metadata>>,
+pub struct InMemoryMetadataStore {
+    metadata: Mutex<HashMap<SwapId, Metadata>>,
 }
 
-impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataStore<K>
-    for InMemoryMetadataStore<K>
-{
-    fn get(&self, key: &K) -> Result<Option<Metadata>, Error> {
+impl MetadataStore for InMemoryMetadataStore {
+    fn get(&self, key: SwapId) -> Result<Option<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
-        log::trace!("Fetched metadata of swap with id {}: {:?}", key, metadata);
+        log::trace!("Fetched metadata of swap with id {:?}: {:?}", key, metadata);
 
         Ok(metadata.get(&key).map(Clone::clone))
     }
 
-    fn insert<M: Into<Metadata>>(&self, key: K, value: M) -> Result<(), Error> {
+    fn insert<M: Into<Metadata>>(&self, value: M) -> Result<(), Error> {
         let mut metadata = self.metadata.lock().unwrap();
+        let value: Metadata = value.into();
+        let key = value.swap_id;
 
         if metadata.contains_key(&key) {
             return Err(Error::DuplicateKey);
@@ -122,12 +117,9 @@ impl<K: Debug + Display + Hash + Eq + Clone + Send + Sync + 'static> MetadataSto
         let _ = metadata.insert(key, value.into());
         Ok(())
     }
-    fn all(&self) -> Result<Vec<(K, Metadata)>, Error> {
+    fn all(&self) -> Result<Vec<Metadata>, Error> {
         let metadata = self.metadata.lock().unwrap();
 
-        Ok(metadata
-            .iter()
-            .map(|(key, value)| (key.clone(), value.clone()))
-            .collect())
+        Ok(metadata.iter().map(|(_key, value)| value.clone()).collect())
     }
 }

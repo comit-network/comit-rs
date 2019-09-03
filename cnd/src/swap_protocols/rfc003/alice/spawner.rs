@@ -46,7 +46,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
+impl<T: MetadataStore, S: StateStore, C: Client> AliceSpawner
     for swap_protocols::alice::ProtocolDependencies<T, S, C>
 {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
@@ -74,7 +74,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
         );
 
         self.metadata_store
-            .insert(id, metadata)
+            .insert(metadata)
             .map_err(Error::Metadata)?;
 
         let (sender, receiver) = mpsc::unbounded();

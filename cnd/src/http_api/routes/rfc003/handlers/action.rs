@@ -21,7 +21,7 @@ use http_api_problem::HttpApiProblem;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn handle_action<T: MetadataStore, S: StateStore>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -31,7 +31,7 @@ pub fn handle_action<T: MetadataStore<SwapId>, S: StateStore>(
     state_store: &S,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
     let metadata = metadata_store
-        .get(&id)?
+        .get(id)?
         .ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
