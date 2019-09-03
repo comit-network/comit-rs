@@ -22,7 +22,6 @@ pub enum Error {
 
 #[derive(Clone)]
 pub struct BlockchainInfoHexHttpBlockSource {
-    network: Network,
     client: Client,
 }
 
@@ -30,22 +29,20 @@ impl BlockchainInfoHexHttpBlockSource {
     pub fn new(network: Network) -> Result<Self, Error> {
         // Currently configured for Mainnet only because no support for hex-encoded
 
-        match network {
-            Network::Mainnet => Ok(Self {
-                network,
-                client: Client::new(),
-            }),
-            _ => {
-                log::error!(
-                    "Network {} not supported for bitcoin http blocksource",
-                    network
-                );
-                Err(Error::UnsupportedNetwork(format!(
-                    "Network {} currently not supported for bitcoin http plocksource",
-                    network
-                )))
-            }
+        if network != Network::Mainnet {
+            log::error!(
+                "Network {} not supported for bitcoin http blocksource",
+                network
+            );
+            return Err(Error::UnsupportedNetwork(format!(
+                "Network {} currently not supported for bitcoin http plocksource",
+                network
+            )));
         }
+
+        Ok(Self {
+            client: Client::new(),
+        })
     }
 
     pub fn latest_block(&self) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
@@ -57,16 +54,6 @@ impl BlockchainInfoHexHttpBlockSource {
             })
     }
 
-    fn base_url(&self) -> String {
-        match self.network {
-            Network::Mainnet => "https://blockchain.info".to_string(),
-            _ => panic!(
-                "Network {} not supported for bitcoin.info blocksource",
-                self.network
-            ),
-        }
-    }
-
     fn latest_block_without_tx(
         &self,
     ) -> impl Future<Item = BlockchainInfoLatestBlock, Error = Error> + Send + 'static {
@@ -74,10 +61,10 @@ impl BlockchainInfoHexHttpBlockSource {
         // we fall-back to [testnet.]blockchain.info/latestblock to retrieve the latest
         // block hash
 
-        let latest_block_url = format!("{}/latestblock", self.base_url());
+        let latest_block_url = "https://blockchain.info/latestblock";
 
         self.client
-            .get(latest_block_url.as_str())
+            .get(latest_block_url)
             .send()
             .map_err(Error::Reqwest)
             .and_then(move |mut response| {
@@ -93,7 +80,7 @@ impl BlockchainInfoHexHttpBlockSource {
         block_height: u32,
     ) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
         let raw_block_by_hash_url =
-            format!("{}/rawblock/{}?format=hex", self.base_url(), block_hash);
+            format!("https://blockchain.info/rawblock/{}?format=hex", block_hash);
 
         self.client
             .get(raw_block_by_hash_url.as_str())
@@ -129,12 +116,9 @@ impl BlockSource for BlockchainInfoHexHttpBlockSource {
         //
         // The Bitcoin blockchain has a mining interval of about 10 minutes.
         // The poll interval is configured to once every 5 minutes.
-        let poll_interval = match self.network {
-            Network::Mainnet => 300,
-            _ => 0,
-        };
+        let poll_interval = 300;
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from blockchain.info on {} every {} seconds", self.network, poll_interval);
+        log::info!(target: "bitcoin::blocksource", "polling for new blocks from blockchain.info on {} every {} seconds", Network::Mainnet, poll_interval);
 
         let cloned_self = self.clone();
 
