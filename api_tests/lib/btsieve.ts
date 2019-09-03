@@ -1,11 +1,11 @@
+import { parse } from "@iarna/toml";
 import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
 import { TransactionReceipt } from "ethers/providers";
 import { Transaction } from "ethers/utils";
 import * as fs from "fs";
-import * as toml from "toml";
 import URI from "urijs";
-import { TestConfig } from "./actor";
+import { BTSIEVE_BASE_CONFIG } from "./config";
 import { sleep } from "./util";
 
 use(chaiHttp);
@@ -24,40 +24,27 @@ export interface EthereumMatch {
     receipt: TransactionReceipt;
 }
 
-export interface MetaBtsieveConfig {
-    host: string;
-    config_file: string;
-    env: { [key: string]: string };
-}
-
 export class Btsieve {
-    private readonly host: string;
+    public readonly expectedVersion: string;
     private readonly port: number;
 
-    constructor(name: string, testConfig: TestConfig, root: string) {
-        const metaBtsieveConfig = testConfig.btsieve;
-        if (!metaBtsieveConfig) {
-            throw new Error("btsieve configuration is needed");
-        }
+    constructor(root: string) {
+        this.port = BTSIEVE_BASE_CONFIG.http_api.port_bind;
 
-        this.host = metaBtsieveConfig[name].host;
-        const btsieveConfig = toml.parse(
-            fs.readFileSync(
-                `${root}/${metaBtsieveConfig[name].config_file}`,
-                "utf8"
-            )
+        const cndCargoToml: any = parse(
+            fs.readFileSync(`${root}/cnd/Cargo.toml`, "utf8")
         );
-        this.port = btsieveConfig.http_api.port_bind;
+        this.expectedVersion = cndCargoToml.package.version;
     }
 
     public url() {
-        return `http://${this.host}:${this.port}`;
+        return `http://127.0.0.1:${this.port}`;
     }
 
     public absoluteLocation(relativeLocation: string) {
         return new URI(relativeLocation)
             .protocol("http")
-            .host(this.host)
+            .host("127.0.0.1")
             .port(this.port.toString())
             .toString();
     }
@@ -65,7 +52,9 @@ export class Btsieve {
     public async pollUntilMatches<M>(
         queryUrl: string
     ): Promise<IdMatchResponse<M>> {
-        const res = await request(queryUrl).get("");
+        const res = await request(queryUrl)
+            .get("")
+            .set("Expected-Version", this.expectedVersion);
 
         expect(res).to.have.status(200);
 

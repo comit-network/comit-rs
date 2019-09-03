@@ -10,7 +10,6 @@ byteorder = "1.3"
 lazy_static = "1"
 num = "0.2"
 regex = "1.2"
-rlp = "0.4.2"
 secp256k1_keypair = { path = "../secp256k1_keypair" }
 serde = { version = "1", features = ["derive"] }
 strum = "0.15"
@@ -26,7 +25,10 @@ version = "0.8"
 
 [dependencies.primitive-types]
 features = ["rlp"]
-version = "0.5.0"
+version = "0.3.0"
+
+[dependencies.rlp]
+version = "0.4.2"
 
 [dev-dependencies]
 hex = "0.3"

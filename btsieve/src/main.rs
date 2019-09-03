@@ -7,7 +7,8 @@ use btsieve::{
     bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
     blocksource::BlockSource,
     ethereum::{self, web3_http_blocksource::Web3HttpBlockSource},
-    load_settings::{load_settings, Opt},
+    expected_version_header,
+    load_settings::load_settings,
     logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
@@ -26,6 +27,8 @@ use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+mod cli;
+
 #[derive(Debug, Fail)]
 enum Error {
     #[fail(display = "Could not connect to ledger: {}", ledger)]
@@ -43,9 +46,8 @@ impl From<web3::Error> for Error {
 }
 
 fn main() -> Result<(), failure::Error> {
-    let opt = Opt::from_args();
-
-    let settings = load_settings(opt)?;
+    let options = cli::Options::from_args();
+    let settings = load_settings(options.config_file)?;
     logging::set_up_logging(&settings);
 
     let mut runtime = tokio::runtime::Runtime::new()?;
@@ -60,7 +62,10 @@ fn main() -> Result<(), failure::Error> {
     let ping_200 = warp::path("health").map(warp::reply);
     let ping_route = warp::get2().and(ping_200);
 
-    let routes = ping_route.or(bitcoin_routes.or(ethereum_routes)).with(log);
+    let routes = expected_version_header::validate()
+        .and(ping_route.or(bitcoin_routes.or(ethereum_routes)))
+        .recover(expected_version_header::customize_error)
+        .with(log);
 
     warp::serve(routes).run((settings.http_api.address_bind, settings.http_api.port_bind));
     Ok(())

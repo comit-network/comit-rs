@@ -5,13 +5,10 @@ import { expect, request, use } from "chai";
 import chaiHttp = require("chai-http");
 import "chai/register-should";
 import { Actor } from "../lib/actor";
-import { HarnessGlobal } from "../lib/util";
 
 use(chaiHttp);
 
-declare var global: HarnessGlobal;
-
-const david = new Actor("david", global.config, global.project_root);
+const david = new Actor("david");
 
 // the `setTimeout` forces it to be added on the event loop
 // This is needed because there is no async call in the test
