@@ -197,12 +197,11 @@ impl File {
     }
 }
 
-// Linux: /home/<user>/.config/cnd/
-// Windows: C:\Users\<user>\AppData\Roaming\comit-network\cnd\config\
-// OSX: /Users/<user>/Library/Preferences/comit-network.cnd/
+// Linux: /home/<user>/.config/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
+// OSX: /Users/<user>/Library/Preferences/comit/
 fn config_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "comit-network", "cnd")
-        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 #[cfg(test)]

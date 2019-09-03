@@ -36,10 +36,9 @@ fn parse_config_file(file: PathBuf) -> Result<Settings, ConfigError> {
     }
 }
 
-// Linux: /home/<user>/.config/btsieve/
-// Windows: C:\Users\<user>\AppData\Roaming\comit-network\btsieve\config\
-// OSX: /Users/<user>/Library/Preferences/comit-network.btsieve/
+// Linux: /home/<user>/.config/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
+// OSX: /Users/<user>/Library/Preferences/comit/
 fn config_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "comit-network", "btsieve")
-        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
