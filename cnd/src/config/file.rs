@@ -141,17 +141,13 @@ impl File {
     }
 
     fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
-        // Linux: /home/<user>/.config/cnd/cnd.toml
-        // Windows: C:\Users\<user>\AppData\Roaming\comit-network\cnd\config\cnd.toml
-        // OSX: /Users/<user>/Library/Preferences/comit-network.cnd/cnd.toml
-        if let Some(proj_dirs) = ProjectDirs::from("", "comit-network", "cnd") {
-            let path = proj_dirs.config_dir();
-            return Ok(Path::join(path, "cnd.toml"));
-        }
-
-        Err(config_rs::ConfigError::Message(
-            "Could not generate configuration directory".to_string(),
-        ))
+        config_dir()
+            .map(|dir| Path::join(&dir, "cnd.toml"))
+            .ok_or_else(|| {
+                config_rs::ConfigError::Message(
+                    "Could not generate default configuration path".to_string(),
+                )
+            })
     }
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
@@ -199,6 +195,13 @@ impl File {
             ))
         })
     }
+}
+
+// Linux: /home/<user>/.config/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
+// OSX: /Users/<user>/Library/Preferences/comit/
+fn config_dir() -> Option<PathBuf> {
+    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 #[cfg(test)]

@@ -16,7 +16,7 @@ pull_request_rules:
   - name: merge green dependabot PRs
     conditions:
       - "status-success=ci/circleci: build"
-      - "author:dependabot-preview"
+      - "author:dependabot-preview[bot]"
     actions:
       merge:
         method: merge
