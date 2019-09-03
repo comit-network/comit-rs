@@ -65,13 +65,13 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
 
         self.metadata_store
             .insert(id, Metadata {
+                swap_id: id,
                 alpha_ledger: swap_request.alpha_ledger.into(),
                 beta_ledger: swap_request.beta_ledger.into(),
                 alpha_asset: swap_request.alpha_asset.into(),
                 beta_asset: swap_request.beta_asset.into(),
                 role: RoleKind::Alice,
                 counterparty: bob_dial_info.peer_id.to_owned(),
-                swap_id: id,
             })
             .map_err(Error::Metadata)?;
 

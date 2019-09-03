@@ -16,13 +16,13 @@ pub enum RoleKind {
 
 #[derive(Clone, Debug)]
 pub struct Metadata {
+    pub swap_id: SwapId,
     pub alpha_ledger: LedgerKind,
     pub beta_ledger: LedgerKind,
     pub alpha_asset: AssetKind,
     pub beta_asset: AssetKind,
     pub role: RoleKind,
     pub counterparty: PeerId,
-    pub swap_id: SwapId,
 }
 
 #[derive(Debug, Fail)]
