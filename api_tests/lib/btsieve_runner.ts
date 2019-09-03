@@ -1,65 +1,54 @@
+import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { MetaBtsieveConfig } from "./btsieve";
+import tempWrite from "temp-write";
+import { BtsieveConfigFile } from "./config";
 
 export class BtsieveRunner {
-    private runningBtsieves: { [key: string]: ChildProcess };
+    private process?: ChildProcess;
     private readonly logDir: string;
-    private readonly btsieveBin: string;
+    private readonly bin: string;
     private readonly projectRoot: string;
 
-    constructor(projectRoot: string, btsieveBin: string, logDir: string) {
-        this.runningBtsieves = {};
+    constructor(projectRoot: string, bin: string, logDir: string) {
         this.logDir = logDir;
-        this.btsieveBin = btsieveBin;
+        this.bin = bin;
         this.projectRoot = projectRoot;
     }
 
-    public ensureBtsievesRunning(btsieves: Array<[string, MetaBtsieveConfig]>) {
-        for (const [name, btsieveConfig] of btsieves) {
-            console.log("Ensuring Btsieve: " + name + " is started");
-
-            if (this.runningBtsieves[name]) {
-                console.log("Btsieve is already started");
-                continue;
-            }
-
-            console.log(
-                "Starting Btsieve: " + name + "; path:",
-                this.btsieveBin
-            );
-            this.runningBtsieves[name] = spawn(
-                this.btsieveBin,
-                ["--config", btsieveConfig.config_file],
-                {
-                    cwd: this.projectRoot,
-                    env: btsieveConfig.env,
-                    stdio: [
-                        "ignore",
-                        fs.openSync(
-                            this.logDir + "/btsieve-" + name + ".log",
-                            "w"
-                        ),
-                        fs.openSync(
-                            this.logDir + "/btsieve-" + name + ".log",
-                            "w"
-                        ),
-                    ],
-                }
-            );
+    public async ensureBtsieveRunningWithConfig(
+        ledgerConfig: BtsieveConfigFile
+    ) {
+        if (this.process) {
+            return;
         }
+
+        console.log("Starting btsieve");
+
+        const configFile = await tempWrite(
+            stringify((ledgerConfig as unknown) as JsonMap),
+            "config.toml"
+        );
+
+        this.process = spawn(this.bin, ["--config", configFile], {
+            cwd: this.projectRoot,
+            env: {
+                RUST_LOG: "warn,btsieve=debug,warp=info",
+            },
+            stdio: [
+                "ignore", // stdin
+                fs.openSync(this.logDir + "/btsieve.log", "w"), // stdout
+                fs.openSync(this.logDir + "/btsieve.log", "w"), // stderr
+            ],
+        });
     }
 
-    public stopBtsieves() {
-        const names = Object.keys(this.runningBtsieves);
+    public stopBtsieve() {
+        if (this.process) {
+            console.log("Stopping btsieve");
 
-        if (names.length > 0) {
-            console.log("Stopping Btsieve(s): " + names.join(", "));
-            for (const process of Object.values(this.runningBtsieves)) {
-                process.kill();
-            }
+            this.process.kill();
+            this.process = undefined;
         }
-
-        this.runningBtsieves = {};
     }
 }

@@ -3,8 +3,9 @@ import BitcoinRpcClient from "bitcoin-core";
 import {
     address,
     ECPair,
+    ECPairInterface,
     networks,
-    Out,
+    Payment,
     payments,
     Transaction,
     TransactionBuilder,
@@ -13,11 +14,11 @@ import sb from "satoshi-bitcoin";
 import { test_rng } from "./util";
 
 export interface BitcoinNodeConfig {
-    // snake_case because it comes from TOML file
-    rpc_username: string;
-    rpc_password: string;
-    rpc_host: string;
-    rpc_port: number;
+    username: string;
+    password: string;
+    host: string;
+    rpcPort: number;
+    zmqPort: number;
 }
 
 interface GetBlockchainInfoResponse {
@@ -66,7 +67,7 @@ interface Utxo {
 let bitcoinRpcClient: BitcoinRpcClient;
 let bitcoinConfig: BitcoinNodeConfig;
 
-export function init(btcConfig?: BitcoinNodeConfig) {
+export function init(btcConfig: BitcoinNodeConfig) {
     console.log("Initiating bitcoin");
     createBitcoinRpcClient(btcConfig);
 }
@@ -79,10 +80,10 @@ function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
     if (!bitcoinRpcClient || btcConfig !== bitcoinConfig) {
         bitcoinRpcClient = new BitcoinRpcClient({
             network: "regtest",
-            port: btcConfig.rpc_port,
-            host: btcConfig.rpc_host,
-            username: btcConfig.rpc_username,
-            password: btcConfig.rpc_password,
+            port: btcConfig.rpcPort,
+            host: btcConfig.host,
+            username: btcConfig.username,
+            password: btcConfig.password,
         });
         bitcoinConfig = btcConfig;
     }
@@ -111,16 +112,8 @@ export async function sendRawTransaction(hexString: string) {
 }
 
 export class BitcoinWallet {
-    private readonly identity: {
-        address: string;
-        hash: Buffer;
-        output: Buffer;
-        pubkey: Buffer;
-        signature: Buffer;
-        input: Buffer;
-        witness: Buffer[];
-    };
-    private readonly keypair: ECPair;
+    private readonly identity: Payment;
+    private readonly keypair: ECPairInterface;
     private readonly bitcoinUtxos: Utxo[];
     private readonly addressForIncomingPayments: string;
 
@@ -159,14 +152,17 @@ export class BitcoinWallet {
             txId
         )) as HexRawTransactionResponse;
         const transaction = Transaction.fromHex(rawTransaction);
-        const entries: Out[] = transaction.outs;
+
+        const entries = transaction.outs;
         this.bitcoinUtxos.push(
-            ...entries
+            ...transaction.outs
                 .filter(entry => entry.script.equals(this.identity.output))
+                .filter(entry => "value" in entry && entry.value > 0)
                 .map(entry => {
                     return {
                         txId,
                         vout: entries.indexOf(entry),
+                        // @ts-ignore: we filtered out all outputs that don't have a value
                         value: entry.value,
                     };
                 })

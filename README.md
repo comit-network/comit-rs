@@ -10,16 +10,21 @@ This is a reference implementation for the COMIT protocol.
 
 ## Structure
 
-The repository contains three main folders: `cnd`, `btsieve`, and`vendor`.
+The repository contains few main folders: `cnd`, `btsieve`, `blockchain_contracts` and `internal`.
 
-`cnd` (the COMIT Node Daemon) and `btsieve` hold code for the primary binaries that make up the reference implementation.
-Code in these can depend on libraries located in `vendor`.
+### Root crates
 
-### Vendor
+Crates at the root of the repository hold primary binaries and libraries:
+- `cnd`: the COMIT Node Daemon binary.
+- `btsieve`: the binary that _sieve_ Blockchain Transactions and blocks from the network.
+- `blockchain_contracts`: the library that contains the HTLCs, to be migrated to its own repo once some dependencies are sorted.
+
+### Internal
 
 Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
-Crates defined in here MUST NOT depend on `cnd` or `btsieve`.
-They may be separated from the repository at some point (and possibly released on crates.io).
+Crates defined in here MUST NOT depend on any root crate.
+They need to be cleaned-up/sorted out to either be removed, contributed back to a popular library or extracted in their own repository.
+See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 
 ## Setup build environment
 

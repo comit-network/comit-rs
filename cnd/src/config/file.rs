@@ -4,6 +4,7 @@ use directories::ProjectDirs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -13,7 +14,6 @@ use std::{
     path::{Path, PathBuf},
     time::Duration,
 };
-use url::Url;
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -93,7 +93,7 @@ pub struct HttpSocket {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Btsieve {
     #[serde(with = "url_serde")]
-    pub url: url::Url,
+    pub url: reqwest::Url,
     pub bitcoin: PollParameters<bitcoin_support::Network>,
     pub ethereum: PollParameters<ethereum_support::Network>,
 }
