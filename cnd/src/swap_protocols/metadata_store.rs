@@ -9,7 +9,7 @@ use std::{
 };
 
 #[derive(Clone, Copy, Debug, strum_macros::Display)]
-pub enum RoleKind {
+pub enum Role {
     Alice,
     Bob,
 }
@@ -59,7 +59,7 @@ pub struct Metadata {
     pub beta_ledger: LedgerKind,
     pub alpha_asset: AssetKind,
     pub beta_asset: AssetKind,
-    pub role: RoleKind,
+    pub role: Role,
     pub counterparty: PeerId,
 }
 
@@ -70,7 +70,7 @@ impl Metadata {
         bl: ledger::LedgerKind,
         aa: asset::AssetKind,
         ba: asset::AssetKind,
-        role: RoleKind,
+        role: Role,
         counterparty: PeerId,
     ) -> Metadata {
         Metadata {

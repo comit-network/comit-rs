@@ -1,17 +1,17 @@
 macro_rules! _match_role {
     ($role:ident, $fn:tt) => {{
         use crate::swap_protocols::{
-            metadata_store::RoleKind,
+            metadata_store::Role,
             rfc003::{alice, bob},
         };
         #[allow(clippy::redundant_closure_call)]
         match $role {
-            RoleKind::Alice => {
+            Role::Alice => {
                 #[allow(dead_code)]
                 type ROLE = alice::State<AL, BL, AA, BA>;
                 $fn()
             }
-            RoleKind::Bob => {
+            Role::Bob => {
                 #[allow(dead_code)]
                 type ROLE = bob::State<AL, BL, AA, BA>;
                 $fn()

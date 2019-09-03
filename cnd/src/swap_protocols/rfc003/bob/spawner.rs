@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     dependencies::{self, LedgerEventDependencies},
-    metadata_store::{self, Metadata, MetadataStore, RoleKind},
+    metadata_store::{self, Metadata, MetadataStore, Role},
     rfc003::{
         self, bob,
         create_ledger_events::CreateLedgerEvents,
@@ -70,7 +70,7 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
             swap_request.beta_ledger.into(),
             swap_request.alpha_asset.into(),
             swap_request.beta_asset.into(),
-            RoleKind::Bob,
+            Role::Bob,
             counterparty,
         );
 
