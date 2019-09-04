@@ -67,7 +67,7 @@ impl Asset for Erc20Token {
     }
 }
 
-#[derive(Clone, Derivative)]
+#[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum AssetKind {
     Bitcoin(Amount),

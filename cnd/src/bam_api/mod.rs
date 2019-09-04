@@ -150,15 +150,13 @@ impl From<SerdeAmount> for bitcoin_support::Amount {
 
 #[cfg(test)]
 mod tests {
-
-    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
-
     use crate::{
-        bam_ext::ToBamHeader,
+        bam_ext::{FromBamHeader, ToBamHeader},
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
     use bam::frame::Header;
     use bitcoin_support::Amount;
+    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
     use spectral::prelude::*;
 
     #[test]
@@ -219,5 +217,16 @@ mod tests {
                 .with_parameter("quantity", "100000000")
                 .unwrap()
         );
+    }
+
+    #[test]
+    fn bitcoin_quantity_from_bam_header() {
+        let header = Header::with_str_value("bitcoin")
+            .with_parameter("quantity", "100000000")
+            .unwrap();
+
+        let quantity = AssetKind::from_bam_header(header).unwrap();
+        let amount = Amount::from_btc(1.0).unwrap();
+        assert_eq!(quantity, AssetKind::Bitcoin(amount));
     }
 }
