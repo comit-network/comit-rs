@@ -7,7 +7,7 @@ workflows:
       - release-build-test:
           filters:
             branches:
-              only: /^release\/\d+\.\d+\.\d+$/
+              only: /^release\//
             tags:
               only: /^.*$/
       - publish-github-release:
@@ -15,7 +15,7 @@ workflows:
             - release-build-test
           filters:
             branches:
-              only: /^release\/\d+\.\d+\.\d+$/
+              only: /^release\//
             tags:
               only: /^\d+\.\d+\.\d+$/
 
@@ -103,7 +103,7 @@ jobs:
             test "${VERSION}" = "${CIRCLE_TAG}"
 
             mkdir ~/package
-            cd ~/artifacts && tar czvf ~/package/comit-rs_v${VERSION}_$(uname -s)_$(uname -m).tar.gz *
+            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz *
             go get github.com/tcnksm/ghr
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
 
