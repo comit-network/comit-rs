@@ -75,15 +75,12 @@ impl Arbitrary for Quickcheck<Transaction> {
         Quickcheck(Transaction {
             hash: <Quickcheck<H256> as Arbitrary>::arbitrary(g).into(),
             nonce: <Quickcheck<U256> as Arbitrary>::arbitrary(g).into(),
-            block_hash: Option::arbitrary(g)
-                .map(|quickcheck_h256: Quickcheck<H256>| H256::from(quickcheck_h256)),
-            block_number: Option::arbitrary(g)
-                .map(|quickcheck_u256: Quickcheck<U256>| U256::from(quickcheck_u256)),
-            transaction_index: Option::arbitrary(g)
-                .map(|quickcheck_u128: Quickcheck<U128>| U128::from(quickcheck_u128)),
+            block_hash: <Option<Quickcheck<H256>> as Arbitrary>::arbitrary(g).map(H256::from),
+            block_number: <Option<Quickcheck<U256>> as Arbitrary>::arbitrary(g).map(U256::from),
+            transaction_index: <Option<Quickcheck<U128>> as Arbitrary>::arbitrary(g)
+                .map(U128::from),
             from: <Quickcheck<H160> as Arbitrary>::arbitrary(g).into(),
-            to: Option::arbitrary(g)
-                .map(|quickcheck_h160: Quickcheck<H160>| H160::from(quickcheck_h160)),
+            to: <Option<Quickcheck<H160>> as Arbitrary>::arbitrary(g).map(H160::from),
             value: <Quickcheck<U256> as Arbitrary>::arbitrary(g).into(),
             gas_price: <Quickcheck<U256> as Arbitrary>::arbitrary(g).into(),
             gas: <Quickcheck<U256> as Arbitrary>::arbitrary(g).into(),
