@@ -13,12 +13,10 @@ pub trait Actions {
 pub mod bitcoin {
     use bitcoin_support::{Address, Amount, Network};
     use bitcoin_witness::{PrimedInput, PrimedTransaction};
-    use serde::Serialize;
 
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct SendToAddress {
         pub to: Address,
-        #[serde(with = "bitcoin_support::amount::serde::as_sat")]
         pub amount: Amount,
         pub network: Network,
     }
@@ -43,9 +41,8 @@ pub mod bitcoin {
 pub mod ethereum {
     use crate::swap_protocols::Timestamp;
     use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity, Network};
-    use serde::Serialize;
 
-    #[derive(Debug, Clone, PartialEq, Serialize)]
+    #[derive(Debug, Clone, PartialEq)]
     pub struct DeployContract {
         pub data: Bytes,
         pub amount: EtherQuantity,
