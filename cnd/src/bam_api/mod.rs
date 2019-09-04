@@ -1,4 +1,5 @@
 use crate::{
+    bam_api::serde::Serde,
     bam_ext::{FromBamHeader, ToBamHeader},
     swap_protocols::{
         asset::AssetKind,
@@ -7,13 +8,15 @@ use crate::{
         SwapProtocol,
     },
 };
+use ::serde::de;
 use bam::frame::Header;
 use ethereum_support::Erc20Token;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
+mod serde;
+
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
-    serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
+    de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }
 
 impl FromBamHeader for LedgerKind {
@@ -63,7 +66,8 @@ impl FromBamHeader for AssetKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
-                let serde_amount: SerdeAmount = header.take_parameter("quantity")?;
+                let serde_amount: Serde<bitcoin_support::Amount> =
+                    header.take_parameter("quantity")?;
                 AssetKind::Bitcoin(bitcoin_support::Amount::from(serde_amount))
             }
             "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
@@ -80,7 +84,7 @@ impl ToBamHeader for AssetKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             AssetKind::Bitcoin(bitcoin) => {
-                let serde_amount = SerdeAmount::from(*bitcoin);
+                let serde_amount = Serde::from(*bitcoin);
                 Header::with_str_value("bitcoin").with_parameter("quantity", serde_amount)?
             }
             AssetKind::Ether(ether) => {
@@ -108,43 +112,8 @@ impl FromBamHeader for Decision {
         Ok(match header.value::<String>()?.as_str() {
             "accepted" => Decision::Accepted,
             "declined" => Decision::Declined,
-            _ => return Err(serde::de::Error::custom("failed to deserialize decision")),
+            _ => return Err(de::Error::custom("failed to deserialize decision")),
         })
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct SerdeAmount {
-    inner: bitcoin_support::Amount,
-}
-
-impl Serialize for SerdeAmount {
-    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&format!("{}", self.inner.as_sat()))
-    }
-}
-
-impl<'de> Deserialize<'de> for SerdeAmount {
-    fn deserialize<D>(_deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        unimplemented!()
-    }
-}
-
-impl From<bitcoin_support::Amount> for SerdeAmount {
-    fn from(amount: bitcoin_support::Amount) -> Self {
-        SerdeAmount { inner: amount }
-    }
-}
-
-impl From<SerdeAmount> for bitcoin_support::Amount {
-    fn from(serde_amount: SerdeAmount) -> Self {
-        serde_amount.inner
     }
 }
 
