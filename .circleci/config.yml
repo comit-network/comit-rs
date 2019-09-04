@@ -1,6 +1,26 @@
 version: 2.1
+workflows:
+  version: 2
+  main:
+    jobs:
+      - debug-build-test
+      - release-build-test:
+          filters: # runs for "release/" branches and all tags.
+            branches:
+              only: /^release\/.*$/
+            tags:
+              only: /.*/
+      - publish-github-release:
+          requires:
+            - release-build-test
+          filters: # runs for no branches and only for X.Y.Z.
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^\d+\.\d+\.\d+$/
+
 jobs:
-  build:
+  debug-build-test:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
@@ -10,24 +30,91 @@ jobs:
     steps:
       - checkout
       - restore_caches
-      - setup_rust
-      - setup_system
+      - install_rust
+      - install_node_devlibs
       - print_current_versions
-
       - run:
-          name: Build using cargo make
+          name: Debug build and test using cargo make
           command: cargo make ci
-
       - store_artifacts:
           path: api_tests/log
-
       - save_caches
 
+  release-build-test:
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      RUST_TEST_THREADS: "8"
+    steps:
+      - checkout
+      - restore_caches
+      - install_rust
+      - install_node_devlibs
+      - print_current_versions
+      - run:
+          name: "Check that the branch name holds the correct version"
+          command: |
+            VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
+            test "release/${VERSION}" = "${CIRCLE_BRANCH}"
+      - run:
+          name: Release build and test using cargo make
+          command: |
+            export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
+            export BTSIEVE_BIN=~/comit/target/release/btsieve
+            export CND_BIN=~/comit/target/release/cnd
+            cargo make ci
+      - store_artifacts:
+          path: api_tests/log
+      - run:
+          name: Consolidate release binaries
+          command: |
+            set -v
+            mkdir ~/artifacts
+            mv -v ~/comit/target/release/cnd ~/artifacts
+            mv -v ~/comit/target/release/btsieve ~/artifacts
+      - persist_to_workspace:
+          root: ~/artifacts
+          paths:
+            - cnd
+            - btsieve
+
+  publish-github-release:
+    working_directory: ~/comit
+    machine:
+      image: ubuntu-1604:201903-01
+      docker_layer_caching: true
+    environment:
+      RUST_TEST_THREADS: "8"
+    steps:
+      - attach_workspace:
+          at: ~/artifacts
+      - checkout
+      - restore_caches
+      - install_rust
+      - install_node_devlibs
+      - print_current_versions
+      - run:
+          name: "Package & Publish Release on GitHub"
+          command: |
+            set -v
+            VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
+
+            # Let's abort if the git tag does not match the version in Cargo.toml as it would be fishy
+            test "${VERSION}" = "${CIRCLE_TAG}"
+
+            mkdir ~/package
+            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz * && echo "ma
+            go get github.com/tcnksm/ghr
+            ls ~/package/
+            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
+
 commands:
-  setup_system:
+  install_node_devlibs:
     steps:
       - run:
-          name:  "Setup system environment"
+          name:  "Install node and development libraries"
           command: |
             rm -rf /opt/circleci/.nvm
             sudo systemctl stop apt-daily.service
@@ -40,10 +127,10 @@ commands:
             echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
             sudo apt-get update
             sudo apt-get install -y nodejs=10.* yarn libzmq3-dev
-  setup_rust:
+  install_rust:
     steps:
       - run:
-          name:  "Setup rust environment"
+          name:  "Install Rust"
           command: |
             curl https://sh.rustup.rs -sSf | sh -s -- -y --default-toolchain $(< rust-toolchain) && source $HOME/.cargo/env
             rustup install nightly-2019-07-31
@@ -51,9 +138,9 @@ commands:
 
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
-
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
-            which cargo-make && test "$(cargo make --version)" = "cargo-make 0.19.4" || cargo install cargo-make --force
+            export CARGO_MAKE_VERSION="0.22.1"
+            which cargo-make && test "$(cargo make --version)" = "cargo-make ${CARGO_MAKE_VERSION}" || cargo install cargo-make --force --version ${CARGO_MAKE_VERSION}
   print_current_versions:
     steps:
       - run:
