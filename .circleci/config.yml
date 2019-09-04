@@ -5,17 +5,17 @@ workflows:
     jobs:
       - debug-build-test
       - release-build-test:
-          filters:
+          filters: # runs for "release/" branches and all tags.
             branches:
               only: /^release\/.*$/
             tags:
-              only: /^.*$/
+              only: /.*/
       - publish-github-release:
           requires:
             - release-build-test
-          filters:
+          filters: # runs for no branches and only for X.Y.Z.
             branches:
-              only: /^release\/.*$/
+              ignore: /.*/
             tags:
               only: /^\d+\.\d+\.\d+$/
 
@@ -70,6 +70,7 @@ jobs:
       - run:
           name: Consolidate release binaries
           command: |
+            set -v
             mkdir ~/artifacts
             mv -v ~/comit/target/release/cnd ~/artifacts
             mv -v ~/comit/target/release/btsieve ~/artifacts
@@ -97,19 +98,14 @@ jobs:
       - run:
           name: "Package & Publish Release on GitHub"
           command: |
+            set -v
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-
-            echo ${CIRCLE_PROJECT_USERNAME}
-            echo ${CIRCLE_PROJECT_REPONAME}
-            echo ${CIRCLE_SHA1}
-            echo ${VERSION}
-            echo ${CIRCLE_TAG}
 
             # Let's abort if the git tag does not match the version in Cargo.toml as it would be fishy
             test "${VERSION}" = "${CIRCLE_TAG}"
 
             mkdir ~/package
-            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz *
+            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz * && echo "ma
             go get github.com/tcnksm/ghr
             ls ~/package/
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
