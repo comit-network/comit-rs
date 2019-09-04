@@ -141,7 +141,7 @@ mod tests {
             query.matches(&transaction)
         }
 
-        quickcheck::quickcheck(prop as fn(Quickcheck<H160>, Quickcheck<Transaction>) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
     }
 
     #[test]
