@@ -8,7 +8,7 @@ use ethereum_support::H256;
 use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
-use warp::{self, filters::BoxedFilter, Filter, Reply};
+use warp::{self, filters::BoxedFilter, Filter, Rejection, Reply};
 
 // value chosen to accommodate eventual use of 32 byte hashes for id generation
 pub const MAX_QUERY_ID_LENGTH: usize = 100;
@@ -41,6 +41,44 @@ pub struct QueryParams<R> {
     pub return_as: R,
 }
 
+pub fn create_bitcoin_stub_endpoints(
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    warp::path("queries")
+        .and(warp::path("bitcoin"))
+        .and(warp::path::param::<String>())
+        .and(warp::path(crate::bitcoin::TransactionQuery::route()))
+        .and_then(|_| {
+            Result::<String, Rejection>::Err(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::LedgerNotConnected.into(),
+            }))
+        })
+}
+
+pub fn create_ethereum_stub_endpoints(
+) -> impl Filter<Extract = (impl Reply,), Error = Rejection> + Clone {
+    let base = warp::path("queries")
+        .and(warp::path("ethereum"))
+        .and(warp::path::param::<String>());
+
+    let tx_query = base
+        .and(warp::path(crate::ethereum::TransactionQuery::route()))
+        .and_then(|_| {
+            Result::<String, Rejection>::Err(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::LedgerNotConnected.into(),
+            }))
+        });
+
+    let event_query = base
+        .and(warp::path(crate::ethereum::EventQuery::route()))
+        .and_then(|_| {
+            Result::<String, Rejection>::Err(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::LedgerNotConnected.into(),
+            }))
+        });
+
+    tx_query.or(event_query).unify()
+}
+
 pub fn create_endpoints<
     R,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
@@ -50,9 +88,9 @@ pub fn create_endpoints<
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
-    client: Option<Arc<C>>,
+    client: Arc<C>,
     ledger_name: &'static str,
-    registered_network: Option<&'static str>,
+    registered_network: &'static str,
 ) -> BoxedFilter<(impl Reply,)>
 where
     for<'de> R: Deserialize<'de>,
@@ -64,47 +102,23 @@ where
     // create the path
     let path = warp::path("queries");
 
-    let client_option = client.clone();
+    let client = warp::any().map(move || Arc::clone(&client));
 
-    // validate ledger function
-    let validate_ledger = warp::any().and_then(move || {
-        let client_option = client_option.clone();
-        client_option.map_or_else(
-            || {
-                log::error!("Ledger not connected: {:?}", ledger_name);
-                Err::<Arc<C>, _>(warp::reject::custom(HttpApiProblemStdError {
-                    http_api_problem: RouteError::LedgerNotConnected.into(),
-                }))
-            },
-            |client| Ok(client.clone()),
-        )
+    let validate_network = warp::path::param::<String>().and_then(move |network| {
+        if network != registered_network {
+            log::error!("Invalid network passed: {:?}", network);
+            Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
+                http_api_problem: RouteError::NetworkNotFound.into(),
+            }))
+        } else {
+            Ok(network)
+        }
     });
-
-    // validate network function
-    let validate_network =
-        warp::path::param::<String>().and_then(move |network| match registered_network {
-            Some(registered_network) => {
-                if network != registered_network {
-                    log::error!("Invalid network passed: {:?}", network);
-                    Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-                        http_api_problem: RouteError::NetworkNotFound.into(),
-                    }))
-                } else {
-                    Ok(network)
-                }
-            }
-            None => {
-                log::error!("Ledger network not defined {:?}", ledger_name);
-                Err::<String, _>(warp::reject::custom(HttpApiProblemStdError {
-                    http_api_problem: RouteError::NetworkNotFound.into(),
-                }))
-            }
-        });
 
     // concat with validators, ledger and network
     let path = path
         .and(warp::path(ledger_name))
-        .and(validate_ledger)
+        .and(client)
         .and(validate_network)
         .and(warp::path(&route));
 
@@ -152,10 +166,5 @@ where
         .and(warp::body::json())
         .and_then(routes::get_or_create_query);
 
-    create
-        .or(retrieve)
-        .or(delete)
-        .or(get_or_create)
-        .recover(routes::customize_error)
-        .boxed()
+    create.or(retrieve).or(delete).or(get_or_create).boxed()
 }
