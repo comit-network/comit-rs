@@ -100,7 +100,7 @@ jobs:
             test "${VERSION}" = "${CIRCLE_TAG}"
 
             mkdir ~/package
-            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz * && echo "ma
+            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz *
             go get github.com/tcnksm/ghr
             ls ~/package/
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
