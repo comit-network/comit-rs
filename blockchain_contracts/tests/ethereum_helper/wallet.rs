@@ -1,5 +1,7 @@
-use crate::ethereum_helper::transaction::{SignedTransaction, UnsignedTransaction};
-use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
+use crate::ethereum_helper::{
+    to_ethereum_address::ToEthereumAddress,
+    transaction::{SignedTransaction, UnsignedTransaction},
+};
 use rust_bitcoin::secp256k1::{Message, PublicKey, SecretKey};
 use std::convert::TryFrom;
 use web3::types::Address;

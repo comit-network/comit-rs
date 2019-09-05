@@ -8,7 +8,7 @@ use btsieve::{
     blocksource::BlockSource,
     ethereum::{self, web3_http_blocksource::Web3HttpBlockSource},
     expected_version_header,
-    load_settings::{load_settings, Opt},
+    load_settings::load_settings,
     logging, route_factory, settings, Bitcoin, Blockchain, Ethereum, InMemoryQueryRepository,
     InMemoryQueryResultRepository, QueryMatch, QueryResultRepository,
 };
@@ -27,6 +27,8 @@ use structopt::StructOpt;
 use tokio::runtime::Runtime;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
+mod cli;
+
 #[derive(Debug, Fail)]
 enum Error {
     #[fail(display = "Could not connect to ledger: {}", ledger)]
@@ -44,9 +46,8 @@ impl From<web3::Error> for Error {
 }
 
 fn main() -> Result<(), failure::Error> {
-    let opt = Opt::from_args();
-
-    let settings = load_settings(opt)?;
+    let options = cli::Options::from_args();
+    let settings = load_settings(options.config_file)?;
     logging::set_up_logging(&settings);
 
     let mut runtime = tokio::runtime::Runtime::new()?;

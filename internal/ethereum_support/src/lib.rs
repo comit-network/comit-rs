@@ -2,7 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub use crate::{
-    contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, key::*, network::*,
+    contract_address::*, erc20_quantity::*, erc20_token::*, ether_quantity::*, network::*,
     u256_ext::*,
 };
 pub use extern_web3::{futures::Future, types::*};
@@ -11,7 +11,6 @@ mod contract_address;
 mod erc20_quantity;
 mod erc20_token;
 mod ether_quantity;
-mod key;
 mod network;
 mod u256_ext;
 

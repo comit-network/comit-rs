@@ -34,7 +34,7 @@ pub enum ActionExecutionParameters {
 pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
-        #[serde(with = "bitcoin_support::amount::serde::as_sat")]
+        #[serde(serialize_with = "crate::http_api::serialize_amount_to_json_string")]
         amount: bitcoin_support::Amount,
         network: bitcoin_support::Network,
     },
@@ -348,7 +348,7 @@ mod test {
         let response_body = ActionResponseBody::BitcoinSendAmountToAddress {
             to: addr,
             amount: bitcoin_support::Amount::from_btc(1.0).unwrap(),
-            network: BitcoinNetwork::Mainnet,
+            network: BitcoinNetwork::Regtest,
         };
         let serialized = serde_json::to_string(&response_body).unwrap();
         assert_eq!(

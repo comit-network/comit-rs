@@ -4,10 +4,8 @@ import { ethers } from "ethers";
 import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
-import { HarnessGlobal, sleep } from "../lib/util";
+import { sleep } from "../lib/util";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-
-declare var global: HarnessGlobal;
 
 (async function() {
     const alpha = {
@@ -38,8 +36,8 @@ declare var global: HarnessGlobal;
         expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
     };
 
-    const alice = new Actor("alice", global.config, global.project_root);
-    const bob = new Actor("bob", global.config, global.project_root);
+    const alice = new Actor("alice");
+    const bob = new Actor("bob");
     const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     const bobCndPeerId = await bob.peerId();
 
@@ -237,15 +235,9 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Can execute a decline action", async () => {
-            const bob = new Actor(
-                "bob",
-                global.config,
-                global.project_root,
-                null,
-                {
-                    reason: "UnsatisfactoryRate",
-                }
-            );
+            const bob = new Actor("bob", null, {
+                reason: "UnsatisfactoryRate",
+            });
 
             const res = await request(bob.cndHttpApiUrl()).get(
                 bobStingySwapHref
@@ -277,7 +269,7 @@ declare var global: HarnessGlobal;
         });
 
         it("[Bob] Can execute a decline action, without providing a reason", async () => {
-            const bob = new Actor("bob", global.config, global.project_root);
+            const bob = new Actor("bob");
 
             const res = await request(bob.cndHttpApiUrl()).get(
                 bobReasonableSwapHref

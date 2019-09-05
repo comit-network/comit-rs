@@ -60,7 +60,7 @@ impl FromHttpAsset for BitcoinAmount {
 
 // This function's signature needs to match serde::serialize_with's expectations
 #[allow(clippy::trivially_copy_pass_by_ref)]
-fn serialize_amount_to_json_string<S: Serializer>(
+pub fn serialize_amount_to_json_string<S: Serializer>(
     value: &BitcoinAmount,
     s: S,
 ) -> Result<S::Ok, S::Error> {

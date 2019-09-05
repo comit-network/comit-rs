@@ -13,7 +13,7 @@ pub use self::{
     ether_harness::{ether_harness, EtherHarnessParams},
     timestamp::Timestamp,
 };
-use blockchain_contracts::ethereum::to_ethereum_address::ToEthereumAddress;
+use crate::ethereum_helper::to_ethereum_address::ToEthereumAddress;
 use rust_bitcoin::secp256k1::{PublicKey, SecretKey};
 
 pub fn new_account(secret_key: &str) -> (SecretKey, EthereumAddress) {

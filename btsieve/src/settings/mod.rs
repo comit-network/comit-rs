@@ -79,13 +79,10 @@ fn default_log_levels() -> LogLevels {
 
 impl Settings {
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, ConfigError> {
-        let mut config = Config::new();
-
         let config_file = Path::new(&config_file);
 
+        let mut config = Config::new();
         config.merge(File::from(config_file))?;
-
-        // You can deserialize (and thus freeze) the entire configuration as
         config.try_into()
     }
 }

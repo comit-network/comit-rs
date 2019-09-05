@@ -7,10 +7,10 @@ import { Wallet } from "../../lib/wallet";
 
 declare var global: HarnessGlobal;
 
-const btsieve = new Btsieve("main", global.config, global.project_root);
+const btsieve = new Btsieve(global.projectRoot);
 
 const tobyWallet = new Wallet("toby", {
-    bitcoinNodeConfig: global.ledgers_config.bitcoin,
+    ledgerConfig: global.ledgerConfigs,
 });
 
 setTimeout(async function() {
