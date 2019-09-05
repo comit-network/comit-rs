@@ -1,5 +1,6 @@
 [env]
 BITCOIND_ADDITIONAL_SLEEP_PERIOD = "500"
+CARGO_MAKE_CARGO_BUILD_TEST_FLAGS = { script = ["echo ${CARGO_MAKE_CARGO_BUILD_TEST_FLAGS:-'--all'}"] }
 
 # ###########################################################
 # Override defaults tasks to allow the use of default flows #
@@ -37,20 +38,17 @@ dependencies = [
 [tasks.ci-flow]
 workspace = false
 
-# Overridden because: we want --all and workspace = false
+# Overridden because: we want workspace = false
 [tasks.build]
 workspace = false
-args = ["build", "--all"]
 
-# Overridden because: we want --all and workspace = false
+# Overridden because: we want workspace = false
 [tasks.build-verbose]
 workspace = false
-args = ["build", "--all", "--verbose"]
 
-# Overridden because: we want --all and workspace = false
+# Overridden because: we want workspace = false
 [tasks.test-verbose]
 workspace = false
-args = ["test", "--all", "--verbose"]
 
 # Overridden because: add script
 [tasks.init]

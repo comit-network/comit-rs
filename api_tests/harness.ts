@@ -49,16 +49,15 @@ export interface E2ETestConfig {
 async function runTests(testFiles: string[]) {
     const ledgerRunner = new LedgerRunner(logDir);
 
-    const nodeRunner = new CndRunner(
-        projectRoot,
-        projectRoot + "/target/debug/cnd",
-        logDir
-    );
-    const btsieveRunner = new BtsieveRunner(
-        projectRoot,
-        projectRoot + "/target/debug/btsieve",
-        logDir
-    );
+    const cndPath = process.env.CND_BIN
+        ? process.env.CND_BIN
+        : projectRoot + "/target/debug/cnd";
+    const btsievePath = process.env.BTSIEVE_BIN
+        ? process.env.BTSIEVE_BIN
+        : projectRoot + "/target/debug/btsieve";
+
+    const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
+    const btsieveRunner = new BtsieveRunner(projectRoot, btsievePath, logDir);
 
     async function cleanupAll() {
         try {
@@ -71,7 +70,7 @@ async function runTests(testFiles: string[]) {
     }
 
     process.on("SIGINT", async () => {
-        console.log("SIGINT RECEIEVED");
+        console.log("SIGINT RECEIVED");
 
         await cleanupAll();
 
