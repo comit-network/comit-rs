@@ -6,6 +6,7 @@ pull_request_rules:
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
+      - head!~=^release/.*
       - "#changes-requested-reviews-by=0"
     actions:
       merge:
@@ -15,7 +16,7 @@ pull_request_rules:
       delete_head_branch:
   - name: merge green dependabot PRs
     conditions:
-      - "status-success=ci/circleci: build"
+      - "status-success=ci/circleci: debug-build-test"
       - "author:dependabot-preview[bot]"
     actions:
       merge:
