@@ -6,7 +6,7 @@ pull_request_rules:
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
-      - head!~=^release/.*
+      - head~=^(?!release.*).*$
       - "#changes-requested-reviews-by=0"
     actions:
       merge:
