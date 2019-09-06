@@ -343,7 +343,7 @@ mod test {
     }
 
     #[test]
-    fn bitcoin_send_amount_to_address_serializes_correctly_to_json_with_none() {
+    fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
         let addr = BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap();
         let response_body = ActionResponseBody::BitcoinSendAmountToAddress {
             to: addr,

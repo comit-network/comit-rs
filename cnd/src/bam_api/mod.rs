@@ -8,7 +8,6 @@ use crate::{
         SwapProtocol,
     },
 };
-use ::serde::de;
 use bam::frame::Header;
 use ethereum_support::Erc20Token;
 use std::fmt;
@@ -16,7 +15,7 @@ use std::fmt;
 mod serde;
 
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
-    de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
+    ::serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }
 
 impl FromBamHeader for LedgerKind {
@@ -112,7 +111,7 @@ impl FromBamHeader for Decision {
         Ok(match header.value::<String>()?.as_str() {
             "accepted" => Decision::Accepted,
             "declined" => Decision::Declined,
-            _ => return Err(de::Error::custom("failed to deserialize decision")),
+            _ => return Err(::serde::de::Error::custom("failed to deserialize decision")),
         })
     }
 }
