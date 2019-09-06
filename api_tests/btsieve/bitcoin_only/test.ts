@@ -108,17 +108,6 @@ setTimeout(async function() {
                     );
                 });
 
-                it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
-                    const res = await request(btsieve.url())
-                        .put(location)
-                        .set("Expected-Version", btsieve.expectedVersion)
-                        .send({
-                            to_address: toAddress,
-                        });
-
-                    expect(res).to.have.status(200);
-                });
-
                 it('btsieve should respond with 409 CONFLICT when "getting-or-creating" an existing query ID with a different query body', async function() {
                     const differentToAddress =
                         "mzkdMKoki1hoP3ogT2oGSJ4pBTC9UGDLfM";
@@ -133,21 +122,29 @@ setTimeout(async function() {
                     expect(res).to.have.status(409);
                 });
 
-                it('btsieve should respond with 204 NO_CONTENT when "getting-or-creating" a new query', async function() {
-                    const newQueryId =
-                        "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
-                    const newLocation =
-                        "/queries/bitcoin/regtest/transactions/" + newQueryId;
-                    const newQuery = {
-                        to_address: "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5",
-                    };
+                const otherQueryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
+                const otherLocation =
+                    "/queries/bitcoin/regtest/transactions/" + otherQueryId;
+                const otherQuery = {
+                    to_address: "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5",
+                };
 
+                it('btsieve should respond with 204 NO_CONTENT when "getting-or-creating" a new query', async function() {
                     const res = await request(btsieve.url())
-                        .put(newLocation)
+                        .put(otherLocation)
                         .set("Expected-Version", btsieve.expectedVersion)
-                        .send(newQuery);
+                        .send(otherQuery);
 
                     expect(res).to.have.status(204);
+                });
+
+                it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
+                    const res = await request(btsieve.url())
+                        .put(otherLocation)
+                        .set("Expected-Version", btsieve.expectedVersion)
+                        .send(otherQuery);
+
+                    expect(res).to.have.status(200);
                 });
 
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
