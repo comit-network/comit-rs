@@ -13,17 +13,17 @@ use crate::{
         },
     },
 };
-use bitcoin_support::{BitcoinQuantity, FindOutput, OutPoint};
+use bitcoin_support::{Amount, FindOutput, OutPoint};
 use futures::{
     future::{self, Either},
     Future,
 };
 use std::sync::Arc;
 
-impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync> {
+impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
     fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
         let query_bitcoin = Arc::clone(&self);
         let deployed_future = self
@@ -52,12 +52,11 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
 
     fn htlc_funded(
         &self,
-        _htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        _htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> Box<FundedFuture<Bitcoin, BitcoinQuantity>> {
+    ) -> Box<FundedFuture<Bitcoin, Amount>> {
         let tx = &htlc_deployment.transaction;
-        let asset =
-            BitcoinQuantity::from_satoshi(tx.output[htlc_deployment.location.vout as usize].value);
+        let asset = Amount::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
         Box::new(future::ok(Funded {
             transaction: tx.clone(),
             asset,
@@ -66,9 +65,9 @@ impl HtlcEvents<Bitcoin, BitcoinQuantity> for Arc<dyn QueryBitcoin + Send + Sync
 
     fn htlc_redeemed_or_refunded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-        _: &Funded<Bitcoin, BitcoinQuantity>,
+        _: &Funded<Bitcoin, Amount>,
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
             let query_bitcoin = Arc::clone(&self);

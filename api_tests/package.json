@@ -28,7 +28,7 @@
         "mocha": "^6.2.0",
         "multiaddr": "^6.0.6",
         "satoshi-bitcoin": "^1.0.4",
-        "testcontainers": "^1.2.0",
+        "testcontainers": "^2.0.0",
         "urijs": "^1.19.1"
     },
     "devDependencies": {

@@ -1,6 +1,6 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
+    Address, Amount, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
 };
 use secp256k1_keypair::PublicKey;
 
@@ -24,7 +24,7 @@ impl Default for Bitcoin {
 }
 
 impl Ledger for Bitcoin {
-    type Quantity = BitcoinQuantity;
+    type Quantity = Amount;
     type TxId = TransactionId;
     type Pubkey = PublicKey;
     type Address = Address;
