@@ -14,7 +14,7 @@ pub use self::{
     timestamp::Timestamp,
 };
 use crate::ethereum_helper::to_ethereum_address::ToEthereumAddress;
-use secp256k1::{PublicKey, SecretKey};
+use rust_bitcoin::secp256k1::{PublicKey, SecretKey};
 
 pub fn new_account(secret_key: &str) -> (SecretKey, EthereumAddress) {
     let secret_key = SecretKey::from_str(secret_key).unwrap();

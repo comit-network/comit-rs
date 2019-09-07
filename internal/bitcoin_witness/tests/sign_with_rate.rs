@@ -1,5 +1,5 @@
 use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{serialize_hex, Address, BitcoinQuantity, PrivateKey};
+use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
 use secp256k1_keypair::KeyPair;
@@ -14,7 +14,7 @@ fn sign_with_rate() {
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
     client.mine_bitcoins();
-    let input_amount = BitcoinQuantity::from_satoshi(100_000_001);
+    let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
     let keypair: KeyPair = private_key.key.into();

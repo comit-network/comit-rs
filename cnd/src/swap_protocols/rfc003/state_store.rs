@@ -273,7 +273,7 @@ mod tests {
             HashFunction, Timestamp,
         },
     };
-    use bitcoin_support::BitcoinQuantity;
+    use bitcoin_support::Amount;
     use ethereum_support::EtherQuantity;
     use spectral::prelude::*;
     use std::sync::Arc;
@@ -284,7 +284,7 @@ mod tests {
         let request = Request {
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_asset: BitcoinQuantity::from_bitcoin(1.0),
+            alpha_asset: Amount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: secp256k1_keypair::KeyPair::from_secret_key_slice(
@@ -305,13 +305,11 @@ mod tests {
         let secret_source = Arc::new(seed.swap_seed(id));
         let state = alice::State::new(request, secret_source);
 
-        state_store.insert::<alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(
-            id,
-            state.clone(),
-        );
+        state_store
+            .insert::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(id, state.clone());
 
         let res = state_store
-            .get::<alice::State<Bitcoin, Ethereum, BitcoinQuantity, EtherQuantity>>(&id)
+            .get::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(&id)
             .unwrap();
         assert_that(&res).contains_value(state);
     }
