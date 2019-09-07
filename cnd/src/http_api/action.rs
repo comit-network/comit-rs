@@ -34,8 +34,7 @@ pub enum ActionExecutionParameters {
 pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
-        #[serde(serialize_with = "crate::http_api::serialize_amount_to_json_string")]
-        amount: bitcoin_support::Amount,
+        amount: String,
         network: bitcoin_support::Network,
     },
     BitcoinBroadcastSignedTransaction {
@@ -97,22 +96,26 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
         query_params: ActionExecutionParameters,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
-            ActionExecutionParameters::None {} => {
-                let bitcoin::SendToAddress {
-                    to,
-                    amount,
-                    network,
-                } = self;
-                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
-                    to,
-                    amount,
-                    network,
-                })
-            }
+            ActionExecutionParameters::None {} => Ok(self.into()),
             _ => Err(problem::unexpected_query_parameters(
                 "bitcoin::SendToAddress",
                 vec!["address".into(), "fee_per_wu".into()],
             )),
+        }
+    }
+}
+
+impl From<bitcoin::SendToAddress> for ActionResponseBody {
+    fn from(action: bitcoin::SendToAddress) -> Self {
+        let bitcoin::SendToAddress {
+            to,
+            amount,
+            network,
+        } = action;
+        ActionResponseBody::BitcoinSendAmountToAddress {
+            to,
+            amount: format!("{}", amount.as_sat()),
+            network,
         }
     }
 }
@@ -344,12 +347,12 @@ mod test {
 
     #[test]
     fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
-        let addr = BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap();
-        let response_body = ActionResponseBody::BitcoinSendAmountToAddress {
-            to: addr,
+        let response_body = ActionResponseBody::from(bitcoin::SendToAddress {
+            to: BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap(),
             amount: bitcoin_support::Amount::from_btc(1.0).unwrap(),
             network: BitcoinNetwork::Regtest,
-        };
+        });
+
         let serialized = serde_json::to_string(&response_body).unwrap();
         assert_eq!(
             serialized,
