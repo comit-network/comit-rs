@@ -7,15 +7,15 @@ use crate::swap_protocols::{
         Ledger,
     },
 };
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::Amount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 
 pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
     fn create_ledger_events(&self) -> Box<dyn LedgerEvents<L, A>>;
 }
 
-impl CreateLedgerEvents<Bitcoin, BitcoinQuantity> for LedgerEventDependencies {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, BitcoinQuantity>> {
+impl CreateLedgerEvents<Bitcoin, Amount> for LedgerEventDependencies {
+    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, Amount>> {
         Box::new(LedgerEventFutures::new(Box::new(
             self.query_bitcoin.clone(),
         )))

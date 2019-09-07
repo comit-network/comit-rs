@@ -11,7 +11,7 @@ secp256k1_keypair = { path = "../secp256k1_keypair" }
 
 [dev-dependencies]
 bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
-bitcoincore-rpc = "0.7"
+bitcoincore-rpc = "0.8.0-rc1"
 env_logger = "0.6"
 hex = "0.3"
 spectral = "0.6"

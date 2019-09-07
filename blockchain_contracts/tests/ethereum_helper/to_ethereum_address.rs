@@ -1,4 +1,4 @@
-use secp256k1::PublicKey;
+use rust_bitcoin::secp256k1::PublicKey;
 use web3::types::Address;
 
 // TODO: Should/Can this be contributed back?

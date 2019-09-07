@@ -1,10 +1,9 @@
 use crate::{network::Network, Hash160};
 use bitcoin::{
+    hashes::Hash,
     util::{address::Payload, key::PublicKey as BitcoinPublicKey},
     Address,
 };
-use bitcoin_bech32;
-use bitcoin_hashes::Hash;
 use hex::{self, FromHex};
 use secp256k1_keypair::{KeyPair, PublicKey};
 use serde::{
@@ -35,14 +34,10 @@ impl IntoP2wpkhAddress for PublicKey {
 impl IntoP2wpkhAddress for PubkeyHash {
     fn into_p2wpkh_address(self, network: Network) -> Address {
         Address {
-            payload: Payload::WitnessProgram(
-                bitcoin_bech32::WitnessProgram::new(
-                    bitcoin_bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
-                    self.as_ref().to_vec(),
-                    network.into(),
-                )
-                .expect("Any pubkeyhash will succeed in conversion to WitnessProgram"),
-            ),
+            payload: Payload::WitnessProgram {
+                version: bitcoin::bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
+                program: self.as_ref().to_vec(),
+            },
             network: network.into(),
         }
     }
@@ -60,7 +55,9 @@ impl From<Hash160> for PubkeyHash {
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
-            <bitcoin_hashes::hash160::Hash as bitcoin_hashes::Hash>::hash(&public_key.serialize()),
+            <bitcoin::hashes::hash160::Hash as bitcoin::hashes::Hash>::hash(
+                &public_key.serialize(),
+            ),
         )
     }
 }
@@ -72,7 +69,7 @@ impl From<KeyPair> for PubkeyHash {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PubkeyHash {
-    type Error = bitcoin_hashes::error::Error;
+    type Error = bitcoin::hashes::error::Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
         Ok(PubkeyHash(Hash160::from_slice(value)?))
@@ -82,7 +79,7 @@ impl<'a> TryFrom<&'a [u8]> for PubkeyHash {
 #[derive(Debug)]
 pub enum FromHexError {
     HexConversion(hex::FromHexError),
-    HashConversion(bitcoin_hashes::error::Error),
+    HashConversion(bitcoin::hashes::error::Error),
 }
 
 impl From<hex::FromHexError> for FromHexError {
@@ -91,8 +88,8 @@ impl From<hex::FromHexError> for FromHexError {
     }
 }
 
-impl From<bitcoin_hashes::error::Error> for FromHexError {
-    fn from(err: bitcoin_hashes::error::Error) -> Self {
+impl From<bitcoin::hashes::error::Error> for FromHexError {
+    fn from(err: bitcoin::hashes::error::Error) -> Self {
         FromHexError::HashConversion(err)
     }
 }
