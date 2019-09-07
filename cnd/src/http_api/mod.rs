@@ -31,7 +31,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::{amount::Denomination, Amount as BitcoinAmount};
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -45,8 +45,47 @@ pub struct Http<I>(pub I);
 
 impl_serialize_type_name_with_fields!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
-impl_serialize_type_name_with_fields!(BitcoinQuantity := "bitcoin" { "quantity" });
-impl_from_http_quantity_asset!(BitcoinQuantity, Bitcoin);
+
+impl FromHttpAsset for BitcoinAmount {
+    fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
+        let name = String::from("bitcoin");
+        asset.is_asset(name.as_ref())?;
+
+        asset.parameter_custom_deser("quantity", |value| {
+            let string = String::deserialize(value)?;
+            Ok(BitcoinAmount::from_str_in(string.as_str(), Denomination::Satoshi).unwrap())
+        })
+    }
+}
+
+// This function's signature needs to match serde::serialize_with's expectations
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub fn serialize_amount_to_json_string<S: Serializer>(
+    value: &BitcoinAmount,
+    s: S,
+) -> Result<S::Ok, S::Error> {
+    String::serialize(&value.as_sat().to_string(), s)
+}
+
+#[derive(Serialize)]
+struct HttpBitcoinAmount {
+    name: String,
+    #[serde(serialize_with = "serialize_amount_to_json_string")]
+    quantity: BitcoinAmount,
+}
+
+impl Serialize for Http<BitcoinAmount> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let value = HttpBitcoinAmount {
+            name: String::from("bitcoin"),
+            quantity: self.0,
+        };
+        value.serialize(serializer)
+    }
+}
 
 impl Serialize for Http<bitcoin_support::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
@@ -84,7 +123,7 @@ impl Serialize for Http<ethereum_support::Transaction> {
 }
 
 impl_serialize_http!(bitcoin_support::PubkeyHash);
-impl_serialize_http!(bitcoin_support::OutPoint);
+impl_serialize_type_with_fields!(bitcoin_support::OutPoint { "txid" => txid, "vout" => vout });
 impl_serialize_http!(ethereum_support::H160);
 impl_serialize_http!(SwapId);
 
@@ -204,6 +243,7 @@ impl<'de> Deserialize<'de> for DialInformation {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         http_api::Http,
         swap_protocols::{
@@ -211,16 +251,14 @@ mod tests {
             HashFunction, SwapId, SwapProtocol,
         },
     };
-    use bitcoin_support::{
-        self, BitcoinQuantity, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn,
-    };
+    use bitcoin_support::{self, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = BitcoinQuantity::from_bitcoin(1.0);
+        let bitcoin = BitcoinAmount::from_btc(1.0).unwrap();
         let ether = EtherQuantity::from_eth(1.0);
         let pay = Erc20Token::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),

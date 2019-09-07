@@ -2,7 +2,7 @@ use crate::ethereum_helper::{
     to_ethereum_address::ToEthereumAddress,
     transaction::{SignedTransaction, UnsignedTransaction},
 };
-use secp256k1::{Message, PublicKey, SecretKey};
+use rust_bitcoin::secp256k1::{Message, PublicKey, SecretKey};
 use std::convert::TryFrom;
 use web3::types::Address;
 
@@ -22,7 +22,7 @@ impl InMemoryWallet {
     pub fn new(secret_key: SecretKey, chain_id: u8) -> Self {
         InMemoryWallet {
             secret_key,
-            public_key: secp256k1::PublicKey::from_secret_key(
+            public_key: rust_bitcoin::secp256k1::PublicKey::from_secret_key(
                 &*blockchain_contracts::SECP,
                 &secret_key,
             ),

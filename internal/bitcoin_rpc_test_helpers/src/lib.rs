@@ -2,8 +2,7 @@
 #![forbid(unsafe_code)]
 
 use bitcoin_support::{
-    Address, BitcoinQuantity, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash, TransactionId,
-    TxOut,
+    Address, Amount, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash, TransactionId, TxOut,
 };
 
 pub trait RegtestHelperClient {
@@ -14,7 +13,7 @@ pub trait RegtestHelperClient {
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
-        value: BitcoinQuantity,
+        value: Amount,
     ) -> (Sha256dHash, OutPoint);
 }
 
@@ -24,8 +23,9 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<TxOut> {
+        let address = address.clone();
         let unspent = self
-            .list_unspent(Some(1), None, Some(vec![address]), None, None)
+            .list_unspent(Some(1), None, Some(&[address]), None, None)
             .unwrap();
 
         #[allow(clippy::cast_sign_loss)] // it is just for the tests
@@ -33,7 +33,7 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             .into_iter()
             .find(|utxo| utxo.txid == *txid)
             .map(|result| TxOut {
-                value: result.amount.into_inner() as u64,
+                value: result.amount.as_sat(),
                 script_pubkey: result.script_pub_key,
             })
     }
@@ -66,21 +66,12 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
     fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
         &self,
         dest: D,
-        value: BitcoinQuantity,
+        amount: Amount,
     ) -> (Sha256dHash, OutPoint) {
         let address = dest.into_p2wpkh_address(Network::Regtest);
 
         let txid = self
-            .send_to_address(
-                &address.clone(),
-                value.bitcoin(),
-                None,
-                None,
-                None,
-                None,
-                None,
-                None,
-            )
+            .send_to_address(&address.clone(), amount, None, None, None, None, None, None)
             .unwrap();
 
         self.generate(1, None).unwrap();
