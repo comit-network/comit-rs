@@ -17,7 +17,7 @@
     "dependencies": {
         "bignumber.js": "^9.0.0",
         "bitcoin-core": "^2.2.0",
-        "bitcoinjs-lib": "^5.1.5",
+        "bitcoinjs-lib": "^5.1.6",
         "chai": "^4.2.0",
         "chai-each": "^0.0.1",
         "chai-http": "^4.2.0",
@@ -26,7 +26,7 @@
         "ethers": "^4.0.36",
         "glob": "^7.1.4",
         "mocha": "^6.2.0",
-        "multiaddr": "^6.0.6",
+        "multiaddr": "^7.0.0",
         "satoshi-bitcoin": "^1.0.4",
         "testcontainers": "^2.0.0",
         "urijs": "^1.19.1"
