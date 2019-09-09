@@ -1228,6 +1228,11 @@ ip-regex@^2.0.0:
   resolved "https://registry.yarnpkg.com/ip-regex/-/ip-regex-2.1.0.tgz#fa78bf5d2e6913c911ce9f819ee5146bb6d844e9"
   integrity sha1-+ni/XS5pE8kRzp+BnuUUa7bYROk=
 
+ip-regex@^4.0.0:
+  version "4.1.0"
+  resolved "https://registry.yarnpkg.com/ip-regex/-/ip-regex-4.1.0.tgz#5ad62f685a14edb421abebc2fff8db94df67b455"
+  integrity sha512-pKnZpbgCTfH/1NLIlOduP/V+WRXzC2MOz3Qo8xmxk8C5GudJLgK5QyLVXOSWy3ParAH7Eemurl3xjv/WXYFvMA==
+
 ip@^1.1.5:
   version "1.1.5"
   resolved "https://registry.yarnpkg.com/ip/-/ip-1.1.5.tgz#bdded70114290828c0a039e72ef25f5aaec4354a"
@@ -1266,6 +1271,13 @@ is-ip@^2.0.0:
   integrity sha1-aO6gfooKCpTC0IDdZ0xzGrKkYas=
   dependencies:
     ip-regex "^2.0.0"
+
+is-ip@^3.1.0:
+  version "3.1.0"
+  resolved "https://registry.yarnpkg.com/is-ip/-/is-ip-3.1.0.tgz#2ae5ddfafaf05cb8008a62093cf29734f657c5d8"
+  integrity sha512-35vd5necO7IitFPjd/YBeqwWnyDWbuLH9ZXQdMfDA8TEo7pv5X8yfrvVO3xbJbLUlERCMvf6X0hTUamQxCYJ9Q==
+  dependencies:
+    ip-regex "^4.0.0"
 
 is-promise@^2.1:
   version "2.1.0"
@@ -1617,16 +1629,16 @@ ms@^2.1.1:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
 
-multiaddr@^6.0.6:
-  version "6.1.0"
-  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-6.1.0.tgz#1f93afce58a33db5cc32a5917d8a14105d94330e"
-  integrity sha512-+XTP3OzG2m6JVcjxA9QBmGDr0Vk8WwnohC/fCC3puXb5qJqfJwLVJLEtdTc6vK7ri/hw+Nn4wyT4LkZaPnvGfQ==
+multiaddr@^7.0.0:
+  version "7.0.0"
+  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.0.0.tgz#67ea10d215da487787b5580e5274c459d1efdbb9"
+  integrity sha512-hdjniob/nnBFp/y6o/z5PCjsMAoz87nKcurITBBO1357uzm6fUhsQXBCDxhU2fnMjYQorDIm7LaI4nvGwnMFow==
   dependencies:
     bs58 "^4.0.1"
     class-is "^1.1.0"
     hi-base32 "~0.5.0"
     ip "^1.1.5"
-    is-ip "^2.0.0"
+    is-ip "^3.1.0"
     varint "^5.0.0"
 
 mv@~2:

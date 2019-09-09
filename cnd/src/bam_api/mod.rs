@@ -1,5 +1,4 @@
 use crate::{
-    bam_api::serde::Serde,
     bam_ext::{FromBamHeader, ToBamHeader},
     swap_protocols::{
         asset::AssetKind,
@@ -9,10 +8,10 @@ use crate::{
     },
 };
 use bam::frame::Header;
+use bitcoin_support::amount::Denomination;
 use ethereum_support::Erc20Token;
+use serde::de::Error;
 use std::fmt;
-
-mod serde;
 
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
     ::serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
@@ -65,9 +64,12 @@ impl FromBamHeader for AssetKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
-                let serde_amount: Serde<bitcoin_support::Amount> =
-                    header.take_parameter("quantity")?;
-                AssetKind::Bitcoin(bitcoin_support::Amount::from(serde_amount))
+                let quantity = header.take_parameter::<String>("quantity")?;
+                let amount =
+                    bitcoin_support::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+                        .map_err(|e| serde_json::Error::custom(e.to_string()))?;
+
+                AssetKind::Bitcoin(amount)
             }
             "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
             "erc20" => AssetKind::Erc20(Erc20Token::new(
@@ -82,10 +84,8 @@ impl FromBamHeader for AssetKind {
 impl ToBamHeader for AssetKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            AssetKind::Bitcoin(bitcoin) => {
-                let serde_amount = Serde::from(*bitcoin);
-                Header::with_str_value("bitcoin").with_parameter("quantity", serde_amount)?
-            }
+            AssetKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin")
+                .with_parameter("quantity", format!("{}", bitcoin.as_sat()))?,
             AssetKind::Ether(ether) => {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
             }
