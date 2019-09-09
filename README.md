@@ -44,9 +44,9 @@ See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 5. startup btsieve: `target/debug/btsieve`
 6. startup cnd: `target/debug/cnd`
 
-If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` as a default).
+If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` by default).
 
-Keep in mind that in order to do a swap locally you will need to start two instances of cnd and at least one btsieve. 
+Keep in mind that in order to do a swap locally you will need to start two instances of cnd and at least one instance of btsieve. 
 
 ## Setup testing/dev environment
 
