@@ -19,7 +19,7 @@ pub use crate::{
     in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
     query_result_repository::*, route_factory::*, routes::*,
 };
-use bitcoin_support::{MinedBlock, Sha256dHash};
+use bitcoin_support::Sha256dHash;
 pub use ethereum_support::web3;
 use ethereum_support::{Block, Transaction, H256};
 use std::{cmp::Ordering, sync::Arc};
@@ -67,7 +67,7 @@ impl Default for Ethereum {
     }
 }
 
-pub struct Bitcoin(BlockchainDag<MinedBlock, (Sha256dHash, Sha256dHash)>);
+pub struct Bitcoin(BlockchainDag<bitcoin_support::Block, (Sha256dHash, Sha256dHash)>);
 pub struct Ethereum(BlockchainDag<Block<Transaction>, (H256, H256)>);
 
 pub trait Blockchain<T> {

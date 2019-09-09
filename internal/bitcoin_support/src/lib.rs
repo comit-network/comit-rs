@@ -1,7 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-pub use crate::{blocks::*, mined_block::*, network::*, pubkey::*, transaction::*};
+pub use crate::{blocks::*, network::*, pubkey::*, transaction::*};
 pub use bitcoin::{
     blockdata::{
         block::{Block, BlockHeader},
@@ -26,7 +26,6 @@ pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 
 mod blocks;
-mod mined_block;
 mod network;
 mod pubkey;
 mod transaction;

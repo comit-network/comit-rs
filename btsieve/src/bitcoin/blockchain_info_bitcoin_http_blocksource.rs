@@ -1,5 +1,5 @@
 use crate::blocksource::{self, BlockSource};
-use bitcoin_support::{deserialize, MinedBlock, Network};
+use bitcoin_support::{deserialize, Block, Network};
 use futures::{Future, Stream};
 use reqwest::r#async::Client;
 use serde::Deserialize;
@@ -9,7 +9,6 @@ use tokio::timer::Interval;
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
     hash: String,
-    height: u32,
 }
 
 #[derive(Debug)]
@@ -46,13 +45,11 @@ impl BlockchainInfoHttpBlockSource {
         })
     }
 
-    fn latest_block(&self) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
+    fn latest_block(&self) -> impl Future<Item = Block, Error = Error> + Send + 'static {
         let cloned_self = self.clone();
 
         self.latest_block_without_tx()
-            .and_then(move |latest_block| {
-                cloned_self.raw_hex_block(latest_block.hash, latest_block.height)
-            })
+            .and_then(move |latest_block| cloned_self.raw_hex_block(latest_block.hash))
     }
 
     fn latest_block_without_tx(
@@ -74,8 +71,7 @@ impl BlockchainInfoHttpBlockSource {
     fn raw_hex_block(
         &self,
         block_hash: String,
-        block_height: u32,
-    ) -> impl Future<Item = MinedBlock, Error = Error> + Send + 'static {
+    ) -> impl Future<Item = Block, Error = Error> + Send + 'static {
         let raw_block_by_hash_url =
             format!("https://blockchain.info/rawblock/{}?format=hex", block_hash);
 
@@ -96,13 +92,13 @@ impl BlockchainInfoHttpBlockSource {
             })
             .map(move |block| {
                 log::trace!("Got {:?}", block);
-                MinedBlock::new(block, block_height)
+                block
             })
     }
 }
 
 impl BlockSource for BlockchainInfoHttpBlockSource {
-    type Block = MinedBlock;
+    type Block = Block;
     type Error = Error;
 
     fn blocks(
