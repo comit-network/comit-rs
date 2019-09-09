@@ -51,27 +51,11 @@ impl FromHttpAsset for BitcoinAmount {
         let name = String::from("bitcoin");
         asset.is_asset(name.as_ref())?;
 
-        asset.parameter_custom_deser("quantity", |value| {
-            let string = String::deserialize(value)?;
-            Ok(BitcoinAmount::from_str_in(string.as_str(), Denomination::Satoshi).unwrap())
-        })
+        let quantity = asset.parameter::<String>("quantity")?;
+
+        BitcoinAmount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+            .map_err(|_| asset::Error::Parsing)
     }
-}
-
-// This function's signature needs to match serde::serialize_with's expectations
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn serialize_amount_to_json_string<S: Serializer>(
-    value: &BitcoinAmount,
-    s: S,
-) -> Result<S::Ok, S::Error> {
-    String::serialize(&value.as_sat().to_string(), s)
-}
-
-#[derive(Serialize)]
-struct HttpBitcoinAmount {
-    name: String,
-    #[serde(serialize_with = "serialize_amount_to_json_string")]
-    quantity: BitcoinAmount,
 }
 
 impl Serialize for Http<BitcoinAmount> {
@@ -79,11 +63,10 @@ impl Serialize for Http<BitcoinAmount> {
     where
         S: Serializer,
     {
-        let value = HttpBitcoinAmount {
-            name: String::from("bitcoin"),
-            quantity: self.0,
-        };
-        value.serialize(serializer)
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "bitcoin")?;
+        state.serialize_field("quantity", &self.0.as_sat().to_string())?;
+        state.end()
     }
 }
 
