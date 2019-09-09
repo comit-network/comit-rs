@@ -5,18 +5,18 @@ pub mod queries;
 
 pub use self::{block_processor::check_transaction_queries, queries::TransactionQuery};
 use crate::{Bitcoin, Blockchain};
-use bitcoin_support::MinedBlock;
+use bitcoin_support::Block;
 
-impl Blockchain<MinedBlock> for Bitcoin {
-    fn add_block(&mut self, block: MinedBlock) {
+impl Blockchain<Block> for Bitcoin {
+    fn add_block(&mut self, block: Block) {
         if self.0.nodes.contains(&block) {
             return log::warn!("Block already known {:?} ", block);
         }
         match self.find_predecessor(&block) {
             Some(_prev) => {
                 self.0.vertices.push((
-                    block.clone().block.header.prev_blockhash,
-                    block.clone().block.header.merkle_root,
+                    block.clone().header.prev_blockhash,
+                    block.clone().header.merkle_root,
                 ));
             }
             None => {
@@ -30,13 +30,11 @@ impl Blockchain<MinedBlock> for Bitcoin {
         self.0.nodes.len()
     }
 
-    fn find_predecessor(&self, block: &MinedBlock) -> Option<&MinedBlock> {
-        self.0.nodes.iter().find(|b| {
-            b.block
-                .header
-                .merkle_root
-                .eq(&block.block.header.prev_blockhash)
-        })
+    fn find_predecessor(&self, block: &Block) -> Option<&Block> {
+        self.0
+            .nodes
+            .iter()
+            .find(|b| b.header.merkle_root.eq(&block.header.prev_blockhash))
     }
 }
 
@@ -46,11 +44,7 @@ mod test {
     use bitcoin_support::{Block, BlockHeader, FromHex, Sha256dHash};
     use spectral::{option::OptionAssertions, *};
 
-    fn new_mined_block(
-        prev_blockhash: Sha256dHash,
-        merkle_root: Sha256dHash,
-        height: u32,
-    ) -> MinedBlock {
+    fn new_block(prev_blockhash: Sha256dHash, merkle_root: Sha256dHash) -> Block {
         let block_header = BlockHeader {
             version: 1,
             prev_blockhash,
@@ -59,20 +53,17 @@ mod test {
             bits: 1,
             nonce: 0,
         };
-        MinedBlock::new(
-            Block {
-                header: block_header,
-                txdata: vec![],
-            },
-            height,
-        )
+        Block {
+            header: block_header,
+            txdata: vec![],
+        }
     }
 
     #[test]
     fn add_block() {
         let mut bitcoin_chain = Bitcoin::default();
 
-        let block = new_mined_block(
+        let block = new_block(
             Sha256dHash::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -81,7 +72,6 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap(),
-            1,
         );
 
         assert_that(&bitcoin_chain.size()).is_equal_to(&0);
@@ -93,7 +83,7 @@ mod test {
     fn add_block_twice_should_ignore_once() {
         let mut bitcoin_chain = Bitcoin::default();
 
-        let block = new_mined_block(
+        let block = new_block(
             Sha256dHash::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -102,9 +92,8 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap(),
-            1,
         );
-        let block2 = new_mined_block(
+        let block2 = new_block(
             Sha256dHash::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -113,7 +102,6 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap(),
-            1,
         );
 
         assert_that(&bitcoin_chain.size()).is_equal_to(&0);
@@ -127,7 +115,7 @@ mod test {
     fn add_block_and_find_predecessor() {
         let mut bitcoin_chain = Bitcoin::default();
 
-        let block1 = new_mined_block(
+        let block1 = new_block(
             Sha256dHash::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000001",
             )
@@ -136,10 +124,9 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
             .unwrap(),
-            1,
         );
 
-        let block2 = new_mined_block(
+        let block2 = new_block(
             Sha256dHash::from_hex(
                 "0000000000000000000000000000000000000000000000000000000000000002",
             )
@@ -148,7 +135,6 @@ mod test {
                 "0000000000000000000000000000000000000000000000000000000000000003",
             )
             .unwrap(),
-            1,
         );
 
         assert_that(&bitcoin_chain.size()).is_equal_to(&0);

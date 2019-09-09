@@ -1,5 +1,5 @@
 use crate::{bitcoin::queries::TransactionQuery, ArcQueryRepository, QueryMatch};
-use bitcoin_support::MinedBlock as Block;
+use bitcoin_support::Block;
 use itertools::Itertools;
 
 pub fn check_transaction_queries(
@@ -7,7 +7,6 @@ pub fn check_transaction_queries(
     block: Block,
 ) -> impl Iterator<Item = QueryMatch> {
     block
-        .as_ref()
         .txdata
         .as_slice()
         .iter()
