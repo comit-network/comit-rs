@@ -7,7 +7,6 @@ version = "0.1.0"
 [dependencies]
 
 bitcoin_support = { path = "../internal/bitcoin_support" }
-bitcoincore-rpc = "0.8.0-rc1"
 byteorder = "1.3"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
@@ -34,7 +33,6 @@ structopt = "0.3"
 tokio = "0.1"
 url = { version = "2.1", features = ["serde"] }
 warp = { version = "0.1", default-features = false }
-zmq-rs = "0.1"
 
 [dev-dependencies]
 env_logger = "0.6"

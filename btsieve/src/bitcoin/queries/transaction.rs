@@ -1,13 +1,13 @@
 use crate::{
-    bitcoin::queries::{to_sha256d_hash, PayloadKind},
+    bitcoin::{bitcoind_http_blocksource::BitcoindHttpBlockSource, queries::PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
 use bitcoin_support::{
-    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction, TransactionId,
+    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction,
 };
-use bitcoincore_rpc::RpcApi;
 use derivative::Derivative;
+use futures::future::Future;
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
@@ -33,20 +33,20 @@ pub enum ReturnAs {
 }
 
 impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = bitcoincore_rpc::Client;
+    type Client = BitcoindHttpBlockSource;
     type Item = PayloadKind;
 
     fn to_http_payload(
         &self,
         return_as: &ReturnAs,
-        client: &bitcoincore_rpc::Client,
+        client: &BitcoindHttpBlockSource,
     ) -> Result<Vec<Self::Item>, Error> {
         // Close over some local variables for easier usage of the method
-        let to_payload = |id: TransactionId| to_payload(client, return_as, id);
+        let to_payload = |id: String| to_payload(client, return_as, id);
 
         self.0
-            .iter()
-            .filter_map(to_sha256d_hash)
+            .clone()
+            .into_iter()
             .map(to_payload)
             // .collect for Vec<Result<PayloadKind, Error>> transforms it into
             // Result<Vec<PayloadKind>, Error> returning the first Error or the whole
@@ -59,22 +59,17 @@ impl ToHttpPayload<ReturnAs> for QueryResult {
 }
 
 fn to_payload(
-    client: &bitcoincore_rpc::Client,
+    client: &BitcoindHttpBlockSource,
     return_as: &ReturnAs,
-    id: TransactionId,
+    id: String,
 ) -> Result<PayloadKind, Error> {
     match return_as {
         ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
-        ReturnAs::Transaction => {
-            match client
-                .get_raw_transaction_verbose(&id, None)
-                .map(|result| result.transaction())
-            {
-                Ok(Ok(transaction)) => Ok(PayloadKind::Transaction { transaction }),
-                Ok(Err(e)) => Err(Error::BitcoinRpc(e.into())),
-                Err(e) => Err(Error::BitcoinRpc(e)),
-            }
-        }
+        ReturnAs::Transaction => client
+            .transaction_by_hash(id)
+            .map(|transaction| PayloadKind::Transaction { transaction })
+            .map_err(Error::BitcoindHttp)
+            .wait(),
     }
 }
 

@@ -29,10 +29,7 @@ See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 ## Setup build environment
 
 1. Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
-2. Install libzmq:
-   - Ubuntu/Debian: `apt install libzmq3-dev`
-   - Mac ([Homebrew](https://brew.sh/)) `brew install zeromq`
-3. Install OpenSSL:
+2. Install OpenSSL:
    - Ubuntu/Debian: `apt install libssl-dev pkg-config`
 
 ## Build & Run

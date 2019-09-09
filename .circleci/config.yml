@@ -133,7 +133,7 @@ commands:
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
             echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
             sudo apt-get update
-            sudo apt-get install -y nodejs=10.* yarn libzmq3-dev
+            sudo apt-get install -y nodejs=10.* yarn
   install_rust:
     steps:
       - run:

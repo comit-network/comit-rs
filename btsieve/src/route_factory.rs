@@ -1,4 +1,5 @@
 use crate::{
+    bitcoin::bitcoind_http_blocksource,
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
     routes::{self, HttpApiProblemStdError},
@@ -15,7 +16,7 @@ pub const MAX_QUERY_ID_LENGTH: usize = 100;
 
 #[derive(Debug)]
 pub enum Error {
-    BitcoinRpc(bitcoincore_rpc::Error),
+    BitcoindHttp(bitcoind_http_blocksource::Error),
     Web3(web3::Error),
     MissingTransaction(H256),
 }
