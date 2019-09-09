@@ -54,8 +54,20 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
+          name: "Compile openssl static libs"
+          command: |
+            cd ~/ && curl -O https://www.openssl.org/source/openssl-1.1.1c.tar.gz
+            # TODO: checksum, see https://www.openssl.org/source/openssl-fips-ecp-2.0.16.tar.gz.sha256
+            tar xavf openssl-1.1.1c.tar.gz
+            mkdir ~/openssl
+            cd openssl-1.1.1c && ./config --prefix ~/openssl -static
+            make
+            make install
+      - run:
           name: Release build and test using cargo make
           command: |
+            export OPENSSL_DIR=~/openssl/
+            export OPENSSL_STATIC=1
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
             export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
