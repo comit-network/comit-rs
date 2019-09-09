@@ -27,7 +27,7 @@ macro_rules! with_swap_types {
             ledger::{Bitcoin, Ethereum},
             metadata_store::{AssetKind, LedgerKind, Metadata},
         };
-        use bitcoin_support::BitcoinQuantity;
+        use bitcoin_support::Amount;
         use ethereum_support::{Erc20Token, EtherQuantity};
         let metadata = $metadata;
 
@@ -45,7 +45,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Ethereum;
                 #[allow(dead_code)]
-                type AA = BitcoinQuantity;
+                type AA = Amount;
                 #[allow(dead_code)]
                 type BA = EtherQuantity;
                 #[allow(dead_code)]
@@ -66,7 +66,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Ethereum;
                 #[allow(dead_code)]
-                type AA = BitcoinQuantity;
+                type AA = Amount;
                 #[allow(dead_code)]
                 type BA = Erc20Token;
                 #[allow(dead_code)]
@@ -89,7 +89,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = EtherQuantity;
                 #[allow(dead_code)]
-                type BA = BitcoinQuantity;
+                type BA = Amount;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 
@@ -110,7 +110,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = Erc20Token;
                 #[allow(dead_code)]
-                type BA = BitcoinQuantity;
+                type BA = Amount;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 
