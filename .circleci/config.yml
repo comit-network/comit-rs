@@ -58,7 +58,6 @@ jobs:
           command: |
             set -v
             cd ~/ && curl -O https://www.openssl.org/source/openssl-1.1.1c.tar.gz
-            # TODO: checksum, see https://www.openssl.org/source/openssl-fips-ecp-2.0.16.tar.gz.sha256
             tar xaf openssl-1.1.1c.tar.gz
             mkdir ~/openssl
             cd openssl-1.1.1c && ./config --prefix=$HOME/openssl -static
