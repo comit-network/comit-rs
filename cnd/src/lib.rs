@@ -20,3 +20,13 @@ pub mod network;
 pub mod seed;
 pub mod std_ext;
 pub mod swap_protocols;
+
+use directories::ProjectDirs;
+use std::path::PathBuf;
+
+// Linux: /home/<user>/.config/comit/
+// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
+// OSX: /Users/<user>/Library/Preferences/comit/
+fn config_dir() -> Option<PathBuf> {
+    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+}

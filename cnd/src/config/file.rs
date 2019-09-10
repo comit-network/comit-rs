@@ -1,6 +1,5 @@
 use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config as config_rs;
-use directories::ProjectDirs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
@@ -141,7 +140,7 @@ impl File {
     }
 
     fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
-        config_dir()
+        crate::config_dir()
             .map(|dir| Path::join(&dir, "cnd.toml"))
             .ok_or_else(|| {
                 config_rs::ConfigError::Message(
@@ -195,13 +194,6 @@ impl File {
             ))
         })
     }
-}
-
-// Linux: /home/<user>/.config/comit/
-// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
-// OSX: /Users/<user>/Library/Preferences/comit/
-fn config_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 #[cfg(test)]
