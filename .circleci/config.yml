@@ -7,7 +7,7 @@ workflows:
       - release-build-test:
           filters: # runs for "release/" branches and all tags.
             branches:
-              only: /^release\/.*$/
+              only: /^release.*$/
             tags:
               only: /.*/
       - publish-github-release:
