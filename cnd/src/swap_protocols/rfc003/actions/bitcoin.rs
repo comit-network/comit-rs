@@ -8,14 +8,14 @@ use crate::swap_protocols::{
         Secret,
     },
 };
-use bitcoin_support::{BitcoinQuantity, OutPoint, Transaction};
+use bitcoin_support::{Amount, OutPoint, Transaction};
 use bitcoin_witness::PrimedInput;
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
-impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+impl FundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     type FundActionOutput = SendToAddress;
 
-    fn fund_action(htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>) -> Self::FundActionOutput {
+    fn fund_action(htlc_params: HtlcParams<Bitcoin, Amount>) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
         SendToAddress {
@@ -26,11 +26,11 @@ impl FundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     }
 }
 
-impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
         fund_transaction: &Transaction,
@@ -40,9 +40,7 @@ impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
         SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
-                BitcoinQuantity::from_satoshi(
-                    fund_transaction.output[htlc_location.vout as usize].value,
-                ),
+                Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
                 htlc.unlock_after_timeout(secret_source.secp256k1_refund().secret_key()),
             ),
             network: htlc_params.ledger.network,
@@ -50,11 +48,11 @@ impl RefundAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
     }
 }
 
-impl RedeemAction<Bitcoin, BitcoinQuantity> for (Bitcoin, BitcoinQuantity) {
+impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<Bitcoin, BitcoinQuantity>,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_location: OutPoint,
         secret_source: &dyn SecretSource,
         secret: Secret,

@@ -34,7 +34,7 @@ pub enum ActionExecutionParameters {
 pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin_support::Address,
-        amount: bitcoin_support::BitcoinQuantity,
+        amount: String,
         network: bitcoin_support::Network,
     },
     BitcoinBroadcastSignedTransaction {
@@ -96,22 +96,26 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
         query_params: ActionExecutionParameters,
     ) -> Result<ActionResponseBody, HttpApiProblem> {
         match query_params {
-            ActionExecutionParameters::None {} => {
-                let bitcoin::SendToAddress {
-                    to,
-                    amount,
-                    network,
-                } = self;
-                Ok(ActionResponseBody::BitcoinSendAmountToAddress {
-                    to,
-                    amount,
-                    network,
-                })
-            }
+            ActionExecutionParameters::None {} => Ok(self.into()),
             _ => Err(problem::unexpected_query_parameters(
                 "bitcoin::SendToAddress",
                 vec!["address".into(), "fee_per_wu".into()],
             )),
+        }
+    }
+}
+
+impl From<bitcoin::SendToAddress> for ActionResponseBody {
+    fn from(action: bitcoin::SendToAddress) -> Self {
+        let bitcoin::SendToAddress {
+            to,
+            amount,
+            network,
+        } = action;
+        ActionResponseBody::BitcoinSendAmountToAddress {
+            to,
+            amount: format!("{}", amount.as_sat()),
+            network,
         }
     }
 }
@@ -132,7 +136,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 address,
                 fee_per_wu,
             } => {
-                let fee_per_wu = fee_per_wu.parse::<u64>().map_err(|_| {
+                let fee_per_wu = fee_per_wu.parse::<usize>().map_err(|_| {
                     HttpApiProblem::new("Invalid query parameter.")
                         .set_status(StatusCode::BAD_REQUEST)
                         .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
@@ -298,7 +302,8 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ethereum_support::*;
+    use bitcoin_support::{Address as BitcoinAddress, Network as BitcoinNetwork};
+    use ethereum_support::{Address as EthereumAddress, Network as EthereumNetwork, U256};
     use std::str::FromStr;
 
     #[test]
@@ -325,18 +330,33 @@ mod test {
 
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
-        let addr = Address::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let addr = EthereumAddress::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
         let contract = ActionResponseBody::EthereumCallContract {
             contract_address: addr,
             data: None,
             gas_limit: U256::from(1),
-            network: Network::Ropsten,
+            network: EthereumNetwork::Ropsten,
             min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(
             serialized,
             r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}}"#
+        );
+    }
+
+    #[test]
+    fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
+        let response_body = ActionResponseBody::from(bitcoin::SendToAddress {
+            to: BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap(),
+            amount: bitcoin_support::Amount::from_btc(1.0).unwrap(),
+            network: BitcoinNetwork::Regtest,
+        });
+
+        let serialized = serde_json::to_string(&response_body).unwrap();
+        assert_eq!(
+            serialized,
+            r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"regtest"}}"#
         );
     }
 }

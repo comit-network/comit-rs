@@ -1,5 +1,5 @@
-use bitcoin_hashes::hash160;
 use byteorder::{BigEndian, ByteOrder, LittleEndian};
+use rust_bitcoin::hashes::hash160;
 use web3::types::{Address, U256};
 
 pub trait FitIntoPlaceholderSlice {

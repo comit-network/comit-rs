@@ -10,20 +10,20 @@ This is a reference implementation for the COMIT protocol.
 
 ## Structure
 
-The repository contains few main folders: `cnd`, `btsieve`, `blockchain_contracts` and `internal`.
+The repository contains several main folders: `cnd`, `btsieve`, `blockchain_contracts` and `internal`.
 
 ### Root crates
 
 Crates at the root of the repository hold primary binaries and libraries:
 - `cnd`: the COMIT Node Daemon binary.
-- `btsieve`: the binary that _sieve_ Blockchain Transactions and blocks from the network.
+- `btsieve`: the binary that sifts through Blockchain Transactions and blocks from the network.
 - `blockchain_contracts`: the library that contains the HTLCs, to be migrated to its own repo once some dependencies are sorted.
 
 ### Internal
 
 Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
 Crates defined in here MUST NOT depend on any root crate.
-They need to be cleaned-up/sorted out to either be removed, contributed back to a popular library or extracted in their own repository.
+They need to be cleaned-up/sorted out to either be removed, contributed back to a popular library or extracted into their own repository.
 See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 
 ## Setup build environment
@@ -44,9 +44,9 @@ See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 5. startup btsieve: `target/debug/btsieve`
 6. startup cnd: `target/debug/cnd`
 
-If the `[web_gui]` section is specified in the configuration the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd started up (served at `localhost:8080` as default).
+If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` by default).
 
-In order to do a swap you will have to start two comit nodes (cnd & btsieve). 
+Keep in mind that in order to do a swap locally you will need to start two instances of cnd and at least one instance of btsieve. 
 
 ## Setup testing/dev environment
 

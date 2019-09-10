@@ -166,7 +166,7 @@ fn create_bitcoin_routes(
         let transaction_query_result_repository = Arc::clone(&transaction_query_result_repository);
 
         let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
-            .expect("Should return a Bitcoind received for MinedBlocks");
+            .expect("Should return a Bitcoind received for Blocks");
 
         let bitcoin_processor = blocks.for_each(move |block| {
             bitcoin_chain.add_block(block.clone());

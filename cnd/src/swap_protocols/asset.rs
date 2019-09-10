@@ -1,5 +1,5 @@
 use crate::http_api::asset::FromHttpAsset;
-use bitcoin_support::BitcoinQuantity;
+use bitcoin_support::Amount;
 use derivative::Derivative;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use std::{
@@ -31,8 +31,8 @@ pub enum Compare {
     Equal,
 }
 
-impl Asset for BitcoinQuantity {
-    fn compare_to(&self, other: &BitcoinQuantity) -> Compare {
+impl Asset for Amount {
+    fn compare_to(&self, other: &Amount) -> Compare {
         if self < other {
             Compare::LesserThan
         } else if self > other {
@@ -67,18 +67,18 @@ impl Asset for Erc20Token {
     }
 }
 
-#[derive(Clone, Derivative)]
+#[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum AssetKind {
-    Bitcoin(BitcoinQuantity),
+    Bitcoin(Amount),
     Ether(EtherQuantity),
     Erc20(Erc20Token),
     Unknown(String),
 }
 
-impl From<BitcoinQuantity> for AssetKind {
-    fn from(quantity: BitcoinQuantity) -> Self {
-        AssetKind::Bitcoin(quantity)
+impl From<Amount> for AssetKind {
+    fn from(amount: Amount) -> Self {
+        AssetKind::Bitcoin(amount)
     }
 }
 
@@ -102,8 +102,8 @@ mod test {
 
     #[test]
     fn test_bitcoin_quantity_compare_to() {
-        let quantity_1_btc = BitcoinQuantity::from_bitcoin(1.0);
-        let quantity_10_btc = BitcoinQuantity::from_bitcoin(10.0);
+        let quantity_1_btc = Amount::from_btc(1.0).unwrap();
+        let quantity_10_btc = Amount::from_btc(10.0).unwrap();
 
         assert_that(&quantity_1_btc.compare_to(&quantity_10_btc)).is_equal_to(Compare::LesserThan);
         assert_that(&quantity_1_btc.compare_to(&quantity_1_btc)).is_equal_to(Compare::Equal);

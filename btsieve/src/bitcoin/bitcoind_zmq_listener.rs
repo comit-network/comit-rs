@@ -1,10 +1,9 @@
-use bitcoin_support::{deserialize, MinedBlock};
-use byteorder::{LittleEndian, ReadBytesExt};
+use bitcoin_support::{deserialize, Block};
 use futures::sync::mpsc::{self, UnboundedReceiver};
-use std::{io::Cursor, thread};
+use std::thread;
 use zmq_rs::{self as zmq, Context, Socket};
 
-pub fn bitcoin_block_listener(endpoint: &str) -> Result<UnboundedReceiver<MinedBlock>, zmq::Error> {
+pub fn bitcoin_block_listener(endpoint: &str) -> Result<UnboundedReceiver<Block>, zmq::Error> {
     let context = Context::new()?;
     let mut socket = context.socket(zmq::SUB)?;
 
@@ -33,32 +32,20 @@ pub fn bitcoin_block_listener(endpoint: &str) -> Result<UnboundedReceiver<MinedB
     Ok(state_receiver)
 }
 
-fn receive_block(socket: &mut Socket) -> Result<Option<MinedBlock>, zmq::Error> {
+fn receive_block(socket: &mut Socket) -> Result<Option<Block>, zmq::Error> {
     let bytes = socket.recv_bytes(zmq::SNDMORE)?;
     let bytes: &[u8] = bytes.as_ref();
 
     match bytes {
         b"rawblock" => {
             let bytes = socket.recv_bytes(zmq::SNDMORE)?;
-            let block_height = socket.recv_bytes(zmq::SNDMORE)?;
 
-            let mut block_height = Cursor::new(block_height);
-            let block_height = block_height.read_u32::<LittleEndian>();
-
-            match (deserialize(bytes.as_ref()), block_height) {
-                (Ok(block), Ok(height)) => {
+            match deserialize(bytes.as_ref()) {
+                Ok(block) => {
                     log::trace!("Got {:?}", block);
-                    Ok(Some(MinedBlock::new(block, height)))
+                    Ok(Some(block))
                 }
-                (Ok(_), Err(e)) => {
-                    log::error!(
-                        "Got new block but failed to extract the height because {:?}",
-                        e
-                    );
-                    Ok(None)
-                }
-
-                (Err(e), _) => {
+                Err(e) => {
                     log::error!("Got new block but failed to deserialize it because {:?}", e);
                     Ok(None)
                 }

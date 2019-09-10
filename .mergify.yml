@@ -1,11 +1,12 @@
 pull_request_rules:
   - name: merge on CI success and 2 approvals
     conditions:
-      - "status-success=ci/circleci: build"
+      - "status-success=ci/circleci: debug-build-test"
       - "#approved-reviews-by>=2"
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
+      - head~=^(?!release.*).*$
       - "#changes-requested-reviews-by=0"
     actions:
       merge:
@@ -15,7 +16,7 @@ pull_request_rules:
       delete_head_branch:
   - name: merge green dependabot PRs
     conditions:
-      - "status-success=ci/circleci: build"
+      - "status-success=ci/circleci: debug-build-test"
       - "author:dependabot-preview[bot]"
     actions:
       merge:

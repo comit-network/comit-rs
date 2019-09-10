@@ -8,11 +8,13 @@ use crate::{
     },
 };
 use bam::frame::Header;
+use bitcoin_support::amount::Denomination;
 use ethereum_support::Erc20Token;
+use serde::de::Error;
 use std::fmt;
 
 fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
-    serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
+    ::serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }
 
 impl FromBamHeader for LedgerKind {
@@ -61,7 +63,14 @@ impl ToBamHeader for SwapProtocol {
 impl FromBamHeader for AssetKind {
     fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "bitcoin" => AssetKind::Bitcoin(header.take_parameter("quantity")?),
+            "bitcoin" => {
+                let quantity = header.take_parameter::<String>("quantity")?;
+                let amount =
+                    bitcoin_support::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+                        .map_err(|e| serde_json::Error::custom(e.to_string()))?;
+
+                AssetKind::Bitcoin(amount)
+            }
             "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
             "erc20" => AssetKind::Erc20(Erc20Token::new(
                 header.take_parameter("address")?,
@@ -75,9 +84,8 @@ impl FromBamHeader for AssetKind {
 impl ToBamHeader for AssetKind {
     fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            AssetKind::Bitcoin(bitcoin) => {
-                Header::with_str_value("bitcoin").with_parameter("quantity", bitcoin)?
-            }
+            AssetKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin")
+                .with_parameter("quantity", format!("{}", bitcoin.as_sat()))?,
             AssetKind::Ether(ether) => {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
             }
@@ -103,21 +111,20 @@ impl FromBamHeader for Decision {
         Ok(match header.value::<String>()?.as_str() {
             "accepted" => Decision::Accepted,
             "declined" => Decision::Declined,
-            _ => return Err(serde::de::Error::custom("failed to deserialize decision")),
+            _ => return Err(::serde::de::Error::custom("failed to deserialize decision")),
         })
     }
 }
 
 #[cfg(test)]
 mod tests {
-
-    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
-
     use crate::{
-        bam_ext::ToBamHeader,
+        bam_ext::{FromBamHeader, ToBamHeader},
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
     use bam::frame::Header;
+    use bitcoin_support::Amount;
+    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
     use spectral::prelude::*;
 
     #[test]
@@ -165,5 +172,29 @@ mod tests {
         let protocol = protocol.to_bam_header().unwrap();
 
         assert_eq!(header, protocol);
+    }
+
+    #[test]
+    fn bitcoin_quantity_to_bam_header() {
+        let quantity = Amount::from_btc(1.0).unwrap();
+        let header = AssetKind::from(quantity).to_bam_header().unwrap();
+
+        assert_eq!(
+            header,
+            Header::with_str_value("bitcoin")
+                .with_parameter("quantity", "100000000")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn bitcoin_quantity_from_bam_header() {
+        let header = Header::with_str_value("bitcoin")
+            .with_parameter("quantity", "100000000")
+            .unwrap();
+
+        let quantity = AssetKind::from_bam_header(header).unwrap();
+        let amount = Amount::from_btc(1.0).unwrap();
+        assert_eq!(quantity, AssetKind::Bitcoin(amount));
     }
 }
