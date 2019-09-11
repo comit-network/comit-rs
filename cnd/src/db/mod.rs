@@ -98,16 +98,13 @@ impl MetadataStore for SqliteMetadataStore {
         use self::schema::metadatas::dsl::*;
 
         let conn = establish_connection(&self.db)?;
-        let records = metadatas
+
+        metadatas
             .load::<Metadata>(&conn)
-            .map_err(|err| Error::Load(err.to_string()))?;
-
-        let v: Result<Vec<_>, _> = records
+            .map_err(|err| Error::Load(err.to_string()))?
             .iter()
-            .map(move |m| metadata_store::Metadata::try_from(m.clone()))
-            .collect();
-
-        v
+            .map(|m| metadata_store::Metadata::try_from(m.clone()))
+            .collect()
     }
 }
 
