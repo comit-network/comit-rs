@@ -13,6 +13,6 @@ doctest = false
 rust-embed = "5.1"
 
 [build-dependencies]
-reqwest = "0.9"
+reqwest = { version = "0.9", default-features = false, features = ["default-tls-vendored"] }
 tempfile = "3"
 unzip = "0.1"
