@@ -45,7 +45,12 @@ pub struct EventMatcher {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, Hash, PartialEq)]
 pub struct Topic(pub H256);
 
-impl Query for EthereumQuery {}
+impl Query for EthereumQuery {
+    /// Returns a deterministic identifier for this query.
+    fn query_id(&self) -> String {
+        String::from("TODO")
+    }
+}
 
 pub trait QueryEthereum {
     fn create(

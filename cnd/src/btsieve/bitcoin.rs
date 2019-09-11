@@ -5,6 +5,7 @@ use crate::{
 use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
 use futures::Future;
 use serde::Serialize;
+use uuid::Builder;
 
 #[derive(Debug, Clone, Serialize, Eq, Hash, PartialEq)]
 #[serde(untagged)]
@@ -42,7 +43,41 @@ impl BitcoinQuery {
     }
 }
 
-impl Query for BitcoinQuery {}
+// to_address: Option<bitcoin_support::Address>,
+// from_outpoint: Option<bitcoin_support::OutPoint>,
+// unlock_script: Option<Vec<Vec<u8>>>,
+
+impl Query for BitcoinQuery {
+    /// Returns a deterministic identifier for this query.
+    fn query_id(&self) -> String {
+        let msg = match self {
+            Self::Transaction {
+                to_address: Some(to_address),
+                from_outpoint: None,
+                unlock_script: None,
+            } => format!("{}", to_address),
+            Self::Transaction {
+                to_address: None,
+                from_outpoint: Some(from_outpoint),
+                unlock_script: None,
+            } => format!("{}", from_outpoint),
+            Self::Transaction {
+                to_address: None,
+                from_outpoint: None,
+                unlock_script: Some(unlock_script),
+            } => {
+                let v: Vec<u8> = unlock_script.iter().flatten().cloned().collect();
+                std::str::from_utf8(&v[..]).unwrap().to_string()
+            }
+            _ => String::from("Can we get here?"),
+        };
+
+        let builder = Builder::from_slice(&msg.as_bytes());
+        builder
+            .map(|mut builder| builder.build().to_hyphenated().to_string())
+            .unwrap()
+    }
+}
 
 pub trait QueryBitcoin {
     fn create(

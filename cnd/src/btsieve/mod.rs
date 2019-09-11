@@ -41,4 +41,6 @@ pub enum Error {
     Internal,
 }
 
-pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {}
+pub trait Query: Sized + Clone + Debug + Send + Sync + Eq + Hash + Serialize + 'static {
+    fn query_id(&self) -> String;
+}

@@ -93,12 +93,13 @@ impl BtsieveHttpClient {
         create_endpoint: Url,
         query: Q,
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
-        log::debug!("Creating {:?} at {}", query, create_endpoint);
+        let create_endpoint = append_id(create_endpoint, query.query_id().as_str());
+        log::debug!("Creating query {:?} at {}", query, create_endpoint);
 
         let endpoint = self.endpoint.clone();
         let query_id = self
             .client
-            .post(create_endpoint)
+            .put(create_endpoint)
             .json(&query)
             .headers(construct_headers())
             .send()
@@ -280,6 +281,26 @@ impl BtsieveHttpClient {
                 }),
         )
     }
+}
+
+// This function exists because Url::join() drops everything after
+// the last slash.
+//
+//  let url = Url::parse("example.com/foo/bar);
+//  let joined = url.join("baz.html");
+//  assert_eq!(joined.as_str(), "example.com/foo/baz.html");
+//
+fn append_id(endpoint: Url, id: &str) -> Url {
+    // FIXME: Append trailing slash correctly.
+    let mut endpoint = String::from(endpoint.as_str());
+    if let Some(char) = endpoint.chars().last() {
+        if char != '/' {
+            endpoint.push('/');
+        }
+    }
+
+    let url = Url::parse(endpoint.as_str()).unwrap();
+    url.join(&id).unwrap()
 }
 
 fn construct_headers() -> HeaderMap {
@@ -464,6 +485,7 @@ mod bitcoin {
 mod test {
     use super::*;
     use bitcoin_support::TransactionId;
+    use reqwest::Url;
 
     #[test]
     fn json_deserialize() {
@@ -471,5 +493,12 @@ mod test {
             r#"{"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
 
         let _: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
+    }
+
+    #[test]
+    fn does_not_drop_stuff_after_last_slash() {
+        let url = Url::parse("http://example.com/foo/bar").unwrap();
+        let joined = append_id(url, "baz".to_string());
+        assert_eq!(joined.as_str(), "http://example.com/foo/bar/baz");
     }
 }
