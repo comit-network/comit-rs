@@ -65,7 +65,15 @@ impl MetadataStore for SqliteMetadataStore {
         diesel::insert_into(metadatas::table)
             .values(new)
             .execute(&conn)
-            .map(|_| ()) // Drops the '1' for successful row insert.
+            .map(|res| {
+                // MetadataStore trait does not return any indication whether the
+                // insert was succesful or not so just log it and drop the return value.
+                // If/when InMemoryMetadataStore goes away we can probably change the trait.
+                if res == 1 {
+                    log::trace!("Row inserted (swap id: {})", md.swap_id);
+                }
+                ()
+            })
             .map_err(|err| Error::Insert(err.to_string()))
     }
 
