@@ -72,9 +72,8 @@ impl BitcoindHttpBlockSource {
             .and_then(|mut response| response.text())
             .map_err(Error::Reqwest)
             .and_then(decode_response)
-            .map(move |block| {
-                log::trace!("Got {:?}", block);
-                block
+            .inspect(|block| {
+                log::trace!("Fetched block: {:?}", block);
             })
     }
 
@@ -91,8 +90,8 @@ impl BitcoindHttpBlockSource {
             .and_then(|mut response| response.text())
             .map_err(Error::Reqwest)
             .and_then(decode_response)
-            .map(move |transaction| {
-                log::debug!("Fetched transaction {:?}", transaction);
+            .inspect(|transaction| {
+                log::debug!("Fetched transaction: {:?}", transaction);
             })
     }
 }
