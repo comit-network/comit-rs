@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Statically link openssl in the release build to allow the binaries to be ran out-of-the-box on most Linux distros 
+- Statically link openssl in the release build to allow the binaries to be ran out-of-the-box on most Linux distros.
 
 
 ## [0.1.0] - 2019-09-05
