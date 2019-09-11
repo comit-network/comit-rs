@@ -44,7 +44,6 @@ impl SqliteMetadataStore {
         let migrations = default_migrations_dir()
             .ok_or_else(|| Error::Path("Failed to get migrations directory".to_string()))?;
 
-        create_migrations_directory_if_needed(&migrations)?;
         run_migrations(&db, &migrations)?;
 
         Ok(SqliteMetadataStore { db })
@@ -126,13 +125,6 @@ fn create_database_if_needed(db: &Path) -> Result<(), Error> {
     if !db.exists() {
         log::info!("Creating database: {}", db.display());
         let _file = File::create(db).map_err(|err| Error::Path(err.to_string()))?;
-    }
-    Ok(())
-}
-
-fn create_migrations_directory_if_needed(dir: &Path) -> Result<(), Error> {
-    if !dir.exists() {
-        let _dir = std::fs::create_dir(dir).map_err(|err| Error::Path(err.to_string()))?;
     }
     Ok(())
 }
