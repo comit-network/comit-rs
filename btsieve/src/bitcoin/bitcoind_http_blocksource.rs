@@ -69,8 +69,8 @@ impl BitcoindHttpBlockSource {
         self.client
             .get(raw_block_by_hash_url.as_str())
             .send()
+            .and_then(|mut response| response.text())
             .map_err(Error::Reqwest)
-            .and_then(|mut response| response.text().map_err(Error::Reqwest))
             .and_then(decode_response)
             .map(move |block| {
                 log::trace!("Got {:?}", block);
@@ -88,8 +88,8 @@ impl BitcoindHttpBlockSource {
         self.client
             .get(raw_transaction_by_hash_url.as_str())
             .send()
+            .and_then(|mut response| response.text())
             .map_err(Error::Reqwest)
-            .and_then(|mut response| response.text().map_err(Error::Reqwest))
             .and_then(decode_response)
             .map(move |transaction| {
                 log::debug!("Fetched transaction {:?}", transaction);
