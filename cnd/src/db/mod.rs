@@ -56,13 +56,11 @@ impl MetadataStore for SqliteMetadataStore {
         &self,
         metadata: M,
     ) -> Result<(), metadata_store::Error> {
-        use schema::metadatas;
-
         let md = Metadata::new(metadata.into());
         let new = NewMetadata::new(&md);
 
         let conn = establish_connection(&self.db)?;
-        diesel::insert_into(metadatas::table)
+        diesel::insert_into(schema::metadatas::table)
             .values(new)
             .execute(&conn)
             .map(|res| {
@@ -78,6 +76,7 @@ impl MetadataStore for SqliteMetadataStore {
     }
 
     fn get(&self, key: SwapId) -> Result<Option<metadata_store::Metadata>, Error> {
+        // Imports aliases so we can refer to the table and table fields.
         use self::schema::metadatas::dsl::*;
 
         let key = key.to_string();
@@ -93,8 +92,7 @@ impl MetadataStore for SqliteMetadataStore {
     }
 
     fn all(&self) -> Result<Vec<metadata_store::Metadata>, Error> {
-        // Imports a bunch of aliases so that we can say metadatas instead of
-        // metadatas::table. It's useful when we're only dealing with a single table.
+        // Imports aliases so we can refer to the table and table fields.
         use self::schema::metadatas::dsl::*;
 
         let conn = establish_connection(&self.db)?;
