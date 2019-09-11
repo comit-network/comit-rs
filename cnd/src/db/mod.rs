@@ -47,9 +47,7 @@ impl SqliteMetadataStore {
         create_migrations_directory_if_needed(&migrations)?;
         run_migrations(&db, &migrations)?;
 
-        Ok(SqliteMetadataStore {
-            db: db.clone().to_path_buf(),
-        })
+        Ok(SqliteMetadataStore { db })
     }
 }
 
