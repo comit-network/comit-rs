@@ -12,7 +12,7 @@ pub mod logging;
 mod query_repository;
 mod query_result_repository;
 pub mod route_factory;
-mod routes;
+pub mod routes;
 pub mod settings;
 
 pub use crate::{
