@@ -82,18 +82,14 @@ impl MetadataStore for SqliteMetadataStore {
 
         let key = key.to_string();
         let conn = establish_connection(&self.db)?;
-        let records = metadatas
+
+        metadatas
             .filter(swap_id.eq(key))
-            .load::<Metadata>(&conn)
-            .map_err(|err| Error::Load(err.to_string()))?;
-
-        if records.len() == 0 {
-            return Ok(None);
-        }
-
-        let metadata = metadata_store::Metadata::try_from(records[0].clone())?;
-
-        Ok(Some(metadata))
+            .first(&conn)
+            .optional()
+            .map_err(|err| Error::Load(err.to_string()))?
+            .map(|m: Metadata| metadata_store::Metadata::try_from(m.clone()))
+            .transpose()
     }
 
     fn all(&self) -> Result<Vec<metadata_store::Metadata>, Error> {
