@@ -15,7 +15,7 @@ pub enum EthereumQuery {
     Transaction {
         from_address: Option<Address>,
         to_address: Option<Address>,
-        is_contract_creation: Option<bool>,
+        is_contract_creation: bool,
         transaction_data: Option<Bytes>,
         transaction_data_length: Option<usize>,
     },
@@ -29,7 +29,7 @@ impl EthereumQuery {
         EthereumQuery::Transaction {
             from_address: None,
             to_address: None,
-            is_contract_creation: Some(true),
+            is_contract_creation: true,
             transaction_data: Some(contract_data),
             transaction_data_length: None,
         }
@@ -83,14 +83,14 @@ mod tests {
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(
             query,
-            r#"{"from_address":null,"to_address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
+            r#"{"from_address":null,"to_address":"0x8457037fcd80a8650c4692d7fcfc1d0a96b92867","is_contract_creation":false,"transaction_data":null,"transaction_data_length":null}"#
         )
     }
 
@@ -100,14 +100,14 @@ mod tests {
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
         let query = serde_json::to_string(&query).unwrap();
         assert_eq!(
             query,
-            r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":null,"transaction_data_length":null}"#
+            r#"{"from_address":null,"to_address":null,"is_contract_creation":false,"transaction_data":null,"transaction_data_length":null}"#
         )
     }
 
@@ -116,12 +116,12 @@ mod tests {
         let query = EthereumQuery::Transaction {
             from_address: None,
             to_address: None,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: Some(Bytes::from(b"hello world!".to_vec())),
             transaction_data_length: Some(12),
         };
         let query = serde_json::to_string(&query).unwrap();
-        assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":null,"transaction_data":"0x68656c6c6f20776f726c6421","transaction_data_length":12}"#)
+        assert_eq!(query, r#"{"from_address":null,"to_address":null,"is_contract_creation":false,"transaction_data":"0x68656c6c6f20776f726c6421","transaction_data_length":12}"#)
     }
 
     #[test]
