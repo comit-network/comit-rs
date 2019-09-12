@@ -51,6 +51,22 @@ impl SqliteMetadataStore {
 }
 
 impl MetadataStore for SqliteMetadataStore {
+    fn get(&self, key: SwapId) -> Result<Option<metadata_store::Metadata>, Error> {
+        // Imports aliases so we can refer to the table and table fields.
+        use self::schema::metadatas::dsl::*;
+
+        let key = key.to_string();
+        let conn = establish_connection(&self.db)?;
+
+        metadatas
+            .filter(swap_id.eq(key))
+            .first(&conn)
+            .optional()
+            .map_err(|err| Error::Load(err.to_string()))?
+            .map(|m: Metadata| metadata_store::Metadata::try_from(m.clone()))
+            .transpose()
+    }
+
     fn insert<M: Into<metadata_store::Metadata>>(
         &self,
         metadata: M,
@@ -72,22 +88,6 @@ impl MetadataStore for SqliteMetadataStore {
                 ()
             })
             .map_err(|err| Error::Insert(err.to_string()))
-    }
-
-    fn get(&self, key: SwapId) -> Result<Option<metadata_store::Metadata>, Error> {
-        // Imports aliases so we can refer to the table and table fields.
-        use self::schema::metadatas::dsl::*;
-
-        let key = key.to_string();
-        let conn = establish_connection(&self.db)?;
-
-        metadatas
-            .filter(swap_id.eq(key))
-            .first(&conn)
-            .optional()
-            .map_err(|err| Error::Load(err.to_string()))?
-            .map(|m: Metadata| metadata_store::Metadata::try_from(m.clone()))
-            .transpose()
     }
 
     fn all(&self) -> Result<Vec<metadata_store::Metadata>, Error> {
