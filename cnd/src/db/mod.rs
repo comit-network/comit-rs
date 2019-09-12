@@ -35,7 +35,7 @@ impl SqliteMetadataStore {
     /// the database has been verified.
     pub fn new(db: Option<PathBuf>) -> Result<SqliteMetadataStore, Error> {
         let db = db
-            .or(default_db_path())
+            .or_else(default_db_path)
             .ok_or_else(|| Error::Path("Failed to get database path".to_string()))?;
 
         create_database_if_needed(&db)?;
