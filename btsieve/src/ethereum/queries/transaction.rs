@@ -124,7 +124,7 @@ mod tests {
             let query = TransactionQuery {
                 from_address: Some(from_address),
                 to_address: None,
-                is_contract_creation: Some(true),
+                is_contract_creation: true,
                 transaction_data: None,
                 transaction_data_length: None,
             };
@@ -147,7 +147,7 @@ mod tests {
         let query = TransactionQuery {
             from_address: Some(from_address),
             to_address: None,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
@@ -168,7 +168,7 @@ mod tests {
         let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
@@ -190,7 +190,7 @@ mod tests {
         let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
@@ -212,7 +212,7 @@ mod tests {
         let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: None,
         };
@@ -231,7 +231,7 @@ mod tests {
         let query_data = TransactionQuery {
             from_address: None,
             to_address: None,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
             transaction_data_length: None,
         };
@@ -239,7 +239,7 @@ mod tests {
         let query_data_length = TransactionQuery {
             from_address: None,
             to_address: None,
-            is_contract_creation: None,
+            is_contract_creation: false,
             transaction_data: None,
             transaction_data_length: Some(5),
         };
@@ -247,7 +247,7 @@ mod tests {
         let refund_query = TransactionQuery {
             from_address: None,
             to_address: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
-            is_contract_creation: Some(false),
+            is_contract_creation: false,
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
         };
