@@ -90,11 +90,11 @@ impl BtsieveHttpClient {
 
     fn _create<L: Ledger, Q: Query>(
         &self,
-        create_endpoint: Url,
+        endpoint: Url,
         query: Q,
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
-        let endpoint = append_id(create_endpoint, query.query_id().as_str());
-        log::debug!("Creating query {:?} at {}", query, &endpoint);
+        let endpoint = append_id(endpoint, query.query_id().as_str());
+        log::debug!("Attempting to creating query {:?} at {}", query, &endpoint);
 
         let endpoint_for_log = endpoint.clone();
 
