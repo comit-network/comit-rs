@@ -80,32 +80,19 @@ fn to_payload(
 
 impl TransactionQuery {
     pub fn matches(&self, transaction: &Transaction) -> bool {
-        match self {
-            Self {
-                to_address,
-                from_outpoint,
-                unlock_script,
-            } => {
-                let mut result = true;
-
-                result = result
-                    && match to_address {
-                        Some(to_address) => transaction.spends_to(to_address),
-                        _ => result,
-                    };
-
-                result = result
-                    && match (from_outpoint, unlock_script) {
-                        (Some(from_outpoint), Some(unlock_script)) => {
-                            transaction.spends_from_with(from_outpoint, unlock_script)
-                        }
-                        (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
-                        (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
-                        (..) => result,
-                    };
-
-                result
+        if let Some(to_address) = &self.to_address {
+            if !transaction.spends_to(&to_address) {
+                return false;
             }
+        }
+
+        match (&self.from_outpoint, &self.unlock_script) {
+            (Some(from_outpoint), Some(unlock_script)) => {
+                transaction.spends_from_with(&from_outpoint, &unlock_script)
+            }
+            (Some(from_outpoint), None) => transaction.spends_from(&from_outpoint),
+            (None, Some(unlock_script)) => transaction.spends_with(&unlock_script),
+            (..) => true,
         }
     }
 }

@@ -18,46 +18,42 @@ use serde::{Deserialize, Serialize};
 pub struct TransactionQuery {
     from_address: Option<Address>,
     to_address: Option<Address>,
-    is_contract_creation: Option<bool>,
+    is_contract_creation: bool,
     transaction_data: Option<Bytes>,
     transaction_data_length: Option<usize>,
 }
 
 impl TransactionQuery {
     pub fn matches(&self, transaction: &Transaction) -> bool {
-        match self {
-            Self {
-                from_address,
-                to_address,
-                is_contract_creation,
-                transaction_data,
-                transaction_data_length,
-            } => {
-                let mut result = true;
-
-                if let Some(from_address) = from_address {
-                    result = result && (transaction.from == *from_address);
-                }
-
-                if let Some(to_address) = to_address {
-                    result = result && (transaction.to == Some(*to_address));
-                }
-
-                if let Some(is_contract_creation) = is_contract_creation {
-                    // to_address is None for contract creations
-                    result = result && (*is_contract_creation == transaction.to.is_none());
-                }
-
-                if let Some(transaction_data) = transaction_data {
-                    result = result && (transaction.input == *transaction_data);
-                }
-
-                if let Some(transaction_data_length) = transaction_data_length {
-                    result = result && (transaction.input.0.len() == *transaction_data_length);
-                }
-                result
+        if let Some(from_address) = &self.from_address {
+            if transaction.from != *from_address {
+                return false;
             }
         }
+
+        if let Some(to_address) = &self.to_address {
+            if transaction.to != Some(*to_address) {
+                return false;
+            }
+        }
+
+        if self.is_contract_creation && transaction.to.is_some() {
+            return false;
+        }
+
+        if let Some(transaction_data) = &self.transaction_data {
+            if transaction.input != *transaction_data {
+                return false;
+            }
+        }
+
+        if let Some(transaction_data_length) = &self.transaction_data_length {
+            if transaction.input.0.len() != *transaction_data_length {
+                return false;
+            }
+        }
+
+        true
     }
 }
 
