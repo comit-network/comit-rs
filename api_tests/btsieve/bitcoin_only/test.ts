@@ -76,8 +76,6 @@ setTimeout(async function() {
                     this.slow(1000);
                     await tobyWallet.btc().sendToAddress(toAddress, 100000000);
 
-                    await bitcoin.generate(1);
-
                     const body = await btsieve.pollUntilMatches<IdMatch>(
                         btsieve.absoluteLocation(location)
                     );
@@ -90,8 +88,6 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with full transaction details when requesting on the `toAddress` bitcoin transaction query with `return_as=transaction`", async function() {
-                    await bitcoin.generate(1);
-
                     const res = await request(
                         btsieve.absoluteLocation(location)
                     )
