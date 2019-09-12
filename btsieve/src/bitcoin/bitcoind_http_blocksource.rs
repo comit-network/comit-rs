@@ -137,7 +137,7 @@ impl BlockSource for BitcoindHttpBlockSource {
         let poll_interval = match self.network {
             Network::Mainnet => 300_000,
             Network::Testnet => 300_000,
-            Network::Regtest => 1000,
+            Network::Regtest => 300,
         };
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoin-d on {} every {} seconds", self.network, poll_interval);
