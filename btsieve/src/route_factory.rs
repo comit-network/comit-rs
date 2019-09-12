@@ -6,6 +6,7 @@ use crate::{
     web3,
 };
 use ethereum_support::H256;
+use futures::Future;
 use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
@@ -33,7 +34,7 @@ pub trait ToHttpPayload<R> {
         &self,
         return_as: &R,
         client: &Self::Client,
-    ) -> Result<Vec<Self::Item>, Error>;
+    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send>;
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Eq, PartialEq, Hash)]
@@ -81,7 +82,7 @@ pub fn create_ethereum_stub_endpoints(
 }
 
 pub fn create_endpoints<
-    R,
+    R: Sync,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,

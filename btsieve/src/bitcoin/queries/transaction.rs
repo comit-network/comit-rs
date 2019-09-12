@@ -7,7 +7,10 @@ use bitcoin_support::{
     Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction,
 };
 use derivative::Derivative;
-use futures::future::Future;
+use futures::{
+    future::Future,
+    stream::{FuturesOrdered, Stream},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
@@ -40,21 +43,19 @@ impl ToHttpPayload<ReturnAs> for QueryResult {
         &self,
         return_as: &ReturnAs,
         client: &BitcoindHttpBlockSource,
-    ) -> Result<Vec<Self::Item>, Error> {
+    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send + 'static> {
         // Close over some local variables for easier usage of the method
         let to_payload = |id: String| to_payload(client, return_as, id);
 
-        self.0
+        let future = self
+            .0
             .clone()
             .into_iter()
             .map(to_payload)
-            // .collect for Vec<Result<PayloadKind, Error>> transforms it into
-            // Result<Vec<PayloadKind>, Error> returning the first Error or the whole
-            // collection.
-            // We want this because the the Error means something is wrong with the connection to
-            // our bitcoin node and skipping is unlikely to help since the next call will fail as
-            // well. That is why we simply fail the whole function.
-            .collect()
+            .collect::<FuturesOrdered<_>>()
+            .collect();
+
+        Box::new(future)
     }
 }
 
@@ -62,15 +63,16 @@ fn to_payload(
     client: &BitcoindHttpBlockSource,
     return_as: &ReturnAs,
     id: String,
-) -> Result<PayloadKind, Error> {
+) -> Box<dyn Future<Item = PayloadKind, Error = Error> + Send> {
     log::info!("Request for transaction {:?}", id);
     match return_as {
-        ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
-        ReturnAs::Transaction => client
-            .transaction_by_hash(id)
-            .map(|transaction| PayloadKind::Transaction { transaction })
-            .map_err(Error::BitcoindHttp)
-            .wait(),
+        ReturnAs::TransactionId => Box::new(futures::future::ok(PayloadKind::Id { id })),
+        ReturnAs::Transaction => Box::new(
+            client
+                .transaction_by_hash(id)
+                .map(|transaction| PayloadKind::Transaction { transaction })
+                .map_err(Error::BitcoindHttp),
+        ),
     }
 }
 

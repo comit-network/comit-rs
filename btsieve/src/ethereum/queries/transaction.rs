@@ -84,16 +84,18 @@ impl ToHttpPayload<ReturnAs> for QueryResult {
         &self,
         return_as: &ReturnAs,
         client: &Web3<Http>,
-    ) -> Result<Vec<Self::Item>, Error> {
+    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send + 'static> {
         let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
 
-        self.0
+        let future = self
+            .0
             .iter()
             .filter_map(to_h256)
             .map(to_payload)
             .collect::<FuturesOrdered<_>>()
-            .collect()
-            .wait()
+            .collect();
+
+        Box::new(future)
     }
 }
 
@@ -101,7 +103,7 @@ fn to_payload(
     client: &Web3<Http>,
     transaction_id: H256,
     return_as: &ReturnAs,
-) -> Box<dyn Future<Item = PayloadKind, Error = Error>> {
+) -> Box<dyn Future<Item = PayloadKind, Error = Error> + Send> {
     match return_as {
         ReturnAs::Transaction => Box::new(
             create_transaction_future(client, transaction_id)
