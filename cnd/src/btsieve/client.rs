@@ -11,7 +11,7 @@ use core::time::Duration;
 use futures::{stream::Stream, Async, Poll};
 use http_api_problem::HttpApiProblem;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, LOCATION},
+    header::{HeaderMap, HeaderValue},
     r#async::Client,
     StatusCode, Url,
 };
@@ -93,21 +93,26 @@ impl BtsieveHttpClient {
         create_endpoint: Url,
         query: Q,
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
-        let create_endpoint = append_id(create_endpoint, query.query_id().as_str());
-        log::debug!("Creating query {:?} at {}", query, create_endpoint);
+        let endpoint = append_id(create_endpoint, query.query_id().as_str());
+        log::debug!("Creating query {:?} at {}", query, &endpoint);
 
-        let endpoint = self.endpoint.clone();
+        let endpoint_for_log = endpoint.clone();
+
         let query_id = self
             .client
-            .put(create_endpoint)
+            .put(endpoint.clone())
             .json(&query)
             .headers(construct_headers())
             .send()
             .map_err(move |e| {
                 Error::FailedRequest(format!("Failed to create {:?} because {:?}", query, e))
             })
-            .and_then(move |response| {
-                if response.status() != StatusCode::CREATED {
+            .and_then(move |response| match response.status() {
+                StatusCode::NO_CONTENT | StatusCode::OK => {
+                    log::info!("Confirmed query existance at location {}", endpoint_for_log);
+                    Ok(())
+                }
+                _ => {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
                         log::error!(
                             "Failed to create query. btsieve returned: {}",
@@ -115,41 +120,10 @@ impl BtsieveHttpClient {
                                 .expect("btsieve returned non-utf8 error")
                         );
                     }
-
-                    return Err(Error::MalformedResponse(
-                        "Could not create query".to_string(),
-                    ));
+                    Err(Error::ResponseFailure("Could not create query".to_string()))
                 }
-
-                response
-                    .headers()
-                    .get(LOCATION)
-                    .ok_or_else(|| {
-                        Error::MalformedResponse(
-                            "Location header was not present in response".to_string(),
-                        )
-                    })
-                    .and_then(|value| {
-                        value.to_str().map_err(|e| {
-                            Error::MalformedResponse(format!(
-                                "Unable to extract Location from response: {:?}",
-                                e
-                            ))
-                        })
-                    })
-                    .and_then(|location| {
-                        endpoint.join(location).map_err(|e| {
-                            Error::MalformedResponse(format!(
-                                "Failed to parse {} as URL: {:?}",
-                                location, e
-                            ))
-                        })
-                    })
             })
-            .inspect(|query_id| {
-                log::info!("Created new query at location {}", query_id);
-            })
-            .map(QueryId::new);
+            .and_then(|_| Ok(QueryId::new(endpoint)));
 
         Box::new(query_id)
     }
@@ -498,7 +472,7 @@ mod test {
     #[test]
     fn does_not_drop_stuff_after_last_slash() {
         let url = Url::parse("http://example.com/foo/bar").unwrap();
-        let joined = append_id(url, "baz".to_string());
+        let joined = append_id(url, &String::from("baz"));
         assert_eq!(joined.as_str(), "http://example.com/foo/bar/baz");
     }
 }
