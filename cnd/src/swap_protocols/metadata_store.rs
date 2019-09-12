@@ -131,7 +131,7 @@ impl From<parser::ParseError> for Error {
 
 pub trait MetadataStore: Send + Sync + 'static {
     fn get(&self, key: SwapId) -> Result<Option<Metadata>, Error>;
-    fn insert<M: Into<Metadata>>(&self, metadata: M) -> Result<(), Error>;
+    fn insert(&self, metadata: Metadata) -> Result<(), Error>;
     fn all(&self) -> Result<Vec<Metadata>, Error>;
 }
 
@@ -148,16 +148,15 @@ impl MetadataStore for InMemoryMetadataStore {
         Ok(metadata.get(&key).map(Clone::clone))
     }
 
-    fn insert<M: Into<Metadata>>(&self, value: M) -> Result<(), Error> {
+    fn insert(&self, value: Metadata) -> Result<(), Error> {
         let mut metadata = self.metadata.lock().unwrap();
-        let value: Metadata = value.into();
         let key = value.swap_id;
 
         if metadata.contains_key(&key) {
             return Err(Error::Insert("key (swap id) already exists".to_string()));
         }
 
-        let _ = metadata.insert(key, value.into());
+        let _ = metadata.insert(key, value);
         Ok(())
     }
     fn all(&self) -> Result<Vec<Metadata>, Error> {

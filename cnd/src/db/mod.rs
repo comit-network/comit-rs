@@ -67,11 +67,8 @@ impl MetadataStore for SqliteMetadataStore {
             .transpose()
     }
 
-    fn insert<M: Into<metadata_store::Metadata>>(
-        &self,
-        metadata: M,
-    ) -> Result<(), metadata_store::Error> {
-        let md = Metadata::new(metadata.into());
+    fn insert(&self, metadata: metadata_store::Metadata) -> Result<(), metadata_store::Error> {
+        let md = Metadata::new(metadata);
         let new = NewMetadata::new(&md);
 
         let conn = establish_connection(&self.db)?;
@@ -85,7 +82,6 @@ impl MetadataStore for SqliteMetadataStore {
                 if res == 1 {
                     log::trace!("Row inserted (swap id: {})", md.swap_id);
                 }
-                ()
             })
             .map_err(|err| Error::Insert(err.to_string()))
     }
