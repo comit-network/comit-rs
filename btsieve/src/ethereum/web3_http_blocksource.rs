@@ -35,15 +35,15 @@ impl BlockSource for Web3HttpBlockSource {
         let web = self.web3.clone();
 
         let poll_interval = match self.network {
-            Network::Mainnet => 5,
-            Network::Ropsten => 5,
-            Network::Regtest => 1,
-            Network::Unknown => 1,
+            Network::Mainnet => 5000,
+            Network::Ropsten => 5000,
+            Network::Regtest => 500,
+            Network::Unknown => 1000,
         };
 
-        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} seconds", self.network, poll_interval);
+        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} miliseconds", self.network, poll_interval);
 
-        let stream = Interval::new_interval(Duration::from_secs(poll_interval))
+        let stream = Interval::new_interval(Duration::from_millis(poll_interval))
             .map_err(Error::Timer)
             .and_then(move |_| {
                 web.eth()

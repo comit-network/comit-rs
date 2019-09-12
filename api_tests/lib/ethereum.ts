@@ -4,6 +4,7 @@ import { JsonRpcProvider, TransactionRequest } from "ethers/providers";
 import { BigNumber } from "ethers/utils";
 import * as fs from "fs";
 import * as util from "./util";
+import { sleep } from "./util";
 
 let ethersClient: JsonRpcProvider;
 
@@ -193,6 +194,7 @@ export class EthereumWallet {
     }
 
     public async signAndSend(tx: TransactionRequest) {
+        await sleep(1001); // instant seal is a beautiful thing, if we fire transactions too fast, than btsieve can't see the block
         const wallet = new ethers.Wallet(this.keypair.privateKey, ethersClient);
         const transactionResponse = await wallet.sendTransaction(tx);
         return transactionResponse.wait(1);
