@@ -31,7 +31,6 @@ declare var global: HarnessGlobal;
     await alice.wallet.btc().fund(0.1);
     await bob.wallet.eth().fund("0.1");
     await bob.wallet.btc().fund(10);
-    await bitcoin.generate();
 
     const bobEthBalanceBefore = await bob.wallet.eth().ethBalance();
 
