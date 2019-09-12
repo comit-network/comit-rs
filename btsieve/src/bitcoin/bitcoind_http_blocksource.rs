@@ -135,16 +135,16 @@ impl BlockSource for BitcoindHttpBlockSource {
         // The poll interval is configured to once every 5 minutes for mainnet and
         // testnet.
         let poll_interval = match self.network {
-            Network::Mainnet => 300,
-            Network::Testnet => 300,
-            Network::Regtest => 1,
+            Network::Mainnet => 300_000,
+            Network::Testnet => 300_000,
+            Network::Regtest => 1000,
         };
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoin-d on {} every {} seconds", self.network, poll_interval);
 
         let cloned_self = self.clone();
 
-        let stream = Interval::new_interval(Duration::from_secs(poll_interval))
+        let stream = Interval::new_interval(Duration::from_millis(poll_interval))
             .map_err(blocksource::Error::Timer)
             .and_then(move |_| {
                 cloned_self

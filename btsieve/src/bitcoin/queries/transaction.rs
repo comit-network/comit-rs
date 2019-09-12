@@ -63,6 +63,7 @@ fn to_payload(
     return_as: &ReturnAs,
     id: String,
 ) -> Result<PayloadKind, Error> {
+    log::info!("Request for transaction {:?}", id);
     match return_as {
         ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
         ReturnAs::Transaction => client

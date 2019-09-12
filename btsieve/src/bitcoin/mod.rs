@@ -9,11 +9,12 @@ use bitcoin_support::{BitcoinHash, Block};
 
 impl Blockchain<Block> for Bitcoin {
     fn add_block(&mut self, block: Block) {
-        if self.0.nodes.contains(&block) {
-            return log::warn!("Block already known {:?} ", block);
-        }
         let block_hash = block.bitcoin_hash();
+        if self.0.nodes.contains(&block) {
+            return log::warn!("Block already known {:?} ", block_hash);
+        }
 
+        log::info!("Retrieved block {:?} ", block_hash);
         match self.find_predecessor(&block) {
             Some(_prev) => {
                 self.0
@@ -21,7 +22,7 @@ impl Blockchain<Block> for Bitcoin {
                     .push((block.clone().header.prev_blockhash, block_hash));
             }
             None => {
-                log::warn!("Could not find previous block for {:?} ", block);
+                log::warn!("Could not find previous block for {:?} ", block_hash);
             }
         }
         self.0.nodes.push(block);
