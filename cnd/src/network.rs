@@ -175,23 +175,23 @@ fn handle_request<B: BobSpawner>(
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
         "SWAP" => {
-            let protocol: SwapProtocol = libp2p_comit::header!(request
+            let protocol: SwapProtocol = header!(request
                 .take_header("protocol")
                 .map(SwapProtocol::from_header));
             match protocol {
                 SwapProtocol::Rfc003(hash_function) => {
                     let swap_id = SwapId::default();
 
-                    let alpha_ledger = libp2p_comit::header!(request
+                    let alpha_ledger = header!(request
                         .take_header("alpha_ledger")
                         .map(LedgerKind::from_header));
-                    let beta_ledger = libp2p_comit::header!(request
+                    let beta_ledger = header!(request
                         .take_header("beta_ledger")
                         .map(LedgerKind::from_header));
-                    let alpha_asset = libp2p_comit::header!(request
+                    let alpha_asset = header!(request
                         .take_header("alpha_asset")
                         .map(AssetKind::from_header));
-                    let beta_asset = libp2p_comit::header!(request
+                    let beta_asset = header!(request
                         .take_header("beta_asset")
                         .map(AssetKind::from_header));
 
@@ -211,7 +211,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                libp2p_comit::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -229,7 +229,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                libp2p_comit::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -247,7 +247,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                libp2p_comit::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -265,7 +265,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                libp2p_comit::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {

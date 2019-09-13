@@ -10,6 +10,9 @@ extern crate strum_macros;
 #[macro_use]
 extern crate diesel;
 
+#[macro_use]
+pub mod libp2p_comit_ext;
+
 pub mod btsieve;
 pub mod comit_api;
 pub mod comit_client;
@@ -17,7 +20,6 @@ pub mod comit_i_routes;
 pub mod config;
 pub mod db;
 pub mod http_api;
-pub mod libp2p_comit_ext;
 pub mod logging;
 pub mod network;
 pub mod seed;
