@@ -39,7 +39,6 @@ impl SqliteMetadataStore {
             .ok_or_else(|| Error::Path("Failed to get database path".to_string()))?;
 
         create_database_if_needed(&db)?;
-        log::info!("Sqlite database file: {}", db.display());
 
         let migrations = default_migrations_dir()
             .ok_or_else(|| Error::Path("Failed to get migrations directory".to_string()))?;
@@ -118,8 +117,10 @@ fn run_migrations(db: &Path, migrations: &Path) -> Result<(), Error> {
 }
 
 fn create_database_if_needed(db: &Path) -> Result<(), Error> {
-    if !db.exists() {
-        log::info!("Creating database: {}", db.display());
+    if db.exists() {
+        log::info!("Found Sqlite database: {}", db.display());
+    } else {
+        log::info!("Creating Sqlite database: {}", db.display());
         let _file = File::create(db).map_err(|err| Error::Path(err.to_string()))?;
     }
     Ok(())
