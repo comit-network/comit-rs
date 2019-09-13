@@ -49,12 +49,12 @@ impl BitcoindHttpBlockSource {
             .get(bitcoind_blockchain_info_url.as_str())
             .send()
             .map_err(|e| {
-                log::error!("Error when sending request to bitcoin-d");
+                log::error!("Error when sending request to bitcoind");
                 Error::Reqwest(e)
             })
             .and_then(move |mut response| {
                 response.json::<ChainInfo>().map_err(|e| {
-                    log::error!("Error when deserialising the response from bitcoin-d");
+                    log::error!("Error when deserialising the response from bitcoind");
                     Error::Reqwest(e)
                 })
             })
@@ -72,9 +72,8 @@ impl BitcoindHttpBlockSource {
             .send()
             .map_err(Error::Reqwest)
             .and_then(|mut response| response.text().map_err(Error::Reqwest))
-            .and_then(move |response_text| {
-                let mut response_text: String = response_text;
-                remove_tailing_linebreak(&mut response_text);
+            .and_then(move |mut response_text| {
+                response_text = response_text.as_str().trim().to_string();
                 hex::decode(response_text).map_err(Error::Hex)
             })
             .and_then(|bytes| deserialize(bytes.as_ref()).map_err(Error::BlockDeserialization))
@@ -84,10 +83,6 @@ impl BitcoindHttpBlockSource {
             })
     }
 
-    /// Currently needed because we don't store the complete transaction in the
-    /// query result, thus we have to fetch the transaction by ID when the
-    /// result is requested by CND. This problems should be solved by
-    /// storing complete transactions instead of just their ID.
     pub fn transaction_by_hash(
         &self,
         transaction_hash: String,
@@ -100,9 +95,8 @@ impl BitcoindHttpBlockSource {
             .send()
             .map_err(Error::Reqwest)
             .and_then(|mut response| response.text().map_err(Error::Reqwest))
-            .and_then(move |response_text| {
-                let mut response_text: String = response_text;
-                remove_tailing_linebreak(&mut response_text);
+            .and_then(move |mut response_text| {
+                response_text = response_text.as_str().trim().to_string();
                 hex::decode(response_text).map_err(Error::Hex)
             })
             .and_then(|bytes| {
@@ -112,14 +106,13 @@ impl BitcoindHttpBlockSource {
                         e
                     );
                     Error::TransactionDeserialization(format!(
-                        "Failed to deserialize the response from bitcoin-d into a transaction: {}",
+                        "Failed to deserialize the response from bitcoind into a transaction: {}",
                         e
                     ))
                 })
             })
-            .map(move |transaction| {
+            .inspect(move |transaction| {
                 log::debug!("Fetched transaction {:?}", transaction);
-                transaction
             })
     }
 }
@@ -132,15 +125,15 @@ impl BlockSource for BitcoindHttpBlockSource {
         &self,
     ) -> Box<dyn Stream<Item = Self::Block, Error = blocksource::Error<Error>> + Send> {
         // The Bitcoin blockchain has a mining interval of about 10 minutes.
-        // The poll interval is configured to once every 5 minutes for mainnet and
-        // testnet.
+        // The poll interval is configured to once every 2 minutes for mainnet and
+        // testnet so we don't have to wait to long to see a new block.
         let poll_interval = match self.network {
-            Network::Mainnet => 300_000,
-            Network::Testnet => 300_000,
+            Network::Mainnet => 120_000,
+            Network::Testnet => 120_000,
             Network::Regtest => 300,
         };
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoin-d on {} every {} seconds", self.network, poll_interval);
+        log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind on {} every {} seconds", self.network, poll_interval);
 
         let cloned_self = self.clone();
 
@@ -172,34 +165,5 @@ impl BlockSource for BitcoindHttpBlockSource {
             .filter_map(|maybe_block| maybe_block);
 
         Box::new(stream)
-    }
-}
-
-fn remove_tailing_linebreak(text: &mut String) {
-    if text.ends_with('\n') {
-        text.pop();
-        if text.ends_with('\r') {
-            text.pop();
-        }
-    }
-}
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    fn remove_tailing_linebreak_line_feed() {
-        let mut given = "some text that ends with \n".to_owned();
-        remove_tailing_linebreak(&mut given);
-        assert_eq!(given, "some text that ends with ");
-    }
-
-    #[test]
-    fn remove_tailing_linebreak_line_feed_carriage_return() {
-        let mut given = "some text that ends with \r\n".to_owned();
-        remove_tailing_linebreak(&mut given);
-        assert_eq!(given, "some text that ends with ");
     }
 }
