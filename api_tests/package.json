@@ -53,7 +53,7 @@
         "rimraf": "^3.0.0",
         "temp-write": "^4.0.0",
         "ts-node": "^8.3.0",
-        "tslint": "^5.19.0",
+        "tslint": "^5.20.0",
         "tslint-config-prettier": "^1.18.0",
         "tslint-no-unused-expression-chai": "^0.1.4",
         "typescript": "^3.6.2"
