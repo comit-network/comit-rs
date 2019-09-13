@@ -3,6 +3,7 @@ name = "blockchain_contracts"
 version = "0.1.0"
 authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
+description = "Blockchain contracts used by COMIT-network daemons to execute cryptographic protocols."
 
 [dependencies]
 bitcoin_witness = { path = "../internal/bitcoin_witness" }
