@@ -14,11 +14,11 @@ import sb from "satoshi-bitcoin";
 import { test_rng } from "./util";
 
 export interface BitcoinNodeConfig {
+    network: string;
     username: string;
     password: string;
     host: string;
     rpcPort: number;
-    zmqPort: number;
 }
 
 interface GetBlockchainInfoResponse {
@@ -79,7 +79,7 @@ function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
 
     if (!bitcoinRpcClient || btcConfig !== bitcoinConfig) {
         bitcoinRpcClient = new BitcoinRpcClient({
-            network: "regtest",
+            network: btcConfig.network,
             port: btcConfig.rpcPort,
             host: btcConfig.host,
             username: btcConfig.username,

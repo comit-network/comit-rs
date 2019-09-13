@@ -1,10 +1,8 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use bitcoin_support::Network as BitcoinNetwork;
-use bitcoincore_rpc::RpcApi;
 use btsieve::{
-    bitcoin::{self, bitcoind_zmq_listener::bitcoin_block_listener},
+    bitcoin::{self, bitcoind_http_blocksource::BitcoindHttpBlockSource},
     blocksource::BlockSource,
     create_bitcoin_stub_endpoints, create_ethereum_stub_endpoints,
     ethereum::{self, web3_http_blocksource::Web3HttpBlockSource},
@@ -135,50 +133,36 @@ fn create_bitcoin_routes(
 
     let mut bitcoin_chain = Bitcoin::default();
 
-    let bitcoin_rpc_client = bitcoincore_rpc::Client::new(
-        settings.node_url.to_string(),
-        settings.authentication.into(),
-    )
-    .map_err(|e| {
-        log::debug!("failed to create bitcoincore_rpc::Client: {:?}", e);
-        Error::ConnectionError {
-            ledger: "bitcoin".to_owned(),
-        }
-    })?;
-    let blockchain_info = get_bitcoin_info(&bitcoin_rpc_client)?;
-    log::info!("Connected to Bitcoin: {:?}.", blockchain_info);
-    let network = blockchain_info
-        .chain
-        .parse::<BitcoinNetwork>()
-        .map_err(|_| Error::UnknownLedgerVersion {
-            network: blockchain_info.chain,
-            ledger: "bitcoin".to_string(),
-        })?
-        .into();
+    let block_source = Arc::new(BitcoindHttpBlockSource::new(
+        settings.node_url,
+        settings.network,
+    ));
 
-    log::trace!("Setting up bitcoin routes to {:?}.", network);
-
-    log::info!("Connect BitcoinZmqListener to {}.", settings.zmq_endpoint);
-
+    log::trace!("Setting up bitcoin routes to {:?}", settings.network);
     {
         let transaction_query_repository = Arc::clone(&transaction_query_repository);
 
         let transaction_query_result_repository = Arc::clone(&transaction_query_result_repository);
 
-        let blocks = bitcoin_block_listener(settings.zmq_endpoint.as_str())
-            .expect("Should return a Bitcoind received for Blocks");
+        let bitcoin_block_processor = block_source
+            .clone()
+            .blocks()
+            .map_err(|e| log::warn!(target: "bitcoin", "error fetching latest block {:?}", e))
+            .for_each(move |block| {
+                bitcoin_chain.add_block(block.clone());
 
-        let bitcoin_processor = blocks.for_each(move |block| {
-            bitcoin_chain.add_block(block.clone());
-
-            bitcoin::check_transaction_queries(transaction_query_repository.clone(), block.clone())
-                .for_each(|QueryMatch(id, block_id)| {
-                    transaction_query_result_repository.add_result(id.0, block_id);
+                bitcoin::check_transaction_queries(
+                    transaction_query_repository.clone(),
+                    block.clone(),
+                )
+                .for_each(|QueryMatch(id, transaction_id)| {
+                    transaction_query_result_repository.add_result(id.0, transaction_id);
                 });
 
-            Ok(())
-        });
-        runtime.spawn(bitcoin_processor);
+                Ok(())
+            });
+
+        runtime.spawn(bitcoin_block_processor);
     }
 
     let ledger_name = "bitcoin";
@@ -187,9 +171,9 @@ fn create_bitcoin_routes(
         route_factory::create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _>(
             transaction_query_repository,
             transaction_query_result_repository,
-            Arc::from(bitcoin_rpc_client),
+            block_source,
             ledger_name,
-            network,
+            settings.network.into(),
         );
 
     Ok(transaction_routes.boxed())
@@ -281,20 +265,6 @@ fn create_ethereum_routes(
         );
 
     Ok((transaction_routes.or(bloom_routes).boxed(), event_loop))
-}
-
-fn get_bitcoin_info(
-    client: &bitcoincore_rpc::Client,
-) -> Result<bitcoincore_rpc::json::GetBlockchainInfoResult, Error> {
-    client.get_blockchain_info().map_err(|error| {
-        log::error!(
-            "Could not retrieve network version from ledger Bitcoin: {:?}",
-            error
-        );
-        Error::ConnectionError {
-            ledger: String::from("Bitcoin"),
-        }
-    })
 }
 
 fn get_ethereum_info(client: Arc<Web3<Http>>) -> Result<EthereumNetwork, Error> {

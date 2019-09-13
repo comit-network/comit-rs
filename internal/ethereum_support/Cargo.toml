@@ -20,6 +20,8 @@ tiny-keccak = "1.5"
 # web3 0.8 gives us primitive-types 0.3.0
 # primitive-types 0.3.0 with the "rlp" feature gives us "rlp" version 0.4.2
 [dependencies.extern_web3]
+default-features = false
+features = ["http"]
 package = "web3"
 version = "0.8"
 
