@@ -1636,10 +1636,10 @@ ms@^2.1.1:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
 
-multiaddr@^7.0.0:
-  version "7.0.0"
-  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.0.0.tgz#67ea10d215da487787b5580e5274c459d1efdbb9"
-  integrity sha512-hdjniob/nnBFp/y6o/z5PCjsMAoz87nKcurITBBO1357uzm6fUhsQXBCDxhU2fnMjYQorDIm7LaI4nvGwnMFow==
+multiaddr@^7.1.0:
+  version "7.1.0"
+  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.1.0.tgz#e74d69b10cff2840c4c36eb2ecef94a6b933a977"
+  integrity sha512-XQS/KsvlsnlTs2krhSYP8Nzin3S8vKBBQcaQO2K4gd/4Oq56kfxiPeAOWEvloB5gY8iv9wSorZ3WOA9yYqf9+A==
   dependencies:
     bs58 "^4.0.1"
     class-is "^1.1.0"
