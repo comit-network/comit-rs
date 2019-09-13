@@ -22,13 +22,7 @@ export interface CndConfigFile {
 
 interface BtsieveBitcoin {
     node_url: string;
-    zmq_endpoint: string;
-    authentication: {
-        basic: {
-            node_username: string;
-            node_password: string;
-        };
-    };
+    network: string;
 }
 
 interface BtsieveEthereum {
@@ -143,14 +137,8 @@ export function btsieveBitcoinConfig(
     nodeConfig: BitcoinNodeConfig
 ): BtsieveBitcoin {
     return {
-        authentication: {
-            basic: {
-                node_password: nodeConfig.password,
-                node_username: nodeConfig.username,
-            },
-        },
         node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
-        zmq_endpoint: `tcp://${nodeConfig.host}:${nodeConfig.zmqPort}`,
+        network: nodeConfig.network,
     };
 }
 

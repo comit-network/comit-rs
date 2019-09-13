@@ -9,7 +9,7 @@ pub use bitcoin::{
         script::{self, Script},
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
-    consensus::{deserialize, encode::serialize_hex, serialize},
+    consensus::{self, deserialize, encode::serialize_hex, serialize},
     hashes::{hash160::Hash as Hash160, hex::FromHex, sha256d::Hash as Sha256dHash, Hash},
     secp256k1,
     util::{

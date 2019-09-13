@@ -36,7 +36,6 @@ declare var global: HarnessGlobal;
     await bob.wallet.eth().fund("11");
     await alice.wallet.eth().fund("0.1");
     await alice.wallet.btc().fund(20);
-    await bitcoin.generate();
 
     const swapRequest: SwapRequest = {
         alpha_ledger: {

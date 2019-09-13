@@ -3,6 +3,7 @@ use crate::{
     query_result_repository::{QueryResult, QueryResultRepository},
     route_factory::{QueryParams, ToHttpPayload, MAX_QUERY_ID_LENGTH},
 };
+use futures::{Future, IntoFuture};
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
@@ -112,7 +113,7 @@ pub fn create_query<Q: Send, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
-    R: Debug + Default,
+    R: Debug + Default + Sync + 'static,
     Q: Serialize + Send + Debug,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
@@ -124,7 +125,7 @@ pub fn retrieve_query<
     query_result_repository: Arc<QRR>,
     id: String,
     query_params: QueryParams<R>,
-) -> Result<impl Reply, Rejection>
+) -> impl Future<Item = impl Reply, Error = Rejection>
 where
     for<'de> R: Deserialize<'de>,
     QueryResult: ToHttpPayload<R, Client = C>,
@@ -132,22 +133,27 @@ where
     query_repository
         .get(id.clone())
         .ok_or(Error::QueryNotFound)
-        .and_then(|query| {
-            query_result_repository
-                .get(id.clone())
-                .unwrap_or_default()
-                .to_http_payload(&query_params.return_as, &client)
-                .map(|matches| RetrieveQueryResponse { query, matches })
-                .map(|response| warp::reply::json(&response))
-                .map_err(|e| {
-                    log::error!(
-                        "failed to transform result for query {} to payload {:?}: {:?}.",
-                        id,
-                        query_params.return_as,
-                        e
-                    );
-                    Error::TransformToPayload
-                })
+        .into_future()
+        .and_then({
+            let id = id.clone();
+            let query_result_repository = Arc::clone(&query_result_repository);
+            move |query| {
+                query_result_repository
+                    .get(id.clone())
+                    .unwrap_or_default()
+                    .to_http_payload(&query_params.return_as, &client)
+                    .map(|matches| RetrieveQueryResponse { query, matches })
+                    .map(|response| warp::reply::json(&response))
+                    .map_err(move |e| {
+                        log::error!(
+                            "failed to transform result for query {} to payload {:?}: {:?}.",
+                            id,
+                            query_params.return_as,
+                            e
+                        );
+                        Error::TransformToPayload
+                    })
+            }
         })
         .map_err(|e| {
             warp::reject::custom(HttpApiProblemStdError {

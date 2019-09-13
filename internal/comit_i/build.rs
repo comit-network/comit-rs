@@ -1,4 +1,7 @@
-use std::fs::File;
+use std::{
+    fs::File,
+    io::{Read, Write},
+};
 
 fn main() {
     let version = include_str!("./version").trim();
@@ -10,10 +13,13 @@ fn main() {
 
     println!("Fetching {}", url);
     let mut tmpfile: File = tempfile::tempfile().expect("Could not create temp file");
-    reqwest::get(&url)
-        .unwrap()
-        .copy_to(&mut tmpfile)
+    let mut buffer = Vec::new();
+    ureq::get(&url)
+        .call()
+        .into_reader()
+        .read_to_end(&mut buffer)
         .expect("Could not download bundle");
+    tmpfile.write_all(&buffer).expect("Could not write bundle");
     unzip::Unzipper::new(tmpfile, "./")
         .unzip()
         .expect("Could not unzip bundle");
