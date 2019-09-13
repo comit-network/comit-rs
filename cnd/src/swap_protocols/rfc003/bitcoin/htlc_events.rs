@@ -90,7 +90,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
             let query_bitcoin = Arc::clone(&self);
             let redeemed_query = self
                 .create(BitcoinQuery::redeem_htlc(htlc_deployment.location))
-                .inspect(|query_id| log::info!("Redeem query id {:?}", query_id))
+                .inspect(|query_id| log::debug!("Redeem query id {:?}", query_id))
                 .map_err(rfc003::Error::Btsieve);
 
             redeemed_query.and_then(move |query_id| {
