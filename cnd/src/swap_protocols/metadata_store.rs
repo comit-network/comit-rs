@@ -95,7 +95,6 @@ pub enum Error {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            // FIXME: is this idiomatic [CoBloX] Rust?
             Error::Path(msg) => write!(f, "Datastore path error: {}", msg),
             Error::Init(msg) => write!(f, "Failed to initialize datastore : {}", msg),
             Error::Connect(msg) => write!(f, "Failed to connect to datastore: {}", msg),
@@ -106,14 +105,13 @@ impl fmt::Display for Error {
     }
 }
 
-// FIXME: Do we need this?
 impl std::error::Error for Error {
     fn description(&self) -> &str {
         "MetadataStore error"
     }
 
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None // FIXME: What goes here?
+        None
     }
 }
 
