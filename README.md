@@ -28,9 +28,7 @@ See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 
 ## Setup build environment
 
-1. Install `rustup`: `curl https://sh.rustup.rs -sSf | sh`
-2. Install OpenSSL:
-   - Ubuntu/Debian: `apt install libssl-dev pkg-config`
+All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh` 
 
 ## Build & Run
 
