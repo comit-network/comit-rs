@@ -89,29 +89,6 @@ pub fn customize_error(rejection: Rejection) -> Result<impl Reply, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn create_query<Q: Send, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
-    _client: Arc<C>,
-    network: String,
-    query_repository: Arc<QR>,
-    ledger_name: &'static str,
-    query_type: &'static str,
-    query: Q,
-) -> Result<impl Reply, Rejection> {
-    let result = query_repository.save(query);
-
-    match result {
-        Ok(id) => {
-            let uri = format!("/queries/{}/{}/{}/{}", ledger_name, network, query_type, id);
-            let reply = warp::reply::with_status(warp::reply(), warp::http::StatusCode::CREATED);
-            Ok(warp::reply::with_header(reply, "Location", uri))
-        }
-        Err(_) => Err(warp::reject::custom(HttpApiProblemStdError {
-            http_api_problem: Error::QuerySave.into(),
-        })),
-    }
-}
-
-#[allow(clippy::needless_pass_by_value)]
 pub fn retrieve_query<
     R: Debug + Default + Sync + 'static,
     Q: Serialize + Send + Debug,
