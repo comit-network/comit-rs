@@ -1,7 +1,5 @@
-use crate::{
-    http_api::action::ListRequiredFields,
-    swap_protocols::rfc003::{actions::Decline, messages::SwapDeclineReason, Ledger},
-};
+use crate::http_api::action::ListRequiredFields;
+use comit::rfc003::{actions::Decline, messages::SwapDeclineReason, Ledger};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]

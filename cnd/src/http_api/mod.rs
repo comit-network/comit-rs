@@ -12,25 +12,24 @@ pub mod action;
 mod problem;
 mod swap_resource;
 
+pub const PATH: &str = "swaps";
+
 pub use self::{
     problem::*,
     swap_resource::{SwapParameters, SwapResource, SwapStatus},
 };
-
-pub const PATH: &str = "swaps";
-
 use crate::{
     http_api::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
     network::DialInformation,
-    swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
-        SwapId, SwapProtocol,
-    },
 };
 use bitcoin_support::{amount::Denomination, Amount as BitcoinAmount};
+use comit::{
+    ledger::{Bitcoin, Ethereum},
+    SwapId, SwapProtocol,
+};
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -226,14 +225,12 @@ impl<'de> Deserialize<'de> for DialInformation {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        http_api::Http,
-        swap_protocols::{
-            ledger::{Bitcoin, Ethereum},
-            HashFunction, SwapId, SwapProtocol,
-        },
-    };
+    use crate::http_api::Http;
     use bitcoin_support::{self, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
+    use comit::{
+        ledger::{Bitcoin, Ethereum},
+        HashFunction, SwapId, SwapProtocol,
+    };
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::{convert::TryFrom, str::FromStr};

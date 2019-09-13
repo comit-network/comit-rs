@@ -1,14 +1,15 @@
 use crate::{
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::DialInformation,
-    swap_protocols::{
-        asset::Asset,
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource},
-        HashFunction, SwapId, Timestamp,
-    },
+    swap_protocols::rfc003::alice::AliceSpawner,
 };
 use bitcoin_support::Amount as BitcoinAmount;
+use comit::{
+    asset::Asset,
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{self, messages::ToRequest, Ledger, SecretSource},
+    HashFunction, SwapId, Timestamp,
+};
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
@@ -183,6 +184,10 @@ mod tests {
 
     use super::*;
     use crate::network::DialInformation;
+    use comit::{
+        ledger::{Bitcoin, Ethereum},
+        Timestamp,
+    };
     use spectral::prelude::*;
 
     #[test]

@@ -1,9 +1,7 @@
-use crate::{
-    http_api::problem,
-    swap_protocols::{
-        actions::{bitcoin, ethereum},
-        SwapId, Timestamp,
-    },
+use crate::http_api::problem;
+use comit::{
+    actions::{bitcoin, ethereum},
+    SwapId, Timestamp,
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -303,6 +301,7 @@ impl IntoResponsePayload for Infallible {
 mod test {
     use super::*;
     use bitcoin_support::{Address as BitcoinAddress, Network as BitcoinNetwork};
+    use comit::actions::bitcoin;
     use ethereum_support::{Address as EthereumAddress, Network as EthereumNetwork, U256};
     use std::str::FromStr;
 

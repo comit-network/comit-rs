@@ -6,12 +6,13 @@ use crate::{
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http,
     },
-    swap_protocols::{
-        actions::Actions,
-        asset::Asset,
-        rfc003::{self, state_store::StateStore, Ledger},
-        HashFunction, Metadata, SwapId, SwapProtocol,
-    },
+    metadata_store::Metadata,
+    state_store::StateStore,
+};
+use comit::{
+    asset::Asset,
+    rfc003::{self, Ledger},
+    SwapId, SwapProtocol,
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -104,7 +105,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             let swap = SwapResource {
                 id: Http(metadata.swap_id),
                 status,
-                protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
+                protocol: Http(SwapProtocol::Rfc003(comit::HashFunction::Sha256)),
                 parameters,
                 role: format!("{}", metadata.role),
                 counterparty: Http(metadata.counterparty),

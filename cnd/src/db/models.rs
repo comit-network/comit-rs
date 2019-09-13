@@ -1,4 +1,4 @@
-use crate::{db::schema::metadatas, swap_protocols::metadata_store};
+use crate::{db::schema::metadatas, metadata_store};
 use diesel::{Insertable, Queryable};
 
 #[derive(Queryable, Debug, Clone)]

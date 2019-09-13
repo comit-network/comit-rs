@@ -1,14 +1,14 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    dependencies::{self, LedgerEventDependencies},
+use crate::{
     metadata_store::{self, Metadata, MetadataStore, Role},
-    rfc003::{
-        self, bob,
+    state_store::{self, StateStore},
+    swap_protocols::{
         create_ledger_events::CreateLedgerEvents,
-        events::ResponseFuture,
-        state_store::{self, StateStore},
-        Ledger,
+        dependencies::{self, LedgerEventDependencies},
     },
+};
+use comit::{
+    asset::Asset,
+    rfc003::{self, bob, events::ResponseFuture, Ledger},
     SwapId,
 };
 use futures::{sync::mpsc, Future, Stream};

@@ -3,8 +3,9 @@ mod handlers;
 use self::handlers::handle_get_swaps;
 use crate::{
     http_api::{routes::into_rejection, Http},
+    metadata_store::MetadataStore,
     network::SwarmInfo,
-    swap_protocols::{rfc003::state_store::StateStore, MetadataStore},
+    state_store::StateStore,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;

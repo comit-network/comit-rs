@@ -1,9 +1,5 @@
-use crate::{
-    comit_client::Client,
-    http_api,
-    network::SwarmInfo,
-    swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
-};
+use crate::{http_api, metadata_store::MetadataStore, network::SwarmInfo, state_store::StateStore};
+use comit::{Client, SwapId};
 use libp2p::PeerId;
 use std::sync::Arc;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -18,10 +14,10 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: SwarmInfo>(
+pub fn create<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    protocol_dependencies: crate::swap_protocols::alice::ProtocolDependencies<T, S, C>,
     origin_auth: String,
     swarm_info: Arc<SI>,
     peer_id: PeerId,
@@ -60,9 +56,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
     let rfc003_action = warp::method()
         .and(rfc003)
         .and(warp::path::param::<SwapId>())
-        .and(warp::path::param::<
-            swap_protocols::rfc003::actions::ActionKind,
-        >())
+        .and(warp::path::param::<comit::rfc003::actions::ActionKind>())
         .and(warp::path::end())
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
         .and(metadata_store.clone())

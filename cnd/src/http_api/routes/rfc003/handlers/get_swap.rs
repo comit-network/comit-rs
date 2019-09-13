@@ -3,8 +3,10 @@ use crate::{
         problem,
         swap_resource::{build_rfc003_siren_entity, IncludeState},
     },
-    swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
+    metadata_store::MetadataStore,
+    state_store::StateStore,
 };
+use comit::SwapId;
 use http_api_problem::HttpApiProblem;
 
 pub fn handle_get_swap<T: MetadataStore, S: StateStore>(

@@ -1,9 +1,7 @@
 macro_rules! _match_role {
     ($role:ident, $fn:tt) => {{
-        use crate::swap_protocols::{
-            metadata_store::Role,
-            rfc003::{alice, bob},
-        };
+        use crate::metadata_store::Role;
+        use comit::rfc003::{alice, bob};
         #[allow(clippy::redundant_closure_call)]
         match $role {
             Role::Alice => {
@@ -23,11 +21,9 @@ macro_rules! _match_role {
 #[macro_export]
 macro_rules! with_swap_types {
     ($metadata:expr, $fn:tt) => {{
-        use crate::swap_protocols::{
-            ledger::{Bitcoin, Ethereum},
-            metadata_store::{AssetKind, LedgerKind, Metadata},
-        };
+        use crate::metadata_store::{AssetKind, LedgerKind, Metadata};
         use bitcoin_support::Amount;
+        use comit::ledger::{Bitcoin, Ethereum};
         use ethereum_support::{Erc20Token, EtherQuantity};
         let metadata = $metadata;
 

@@ -1,14 +1,12 @@
-use crate::{
-    comit_client,
-    network::DialInformation,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            self,
-            events::{CommunicationEvents, ResponseFuture},
-            ledger::Ledger,
-        },
+use crate::network::DialInformation;
+use comit::{
+    asset::Asset,
+    rfc003::{
+        self,
+        events::{CommunicationEvents, ResponseFuture},
+        Ledger,
     },
+    Client,
 };
 use futures::Future;
 use std::sync::Arc;
@@ -31,8 +29,8 @@ impl<C, AL: Ledger, BL: Ledger> AliceToBob<C, AL, BL> {
     }
 }
 
-impl<C: comit_client::Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>
-    CommunicationEvents<AL, BL, AA, BA> for AliceToBob<C, AL, BL>
+impl<C: Client, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> CommunicationEvents<AL, BL, AA, BA>
+    for AliceToBob<C, AL, BL>
 {
     fn request_responded(
         &mut self,

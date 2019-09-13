@@ -8,14 +8,12 @@ use crate::{
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
-    swap_protocols::{
-        actions::Actions,
-        rfc003::{
-            actions::{Action, ActionKind},
-            state_store::StateStore,
-        },
-        MetadataStore, SwapId,
-    },
+    metadata_store::MetadataStore,
+    state_store::StateStore,
+};
+use comit::{
+    rfc003::actions::{Action, ActionKind},
+    SwapId,
 };
 use http_api_problem::HttpApiProblem;
 use std::fmt::Debug;
@@ -72,6 +70,17 @@ pub fn handle_action<T: MetadataStore, S: StateStore>(
     )
 }
 
+fn to_http_method(action_kind: ActionKind) -> http::Method {
+    match action_kind {
+        ActionKind::Accept => http::Method::POST,
+        ActionKind::Decline => http::Method::POST,
+        ActionKind::Deploy => http::Method::GET,
+        ActionKind::Fund => http::Method::GET,
+        ActionKind::Refund => http::Method::GET,
+        ActionKind::Redeem => http::Method::GET,
+    }
+}
+
 trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     Iterator<Item = Action<Accept, Decline, Deploy, Fund, Redeem, Refund>>
 {
@@ -86,7 +95,7 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
         self.find(|action| ActionKind::from(action) == action_kind)
             .ok_or_else(|| problem::invalid_action(action_kind))
             .and_then(|action| {
-                if http::Method::from(action_kind) != method {
+                if to_http_method(action_kind) != method {
                     log::debug!(target: "http-api", "Attempt to invoke {} action with http method {}, which is an invalid combination.", action_kind, method);
                     return Err(HttpApiProblem::new("Invalid action invocation")
                         .set_status(http::StatusCode::METHOD_NOT_ALLOWED));
@@ -223,19 +232,6 @@ mod tests {
             .is_err()
             .map(|p| &p.status)
             .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
-    }
-}
-
-impl From<ActionKind> for http::Method {
-    fn from(action_kind: ActionKind) -> Self {
-        match action_kind {
-            ActionKind::Accept => http::Method::POST,
-            ActionKind::Decline => http::Method::POST,
-            ActionKind::Deploy => http::Method::GET,
-            ActionKind::Fund => http::Method::GET,
-            ActionKind::Refund => http::Method::GET,
-            ActionKind::Redeem => http::Method::GET,
-        }
     }
 }
 

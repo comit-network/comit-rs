@@ -1,17 +1,15 @@
-use crate::{
-    btsieve::{EthereumQuery, EventMatcher, QueryEthereum, Topic},
-    swap_protocols::{
-        asset::Asset,
-        ledger::Ethereum,
-        rfc003::{
-            self,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
-            Secret,
+use crate::btsieve::{EthereumQuery, EventMatcher, QueryEthereum, Topic};
+use comit::{
+    asset::Asset,
+    ledger::Ethereum,
+    rfc003::{
+        self,
+        events::{
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+            RedeemedOrRefundedFuture, Refunded,
         },
+        state_machine::HtlcParams,
+        Secret,
     },
 };
 use ethereum_support::{
@@ -151,6 +149,17 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 
 mod erc20 {
     use super::*;
+    use comit::{
+        ledger::Ethereum,
+        rfc003::{
+            self,
+            events::{
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents,
+                RedeemedOrRefundedFuture,
+            },
+            state_machine::HtlcParams,
+        },
+    };
     use ethereum_support::{Erc20Quantity, U256};
 
     impl HtlcEvents<Ethereum, Erc20Token> for Arc<dyn QueryEthereum + Send + Sync + 'static> {

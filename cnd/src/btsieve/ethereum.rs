@@ -1,7 +1,5 @@
-use crate::{
-    btsieve::{Error, Query, QueryId},
-    swap_protocols::ledger::Ethereum,
-};
+use crate::btsieve::{Error, Query, QueryId};
+use comit::ledger::Ethereum;
 use ethereum_support::{
     web3::types::{Address, Bytes, Transaction, H256},
     TransactionAndReceipt,

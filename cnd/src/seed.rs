@@ -1,6 +1,7 @@
-use crate::swap_protocols::SwapId;
+use comit::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
 use rand::Rng;
+use secp256k1_keypair::KeyPair;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 
@@ -45,6 +46,22 @@ impl Seed {
 impl From<[u8; 32]> for Seed {
     fn from(seed: [u8; 32]) -> Self {
         Seed(seed)
+    }
+}
+
+impl comit::rfc003::SecretSource for Seed {
+    fn secret(&self) -> comit::rfc003::Secret {
+        self.sha256_with_seed(&[b"SECRET"]).into()
+    }
+
+    fn secp256k1_redeem(&self) -> KeyPair {
+        KeyPair::from_secret_key_slice(self.sha256_with_seed(&[b"REDEEM"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
+    }
+
+    fn secp256k1_refund(&self) -> KeyPair {
+        KeyPair::from_secret_key_slice(self.sha256_with_seed(&[b"REFUND"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
     }
 }
 

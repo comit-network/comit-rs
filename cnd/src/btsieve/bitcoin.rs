@@ -1,8 +1,6 @@
-use crate::{
-    btsieve::{Error, Query, QueryId},
-    swap_protocols::ledger::Bitcoin,
-};
+use crate::btsieve::{Error, Query, QueryId};
 use bitcoin_support::{Address, OutPoint, Transaction, TransactionId};
+use comit::ledger::Bitcoin;
 use futures::Future;
 use serde::Serialize;
 

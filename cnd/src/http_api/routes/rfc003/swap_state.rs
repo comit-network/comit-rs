@@ -1,10 +1,8 @@
-use crate::{
-    http_api::{Http, SwapStatus},
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{self, alice, bob, Ledger, SecretHash},
-        Timestamp,
-    },
+use crate::http_api::{Http, SwapStatus};
+use comit::{
+    asset::Asset,
+    rfc003::{self, alice, bob, Ledger, SecretHash},
+    Timestamp,
 };
 use serde::Serialize;
 
@@ -136,7 +134,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
 
 impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L::Transaction> {
     fn from(ledger_state: rfc003::LedgerState<L>) -> Self {
-        use self::rfc003::LedgerState::*;
+        use comit::rfc003::LedgerState::*;
         let status = ledger_state.clone().into();
         match ledger_state {
             NotDeployed => Self::default(),
@@ -213,7 +211,7 @@ impl SwapStatus {
         error: &Option<rfc003::Error>,
     ) -> Self {
         use self::SwapCommunicationState::*;
-        use crate::swap_protocols::rfc003::HtlcState::*;
+        use comit::rfc003::HtlcState::*;
 
         if let Some(e) = error {
             log::debug!(target: "http-api", "derived SwapStatus is InternalFailure because: {:?}", e);
@@ -248,9 +246,10 @@ impl quickcheck::Arbitrary for SwapCommunicationState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        http_api::routes::rfc003::swap_state::SwapCommunicationState::*,
-        swap_protocols::rfc003::ledger_state::HtlcState::*,
+    use crate::http_api::routes::rfc003::swap_state::SwapCommunicationState::*;
+    use comit::rfc003::{
+        self,
+        ledger_state::HtlcState::{Deployed, IncorrectlyFunded, NotDeployed, Redeemed, Refunded},
     };
 
     #[test]

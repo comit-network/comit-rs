@@ -1,12 +1,10 @@
-use crate::{
-    btsieve::{
-        bitcoin::{BitcoinQuery, QueryBitcoin},
-        ethereum::{EthereumQuery, QueryEthereum},
-        poll_until_item::poll_until_item,
-        Error, Query, QueryId,
-    },
-    swap_protocols::ledger::{Bitcoin, Ethereum, Ledger},
+use crate::btsieve::{
+    bitcoin::{BitcoinQuery, QueryBitcoin},
+    ethereum::{EthereumQuery, QueryEthereum},
+    poll_until_item::poll_until_item,
+    Error, Query, QueryId,
 };
+use comit::Ledger;
 use core::time::Duration;
 use futures::{stream::Stream, Async, Poll};
 use http_api_problem::HttpApiProblem;
@@ -322,6 +320,7 @@ enum HealthCheckError {
 
 mod ethereum {
     use super::*;
+    use comit::ledger::Ethereum;
     use ethereum_support::{Transaction, TransactionAndReceipt, TransactionReceipt, H256};
 
     impl QueryEthereum for BtsieveHttpClient {
@@ -415,6 +414,8 @@ mod ethereum {
 mod bitcoin {
     use super::*;
     use bitcoin_support::{Transaction, TransactionId};
+    use comit::ledger::Bitcoin;
+
     impl QueryBitcoin for BtsieveHttpClient {
         fn create(
             &self,

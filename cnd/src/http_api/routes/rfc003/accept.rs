@@ -1,12 +1,10 @@
-use crate::{
-    http_api::action::ListRequiredFields,
-    swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{
-            actions::Accept,
-            messages::{AcceptResponseBody, IntoAcceptResponseBody},
-            Ledger, SecretSource,
-        },
+use crate::http_api::action::ListRequiredFields;
+use comit::{
+    ledger::{Bitcoin, Ethereum},
+    rfc003::{
+        actions::Accept,
+        messages::{AcceptResponseBody, IntoAcceptResponseBody},
+        Ledger, SecretSource,
     },
 };
 use serde::Deserialize;

@@ -1,19 +1,15 @@
 use crate::{
-    comit_client::Client,
+    metadata_store::{self, Metadata, MetadataStore, Role},
     network::DialInformation,
+    state_store::{self, StateStore},
     swap_protocols::{
-        self,
-        asset::Asset,
-        dependencies::LedgerEventDependencies,
-        metadata_store::{self, Metadata, MetadataStore, Role},
-        rfc003::{
-            alice,
-            messages::ToRequest,
-            state_store::{self, StateStore},
-            CreateLedgerEvents, Ledger,
-        },
-        SwapId,
+        self, create_ledger_events::CreateLedgerEvents, dependencies::LedgerEventDependencies,
     },
+};
+use comit::{
+    asset::Asset,
+    rfc003::{alice, messages::ToRequest, Ledger},
+    Client, SwapId,
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;

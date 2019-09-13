@@ -1,13 +1,11 @@
-use crate::{
-    libp2p_comit_ext::{FromHeader, ToHeader},
-    swap_protocols::{
-        asset::AssetKind,
-        ledger::{Bitcoin, Ethereum, LedgerKind},
-        rfc003::messages::Decision,
-        SwapProtocol,
-    },
-};
+use crate::libp2p_comit_ext::{FromHeader, ToHeader};
 use bitcoin_support::amount::Denomination;
+use comit::{
+    asset::AssetKind,
+    ledger::{Bitcoin, Ethereum, LedgerKind},
+    rfc003::messages::Decision,
+    SwapProtocol,
+};
 use ethereum_support::Erc20Token;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
@@ -118,11 +116,9 @@ impl FromHeader for Decision {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        libp2p_comit_ext::{FromHeader, ToHeader},
-        swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
-    };
+    use crate::libp2p_comit_ext::{FromHeader, ToHeader};
     use bitcoin_support::Amount;
+    use comit::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol};
     use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
     use libp2p_comit::frame::Header;
     use spectral::prelude::*;

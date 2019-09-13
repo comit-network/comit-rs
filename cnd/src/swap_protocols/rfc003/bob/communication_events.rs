@@ -1,9 +1,9 @@
-use crate::swap_protocols::{
+use comit::{
     asset::Asset,
     rfc003::{
         self,
         events::{CommunicationEvents, ResponseFuture},
-        ledger::Ledger,
+        Ledger,
     },
 };
 use debug_stub_derive::DebugStub;

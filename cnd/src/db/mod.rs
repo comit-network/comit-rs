@@ -4,11 +4,9 @@ embed_migrations!("./migrations");
 
 use crate::{
     db::models::{InsertableMetadata, Metadata},
-    swap_protocols::{
-        metadata_store::{self, AssetKind, Error, LedgerKind, MetadataStore, Role},
-        SwapId,
-    },
+    metadata_store::{self, AssetKind, Error, LedgerKind, MetadataStore, Role},
 };
+use comit::SwapId;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -47,7 +45,7 @@ impl SqliteMetadataStore {
 }
 
 impl MetadataStore for SqliteMetadataStore {
-    fn get(&self, key: SwapId) -> Result<Option<metadata_store::Metadata>, Error> {
+    fn get(&self, key: SwapId) -> Result<Option<Metadata>, Error> {
         // Imports aliases so we can refer to the table and table fields.
         use self::schema::metadatas::dsl::*;
 
@@ -59,11 +57,11 @@ impl MetadataStore for SqliteMetadataStore {
             .first(&conn)
             .optional()
             .map_err(|err| Error::Load(err.to_string()))?
-            .map(|m: Metadata| metadata_store::Metadata::try_from(m.clone()))
+            .map(|m: Metadata| Metadata::try_from(m.clone()))
             .transpose()
     }
 
-    fn insert(&self, metadata: metadata_store::Metadata) -> Result<(), metadata_store::Error> {
+    fn insert(&self, metadata: metadata_store::Metadata) -> Result<(), Error> {
         let md = Metadata::new(metadata);
         let new = InsertableMetadata::new(&md);
 
@@ -81,7 +79,7 @@ impl MetadataStore for SqliteMetadataStore {
             .map_err(|err| Error::Insert(err.to_string()))
     }
 
-    fn all(&self) -> Result<Vec<metadata_store::Metadata>, Error> {
+    fn all(&self) -> Result<Vec<Metadata>, Error> {
         // Imports aliases so we can refer to the table and table fields.
         use self::schema::metadatas::dsl::*;
 
@@ -91,7 +89,7 @@ impl MetadataStore for SqliteMetadataStore {
             .load::<Metadata>(&conn)
             .map_err(|err| Error::Load(err.to_string()))?
             .iter()
-            .map(|m| metadata_store::Metadata::try_from(m.clone()))
+            .map(|m| Metadata::try_from(m.clone()))
             .collect()
     }
 }
@@ -124,7 +122,7 @@ fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
 }
 
 impl TryFrom<Metadata> for metadata_store::Metadata {
-    type Error = metadata_store::Error;
+    type Error = Error;
 
     fn try_from(md: Metadata) -> Result<Self, Self::Error> {
         let swap_id = SwapId::from_str(md.swap_id.as_str())?;

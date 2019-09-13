@@ -3,6 +3,7 @@ pub mod decline;
 mod handlers;
 mod swap_state;
 
+pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 use crate::{
     http_api::{
         action::ActionExecutionParameters,
@@ -14,16 +15,14 @@ use crate::{
             },
         },
     },
-    swap_protocols::{
-        rfc003::{actions::ActionKind, alice::AliceSpawner, state_store::StateStore},
-        MetadataStore, SwapId,
-    },
+    metadata_store::MetadataStore,
+    state_store::StateStore,
+    swap_protocols::rfc003::alice::AliceSpawner,
 };
+use comit::{rfc003::actions::ActionKind, SwapId};
 use hyper::header;
 use std::sync::Arc;
 use warp::{Rejection, Reply};
-
-pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(

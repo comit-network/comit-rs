@@ -1,15 +1,15 @@
 use crate::{
     libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
-        asset::{Asset, AssetKind},
-        rfc003::{
-            self,
-            bob::BobSpawner,
-            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
-            CreateLedgerEvents,
-        },
-        HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
+        create_ledger_events::CreateLedgerEvents, rfc003::bob::BobSpawner, LedgerEventDependencies,
     },
+};
+use comit::{
+    rfc003::{
+        self,
+        messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+    },
+    Asset, AssetKind, HashFunction, LedgerKind, SwapId, SwapProtocol,
 };
 use futures::future::Future;
 use libp2p::{

@@ -1,7 +1,5 @@
-use crate::swap_protocols::{
-    metadata_store,
-    rfc003::{self, actions::ActionKind, state_store},
-};
+use crate::{metadata_store, state_store};
+use comit::rfc003::actions::ActionKind;
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
@@ -138,8 +136,8 @@ impl From<metadata_store::Error> for HttpApiProblem {
     }
 }
 
-impl From<rfc003::state_machine::Error> for HttpApiProblem {
-    fn from(e: rfc003::state_machine::Error) -> Self {
+impl From<comit::rfc003::state_machine::Error> for HttpApiProblem {
+    fn from(e: comit::rfc003::state_machine::Error) -> Self {
         log::error!("Protocol execution error: {:?}", e);
         HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             .set_title("Protocol execution error.")

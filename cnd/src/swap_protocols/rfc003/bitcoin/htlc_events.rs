@@ -1,19 +1,16 @@
-use crate::{
-    btsieve::{BitcoinQuery, QueryBitcoin},
-    swap_protocols::{
-        ledger::Bitcoin,
-        rfc003::{
-            self,
-            bitcoin::extract_secret::extract_secret,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
+use crate::btsieve::{BitcoinQuery, QueryBitcoin};
+use bitcoin_support::{Amount, FindOutput, OutPoint};
+use comit::{
+    ledger::Bitcoin,
+    rfc003::{
+        self,
+        events::{
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+            RedeemedOrRefundedFuture, Refunded,
         },
+        state_machine::HtlcParams,
     },
 };
-use bitcoin_support::{Amount, FindOutput, OutPoint};
 use futures::{
     future::{self, Either},
     Future,
@@ -98,16 +95,19 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
                     .transaction_first_result(&query_id)
                     .map_err(rfc003::Error::Btsieve)
                     .and_then(move |transaction| {
-                        let secret = extract_secret(&transaction, &htlc_params.secret_hash)
-                            .ok_or_else(|| {
-                                log::error!(
-                                    "Redeem transaction didn't have secret it in: {:?}",
-                                    transaction
-                                );
-                                rfc003::Error::Internal(
-                                    "Redeem transaction didn't have the secret in it".into(),
-                                )
-                            })?;
+                        let secret = comit::rfc003::bitcoin::extract_secret(
+                            &transaction,
+                            &htlc_params.secret_hash,
+                        )
+                        .ok_or_else(|| {
+                            log::error!(
+                                "Redeem transaction didn't have secret it in: {:?}",
+                                transaction
+                            );
+                            rfc003::Error::Internal(
+                                "Redeem transaction didn't have the secret in it".into(),
+                            )
+                        })?;
                         Ok(Redeemed {
                             transaction,
                             secret,
