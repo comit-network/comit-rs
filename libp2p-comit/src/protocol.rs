@@ -1,9 +1,6 @@
-use bam::frame::{self, JsonFrameCodec};
+use crate::frame::{self, JsonFrameCodec};
 use futures::future::FutureResult;
-use libp2p::{
-    core::{upgrade::Negotiated, InboundUpgrade, UpgradeInfo},
-    OutboundUpgrade,
-};
+use libp2p_core::{InboundUpgrade, Negotiated, OutboundUpgrade, UpgradeInfo};
 use std::{convert::Infallible, iter};
 use tokio::{
     codec::{Decoder, Framed},

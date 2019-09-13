@@ -1,6 +1,5 @@
 use crate::{
     bam_ext::{FromBamHeader, ToBamHeader},
-    libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingInboundRequest},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{
@@ -12,16 +11,16 @@ use crate::{
         HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
     },
 };
-use bam::{
-    self,
-    frame::{OutboundRequest, Response, ValidatedInboundRequest},
-};
 use futures::future::Future;
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
     swarm::NetworkBehaviourEventProcess,
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
+};
+use libp2p_comit::{
+    frame::{OutboundRequest, Response, ValidatedInboundRequest},
+    BamBehaviour, BehaviourOutEvent, PendingInboundRequest,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -84,7 +83,8 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
         peer_id: DialInformation,
         request: OutboundRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
-        self.bam.send_request(peer_id, request)
+        self.bam
+            .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 }
 
@@ -175,23 +175,23 @@ fn handle_request<B: BobSpawner>(
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
         "SWAP" => {
-            let protocol: SwapProtocol = bam::header!(request
+            let protocol: SwapProtocol = libp2p_comit::header!(request
                 .take_header("protocol")
                 .map(SwapProtocol::from_bam_header));
             match protocol {
                 SwapProtocol::Rfc003(hash_function) => {
                     let swap_id = SwapId::default();
 
-                    let alpha_ledger = bam::header!(request
+                    let alpha_ledger = libp2p_comit::header!(request
                         .take_header("alpha_ledger")
                         .map(LedgerKind::from_bam_header));
-                    let beta_ledger = bam::header!(request
+                    let beta_ledger = libp2p_comit::header!(request
                         .take_header("beta_ledger")
                         .map(LedgerKind::from_bam_header));
-                    let alpha_asset = bam::header!(request
+                    let alpha_asset = libp2p_comit::header!(request
                         .take_header("alpha_asset")
                         .map(AssetKind::from_bam_header));
-                    let beta_asset = bam::header!(request
+                    let beta_asset = libp2p_comit::header!(request
                         .take_header("beta_asset")
                         .map(AssetKind::from_bam_header));
 
@@ -211,7 +211,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                libp2p_comit::body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -229,7 +229,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                libp2p_comit::body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -247,7 +247,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                libp2p_comit::body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -265,7 +265,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                libp2p_comit::body!(request.take_body_as()),
                             ),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {

@@ -1,10 +1,10 @@
-use crate::libp2p_bam::{
+use crate::{
+    frame::{self, JsonFrameCodec, Response},
     handler::{InboundMessage, ProtocolOutEvent},
-    BamHandler, BamHandlerEvent, PendingInboundRequest,
+    BamHandler, BamHandlerEvent, Frame, PendingInboundRequest,
 };
-use bam::frame::{JsonFrameCodec, Response};
 use futures::{Future, Stream};
-use libp2p::swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
+use libp2p_swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
 use multistream_select::Negotiated;
 use std::collections::{HashMap, HashSet};
 use tokio::{
@@ -117,13 +117,13 @@ impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoEventStream
 pub trait WaitForFrame {
     fn wait_for_frame(
         self,
-    ) -> Box<dyn Future<Item = Option<bam::Frame>, Error = bam::frame::CodecError> + Send>;
+    ) -> Box<dyn Future<Item = Option<Frame>, Error = frame::CodecError> + Send>;
 }
 
 impl WaitForFrame for Framed<Negotiated<TcpStream>, JsonFrameCodec> {
     fn wait_for_frame(
         self,
-    ) -> Box<dyn Future<Item = Option<bam::Frame>, Error = bam::frame::CodecError> + Send> {
+    ) -> Box<dyn Future<Item = Option<Frame>, Error = frame::CodecError> + Send> {
         Box::new(
             self.into_future()
                 .map(|(item, _stream)| item)

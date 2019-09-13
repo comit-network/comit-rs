@@ -18,9 +18,9 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::{self, frame};
 use futures::Future;
 use libp2p::{Swarm, Transport};
+use libp2p_comit::frame;
 use serde::Deserialize;
 use std::sync::Mutex;
 use tokio::{io::AsyncRead, prelude::AsyncWrite};

@@ -1,4 +1,4 @@
-use bam::frame::Header;
+use libp2p_comit::frame::Header;
 
 pub trait FromBamHeader
 where

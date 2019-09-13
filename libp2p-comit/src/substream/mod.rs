@@ -1,9 +1,9 @@
-use crate::libp2p_bam::{
+use crate::{
     handler::{Error, ProtocolOutEvent},
     protocol::BamStream,
     BamHandlerEvent,
 };
-use libp2p::swarm::ProtocolsHandlerEvent;
+use libp2p_swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
 pub mod inbound;

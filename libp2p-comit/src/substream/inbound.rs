@@ -1,14 +1,12 @@
-use crate::libp2p_bam::{
+use crate::{
+    frame::{Response, UnvalidatedInboundRequest},
     handler::{self, InboundMessage, PendingInboundRequest, ProtocolOutEvent},
     protocol::BamStream,
     substream::{Advance, Advanced, CloseStream},
-};
-use bam::{
-    frame::{Response, UnvalidatedInboundRequest},
     Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
-use libp2p::swarm::ProtocolsHandlerEvent;
+use libp2p_swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 use tokio::prelude::*;
 

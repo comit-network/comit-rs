@@ -1,24 +1,19 @@
-use crate::libp2p_bam::{
+use crate::{
+    frame::{
+        self, JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders,
+        ValidatedInboundRequest,
+    },
     protocol::BamProtocol,
     substream::{self, Advance, Advanced},
-    BamHandlerEvent,
+    BamHandlerEvent, Frame, IntoFrame,
 };
-use bam::{
-    frame::{
-        JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest,
-    },
-    Frame, IntoFrame,
-};
-use derivative::Derivative;
 use futures::{
     sync::oneshot::{self, Canceled},
     task::Task,
     Async, Poll,
 };
-use libp2p::{
-    core::upgrade::Negotiated,
-    swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol},
-};
+use libp2p_core::Negotiated;
+use libp2p_swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol};
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
@@ -29,7 +24,7 @@ use tokio::{
     prelude::{AsyncRead, AsyncWrite},
 };
 
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Debug)]
 pub struct BamHandler<TSubstream> {
     #[derivative(Debug = "ignore")]
@@ -45,7 +40,7 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(Debug)]
 pub enum Error {
-    MalformedJson(bam::frame::CodecError),
+    MalformedJson(frame::CodecError),
     DroppedResponseSender(Canceled),
     UnknownMandatoryHeader(UnknownMandatoryHeaders),
     UnknownRequestType(String),
@@ -61,8 +56,8 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<bam::frame::CodecError> for Error {
-    fn from(e: bam::frame::CodecError) -> Self {
+impl From<frame::CodecError> for Error {
+    fn from(e: frame::CodecError) -> Self {
         Error::MalformedJson(e)
     }
 }
@@ -131,7 +126,7 @@ pub enum OutboundMessage {
 impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = bam::frame::CodecError;
+    type Error = frame::CodecError;
     type Substream = TSubstream;
     type InboundProtocol = BamProtocol;
     type OutboundProtocol = BamProtocol;
@@ -218,7 +213,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<BamHandlerEvent, bam::frame::CodecError>> {
+) -> Option<Poll<BamHandlerEvent, frame::CodecError>> {
     log::debug!("polling {} substreams", substreams.len());
 
     // We remove each element from `substreams` one by one and add them back.
@@ -246,16 +241,14 @@ fn poll_substreams<S: Display + Advance>(
 mod tests {
     use super::*;
     use crate::{
-        bam_ext::ToBamHeader,
-        libp2p_bam::test_harness::{
+        frame::{Header, JsonFrameCodec, OutboundRequest, Response},
+        test_harness::{
             request_with_no_headers, setup_substream, setup_substream_with_json_codec,
             IntoEventStream, IntoFutureWithResponse, WaitForFrame,
         },
-        swap_protocols::rfc003::messages::Decision,
     };
-    use bam::frame::Header;
     use futures::{Future, Sink, Stream};
-    use libp2p::swarm::ProtocolsHandlerEvent;
+    use libp2p_swarm::ProtocolsHandlerEvent;
     use spectral::prelude::*;
     use tokio::codec::LinesCodec;
 
@@ -274,12 +267,7 @@ mod tests {
 
         // and we provide an answer
         let future = handler.into_future_with_response(
-            Response::empty().with_header(
-                "decision",
-                Decision::Declined
-                    .to_bam_header()
-                    .expect("Decision should not fail to serialize"),
-            ),
+            Response::empty().with_header("decision", Header::with_str_value("declined")),
         );
         runtime.spawn(future);
 
@@ -288,12 +276,7 @@ mod tests {
 
         assert_that(&response).is_ok().is_some().is_equal_to(
             Response::empty()
-                .with_header(
-                    "decision",
-                    Decision::Declined
-                        .to_bam_header()
-                        .expect("Decision should not fail to serialize"),
-                )
+                .with_header("decision", Header::with_str_value("declined"))
                 .into_frame(),
         );
     }

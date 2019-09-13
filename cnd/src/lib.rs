@@ -18,7 +18,6 @@ pub mod comit_i_routes;
 pub mod config;
 pub mod db;
 pub mod http_api;
-pub mod libp2p_bam;
 pub mod logging;
 pub mod network;
 pub mod seed;

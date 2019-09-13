@@ -7,9 +7,9 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::frame::Header;
 use bitcoin_support::amount::Denomination;
 use ethereum_support::Erc20Token;
+use libp2p_comit::frame::Header;
 use serde::de::Error;
 use std::fmt;
 
@@ -122,9 +122,9 @@ mod tests {
         bam_ext::{FromBamHeader, ToBamHeader},
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
-    use bam::frame::Header;
     use bitcoin_support::Amount;
     use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
+    use libp2p_comit::frame::Header;
     use spectral::prelude::*;
 
     #[test]

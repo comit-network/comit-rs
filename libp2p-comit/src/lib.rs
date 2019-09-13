@@ -3,9 +3,26 @@
 
 #[macro_use]
 pub mod frame;
+mod behaviour;
+mod handler;
+mod protocol;
+mod substream;
+#[cfg(test)]
+pub mod test_harness;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
+
+pub use self::{
+    behaviour::{BamBehaviour, BehaviourOutEvent},
+    handler::{BamHandler, PendingInboundRequest, PendingOutboundRequest},
+    protocol::{BamProtocol, BamStream},
+};
+use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
+use libp2p_swarm::ProtocolsHandlerEvent;
+
+pub type BamHandlerEvent =
+    ProtocolsHandlerEvent<BamProtocol, ProtocolOutboundOpenInfo, ProtocolOutEvent>;
 
 pub trait IntoFrame<F> {
     fn into_frame(self) -> F;
