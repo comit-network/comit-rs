@@ -1,9 +1,10 @@
-use crate::swap_protocols::{asset, ledger, swap_id::SwapId};
+use crate::{
+    db,
+    swap_protocols::{asset, ledger, swap_id::SwapId},
+};
 use libp2p::{self, PeerId};
-use std::{collections::HashMap, fmt, sync::Mutex};
-use strum;
+use std::{collections::HashMap, sync::Mutex};
 use strum_macros::{Display, EnumString};
-use uuid::parser;
 
 #[derive(Clone, Copy, Debug, Display, EnumString)]
 pub enum Role {
@@ -84,46 +85,13 @@ impl Metadata {
 
 #[derive(Debug)]
 pub enum Error {
-    Path(String),
-    Init(String),
-    Connect(String),
-    Load(String),
-    Insert(String),
-    Parse(String),
+    DuplicateKey,
+    Sqlite(db::Error),
 }
 
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Error::Path(msg) => write!(f, "Datastore path error: {}", msg),
-            Error::Init(msg) => write!(f, "Failed to initialize datastore : {}", msg),
-            Error::Connect(msg) => write!(f, "Failed to connect to datastore: {}", msg),
-            Error::Load(msg) => write!(f, "Failed to load record: {}", msg),
-            Error::Insert(msg) => write!(f, "Failed to insert new record: {}", msg),
-            Error::Parse(msg) => write!(f, "Failed to parse stored record: {}", msg),
-        }
-    }
-}
-
-impl std::error::Error for Error {
-    fn description(&self) -> &str {
-        "MetadataStore error"
-    }
-
-    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
-    }
-}
-
-impl From<strum::ParseError> for Error {
-    fn from(err: strum::ParseError) -> Error {
-        Error::Parse(err.to_string())
-    }
-}
-
-impl From<parser::ParseError> for Error {
-    fn from(err: parser::ParseError) -> Error {
-        Error::Parse(err.to_string())
+impl From<db::Error> for Error {
+    fn from(err: db::Error) -> Error {
+        Error::Sqlite(err)
     }
 }
 
@@ -151,7 +119,7 @@ impl MetadataStore for InMemoryMetadataStore {
         let key = value.swap_id;
 
         if metadata.contains_key(&key) {
-            return Err(Error::Insert("key (swap id) already exists".to_string()));
+            return Err(Error::DuplicateKey);
         }
 
         let _ = metadata.insert(key, value);
