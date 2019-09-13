@@ -74,7 +74,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
 
             let refunded_query = self
                 .create(BitcoinQuery::refund_htlc(htlc_deployment.location))
-                .inspect(|query_id| log::info!("Refund query id {:?}", query_id))
+                .inspect(|query_id| log::debug!("Refund query id {:?}", query_id))
                 .map_err(rfc003::Error::Btsieve);
 
             refunded_query
