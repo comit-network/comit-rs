@@ -4,7 +4,7 @@ mod schema;
 use crate::db::models::Metadata;
 
 use crate::{
-    db::models::NewMetadata,
+    db::models::InsertableMetadata,
     swap_protocols::{
         metadata_store::{self, AssetKind, Error, LedgerKind, MetadataStore, Role},
         SwapId,
@@ -70,7 +70,7 @@ impl MetadataStore for SqliteMetadataStore {
 
     fn insert(&self, metadata: metadata_store::Metadata) -> Result<(), metadata_store::Error> {
         let md = Metadata::new(metadata);
-        let new = NewMetadata::new(&md);
+        let new = InsertableMetadata::new(&md);
 
         let conn = establish_connection(&self.db)?;
         diesel::insert_into(schema::metadatas::table)

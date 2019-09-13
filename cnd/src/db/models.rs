@@ -29,7 +29,7 @@ impl Metadata {
 // Diesel docs say to use this second structure for database inserts.
 #[derive(Insertable, Debug)]
 #[table_name = "metadatas"]
-pub struct NewMetadata<'a> {
+pub struct InsertableMetadata<'a> {
     pub swap_id: &'a str,
     pub alpha_ledger: &'a str,
     pub beta_ledger: &'a str,
@@ -39,9 +39,9 @@ pub struct NewMetadata<'a> {
     pub counterparty: &'a str,
 }
 
-impl<'a> NewMetadata<'a> {
-    pub fn new(md: &'a Metadata) -> NewMetadata<'a> {
-        NewMetadata {
+impl<'a> InsertableMetadata<'a> {
+    pub fn new(md: &'a Metadata) -> InsertableMetadata<'a> {
+        InsertableMetadata {
             swap_id: &md.swap_id[..],
             alpha_ledger: &md.alpha_ledger[..],
             beta_ledger: &md.beta_ledger[..],
