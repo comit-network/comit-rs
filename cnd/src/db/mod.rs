@@ -1,7 +1,7 @@
 mod models;
 mod schema;
 
-pub use crate::db::models::Metadata;
+use crate::db::models::Metadata;
 
 use crate::{
     db::models::NewMetadata,
