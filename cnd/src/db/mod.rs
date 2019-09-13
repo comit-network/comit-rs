@@ -18,7 +18,7 @@ use std::{
     str::FromStr,
 };
 
-/// This module provides an Sqlite backed persistent MatadataStore.
+/// This module provides an Sqlite backed persistent MetadataStore.
 
 #[derive(Debug)]
 pub struct SqliteMetadataStore {
