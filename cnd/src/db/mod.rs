@@ -16,7 +16,7 @@ use migrations_internals;
 use std::{
     convert::TryFrom,
     fs::File,
-    io::stdout,
+    io::{stdout, Write},
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -38,12 +38,14 @@ impl SqliteMetadataStore {
             .or_else(default_db_path)
             .ok_or_else(|| Error::Path("Failed to get database path".to_string()))?;
 
-        create_database_if_needed(&db)?;
-
         let migrations = default_migrations_dir()
             .ok_or_else(|| Error::Path("Failed to get migrations directory".to_string()))?;
 
-        run_migrations(&db, &migrations)?;
+        create_database_if_needed(&db)?;
+        create_migrations_if_needed(&migrations)?;
+
+        let conn = establish_connection(&db)?;
+        run_migrations(conn, &migrations)?;
 
         Ok(SqliteMetadataStore { db })
     }
@@ -108,14 +110,6 @@ pub fn default_migrations_dir() -> Option<PathBuf> {
     crate::data_dir().map(|dir| Path::join(&dir, "migrations"))
 }
 
-fn run_migrations(db: &Path, migrations: &Path) -> Result<(), Error> {
-    let conn = establish_connection(&db)?;
-    migrations_internals::run_pending_migrations_in_directory(&conn, migrations, &mut stdout())
-        .map_err(|err| Error::Init(err.to_string()))?;
-
-    Ok(())
-}
-
 fn create_database_if_needed(db: &Path) -> Result<(), Error> {
     if db.exists() {
         log::info!("Found Sqlite database: {}", db.display());
@@ -126,12 +120,64 @@ fn create_database_if_needed(db: &Path) -> Result<(), Error> {
     Ok(())
 }
 
+// Simple creation of initial migrations, logic could be improved.
+fn create_migrations_if_needed(migrations: &Path) -> Result<(), Error> {
+    if !migrations.exists() {
+        std::fs::create_dir(migrations).map_err(|err| Error::Path(err.to_string()))?;
+    }
+
+    let initial = migrations.join("initial");
+    if !initial.exists() {
+        std::fs::create_dir(initial.clone()).map_err(|err| Error::Path(err.to_string()))?;
+    }
+
+    let down = initial.join("down.sql");
+    if !down.exists() {
+        let content = "DROP TABLE metadatas\n";
+        write_to_file(&down, content)?;
+    }
+
+    let up = initial.join("up.sql");
+    if !up.exists() {
+        let content = "CREATE TABLE metadatas (
+swap_id VARCHAR(255) NOT NULL PRIMARY KEY,
+alpha_ledger VARCHAR(255) NOT NULL,
+beta_ledger VARCHAR(255) NOT NULL,
+alpha_asset VARCHAR(255) NOT NULL,
+beta_asset VARCHAR(255) NOT NULL,
+role VARCHAR(255) NOT NULL,
+counterparty VARCHAR(255) NOT NULL
+)
+";
+        write_to_file(&down, content)?;
+    }
+
+    Ok(())
+}
+
 fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
     let database_url = db
         .to_str()
         .ok_or_else(|| Error::Path(format!("Database path invalid: {}", db.to_string_lossy())))?;
 
     SqliteConnection::establish(&database_url).map_err(|err| Error::Connect(err.to_string()))
+}
+
+// NOTE: This runs ALL migrations in migrations directory.  Once we add a second
+// migration we should warn the user so we do not clobber their database.
+fn run_migrations(conn: SqliteConnection, migrations: &Path) -> Result<(), Error> {
+    migrations_internals::run_pending_migrations_in_directory(&conn, migrations, &mut stdout())
+        .map_err(|err| Error::Init(err.to_string()))?;
+
+    Ok(())
+}
+
+fn write_to_file(dst: &Path, content: &str) -> Result<(), Error> {
+    let mut ofile = File::create(dst).map_err(|err| Error::Init(err.to_string()))?;
+
+    ofile
+        .write_all(content.as_bytes())
+        .map_err(|err| Error::Init(err.to_string()))
 }
 
 impl TryFrom<Metadata> for metadata_store::Metadata {
