@@ -26,7 +26,7 @@ macro_rules! header {
             return Box::new(futures::future::ok(Response::empty().with_header(
                 "decision",
                 Decision::Declined
-                    .to_bam_header()
+                    .to_header()
                     .expect("Decision should not fail to serialize"),
             )
             .with_body(serde_json::to_value(decline_body).expect(
@@ -50,7 +50,7 @@ macro_rules! body {
                 return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 )
                 .with_body(serde_json::to_value(decline_body).expect(
@@ -76,7 +76,7 @@ macro_rules! header_internal {
                 return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 )
                 .with_body(serde_json::to_value(decline_body).expect(

@@ -1,7 +1,7 @@
 use crate::{
     frame::{self, JsonFrameCodec, Response},
     handler::{InboundMessage, ProtocolOutEvent},
-    BamHandler, BamHandlerEvent, Frame, PendingInboundRequest,
+    ComitHandler, ComitHandlerEvent, Frame, PendingInboundRequest,
 };
 use futures::{Future, Stream};
 use libp2p_swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
@@ -75,7 +75,7 @@ pub trait IntoFutureWithResponse {
 }
 
 impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoFutureWithResponse
-    for BamHandler<TSubstream>
+    for ComitHandler<TSubstream>
 {
     fn into_future_with_response(
         self,
@@ -99,13 +99,13 @@ impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoFutureWithResponse
 }
 
 pub trait IntoEventStream {
-    fn into_event_stream(self) -> Box<dyn Stream<Item = BamHandlerEvent, Error = ()> + Send>;
+    fn into_event_stream(self) -> Box<dyn Stream<Item = ComitHandlerEvent, Error = ()> + Send>;
 }
 
 impl<TSubstream: 'static + AsyncRead + AsyncWrite + Send> IntoEventStream
-    for BamHandler<TSubstream>
+    for ComitHandler<TSubstream>
 {
-    fn into_event_stream(mut self) -> Box<dyn Stream<Item = BamHandlerEvent, Error = ()> + Send> {
+    fn into_event_stream(mut self) -> Box<dyn Stream<Item = ComitHandlerEvent, Error = ()> + Send> {
         let stream = futures::stream::poll_fn(move || self.poll().map(|ok| ok.map(Some)))
             // ignore all errors
             .map_err(|e| panic!("{:?}", e));

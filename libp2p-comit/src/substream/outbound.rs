@@ -4,7 +4,7 @@ use crate::{
         self, InboundMessage, OutboundMessage, PendingInboundResponse, PendingOutboundRequest,
         ProtocolOutEvent, ProtocolOutboundOpenInfo,
     },
-    protocol::{BamProtocol, BamStream},
+    protocol::{ComitProtocolConfig, Frames},
     substream::{Advance, Advanced, CloseStream},
     Frame, FrameType,
 };
@@ -23,26 +23,26 @@ pub enum State<TSubstream> {
     WaitingSend {
         frame: Frame,
         response_sender: oneshot::Sender<Response>,
-        stream: BamStream<TSubstream>,
+        stream: Frames<TSubstream>,
     },
     /// Waiting to flush the substream so that the data arrives at the remote.
     WaitingFlush {
         response_sender: oneshot::Sender<Response>,
-        stream: BamStream<TSubstream>,
+        stream: Frames<TSubstream>,
     },
     /// Waiting for the answer to our message.
     WaitingAnswer {
         response_sender: oneshot::Sender<Response>,
-        stream: BamStream<TSubstream>,
+        stream: Frames<TSubstream>,
     },
     /// The substream is being closed.
-    WaitingClose { stream: BamStream<TSubstream> },
+    WaitingClose { stream: Frames<TSubstream> },
 }
 
 impl<TSubstream> CloseStream for State<TSubstream> {
     type TSubstream = TSubstream;
 
-    fn close(stream: BamStream<Self::TSubstream>) -> Self {
+    fn close(stream: Frames<Self::TSubstream>) -> Self {
         State::WaitingClose { stream }
     }
 }
@@ -56,7 +56,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
         match self {
             WaitingOpen { request } => {
                 Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                    protocol: SubstreamProtocol::new(BamProtocol {}),
+                    protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
                     info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
                 })
             }

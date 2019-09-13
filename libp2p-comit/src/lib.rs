@@ -14,15 +14,15 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
 pub use self::{
-    behaviour::{BamBehaviour, BehaviourOutEvent},
-    handler::{BamHandler, PendingInboundRequest, PendingOutboundRequest},
-    protocol::{BamProtocol, BamStream},
+    behaviour::{BehaviourOutEvent, Comit},
+    handler::{ComitHandler, PendingInboundRequest, PendingOutboundRequest},
+    protocol::{ComitProtocolConfig, Frames},
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
 use libp2p_swarm::ProtocolsHandlerEvent;
 
-pub type BamHandlerEvent =
-    ProtocolsHandlerEvent<BamProtocol, ProtocolOutboundOpenInfo, ProtocolOutEvent>;
+pub type ComitHandlerEvent =
+    ProtocolsHandlerEvent<ComitProtocolConfig, ProtocolOutboundOpenInfo, ProtocolOutEvent>;
 
 pub trait IntoFrame<F> {
     fn into_frame(self) -> F;

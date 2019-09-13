@@ -4,7 +4,7 @@ use crate::{
         self, InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent,
         ProtocolOutEvent,
     },
-    BamHandler, PendingInboundRequest, PendingOutboundRequest,
+    ComitHandler, PendingInboundRequest, PendingOutboundRequest,
 };
 use futures::{
     stream::Stream,
@@ -40,8 +40,9 @@ pub enum BehaviourOutEvent {
     },
 }
 
+/// Network behaviour that handles the COMIT messaging protocol.
 #[derive(Debug)]
-pub struct BamBehaviour<TSubstream> {
+pub struct Comit<TSubstream> {
     marker: PhantomData<TSubstream>,
 
     events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
@@ -51,7 +52,7 @@ pub struct BamBehaviour<TSubstream> {
     connections: HashMap<PeerId, ConnectionState>,
 }
 
-impl<TSubstream> BamBehaviour<TSubstream> {
+impl<TSubstream> Comit<TSubstream> {
     pub fn new(known_request_headers: HashMap<String, HashSet<String>>) -> Self {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -148,15 +149,15 @@ impl<TSubstream> BamBehaviour<TSubstream> {
     }
 }
 
-impl<TSubstream> NetworkBehaviour for BamBehaviour<TSubstream>
+impl<TSubstream> NetworkBehaviour for Comit<TSubstream>
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
-    type ProtocolsHandler = BamHandler<TSubstream>;
+    type ProtocolsHandler = ComitHandler<TSubstream>;
     type OutEvent = BehaviourOutEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
-        BamHandler::new(self.known_request_headers.clone())
+        ComitHandler::new(self.known_request_headers.clone())
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {

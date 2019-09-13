@@ -17,9 +17,9 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<BP: SwarmInfo>(get_bam_peers: Arc<BP>) -> Result<impl Reply, Rejection> {
-    let peers = get_bam_peers
-        .bam_peers()
+pub fn get_peers<BP: SwarmInfo>(swarm_info: Arc<BP>) -> Result<impl Reply, Rejection> {
+    let peers = swarm_info
+        .comit_peers()
         .map(|(peer, addresses)| Peer {
             id: peer,
             endpoints: addresses,

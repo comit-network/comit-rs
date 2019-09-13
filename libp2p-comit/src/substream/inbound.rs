@@ -1,7 +1,7 @@
 use crate::{
     frame::{Response, UnvalidatedInboundRequest},
     handler::{self, InboundMessage, PendingInboundRequest, ProtocolOutEvent},
-    protocol::BamStream,
+    protocol::Frames,
     substream::{Advance, Advanced, CloseStream},
     Frame, FrameType, IntoFrame,
 };
@@ -15,27 +15,27 @@ use tokio::prelude::*;
 /// States of an inbound substream i.e. from peer node to us.
 pub enum State<TSubstream> {
     /// Waiting for a request from the remote.
-    WaitingMessage { stream: BamStream<TSubstream> },
+    WaitingMessage { stream: Frames<TSubstream> },
     /// Waiting for the user to send the response back to us.
     WaitingUser {
         receiver: oneshot::Receiver<Response>,
-        stream: BamStream<TSubstream>,
+        stream: Frames<TSubstream>,
     },
     /// Waiting to send an answer back to the remote.
     WaitingSend {
         msg: Frame,
-        stream: BamStream<TSubstream>,
+        stream: Frames<TSubstream>,
     },
     /// Waiting to flush an answer back to the remote.
-    WaitingFlush { stream: BamStream<TSubstream> },
+    WaitingFlush { stream: Frames<TSubstream> },
     /// The substream is being closed.
-    WaitingClose { stream: BamStream<TSubstream> },
+    WaitingClose { stream: Frames<TSubstream> },
 }
 
 impl<TSubstream> CloseStream for State<TSubstream> {
     type TSubstream = TSubstream;
 
-    fn close(stream: BamStream<Self::TSubstream>) -> Self {
+    fn close(stream: Frames<Self::TSubstream>) -> Self {
         State::WaitingClose { stream }
     }
 }
