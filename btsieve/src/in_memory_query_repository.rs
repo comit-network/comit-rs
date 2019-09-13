@@ -34,7 +34,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
         state.storage.get(&id).cloned()
     }
 
-    fn save_with_id(&self, entity: T, id: String) -> Result<String, Error<T>> {
+    fn save(&self, entity: T, id: String) -> Result<String, Error<T>> {
         let mut state = self.state.write().unwrap();
 
         state.storage.insert(id.clone(), entity);
