@@ -1,10 +1,12 @@
 use crate::{
+    bitcoin::bitcoind_http_blocksource,
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
     routes::{self, HttpApiProblemStdError},
     web3,
 };
 use ethereum_support::H256;
+use futures::Future;
 use routes::Error as RouteError;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{fmt::Debug, sync::Arc};
@@ -15,7 +17,7 @@ pub const MAX_QUERY_ID_LENGTH: usize = 100;
 
 #[derive(Debug)]
 pub enum Error {
-    BitcoinRpc(bitcoincore_rpc::Error),
+    BitcoindHttp(bitcoind_http_blocksource::Error),
     Web3(web3::Error),
     MissingTransaction(H256),
 }
@@ -32,7 +34,7 @@ pub trait ToHttpPayload<R> {
         &self,
         return_as: &R,
         client: &Self::Client,
-    ) -> Result<Vec<Self::Item>, Error>;
+    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send>;
 }
 
 #[derive(Deserialize, Serialize, Default, Debug, Eq, PartialEq, Hash)]
@@ -80,7 +82,7 @@ pub fn create_ethereum_stub_endpoints(
 }
 
 pub fn create_endpoints<
-    R,
+    R: Sync,
     Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,

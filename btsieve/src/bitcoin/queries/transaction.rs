@@ -1,13 +1,16 @@
 use crate::{
-    bitcoin::queries::{to_sha256d_hash, PayloadKind},
+    bitcoin::{bitcoind_http_blocksource::BitcoindHttpBlockSource, queries::PayloadKind},
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };
 use bitcoin_support::{
-    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction, TransactionId,
+    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction,
 };
-use bitcoincore_rpc::RpcApi;
 use derivative::Derivative;
+use futures::{
+    future::Future,
+    stream::{FuturesOrdered, Stream},
+};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
@@ -33,48 +36,43 @@ pub enum ReturnAs {
 }
 
 impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = bitcoincore_rpc::Client;
+    type Client = BitcoindHttpBlockSource;
     type Item = PayloadKind;
 
     fn to_http_payload(
         &self,
         return_as: &ReturnAs,
-        client: &bitcoincore_rpc::Client,
-    ) -> Result<Vec<Self::Item>, Error> {
+        client: &BitcoindHttpBlockSource,
+    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send + 'static> {
         // Close over some local variables for easier usage of the method
-        let to_payload = |id: TransactionId| to_payload(client, return_as, id);
+        let to_payload = |id: String| to_payload(client, return_as, id);
 
-        self.0
-            .iter()
-            .filter_map(to_sha256d_hash)
+        let future = self
+            .0
+            .clone()
+            .into_iter()
             .map(to_payload)
-            // .collect for Vec<Result<PayloadKind, Error>> transforms it into
-            // Result<Vec<PayloadKind>, Error> returning the first Error or the whole
-            // collection.
-            // We want this because the the Error means something is wrong with the connection to
-            // our bitcoin node and skipping is unlikely to help since the next call will fail as
-            // well. That is why we simply fail the whole function.
-            .collect()
+            .collect::<FuturesOrdered<_>>()
+            .collect();
+
+        Box::new(future)
     }
 }
 
 fn to_payload(
-    client: &bitcoincore_rpc::Client,
+    client: &BitcoindHttpBlockSource,
     return_as: &ReturnAs,
-    id: TransactionId,
-) -> Result<PayloadKind, Error> {
+    id: String,
+) -> Box<dyn Future<Item = PayloadKind, Error = Error> + Send> {
+    log::info!("Request for transaction {:?}", id);
     match return_as {
-        ReturnAs::TransactionId => Ok(PayloadKind::Id { id }),
-        ReturnAs::Transaction => {
-            match client
-                .get_raw_transaction_verbose(&id, None)
-                .map(|result| result.transaction())
-            {
-                Ok(Ok(transaction)) => Ok(PayloadKind::Transaction { transaction }),
-                Ok(Err(e)) => Err(Error::BitcoinRpc(e.into())),
-                Err(e) => Err(Error::BitcoinRpc(e)),
-            }
-        }
+        ReturnAs::TransactionId => Box::new(futures::future::ok(PayloadKind::Id { id })),
+        ReturnAs::Transaction => Box::new(
+            client
+                .transaction_by_hash(id)
+                .map(|transaction| PayloadKind::Transaction { transaction })
+                .map_err(Error::BitcoindHttp),
+        ),
     }
 }
 

@@ -108,9 +108,9 @@ export class LedgerRunner {
             const [, password] = result.output.split(":");
 
             return {
+                network: "regtest",
                 host: container.getContainerIpAddress(),
                 rpcPort: container.getMappedPort(18443),
-                zmqPort: container.getMappedPort(28332),
                 username: "__cookie__",
                 password,
             };
@@ -162,11 +162,10 @@ async function startBitcoinContainer(): Promise<StartedTestContainer> {
             "-rpcbind=0.0.0.0:18443",
             "-rpcallowip=0.0.0.0/0",
             "-debug=1",
-            "-zmqpubrawblock=tcp://*:28332",
-            "-zmqpubrawtx=tcp://*:28333",
             "-acceptnonstdtxn=0",
+            "-rest",
         ])
-        .withExposedPorts(18443, 28332)
+        .withExposedPorts(18443)
         .withWaitStrategy(new LogWaitStrategy("Flushed wallet.dat"))
         .start();
 }

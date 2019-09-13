@@ -1,13 +1,10 @@
 mod serde_log;
 
+use bitcoin_support::Network;
 use config::{Config, ConfigError, File};
 use log::LevelFilter;
 use serde::Deserialize;
-use std::{
-    ffi::OsStr,
-    net::IpAddr,
-    path::{Path, PathBuf},
-};
+use std::{ffi::OsStr, net::IpAddr, path::Path};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Settings {
@@ -34,36 +31,10 @@ pub struct HttpApi {
     pub port_bind: u16,
 }
 
-#[derive(Debug, Deserialize, Clone, PartialEq)]
-pub enum BitcoinAuth {
-    Cookie {
-        file_path: String,
-    },
-    Basic {
-        node_username: String,
-        node_password: String,
-    },
-}
-
-impl From<BitcoinAuth> for bitcoincore_rpc::Auth {
-    fn from(bitcoin_auth: BitcoinAuth) -> Self {
-        match bitcoin_auth {
-            BitcoinAuth::Basic {
-                node_username,
-                node_password,
-            } => bitcoincore_rpc::Auth::UserPass(node_username, node_password),
-            BitcoinAuth::Cookie { file_path } => {
-                bitcoincore_rpc::Auth::CookieFile(PathBuf::from(file_path))
-            }
-        }
-    }
-}
-
 #[derive(Debug, Deserialize, Clone)]
 pub struct Bitcoin {
-    pub zmq_endpoint: String,
-    pub node_url: url::Url,
-    pub authentication: BitcoinAuth,
+    pub network: Network,
+    pub node_url: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -142,38 +113,5 @@ mod tests {
         assert_that(&settings.bitcoin.is_some()).is_true();
 
         Ok(())
-    }
-
-    #[test]
-    fn can_read_config_with_bitcoin_cookie_authentication() {
-        let settings = Settings::read("./config/bitcoin_cookieauth.toml");
-
-        let cookie_authentication = BitcoinAuth::Cookie {
-            file_path: "/home/bitcoin/.bitcoin/regtest/.cookie".to_owned(),
-        };
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|s| &s.bitcoin)
-            .is_some()
-            .map(|b| &b.authentication)
-            .is_equal_to(cookie_authentication);
-    }
-
-    #[test]
-    fn can_read_config_with_bitcoin_basic_authentication() {
-        let settings = Settings::read("./config/bitcoin_basicauth.toml");
-
-        let basic_authentication = BitcoinAuth::Basic {
-            node_username: "Satoshi".to_owned(),
-            node_password: "Nakamoto".to_owned(),
-        };
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|s| &s.bitcoin)
-            .is_some()
-            .map(|b| &b.authentication)
-            .is_equal_to(basic_authentication);
     }
 }
