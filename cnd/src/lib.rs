@@ -9,6 +9,8 @@ extern crate strum_macros;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 pub mod bam_api;
 pub mod bam_ext;
