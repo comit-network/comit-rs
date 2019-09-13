@@ -1,16 +1,17 @@
 use crate::{
     http_api::swap_resource::{build_rfc003_siren_entity, IncludeState},
-    swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
+    swap_protocols::{rfc003::state_store::StateStore, MetadataStore},
 };
 use http_api_problem::HttpApiProblem;
 
-pub fn handle_get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn handle_get_swaps<T: MetadataStore, S: StateStore>(
     metadata_store: &T,
     state_store: &S,
 ) -> Result<siren::Entity, HttpApiProblem> {
     let mut entity = siren::Entity::default().with_class_member("swaps");
 
-    for (id, metadata) in metadata_store.all()?.into_iter() {
+    for metadata in metadata_store.all()?.into_iter() {
+        let id = metadata.swap_id;
         let sub_entity = build_rfc003_siren_entity(state_store, id, metadata, IncludeState::No)?;
         entity.push_sub_entity(siren::SubEntity::from_entity(sub_entity, &["item"]));
     }

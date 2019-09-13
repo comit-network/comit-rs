@@ -41,7 +41,7 @@ pub fn post_swap<A: AliceSpawner>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn get_swap<T: MetadataStore, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
     id: SwapId,
@@ -52,7 +52,7 @@ pub fn get_swap<T: MetadataStore<SwapId>, S: StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn action<T: MetadataStore, S: StateStore>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

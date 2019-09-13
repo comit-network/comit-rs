@@ -1,4 +1,4 @@
-use super::file::{Btsieve, Comit, File, HttpSocket, Network};
+use super::file::{Btsieve, Comit, Database, File, HttpSocket, Network};
 use log::LevelFilter;
 
 /// This structs represents the settings as they are used through out the code.
@@ -12,6 +12,7 @@ pub struct Settings {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
+    pub database: Option<Database>,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Logging,
@@ -31,6 +32,7 @@ impl Settings {
             comit,
             network,
             http_api,
+            database,
             btsieve,
             web_gui,
             logging,
@@ -40,6 +42,7 @@ impl Settings {
             comit,
             network,
             http_api,
+            database,
             btsieve,
             web_gui,
             logging: {
