@@ -3,8 +3,7 @@ name = "libp2p-comit"
 version = "0.1.0"
 authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "Implementation of the COMIT messaging protocol"
 
 [dependencies]
 bytes = "0.4"
