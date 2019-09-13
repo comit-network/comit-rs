@@ -14,7 +14,7 @@ impl Blockchain<Block> for Bitcoin {
             return log::warn!("Block already known {:?} ", block_hash);
         }
 
-        log::info!("Retrieved block {:?} ", block_hash);
+        log::debug!("Retrieved block {:?} ", block_hash);
         match self.find_predecessor(&block) {
             Some(_prev) => {
                 self.0
