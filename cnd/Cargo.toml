@@ -36,7 +36,7 @@ migrations_internals= "1.4"
 mime = "0.3"
 mime_guess = "2.0"
 rand = "0.7"
-reqwest = "0.9"
+reqwest = { version = "0.9", default-features = false }
 rlp = "0.4"
 rust-crypto = "0.2"
 rustic_hal = "0.2"

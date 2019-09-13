@@ -35,7 +35,6 @@ declare var global: HarnessGlobal;
     await tobyWallet.eth().fund("10");
     await bob.wallet.eth().fund("5");
     await alice.wallet.btc().fund(10);
-    await bitcoin.generate();
     await alice.wallet.eth().fund("1");
 
     const tokenContractAddress = await tobyWallet

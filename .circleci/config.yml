@@ -54,20 +54,8 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
-          name: "Compile openssl static libs"
-          command: |
-            set -v
-            cd ~/ && curl -O https://www.openssl.org/source/openssl-1.1.1c.tar.gz
-            tar xaf openssl-1.1.1c.tar.gz
-            mkdir ~/openssl
-            cd openssl-1.1.1c && ./config --prefix=$HOME/openssl -static
-            make
-            make install
-      - run:
           name: Release build and test using cargo make
           command: |
-            export OPENSSL_DIR=$HOME/openssl/
-            export OPENSSL_STATIC=1
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
             export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
@@ -133,7 +121,7 @@ commands:
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
             echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
             sudo apt-get update
-            sudo apt-get install -y nodejs=10.* yarn libzmq3-dev
+            sudo apt-get install -y nodejs=10.* yarn
   install_rust:
     steps:
       - run:

@@ -17,7 +17,7 @@ impl Blockchain<Block<Transaction>> for Ethereum {
             }
             Some(current_hash) => {
                 if self.0.nodes.contains(&block) {
-                    return log::warn!("Block already known {:?} ", block);
+                    return log::warn!("Block already known {:?} ", block.hash);
                 }
                 match self.find_predecessor(&block) {
                     Some(_prev) => {
@@ -26,7 +26,7 @@ impl Blockchain<Block<Transaction>> for Ethereum {
                             .push((block.clone().parent_hash, current_hash));
                     }
                     None => {
-                        log::warn!("Could not find previous block for {:?} ", block);
+                        log::warn!("Could not find previous block for {:?} ", block.hash);
                     }
                 }
                 self.0.nodes.push(block);
