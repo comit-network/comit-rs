@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     asset::Asset,
     dependencies::{self, LedgerEventDependencies},
-    metadata_store::{self, Metadata, MetadataStore, RoleKind},
+    metadata_store::{self, Metadata, MetadataStore, Role},
     rfc003::{
         self, bob,
         create_ledger_events::CreateLedgerEvents,
@@ -44,9 +44,7 @@ pub trait BobSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
-    for dependencies::bob::ProtocolDependencies<T, S>
-{
+impl<T: MetadataStore, S: StateStore> BobSpawner for dependencies::bob::ProtocolDependencies<T, S> {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
@@ -70,12 +68,12 @@ impl<T: MetadataStore<SwapId>, S: StateStore> BobSpawner
             swap_request.beta_ledger.into(),
             swap_request.alpha_asset.into(),
             swap_request.beta_asset.into(),
-            RoleKind::Bob,
+            Role::Bob,
             counterparty,
         );
 
         self.metadata_store
-            .insert(id, metadata)
+            .insert(metadata)
             .map_err(Error::Metadata)?;
 
         let (sender, receiver) = mpsc::unbounded();

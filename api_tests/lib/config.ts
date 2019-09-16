@@ -1,3 +1,4 @@
+import tempfile from "tempfile";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
 import { LedgerConfig } from "./ledger_runner";
@@ -5,6 +6,7 @@ import { LedgerConfig } from "./ledger_runner";
 export interface CndConfigFile {
     comit: { secret_seed: string };
     http_api: { address: string; port: number };
+    database?: { sqlite: string };
     web_gui?: { address: string; port: number };
     network: { listen: string[] };
     btsieve: {
@@ -60,6 +62,7 @@ export class E2ETestActorConfig {
     }
 
     public generateCndConfigFile(): CndConfigFile {
+        const dbPath = tempfile(".sqlite");
         return {
             comit: {
                 secret_seed: this.seed,
@@ -78,6 +81,9 @@ export class E2ETestActorConfig {
             http_api: {
                 address: "0.0.0.0",
                 port: this.httpApiPort,
+            },
+            database: {
+                sqlite: dbPath,
             },
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],

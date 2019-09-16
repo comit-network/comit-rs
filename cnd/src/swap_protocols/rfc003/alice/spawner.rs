@@ -5,7 +5,7 @@ use crate::{
         self,
         asset::Asset,
         dependencies::LedgerEventDependencies,
-        metadata_store::{self, Metadata, MetadataStore, RoleKind},
+        metadata_store::{self, Metadata, MetadataStore, Role},
         rfc003::{
             alice,
             messages::ToRequest,
@@ -46,7 +46,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
+impl<T: MetadataStore, S: StateStore, C: Client> AliceSpawner
     for swap_protocols::alice::ProtocolDependencies<T, S, C>
 {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
@@ -69,12 +69,12 @@ impl<T: MetadataStore<SwapId>, S: StateStore, C: Client> AliceSpawner
             swap_request.beta_ledger.into(),
             swap_request.alpha_asset.into(),
             swap_request.beta_asset.into(),
-            RoleKind::Alice,
+            Role::Alice,
             bob_dial_info.peer_id.to_owned(),
         );
 
         self.metadata_store
-            .insert(id, metadata)
+            .insert(metadata)
             .map_err(Error::Metadata)?;
 
         let (sender, receiver) = mpsc::unbounded();

@@ -1,6 +1,5 @@
 use crate::{seed::Seed, std_ext::path::PrintablePath};
 use config as config_rs;
-use directories::ProjectDirs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
@@ -25,6 +24,7 @@ pub struct File {
     pub comit: Comit,
     pub network: Network,
     pub http_api: HttpSocket,
+    pub database: Option<Database>,
     pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Option<Logging>,
@@ -48,6 +48,7 @@ impl File {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8000,
             },
+            database: None,
             btsieve: Btsieve {
                 url: btsieve_url,
                 bitcoin: PollParameters {
@@ -105,6 +106,11 @@ pub struct PollParameters<T> {
     pub network: T,
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Database {
+    pub sqlite: PathBuf,
+}
+
 impl File {
     pub fn read_or_create_default<R: Rng>(rand: R) -> Result<Self, config_rs::ConfigError> {
         let path = Self::default_config_path()?;
@@ -141,7 +147,7 @@ impl File {
     }
 
     fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
-        config_dir()
+        crate::config_dir()
             .map(|dir| Path::join(&dir, "cnd.toml"))
             .ok_or_else(|| {
                 config_rs::ConfigError::Message(
@@ -195,13 +201,6 @@ impl File {
             ))
         })
     }
-}
-
-// Linux: /home/<user>/.config/comit/
-// Windows: C:\Users\<user>\AppData\Roaming\comit\config\
-// OSX: /Users/<user>/Library/Preferences/comit/
-fn config_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 #[cfg(test)]

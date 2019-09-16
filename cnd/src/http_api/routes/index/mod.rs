@@ -4,7 +4,7 @@ use self::handlers::handle_get_swaps;
 use crate::{
     http_api::routes::into_rejection,
     network::SwarmInfo,
-    swap_protocols::{rfc003::state_store::StateStore, MetadataStore, SwapId},
+    swap_protocols::{rfc003::state_store::StateStore, MetadataStore},
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
@@ -29,7 +29,7 @@ pub fn get_info<SI: SwarmInfo>(id: PeerId, swarm_info: Arc<SI>) -> Result<impl R
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<T: MetadataStore<SwapId>, S: StateStore>(
+pub fn get_swaps<T: MetadataStore, S: StateStore>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
 ) -> Result<impl Reply, Rejection> {
