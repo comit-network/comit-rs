@@ -1,4 +1,4 @@
-use crate::network::SwarmInfo;
+use crate::{http_api::Http, network::SwarmInfo};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use std::sync::Arc;
@@ -11,17 +11,16 @@ pub struct PeersResource {
 
 #[derive(Serialize, Debug)]
 pub struct Peer {
-    #[serde(with = "crate::http_api::serde_peer_id")]
-    id: PeerId,
+    id: Http<PeerId>,
     endpoints: Vec<Multiaddr>,
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<BP: SwarmInfo>(get_bam_peers: Arc<BP>) -> Result<impl Reply, Rejection> {
-    let peers = get_bam_peers
-        .bam_peers()
+pub fn get_peers<BP: SwarmInfo>(swarm_info: Arc<BP>) -> Result<impl Reply, Rejection> {
+    let peers = swarm_info
+        .comit_peers()
         .map(|(peer, addresses)| Peer {
-            id: peer,
+            id: Http(peer),
             endpoints: addresses,
         })
         .collect();

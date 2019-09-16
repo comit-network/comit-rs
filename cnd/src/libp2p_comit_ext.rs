@@ -1,17 +1,14 @@
-#[macro_export(local_inner_macros)]
-macro_rules! try_header {
-    ($e:expr) => {
-        header_internal!($e, {
-            let value = Default::default();
+use libp2p_comit::frame::Header;
 
-            log::info!(
-                "Header was not present, falling back to default value: '{:?}'",
-                value
-            );
+pub trait FromHeader
+where
+    Self: Sized,
+{
+    fn from_header(header: Header) -> Result<Self, serde_json::Error>;
+}
 
-            value
-        })
-    };
+pub trait ToHeader {
+    fn to_header(&self) -> Result<Header, serde_json::Error>;
 }
 
 #[macro_export(local_inner_macros)]
@@ -26,7 +23,7 @@ macro_rules! header {
             return Box::new(futures::future::ok(Response::empty().with_header(
                 "decision",
                 Decision::Declined
-                    .to_bam_header()
+                    .to_header()
                     .expect("Decision should not fail to serialize"),
             )
             .with_body(serde_json::to_value(decline_body).expect(
@@ -50,7 +47,7 @@ macro_rules! body {
                 return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 )
                 .with_body(serde_json::to_value(decline_body).expect(
@@ -76,7 +73,7 @@ macro_rules! header_internal {
                 return Box::new(futures::future::ok(Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 )
                 .with_body(serde_json::to_value(decline_body).expect(

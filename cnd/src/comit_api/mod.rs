@@ -1,5 +1,5 @@
 use crate::{
-    bam_ext::{FromBamHeader, ToBamHeader},
+    libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
         asset::AssetKind,
         ledger::{Bitcoin, Ethereum, LedgerKind},
@@ -7,9 +7,9 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::frame::Header;
 use bitcoin_support::amount::Denomination;
 use ethereum_support::Erc20Token;
+use libp2p_comit::frame::Header;
 use serde::de::Error;
 use std::fmt;
 
@@ -17,8 +17,8 @@ fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
     ::serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
 }
 
-impl FromBamHeader for LedgerKind {
-    fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
+impl FromHeader for LedgerKind {
+    fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
             "ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
@@ -27,8 +27,8 @@ impl FromBamHeader for LedgerKind {
     }
 }
 
-impl ToBamHeader for LedgerKind {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+impl ToHeader for LedgerKind {
+    fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             LedgerKind::Bitcoin(bitcoin) => {
                 Header::with_str_value("bitcoin").with_parameter("network", bitcoin.network)?
@@ -41,8 +41,8 @@ impl ToBamHeader for LedgerKind {
     }
 }
 
-impl FromBamHeader for SwapProtocol {
-    fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
+impl FromHeader for SwapProtocol {
+    fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "comit-rfc-003" => SwapProtocol::Rfc003(header.take_parameter("hash_function")?),
             other => SwapProtocol::Unknown(other.to_string()),
@@ -50,8 +50,8 @@ impl FromBamHeader for SwapProtocol {
     }
 }
 
-impl ToBamHeader for SwapProtocol {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+impl ToHeader for SwapProtocol {
+    fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             SwapProtocol::Rfc003(hash_function) => Header::with_str_value("comit-rfc-003")
                 .with_parameter("hash_function", hash_function)?,
@@ -60,8 +60,8 @@ impl ToBamHeader for SwapProtocol {
     }
 }
 
-impl FromBamHeader for AssetKind {
-    fn from_bam_header(mut header: Header) -> Result<Self, serde_json::Error> {
+impl FromHeader for AssetKind {
+    fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
                 let quantity = header.take_parameter::<String>("quantity")?;
@@ -81,8 +81,8 @@ impl FromBamHeader for AssetKind {
     }
 }
 
-impl ToBamHeader for AssetKind {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+impl ToHeader for AssetKind {
+    fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             AssetKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin")
                 .with_parameter("quantity", format!("{}", bitcoin.as_sat()))?,
@@ -97,8 +97,8 @@ impl ToBamHeader for AssetKind {
     }
 }
 
-impl ToBamHeader for Decision {
-    fn to_bam_header(&self) -> Result<Header, serde_json::Error> {
+impl ToHeader for Decision {
+    fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             Decision::Accepted => Header::with_str_value("accepted"),
             Decision::Declined => Header::with_str_value("declined"),
@@ -106,8 +106,8 @@ impl ToBamHeader for Decision {
     }
 }
 
-impl FromBamHeader for Decision {
-    fn from_bam_header(header: Header) -> Result<Self, serde_json::Error> {
+impl FromHeader for Decision {
+    fn from_header(header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "accepted" => Decision::Accepted,
             "declined" => Decision::Declined,
@@ -119,21 +119,21 @@ impl FromBamHeader for Decision {
 #[cfg(test)]
 mod tests {
     use crate::{
-        bam_ext::{FromBamHeader, ToBamHeader},
+        libp2p_comit_ext::{FromHeader, ToHeader},
         swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
     };
-    use bam::frame::Header;
     use bitcoin_support::Amount;
     use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
+    use libp2p_comit::frame::Header;
     use spectral::prelude::*;
 
     #[test]
-    fn erc20_quantity_to_bam_header() -> Result<(), serde_json::Error> {
+    fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
         let quantity = Erc20Token::new(
             Address::zero(),
             Erc20Quantity(U256::from(100_000_000_000_000u64)),
         );
-        let header = AssetKind::from(quantity).to_bam_header()?;
+        let header = AssetKind::from(quantity).to_header()?;
 
         assert_eq!(
             header,
@@ -149,13 +149,13 @@ mod tests {
     fn serializing_unknown_ledgerkind_doesnt_panic() {
         let ledger_kind = LedgerKind::Unknown("USD".to_string());
 
-        let header = ledger_kind.to_bam_header();
+        let header = ledger_kind.to_header();
 
         assert_that(&header).is_err();
     }
 
     #[test]
-    fn swap_protocol_to_bam_header() {
+    fn swap_protocol_to_header() {
         // From comit-network/RFCs/RFC-003-SWAP-Basic.md SWAP REQUEST example.
         //
         // "protocol": {
@@ -169,15 +169,15 @@ mod tests {
             .unwrap();
 
         let protocol = SwapProtocol::Rfc003(HashFunction::Sha256);
-        let protocol = protocol.to_bam_header().unwrap();
+        let protocol = protocol.to_header().unwrap();
 
         assert_eq!(header, protocol);
     }
 
     #[test]
-    fn bitcoin_quantity_to_bam_header() {
+    fn bitcoin_quantity_to_header() {
         let quantity = Amount::from_btc(1.0).unwrap();
-        let header = AssetKind::from(quantity).to_bam_header().unwrap();
+        let header = AssetKind::from(quantity).to_header().unwrap();
 
         assert_eq!(
             header,
@@ -188,12 +188,12 @@ mod tests {
     }
 
     #[test]
-    fn bitcoin_quantity_from_bam_header() {
+    fn bitcoin_quantity_from_header() {
         let header = Header::with_str_value("bitcoin")
             .with_parameter("quantity", "100000000")
             .unwrap();
 
-        let quantity = AssetKind::from_bam_header(header).unwrap();
+        let quantity = AssetKind::from_header(header).unwrap();
         let amount = Amount::from_btc(1.0).unwrap();
         assert_eq!(quantity, AssetKind::Bitcoin(amount));
     }

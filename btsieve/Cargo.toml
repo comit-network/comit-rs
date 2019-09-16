@@ -3,6 +3,7 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 edition = "2018"
 name = "btsieve"
 version = "0.2.0"
+description = "A b(lockchain) t(ransaction) sieve that allows clients to detect when certain events happen on a blockchain."
 
 [dependencies]
 

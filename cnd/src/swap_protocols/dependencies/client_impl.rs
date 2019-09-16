@@ -4,9 +4,9 @@
 // without passing in all the dependencies just in case we have to
 // open up a new connection and decide how to respond to requests?
 use crate::{
-    bam_ext::{FromBamHeader, ToBamHeader},
     comit_client::{Client, RequestError},
-    network::{Behaviour, DialInformation},
+    libp2p_comit_ext::{FromHeader, ToHeader},
+    network::{ComitNode, DialInformation},
     swap_protocols::{
         self,
         asset::Asset,
@@ -18,9 +18,9 @@ use crate::{
         SwapProtocol,
     },
 };
-use bam::{self, frame};
 use futures::Future;
 use libp2p::{Swarm, Transport};
+use libp2p_comit::frame;
 use serde::Deserialize;
 use std::sync::Mutex;
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
@@ -42,7 +42,7 @@ impl<
         B: BobSpawner,
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
-    > Client for Mutex<Swarm<TTransport, Behaviour<TSubstream, B>>>
+    > Client for Mutex<Swarm<TTransport, ComitNode<TSubstream, B>>>
 where
     <TTransport as Transport>::Listener: Send,
     <TTransport as Transport>::Error: Send,
@@ -58,7 +58,7 @@ where
         request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> SwapResponse<AL, BL> {
         let request = build_swap_request(request)
-            .expect("constructing a bam::frame::OutoingRequest should never fail!");
+            .expect("constructing a frame::OutoingRequest should never fail!");
 
         let response = {
             let mut swarm = self.lock().unwrap();
@@ -75,7 +75,7 @@ where
             Ok(mut response) => {
                 let decision = response
                     .take_header("decision")
-                    .map(Decision::from_bam_header)
+                    .map(Decision::from_header)
                     .map_or(Ok(None), |x| x.map(Some))
                     .map_err(|e| {
                         log::error!(
@@ -134,11 +134,11 @@ fn build_swap_request<
     let protocol = SwapProtocol::Rfc003(request.hash_function);
 
     Ok(frame::OutboundRequest::new("SWAP")
-        .with_header("alpha_ledger", request.alpha_ledger.into().to_bam_header()?)
-        .with_header("beta_ledger", request.beta_ledger.into().to_bam_header()?)
-        .with_header("alpha_asset", request.alpha_asset.into().to_bam_header()?)
-        .with_header("beta_asset", request.beta_asset.into().to_bam_header()?)
-        .with_header("protocol", protocol.to_bam_header()?)
+        .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
+        .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
+        .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
+        .with_header("beta_asset", request.beta_asset.into().to_header()?)
+        .with_header("protocol", protocol.to_header()?)
         .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
             AL,
             BL,

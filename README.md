@@ -6,25 +6,21 @@
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
 
-## WARNING - We do not recommend running COMIT on mainnet for now!!!
+## DISCLAIMER: This is not mainnet ready!
+
+- Extensive testing on mainnet from our side still remains to be done
+- Several features for achieving production-ready robustness are still under works
+- Once we consider comit-rs production ready, we will release version 1.0.0
 
 ## Structure
 
-The repository contains several main folders: `cnd`, `btsieve`, `blockchain_contracts` and `internal`.
+This repository is a cargo workspace:
 
-### Root crates
+- Crates at the top level are where the main work happens. Consult the respective `Cargo.toml` for a description of what they do.  
+- Crates inside the [internal](./internal) folder are considered to be private to this repository. They are used for sharing code between other crates in this repository.
+There is an [ongoing effort](https://github.com/comit-network/comit-rs/issues/626) to get rid of these crates because path dependencies block us from releasing any of the other crates to crates.io.
+- `libp2p-comit`: implementation of the comit messaging protocol on top of libp2p
 
-Crates at the root of the repository hold primary binaries and libraries:
-- `cnd`: the COMIT Node Daemon binary.
-- `btsieve`: the binary that sifts through Blockchain Transactions and blocks from the network.
-- `blockchain_contracts`: the library that contains the HTLCs, to be migrated to its own repo once some dependencies are sorted.
-
-### Internal
-
-Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
-Crates defined in here MUST NOT depend on any root crate.
-They need to be cleaned-up/sorted out to either be removed, contributed back to a popular library or extracted into their own repository.
-See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 
 ## Setup build environment
 

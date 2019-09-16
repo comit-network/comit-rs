@@ -1,34 +1,31 @@
-use bam::frame::{self, JsonFrameCodec};
+use crate::frame::{self, JsonFrameCodec};
 use futures::future::FutureResult;
-use libp2p::{
-    core::{upgrade::Negotiated, InboundUpgrade, UpgradeInfo},
-    OutboundUpgrade,
-};
+use libp2p_core::{InboundUpgrade, Negotiated, OutboundUpgrade, UpgradeInfo};
 use std::{convert::Infallible, iter};
 use tokio::{
     codec::{Decoder, Framed},
     prelude::*,
 };
 
-pub type BamStream<TSubstream> = Framed<Negotiated<TSubstream>, JsonFrameCodec>;
+pub type Frames<TSubstream> = Framed<Negotiated<TSubstream>, JsonFrameCodec>;
 
 #[derive(Clone, Copy, Debug)]
-pub struct BamProtocol {}
+pub struct ComitProtocolConfig {}
 
-impl UpgradeInfo for BamProtocol {
+impl UpgradeInfo for ComitProtocolConfig {
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(b"/bam/json/1.0.0")
+        iter::once(b"/comit/1.0.0")
     }
 }
 
-impl<TSubstream> InboundUpgrade<TSubstream> for BamProtocol
+impl<TSubstream> InboundUpgrade<TSubstream> for ComitProtocolConfig
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
-    type Output = BamStream<TSubstream>;
+    type Output = Frames<TSubstream>;
     type Error = Infallible;
     type Future = FutureResult<Self::Output, Self::Error>;
 
@@ -39,11 +36,11 @@ where
     }
 }
 
-impl<TSubstream> OutboundUpgrade<TSubstream> for BamProtocol
+impl<TSubstream> OutboundUpgrade<TSubstream> for ComitProtocolConfig
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
-    type Output = BamStream<TSubstream>;
+    type Output = Frames<TSubstream>;
     type Error = Infallible;
     type Future = FutureResult<Self::Output, Self::Error>;
 
