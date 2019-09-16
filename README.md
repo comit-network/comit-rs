@@ -10,21 +10,12 @@ This is a reference implementation for the COMIT protocol.
 
 ## Structure
 
-The repository contains several main folders: `cnd`, `btsieve`, `blockchain_contracts` and `internal`.
+This repository is a cargo workspace:
 
-### Root crates
+- Crates at the top level are where the main work happens. Consult the respective `Cargo.toml` for a description of what they do.  
+- Crates inside the [internal](./internal) folder are considered to be private to this repository. They are used for sharing code between other crates in this repository.
+There is an [ongoing effort](https://github.com/comit-network/comit-rs/issues/626) to get rid of these crates because path dependencies block us from releasing any of the other crates to crates.io.
 
-Crates at the root of the repository hold primary binaries and libraries:
-- `cnd`: the COMIT Node Daemon binary.
-- `btsieve`: the binary that sifts through Blockchain Transactions and blocks from the network.
-- `blockchain_contracts`: the library that contains the HTLCs, to be migrated to its own repo once some dependencies are sorted.
-
-### Internal
-
-Contains crates that provide general functionality that is not specific to the domain of atomic swaps. 
-Crates defined in here MUST NOT depend on any root crate.
-They need to be cleaned-up/sorted out to either be removed, contributed back to a popular library or extracted into their own repository.
-See [#626](https://github.com/comit-network/comit-rs/issues/626) for tracking.
 
 ## Setup build environment
 
