@@ -3,6 +3,7 @@ authors = ["CoBloX developers <team@coblox.tech>"]
 name = "cnd"
 version = "0.1.0"
 edition = "2018"
+description = "Reference implementation of a COMIT network daemon."
 
 [dependencies]
 bam = { path = "../internal/bam" }
