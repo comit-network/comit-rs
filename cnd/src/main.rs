@@ -63,7 +63,7 @@ fn main() -> Result<(), failure::Error> {
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::Behaviour::new(bob_protocol_dependencies, runtime.executor())?;
+    let behaviour = network::ComitNode::new(bob_protocol_dependencies, runtime.executor())?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 

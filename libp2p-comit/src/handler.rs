@@ -1,24 +1,19 @@
-use crate::libp2p_bam::{
-    protocol::BamProtocol,
-    substream::{self, Advance, Advanced},
-    BamHandlerEvent,
-};
-use bam::{
+use crate::{
     frame::{
-        JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest,
+        self, JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders,
+        ValidatedInboundRequest,
     },
-    Frame, IntoFrame,
+    protocol::ComitProtocolConfig,
+    substream::{self, Advance, Advanced},
+    ComitHandlerEvent, Frame, IntoFrame,
 };
-use derivative::Derivative;
 use futures::{
     sync::oneshot::{self, Canceled},
     task::Task,
     Async, Poll,
 };
-use libp2p::{
-    core::upgrade::Negotiated,
-    swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol},
-};
+use libp2p_core::Negotiated;
+use libp2p_swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol};
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
@@ -29,9 +24,9 @@ use tokio::{
     prelude::{AsyncRead, AsyncWrite},
 };
 
-#[derive(Derivative)]
+#[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub struct BamHandler<TSubstream> {
+pub struct ComitHandler<TSubstream> {
     #[derivative(Debug = "ignore")]
     inbound_substreams: Vec<substream::inbound::State<TSubstream>>,
     #[derivative(Debug = "ignore")]
@@ -45,7 +40,7 @@ pub struct BamHandler<TSubstream> {
 
 #[derive(Debug)]
 pub enum Error {
-    MalformedJson(bam::frame::CodecError),
+    MalformedJson(frame::CodecError),
     DroppedResponseSender(Canceled),
     UnknownMandatoryHeader(UnknownMandatoryHeaders),
     UnknownRequestType(String),
@@ -61,13 +56,13 @@ impl From<Canceled> for Error {
     }
 }
 
-impl From<bam::frame::CodecError> for Error {
-    fn from(e: bam::frame::CodecError) -> Self {
+impl From<frame::CodecError> for Error {
+    fn from(e: frame::CodecError) -> Self {
         Error::MalformedJson(e)
     }
 }
 
-impl<TSubstream> BamHandler<TSubstream> {
+impl<TSubstream> ComitHandler<TSubstream> {
     pub fn new(known_headers: HashMap<String, HashSet<String>>) -> Self {
         Self {
             known_headers,
@@ -128,17 +123,17 @@ pub enum OutboundMessage {
     Request(PendingOutboundRequest),
 }
 
-impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstream> {
+impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubstream> {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = bam::frame::CodecError;
+    type Error = frame::CodecError;
     type Substream = TSubstream;
-    type InboundProtocol = BamProtocol;
-    type OutboundProtocol = BamProtocol;
+    type InboundProtocol = ComitProtocolConfig;
+    type OutboundProtocol = ComitProtocolConfig;
     type OutboundOpenInfo = ProtocolOutboundOpenInfo;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
-        SubstreamProtocol::new(BamProtocol {})
+        SubstreamProtocol::new(ComitProtocolConfig {})
     }
 
     fn inject_fully_negotiated_inbound(
@@ -200,7 +195,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
         KeepAlive::Yes
     }
 
-    fn poll(&mut self) -> Poll<BamHandlerEvent, Self::Error> {
+    fn poll(&mut self) -> Poll<ComitHandlerEvent, Self::Error> {
         if let Some(result) = poll_substreams(&mut self.outbound_substreams, &self.known_headers) {
             return result;
         }
@@ -218,7 +213,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for BamHandler<TSubstr
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<BamHandlerEvent, bam::frame::CodecError>> {
+) -> Option<Poll<ComitHandlerEvent, frame::CodecError>> {
     log::debug!("polling {} substreams", substreams.len());
 
     // We remove each element from `substreams` one by one and add them back.
@@ -246,16 +241,14 @@ fn poll_substreams<S: Display + Advance>(
 mod tests {
     use super::*;
     use crate::{
-        bam_ext::ToBamHeader,
-        libp2p_bam::test_harness::{
+        frame::{Header, JsonFrameCodec, OutboundRequest, Response},
+        test_harness::{
             request_with_no_headers, setup_substream, setup_substream_with_json_codec,
             IntoEventStream, IntoFutureWithResponse, WaitForFrame,
         },
-        swap_protocols::rfc003::messages::Decision,
     };
-    use bam::frame::Header;
     use futures::{Future, Sink, Stream};
-    use libp2p::swarm::ProtocolsHandlerEvent;
+    use libp2p_swarm::ProtocolsHandlerEvent;
     use spectral::prelude::*;
     use tokio::codec::LinesCodec;
 
@@ -263,7 +256,7 @@ mod tests {
     fn given_an_inbound_request_handler_sends_response() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given an inbound substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -274,12 +267,7 @@ mod tests {
 
         // and we provide an answer
         let future = handler.into_future_with_response(
-            Response::empty().with_header(
-                "decision",
-                Decision::Declined
-                    .to_bam_header()
-                    .expect("Decision should not fail to serialize"),
-            ),
+            Response::empty().with_header("decision", Header::with_str_value("declined")),
         );
         runtime.spawn(future);
 
@@ -288,12 +276,7 @@ mod tests {
 
         assert_that(&response).is_ok().is_some().is_equal_to(
             Response::empty()
-                .with_header(
-                    "decision",
-                    Decision::Declined
-                        .to_bam_header()
-                        .expect("Decision should not fail to serialize"),
-                )
+                .with_header("decision", Header::with_str_value("declined"))
                 .into_frame(),
         );
     }
@@ -302,7 +285,7 @@ mod tests {
     fn given_inbound_substream_when_unknown_request_should_emit_unknown_request_type() {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = BamHandler::new(HashMap::new());
+        let mut handler = ComitHandler::new(HashMap::new());
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -329,7 +312,7 @@ mod tests {
     ) {
         let mut runtime = tokio::runtime::Runtime::new().unwrap();
         let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -371,7 +354,7 @@ mod tests {
                 JsonFrameCodec::default(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -403,7 +386,7 @@ mod tests {
                 JsonFrameCodec::default(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -437,7 +420,7 @@ mod tests {
                 JsonFrameCodec::default(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -469,7 +452,7 @@ mod tests {
                 JsonFrameCodec::default(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -503,7 +486,7 @@ mod tests {
                 JsonFrameCodec::default(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given a substream
         handler.inject_fully_negotiated_inbound(listener);
@@ -535,7 +518,7 @@ mod tests {
                 LinesCodec::new(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given an outbound substream
         let (sender, _receiver) = oneshot::channel();
@@ -576,7 +559,7 @@ mod tests {
                 LinesCodec::new(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given an outbound substream
         let (sender, _receiver) = oneshot::channel();
@@ -615,7 +598,7 @@ mod tests {
                 LinesCodec::new(),
             ))
             .unwrap();
-        let mut handler = BamHandler::new(request_with_no_headers("PING"));
+        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
 
         // given an outbound substream
         let (sender, _receiver) = oneshot::channel();

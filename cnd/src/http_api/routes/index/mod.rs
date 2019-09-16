@@ -2,7 +2,7 @@ mod handlers;
 
 use self::handlers::handle_get_swaps;
 use crate::{
-    http_api::routes::into_rejection,
+    http_api::{routes::into_rejection, Http},
     network::SwarmInfo,
     swap_protocols::{rfc003::state_store::StateStore, MetadataStore},
 };
@@ -13,8 +13,7 @@ use warp::{Rejection, Reply};
 
 #[derive(Serialize, Debug)]
 pub struct InfoResource {
-    #[serde(with = "crate::http_api::serde_peer_id")]
-    id: PeerId,
+    id: Http<PeerId>,
     listen_addresses: Vec<Multiaddr>,
 }
 
@@ -23,7 +22,7 @@ pub fn get_info<SI: SwarmInfo>(id: PeerId, swarm_info: Arc<SI>) -> Result<impl R
     let listen_addresses: Vec<Multiaddr> = swarm_info.listen_addresses().to_vec();
 
     Ok(warp::reply::json(&InfoResource {
-        id,
+        id: Http(id),
         listen_addresses,
     }))
 }
