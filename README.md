@@ -6,7 +6,11 @@
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
 
-## WARNING - We do not recommend running COMIT on mainnet for now!!!
+## DISCLAIMER: This is not mainnet ready!
+
+- Extensive testing on mainnet from our side still remains to be done
+- Several features for achieving production-ready robustness are still under works
+- Once we consider comit-rs production ready, we will release version 1.0.0
 
 ## Structure
 
