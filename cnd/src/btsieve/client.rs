@@ -11,7 +11,7 @@ use core::time::Duration;
 use futures::{stream::Stream, Async, Poll};
 use http_api_problem::HttpApiProblem;
 use reqwest::{
-    header::{HeaderMap, HeaderValue, LOCATION},
+    header::{HeaderMap, HeaderValue},
     r#async::Client,
     StatusCode, Url,
 };
@@ -90,23 +90,27 @@ impl BtsieveHttpClient {
 
     fn _create<L: Ledger, Q: Query>(
         &self,
-        create_endpoint: Url,
+        endpoint: Url,
         query: Q,
     ) -> Box<dyn Future<Item = QueryId<L>, Error = Error> + Send> {
-        log::debug!("Creating {:?} at {}", query, create_endpoint);
+        log::debug!("Creating query {:?} at {}", query, endpoint);
+        let endpoint_for_log = endpoint.clone();
 
-        let endpoint = self.endpoint.clone();
         let query_id = self
             .client
-            .post(create_endpoint)
+            .put(endpoint.clone())
             .json(&query)
             .headers(construct_headers())
             .send()
             .map_err(move |e| {
                 Error::FailedRequest(format!("Failed to create {:?} because {:?}", query, e))
             })
-            .and_then(move |response| {
-                if response.status() != StatusCode::CREATED {
+            .and_then(move |response| match response.status() {
+                StatusCode::NO_CONTENT | StatusCode::OK => {
+                    log::info!("Confirmed query existance at location {}", endpoint_for_log);
+                    Ok(())
+                }
+                _ => {
                     if let Ok(Async::Ready(bytes)) = response.into_body().concat2().poll() {
                         log::error!(
                             "Failed to create query. btsieve returned: {}",
@@ -114,41 +118,10 @@ impl BtsieveHttpClient {
                                 .expect("btsieve returned non-utf8 error")
                         );
                     }
-
-                    return Err(Error::MalformedResponse(
-                        "Could not create query".to_string(),
-                    ));
+                    Err(Error::ResponseFailure("Could not create query".to_string()))
                 }
-
-                response
-                    .headers()
-                    .get(LOCATION)
-                    .ok_or_else(|| {
-                        Error::MalformedResponse(
-                            "Location header was not present in response".to_string(),
-                        )
-                    })
-                    .and_then(|value| {
-                        value.to_str().map_err(|e| {
-                            Error::MalformedResponse(format!(
-                                "Unable to extract Location from response: {:?}",
-                                e
-                            ))
-                        })
-                    })
-                    .and_then(|location| {
-                        endpoint.join(location).map_err(|e| {
-                            Error::MalformedResponse(format!(
-                                "Failed to parse {} as URL: {:?}",
-                                location, e
-                            ))
-                        })
-                    })
             })
-            .inspect(|query_id| {
-                log::info!("Created new query at location {}", query_id);
-            })
-            .map(QueryId::new);
+            .and_then(|_| Ok(QueryId::new(endpoint)));
 
         Box::new(query_id)
     }
@@ -282,6 +255,25 @@ impl BtsieveHttpClient {
     }
 }
 
+// This function exists because Url::join() drops everything after
+// the last slash.
+//
+//  let url = Url::parse("example.com/foo/bar);
+//  let joined = url.join("baz.html");
+//  assert_eq!(joined.as_str(), "example.com/foo/baz.html");
+//
+fn append_id(endpoint: Url, id: &str) -> Url {
+    let mut endpoint = String::from(endpoint.as_str());
+    if let Some(char) = endpoint.chars().last() {
+        if char != '/' {
+            endpoint.push('/');
+        }
+    }
+
+    let url = Url::parse(endpoint.as_str()).unwrap();
+    url.join(&id).unwrap()
+}
+
 fn construct_headers() -> HeaderMap {
     let mut headers = HeaderMap::new();
     headers.insert(
@@ -327,6 +319,7 @@ mod ethereum {
     impl QueryEthereum for BtsieveHttpClient {
         fn create(
             &self,
+            id: &str,
             query: EthereumQuery,
         ) -> Box<dyn Future<Item = QueryId<Ethereum>, Error = Error> + Send> {
             let endpoint = match &query {
@@ -335,6 +328,7 @@ mod ethereum {
                 }
                 EthereumQuery::Event { .. } => self.create_ethereum_event_query_endpoint.clone(),
             };
+            let endpoint = append_id(endpoint, id);
             self._create(endpoint, query)
         }
 
@@ -418,6 +412,7 @@ mod bitcoin {
     impl QueryBitcoin for BtsieveHttpClient {
         fn create(
             &self,
+            id: &str,
             query: BitcoinQuery,
         ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send> {
             let endpoint = match &query {
@@ -425,6 +420,7 @@ mod bitcoin {
                     self.create_bitcoin_transaction_query_endpoint.clone()
                 }
             };
+            let endpoint = append_id(endpoint, id);
             self._create(endpoint, query)
         }
 
@@ -464,6 +460,7 @@ mod bitcoin {
 mod test {
     use super::*;
     use bitcoin_support::TransactionId;
+    use reqwest::Url;
 
     #[test]
     fn json_deserialize() {
@@ -471,5 +468,12 @@ mod test {
             r#"{"matches":["b29cb185d467b3a5faeb7a3f312175e336dbfcc8e9fecc8ad86e9106031315c2"]}"#;
 
         let _: QueryResponse<TransactionId> = serde_json::from_str(json).unwrap();
+    }
+
+    #[test]
+    fn does_not_drop_stuff_after_last_slash() {
+        let url = Url::parse("http://example.com/foo/bar").unwrap();
+        let joined = append_id(url, &String::from("baz"));
+        assert_eq!(joined.as_str(), "http://example.com/foo/bar/baz");
     }
 }

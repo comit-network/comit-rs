@@ -47,6 +47,7 @@ impl Query for BitcoinQuery {}
 pub trait QueryBitcoin {
     fn create(
         &self,
+        id: &str,
         query: BitcoinQuery,
     ) -> Box<dyn Future<Item = QueryId<Bitcoin>, Error = Error> + Send>;
 

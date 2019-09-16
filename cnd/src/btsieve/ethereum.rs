@@ -50,6 +50,7 @@ impl Query for EthereumQuery {}
 pub trait QueryEthereum {
     fn create(
         &self,
+        id: &str,
         query: EthereumQuery,
     ) -> Box<dyn Future<Item = QueryId<Ethereum>, Error = Error> + Send>;
 
