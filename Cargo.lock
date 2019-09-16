@@ -391,7 +391,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "btsieve"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "bitcoin_support 0.1.0",
  "byteorder 1.3.2 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -570,7 +570,7 @@ dependencies = [
 
 [[package]]
 name = "cnd"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
