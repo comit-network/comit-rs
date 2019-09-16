@@ -16,6 +16,7 @@ config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 diesel = { version = "1.4", features = ["sqlite"] }
+diesel_migrations = "1.4.0"
 directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
@@ -33,7 +34,6 @@ libp2p = { version = "0.12" }
 libp2p-comit = { path = "../libp2p-comit" }
 log = { version = "0.4", features = ["serde"] }
 maplit = "1"
-migrations_internals= "1.4"
 mime = "0.3"
 mime_guess = "2.0"
 rand = "0.7"

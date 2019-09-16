@@ -9,6 +9,8 @@ extern crate strum_macros;
 
 #[macro_use]
 extern crate diesel;
+#[macro_use]
+extern crate diesel_migrations;
 
 #[macro_use]
 pub mod libp2p_comit_ext;
