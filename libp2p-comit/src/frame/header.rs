@@ -31,7 +31,7 @@ where
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 enum CompactOrExtended {
     Extended {
@@ -61,7 +61,7 @@ impl CompactOrExtended {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(transparent)]
 pub struct Header {
     inner: CompactOrExtended,

@@ -6,7 +6,11 @@
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
 
-## WARNING - We do not recommend running COMIT on mainnet for now!!!
+## DISCLAIMER: This is not mainnet ready!
+
+- Extensive testing on mainnet from our side still remains to be done
+- Several features for achieving production-ready robustness are still under works
+- Once we consider comit-rs production ready, we will release version 1.0.0
 
 ## Structure
 
@@ -15,6 +19,7 @@ This repository is a cargo workspace:
 - Crates at the top level are where the main work happens. Consult the respective `Cargo.toml` for a description of what they do.  
 - Crates inside the [internal](./internal) folder are considered to be private to this repository. They are used for sharing code between other crates in this repository.
 There is an [ongoing effort](https://github.com/comit-network/comit-rs/issues/626) to get rid of these crates because path dependencies block us from releasing any of the other crates to crates.io.
+- `libp2p-comit`: implementation of the comit messaging protocol on top of libp2p
 
 
 ## Setup build environment

@@ -1,6 +1,5 @@
 use crate::{
-    bam_ext::{FromBamHeader, ToBamHeader},
-    libp2p_bam::{BamBehaviour, BehaviourOutEvent, PendingInboundRequest},
+    libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{
@@ -12,16 +11,16 @@ use crate::{
         HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
     },
 };
-use bam::{
-    self,
-    frame::{OutboundRequest, Response, ValidatedInboundRequest},
-};
 use futures::future::Future;
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
     swarm::NetworkBehaviourEventProcess,
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
+};
+use libp2p_comit::{
+    frame::{OutboundRequest, Response, ValidatedInboundRequest},
+    BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -34,8 +33,8 @@ use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
-pub struct Behaviour<TSubstream, B> {
-    bam: BamBehaviour<TSubstream>,
+pub struct ComitNode<TSubstream, B> {
+    comit: Comit<TSubstream>,
     mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
@@ -59,7 +58,7 @@ impl Display for DialInformation {
     }
 }
 
-impl<TSubstream, B> Behaviour<TSubstream, B> {
+impl<TSubstream, B> ComitNode<TSubstream, B> {
     pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("alpha_ledger".into());
@@ -72,7 +71,7 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
         known_headers.insert("SWAP".into(), swap_headers);
 
         Ok(Self {
-            bam: BamBehaviour::new(known_headers),
+            comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
             bob,
             task_executor,
@@ -84,12 +83,13 @@ impl<TSubstream, B> Behaviour<TSubstream, B> {
         peer_id: DialInformation,
         request: OutboundRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
-        self.bam.send_request(peer_id, request)
+        self.comit
+            .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 }
 
 pub trait SwarmInfo: Send + Sync + 'static {
-    fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
+    fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
     fn listen_addresses(&self) -> Vec<Multiaddr>;
 }
 
@@ -97,7 +97,7 @@ impl<
         TTransport: Transport + Send + 'static,
         B: BobSpawner + Send + 'static,
         TMuxer: StreamMuxer + Send + Sync + 'static,
-    > SwarmInfo for Mutex<Swarm<TTransport, Behaviour<SubstreamRef<Arc<TMuxer>>, B>>>
+    > SwarmInfo for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>, B>>>
 where
     <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
     <TMuxer as StreamMuxer>::Substream: Send + 'static,
@@ -107,10 +107,10 @@ where
     <TTransport as Transport>::ListenerUpgrade: Send,
     TTransport: Transport<Output = (PeerId, TMuxer)> + Clone,
 {
-    fn bam_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
+    fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.lock().unwrap();
 
-        Box::new(swarm.bam.connected_peers())
+        Box::new(swarm.comit.connected_peers())
     }
 
     fn listen_addresses(&self) -> Vec<Multiaddr> {
@@ -124,7 +124,7 @@ where
 }
 
 impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
-    for Behaviour<TSubstream, B>
+    for ComitNode<TSubstream, B>
 {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
@@ -150,7 +150,7 @@ impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
 }
 
 impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
-    for Behaviour<TSubstream, B>
+    for ComitNode<TSubstream, B>
 {
     fn inject_event(&mut self, event: libp2p::mdns::MdnsEvent) {
         match event {
@@ -175,25 +175,25 @@ fn handle_request<B: BobSpawner>(
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
     match request.request_type() {
         "SWAP" => {
-            let protocol: SwapProtocol = bam::header!(request
+            let protocol: SwapProtocol = header!(request
                 .take_header("protocol")
-                .map(SwapProtocol::from_bam_header));
+                .map(SwapProtocol::from_header));
             match protocol {
                 SwapProtocol::Rfc003(hash_function) => {
                     let swap_id = SwapId::default();
 
-                    let alpha_ledger = bam::header!(request
+                    let alpha_ledger = header!(request
                         .take_header("alpha_ledger")
-                        .map(LedgerKind::from_bam_header));
-                    let beta_ledger = bam::header!(request
+                        .map(LedgerKind::from_header));
+                    let beta_ledger = header!(request
                         .take_header("beta_ledger")
-                        .map(LedgerKind::from_bam_header));
-                    let alpha_asset = bam::header!(request
+                        .map(LedgerKind::from_header));
+                    let alpha_asset = header!(request
                         .take_header("alpha_asset")
-                        .map(AssetKind::from_bam_header));
-                    let beta_asset = bam::header!(request
+                        .map(AssetKind::from_header));
+                    let beta_asset = header!(request
                         .take_header("beta_asset")
-                        .map(AssetKind::from_bam_header));
+                        .map(AssetKind::from_header));
 
                     match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
                         (
@@ -211,7 +211,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -229,7 +229,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -247,7 +247,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (
@@ -265,7 +265,7 @@ fn handle_request<B: BobSpawner>(
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
-                                bam::body!(request.take_body_as()),
+                                body!(request.take_body_as()),
                             ),
                         ),
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
@@ -282,7 +282,7 @@ fn handle_request<B: BobSpawner>(
                                     .with_header(
                                         "decision",
                                         Decision::Declined
-                                            .to_bam_header()
+                                            .to_header()
                                             .expect("Decision should not fail to serialize"),
                                     )
                                     .with_body(serde_json::to_value(decline_body).expect(
@@ -303,7 +303,7 @@ fn handle_request<B: BobSpawner>(
                             .with_header(
                                 "decision",
                                 Decision::Declined
-                                    .to_bam_header()
+                                    .to_header()
                                     .expect("Decision should not fail to serialize"),
                             )
                             .with_body(serde_json::to_value(decline_body).expect(
@@ -325,7 +325,7 @@ fn handle_request<B: BobSpawner>(
                 Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 ),
             ))
@@ -376,7 +376,7 @@ where
                         .with_header(
                             "decision",
                             Decision::Accepted
-                                .to_bam_header()
+                                .to_header()
                                 .expect("Decision should not fail to serialize"),
                         )
                         .with_body(
@@ -388,7 +388,7 @@ where
                     .with_header(
                         "decision",
                         Decision::Declined
-                            .to_bam_header()
+                            .to_header()
                             .expect("Decision shouldn't fail to serialize"),
                     )
                     .with_body(
@@ -403,7 +403,7 @@ where
                     Response::empty().with_header(
                         "decision",
                         Decision::Declined
-                            .to_bam_header()
+                            .to_header()
                             .expect("Decision should not fail to serialize"),
                     )
                 }
@@ -417,7 +417,7 @@ where
                 Response::empty().with_header(
                     "decision",
                     Decision::Declined
-                        .to_bam_header()
+                        .to_header()
                         .expect("Decision should not fail to serialize"),
                 ),
             ))

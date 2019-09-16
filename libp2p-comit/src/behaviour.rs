@@ -1,23 +1,18 @@
 use crate::{
-    libp2p_bam::{
-        handler::{
-            self, InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent,
-            ProtocolOutEvent,
-        },
-        BamHandler, PendingInboundRequest, PendingOutboundRequest,
+    frame::{OutboundRequest, Response},
+    handler::{
+        self, InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent,
+        ProtocolOutEvent,
     },
-    network::DialInformation,
+    ComitHandler, PendingInboundRequest, PendingOutboundRequest,
 };
-use bam::frame::{OutboundRequest, Response};
 use futures::{
     stream::Stream,
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     Async, Future,
 };
-use libp2p::{
-    core::{ConnectedPoint, Multiaddr, PeerId},
-    swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters},
-};
+use libp2p_core::{ConnectedPoint, Multiaddr, PeerId};
+use libp2p_swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     marker::PhantomData,
@@ -45,8 +40,9 @@ pub enum BehaviourOutEvent {
     },
 }
 
+/// Network behaviour that handles the COMIT messaging protocol.
 #[derive(Debug)]
-pub struct BamBehaviour<TSubstream> {
+pub struct Comit<TSubstream> {
     marker: PhantomData<TSubstream>,
 
     events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
@@ -56,7 +52,7 @@ pub struct BamBehaviour<TSubstream> {
     connections: HashMap<PeerId, ConnectionState>,
 }
 
-impl<TSubstream> BamBehaviour<TSubstream> {
+impl<TSubstream> Comit<TSubstream> {
     pub fn new(known_request_headers: HashMap<String, HashSet<String>>) -> Self {
         let (sender, receiver) = mpsc::unbounded();
 
@@ -71,9 +67,10 @@ impl<TSubstream> BamBehaviour<TSubstream> {
 
     pub fn send_request(
         &mut self,
-        dial_information: DialInformation,
+        dial_information: (PeerId, Option<Multiaddr>),
         request: OutboundRequest,
     ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+        let (peer_id, address_hint) = dial_information;
         let (sender, receiver) = futures::oneshot();
 
         let request = PendingOutboundRequest {
@@ -81,16 +78,13 @@ impl<TSubstream> BamBehaviour<TSubstream> {
             channel: sender,
         };
 
-        match self.connections.entry(dial_information.clone().peer_id) {
+        match self.connections.entry(peer_id.clone()) {
             Entry::Vacant(entry) => {
                 self.events_sender
-                    .unbounded_send(NetworkBehaviourAction::DialPeer {
-                        peer_id: dial_information.peer_id,
-                    })
+                    .unbounded_send(NetworkBehaviourAction::DialPeer { peer_id })
                     .expect("we own the receiver");
 
-                let address_hints = dial_information
-                    .address_hint
+                let address_hints = address_hint
                     .map(|address| vec![address])
                     .unwrap_or_else(Vec::new);
 
@@ -112,7 +106,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                         pending_events
                             .push(ProtocolInEvent::Message(OutboundMessage::Request(request)));
 
-                        if let Some(address) = dial_information.address_hint {
+                        if let Some(address) = address_hint {
                             // We insert at the front because we consider the new address to be the
                             // most likely one to succeed. The order of this vector is important
                             // when returning it from `addresses_of_peer` because it will be tried
@@ -123,7 +117,7 @@ impl<TSubstream> BamBehaviour<TSubstream> {
                     ConnectionState::Connected { .. } => {
                         self.events_sender
                             .unbounded_send(NetworkBehaviourAction::SendEvent {
-                                peer_id: dial_information.peer_id,
+                                peer_id,
                                 event: ProtocolInEvent::Message(OutboundMessage::Request(request)),
                             })
                             .expect("we own the receiver");
@@ -155,15 +149,15 @@ impl<TSubstream> BamBehaviour<TSubstream> {
     }
 }
 
-impl<TSubstream> NetworkBehaviour for BamBehaviour<TSubstream>
+impl<TSubstream> NetworkBehaviour for Comit<TSubstream>
 where
     TSubstream: AsyncRead + AsyncWrite,
 {
-    type ProtocolsHandler = BamHandler<TSubstream>;
+    type ProtocolsHandler = ComitHandler<TSubstream>;
     type OutEvent = BehaviourOutEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
-        BamHandler::new(self.known_request_headers.clone())
+        ComitHandler::new(self.known_request_headers.clone())
     }
 
     fn addresses_of_peer(&mut self, peer_id: &PeerId) -> Vec<Multiaddr> {

@@ -1,9 +1,9 @@
-use crate::libp2p_bam::{
+use crate::{
     handler::{Error, ProtocolOutEvent},
-    protocol::BamStream,
-    BamHandlerEvent,
+    protocol::Frames,
+    ComitHandlerEvent,
 };
-use libp2p::swarm::ProtocolsHandlerEvent;
+use libp2p_swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
 pub mod inbound;
@@ -14,7 +14,7 @@ pub struct Advanced<S> {
     /// The optional new state we transitioned to.
     pub new_state: Option<S>,
     /// The optional event we generated as part of the transition.
-    pub event: Option<BamHandlerEvent>,
+    pub event: Option<ComitHandlerEvent>,
 }
 
 pub trait Advance: Sized {
@@ -29,7 +29,7 @@ impl<S> Advanced<S> {
         }
     }
 
-    fn emit_event(event: BamHandlerEvent) -> Self {
+    fn emit_event(event: ComitHandlerEvent) -> Self {
         Self {
             new_state: None,
             event: Some(event),
@@ -45,7 +45,7 @@ impl<S> Advanced<S> {
 }
 
 impl<S: CloseStream> Advanced<S> {
-    fn error<E: Into<Error>>(stream: BamStream<S::TSubstream>, error: E) -> Self {
+    fn error<E: Into<Error>>(stream: Frames<S::TSubstream>, error: E) -> Self {
         let error = error.into();
 
         Self {
@@ -60,5 +60,5 @@ impl<S: CloseStream> Advanced<S> {
 pub trait CloseStream: Sized {
     type TSubstream;
 
-    fn close(stream: BamStream<Self::TSubstream>) -> Self;
+    fn close(stream: Frames<Self::TSubstream>) -> Self;
 }
