@@ -22,7 +22,12 @@ fn redeem_single_p2wpkh() {
 
     let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let fee = Amount::from_sat(1000);
 
@@ -69,7 +74,12 @@ fn redeem_two_p2wpkh() {
     let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.public_key(), input_amount);
     let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let fee = Amount::from_sat(1000);
 

@@ -6,7 +6,7 @@ edition = "2018"
 
 [dependencies]
 lazy_static = "1"
-secp256k1 = { version = "0.12", features = ["rand"] }
+secp256k1 = { version = "0.15", features = ["rand", "recovery"] }
 serde = { version = "1", features = ["derive"] }
 
 [dev-dependencies]

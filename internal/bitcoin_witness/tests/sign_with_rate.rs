@@ -21,7 +21,12 @@ fn sign_with_rate() {
 
     let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key(), input_amount);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let rate = 42;
 

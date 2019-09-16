@@ -118,10 +118,12 @@ fn fund_htlc(
 
     let htlc_address = htlc.compute_address(Network::Regtest);
 
+    let amount_rpc = format!("{} sat", amount.as_sat()).parse().unwrap();
+
     let txid = client
         .send_to_address(
-            &htlc_address.clone(),
-            amount,
+            &htlc_address.clone().to_string().parse().unwrap(),
+            amount_rpc,
             None,
             None,
             None,
@@ -157,7 +159,12 @@ fn redeem_htlc_with_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let fee = Amount::from_sat(1000);
 
@@ -197,7 +204,12 @@ fn refund_htlc() {
     let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
         fund_htlc(&client, SECRET_HASH);
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
     let fee = Amount::from_sat(1000);
 
     let refund_tx = PrimedTransaction {
@@ -258,7 +270,12 @@ fn redeem_htlc_with_long_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let fee = Amount::from_sat(1000);
 
@@ -299,7 +316,12 @@ fn redeem_htlc_with_short_secret() {
 
     let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
 
-    let alice_addr: Address = client.get_new_address(None, None).unwrap();
+    let alice_addr: Address = client
+        .get_new_address(None, None)
+        .unwrap()
+        .to_string()
+        .parse()
+        .unwrap();
 
     let fee = Amount::from_sat(1000);
 

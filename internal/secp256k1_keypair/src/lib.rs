@@ -3,8 +3,8 @@
 
 pub use crate::keypair::*;
 pub use secp256k1::{
-    constants::SECRET_KEY_SIZE, rand, All, Message, PublicKey, RecoveryId, Secp256k1, SecretKey,
-    Signature,
+    constants::SECRET_KEY_SIZE, rand, recovery::RecoveryId, All, Message, PublicKey, Secp256k1,
+    SecretKey, Signature,
 };
 
 mod keypair;

@@ -1,5 +1,6 @@
 use secp256k1::{
-    self, rand::Rng, Error, Message, PublicKey, RecoverableSignature, SecretKey, Signature,
+    self, rand::Rng, recovery::RecoverableSignature, Error, Message, PublicKey, SecretKey,
+    Signature,
 };
 use std::{convert::Into, str::FromStr};
 

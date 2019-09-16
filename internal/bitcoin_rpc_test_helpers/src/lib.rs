@@ -23,7 +23,8 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         txid: &TransactionId,
         address: &Address,
     ) -> Option<TxOut> {
-        let address = address.clone();
+        // So that comit-rs can use latest rust-bitcoin even if bitcoincore-rpc does not
+        let address = address.to_string().parse().unwrap();
         let unspent = self
             .list_unspent(Some(1), None, Some(&[address]), None, None)
             .unwrap();
@@ -32,22 +33,25 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         unspent
             .into_iter()
             .find(|utxo| utxo.txid == *txid)
-            .map(|result| TxOut {
-                value: result.amount.as_sat(),
-                script_pubkey: result.script_pub_key,
+            .map(|result| {
+                let script_pubkey = result.script_pub_key.to_bytes().into();
+                TxOut {
+                    value: result.amount.as_sat(),
+                    script_pubkey,
+                }
             })
     }
 
     fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint {
         let tx = self.get_raw_transaction(&txid, None).unwrap();
-
+        let script_pubkey = address.script_pubkey().to_bytes().into();
         #[allow(clippy::cast_possible_truncation)]
         // there will never be tx with more than u32::MAX outputs
         tx.output
             .iter()
             .enumerate()
             .find_map(|(vout, txout)| {
-                if txout.script_pubkey == address.script_pubkey() {
+                if txout.script_pubkey == script_pubkey {
                     Some(OutPoint {
                         txid: *txid,
                         vout: vout as u32,
@@ -70,8 +74,12 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
     ) -> (Sha256dHash, OutPoint) {
         let address = dest.into_p2wpkh_address(Network::Regtest);
 
+        // So that comit-rs can use latest rust-bitcoin even if bitcoincore-rpc does not
+        let address_rpc = address.clone().to_string().parse().unwrap();
+        let amount_rpc = format!("{} sat", amount.as_sat()).parse().unwrap();
+
         let txid = self
-            .send_to_address(&address.clone(), amount, None, None, None, None, None, None)
+            .send_to_address(&address_rpc, amount_rpc, None, None, None, None, None, None)
             .unwrap();
 
         self.generate(1, None).unwrap();
