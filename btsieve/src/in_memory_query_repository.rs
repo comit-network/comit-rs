@@ -34,7 +34,7 @@ impl<T: Send + Sync + Clone + 'static> QueryRepository<T> for InMemoryQueryRepos
         state.storage.get(&id).cloned()
     }
 
-    fn save_with_id(&self, entity: T, id: String) -> Result<String, Error<T>> {
+    fn save(&self, entity: T, id: String) -> Result<String, Error<T>> {
         let mut state = self.state.write().unwrap();
 
         state.storage.insert(id.clone(), entity);
@@ -58,13 +58,13 @@ mod tests {
     struct MyEntity;
 
     #[test]
-    fn given_entity_when_inserted_can_be_retrieved_with_generated_id() {
+    fn given_entity_when_inserted_can_be_retrieved_with_id() {
         let repository = InMemoryQueryRepository::default();
 
-        let id = repository.save(MyEntity);
+        let id = "some random identifier saothus".to_string();
+        repository.save(MyEntity, id.clone()).unwrap();
 
-        assert_that(&id).is_ok();
-        assert_that(&repository.get(id.unwrap()))
+        assert_that(&repository.get(id))
             .is_some()
             .is_equal_to(&MyEntity);
     }
@@ -73,7 +73,9 @@ mod tests {
     fn given_entity_when_deleted_is_no_longer_there() {
         let repository = InMemoryQueryRepository::default();
 
-        let id = repository.save(MyEntity).unwrap();
+        let id = "some random identifier cglccg".to_string();
+        repository.save(MyEntity, id.clone()).unwrap();
+
         repository.delete(id.clone());
 
         assert_that(&repository.get(id)).is_none()

@@ -178,7 +178,7 @@ pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Se
             http_api_problem: Error::QueryMismatch.into(),
         })),
         None => {
-            let result = query_repository.save_with_id(query, id);
+            let result = query_repository.save(query, id);
 
             match result {
                 Ok(_) => Ok(warp::reply::with_status(
