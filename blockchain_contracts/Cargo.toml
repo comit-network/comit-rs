@@ -20,7 +20,7 @@ serde_json = "1.0"
 strum = "0.15"
 strum_macros = "0.15"
 tiny-keccak = "1.5"
-web3 = { version = "0.8", default-features = false }
+web3 = { version = "0.8", default-features = false, features = ["http"] }
 
 [dev-dependencies]
 bitcoincore-rpc = "0.8.0-rc1"
