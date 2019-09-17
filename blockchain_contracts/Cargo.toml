@@ -29,7 +29,7 @@ lazy_static = "1.4"
 log = "0.4"
 pretty_env_logger = "0.3"
 spectral = "0.6"
-testcontainers = "0.7"
+testcontainers = "0.8"
 tiny-keccak = "1.5"
 
 # These versions need to be changed together with web3, depends on what version of primitive-types ships with web3
