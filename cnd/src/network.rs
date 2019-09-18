@@ -365,7 +365,7 @@ fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpa
 where
     LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
 {
-    let swap_id = swap_request.id.clone();
+    let swap_id = swap_request.id;
 
     match bob_spawner.spawn(counterparty, swap_request) {
         Ok(response_future) => Box::new(response_future.then(move |result| {

@@ -52,7 +52,7 @@ impl<T: MetadataStore, S: StateStore> BobSpawner for dependencies::bob::Protocol
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
-        let id = swap_request.id.clone();
+        let id = swap_request.id;
         let swap_seed = Arc::new(self.seed.swap_seed(id));
         let bob = bob::State::new(swap_request.clone(), swap_seed);
 
