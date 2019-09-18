@@ -31,45 +31,42 @@ setTimeout(async function() {
                     expect(res).to.have.status(404);
                 });
 
-                const toAddress =
-                    "bcrt1qcqslz7lfn34dl096t5uwurff9spen5h4v2pmap";
-                let location: string;
+                const toAddress = "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5";
+                const queryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
+
+                const location =
+                    "/queries/bitcoin/regtest/transactions/" + queryId;
+                const query = {
+                    to_address: toAddress,
+                };
 
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
                     const res = await request(btsieve.url())
-                        .post("/queries/bitcoin/banananet/transactions")
+                        .put(
+                            "/queries/bitcoin/banananet/transactions/some-random-query-id"
+                        )
                         .set("Expected-Version", btsieve.expectedVersion)
-                        .send({
-                            to_address: toAddress,
-                        });
+                        .send(query);
 
                     expect(res).to.have.status(404);
                 });
 
-                it("btsieve should respond with location when creating a valid bitcoin transaction query", async function() {
+                it('btsieve should respond with 204 NO_CONTENT when "getting-or-creating" a new query', async function() {
                     const res = await request(btsieve.url())
-                        .post("/queries/bitcoin/regtest/transactions")
+                        .put(location)
                         .set("Expected-Version", btsieve.expectedVersion)
-                        .send({
-                            to_address: toAddress,
-                        });
+                        .send(query);
 
-                    location = res.header.location;
-
-                    expect(res).to.have.status(201);
-                    expect(location).to.not.be.empty;
+                    expect(res).to.have.status(204);
                 });
 
-                it("btsieve should respond with no match when querying an existing bitcoin transaction query", async function() {
-                    const res = await request(
-                        btsieve.absoluteLocation(location)
-                    )
-                        .get("")
-                        .set("Expected-Version", btsieve.expectedVersion);
+                it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
+                    const res = await request(btsieve.url())
+                        .put(location)
+                        .set("Expected-Version", btsieve.expectedVersion)
+                        .send(query);
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.to_address).to.equal(toAddress);
-                    expect(res.body.matches).to.be.empty;
                 });
 
                 it("btsieve should respond with transaction match when requesting on the `toAddress` bitcoin transaction query", async function() {
@@ -118,31 +115,6 @@ setTimeout(async function() {
                     expect(res).to.have.status(409);
                 });
 
-                const otherQueryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
-                const otherLocation =
-                    "/queries/bitcoin/regtest/transactions/" + otherQueryId;
-                const otherQuery = {
-                    to_address: "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5",
-                };
-
-                it('btsieve should respond with 204 NO_CONTENT when "getting-or-creating" a new query', async function() {
-                    const res = await request(btsieve.url())
-                        .put(otherLocation)
-                        .set("Expected-Version", btsieve.expectedVersion)
-                        .send(otherQuery);
-
-                    expect(res).to.have.status(204);
-                });
-
-                it('btsieve should respond with 200 OK when "getting-or-creating" a query that already exists', async function() {
-                    const res = await request(btsieve.url())
-                        .put(otherLocation)
-                        .set("Expected-Version", btsieve.expectedVersion)
-                        .send(otherQuery);
-
-                    expect(res).to.have.status(200);
-                });
-
                 it("btsieve should respond with no content when deleting an existing bitcoin transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
@@ -153,9 +125,11 @@ setTimeout(async function() {
                     expect(res).to.have.status(204);
                 });
 
-                it("btsieve should respond OK with a location when creating a valid bitcoin transaction query with an outpoint", async function() {
+                it("btsieve should respond NO_CONTENT with a location when creating a valid bitcoin transaction query with an outpoint", async function() {
                     const res = await request(btsieve.url())
-                        .post("/queries/bitcoin/regtest/transactions")
+                        .put(
+                            "/queries/bitcoin/regtest/transactions/soturcobkqtohusntoustho"
+                        )
                         .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             to_address: toAddress,
@@ -163,10 +137,7 @@ setTimeout(async function() {
                                 "02b082113e35d5386285094c2829e7e2963fa0b5369fb7f4b79c4c90877dcd3d:0",
                         });
 
-                    location = res.header.location;
-
-                    expect(res).to.have.status(201);
-                    expect(location).to.not.be.empty;
+                    expect(res).to.have.status(204);
                 });
             });
         });

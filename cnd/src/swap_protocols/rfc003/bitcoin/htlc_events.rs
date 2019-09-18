@@ -25,9 +25,10 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
+        let id = htlc_params.query_id_deployed();
         let query_bitcoin = Arc::clone(&self);
         let deployed_future = self
-            .create(BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
+            .create(&id, BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
             .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
             .map_err(rfc003::Error::Btsieve)
             .and_then(move |tx| {
@@ -71,9 +72,9 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
             let query_bitcoin = Arc::clone(&self);
-
+            let id = htlc_params.query_id_refunded();
             let refunded_query = self
-                .create(BitcoinQuery::refund_htlc(htlc_deployment.location))
+                .create(&id, BitcoinQuery::refund_htlc(htlc_deployment.location))
                 .inspect(|query_id| log::debug!("Refund query id {:?}", query_id))
                 .map_err(rfc003::Error::Btsieve);
 
@@ -88,8 +89,9 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
 
         let redeemed_future = {
             let query_bitcoin = Arc::clone(&self);
+            let id = htlc_params.query_id_redeemed();
             let redeemed_query = self
-                .create(BitcoinQuery::redeem_htlc(htlc_deployment.location))
+                .create(&id, BitcoinQuery::redeem_htlc(htlc_deployment.location))
                 .inspect(|query_id| log::debug!("Redeem query id {:?}", query_id))
                 .map_err(rfc003::Error::Btsieve);
 

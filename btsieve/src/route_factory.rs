@@ -138,14 +138,6 @@ where
         }
     });
 
-    let create = warp::post2()
-        .and(path.clone())
-        .and(query_repository.clone())
-        .and(warp::any().map(move || ledger_name))
-        .and(warp::any().map(move || route))
-        .and(warp::body::json())
-        .and_then(routes::create_query);
-
     let retrieve = warp::get2()
         .and(path.clone())
         .and(query_repository.clone())
@@ -168,5 +160,5 @@ where
         .and(warp::body::json())
         .and_then(routes::get_or_create_query);
 
-    create.or(retrieve).or(delete).or(get_or_create).boxed()
+    retrieve.or(delete).or(get_or_create).boxed()
 }

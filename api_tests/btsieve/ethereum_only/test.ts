@@ -49,34 +49,36 @@ setTimeout(async function() {
                     expect(res).to.have.status(404);
                 });
 
+                const toAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+                const queryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBsc420940949";
+
+                const location =
+                    "/queries/ethereum/regtest/transactions/" + queryId;
+                const query = {
+                    to_address: toAddress,
+                };
+
                 it("btsieve should respond not found when creating an ethereum transaction query for an invalid network", async function() {
                     const res = await request(btsieve.url())
-                        .post("/queries/ethereum/banananet/transactions")
+                        .put(
+                            "/queries/ethereum/banananet/transactions/toheusthoanu"
+                        )
                         .set("Expected-Version", btsieve.expectedVersion)
-                        .send({
-                            to_address: toAddress,
-                        });
+                        .send(query);
 
                     expect(res).to.have.status(404);
                 });
 
-                const toAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-                let location: string;
-                it("btsieve should respond with location when creating a valid ethereum transaction query", async function() {
+                it("btsieve should respond with NO_CONTENT when creating a valid ethereum transaction query", async function() {
                     const res = await request(btsieve.url())
-                        .post("/queries/ethereum/regtest/transactions")
+                        .put(location)
                         .set("Expected-Version", btsieve.expectedVersion)
-                        .send({
-                            to_address: toAddress,
-                        });
+                        .send(query);
 
-                    location = res.header.location;
-
-                    expect(res).to.have.status(201);
-                    expect(location).to.not.be.empty;
+                    expect(res).to.have.status(204);
                 });
 
-                it("btsieve should respond with no match when querying an existing ethereum transaction query", async function() {
+                it("btsieve should respond with OK when querying an existing ethereum transaction query", async function() {
                     const res = await request(
                         btsieve.absoluteLocation(location)
                     )
@@ -84,8 +86,6 @@ setTimeout(async function() {
                         .set("Expected-Version", btsieve.expectedVersion);
 
                     expect(res).to.have.status(200);
-                    expect(res.body.query.to_address).to.equal(toAddress);
-                    expect(res.body.matches).to.be.empty;
                 });
 
                 it("btsieve should respond with no transaction match (yet) when requesting on the `toAddress` ethereum block query", async function() {
@@ -152,11 +152,13 @@ setTimeout(async function() {
                 const toAddress =
                     "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
-                let location: string;
-                it("btsieve should respond with location when creating a valid transaction receipt query", async function() {
+                const queryId = "vounthdoeM4HmhV8AJe5620642062406420";
+                const location = "/queries/ethereum/regtest/logs/" + queryId;
+
+                it("btsieve should respond with NO_CONTENT when creating a valid transaction receipt query", async function() {
                     this.timeout(1000);
                     const res = await request(btsieve.url())
-                        .post("/queries/ethereum/regtest/logs")
+                        .put(location)
                         .set("Expected-Version", btsieve.expectedVersion)
                         .send({
                             event_matchers: [
@@ -173,10 +175,7 @@ setTimeout(async function() {
                             ],
                         });
 
-                    location = res.header.location;
-
-                    expect(res).to.have.status(201);
-                    expect(location).to.not.be.empty;
+                    expect(res).to.have.status(204);
                 });
 
                 it("btsieve should respond with no match when querying an existing ethereum transaction receipt query", async function() {

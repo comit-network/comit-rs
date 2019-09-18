@@ -26,7 +26,6 @@ hyper = "0.12"
 itertools = "0.8"
 log = "0.4"
 pretty_env_logger = "0.3"
-rand = "0.7"
 reqwest = { version = "0.9", default-features = false }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -43,4 +42,4 @@ quickcheck = "0.7"
 secp256k1_keypair = { path = "../internal/secp256k1_keypair" }
 spectral = "0.6"
 tc_web3_client = { path = "../internal/tc_web3_client" }
-testcontainers = "0.7"
+testcontainers = "0.8"

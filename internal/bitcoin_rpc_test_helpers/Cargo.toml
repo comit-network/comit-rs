@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 bitcoin_support = { path = "../bitcoin_support" }
 bitcoincore-rpc = "0.8.0-rc1"
-testcontainers = "0.7"
+testcontainers = "0.8"
