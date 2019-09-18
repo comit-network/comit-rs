@@ -50,10 +50,10 @@ setTimeout(async function() {
                 });
 
                 const toAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-                const swapId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBsc420940949";
+                const queryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBsc420940949";
 
                 const location =
-                    "/queries/ethereum/regtest/transactions/" + swapId;
+                    "/queries/ethereum/regtest/transactions/" + queryId;
                 const query = {
                     to_address: toAddress,
                 };
@@ -152,8 +152,8 @@ setTimeout(async function() {
                 const toAddress =
                     "0x00000000000000000000000005cbb3fdb5060e04e33ea89c6029d7c79199b4cd";
 
-                const swapId = "vounthdoeM4HmhV8AJe5620642062406420";
-                const location = "/queries/ethereum/regtest/logs/" + swapId;
+                const queryId = "vounthdoeM4HmhV8AJe5620642062406420";
+                const location = "/queries/ethereum/regtest/logs/" + queryId;
 
                 it("btsieve should respond with NO_CONTENT when creating a valid transaction receipt query", async function() {
                     this.timeout(1000);

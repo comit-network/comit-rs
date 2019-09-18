@@ -32,10 +32,10 @@ setTimeout(async function() {
                 });
 
                 const toAddress = "mndvsV4weBdPFTarHQbg71rCXRy8z79SH5";
-                const swapId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
+                const queryId = "4BvFBixM4HmhV8AJe5RC8v8csxxhDBscMxwpiK5e";
 
                 const location =
-                    "/queries/bitcoin/regtest/transactions/" + swapId;
+                    "/queries/bitcoin/regtest/transactions/" + queryId;
                 const query = {
                     to_address: toAddress,
                 };
@@ -43,7 +43,7 @@ setTimeout(async function() {
                 it("btsieve should respond not found when creating a bitcoin transaction query for an invalid network", async function() {
                     const res = await request(btsieve.url())
                         .put(
-                            "/queries/bitcoin/banananet/transactions/some-random-swap-id"
+                            "/queries/bitcoin/banananet/transactions/some-random-query-id"
                         )
                         .set("Expected-Version", btsieve.expectedVersion)
                         .send(query);
