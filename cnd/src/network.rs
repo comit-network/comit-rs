@@ -61,6 +61,7 @@ impl Display for DialInformation {
 impl<TSubstream, B> ComitNode<TSubstream, B> {
     pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
+        swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
         swap_headers.insert("beta_ledger".into());
         swap_headers.insert("alpha_asset".into());
@@ -180,8 +181,7 @@ fn handle_request<B: BobSpawner>(
                 .map(SwapProtocol::from_header));
             match protocol {
                 SwapProtocol::Rfc003(hash_function) => {
-                    let swap_id = SwapId::default();
-
+                    let swap_id = header!(request.take_header("id").map(SwapId::from_header));
                     let alpha_ledger = header!(request
                         .take_header("alpha_ledger")
                         .map(LedgerKind::from_header));
@@ -203,9 +203,9 @@ fn handle_request<B: BobSpawner>(
                             AssetKind::Ether(beta_asset),
                         ) => spawn(
                             bob,
-                            swap_id,
                             counterparty,
                             rfc003_swap_request(
+                                swap_id,
                                 alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
@@ -221,9 +221,9 @@ fn handle_request<B: BobSpawner>(
                             AssetKind::Bitcoin(beta_asset),
                         ) => spawn(
                             bob,
-                            swap_id,
                             counterparty,
                             rfc003_swap_request(
+                                swap_id,
                                 alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
@@ -239,9 +239,9 @@ fn handle_request<B: BobSpawner>(
                             AssetKind::Erc20(beta_asset),
                         ) => spawn(
                             bob,
-                            swap_id,
                             counterparty,
                             rfc003_swap_request(
+                                swap_id,
                                 alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
@@ -257,9 +257,9 @@ fn handle_request<B: BobSpawner>(
                             AssetKind::Bitcoin(beta_asset),
                         ) => spawn(
                             bob,
-                            swap_id,
                             counterparty,
                             rfc003_swap_request(
+                                swap_id,
                                 alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
@@ -334,6 +334,7 @@ fn handle_request<B: BobSpawner>(
 }
 
 fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,
     alpha_asset: AA,
@@ -342,6 +343,7 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     body: rfc003::messages::RequestBody<AL, BL>,
 ) -> rfc003::messages::Request<AL, BL, AA, BA> {
     rfc003::messages::Request::<AL, BL, AA, BA> {
+        id,
         alpha_asset,
         beta_asset,
         alpha_ledger,
@@ -357,14 +359,15 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
 
 fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
     bob_spawner: &B,
-    swap_id: SwapId,
     counterparty: PeerId,
     swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send + 'static>
 where
     LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
 {
-    match bob_spawner.spawn(swap_id, counterparty, swap_request) {
+    let swap_id = swap_request.id.clone();
+
+    match bob_spawner.spawn(counterparty, swap_request) {
         Ok(response_future) => Box::new(response_future.then(move |result| {
             let response = match result {
                 Ok(Ok(accept_body)) => {

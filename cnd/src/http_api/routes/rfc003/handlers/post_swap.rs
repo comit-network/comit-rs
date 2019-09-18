@@ -139,6 +139,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
 {
     fn to_request(
         &self,
+        id: SwapId,
         secret_source: &dyn SecretSource,
     ) -> rfc003::messages::Request<AL, BL, AA, BA> {
         let Identities {
@@ -146,6 +147,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             beta_ledger_redeem_identity,
         } = self.partial_identities.to_identities(secret_source);
         rfc003::messages::Request {
+            id,
             alpha_asset: self.alpha_asset,
             beta_asset: self.beta_asset,
             alpha_ledger: self.alpha_ledger,
