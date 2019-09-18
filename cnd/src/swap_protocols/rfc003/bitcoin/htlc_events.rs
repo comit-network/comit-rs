@@ -14,7 +14,6 @@ use crate::{
     },
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
-use crypto::{digest::Digest, sha2::Sha256};
 use futures::{
     future::{self, Either},
     Future,
@@ -26,7 +25,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
-        let id = query_id_deployed(htlc_params.clone());
+        let id = htlc_params.query_id_deployed();
         let query_bitcoin = Arc::clone(&self);
         let deployed_future = self
             .create(&id, BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
@@ -73,7 +72,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
             let query_bitcoin = Arc::clone(&self);
-            let id = query_id_refunded(htlc_params.clone());
+            let id = htlc_params.query_id_refunded();
             let refunded_query = self
                 .create(&id, BitcoinQuery::refund_htlc(htlc_deployment.location))
                 .inspect(|query_id| log::debug!("Refund query id {:?}", query_id))
@@ -90,7 +89,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
 
         let redeemed_future = {
             let query_bitcoin = Arc::clone(&self);
-            let id = query_id_redeemed(htlc_params.clone());
+            let id = htlc_params.query_id_redeemed();
             let redeemed_query = self
                 .create(&id, BitcoinQuery::redeem_htlc(htlc_deployment.location))
                 .inspect(|query_id| log::debug!("Redeem query id {:?}", query_id))
@@ -132,28 +131,4 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
                 }),
         )
     }
-}
-
-fn query_id_deployed(htlc_params: HtlcParams<Bitcoin, Amount>) -> String {
-    generate_identifier(htlc_params, "deployed")
-}
-
-fn query_id_redeemed(htlc_params: HtlcParams<Bitcoin, Amount>) -> String {
-    generate_identifier(htlc_params, "redeemed")
-}
-
-fn query_id_refunded(htlc_params: HtlcParams<Bitcoin, Amount>) -> String {
-    generate_identifier(htlc_params, "refunded")
-}
-
-fn generate_identifier(htlc_params: HtlcParams<Bitcoin, Amount>, prefix: &str) -> String {
-    let mut msg = String::from(prefix);
-    msg.push_str(&htlc_params.secret_hash.to_string());
-    hash(&msg)
-}
-
-fn hash(msg: &str) -> String {
-    let mut sha = Sha256::new();
-    sha.input_str(msg);
-    sha.result_str()
 }

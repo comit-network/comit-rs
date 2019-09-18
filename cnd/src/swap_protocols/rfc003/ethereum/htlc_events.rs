@@ -38,7 +38,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
     ) -> Box<DeployedFuture<Ethereum>> {
-        let id = query_id_deployed(&htlc_params);
+        let id = htlc_params.query_id_deployed();
         let query_ethereum = Arc::clone(&self);
         let deployed_future = query_ethereum
             .create(
@@ -92,7 +92,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     _: &Funded<Ethereum, A>,
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
     let refunded_future = {
-        let id = query_id_refunded(&htlc_params);
+        let id = htlc_params.query_id_refunded();
         let query_ethereum = Arc::clone(&query_ethereum);
         query_ethereum
             .create(&id, EthereumQuery::Event {
@@ -109,7 +109,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 
     let redeemed_future = {
         let query_ethereum = Arc::clone(&query_ethereum);
-        let id = query_id_redeemed(&htlc_params);
+        let id = htlc_params.query_id_redeemed();
         query_ethereum
             .create(&id, EthereumQuery::Event {
                 event_matchers: vec![EventMatcher {
@@ -155,18 +155,6 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     )
 }
 
-fn query_id_deployed(htlc_params: &HtlcParams<Ethereum, EtherQuantity>) -> String {
-    rfc003::generate_identifier(&htlc_params.secret_hash, "deployed")
-}
-
-fn query_id_redeemed<A: Asset>(htlc_params: &HtlcParams<Ethereum, A>) -> String {
-    rfc003::generate_identifier(&htlc_params.secret_hash, "redeemed")
-}
-
-fn query_id_refunded<A: Asset>(htlc_params: &HtlcParams<Ethereum, A>) -> String {
-    rfc003::generate_identifier(&htlc_params.secret_hash, "refunded")
-}
-
 mod erc20 {
     use super::*;
     use ethereum_support::{Erc20Quantity, U256};
@@ -176,7 +164,7 @@ mod erc20 {
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
         ) -> Box<DeployedFuture<Ethereum>> {
-            let id = query_id_deployed(&htlc_params);
+            let id = htlc_params.query_id_deployed();
             let query_ethereum = Arc::clone(&self);
             let deployed_future = query_ethereum
                 .create(
@@ -198,7 +186,7 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
             deployment: &Deployed<Ethereum>,
         ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
-            let id = query_id_funded(&htlc_params);
+            let id = htlc_params.query_id_funded();
             let query_ethereum = Arc::clone(&self);
             let funded_future = self
                 .create(&id, EthereumQuery::Event {
@@ -249,13 +237,5 @@ mod erc20 {
                 htlc_funding,
             )
         }
-    }
-
-    fn query_id_deployed(htlc_params: &HtlcParams<Ethereum, Erc20Token>) -> String {
-        rfc003::generate_identifier(&htlc_params.secret_hash, "deployed")
-    }
-
-    fn query_id_funded(htlc_params: &HtlcParams<Ethereum, Erc20Token>) -> String {
-        rfc003::generate_identifier(&htlc_params.secret_hash, "funded")
     }
 }
