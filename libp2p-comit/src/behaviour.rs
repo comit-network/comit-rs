@@ -262,7 +262,7 @@ where
                 let _ = channel.send(response);
             }
             ProtocolOutEvent::Error(handler::Error::MalformedJson(error)) => {
-                log::error!(target: "sub-libp2p", "failure in communication with {:?}: {:?}", peer, error);
+                log::error!(target: "sub-libp2p", "failure in communication with {}: {:?}", peer, error);
             }
             ProtocolOutEvent::Error(handler::Error::DroppedResponseSender(_)) => {
                 // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
@@ -270,25 +270,25 @@ where
                 // the application or the application consciously does not want to answer the
                 // SWAP REQUEST. In either way, we should signal this to the remote peer by
                 // closing the substream.
-                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {:?}", peer);
+                log::error!(target: "sub-libp2p", "user dropped `oneshot::Sender` for response, closing substream with peer {}", peer);
             }
             ProtocolOutEvent::Error(handler::Error::UnknownMandatoryHeader(error)) => {
-                log::error!(target: "sub-libp2p", "received frame with unexpected mandatory header from {:?}, {:?}", peer, error);
+                log::error!(target: "sub-libp2p", "received frame with unexpected mandatory header from {}, {:?}", peer, error);
             }
             ProtocolOutEvent::Error(handler::Error::UnknownRequestType(error)) => {
-                log::error!(target: "sub-libp2p", "received frame with unknown request type from {:?}, {:?}", peer, error);
+                log::error!(target: "sub-libp2p", "received frame with unknown request type from {}, {:?}", peer, error);
             }
             ProtocolOutEvent::Error(handler::Error::UnknownFrameType) => {
-                log::error!(target: "sub-libp2p", "received frame with unknown type from {:?}", peer);
+                log::error!(target: "sub-libp2p", "received frame with unknown type from {}", peer);
             }
             ProtocolOutEvent::Error(handler::Error::UnexpectedFrame(frame)) => {
-                log::error!(target: "sub-libp2p", "received unexpected frame of type from {:?}, {:?}", peer, frame);
+                log::error!(target: "sub-libp2p", "received unexpected frame of type from {}, {:?}", peer, frame);
             }
             ProtocolOutEvent::Error(handler::Error::MalformedFrame(error)) => {
-                log::error!(target: "sub-libp2p", "received malformed frame from {:?}, {:?}", peer, error);
+                log::error!(target: "sub-libp2p", "received malformed frame from {}, {:?}", peer, error);
             }
             ProtocolOutEvent::Error(handler::Error::UnexpectedEOF) => {
-                log::error!(target: "sub-libp2p", "substream with {:?} unexpectedly ended while waiting for messages", peer);
+                log::error!(target: "sub-libp2p", "substream with {} unexpectedly ended while waiting for messages", peer);
             }
         }
     }
