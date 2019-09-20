@@ -2,7 +2,7 @@ import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tempWrite from "temp-write";
-import { CND_CONFIGS } from "./config";
+import { BtsieveConfigFile, CND_CONFIGS } from "./config";
 import { sleep } from "./util";
 
 export class CndRunner {
@@ -18,7 +18,10 @@ export class CndRunner {
         this.projectRoot = projectRoot;
     }
 
-    public async ensureCndsRunning(actors: string[]) {
+    public async ensureCndsRunning(
+        actors: string[],
+        btsieveConfig: BtsieveConfigFile
+    ) {
         const actorsToBeStarted = actors.filter(
             actor => !Object.keys(this.runningNodes).includes(actor)
         );
@@ -35,9 +38,9 @@ export class CndRunner {
             }
 
             const configFile = await tempWrite(
-                stringify(
-                    (cndconfig.generateCndConfigFile() as unknown) as JsonMap
-                ),
+                stringify((cndconfig.generateCndConfigFile(
+                    btsieveConfig
+                ) as unknown) as JsonMap),
                 "config.toml"
             );
 

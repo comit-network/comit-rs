@@ -8,7 +8,6 @@ import glob from "glob";
 import Mocha from "mocha";
 import path from "path";
 import rimraf from "rimraf";
-import { BtsieveRunner } from "./lib/btsieve_runner";
 import { CndRunner } from "./lib/cnd_runner";
 import { createBtsieveConfig } from "./lib/config";
 import { LedgerRunner } from "./lib/ledger_runner";
@@ -52,16 +51,11 @@ async function runTests(testFiles: string[]) {
     const cndPath = process.env.CND_BIN
         ? process.env.CND_BIN
         : projectRoot + "/target/debug/cnd";
-    const btsievePath = process.env.BTSIEVE_BIN
-        ? process.env.BTSIEVE_BIN
-        : projectRoot + "/target/debug/btsieve";
 
     const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
-    const btsieveRunner = new BtsieveRunner(projectRoot, btsievePath, logDir);
 
     async function cleanupAll() {
         try {
-            btsieveRunner.stopBtsieve();
             nodeRunner.stopCnds();
             await ledgerRunner.stopLedgers();
         } catch (e) {
@@ -93,7 +87,9 @@ async function runTests(testFiles: string[]) {
 
         if (config.ledgers) {
             await ledgerRunner.ensureLedgersRunning(config.ledgers);
+        }
 
+        if (config.actors) {
             const ledgerConfigs = await ledgerRunner.getLedgerConfig();
 
             // We don't stop the ledgers between the test files
@@ -107,11 +103,7 @@ async function runTests(testFiles: string[]) {
                     : undefined,
             });
 
-            await btsieveRunner.ensureBtsieveRunningWithConfig(btsieveConfig);
-        }
-
-        if (config.actors) {
-            await nodeRunner.ensureCndsRunning(config.actors);
+            await nodeRunner.ensureCndsRunning(config.actors, btsieveConfig);
         }
 
         global.ledgerConfigs = await ledgerRunner.getLedgerConfig();
@@ -136,7 +128,6 @@ async function runTests(testFiles: string[]) {
         }
 
         nodeRunner.stopCnds();
-        btsieveRunner.stopBtsieve();
     }
 
     await cleanupAll();

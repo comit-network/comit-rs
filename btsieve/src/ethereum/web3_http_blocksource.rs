@@ -10,7 +10,7 @@ use crate::{
         Web3,
     },
 };
-use ethereum_support::{Network, TransactionId};
+use ethereum_support::{Network, TransactionAndReceipt, TransactionId};
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
 use web3::types::BlockNumber;
@@ -20,6 +20,7 @@ pub enum Error {
     Web3(web3::Error),
 }
 
+#[derive(Clone)]
 pub struct Web3HttpBlockSource {
     web3: Arc<Web3<Http>>,
     network: Network,
@@ -157,7 +158,7 @@ where
         + Sync
         + 'static,
 {
-    type Transaction = ethereum_support::Transaction;
+    type Transaction = TransactionAndReceipt;
 
     fn matching_transactions(
         &self,
@@ -217,7 +218,10 @@ where
                                     Ok(Some(ref receipt))
                                         if query.matches_transaction_receipt(receipt.clone()) =>
                                     {
-                                        Ok(Some(transaction))
+                                        Ok(Some(TransactionAndReceipt {
+                                            transaction,
+                                            receipt: receipt.clone(),
+                                        }))
                                     }
                                     Err(e) => {
                                         log::error!(

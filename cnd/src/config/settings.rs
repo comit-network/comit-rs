@@ -1,4 +1,5 @@
-use super::file::{Btsieve, Comit, Database, File, HttpSocket, Network};
+use super::file::{Comit, Database, File, HttpSocket, Network};
+use crate::config::file::{Bitcoin, Ethereum};
 use log::LevelFilter;
 
 /// This structs represents the settings as they are used through out the code.
@@ -13,9 +14,10 @@ pub struct Settings {
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
-    pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Logging,
+    pub bitcoin: Option<Bitcoin>,
+    pub ethereum: Option<Ethereum>,
 }
 
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
@@ -33,9 +35,10 @@ impl Settings {
             network,
             http_api,
             database,
-            btsieve,
             web_gui,
             logging,
+            bitcoin,
+            ethereum,
         } = config_file;
 
         Self {
@@ -43,7 +46,6 @@ impl Settings {
             network,
             http_api,
             database,
-            btsieve,
             web_gui,
             logging: {
                 let Logging {
@@ -57,6 +59,8 @@ impl Settings {
                     })
                     .unwrap_or_default()
             },
+            bitcoin,
+            ethereum,
         }
     }
 }

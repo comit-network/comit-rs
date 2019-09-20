@@ -3,7 +3,6 @@ use config as config_rs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
 use rand::Rng;
-use reqwest::Url;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -25,9 +24,10 @@ pub struct File {
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
-    pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Option<Logging>,
+    pub bitcoin: Option<Bitcoin>,
+    pub ethereum: Option<Ethereum>,
 }
 
 impl File {
@@ -35,8 +35,6 @@ impl File {
         let comit_listen = "/ip4/0.0.0.0/tcp/9939"
             .parse()
             .expect("cnd listen address could not be parsed");
-        let btsieve_url =
-            Url::parse("http://localhost:8181").expect("Btsieve url could not be created");
         let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
         File {
@@ -49,22 +47,13 @@ impl File {
                 port: 8000,
             },
             database: None,
-            btsieve: Btsieve {
-                url: btsieve_url,
-                bitcoin: PollParameters {
-                    poll_interval_secs: Duration::from_secs(300),
-                    network: bitcoin_support::Network::Regtest,
-                },
-                ethereum: PollParameters {
-                    poll_interval_secs: Duration::from_secs(20),
-                    network: ethereum_support::Network::Regtest,
-                },
-            },
             web_gui: Some(HttpSocket {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                 port: 8080,
             }),
             logging: None,
+            bitcoin: None,
+            ethereum: None,
         }
     }
 }
@@ -92,14 +81,6 @@ pub struct HttpSocket {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Btsieve {
-    #[serde(with = "url_serde")]
-    pub url: reqwest::Url,
-    pub bitcoin: PollParameters<bitcoin_support::Network>,
-    pub ethereum: PollParameters<ethereum_support::Network>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct PollParameters<T> {
     #[serde(with = "super::serde_duration")]
     pub poll_interval_secs: Duration,
@@ -109,6 +90,18 @@ pub struct PollParameters<T> {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Database {
     pub sqlite: PathBuf,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Bitcoin {
+    pub network: bitcoin_support::Network,
+    pub node_url: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Ethereum {
+    #[serde(with = "url_serde")]
+    pub node_url: reqwest::Url,
 }
 
 impl File {

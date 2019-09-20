@@ -1,8 +1,11 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+use btsieve::{
+    bitcoin::bitcoind_http_blocksource::BitcoindHttpBlockSource,
+    ethereum::web3_http_blocksource::Web3HttpBlockSource,
+};
 use cnd::{
-    btsieve::BtsieveHttpClient,
     comit_client::Client,
     comit_i_routes,
     config::{self, Settings},
@@ -13,15 +16,16 @@ use cnd::{
         self,
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::state_store::{InMemoryStateStore, StateStore},
+        LedgerEventDependencies,
     },
 };
+use ethereum_support::web3::{transports::Http, Web3};
 use futures::{stream, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
 use rand::rngs::OsRng;
-use reqwest::Url;
 use std::{
     net::SocketAddr,
     sync::{Arc, Mutex},
@@ -47,12 +51,24 @@ fn main() -> Result<(), failure::Error> {
 
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
-    let btsieve_client = create_btsieve_api_client(&settings);
 
-    ping_btsieve(&settings.btsieve.url, &mut runtime, btsieve_client.clone());
+    let config::file::Ethereum { node_url } = settings.clone().ethereum.unwrap();
+    let (_event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
+    let web3http_block_source = runtime.block_on(Web3HttpBlockSource::new(Arc::new(Web3::new(
+        http_transport,
+    ))))?;
+
+    let ledger_events = LedgerEventDependencies {
+        bitcoin_blocksource: {
+            let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin.unwrap();
+
+            Arc::new(BitcoindHttpBlockSource::new(node_url, network))
+        },
+        ethereum_blocksource: Arc::new(web3http_block_source),
+    };
 
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
-        ledger_events: btsieve_client.clone().into(),
+        ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed: settings.comit.secret_seed,
@@ -77,7 +93,7 @@ fn main() -> Result<(), failure::Error> {
     let swarm = Arc::new(Mutex::new(swarm));
 
     let alice_protocol_dependencies = swap_protocols::alice::ProtocolDependencies {
-        ledger_events: btsieve_client.into(),
+        ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed: settings.comit.secret_seed,
@@ -113,16 +129,6 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
-}
-
-fn create_btsieve_api_client(settings: &Settings) -> BtsieveHttpClient {
-    BtsieveHttpClient::new(
-        &settings.btsieve.url,
-        settings.btsieve.bitcoin.poll_interval_secs,
-        settings.btsieve.bitcoin.network,
-        settings.btsieve.ethereum.poll_interval_secs,
-        settings.btsieve.ethereum.network,
-    )
 }
 
 fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo>(
@@ -173,13 +179,4 @@ fn auth_origin(settings: &Settings) -> String {
     };
     log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
-}
-
-fn ping_btsieve(
-    url: &Url,
-    runtime: &mut tokio::runtime::Runtime,
-    btsieve_client: BtsieveHttpClient,
-) {
-    log::trace!("Running health check on btsieve at: {}", url);
-    runtime.spawn(btsieve_client.health());
 }
