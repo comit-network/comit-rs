@@ -1,4 +1,4 @@
-use crate::blocksource::{self, BlockSource};
+use crate::{bitcoin::TransactionQuery, matching_transactions::MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize, Block, Network, Transaction};
 use futures::{Future, Stream};
 use reqwest::r#async::Client;
@@ -13,6 +13,7 @@ struct ChainInfo {
 
 #[derive(Debug)]
 pub enum Error {
+    Timer(tokio::timer::Error),
     Reqwest(reqwest::Error),
     Hex(hex::FromHexError),
     Deserialization(bitcoin_support::consensus::encode::Error),
@@ -96,13 +97,14 @@ impl BitcoindHttpBlockSource {
     }
 }
 
-impl BlockSource for BitcoindHttpBlockSource {
-    type Block = Block;
+impl MatchingTransactions<TransactionQuery> for BitcoindHttpBlockSource {
     type Error = Error;
+    type Transaction = bitcoin_support::Transaction;
 
-    fn blocks(
+    fn matching_transactions(
         &self,
-    ) -> Box<dyn Stream<Item = Self::Block, Error = blocksource::Error<Error>> + Send> {
+        query: TransactionQuery,
+    ) -> Box<dyn Stream<Item = Self::Transaction, Error = Self::Error> + Send> {
         // The Bitcoin blockchain has a mining interval of about 10 minutes.
         // The poll interval is configured to once every 2 minutes for mainnet and
         // testnet so we don't have to wait to long to see a new block.
@@ -117,7 +119,7 @@ impl BlockSource for BitcoindHttpBlockSource {
         let cloned_self = self.clone();
 
         let stream = Interval::new_interval(Duration::from_millis(poll_interval))
-            .map_err(blocksource::Error::Timer)
+            .map_err(Error::Timer)
             .and_then(move |_| {
                 cloned_self
                     .latest_block()
@@ -135,12 +137,23 @@ impl BlockSource for BitcoindHttpBlockSource {
                             Error::Deserialization(e) => {
                                 log::warn!(target: "bitcoin::blocksource", "deserialization error encountered during polling: {:?}", e);
                                 Ok(None)
-                            }
+                            },
+                            _ => Err(error)
                         }
                     })
-                    .map_err(blocksource::Error::Source)
             })
             .filter_map(|maybe_block| maybe_block);
+
+        let stream = stream
+            .map(move |block| {
+                block
+                    .txdata
+                    .into_iter()
+                    .filter(|tx| query.matches(&tx))
+                    .collect::<Vec<Transaction>>()
+            })
+            .map(futures::stream::iter_ok)
+            .flatten();
 
         Box::new(stream)
     }

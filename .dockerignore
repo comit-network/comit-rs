@@ -1,0 +1,7 @@
+target/
+.circleci/
+.dependabot/
+.githooks/
+api_tests/
+.docker/cnd/Dockerfile
+.docker/btsieve/Dockerfile

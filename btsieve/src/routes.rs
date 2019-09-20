@@ -1,9 +1,11 @@
 use crate::{
+    matching_transactions::MatchingTransactions,
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
     route_factory::{QueryParams, ToHttpPayload, MAX_QUERY_ID_LENGTH},
+    IntoTransactionId,
 };
-use futures::{Future, IntoFuture};
+use futures::{Future, IntoFuture, Stream};
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
@@ -162,14 +164,26 @@ pub fn delete_query<
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Send + Sync>(
+pub fn get_or_create_query<
+    Q: Send + Sync + Eq + Clone + 'static,
+    QR: QueryRepository<Q>,
+    QRR: QueryResultRepository<Q>,
+    C: 'static + Send + Sync,
+    E: 'static,
+    BS: MatchingTransactions<Q, Error = E>,
+>(
     _client: Arc<C>,
     _network: String,
-    query_repository: Arc<QR>,
+    blocksource: Arc<BS>,
+    active_query_repository: Arc<QR>,
+    query_result_repository: Arc<QRR>,
     id: String,
     query: Q,
-) -> Result<impl Reply, Rejection> {
-    match query_repository.get(id.clone()) {
+) -> Result<impl Reply, Rejection>
+where
+    <BS as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
+{
+    match active_query_repository.get(id.clone()) {
         Some(ref saved_query) if saved_query == &query => Ok(warp::reply::with_status(
             warp::reply(),
             warp::http::StatusCode::OK,
@@ -178,13 +192,26 @@ pub fn get_or_create_query<Q: Send + Eq, QR: QueryRepository<Q>, C: 'static + Se
             http_api_problem: Error::QueryMismatch.into(),
         })),
         None => {
-            let result = query_repository.save(query, id);
+            let result = active_query_repository.save(query.clone(), id.clone());
 
             match result {
-                Ok(_) => Ok(warp::reply::with_status(
-                    warp::reply(),
-                    warp::http::StatusCode::NO_CONTENT,
-                )),
+                Ok(_) => {
+                    let future = blocksource
+                        .matching_transactions(query)
+                        .map_err(|_| ())
+                        .for_each(move |transaction| {
+                            query_result_repository
+                                .add_result(id.clone(), transaction.into_transaction_id());
+                            Ok(())
+                        });
+
+                    tokio::spawn(future);
+
+                    Ok(warp::reply::with_status(
+                        warp::reply(),
+                        warp::http::StatusCode::NO_CONTENT,
+                    ))
+                }
                 Err(_) => Err(warp::reject::custom(HttpApiProblemStdError {
                     http_api_problem: Error::QuerySave.into(),
                 })),
