@@ -134,6 +134,7 @@ fn build_swap_request<
     let protocol = SwapProtocol::Rfc003(request.hash_function);
 
     Ok(frame::OutboundRequest::new("SWAP")
+        .with_header("id", request.id.to_header()?)
         .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
         .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
         .with_header("alpha_asset", request.alpha_asset.into().to_header()?)

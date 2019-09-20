@@ -282,6 +282,7 @@ mod tests {
     fn insert_and_get_state() {
         let state_store = InMemoryStateStore::default();
         let request = Request {
+            id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: Amount::from_btc(1.0).unwrap(),

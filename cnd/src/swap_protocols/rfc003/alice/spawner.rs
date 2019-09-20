@@ -60,7 +60,7 @@ impl<T: MetadataStore, S: StateStore, C: Client> AliceSpawner
     {
         let swap_seed = Arc::new(self.seed.swap_seed(id));
 
-        let swap_request = partial_swap_request.to_request(swap_seed.as_ref());
+        let swap_request = partial_swap_request.to_request(id, swap_seed.as_ref());
         let alice = alice::State::new(swap_request.clone(), swap_seed);
 
         let metadata = Metadata::new(

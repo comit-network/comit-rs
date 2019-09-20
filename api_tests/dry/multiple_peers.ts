@@ -82,6 +82,21 @@ import "../lib/setup_chai";
             aliceSwapWithBobHref.should.be.a("string");
         });
 
+        it("[Bob] should use the same swap id as Alice", async () => {
+            const aliceResponse = await request(alice.cndHttpApiUrl()).get(
+                aliceSwapWithBobHref
+            );
+            const aliceSwapId = aliceResponse.body.properties.id;
+
+            const bobSwap = await bob
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
+                .then(
+                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+
+            expect(bobSwap.properties).to.have.property("id", aliceSwapId);
+        });
+
         it("[Alice] Should be able to send a swap request to Charlie", async () => {
             const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")

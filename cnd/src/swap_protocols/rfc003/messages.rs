@@ -1,12 +1,13 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{Ledger, SecretHash, SecretSource},
-    HashFunction, Timestamp,
+    HashFunction, SwapId, Timestamp,
 };
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+    pub id: SwapId,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
     pub alpha_asset: AA,
@@ -57,7 +58,7 @@ pub struct RequestBody<AL: Ledger, BL: Ledger> {
 }
 
 pub trait ToRequest<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    fn to_request(&self, secret_source: &dyn SecretSource) -> Request<AL, BL, AA, BA>;
+    fn to_request(&self, id: SwapId, secret_source: &dyn SecretSource) -> Request<AL, BL, AA, BA>;
 }
 
 pub trait IntoAcceptResponseBody<AL: Ledger, BL: Ledger> {
