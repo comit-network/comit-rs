@@ -1,4 +1,4 @@
-use crate::blocksource::{self, BlockSource};
+use crate::{bitcoin::TransactionQuery, matching_transactions::MatchingTransactions};
 use bitcoin_support::{deserialize, Block, Network};
 use futures::{Future, Stream};
 use reqwest::r#async::Client;
@@ -13,6 +13,7 @@ struct BlockchainInfoLatestBlock {
 
 #[derive(Debug)]
 pub enum Error {
+    Timer(tokio::timer::Error),
     UnsupportedNetwork(String),
     Reqwest(reqwest::Error),
     Hex(hex::FromHexError),
@@ -97,13 +98,14 @@ impl BlockchainInfoHttpBlockSource {
     }
 }
 
-impl BlockSource for BlockchainInfoHttpBlockSource {
-    type Block = Block;
+impl MatchingTransactions<TransactionQuery> for BlockchainInfoHttpBlockSource {
     type Error = Error;
+    type Transaction = bitcoin_support::Transaction;
 
-    fn blocks(
+    fn matching_transactions(
         &self,
-    ) -> Box<dyn Stream<Item = Self::Block, Error = blocksource::Error<Error>> + Send> {
+        query: TransactionQuery,
+    ) -> Box<dyn Stream<Item = Self::Transaction, Error = Self::Error> + Send> {
         // https://www.blockchain.com/api/q (= https://www.blockchain.info/api/q) states:
         //  "Please limit your queries to a maximum of 1 every 10 seconds." (29/08/2019)
         //
@@ -113,33 +115,45 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from blockchain.info on {} every {} seconds", Network::Mainnet, poll_interval);
 
-        let cloned_self = self.clone();
-
         let stream = Interval::new_interval(Duration::from_secs(poll_interval))
-            .map_err(blocksource::Error::Timer)
-            .and_then(move |_| {
-                cloned_self
-                    .latest_block()
-                    .map(Some)
-                    .or_else(|error| {
-                        match error {
-                            Error::Reqwest(e) => {
-                                log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
-                                Ok(None)
-                            },
-                            Error::Hex(e) => {
-                                log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
-                                Ok(None)
-                            },
-                            Error::BlockDeserialization(e) => {
-                                log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
-                                Ok(None)
-                            },
-                            _ => Err(error)
-                        }
-                    })
-                    .map_err(blocksource::Error::Source)
-            }).filter_map(|maybe_block| maybe_block);
+            .map_err(Error::Timer)
+            .and_then({
+                let this = self.clone();
+                move |_| {
+                    this
+                        .latest_block()
+                        .map(Some)
+                        .or_else(|error| {
+                            match error {
+                                Error::Reqwest(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                Error::Hex(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                Error::BlockDeserialization(e) => {
+                                    log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
+                                    Ok(None)
+                                },
+                                _ => Err(error)
+                            }
+                        })
+                }
+            })
+            .filter_map(|maybe_block| maybe_block);
+
+        let stream = stream
+            .map(move |block| {
+                block
+                    .txdata
+                    .into_iter()
+                    .filter(|tx| query.matches(&tx))
+                    .collect::<Vec<Self::Transaction>>()
+            })
+            .map(futures::stream::iter_ok)
+            .flatten();
 
         Box::new(stream)
     }

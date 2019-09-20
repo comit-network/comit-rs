@@ -1,9 +1,10 @@
 use crate::{
     bitcoin::bitcoind_http_blocksource,
+    matching_transactions::MatchingTransactions,
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
     routes::{self, HttpApiProblemStdError},
-    web3,
+    web3, IntoTransactionId,
 };
 use ethereum_support::H256;
 use futures::Future;
@@ -83,14 +84,17 @@ pub fn create_ethereum_stub_endpoints(
 
 pub fn create_endpoints<
     R: Sync,
-    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Eq + 'static,
+    Q: QueryType + DeserializeOwned + Serialize + Debug + Send + Sync + Eq + Clone + 'static,
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
+    BS: MatchingTransactions<Q, Error = E>,
+    E: 'static,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
     client: Arc<C>,
+    blocksource: Arc<BS>,
     ledger_name: &'static str,
     registered_network: &'static str,
 ) -> BoxedFilter<(impl Reply,)>
@@ -98,6 +102,7 @@ where
     for<'de> R: Deserialize<'de>,
     R: Send + Default + Debug + 'static,
     QueryResult: ToHttpPayload<R, Client = C>,
+    <BS as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
 {
     let route = Q::route();
 
@@ -105,6 +110,7 @@ where
     let path = warp::path("queries");
 
     let client = warp::any().map(move || Arc::clone(&client));
+    let blocksource = warp::any().map(move || Arc::clone(&blocksource));
 
     let validate_network = warp::path::param::<String>().and_then(move |network| {
         if network != registered_network {
@@ -149,13 +155,15 @@ where
     let delete = warp::delete2()
         .and(path.clone())
         .and(query_repository.clone())
-        .and(query_result_repository)
+        .and(query_result_repository.clone())
         .and(warp::path::param::<String>())
         .and_then(routes::delete_query);
 
     let get_or_create = warp::put2()
         .and(path)
+        .and(blocksource)
         .and(query_repository)
+        .and(query_result_repository)
         .and(validate_query_id_length)
         .and(warp::body::json())
         .and_then(routes::get_or_create_query);
