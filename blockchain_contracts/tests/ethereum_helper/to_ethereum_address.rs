@@ -1,7 +1,6 @@
 use rust_bitcoin::secp256k1::PublicKey;
 use web3::types::Address;
 
-// TODO: Should/Can this be contributed back?
 pub trait ToEthereumAddress {
     fn to_ethereum_address(&self) -> Address;
 }
