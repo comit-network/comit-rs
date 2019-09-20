@@ -24,7 +24,7 @@ ethereum_support = { path = "../internal/ethereum_support" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
-hex = "0.3"
+hex = "0.4"
 hex-serde = "0.1.0"
 http = "0.1"
 http-api-problem = "0.13"

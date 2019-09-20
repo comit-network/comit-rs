@@ -19,7 +19,7 @@ ethereum_support = { path = "../internal/ethereum_support" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = "0.1"
-hex = "0.3"
+hex = "0.4"
 http = "0.1"
 http-api-problem = "0.13"
 hyper = "0.12"
@@ -36,7 +36,7 @@ warp = { version = "0.1", default-features = false }
 
 [dev-dependencies]
 env_logger = "0.6"
-hex = "0.3"
+hex = "0.4"
 lazy_static = "1.4.0"
 quickcheck = "0.7"
 secp256k1_keypair = { path = "../internal/secp256k1_keypair" }
