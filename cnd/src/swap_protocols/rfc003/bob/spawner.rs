@@ -9,7 +9,6 @@ use crate::swap_protocols::{
         state_store::{self, StateStore},
         Ledger,
     },
-    SwapId,
 };
 use futures::{sync::mpsc, Future, Stream};
 use http_api_problem::HttpApiProblem;
@@ -36,7 +35,6 @@ pub trait BobSpawner: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        id: SwapId,
         counterparty: PeerId,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
@@ -48,13 +46,13 @@ impl<T: MetadataStore, S: StateStore> BobSpawner for dependencies::bob::Protocol
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        id: SwapId,
         counterparty: PeerId,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Result<Box<ResponseFuture<AL, BL>>, Error>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
+        let id = swap_request.id;
         let swap_seed = Arc::new(self.seed.swap_seed(id));
         let bob = bob::State::new(swap_request.clone(), swap_seed);
 

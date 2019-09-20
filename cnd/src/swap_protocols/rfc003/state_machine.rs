@@ -10,7 +10,7 @@ use crate::swap_protocols::{
         messages::{AcceptResponseBody, DeclineResponseBody},
         SaveState, SecretHash,
     },
-    HashFunction, Timestamp,
+    HashFunction, SwapId, Timestamp,
 };
 use crypto::{digest::Digest, sha2::Sha256};
 use either::Either;
@@ -214,6 +214,7 @@ pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
+        id: SwapId,
         alpha_ledger_refund_identity: AL::Identity,
         beta_ledger_redeem_identity: BL::Identity,
         alpha_ledger: AL,
@@ -326,6 +327,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
     ) -> Result<Async<AfterStart<AL, BL, AA, BA>>, rfc003::Error> {
         let request = rfc003::messages::Request {
+            id: state.id,
             alpha_asset: state.alpha_asset,
             beta_asset: state.beta_asset,
             alpha_ledger: state.alpha_ledger,
