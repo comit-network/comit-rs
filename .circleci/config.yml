@@ -39,6 +39,11 @@ jobs:
       - run:
           name: Debug build and test using cargo make
           command: cargo make ci
+      - zulip/status:
+          silently_exit_if_no_envs: false
+          webhook: ${ZULIP_WEBHOOK}
+          stream: notifications
+          topic: CircleCI Activity
       - store_artifacts:
           path: api_tests/log
       - save_caches
