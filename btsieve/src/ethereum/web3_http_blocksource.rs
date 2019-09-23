@@ -1,4 +1,5 @@
 use crate::{
+    blocksource::{BlockSource, TransactionReceiptBlockSource},
     ethereum::{EventQuery, TransactionQuery},
     matching_transactions::MatchingTransactions,
     web3::{
@@ -16,7 +17,6 @@ use web3::types::BlockNumber;
 
 #[derive(Debug)]
 pub enum Error {
-    Timer(tokio::timer::Error),
     Web3(web3::Error),
 }
 
@@ -34,44 +34,97 @@ impl Web3HttpBlockSource {
     }
 }
 
-impl MatchingTransactions<TransactionQuery> for Web3HttpBlockSource {
-    type Error = Error;
+impl BlockSource for Web3HttpBlockSource {
+    type Error = web3::Error;
+    type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
+    type BlockHash = ethereum_support::H256;
+    type TransactionHash = ethereum_support::H256;
+    type Transaction = ethereum_support::Transaction;
+    type Network = ethereum_support::Network;
+
+    fn network(&self) -> Self::Network {
+        self.network
+    }
+
+    fn latest_block(
+        &self,
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+        let web = self.web3.clone();
+        Box::new(
+            web.eth()
+                .block_with_txs(BlockId::Number(BlockNumber::Latest)),
+        )
+    }
+
+    fn block_by_hash(
+        &self,
+        block_hash: Self::BlockHash,
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+        let web = self.web3.clone();
+        Box::new(web.eth().block_with_txs(BlockId::Hash(block_hash)))
+    }
+
+    fn transaction_by_hash(
+        &self,
+        _transaction_hash: Self::TransactionHash,
+    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
+        // TODO: Change impl, put Web3 completely behind the blocksource,
+        // at the moment web3 is still used as client to fetch the transactions but that
+        // should be done by the blocksource instead which holds web3
+        unimplemented!()
+    }
+}
+
+impl TransactionReceiptBlockSource for Web3HttpBlockSource {
+    type TransactionReceipt = Option<ethereum_support::TransactionReceipt>;
+
+    fn transaction_receipt(
+        &self,
+        transaction_hash: Self::TransactionHash,
+    ) -> Box<dyn Future<Item = Self::TransactionReceipt, Error = Self::Error> + Send + 'static>
+    {
+        let web = self.web3.clone();
+        Box::new(web.eth().transaction_receipt(transaction_hash))
+    }
+}
+
+impl<B> MatchingTransactions<TransactionQuery> for Arc<B>
+where
+    B: BlockSource<
+            Block = Option<ethereum_support::Block<ethereum_support::Transaction>>,
+            Network = ethereum_support::Network,
+        > + Send
+        + Sync
+        + 'static,
+{
     type Transaction = ethereum_support::Transaction;
 
     fn matching_transactions(
         &self,
         query: TransactionQuery,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = Self::Error> + Send> {
-        let web = self.web3.clone();
-
-        let poll_interval = match self.network {
+    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
+        let poll_interval = match self.network() {
             Network::Mainnet => 5000,
             Network::Ropsten => 5000,
             Network::Regtest => 500,
             Network::Unknown => 1000,
         };
 
-        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} miliseconds", self.network, poll_interval);
+        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} miliseconds", self.network(), poll_interval);
+
+        let cloned_self = self.clone();
 
         let stream = Interval::new_interval(Duration::from_millis(poll_interval))
-            .map_err(Error::Timer)
+            .map_err(|e| {
+                log::warn!(target: "ethereum::blocksource", "error encountered during polling: {:?}", e);
+            })
             .and_then(move |_| {
-                web.eth()
-                    .block_with_txs(BlockId::Number(BlockNumber::Latest))
-                    .or_else(|error| {
-                        match error {
-                            web3::Error::Io(e) => {
-                                log::debug!(target: "ethereum::blocksource", "IO error encountered during polling: {:?}", e);
-                                Ok(None)
-                            },
-                            web3::Error::Transport(e)  => {
-                                log::debug!(target: "ethereum::blocksource", "Transport error encountered during polling: {:?}", e);
-                                Ok(None)
-                            },
-                            _ => Err(error)
-                        }
+                cloned_self
+                    .latest_block()
+                    .or_else(|e| {
+                        log::debug!(target: "ethereum::blocksource", "error encountered during polling: {:?}", e);
+                        Ok(None)
                     })
-                    .map_err(Error::Web3)
             })
             .filter_map(|maybe_block| maybe_block)
             .inspect(|block| {
@@ -95,45 +148,46 @@ impl MatchingTransactions<TransactionQuery> for Web3HttpBlockSource {
     }
 }
 
-impl MatchingTransactions<EventQuery> for Web3HttpBlockSource {
-    type Error = Error;
+impl<B> MatchingTransactions<EventQuery> for Arc<B>
+where
+    B: TransactionReceiptBlockSource<
+            Block = Option<ethereum_support::Block<ethereum_support::Transaction>>,
+            Network = ethereum_support::Network,
+            TransactionHash = ethereum_support::H256,
+            TransactionReceipt = Option<ethereum_support::TransactionReceipt>,
+        > + Send
+        + Sync
+        + 'static,
+{
     type Transaction = ethereum_support::Transaction;
 
     fn matching_transactions(
         &self,
         query: EventQuery,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let poll_interval = match self.network {
+    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
+        let poll_interval = match self.network() {
             Network::Mainnet => 5,
             Network::Ropsten => 5,
             Network::Regtest => 1,
             Network::Unknown => 1,
         };
 
-        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} seconds", self.network, poll_interval);
+        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} seconds", self.network(), poll_interval);
 
         let stream = Interval::new_interval(Duration::from_secs(poll_interval))
-            .map_err(Error::Timer)
+            .map_err(|e| {
+                log::warn!(target: "ethereum::blocksource", "error encountered during polling: {:?}", e);
+            })
             .and_then({
-                let web3 = self.web3.clone();
+                let cloned_self = self.clone();
 
                 move |_| {
-                    web3.eth()
-                        .block_with_txs(BlockId::Number(BlockNumber::Latest))
-                        .or_else(|error| {
-                            match error {
-                                web3::Error::Io(e) => {
-                                    log::debug!(target: "ethereum::blocksource", "IO error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                web3::Error::Transport(e)  => {
-                                    log::debug!(target: "ethereum::blocksource", "Transport error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                _ => Err(error)
-                            }
+                    cloned_self
+                        .latest_block()
+                        .or_else(|e| {
+                            log::debug!(target: "ethereum::blocksource", "error encountered during receipt polling: {:?}", e);
+                            Ok(None)
                         })
-                        .map_err(Error::Web3)
                 }
             })
             .filter_map(|maybe_block| maybe_block)
@@ -150,16 +204,15 @@ impl MatchingTransactions<EventQuery> for Web3HttpBlockSource {
                 move |block| query.matches_block(block)
             })
             .map({
-                let web3 = self.web3.clone();
-
+                let cloned_self = self.clone();
                 move |block| {
                     let result_futures = block.transactions.into_iter().map({
                         let query = query.clone();
-                        let web3 = web3.clone();
+                        let cloned_self = cloned_self.clone();
 
                         move |transaction| {
                             let transaction_id = transaction.hash;
-                            web3.eth().transaction_receipt(transaction_id).then({
+                            cloned_self.transaction_receipt(transaction_id).then({
                                 let query = query.clone();
 
                                 move |result| match result {
@@ -170,7 +223,7 @@ impl MatchingTransactions<EventQuery> for Web3HttpBlockSource {
                                     }
                                     Err(e) => {
                                         log::error!(
-                                            "Could not retrieve transaction receipt for {}: {}",
+                                            "Could not retrieve transaction receipt for {}: {:?}",
                                             transaction_id,
                                             e
                                         );

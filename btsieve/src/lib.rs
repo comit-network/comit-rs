@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 
 pub mod bitcoin;
+pub mod blocksource;
 pub mod ethereum;
 pub mod expected_version_header;
 mod in_memory_query_repository;

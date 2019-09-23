@@ -134,22 +134,15 @@ fn create_bitcoin_routes(settings: settings::Bitcoin) -> Result<BoxedFilter<(imp
 
     let ledger_name = "bitcoin";
 
-    let transaction_routes = route_factory::create_endpoints::<
-        bitcoin::queries::transaction::ReturnAs,
-        _,
-        _,
-        _,
-        _,
-        BitcoindHttpBlockSource,
-        _,
-    >(
-        transaction_query_repository,
-        transaction_query_result_repository,
-        block_source.clone(),
-        block_source.clone(),
-        ledger_name,
-        settings.network.into(),
-    );
+    let transaction_routes =
+        route_factory::create_endpoints::<bitcoin::queries::transaction::ReturnAs, _, _, _, _, _>(
+            transaction_query_repository,
+            transaction_query_result_repository,
+            block_source.clone(),
+            block_source.clone(),
+            ledger_name,
+            settings.network.into(),
+        );
 
     Ok(transaction_routes.boxed())
 }
@@ -186,7 +179,6 @@ fn create_ethereum_routes(
         _,
         _,
         Web3HttpBlockSource,
-        _,
     >(
         transaction_query_repository,
         transaction_query_result_repository,
@@ -203,7 +195,6 @@ fn create_ethereum_routes(
         _,
         _,
         Web3HttpBlockSource,
-        _,
     >(
         log_query_repository,
         log_query_result_repository,
