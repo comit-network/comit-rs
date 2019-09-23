@@ -1,8 +1,9 @@
 use crate::db::schema::swaps;
 use diesel::{Insertable, Queryable};
 
-#[derive(Queryable, Debug, Clone)]
+#[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct Swap {
+    id: i32,
     pub swap_id: String,
 }
 
@@ -12,10 +13,10 @@ pub struct InsertableSwap {
     pub swap_id: String,
 }
 
-impl From<Swap> for InsertableSwap {
-    fn from(swap: Swap) -> Self {
+impl InsertableSwap {
+    pub fn new(swap_id: &str) -> Self {
         InsertableSwap {
-            swap_id: swap.swap_id,
+            swap_id: swap_id.to_string(),
         }
     }
 }

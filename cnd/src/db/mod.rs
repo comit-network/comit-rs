@@ -2,7 +2,7 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::db::models::Swap;
+use crate::db::models::{InsertableSwap, Swap};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     fs::File,
@@ -62,35 +62,78 @@ impl Sqlite {
 
         create_database_if_needed(&db)?;
 
-        let conn = establish_connection(&db)?;
-        embedded_migrations::run(&conn)?;
+        let connection = establish_connection(&db)?;
+        embedded_migrations::run(&connection)?;
 
         Ok(Sqlite { db })
+    }
+
+    // Surely there is a more memory efficient way of doing this,
+    // however, we only use this function for testing.
+    #[allow(dead_code)]
+    fn count(&self) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = establish_connection(&self.db)?;
+        let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
+
+        Ok(records.len())
     }
 }
 
 pub trait Database: Send + Sync + 'static {
-    fn get(&self, swap_id: String) -> Result<Option<Swap>, Error>;
-    fn insert(&self, swap: Swap) -> Result<(), Error>;
+    fn get(&self, swap_id: &str) -> Result<Option<Swap>, Error>;
+    fn insert(&self, swap: InsertableSwap) -> Result<usize, Error>;
     fn all(&self) -> Result<Vec<Swap>, Error>;
-    fn delete(&self, swap_id: String) -> Result<(), Error>;
+    fn delete(&self, swap_id: &str) -> Result<usize, Error>;
 }
 
 impl Database for Sqlite {
-    fn get(&self, _swap_id: String) -> Result<Option<Swap>, Error> {
-        unimplemented!()
+    /// Get swap with swap_id 'key' from the database.
+    fn get(&self, key: &str) -> Result<Option<Swap>, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = establish_connection(&self.db)?;
+
+        swaps
+            .filter(swap_id.eq(key))
+            .first(&connection)
+            .optional()
+            .map_err(Error::Diesel)
     }
 
-    fn insert(&self, _swap: Swap) -> Result<(), Error> {
-        unimplemented!()
+    /// Inserts a swap into the database.  swap_id's are unique, attempting
+    /// to insert a swap with a duplicate swap_id is an error.
+    /// Returns 1 if a swap was inserted.
+    fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = establish_connection(&self.db)?;
+
+        diesel::insert_into(swaps)
+            .values(&swap)
+            .execute(&connection)
+            .map_err(Error::Diesel)
     }
 
+    /// Gets all the swaps from the database.
     fn all(&self) -> Result<Vec<Swap>, Error> {
-        unimplemented!()
+        use self::schema::swaps::dsl::*;
+        let connection = establish_connection(&self.db)?;
+
+        swaps.load(&connection).map_err(Error::Diesel)
     }
 
-    fn delete(&self, _swap_id: String) -> Result<(), Error> {
-        unimplemented!()
+    /// Deletes a swap with swap_id 'key' from the database.
+    /// Returns 1 a swap was deleted, 0 otherwise.
+    fn delete(&self, key: &str) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = establish_connection(&self.db)?;
+
+        diesel::delete(swaps.filter(swap_id.eq(key)))
+            .execute(&connection)
+            .map_err(Error::Diesel)
     }
 }
 
@@ -115,21 +158,147 @@ fn create_database_if_needed(db: &Path) -> Result<(), Error> {
 
 fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
     let database_url = db.to_str().ok_or(Error::PathConversion)?;
-    let conn = SqliteConnection::establish(&database_url)?;
-    Ok(conn)
+    let connection = SqliteConnection::establish(&database_url).map_err(Error::Connection)?;
+
+    Ok(connection)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn can_create_a_new_database() {
+    fn new_temp_db() -> Sqlite {
         let temp_file = tempfile::Builder::new()
             .suffix(".sqlite")
             .tempfile()
             .unwrap();
         let temp_file_path = temp_file.into_temp_path().to_path_buf();
-        let _db = Sqlite::new(Some(temp_file_path)).expect("failed to create database");
+        Sqlite::new(Some(temp_file_path)).expect("failed to create database")
+    }
+
+    fn insertable_swap() -> InsertableSwap {
+        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
+        InsertableSwap::new(&id)
+    }
+
+    #[test]
+    fn can_create_a_new_temp_database() {
+        let _db = new_temp_db();
+    }
+
+    #[test]
+    fn can_count_empty_database() {
+        let db = new_temp_db();
+        assert_eq!(0, db.count().unwrap());
+    }
+
+    #[test]
+    fn insert_return_vaule_is_as_expected() {
+        let db = new_temp_db();
+
+        let swap = insertable_swap();
+        let rows_inserted = db.insert(swap).unwrap();
+        assert_eq!(rows_inserted, 1);
+    }
+
+    #[test]
+    fn count_works_afer_insert() {
+        let db = new_temp_db();
+        let swap = insertable_swap();
+
+        let _rows_inserted = db.insert(swap).unwrap();
+        assert_eq!(1, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_not_add_same_record_twice() {
+        let db = new_temp_db();
+        let swap = insertable_swap();
+
+        let _res = db.insert(swap).unwrap();
+
+        let swap_with_same_swap_id = insertable_swap();
+        let res = db.insert(swap_with_same_swap_id);
+        if res.is_ok() {
+            panic!("insert duplicate swap_id should err");
+        }
+
+        assert_eq!(1, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_add_multiple_different_swaps() {
+        let db = new_temp_db();
+
+        let s1 = InsertableSwap::new("foo");
+        let s2 = InsertableSwap::new("bar");
+
+        let rows_inserted = db.insert(s1).unwrap();
+        assert_eq!(rows_inserted, 1);
+
+        let rows_inserted = db.insert(s2).unwrap();
+        assert_eq!(rows_inserted, 1);
+
+        assert_eq!(2, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_add_a_swap_and_read_it() {
+        let db = new_temp_db();
+
+        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
+        let swap = InsertableSwap::new(&id);
+
+        let _ = db.insert(swap).unwrap();
+
+        let swap = db.get(&id).expect("database error");
+        match swap {
+            Some(swap) => assert_eq!(swap.swap_id, id),
+            None => panic!("no record returned"),
+        }
+    }
+
+    #[test]
+    fn can_add_a_swap_and_delete_it() {
+        let db = new_temp_db();
+
+        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
+        let swap = InsertableSwap::new(&id);
+
+        let _ = db.insert(swap).unwrap();
+
+        let res = db.delete(&id).expect("database delete error");
+        assert_eq!(res, 1);
+
+        let swap = db.get(&id).expect("database get error");
+        if swap.is_some() {
+            panic!("false positive");
+        }
+
+        assert_eq!(0, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_delete_a_non_existant_swap() {
+        let db = new_temp_db();
+
+        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
+
+        let res = db.delete(&id).expect("database delete error");
+        assert_eq!(res, 0);
+    }
+
+    #[test]
+    fn can_get_all_the_swaps() {
+        let db = new_temp_db();
+
+        let s1 = InsertableSwap::new("foo");
+        let s2 = InsertableSwap::new("bar");
+
+        let _ = db.insert(s1).unwrap();
+        let _ = db.insert(s2).unwrap();
+
+        let records = db.all().unwrap();
+        assert_eq!(records.len(), 2);
     }
 }

@@ -1,6 +1,6 @@
 table! {
     swaps {
         id -> Integer,
-        swap_id -> VarChar,
+        swap_id -> Text,
     }
 }
