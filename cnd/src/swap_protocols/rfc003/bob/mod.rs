@@ -96,6 +96,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
         let swap_request = self.request();
         let start_state = Start {
+            id: swap_request.id,
             alpha_ledger: swap_request.alpha_ledger,
             beta_ledger: swap_request.beta_ledger,
             alpha_asset: swap_request.alpha_asset,

@@ -10,8 +10,9 @@ use crate::swap_protocols::{
         messages::{AcceptResponseBody, DeclineResponseBody},
         SaveState, SecretHash,
     },
-    HashFunction, Timestamp,
+    HashFunction, SwapId, Timestamp,
 };
+use crypto::{digest::Digest, sha2::Sha256};
 use either::Either;
 use futures::{future, try_ready, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
@@ -55,6 +56,35 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
             secret_hash: request.secret_hash,
         }
     }
+
+    pub fn query_id_deployed(&self) -> String {
+        generate_identifier(&self.secret_hash, "deployed")
+    }
+
+    pub fn query_id_funded(&self) -> String {
+        generate_identifier(&self.secret_hash, "funded")
+    }
+
+    pub fn query_id_redeemed(&self) -> String {
+        generate_identifier(&self.secret_hash, "redeemed")
+    }
+
+    pub fn query_id_refunded(&self) -> String {
+        generate_identifier(&self.secret_hash, "refunded")
+    }
+}
+
+// Returns SHA-256(prefix + secret_hash).
+fn generate_identifier(secret_hash: &SecretHash, prefix: &str) -> String {
+    let mut msg = String::from(prefix);
+    msg.push_str(&secret_hash.to_string());
+    hash(&msg)
+}
+
+fn hash(msg: &str) -> String {
+    let mut sha = Sha256::new();
+    sha.input_str(msg);
+    sha.result_str()
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -184,6 +214,7 @@ pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[state_machine_future(start, transitions(Accepted, Final))]
     Start {
+        id: SwapId,
         alpha_ledger_refund_identity: AL::Identity,
         beta_ledger_redeem_identity: BL::Identity,
         alpha_ledger: AL,
@@ -296,6 +327,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
     ) -> Result<Async<AfterStart<AL, BL, AA, BA>>, rfc003::Error> {
         let request = rfc003::messages::Request {
+            id: state.id,
             alpha_asset: state.alpha_asset,
             beta_asset: state.beta_asset,
             alpha_ledger: state.alpha_ledger,

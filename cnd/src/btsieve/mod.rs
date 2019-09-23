@@ -37,6 +37,8 @@ pub enum Error {
     FailedRequest(String),
     #[fail(display = "The response was somehow malformed.")]
     MalformedResponse(String),
+    #[fail(display = "Btsieve returned a failure.")]
+    ResponseFailure(String),
     #[fail(display = "The btsieve client encountered an unrecoverable internal error.")]
     Internal,
 }

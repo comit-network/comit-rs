@@ -4,7 +4,7 @@ use crate::{
         asset::AssetKind,
         ledger::{Bitcoin, Ethereum, LedgerKind},
         rfc003::messages::Decision,
-        SwapProtocol,
+        SwapId, SwapProtocol,
     },
 };
 use bitcoin_support::amount::Denomination;
@@ -38,6 +38,18 @@ impl ToHeader for LedgerKind {
             }
             unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
+    }
+}
+
+impl FromHeader for SwapId {
+    fn from_header(header: Header) -> Result<Self, serde_json::Error> {
+        header.value::<SwapId>()
+    }
+}
+
+impl ToHeader for SwapId {
+    fn to_header(&self) -> Result<Header, serde_json::Error> {
+        Header::with_value(self)
     }
 }
 
