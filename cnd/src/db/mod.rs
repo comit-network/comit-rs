@@ -2,35 +2,24 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::{
-    db::models::{InsertableMetadata, Metadata},
-    swap_protocols::{
-        metadata_store as ms,
-        metadata_store::{AssetKind, LedgerKind, MetadataStore, Role},
-        SwapId,
-    },
-};
+use crate::db::models::Swap;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use libp2p::PeerId;
 use std::{
-    convert::TryFrom,
     fs::File,
     io,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
-/// This module provides an Sqlite backed persistent MetadataStore.
+/// This module provides persistent storage by way of Sqlite.
 
 #[derive(Debug)]
 pub enum Error {
-    PathStr, // Cannot convert db path to a string.
-    NoPath,  // Something went terminally wrong with the path string conversion.
+    PathConversion, // Cannot convert db path to a string.
+    NoPath,         // Failed to generate a valid path for the database file.
     Connection(diesel::ConnectionError),
     Migrations(diesel_migrations::RunMigrationsError),
     Io(io::Error),
     Diesel(diesel::result::Error),
-    Parse, // General parse error when reading from the database.
 }
 
 impl From<diesel::ConnectionError> for Error {
@@ -58,75 +47,50 @@ impl From<diesel::result::Error> for Error {
 }
 
 #[derive(Debug)]
-pub struct SqliteMetadataStore {
+pub struct Sqlite {
     db: PathBuf,
 }
 
-impl SqliteMetadataStore {
+impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
-    /// When this returns an Sqlite database exists at 'db' and connection to
-    /// the database has been verified.
-    pub fn new(db: Option<PathBuf>) -> Result<SqliteMetadataStore, Error> {
+    /// When this returns an Sqlite database exists at 'db', a
+    /// successful connection to the database has been made, and
+    /// the database migrations have been run.
+    pub fn new(db: Option<PathBuf>) -> Result<Sqlite, Error> {
         let db = db.or_else(default_db_path).ok_or(Error::NoPath)?;
 
         create_database_if_needed(&db)?;
 
         let conn = establish_connection(&db)?;
-
         embedded_migrations::run(&conn)?;
 
-        Ok(SqliteMetadataStore { db })
+        Ok(Sqlite { db })
     }
 }
 
-impl MetadataStore for SqliteMetadataStore {
-    fn get(&self, key: SwapId) -> Result<Option<ms::Metadata>, ms::Error> {
-        // Imports aliases so we can refer to the table and table fields.
-        use self::schema::metadatas::dsl::*;
+pub trait Database: Send + Sync + 'static {
+    fn get(&self, swap_id: String) -> Result<Option<Swap>, Error>;
+    fn insert(&self, swap: Swap) -> Result<(), Error>;
+    fn all(&self) -> Result<Vec<Swap>, Error>;
+    fn delete(&self, swap_id: String) -> Result<(), Error>;
+}
 
-        let key = key.to_string();
-        let conn = establish_connection(&self.db)?;
-
-        metadatas
-            .filter(swap_id.eq(key))
-            .first(&conn)
-            .optional()
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))?
-            .map(|m: Metadata| ms::Metadata::try_from(m.clone()))
-            .transpose()
+impl Database for Sqlite {
+    fn get(&self, _swap_id: String) -> Result<Option<Swap>, Error> {
+        unimplemented!()
     }
 
-    fn insert(&self, metadata: ms::Metadata) -> Result<(), ms::Error> {
-        let md = Metadata::new(metadata);
-        let new = InsertableMetadata::new(&md);
-
-        let conn = establish_connection(&self.db)?;
-        diesel::insert_into(schema::metadatas::table)
-            .values(new)
-            .execute(&conn)
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))
-            .map(|res| {
-                if res == 1 {
-                    log::trace!("Row inserted (swap id: {})", md.swap_id);
-                } else {
-                    log::trace!("Row already exists (swap id: {})", md.swap_id);
-                }
-            })
+    fn insert(&self, _swap: Swap) -> Result<(), Error> {
+        unimplemented!()
     }
 
-    fn all(&self) -> Result<Vec<ms::Metadata>, ms::Error> {
-        // Imports aliases so we can refer to the table and table fields.
-        use self::schema::metadatas::dsl::*;
+    fn all(&self) -> Result<Vec<Swap>, Error> {
+        unimplemented!()
+    }
 
-        let conn = establish_connection(&self.db)?;
-
-        metadatas
-            .load::<Metadata>(&conn)
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))?
-            .iter()
-            .map(|m| ms::Metadata::try_from(m.clone()))
-            .collect()
+    fn delete(&self, _swap_id: String) -> Result<(), Error> {
+        unimplemented!()
     }
 }
 
@@ -150,35 +114,22 @@ fn create_database_if_needed(db: &Path) -> Result<(), Error> {
 }
 
 fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
-    let database_url = db.to_str().ok_or(Error::PathStr)?;
+    let database_url = db.to_str().ok_or(Error::PathConversion)?;
     let conn = SqliteConnection::establish(&database_url)?;
     Ok(conn)
 }
 
-impl TryFrom<Metadata> for ms::Metadata {
-    type Error = ms::Error;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-    fn try_from(md: Metadata) -> Result<Self, Self::Error> {
-        // These map_err calls can be removed once Metadata uses types and
-        // implements the FromSql trait.
-        let swap_id = SwapId::from_str(md.swap_id.as_str()).map_err(|_| Error::Parse)?;
-        let alpha_ledger =
-            LedgerKind::from_str(md.alpha_ledger.as_str()).map_err(|_| Error::Parse)?;
-        let beta_ledger =
-            LedgerKind::from_str(md.beta_ledger.as_str()).map_err(|_| Error::Parse)?;
-        let alpha_asset = AssetKind::from_str(md.alpha_asset.as_str()).map_err(|_| Error::Parse)?;
-        let beta_asset = AssetKind::from_str(md.beta_asset.as_str()).map_err(|_| Error::Parse)?;
-        let role = Role::from_str(md.role.as_str()).map_err(|_| Error::Parse)?;
-        let counterparty = PeerId::from_str(md.counterparty.as_str()).map_err(|_| Error::Parse)?;
-
-        Ok(ms::Metadata {
-            swap_id,
-            alpha_ledger,
-            beta_ledger,
-            alpha_asset,
-            beta_asset,
-            role,
-            counterparty,
-        })
+    #[test]
+    fn can_create_a_new_database() {
+        let temp_file = tempfile::Builder::new()
+            .suffix(".sqlite")
+            .tempfile()
+            .unwrap();
+        let temp_file_path = temp_file.into_temp_path().to_path_buf();
+        let _db = Sqlite::new(Some(temp_file_path)).expect("failed to create database");
     }
 }
