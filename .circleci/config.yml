@@ -57,7 +57,6 @@ jobs:
           name: Release build and test using cargo make
           command: |
             export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
-            export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
             cargo make ci
       - store_artifacts:
@@ -68,12 +67,10 @@ jobs:
             set -v
             mkdir ~/artifacts
             mv -v ~/comit/target/release/cnd ~/artifacts
-            mv -v ~/comit/target/release/btsieve ~/artifacts
       - persist_to_workspace:
           root: ~/artifacts
           paths:
             - cnd
-            - btsieve
 
   publish-github-release:
     working_directory: ~/comit
