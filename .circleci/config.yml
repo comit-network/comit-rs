@@ -63,6 +63,11 @@ jobs:
             export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
             cargo make ci
+      - zulip/status:
+          silently_exit_if_no_envs: false
+          webhook: ${ZULIP_WEBHOOK}
+          stream: notifications
+          topic: CircleCI Activity
       - store_artifacts:
           path: api_tests/log
       - run:
