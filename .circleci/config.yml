@@ -1,6 +1,4 @@
 version: 2.1
-orbs:
-  zulip: ponylang/zulip@1.0.2
 
 workflows:
   version: 2
@@ -39,11 +37,6 @@ jobs:
       - run:
           name: Debug build and test using cargo make
           command: cargo make ci
-      - zulip/status:
-          silently_exit_if_no_envs: false
-          webhook: ${ZULIP_WEBHOOK}
-          stream: notifications
-          topic: CircleCI Activity
       - store_artifacts:
           path: api_tests/log
       - save_caches
@@ -68,11 +61,6 @@ jobs:
             export BTSIEVE_BIN=~/comit/target/release/btsieve
             export CND_BIN=~/comit/target/release/cnd
             cargo make ci
-      - zulip/status:
-          silently_exit_if_no_envs: false
-          webhook: ${ZULIP_WEBHOOK}
-          stream: notifications
-          topic: CircleCI Activity
       - store_artifacts:
           path: api_tests/log
       - run:
@@ -200,3 +188,7 @@ commands:
             - ~/.cache/yarn
             - api_tests/node_modules
           key: yarn-packages-v1-{{ .Branch }}-{{ checksum "api_tests/yarn.lock" }}
+
+notify:
+  webhooks:
+    - url: https://comit.zulipchat.com/api/v1/external/circleci?api_key=7jqVypvDN6ARVtkoCfj1r7YWMd2dCbsF&stream=ci&topic=circlie-ci
