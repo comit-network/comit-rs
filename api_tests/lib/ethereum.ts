@@ -4,7 +4,6 @@ import { JsonRpcProvider, TransactionRequest } from "ethers/providers";
 import { BigNumber } from "ethers/utils";
 import * as fs from "fs";
 import * as util from "./util";
-import { sleep } from "./util";
 
 let ethersClient: JsonRpcProvider;
 
@@ -65,7 +64,12 @@ async function mintErc20Tokens(
         .padStart(64, "0");
     const payload = "0x" + functionIdentifier + toAddress + hexAmount;
 
-    return ownerWallet.sendEthTransactionTo(contractAddress, payload, "0x0");
+    const transactionResponse = await ownerWallet.sendEthTransactionTo(
+        contractAddress,
+        payload,
+        "0x0"
+    );
+    return transactionResponse.wait(1);
 }
 
 export class EthereumWallet {
@@ -90,20 +94,21 @@ export class EthereumWallet {
         return erc20Balance(this.account, contractAddress);
     }
 
-    public async fund(ether: string) {
+    public async fund(ether: string, confirmation: number = 1) {
         const parityPrivateKey =
             "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7";
 
         const weiAmount = ethers.utils.parseEther(ether);
-
         const tx = {
             to: this.address(),
             value: weiAmount.toHexString(),
             gasLimit: 21000,
+            chainId: 17,
         };
 
         const wallet = new ethers.Wallet(parityPrivateKey, ethersClient);
-        return wallet.sendTransaction(tx);
+        const transactionResponse = await wallet.sendTransaction(tx);
+        return transactionResponse.wait(confirmation);
     }
 
     public async mintErc20To(
@@ -139,16 +144,13 @@ export class EthereumWallet {
 
         value = ethers.utils.bigNumberify(value);
 
-        const nonce = await ethersClient.getTransactionCount(this.address());
-
         const tx: TransactionRequest = {
-            nonce: "0x" + nonce.toString(16),
             gasPrice: "0x0",
             gasLimit,
             to,
             data,
             value: value.toHexString(),
-            chainId: 1,
+            chainId: 17,
         };
         return this.signAndSend(tx);
     }
@@ -165,10 +167,10 @@ export class EthereumWallet {
                     "utf8"
                 )
                 .trim();
-        const transactionReceipt = await this.deploy_contract(
+        const transactionResponse = await this.deploy_contract(
             tokenContractDeploy
         );
-
+        const transactionReceipt = await transactionResponse.wait(1);
         return transactionReceipt.contractAddress;
     }
 
@@ -187,16 +189,16 @@ export class EthereumWallet {
             gasLimit,
             data,
             value: value.toHexString(),
-            chainId: 1,
+            chainId: 17,
         };
 
         return this.signAndSend(tx);
     }
 
     public async signAndSend(tx: TransactionRequest) {
-        await sleep(1001); // instant seal is a beautiful thing, if we fire transactions too fast, than btsieve can't see the block
         const wallet = new ethers.Wallet(this.keypair.privateKey, ethersClient);
-        const transactionResponse = await wallet.sendTransaction(tx);
-        return transactionResponse.wait(1);
+        tx.nonce = await wallet.getTransactionCount("latest");
+        const signedTx = await wallet.sign(tx);
+        return await ethersClient.sendTransaction(signedTx);
     }
 }

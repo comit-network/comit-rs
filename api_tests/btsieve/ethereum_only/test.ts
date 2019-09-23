@@ -19,10 +19,9 @@ setTimeout(async function() {
     describe("Test btsieve API - ethereum", () => {
         let tokenContractAddress: string;
         before(async function() {
-            this.timeout(10000);
-            await tobyWallet.eth().fund("20");
+            this.timeout(20000);
+            await tobyWallet.eth().fund("30");
             await aliceWallet.eth().fund("1");
-
             tokenContractAddress = await tobyWallet
                 .eth()
                 .deployErc20TokenContract(global.projectRoot);
@@ -35,12 +34,8 @@ setTimeout(async function() {
                 );
         });
 
-        describe("Ethereum", () => {
-            describe("Transactions", () => {
-                before(async () => {
-                    await tobyWallet.eth().fund("10");
-                });
-
+        describe("Ethereum", async () => {
+            describe("Transactions", async () => {
                 it("btsieve should respond not found when getting a non-existent ethereum transaction query", async function() {
                     const res = await request(btsieve.url())
                         .get("/queries/ethereum/regtest/transactions/1")
@@ -109,6 +104,7 @@ setTimeout(async function() {
                 });
 
                 it("btsieve should respond with transaction match when requesting on the `toAddress` ethereum transaction query", async function() {
+                    this.timeout(20000);
                     this.slow(2000);
                     await tobyWallet
                         .eth()
@@ -191,7 +187,7 @@ setTimeout(async function() {
                     expect(res.body.matches).to.be.empty;
                 });
 
-                it("btsieve should respond with transaction receipt match when requesting on the transfer_topic query after waiting 3 seconds", async function() {
+                it("btsieve should respond with transaction receipt match when requesting on the transfer_topic query", async function() {
                     this.slow(2000);
                     this.timeout(20000);
                     const transferTokenData =
@@ -199,19 +195,18 @@ setTimeout(async function() {
                         toAddress.replace("0x", "") +
                         "0000000000000000000000000000000000000000000000000000000000000001";
 
-                    const receipt = await aliceWallet
+                    const transactionResponse = await aliceWallet
                         .eth()
                         .sendEthTransactionTo(
                             tokenContractAddress,
                             transferTokenData,
                             0
                         );
-
+                    const receipt = await transactionResponse.wait(1);
                     const body = await btsieve.pollUntilMatches<IdMatch>(
                         btsieve.absoluteLocation(location)
                     );
-
-                    expect(body.matches).to.have.length(1);
+                    expect(body.matches).to.have.length.greaterThan(0);
                     expect(body.matches[0].id).to.equal(
                         receipt.transactionHash
                     );
@@ -223,8 +218,7 @@ setTimeout(async function() {
                         btsieve.absoluteLocation(location) +
                             "?return_as=transaction_and_receipt"
                     );
-
-                    expect(body.matches).to.have.length(1);
+                    expect(body.matches).to.have.length.greaterThan(0);
                     expect(body.matches[0].transaction).to.be.a("object");
                     expect(body.matches[0].receipt).to.be.a("object");
                 });

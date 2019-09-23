@@ -171,15 +171,8 @@ async function startBitcoinContainer(): Promise<StartedTestContainer> {
 }
 
 async function startEthereumContainer(): Promise<StartedTestContainer> {
-    return new GenericContainer("parity/parity", "v2.5.0")
-        .withCmd([
-            "--config=dev",
-            "--jsonrpc-apis=all",
-            "--unsafe-expose",
-            "--tracing=on",
-            "--logging=debug,ethcore-miner=trace,miner=trace,rpc=trace,tokio_core=warn,tokio_reactor=warn",
-            "--jsonrpc-cors='all'",
-        ])
+    return new GenericContainer("coblox/parity-poa", "v2.5.8-stable")
+        .withCmd(["--config=/parity/config/config.toml"])
         .withExposedPorts(8545)
         .withWaitStrategy(new LogWaitStrategy("Public node URL:"))
         .start();

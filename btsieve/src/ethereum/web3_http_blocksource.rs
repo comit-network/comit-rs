@@ -38,7 +38,7 @@ impl BlockSource for Web3HttpBlockSource {
             Network::Mainnet => 5000,
             Network::Ropsten => 5000,
             Network::Regtest => 500,
-            Network::Unknown => 1000,
+            Network::Unknown => 500,
         };
 
         log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} miliseconds", self.network, poll_interval);
