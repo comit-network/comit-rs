@@ -1,4 +1,7 @@
 version: 2.1
+notify:
+  webhooks:
+    - url: https://comit.zulipchat.com/api/v1/external/circleci?api_key=${TULIP_CIRCLECI_BOT_API_KEY}&stream=${TULIP_CIRCLECI_BOT_STREAM}&topic=${TULIP_CIRCLECI_BOT_TOPIC}
 workflows:
   version: 2
   main:
