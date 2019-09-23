@@ -99,11 +99,12 @@ export class EthereumWallet {
             "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7";
 
         const weiAmount = ethers.utils.parseEther(ether);
-        const tx = {
+        const chainId = await ethersClient.getNetwork();
+        const tx: TransactionRequest = {
             to: this.address(),
             value: weiAmount.toHexString(),
             gasLimit: 21000,
-            chainId: 17,
+            chainId: chainId.chainId,
         };
 
         const wallet = new ethers.Wallet(parityPrivateKey, ethersClient);
@@ -144,13 +145,14 @@ export class EthereumWallet {
 
         value = ethers.utils.bigNumberify(value);
 
+        const chainId = await ethersClient.getNetwork();
         const tx: TransactionRequest = {
             gasPrice: "0x0",
             gasLimit,
             to,
             data,
             value: value.toHexString(),
-            chainId: 17,
+            chainId: chainId.chainId,
         };
         return this.signAndSend(tx);
     }
