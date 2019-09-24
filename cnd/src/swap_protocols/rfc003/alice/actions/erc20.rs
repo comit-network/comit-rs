@@ -29,10 +29,11 @@ where
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        let (request, response) = match self.swap_communication {
+        let (request, response, ..) = match self.swap_communication {
             SwapCommunication::Accepted {
                 ref request,
                 ref response,
+                ..
             } => (request, response),
             _ => return vec![],
         };
@@ -92,6 +93,7 @@ where
             SwapCommunication::Accepted {
                 ref request,
                 ref response,
+                ..
             } => (request, response),
             _ => return vec![],
         };

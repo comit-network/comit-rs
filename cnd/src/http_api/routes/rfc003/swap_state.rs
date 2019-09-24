@@ -60,7 +60,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
     fn from(communication: alice::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use self::alice::SwapCommunication::*;
         match communication {
-            Proposed { request } => Self {
+            Proposed { request, .. } => Self {
                 status: SwapCommunicationState::Sent,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
@@ -70,7 +70,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication
                 beta_refund_identity: None,
                 secret_hash: request.secret_hash,
             },
-            Accepted { request, response } => Self {
+            Accepted {
+                request, response, ..
+            } => Self {
                 status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,
@@ -110,7 +112,9 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<A
                 beta_refund_identity: None,
                 secret_hash: request.secret_hash,
             },
-            Accepted { request, response } => Self {
+            Accepted {
+                request, response, ..
+            } => Self {
                 status: SwapCommunicationState::Accepted,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,

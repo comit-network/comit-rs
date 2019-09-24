@@ -4,20 +4,23 @@ mod spawner;
 
 pub use self::{communication_events::*, spawner::*};
 
-use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        actions::{Accept, Decline},
-        events::{LedgerEvents, ResponseFuture},
-        ledger::Ledger,
-        ledger_state::LedgerState,
-        messages::{AcceptResponseBody, DeclineResponseBody, Request},
-        save_state::SaveState,
-        secret_source::SecretSource,
-        state_machine::{Context, FutureSwapOutcome, Start, Swap},
-        ActorState, Secret,
+use crate::{
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self,
+            actions::{Accept, Decline},
+            events::{LedgerEvents, ResponseFuture},
+            ledger::Ledger,
+            ledger_state::LedgerState,
+            messages::{AcceptResponseBody, DeclineResponseBody, Request},
+            save_state::SaveState,
+            secret_source::SecretSource,
+            state_machine::{Context, FutureSwapOutcome, Start, Swap},
+            ActorState, Secret,
+        },
     },
+    timestamp::{self, Timestamp},
 };
 use derivative::Derivative;
 use futures::{future::Shared, sync::oneshot, Future};
@@ -46,14 +49,17 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         request: Request<AL, BL, AA, BA>,
         #[derivative(Debug = "ignore")]
         pending_response: PendingResponse<AL, BL>,
+        when: Timestamp,
     },
     Accepted {
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
+        when: Timestamp,
     },
     Declined {
         request: Request<AL, BL, AA, BA>,
         response: DeclineResponseBody,
+        when: Timestamp,
     },
 }
 
@@ -133,6 +139,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             swap_communication: SwapCommunication::Proposed {
                 request,
                 pending_response: PendingResponse { sender, receiver },
+                when: timestamp::now(),
             },
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
@@ -176,12 +183,14 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
                     self.swap_communication = SwapCommunication::Accepted {
                         request: request.clone(),
                         response,
+                        when: timestamp::now(),
                     }
                 }
                 Err(response) => {
                     self.swap_communication = SwapCommunication::Declined {
                         request: request.clone(),
                         response,
+                        when: timestamp::now(),
                     }
                 }
             },

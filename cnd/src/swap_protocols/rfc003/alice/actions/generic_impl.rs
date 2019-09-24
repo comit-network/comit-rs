@@ -35,6 +35,7 @@ where
             SwapCommunication::Accepted {
                 ref request,
                 ref response,
+                ..
             } => (request, response),
             _ => return vec![],
         };

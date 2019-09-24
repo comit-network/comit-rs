@@ -21,6 +21,7 @@ use crate::{
             ActorState, Secret,
         },
     },
+    timestamp::{self, Timestamp},
 };
 use derivative::Derivative;
 use std::sync::Arc;
@@ -40,14 +41,17 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     Proposed {
         request: Request<AL, BL, AA, BA>,
+        when: Timestamp,
     },
     Accepted {
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
+        when: Timestamp,
     },
     Declined {
         request: Request<AL, BL, AA, BA>,
         response: DeclineResponseBody,
+        when: Timestamp,
     },
 }
 
@@ -88,14 +92,17 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     pub fn request(&self) -> Request<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
-            | SwapCommunication::Proposed { request }
+            | SwapCommunication::Proposed { request, .. }
             | SwapCommunication::Declined { request, .. } => request.clone(),
         }
     }
 
     pub fn new(request: Request<AL, BL, AA, BA>, secret_source: Arc<dyn SecretSource>) -> Self {
         Self {
-            swap_communication: SwapCommunication::Proposed { request },
+            swap_communication: SwapCommunication::Proposed {
+                request,
+                when: timestamp::now(),
+            },
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source,
@@ -112,17 +119,19 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
 
     fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>) {
         match self.swap_communication {
-            SwapCommunication::Proposed { ref request } => match response {
+            SwapCommunication::Proposed { ref request, .. } => match response {
                 Ok(response) => {
                     self.swap_communication = SwapCommunication::Accepted {
                         request: request.clone(),
                         response,
+                        when: timestamp::now(),
                     }
                 }
                 Err(response) => {
                     self.swap_communication = SwapCommunication::Declined {
                         request: request.clone(),
                         response,
+                        when: timestamp::now(),
                     }
                 }
             },
