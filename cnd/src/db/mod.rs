@@ -2,7 +2,7 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::db::models::{InsertableSwap, Swap};
+use crate::db::models::{InsertableSwap, Swap, SwapId};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     fs::File,
@@ -68,29 +68,8 @@ impl Sqlite {
         Ok(Sqlite { db })
     }
 
-    // Surely there is a more memory efficient way of doing this,
-    // however, we only use this function for testing.
-    #[allow(dead_code)]
-    fn count(&self) -> Result<usize, Error> {
-        use self::schema::swaps::dsl::*;
-
-        let connection = establish_connection(&self.db)?;
-        let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
-
-        Ok(records.len())
-    }
-}
-
-pub trait Database: Send + Sync + 'static {
-    fn get(&self, swap_id: &str) -> Result<Option<Swap>, Error>;
-    fn insert(&self, swap: InsertableSwap) -> Result<usize, Error>;
-    fn all(&self) -> Result<Vec<Swap>, Error>;
-    fn delete(&self, swap_id: &str) -> Result<usize, Error>;
-}
-
-impl Database for Sqlite {
     /// Get swap with swap_id 'key' from the database.
-    fn get(&self, key: &str) -> Result<Option<Swap>, Error> {
+    pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = establish_connection(&self.db)?;
@@ -105,7 +84,7 @@ impl Database for Sqlite {
     /// Inserts a swap into the database.  swap_id's are unique, attempting
     /// to insert a swap with a duplicate swap_id is an error.
     /// Returns 1 if a swap was inserted.
-    fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
+    pub fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = establish_connection(&self.db)?;
@@ -117,7 +96,7 @@ impl Database for Sqlite {
     }
 
     /// Gets all the swaps from the database.
-    fn all(&self) -> Result<Vec<Swap>, Error> {
+    pub fn all(&self) -> Result<Vec<Swap>, Error> {
         use self::schema::swaps::dsl::*;
         let connection = establish_connection(&self.db)?;
 
@@ -126,7 +105,7 @@ impl Database for Sqlite {
 
     /// Deletes a swap with swap_id 'key' from the database.
     /// Returns 1 a swap was deleted, 0 otherwise.
-    fn delete(&self, key: &str) -> Result<usize, Error> {
+    pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = establish_connection(&self.db)?;
@@ -134,6 +113,18 @@ impl Database for Sqlite {
         diesel::delete(swaps.filter(swap_id.eq(key)))
             .execute(&connection)
             .map_err(Error::Diesel)
+    }
+
+    // Surely there is a more memory efficient way of doing this,
+    // however, we only use this function for testing.
+    #[allow(dead_code)]
+    fn count(&self) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = establish_connection(&self.db)?;
+        let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
+
+        Ok(records.len())
     }
 }
 
@@ -180,26 +171,24 @@ mod tests {
 
     fn insertable_swap() -> InsertableSwap {
         let id = example_swap_id();
-        create_insertable_swap(&id)
+        create_insertable_swap(id)
     }
 
     fn another_insertable_swap() -> InsertableSwap {
         let id = another_example_swap_id();
-        create_insertable_swap(&id)
+        create_insertable_swap(id)
     }
 
-    fn example_swap_id() -> String {
-        String::from("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34")
+    fn example_swap_id() -> SwapId {
+        SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
     }
 
-    fn another_example_swap_id() -> String {
-        String::from("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34")
+    fn another_example_swap_id() -> SwapId {
+        SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
     }
 
-    fn create_insertable_swap(id: &str) -> InsertableSwap {
-        InsertableSwap {
-            swap_id: SwapId::from_str(id).unwrap(),
-        }
+    fn create_insertable_swap(swap_id: SwapId) -> InsertableSwap {
+        InsertableSwap { swap_id }
     }
 
     #[test]
@@ -267,14 +256,14 @@ mod tests {
     fn can_add_a_swap_and_read_it() {
         let db = new_temp_db();
 
-        let id = example_swap_id();
-        let swap = create_insertable_swap(&id);
+        let swap_id = example_swap_id();
+        let swap = create_insertable_swap(swap_id);
 
         let _ = db.insert(swap).unwrap();
 
-        let swap = db.get(&id).expect("database error");
+        let swap = db.get(swap_id).expect("database error");
         match swap {
-            Some(swap) => assert_eq!(swap.swap_id.to_string(), id),
+            Some(swap) => assert_eq!(swap.swap_id, swap_id),
             None => panic!("no record returned"),
         }
     }
@@ -283,15 +272,15 @@ mod tests {
     fn can_add_a_swap_and_delete_it() {
         let db = new_temp_db();
 
-        let id = example_swap_id();
-        let swap = create_insertable_swap(&id);
+        let swap_id = example_swap_id();
+        let swap = create_insertable_swap(swap_id);
 
         let _ = db.insert(swap).unwrap();
 
-        let res = db.delete(&id).expect("database delete error");
+        let res = db.delete(swap_id.clone()).expect("database delete error");
         assert_eq!(res, 1);
 
-        let swap = db.get(&id).expect("database get error");
+        let swap = db.get(swap_id).expect("database get error");
         if swap.is_some() {
             panic!("false positive");
         }
@@ -303,9 +292,9 @@ mod tests {
     fn can_delete_a_non_existant_swap() {
         let db = new_temp_db();
 
-        let id = example_swap_id();
+        let swap_id = example_swap_id();
 
-        let res = db.delete(&id).expect("database delete error");
+        let res = db.delete(swap_id).expect("database delete error");
         assert_eq!(res, 0);
     }
 
