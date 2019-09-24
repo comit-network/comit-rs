@@ -166,6 +166,8 @@ fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::db::models::SwapId;
+    use std::str::FromStr;
 
     fn new_temp_db() -> Sqlite {
         let temp_file = tempfile::Builder::new()
@@ -177,8 +179,27 @@ mod tests {
     }
 
     fn insertable_swap() -> InsertableSwap {
-        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
-        InsertableSwap::new(&id)
+        let id = example_swap_id();
+        create_insertable_swap(&id)
+    }
+
+    fn another_insertable_swap() -> InsertableSwap {
+        let id = another_example_swap_id();
+        create_insertable_swap(&id)
+    }
+
+    fn example_swap_id() -> String {
+        String::from("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34")
+    }
+
+    fn another_example_swap_id() -> String {
+        String::from("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34")
+    }
+
+    fn create_insertable_swap(id: &str) -> InsertableSwap {
+        InsertableSwap {
+            swap_id: SwapId::from_str(id).unwrap(),
+        }
     }
 
     #[test]
@@ -230,8 +251,8 @@ mod tests {
     fn can_add_multiple_different_swaps() {
         let db = new_temp_db();
 
-        let s1 = InsertableSwap::new("foo");
-        let s2 = InsertableSwap::new("bar");
+        let s1 = insertable_swap();
+        let s2 = another_insertable_swap();
 
         let rows_inserted = db.insert(s1).unwrap();
         assert_eq!(rows_inserted, 1);
@@ -246,14 +267,14 @@ mod tests {
     fn can_add_a_swap_and_read_it() {
         let db = new_temp_db();
 
-        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
-        let swap = InsertableSwap::new(&id);
+        let id = example_swap_id();
+        let swap = create_insertable_swap(&id);
 
         let _ = db.insert(swap).unwrap();
 
         let swap = db.get(&id).expect("database error");
         match swap {
-            Some(swap) => assert_eq!(swap.swap_id, id),
+            Some(swap) => assert_eq!(swap.swap_id.to_string(), id),
             None => panic!("no record returned"),
         }
     }
@@ -262,8 +283,8 @@ mod tests {
     fn can_add_a_swap_and_delete_it() {
         let db = new_temp_db();
 
-        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
-        let swap = InsertableSwap::new(&id);
+        let id = example_swap_id();
+        let swap = create_insertable_swap(&id);
 
         let _ = db.insert(swap).unwrap();
 
@@ -282,7 +303,7 @@ mod tests {
     fn can_delete_a_non_existant_swap() {
         let db = new_temp_db();
 
-        let id = String::from("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34");
+        let id = example_swap_id();
 
         let res = db.delete(&id).expect("database delete error");
         assert_eq!(res, 0);
@@ -292,8 +313,8 @@ mod tests {
     fn can_get_all_the_swaps() {
         let db = new_temp_db();
 
-        let s1 = InsertableSwap::new("foo");
-        let s2 = InsertableSwap::new("bar");
+        let s1 = insertable_swap();
+        let s2 = another_insertable_swap();
 
         let _ = db.insert(s1).unwrap();
         let _ = db.insert(s2).unwrap();
