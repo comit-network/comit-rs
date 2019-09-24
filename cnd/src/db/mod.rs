@@ -59,11 +59,9 @@ impl Sqlite {
     /// the database migrations have been run.
     pub fn new(db: Option<PathBuf>) -> Result<Sqlite, Error> {
         let file = db.or_else(default_db_path).ok_or(Error::NoPath)?;
-
         let db = Sqlite { db: file };
 
         db.create_database_if_needed()?;
-
         let connection = db.connect()?;
         embedded_migrations::run(&connection)?;
 
