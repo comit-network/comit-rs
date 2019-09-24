@@ -58,21 +58,23 @@ impl Sqlite {
     /// successful connection to the database has been made, and
     /// the database migrations have been run.
     pub fn new(db: Option<PathBuf>) -> Result<Sqlite, Error> {
-        let db = db.or_else(default_db_path).ok_or(Error::NoPath)?;
+        let file = db.or_else(default_db_path).ok_or(Error::NoPath)?;
 
-        create_database_if_needed(&db)?;
+        let db = Sqlite { db: file };
 
-        let connection = establish_connection(&db)?;
+        db.create_database_if_needed()?;
+
+        let connection = db.establish_connection()?;
         embedded_migrations::run(&connection)?;
 
-        Ok(Sqlite { db })
+        Ok(db)
     }
 
     /// Get swap with swap_id 'key' from the database.
     pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = establish_connection(&self.db)?;
+        let connection = self.establish_connection()?;
 
         swaps
             .filter(swap_id.eq(key))
@@ -87,7 +89,7 @@ impl Sqlite {
     pub fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = establish_connection(&self.db)?;
+        let connection = self.establish_connection()?;
 
         diesel::insert_into(swaps)
             .values(&swap)
@@ -98,7 +100,7 @@ impl Sqlite {
     /// Gets all the swaps from the database.
     pub fn all(&self) -> Result<Vec<Swap>, Error> {
         use self::schema::swaps::dsl::*;
-        let connection = establish_connection(&self.db)?;
+        let connection = self.establish_connection()?;
 
         swaps.load(&connection).map_err(Error::Diesel)
     }
@@ -108,11 +110,35 @@ impl Sqlite {
     pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = establish_connection(&self.db)?;
+        let connection = self.establish_connection()?;
 
         diesel::delete(swaps.filter(swap_id.eq(key)))
             .execute(&connection)
             .map_err(Error::Diesel)
+    }
+
+    fn create_database_if_needed(&self) -> Result<(), Error> {
+        let db = &self.db;
+
+        if db.exists() {
+            log::info!("Found Sqlite database: {}", db.display());
+        } else {
+            log::info!("Creating Sqlite database: {}", db.display());
+
+            if let Some(parent) = db.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            File::create(db)?;
+        }
+
+        Ok(())
+    }
+
+    fn establish_connection(&self) -> Result<SqliteConnection, Error> {
+        let database_url = self.db.to_str().ok_or(Error::PathConversion)?;
+        let connection = SqliteConnection::establish(&database_url)?;
+        Ok(connection)
     }
 
     // Surely there is a more memory efficient way of doing this,
@@ -121,7 +147,7 @@ impl Sqlite {
     fn count(&self) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = establish_connection(&self.db)?;
+        let connection = self.establish_connection()?;
         let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
 
         Ok(records.len())
@@ -130,28 +156,6 @@ impl Sqlite {
 
 pub fn default_db_path() -> Option<PathBuf> {
     crate::data_dir().map(|dir| Path::join(&dir, "cnd.sqlite"))
-}
-
-fn create_database_if_needed(db: &Path) -> Result<(), Error> {
-    if db.exists() {
-        log::info!("Found Sqlite database: {}", db.display());
-    } else {
-        log::info!("Creating Sqlite database: {}", db.display());
-
-        if let Some(parent) = db.parent() {
-            std::fs::create_dir_all(parent)?;
-        }
-
-        File::create(db)?;
-    }
-    Ok(())
-}
-
-fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
-    let database_url = db.to_str().ok_or(Error::PathConversion)?;
-    let connection = SqliteConnection::establish(&database_url).map_err(Error::Connection)?;
-
-    Ok(connection)
 }
 
 #[cfg(test)]
@@ -277,7 +281,7 @@ mod tests {
 
         let _ = db.insert(swap).unwrap();
 
-        let res = db.delete(swap_id.clone()).expect("database delete error");
+        let res = db.delete(swap_id).expect("database delete error");
         assert_eq!(res, 1);
 
         let swap = db.get(swap_id).expect("database get error");
