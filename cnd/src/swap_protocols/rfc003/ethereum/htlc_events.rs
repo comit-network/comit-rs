@@ -13,6 +13,7 @@ use crate::{
             Secret,
         },
     },
+    timestamp,
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
@@ -50,6 +51,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
             .map(|tx| Deployed {
                 location: calcualte_contract_address_from_deployment_transaction(&tx),
                 transaction: tx,
+                when: timestamp::now(),
             });
 
         Box::new(deployed_future)
@@ -63,6 +65,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
         Box::new(future::ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
             asset: EtherQuantity::from_wei(deploy_transaction.transaction.value),
+            when: timestamp::now(),
         }))
     }
 
@@ -136,6 +139,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                     Ok(Redeemed {
                             transaction,
                             secret,
+                        when: timestamp::now(),
                     })
                 })
             })
@@ -176,6 +180,7 @@ mod erc20 {
                 .map(|tx| Deployed {
                     location: calcualte_contract_address_from_deployment_transaction(&tx),
                     transaction: tx,
+                    when: timestamp::now(),
                 });
 
             Box::new(deployed_future)
@@ -216,7 +221,7 @@ mod erc20 {
                             let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
                             let asset = Erc20Token::new(log.address, quantity);
 
-                            Funded { transaction, asset }
+                            Funded { transaction, asset, when: timestamp::now(), }
                         })
                     },
                 );

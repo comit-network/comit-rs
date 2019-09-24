@@ -1,6 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Deserialize, Serialize)]
 pub struct Timestamp(SystemTime);
 
 pub fn now() -> Timestamp {

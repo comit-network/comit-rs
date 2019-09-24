@@ -12,6 +12,7 @@ use crate::{
             state_machine::HtlcParams,
         },
     },
+    timestamp,
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
 use futures::{
@@ -45,6 +46,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
                         vout,
                     },
                     transaction: tx,
+                    when: timestamp::now(),
                 })
             });
 
@@ -61,6 +63,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
         Box::new(future::ok(Funded {
             transaction: tx.clone(),
             asset,
+            when: timestamp::now(),
         }))
     }
 
@@ -113,6 +116,7 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
                         Ok(Redeemed {
                             transaction,
                             secret,
+                            when: timestamp::now(),
                         })
                     })
             })

@@ -6,15 +6,18 @@ mod ledger_event_futures;
 
 pub use self::ledger_event_futures::*;
 
-use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        ledger::Ledger,
-        messages::{AcceptResponseBody, DeclineResponseBody},
-        state_machine::HtlcParams,
-        Secret,
+use crate::{
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self,
+            ledger::Ledger,
+            messages::{AcceptResponseBody, DeclineResponseBody},
+            state_machine::HtlcParams,
+            Secret,
+        },
     },
+    timestamp::{self, Timestamp},
 };
 use serde::{Deserialize, Serialize};
 use tokio::{self, prelude::future::Either};
@@ -28,28 +31,35 @@ pub type ResponseFuture<AL, BL> = Future<Result<AcceptResponseBody<AL, BL>, Decl
 pub struct Funded<L: Ledger, A: Asset> {
     pub transaction: L::Transaction,
     pub asset: A,
+    pub when: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Redeemed<L: Ledger> {
     pub transaction: L::Transaction,
     pub secret: Secret,
+    pub when: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Deployed<L: Ledger> {
     pub transaction: L::Transaction,
     pub location: L::HtlcLocation,
+    pub when: Timestamp,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Refunded<L: Ledger> {
     pub transaction: L::Transaction,
+    pub when: Timestamp,
 }
 
 impl<L: Ledger> Refunded<L> {
     pub fn new(transaction: L::Transaction) -> Self {
-        Self { transaction }
+        Self {
+            transaction,
+            when: timestamp::now(),
+        }
     }
 }
 
