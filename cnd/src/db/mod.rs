@@ -64,7 +64,7 @@ impl Sqlite {
 
         db.create_database_if_needed()?;
 
-        let connection = db.establish_connection()?;
+        let connection = db.connect()?;
         embedded_migrations::run(&connection)?;
 
         Ok(db)
@@ -74,7 +74,7 @@ impl Sqlite {
     pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = self.establish_connection()?;
+        let connection = self.connect()?;
 
         swaps
             .filter(swap_id.eq(key))
@@ -89,7 +89,7 @@ impl Sqlite {
     pub fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = self.establish_connection()?;
+        let connection = self.connect()?;
 
         diesel::insert_into(swaps)
             .values(&swap)
@@ -100,7 +100,7 @@ impl Sqlite {
     /// Gets all the swaps from the database.
     pub fn all(&self) -> Result<Vec<Swap>, Error> {
         use self::schema::swaps::dsl::*;
-        let connection = self.establish_connection()?;
+        let connection = self.connect()?;
 
         swaps.load(&connection).map_err(Error::Diesel)
     }
@@ -110,7 +110,7 @@ impl Sqlite {
     pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = self.establish_connection()?;
+        let connection = self.connect()?;
 
         diesel::delete(swaps.filter(swap_id.eq(key)))
             .execute(&connection)
@@ -135,7 +135,7 @@ impl Sqlite {
         Ok(())
     }
 
-    fn establish_connection(&self) -> Result<SqliteConnection, Error> {
+    fn connect(&self) -> Result<SqliteConnection, Error> {
         let database_url = self.db.to_str().ok_or(Error::PathConversion)?;
         let connection = SqliteConnection::establish(&database_url)?;
         Ok(connection)
@@ -147,7 +147,7 @@ impl Sqlite {
     fn count(&self) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
-        let connection = self.establish_connection()?;
+        let connection = self.connect()?;
         let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
 
         Ok(records.len())
