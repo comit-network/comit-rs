@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.2.1] - 2019-09-24
 ### Changed
 - Use the same Swap ID to identify a swap for both parties.
 
@@ -24,5 +26,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Align implementation with RFC-002 to use the decision header instead of status codes.
 
 [Unreleased]: https://github.com/comit-network/comit-rs/compare/40116c3e8a9f57a213661917b8cc057e1db60755...HEAD
+[0.2.1]: https://github.com/comit-network/comit-rs/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/comit-network/comit-rs/compare/b2dd02a7f93dc82f5cc9fd4b6eaaf54de1459ff6...40116c3e8a9f57a213661917b8cc057e1db60755
 [0.1.0]: https://github.com/comit-network/comit-rs/compare/1625533e04119e8496b14d5e18786f150b4fce4d...b2dd02a7f93dc82f5cc9fd4b6eaaf54de1459ff6
