@@ -1,32 +1,25 @@
-use crate::{bitcoin::TransactionQuery, matching_transactions::MatchingTransactions};
-use bitcoin_support::{deserialize, Block, Network};
-use futures::{Future, Stream};
+use crate::{
+    bitcoin::{self, bitcoin_http_request_for_hex_encoded_object},
+    blocksource::BlockSource,
+};
+use bitcoin_support::Network;
+use futures::Future;
 use reqwest::r#async::Client;
 use serde::Deserialize;
-use std::time::Duration;
-use tokio::timer::Interval;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
     hash: String,
 }
 
-#[derive(Debug)]
-pub enum Error {
-    Timer(tokio::timer::Error),
-    UnsupportedNetwork(String),
-    Reqwest(reqwest::Error),
-    Hex(hex::FromHexError),
-    BlockDeserialization(String),
-}
-
 #[derive(Clone)]
 pub struct BlockchainInfoHttpBlockSource {
     client: Client,
+    network: Network,
 }
 
 impl BlockchainInfoHttpBlockSource {
-    pub fn new(network: Network) -> Result<Self, Error> {
+    pub fn new(network: Network) -> Result<Self, bitcoin::Error> {
         // Currently configured for Mainnet only because blockchain.info does not
         // support hex-encoded block retrieval for testnet.
 
@@ -35,7 +28,7 @@ impl BlockchainInfoHttpBlockSource {
                 "Network {} not supported for bitcoin http blocksource",
                 network
             );
-            return Err(Error::UnsupportedNetwork(format!(
+            return Err(bitcoin::Error::UnsupportedNetwork(format!(
                 "Network {} currently not supported for bitcoin http plocksource",
                 network
             )));
@@ -43,118 +36,82 @@ impl BlockchainInfoHttpBlockSource {
 
         Ok(Self {
             client: Client::new(),
+            network,
         })
-    }
-
-    fn latest_block(&self) -> impl Future<Item = Block, Error = Error> + Send + 'static {
-        let cloned_self = self.clone();
-
-        self.latest_block_without_tx()
-            .and_then(move |latest_block| cloned_self.raw_hex_block(latest_block.hash))
-    }
-
-    fn latest_block_without_tx(
-        &self,
-    ) -> impl Future<Item = BlockchainInfoLatestBlock, Error = Error> + Send + 'static {
-        let latest_block_url = "https://blockchain.info/latestblock";
-
-        self.client
-            .get(latest_block_url)
-            .send()
-            .map_err(Error::Reqwest)
-            .and_then(move |mut response| {
-                response
-                    .json::<BlockchainInfoLatestBlock>()
-                    .map_err(Error::Reqwest)
-            })
-    }
-
-    fn raw_hex_block(
-        &self,
-        block_hash: String,
-    ) -> impl Future<Item = Block, Error = Error> + Send + 'static {
-        let raw_block_by_hash_url =
-            format!("https://blockchain.info/rawblock/{}?format=hex", block_hash);
-
-        self.client
-            .get(raw_block_by_hash_url.as_str())
-            .send()
-            .map_err(Error::Reqwest)
-            .and_then(|mut response| response.text().map_err(Error::Reqwest))
-            .and_then(|response_text| hex::decode(response_text).map_err(Error::Hex))
-            .and_then(|bytes| {
-                deserialize(bytes.as_ref()).map_err(|e| {
-                    log::error!("Got new block but failed to deserialize it because {:?}", e);
-                    Error::BlockDeserialization(format!(
-                        "Failed to deserialize the response from blockchain.info into a block: {}",
-                        e
-                    ))
-                })
-            })
-            .map(move |block| {
-                log::trace!("Got {:?}", block);
-                block
-            })
     }
 }
 
-impl MatchingTransactions<TransactionQuery> for BlockchainInfoHttpBlockSource {
-    type Error = Error;
+impl BlockSource for BlockchainInfoHttpBlockSource {
+    type Error = bitcoin::Error;
+    type Block = bitcoin_support::Block;
+    type BlockHash = String;
+    type TransactionHash = String;
     type Transaction = bitcoin_support::Transaction;
+    type Network = bitcoin_support::Network;
 
-    fn matching_transactions(
+    fn network(&self) -> Self::Network {
+        self.clone().network
+    }
+
+    fn latest_block(
         &self,
-        query: TransactionQuery,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = Self::Error> + Send> {
-        // https://www.blockchain.com/api/q (= https://www.blockchain.info/api/q) states:
-        //  "Please limit your queries to a maximum of 1 every 10 seconds." (29/08/2019)
-        //
-        // The Bitcoin blockchain has a mining interval of about 10 minutes.
-        // The poll interval is configured to once every 5 minutes.
-        let poll_interval = 300;
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+        let latest_block_url = "https://blockchain.info/latestblock";
+        let latest_block_without_tx = self
+            .client
+            .get(latest_block_url)
+            .send()
+            .map_err(bitcoin::Error::Reqwest)
+            .and_then(move |mut response| {
+                response
+                    .json::<BlockchainInfoLatestBlock>()
+                    .map_err(bitcoin::Error::Reqwest)
+            });
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from blockchain.info on {} every {} seconds", Network::Mainnet, poll_interval);
+        let cloned_self = self.clone();
 
-        let stream = Interval::new_interval(Duration::from_secs(poll_interval))
-            .map_err(Error::Timer)
-            .and_then({
-                let this = self.clone();
-                move |_| {
-                    this
-                        .latest_block()
-                        .map(Some)
-                        .or_else(|error| {
-                            match error {
-                                Error::Reqwest(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "reqwest error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                Error::Hex(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "hex-decode error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                Error::BlockDeserialization(e) => {
-                                    log::warn!(target: "bitcoin::blocksource", "block-deserialization error encountered during polling: {:?}", e);
-                                    Ok(None)
-                                },
-                                _ => Err(error)
-                            }
-                        })
-                }
-            })
-            .filter_map(|maybe_block| maybe_block);
+        Box::new(
+            latest_block_without_tx
+                .and_then(move |latest_block| cloned_self.block_by_hash(latest_block.hash)),
+        )
+    }
 
-        let stream = stream
-            .map(move |block| {
-                block
-                    .txdata
-                    .into_iter()
-                    .filter(|tx| query.matches(&tx))
-                    .collect::<Vec<Self::Transaction>>()
-            })
-            .map(futures::stream::iter_ok)
-            .flatten();
+    fn block_by_hash(
+        &self,
+        block_hash: Self::BlockHash,
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+        let raw_block_by_hash_url =
+            format!("https://blockchain.info/rawblock/{}?format=hex", block_hash);
 
-        Box::new(stream)
+        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(
+            raw_block_by_hash_url,
+            self.client.clone(),
+        );
+
+        Box::new(block.inspect(|block| {
+            log::trace!("Fetched block from blockchain.info: {:?}", block);
+        }))
+    }
+
+    fn transaction_by_hash(
+        &self,
+        transaction_hash: Self::TransactionHash,
+    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
+        let raw_transaction_by_hash_url = format!(
+            "https://blockchain.info/rawtx/{}?format=hex",
+            transaction_hash
+        );
+
+        let transaction = bitcoin_http_request_for_hex_encoded_object::<Self::Transaction>(
+            raw_transaction_by_hash_url,
+            self.client.clone(),
+        );
+
+        Box::new(transaction.inspect(|transaction| {
+            log::debug!(
+                "Fetched transaction from blockchain.info: {:?}",
+                transaction
+            );
+        }))
     }
 }

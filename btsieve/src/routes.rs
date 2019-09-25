@@ -169,8 +169,7 @@ pub fn get_or_create_query<
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
-    E: 'static,
-    BS: MatchingTransactions<Q, Error = E>,
+    BS,
 >(
     _client: Arc<C>,
     _network: String,
@@ -181,7 +180,8 @@ pub fn get_or_create_query<
     query: Q,
 ) -> Result<impl Reply, Rejection>
 where
-    <BS as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
+    <Arc<BS> as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
+    Arc<BS>: MatchingTransactions<Q>,
 {
     match active_query_repository.get(id.clone()) {
         Some(ref saved_query) if saved_query == &query => Ok(warp::reply::with_status(

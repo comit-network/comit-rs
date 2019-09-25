@@ -1,5 +1,6 @@
 use crate::{
     bitcoin::{bitcoind_http_blocksource::BitcoindHttpBlockSource, queries::PayloadKind},
+    blocksource::BlockSource,
     query_result_repository::QueryResult,
     route_factory::{Error, QueryType, ToHttpPayload},
 };

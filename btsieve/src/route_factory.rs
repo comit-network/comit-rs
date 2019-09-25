@@ -1,5 +1,5 @@
 use crate::{
-    bitcoin::bitcoind_http_blocksource,
+    bitcoin,
     matching_transactions::MatchingTransactions,
     query_repository::QueryRepository,
     query_result_repository::{QueryResult, QueryResultRepository},
@@ -18,7 +18,7 @@ pub const MAX_QUERY_ID_LENGTH: usize = 100;
 
 #[derive(Debug)]
 pub enum Error {
-    BitcoindHttp(bitcoind_http_blocksource::Error),
+    BitcoindHttp(bitcoin::Error),
     Web3(web3::Error),
     MissingTransaction(H256),
 }
@@ -88,8 +88,7 @@ pub fn create_endpoints<
     QR: QueryRepository<Q>,
     QRR: QueryResultRepository<Q>,
     C: 'static + Send + Sync,
-    BS: MatchingTransactions<Q, Error = E>,
-    E: 'static,
+    BS,
 >(
     query_repository: Arc<QR>,
     query_result_repository: Arc<QRR>,
@@ -102,7 +101,8 @@ where
     for<'de> R: Deserialize<'de>,
     R: Send + Default + Debug + 'static,
     QueryResult: ToHttpPayload<R, Client = C>,
-    <BS as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
+    <Arc<BS> as MatchingTransactions<Q>>::Transaction: IntoTransactionId,
+    Arc<BS>: MatchingTransactions<Q>,
 {
     let route = Q::route();
 
