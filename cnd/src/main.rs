@@ -64,7 +64,7 @@ fn main() -> Result<(), failure::Error> {
             ))
         },
         ethereum_blocksource: Arc::new(Web3HttpBlockSource::new(
-            Arc::new(Web3::new(http_transport)),
+            Web3::new(http_transport),
             network,
         )),
     };

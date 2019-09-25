@@ -27,8 +27,11 @@ pub struct Web3HttpBlockSource {
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(web3: Arc<Web3<Http>>, network: Network) -> Self {
-        Self { web3, network }
+    pub fn new(web3: Web3<Http>, network: Network) -> Self {
+        Self {
+            web3: Arc::new(web3),
+            network,
+        }
     }
 }
 
