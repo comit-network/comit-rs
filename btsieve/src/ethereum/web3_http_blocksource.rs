@@ -13,25 +13,27 @@ use crate::{
 use ethereum_support::{Network, TransactionAndReceipt, TransactionId};
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
-use web3::types::BlockNumber;
+use web3::{transports::EventLoopHandle, types::BlockNumber};
 
 #[derive(Debug)]
 pub enum Error {
     Web3(web3::Error),
 }
 
-#[derive(Clone)]
 pub struct Web3HttpBlockSource {
+    _event_loop_handle: EventLoopHandle,
     web3: Arc<Web3<Http>>,
     network: Network,
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(web3: Web3<Http>, network: Network) -> Self {
-        Self {
-            web3: Arc::new(web3),
+    pub fn new(node_url: String, network: Network) -> Result<Self, web3::Error> {
+        let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
+        Ok(Self {
+            _event_loop_handle: event_loop_handle,
+            web3: Arc::new(Web3::new(http_transport)),
             network,
-        }
+        })
     }
 }
 

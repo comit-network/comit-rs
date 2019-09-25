@@ -19,7 +19,6 @@ use cnd::{
         LedgerEventDependencies,
     },
 };
-use ethereum_support::web3::{transports::Http, Web3};
 use futures::{stream, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
@@ -52,9 +51,6 @@ fn main() -> Result<(), failure::Error> {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
 
-    let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
-
-    let (_event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
     let ledger_events = LedgerEventDependencies {
         bitcoin_blocksource: {
             let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
@@ -63,10 +59,10 @@ fn main() -> Result<(), failure::Error> {
                 network,
             ))
         },
-        ethereum_blocksource: Arc::new(Web3HttpBlockSource::new(
-            Web3::new(http_transport),
-            network,
-        )),
+        ethereum_blocksource: {
+            let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
+            Arc::new(Web3HttpBlockSource::new(node_url.to_string(), network)?)
+        },
     };
 
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
