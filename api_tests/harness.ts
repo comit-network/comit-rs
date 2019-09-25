@@ -92,16 +92,16 @@ async function runTests(testFiles: string[]) {
         if (config.actors) {
             const ledgerConfigs = await ledgerRunner.getLedgerConfig();
 
-            // We don't stop the ledgers between the test files
-            // Make sure the btsieve we start is only configured to the ledgers that it needs as per the config file of the test
-            const btsieveConfig = createBtsieveConfig({
-                bitcoin: config.ledgers.includes("bitcoin")
-                    ? ledgerConfigs.bitcoin
-                    : undefined,
-                ethereum: config.ledgers.includes("ethereum")
-                    ? ledgerConfigs.ethereum
-                    : undefined,
-            });
+            const btsieveConfig = config.ledgers
+                ? createBtsieveConfig({
+                      bitcoin: config.ledgers.includes("bitcoin")
+                          ? ledgerConfigs.bitcoin
+                          : undefined,
+                      ethereum: config.ledgers.includes("ethereum")
+                          ? ledgerConfigs.ethereum
+                          : undefined,
+                  })
+                : {};
 
             await nodeRunner.ensureCndsRunning(config.actors, btsieveConfig);
         }
