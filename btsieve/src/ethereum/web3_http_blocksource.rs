@@ -10,7 +10,7 @@ use crate::{
         Web3,
     },
 };
-use ethereum_support::Network;
+use ethereum_support::{Network, TransactionId};
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
 use web3::types::BlockNumber;
@@ -39,7 +39,7 @@ impl BlockSource for Web3HttpBlockSource {
     type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
     type BlockHash = ethereum_support::H256;
     type TransactionHash = ethereum_support::H256;
-    type Transaction = ethereum_support::Transaction;
+    type Transaction = Option<ethereum_support::Transaction>;
     type Network = ethereum_support::Network;
 
     fn network(&self) -> Self::Network {
@@ -66,12 +66,10 @@ impl BlockSource for Web3HttpBlockSource {
 
     fn transaction_by_hash(
         &self,
-        _transaction_hash: Self::TransactionHash,
+        transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        // TODO: Change impl, put Web3 completely behind the blocksource,
-        // at the moment web3 is still used as client to fetch the transactions but that
-        // should be done by the blocksource instead which holds web3
-        unimplemented!()
+        let web = self.web3.clone();
+        Box::new(web.eth().transaction(TransactionId::Hash(transaction_hash)))
     }
 }
 
