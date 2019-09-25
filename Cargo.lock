@@ -391,7 +391,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "btsieve"
-version = "0.2.1"
+version = "0.1.0"
 dependencies = [
  "bitcoin_support 0.1.0",
  "derivative 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -559,7 +559,7 @@ dependencies = [
  "bitcoin_witness 0.1.0",
  "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain_contracts 0.1.0",
- "btsieve 0.2.1",
+ "btsieve 0.1.0",
  "chrono 0.4.9 (registry+https://github.com/rust-lang/crates.io-index)",
  "comit_i 0.1.0",
  "config 0.9.3 (registry+https://github.com/rust-lang/crates.io-index)",
