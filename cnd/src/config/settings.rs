@@ -1,6 +1,7 @@
 use super::file::{Comit, Database, File, HttpSocket, Network};
 use crate::config::file::{Bitcoin, Ethereum};
 use log::LevelFilter;
+use reqwest::Url;
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -16,8 +17,8 @@ pub struct Settings {
     pub database: Option<Database>,
     pub web_gui: Option<HttpSocket>,
     pub logging: Logging,
-    pub bitcoin: Option<Bitcoin>,
-    pub ethereum: Option<Ethereum>,
+    pub bitcoin: Bitcoin,
+    pub ethereum: Ethereum,
 }
 
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
@@ -59,8 +60,15 @@ impl Settings {
                     })
                     .unwrap_or_default()
             },
-            bitcoin,
-            ethereum,
+            bitcoin: bitcoin.unwrap_or_else(|| Bitcoin {
+                network: bitcoin_support::Network::Regtest,
+                node_url: Url::parse("http://localhost:18443")
+                    .expect("static string to be a valid url"),
+            }),
+            ethereum: ethereum.unwrap_or_else(|| Ethereum {
+                node_url: Url::parse("http://localhost:8545")
+                    .expect("static string to be a valid url"),
+            }),
         }
     }
 }

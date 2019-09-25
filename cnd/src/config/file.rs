@@ -95,7 +95,8 @@ pub struct Database {
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Bitcoin {
     pub network: bitcoin_support::Network,
-    pub node_url: String,
+    #[serde(with = "url_serde")]
+    pub node_url: reqwest::Url,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

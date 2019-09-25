@@ -29,11 +29,9 @@ All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
 ## Build & Run
 
 1. `cargo build`
+2. startup bitcoin node with `-regtest` and `-rest`
+3. startup ethereum node with JSON-RPC interface exposed at `localhost:8545`
 2. startup cnd: `target/debug/cnd`
-3. add `[bitcoin]` and `[ethereum]` sections to the config file listed at startup (for the structure, please consult the [source code](cnd/src/config/file.rs) for now)
-3. startup bitcoin node (port to be set according to configuration)
-4. startup ethereum node (port to be set according to configuration)
-5. restart cnd
 
 If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` by default).
 
