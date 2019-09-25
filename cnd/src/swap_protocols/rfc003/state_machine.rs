@@ -2,7 +2,7 @@
 #![allow(clippy::too_many_arguments)]
 
 use crate::swap_protocols::{
-    asset::{Asset, Compare},
+    asset::Asset,
     rfc003::{
         self,
         events::{self, Deployed, Funded, Redeemed, Refunded},
@@ -16,7 +16,7 @@ use crypto::{digest::Digest, sha2::Sha256};
 use either::Either;
 use futures::{future, try_ready, Async, Future};
 use state_machine_future::{RentToOwn, StateMachineFuture};
-use std::{fmt, sync::Arc};
+use std::{cmp::Ordering::*, fmt, sync::Arc};
 
 #[derive(Clone, Debug)]
 pub struct HtlcParams<L: Ledger, A: Asset> {
@@ -386,8 +386,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        match alpha_funded.asset.compare_to(&state.swap.alpha_asset) {
-            Compare::Equal => transition_save!(context.state_repo, AlphaFunded {
+        match alpha_funded.asset.cmp(&state.swap.alpha_asset) {
+            Equal => transition_save!(context.state_repo, AlphaFunded {
                 swap: state.swap,
                 alpha_funded,
                 alpha_deployed: state.alpha_deployed,
@@ -531,8 +531,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
             .poll());
         let state = state.take();
 
-        match beta_funded.asset.compare_to(&state.swap.beta_asset) {
-            Compare::Equal => transition_save!(context.state_repo, BothFunded {
+        match beta_funded.asset.cmp(&state.swap.beta_asset) {
+            Equal => transition_save!(context.state_repo, BothFunded {
                 swap: state.swap,
                 alpha_funded: state.alpha_funded,
                 alpha_deployed: state.alpha_deployed,

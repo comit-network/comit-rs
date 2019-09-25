@@ -1,54 +1,62 @@
-use crate::{db::schema::metadatas, swap_protocols::metadata_store};
-use diesel::{Insertable, Queryable};
+use crate::db::schema::swaps;
+use diesel::{
+    backend::Backend,
+    deserialize::{self, FromSql},
+    serialize::{self, Output, ToSql},
+    sql_types::Text,
+    Insertable, Queryable, *,
+};
+use std::{io::Write, str::FromStr, string::ToString};
+use uuid::{parser::ParseError, Uuid};
 
-#[derive(Queryable, Debug, Clone)]
-pub struct Metadata {
-    pub swap_id: String,
-    pub alpha_ledger: String,
-    pub beta_ledger: String,
-    pub alpha_asset: String,
-    pub beta_asset: String,
-    pub role: String,
-    pub counterparty: String,
+#[derive(Queryable, Debug, Clone, PartialEq)]
+pub struct Swap {
+    id: i32,
+    pub swap_id: SwapId,
 }
 
-impl Metadata {
-    pub fn new(md: metadata_store::Metadata) -> Self {
-        Metadata {
-            swap_id: md.swap_id.to_string(),
-            alpha_ledger: md.alpha_ledger.to_string(),
-            beta_ledger: md.beta_ledger.to_string(),
-            alpha_asset: md.alpha_asset.to_string(),
-            beta_asset: md.beta_asset.to_string(),
-            role: md.role.to_string(),
-            counterparty: md.counterparty.to_string(),
-        }
+#[derive(Insertable, Debug)]
+#[table_name = "swaps"]
+pub struct InsertableSwap {
+    pub swap_id: SwapId,
+}
+
+impl FromStr for SwapId {
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Uuid::from_str(s).map(SwapId)
     }
 }
 
-// Diesel docs say to use this second structure for database inserts.
-#[derive(Insertable, Debug)]
-#[table_name = "metadatas"]
-pub struct InsertableMetadata<'a> {
-    pub swap_id: &'a str,
-    pub alpha_ledger: &'a str,
-    pub beta_ledger: &'a str,
-    pub alpha_asset: &'a str,
-    pub beta_asset: &'a str,
-    pub role: &'a str,
-    pub counterparty: &'a str,
+impl ToString for SwapId {
+    fn to_string(&self) -> String {
+        self.0.to_hyphenated().to_string()
+    }
 }
 
-impl<'a> InsertableMetadata<'a> {
-    pub fn new(md: &'a Metadata) -> InsertableMetadata<'a> {
-        InsertableMetadata {
-            swap_id: &md.swap_id[..],
-            alpha_ledger: &md.alpha_ledger[..],
-            beta_ledger: &md.beta_ledger[..],
-            alpha_asset: &md.alpha_asset[..],
-            beta_asset: &md.beta_asset[..],
-            role: &md.role[..],
-            counterparty: &md.counterparty[..],
-        }
+#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Text"]
+pub struct SwapId(Uuid);
+
+impl<DB> ToSql<Text, DB> for SwapId
+where
+    DB: Backend,
+    String: ToSql<Text, DB>,
+{
+    fn to_sql<W: Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+        self.0.to_hyphenated().to_string().to_sql(out)
+    }
+}
+
+impl<DB> FromSql<Text, DB> for SwapId
+where
+    DB: Backend,
+    String: FromSql<Text, DB>,
+{
+    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+        let s = String::from_sql(bytes)?;
+        let uuid = Uuid::parse_str(&s)?;
+
+        Ok(SwapId(uuid))
     }
 }
