@@ -52,8 +52,9 @@ fn main() -> Result<(), failure::Error> {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
 
-    let (_event_loop_handle, http_transport) =
-        Http::new(settings.clone().ethereum.node_url.as_str())?;
+    let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
+
+    let (_event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
     let ledger_events = LedgerEventDependencies {
         bitcoin_blocksource: {
             let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
@@ -62,9 +63,10 @@ fn main() -> Result<(), failure::Error> {
                 network,
             ))
         },
-        ethereum_blocksource: Arc::new(runtime.block_on(Web3HttpBlockSource::new(Arc::new(
-            Web3::new(http_transport),
-        )))?),
+        ethereum_blocksource: Arc::new(Web3HttpBlockSource::new(
+            Arc::new(Web3::new(http_transport)),
+            network,
+        )),
     };
 
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {

@@ -101,6 +101,7 @@ pub struct Bitcoin {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Ethereum {
+    pub network: ethereum_support::Network,
     #[serde(with = "url_serde")]
     pub node_url: reqwest::Url,
 }

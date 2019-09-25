@@ -66,6 +66,7 @@ impl Settings {
                     .expect("static string to be a valid url"),
             }),
             ethereum: ethereum.unwrap_or_else(|| Ethereum {
+                network: ethereum_support::Network::Regtest,
                 node_url: Url::parse("http://localhost:8545")
                     .expect("static string to be a valid url"),
             }),

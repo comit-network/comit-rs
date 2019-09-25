@@ -27,11 +27,8 @@ pub struct Web3HttpBlockSource {
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(web3: Arc<Web3<Http>>) -> impl Future<Item = Self, Error = web3::Error> {
-        web3.clone().net().version().map(move |version| Self {
-            web3,
-            network: Network::from_network_id(version),
-        })
+    pub fn new(web3: Arc<Web3<Http>>, network: Network) -> Self {
+        Self { web3, network }
     }
 }
 
