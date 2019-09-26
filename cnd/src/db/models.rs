@@ -150,7 +150,7 @@ where
 }
 
 /// A suite of tests that ensures the serialization format of the types we use
-/// to interact with the database Changing that format needs to be a conscious
+/// to interact with the database. Changing the format needs to be a conscious
 /// activity that involves migration scripts to migrate old data. These tests
 /// make sure we don't change the format accidentally!
 #[cfg(test)]
