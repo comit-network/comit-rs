@@ -55,8 +55,7 @@ impl InsertableSwap {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Text"]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SwapId(Uuid);
 
 impl FromStr for SwapId {
