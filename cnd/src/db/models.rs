@@ -189,13 +189,13 @@ mod database_serialization_format_stability_tests {
     where
         <T as FromStr>::Err: fmt::Debug,
     {
-        // First, we verify that we create T from the given value
+        // First, we verify that we can create T from the given value.
         let read = T::from_str(stored_value).unwrap();
 
-        // Next we convert it to a string again
+        // Next we convert it to a string again.
         let written = read.to_string();
 
-        // If we end up with the same value, our serialization is stable
+        // Then if we end up with the same value, our serialization is stable.
         assert_eq!(written, stored_value)
     }
 
