@@ -167,7 +167,7 @@ mod database_serialization_format_stability_tests {
     fn ledger_kind() {
         test::<LedgerKind>("Bitcoin");
         test::<LedgerKind>("Ethereum");
-        assert_number_of_variants::<LedgerKind>(2)
+        assert_num_variants::<LedgerKind>(2)
     }
 
     #[test]
@@ -175,14 +175,14 @@ mod database_serialization_format_stability_tests {
         test::<AssetKind>("Bitcoin");
         test::<AssetKind>("Ether");
         test::<AssetKind>("Erc20");
-        assert_number_of_variants::<AssetKind>(3)
+        assert_num_variants::<AssetKind>(3)
     }
 
     #[test]
     fn role() {
         test::<Role>("Alice");
         test::<Role>("Bob");
-        assert_number_of_variants::<Role>(2)
+        assert_num_variants::<Role>(2)
     }
 
     fn test<T: fmt::Display + FromStr>(stored_value: &str)
@@ -199,7 +199,7 @@ mod database_serialization_format_stability_tests {
         assert_eq!(written, stored_value)
     }
 
-    fn assert_number_of_variants<E>(expected_number_of_variants: usize)
+    fn assert_num_variants<E>(expected_number_of_variants: usize)
     where
         E: strum::IntoEnumIterator,
         <E as strum::IntoEnumIterator>::Iterator: Iterator,
