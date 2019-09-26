@@ -86,7 +86,33 @@ macro_rules! impl_to_sql_for_enum {
     };
 }
 
-#[derive(Display, Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+macro_rules! impl_from_sql_for_enum {
+    ($enum:ident) => {
+        impl<DB> FromSql<Text, DB> for $enum
+        where
+            DB: Backend,
+            String: FromSql<Text, DB>,
+        {
+            fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+                let s = String::from_sql(bytes)?;
+                let variant = Self::from_str(s.as_ref())?;
+
+                Ok(variant)
+            }
+        }
+    };
+}
+
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    FromSqlRow,
+    AsExpression,
+)]
 #[sql_type = "Text"]
 pub enum Role {
     Alice,
@@ -94,24 +120,18 @@ pub enum Role {
 }
 
 impl_to_sql_for_enum!(Role);
+impl_from_sql_for_enum!(Role);
 
-impl<DB> FromSql<Text, DB> for Role
-where
-    DB: Backend,
-    String: FromSql<Text, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-
-        match s.as_ref() {
-            "Alice" => Ok(Role::Alice),
-            "Bob" => Ok(Role::Bob),
-            _ => Err(format!("Unknown role: {}", s).into()),
-        }
-    }
-}
-
-#[derive(Debug, Display, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    FromSqlRow,
+    AsExpression,
+)]
 #[sql_type = "Text"]
 pub enum LedgerKind {
     Bitcoin,
@@ -119,24 +139,18 @@ pub enum LedgerKind {
 }
 
 impl_to_sql_for_enum!(LedgerKind);
+impl_from_sql_for_enum!(LedgerKind);
 
-impl<DB> FromSql<Text, DB> for LedgerKind
-where
-    DB: Backend,
-    String: FromSql<Text, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-
-        match s.as_ref() {
-            "Bitcoin" => Ok(LedgerKind::Bitcoin),
-            "Ethereum" => Ok(LedgerKind::Ethereum),
-            _ => Err(format!("Unknown role: {}", s).into()),
-        }
-    }
-}
-
-#[derive(Debug, Display, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+    FromSqlRow,
+    AsExpression,
+)]
 #[sql_type = "Text"]
 pub enum AssetKind {
     Bitcoin,
@@ -145,20 +159,4 @@ pub enum AssetKind {
 }
 
 impl_to_sql_for_enum!(AssetKind);
-
-impl<DB> FromSql<Text, DB> for AssetKind
-where
-    DB: Backend,
-    String: FromSql<Text, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let s = String::from_sql(bytes)?;
-
-        match s.as_ref() {
-            "Bitcoin" => Ok(AssetKind::Bitcoin),
-            "Ether" => Ok(AssetKind::Ether),
-            "Erc20" => Ok(AssetKind::Erc20),
-            _ => Err(format!("Unknown role: {}", s).into()),
-        }
-    }
-}
+impl_from_sql_for_enum!(AssetKind);
