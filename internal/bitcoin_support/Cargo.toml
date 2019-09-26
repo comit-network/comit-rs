@@ -11,7 +11,7 @@ hex = "0.4"
 lazy_static = "1"
 secp256k1_keypair = { path = "../secp256k1_keypair" }
 serde = { version = "1", features = ["derive"] }
-strum = "0.15"
+strum = "0.16"
 strum_macros = "0.16"
 
 [dev-dependencies]
