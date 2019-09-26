@@ -3,7 +3,7 @@ use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
     serialize::{self, Output, ToSql},
-    sql_types::{Integer, Text},
+    sql_types::Text,
     Insertable, Queryable, *,
 };
 use std::{io::Write, str::FromStr, string::ToString};
@@ -71,97 +71,94 @@ where
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Integer"]
+macro_rules! impl_to_sql_for_enum {
+    ($enum:ident) => {
+        impl<DB> ToSql<Text, DB> for $enum
+        where
+            DB: Backend,
+            String: ToSql<Text, DB>,
+        {
+            fn to_sql<W: Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+                let s = self.to_string();
+                s.to_sql(out)
+            }
+        }
+    };
+}
+
+#[derive(Display, Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Text"]
 pub enum Role {
     Alice,
     Bob,
 }
 
-impl<DB> ToSql<Integer, DB> for Role
-where
-    DB: Backend,
-    i32: ToSql<Integer, DB>,
-{
-    fn to_sql<W: Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        (*self as i32).to_sql(out)
-    }
-}
+impl_to_sql_for_enum!(Role);
 
-impl<DB> FromSql<Integer, DB> for Role
+impl<DB> FromSql<Text, DB> for Role
 where
     DB: Backend,
-    i32: FromSql<Integer, DB>,
+    String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        match i32::from_sql(bytes)? {
-            0 => Ok(Role::Alice),
-            1 => Ok(Role::Bob),
-            x => Err(format!("Unrecognized variant {}", x).into()),
+        let s = String::from_sql(bytes)?;
+
+        match s.as_ref() {
+            "Alice" => Ok(Role::Alice),
+            "Bob" => Ok(Role::Bob),
+            _ => Err(format!("Unknown role: {}", s).into()),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Integer"]
+#[derive(Debug, Display, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Text"]
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
 }
 
-impl<DB> ToSql<Integer, DB> for LedgerKind
-where
-    DB: Backend,
-    i32: ToSql<Integer, DB>,
-{
-    fn to_sql<W: Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        (*self as i32).to_sql(out)
-    }
-}
+impl_to_sql_for_enum!(LedgerKind);
 
-impl<DB> FromSql<Integer, DB> for LedgerKind
+impl<DB> FromSql<Text, DB> for LedgerKind
 where
     DB: Backend,
-    i32: FromSql<Integer, DB>,
+    String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        match i32::from_sql(bytes)? {
-            0 => Ok(LedgerKind::Bitcoin),
-            1 => Ok(LedgerKind::Ethereum),
-            x => Err(format!("Unrecognized variant {}", x).into()),
+        let s = String::from_sql(bytes)?;
+
+        match s.as_ref() {
+            "Bitcoin" => Ok(LedgerKind::Bitcoin),
+            "Ethereum" => Ok(LedgerKind::Ethereum),
+            _ => Err(format!("Unknown role: {}", s).into()),
         }
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Integer"]
+#[derive(Debug, Display, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Text"]
 pub enum AssetKind {
     Bitcoin,
     Ether,
     Erc20,
 }
 
-impl<DB> ToSql<Integer, DB> for AssetKind
-where
-    DB: Backend,
-    i32: ToSql<Integer, DB>,
-{
-    fn to_sql<W: Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        (*self as i32).to_sql(out)
-    }
-}
+impl_to_sql_for_enum!(AssetKind);
 
-impl<DB> FromSql<Integer, DB> for AssetKind
+impl<DB> FromSql<Text, DB> for AssetKind
 where
     DB: Backend,
-    i32: FromSql<Integer, DB>,
+    String: FromSql<Text, DB>,
 {
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        match i32::from_sql(bytes)? {
-            0 => Ok(AssetKind::Bitcoin),
-            1 => Ok(AssetKind::Ether),
-            2 => Ok(AssetKind::Erc20),
-            x => Err(format!("Unrecognized variant {}", x).into()),
+        let s = String::from_sql(bytes)?;
+
+        match s.as_ref() {
+            "Bitcoin" => Ok(AssetKind::Bitcoin),
+            "Ether" => Ok(AssetKind::Ether),
+            "Erc20" => Ok(AssetKind::Erc20),
+            _ => Err(format!("Unknown role: {}", s).into()),
         }
     }
 }
