@@ -1,11 +1,8 @@
-#[macro_use]
-mod macros;
-
 mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::db::models::{InsertableSwap, Swap, SwapId};
+use crate::db::models::{InsertableSwap, SqlText, Swap, SwapId};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     fs::File,
@@ -72,7 +69,7 @@ impl Sqlite {
     }
 
     /// Get swap with swap_id 'key' from the database.
-    pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
+    pub fn get(&self, key: SqlText<SwapId>) -> Result<Option<Swap>, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = self.connect()?;
@@ -108,7 +105,7 @@ impl Sqlite {
 
     /// Deletes a swap with swap_id 'key' from the database.
     /// Returns 1 a swap was deleted, 0 otherwise.
-    pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
+    pub fn delete(&self, key: SqlText<SwapId>) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = self.connect()?;
@@ -168,27 +165,27 @@ mod tests {
     fn instantiate_test_case_1() -> InsertableSwap {
         let swap_id = SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
 
-        InsertableSwap {
+        InsertableSwap::new(
             swap_id,
-            alpha_ledger: LedgerKind::Bitcoin,
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Erc20,
-            role: Role::Alice,
-        }
+            LedgerKind::Bitcoin,
+            LedgerKind::Ethereum,
+            AssetKind::Bitcoin,
+            AssetKind::Erc20,
+            Role::Alice,
+        )
     }
 
     fn instantiate_test_case_2() -> InsertableSwap {
         let swap_id = SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
 
-        InsertableSwap {
+        InsertableSwap::new(
             swap_id,
-            alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin,
-            alpha_asset: AssetKind::Erc20,
-            beta_asset: AssetKind::Bitcoin,
-            role: Role::Bob,
-        }
+            LedgerKind::Ethereum,
+            LedgerKind::Bitcoin,
+            AssetKind::Erc20,
+            AssetKind::Bitcoin,
+            Role::Bob,
+        )
     }
 
     impl PartialEq<models::Swap> for InsertableSwap {
