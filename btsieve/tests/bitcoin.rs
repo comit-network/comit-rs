@@ -6,6 +6,7 @@ use btsieve::{
 };
 use futures::{Future, Stream};
 use images::coblox_bitcoincore::BitcoinCore;
+use reqwest::Url;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -24,13 +25,12 @@ fn bitcoin_transaction_query_e2e_test() {
     let container = cli.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
 
-    let blocksource = Arc::new(BitcoindHttpBlockSource::new(
-        format!(
-            "http://localhost:{}",
-            container.get_host_port(18443).unwrap()
-        ),
-        Network::Regtest,
-    ));
+    let mut url = Url::parse("http://localhost").unwrap();
+    #[allow(clippy::cast_possible_truncation)]
+    url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
+        .unwrap();
+
+    let blocksource = Arc::new(BitcoindHttpBlockSource::new(url, Network::Regtest).unwrap());
 
     let target_address = client.get_new_address(None, None).unwrap();
 

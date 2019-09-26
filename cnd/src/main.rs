@@ -54,14 +54,11 @@ fn main() -> Result<(), failure::Error> {
     let ledger_events = LedgerEventDependencies {
         bitcoin_blocksource: {
             let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
-            Arc::new(BitcoindHttpBlockSource::new(
-                node_url.into_string(),
-                network,
-            ))
+            Arc::new(BitcoindHttpBlockSource::new(node_url, network)?)
         },
         ethereum_blocksource: {
             let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
-            Arc::new(Web3HttpBlockSource::new(node_url.to_string(), network)?)
+            Arc::new(Web3HttpBlockSource::new(node_url, network)?)
         },
     };
 

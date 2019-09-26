@@ -4,6 +4,7 @@ use btsieve::{
 };
 use ethereum_support::{TransactionRequest, U256};
 use futures::{Future, Stream};
+use reqwest::Url;
 use std::{
     sync::Arc,
     time::{Duration, Instant},
@@ -24,16 +25,13 @@ fn ethereum_transaction_query_e2e_test() {
 
     let (_handle, client) = tc_web3_client::new(&container);
 
-    let blocksource = Arc::new(
-        Web3HttpBlockSource::new(
-            format!(
-                "http://localhost:{}",
-                container.get_host_port(8545).unwrap()
-            ),
-            ethereum_support::Network::Regtest,
-        )
-        .unwrap(),
-    );
+    let mut url = Url::parse("http://localhost").unwrap();
+    #[allow(clippy::cast_possible_truncation)]
+    url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
+        .unwrap();
+
+    let blocksource =
+        Arc::new(Web3HttpBlockSource::new(url, ethereum_support::Network::Regtest).unwrap());
 
     let mut runtime = Runtime::new().unwrap();
 

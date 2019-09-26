@@ -11,6 +11,7 @@ use crate::{
     },
 };
 use ethereum_support::{Network, TransactionAndReceipt, TransactionId};
+use reqwest::Url;
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
 use web3::{transports::EventLoopHandle, types::BlockNumber};
@@ -27,7 +28,7 @@ pub struct Web3HttpBlockSource {
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(node_url: String, network: Network) -> Result<Self, web3::Error> {
+    pub fn new(node_url: Url, network: Network) -> Result<Self, web3::Error> {
         let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
         Ok(Self {
             _event_loop_handle: event_loop_handle,
