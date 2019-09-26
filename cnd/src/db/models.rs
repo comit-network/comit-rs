@@ -72,19 +72,43 @@ impl Display for SwapId {
     }
 }
 
-#[derive(strum_macros::EnumString, strum_macros::Display, Debug, Clone, Copy, PartialEq)]
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+)]
 pub enum Role {
     Alice,
     Bob,
 }
 
-#[derive(strum_macros::EnumString, strum_macros::Display, Debug, Clone, Copy, PartialEq)]
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+)]
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
 }
 
-#[derive(strum_macros::EnumString, strum_macros::Display, Debug, Clone, Copy, PartialEq)]
+#[derive(
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+    Debug,
+    Clone,
+    Copy,
+    PartialEq,
+)]
 pub enum AssetKind {
     Bitcoin,
     Ether,
@@ -127,5 +151,70 @@ where
         let parsed = T::from_str(s.as_ref())?;
 
         Ok(SqlText(parsed))
+    }
+}
+
+/// A suite of tests that ensures the serialization format of the types we use
+/// to interact with the database Changing that format needs to be a conscious
+/// activity that involves migration scripts to migrate old data. These tests
+/// make sure we don't change the format accidentally!
+#[cfg(test)]
+mod database_serialization_format_stability_tests {
+
+    use super::*;
+
+    #[test]
+    fn swap_id() {
+        test::<SwapId>("7f3a105d-ecf2-4cc6-b35c-b4351ac28a34")
+    }
+
+    #[test]
+    fn ledger_kind() {
+        test::<LedgerKind>("Bitcoin");
+        test::<LedgerKind>("Ethereum");
+        assert_number_of_variants::<LedgerKind>(2)
+    }
+
+    #[test]
+    fn asset_kind() {
+        test::<AssetKind>("Bitcoin");
+        test::<AssetKind>("Ether");
+        test::<AssetKind>("Erc20");
+        assert_number_of_variants::<AssetKind>(3)
+    }
+
+    #[test]
+    fn role() {
+        test::<Role>("Alice");
+        test::<Role>("Bob");
+        assert_number_of_variants::<Role>(2)
+    }
+
+    fn test<T: Display + FromStr>(stored_value: &str)
+    where
+        <T as FromStr>::Err: Debug,
+    {
+        // First, we verify that we create T from the given value
+        let read = T::from_str(stored_value).unwrap();
+
+        // Next we convert it to a string again
+        let written = read.to_string();
+
+        // If we end up with the same value, our serialization is stable
+        assert_eq!(written, stored_value)
+    }
+
+    fn assert_number_of_variants<E>(expected_number_of_variants: usize)
+    where
+        E: strum::IntoEnumIterator,
+        <E as strum::IntoEnumIterator>::Iterator: Iterator,
+    {
+        let number_of_variants = E::iter().count();
+
+        assert_eq!(
+            number_of_variants,
+            expected_number_of_variants,
+            "the number of variants for this enum seem to have changed, please add a serialization format test for the new variant and update the expected variant count"
+        )
     }
 }
