@@ -1,3 +1,6 @@
+#[macro_use]
+mod macros;
+
 mod models;
 mod schema;
 embed_migrations!("./migrations");
