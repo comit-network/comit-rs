@@ -2,10 +2,10 @@ table! {
     swaps {
         id -> Integer,
         swap_id -> Text,
-        alpha_ledger -> Integer,
-        beta_ledger -> Integer,
-        alpha_asset -> Integer,
-        beta_asset -> Integer,
-        role -> Integer,
+        alpha_ledger -> Text,
+        beta_ledger -> Text,
+        alpha_asset -> Text,
+        beta_asset -> Text,
+        role -> Text,
     }
 }
