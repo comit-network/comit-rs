@@ -71,7 +71,6 @@ where
     }
 }
 
-#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Integer"]
 pub enum Role {
@@ -103,7 +102,6 @@ where
     }
 }
 
-#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Integer"]
 pub enum LedgerKind {
@@ -135,7 +133,6 @@ where
     }
 }
 
-#[repr(i32)]
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Integer"]
 pub enum AssetKind {
