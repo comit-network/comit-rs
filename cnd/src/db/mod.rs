@@ -162,69 +162,33 @@ mod tests {
     use crate::db::models::{self, AssetKind, InsertableSwap, LedgerKind, Role, SwapId};
     use std::str::FromStr;
 
-    // This holds same data as Swap/InsertableSwap but is under the control
-    // of this module so easier to test with.
-    #[derive(Debug, Copy, Clone, PartialEq)]
-    pub struct Swap {
-        pub swap_id: SwapId,
-        pub alpha_ledger: LedgerKind,
-        pub beta_ledger: LedgerKind,
-        pub alpha_asset: AssetKind,
-        pub beta_asset: AssetKind,
-        pub role: Role,
-    }
+    fn instantiate_test_case_1() -> InsertableSwap {
+        let swap_id = SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
 
-    impl Swap {
-        fn instantiate_test_case_1() -> Swap {
-            let swap_id = SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
-
-            Swap {
-                swap_id,
-                alpha_ledger: LedgerKind::Bitcoin,
-                beta_ledger: LedgerKind::Ethereum,
-                alpha_asset: AssetKind::Bitcoin,
-                beta_asset: AssetKind::Erc20,
-                role: Role::Alice,
-            }
-        }
-
-        fn instantiate_test_case_2() -> Swap {
-            let swap_id = SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
-
-            Swap {
-                swap_id,
-                alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: LedgerKind::Bitcoin,
-                alpha_asset: AssetKind::Erc20,
-                beta_asset: AssetKind::Bitcoin,
-                role: Role::Bob,
-            }
+        InsertableSwap {
+            swap_id,
+            alpha_ledger: LedgerKind::Bitcoin,
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Erc20,
+            role: Role::Alice,
         }
     }
 
-    impl From<Swap> for InsertableSwap {
-        fn from(swap: Swap) -> Self {
-            match swap {
-                Swap {
-                    swap_id,
-                    alpha_ledger,
-                    beta_ledger,
-                    alpha_asset,
-                    beta_asset,
-                    role,
-                } => InsertableSwap {
-                    swap_id,
-                    alpha_ledger,
-                    beta_ledger,
-                    alpha_asset,
-                    beta_asset,
-                    role,
-                },
-            }
+    fn instantiate_test_case_2() -> InsertableSwap {
+        let swap_id = SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
+
+        InsertableSwap {
+            swap_id,
+            alpha_ledger: LedgerKind::Ethereum,
+            beta_ledger: LedgerKind::Bitcoin,
+            alpha_asset: AssetKind::Erc20,
+            beta_asset: AssetKind::Bitcoin,
+            role: Role::Bob,
         }
     }
 
-    impl PartialEq<models::Swap> for Swap {
+    impl PartialEq<models::Swap> for InsertableSwap {
         fn eq(&self, other: &models::Swap) -> bool {
             self.swap_id == other.swap_id
                 && self.alpha_ledger == other.alpha_ledger
@@ -236,8 +200,8 @@ mod tests {
     }
 
     // Argument types the opposite way around to eq() above.
-    impl PartialEq<Swap> for models::Swap {
-        fn eq(&self, other: &Swap) -> bool {
+    impl PartialEq<InsertableSwap> for models::Swap {
+        fn eq(&self, other: &InsertableSwap) -> bool {
             other == self
         }
     }
@@ -266,7 +230,7 @@ mod tests {
     fn insert_return_vaule_is_as_expected() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1().into();
+        let swap = instantiate_test_case_1();
         let rows_inserted = db.insert(swap).expect("db insert error");
         assert_eq!(rows_inserted, 1);
     }
@@ -275,7 +239,7 @@ mod tests {
     fn count_works_afer_insert() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1().into();
+        let swap = instantiate_test_case_1();
         let _rows_inserted = db.insert(swap).expect("db insert error");
 
         assert_eq!(1, db.count().expect("db count error"));
@@ -285,10 +249,10 @@ mod tests {
     fn can_not_add_same_record_twice() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1().into();
+        let swap = instantiate_test_case_1();
         let _rows_inserted = db.insert(swap).expect("db insert error");
 
-        let swap_with_same_swap_id = Swap::instantiate_test_case_1().into();
+        let swap_with_same_swap_id = instantiate_test_case_1();
         let res = db.insert(swap_with_same_swap_id);
         if res.is_ok() {
             panic!("insert duplicate swap_id should err");
@@ -301,8 +265,8 @@ mod tests {
     fn can_add_multiple_different_swaps() {
         let db = new_temp_db();
 
-        let s1 = Swap::instantiate_test_case_1().into();
-        let s2 = Swap::instantiate_test_case_2().into();
+        let s1 = instantiate_test_case_1();
+        let s2 = instantiate_test_case_2();
 
         let rows_inserted = db.insert(s1).unwrap();
         assert_eq!(rows_inserted, 1);
@@ -317,9 +281,8 @@ mod tests {
     fn can_add_a_swap_and_read_it() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1();
-        let insertable = swap.into();
-        let _rows_inserted = db.insert(insertable).expect("db insert error");
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
         let res = db.get(swap.swap_id).expect("db get error");
         let got = res.unwrap();
@@ -331,9 +294,8 @@ mod tests {
     fn can_add_a_swap_and_delete_it() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1();
-        let insertable = swap.into();
-        let _rows_inserted = db.insert(insertable).expect("db insert error");
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
         let rows_effected = db.delete(swap.swap_id).expect("db delete error");
         assert_eq!(rows_effected, 1);
@@ -349,7 +311,7 @@ mod tests {
     #[test]
     fn can_delete_a_non_existant_swap() {
         let db = new_temp_db();
-        let swap = Swap::instantiate_test_case_1();
+        let swap = instantiate_test_case_1();
         let rows_effected = db.delete(swap.swap_id).expect("db delete error");
         assert_eq!(rows_effected, 0);
     }
@@ -358,8 +320,8 @@ mod tests {
     fn can_get_all_the_swaps() {
         let db = new_temp_db();
 
-        let s1 = Swap::instantiate_test_case_1().into();
-        let s2 = Swap::instantiate_test_case_2().into();
+        let s1 = instantiate_test_case_1();
+        let s2 = instantiate_test_case_2();
 
         let _rows_inserted = db.insert(s1).expect("db insert 1 error");
         let _rows_inserted = db.insert(s2).expect("db insert 2 error");
@@ -373,9 +335,8 @@ mod tests {
     fn swap_serializes_and_deserializes_correctly() {
         let db = new_temp_db();
 
-        let swap = Swap::instantiate_test_case_1();
-        let insertable = swap.into();
-        let _rows_inserted = db.insert(insertable).expect("db insert error");
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
         let res = db.get(swap.swap_id).expect("db get error");
         let got = res.unwrap();

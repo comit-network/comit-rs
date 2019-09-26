@@ -20,7 +20,7 @@ pub struct Swap {
     pub role: Role,
 }
 
-#[derive(Insertable, Debug)]
+#[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "swaps"]
 pub struct InsertableSwap {
     pub swap_id: SwapId,
