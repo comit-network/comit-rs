@@ -1,6 +1,6 @@
 use crate::{
     bitcoin::{self, bitcoin_http_request_for_hex_encoded_object},
-    blocksource::BlockSource,
+    BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
 use futures::Future;
@@ -13,11 +13,11 @@ struct BlockchainInfoLatestBlock {
 }
 
 #[derive(Clone)]
-pub struct BlockchainInfoHttpBlockSource {
+pub struct BlockchainInfoConnector {
     client: Client,
 }
 
-impl BlockchainInfoHttpBlockSource {
+impl BlockchainInfoConnector {
     pub fn new(network: Network) -> Result<Self, bitcoin::Error> {
         // Currently configured for Mainnet only because blockchain.info does not
         // support hex-encoded block retrieval for testnet.
@@ -49,7 +49,7 @@ impl BlockchainInfoHttpBlockSource {
     }
 }
 
-impl BlockSource for BlockchainInfoHttpBlockSource {
+impl LatestBlock for BlockchainInfoConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
@@ -76,6 +76,12 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
                 .and_then(move |latest_block| cloned_self.block_by_hash(latest_block.hash)),
         )
     }
+}
+
+impl BlockByHash for BlockchainInfoConnector {
+    type Error = bitcoin::Error;
+    type Block = bitcoin_support::Block;
+    type BlockHash = String;
 
     fn block_by_hash(
         &self,
@@ -100,7 +106,7 @@ mod tests {
     #[test]
     fn block_by_hash_url_never_panics() {
         fn prop(hash: String) -> bool {
-            BlockchainInfoHttpBlockSource::block_by_hash_url(&hash);
+            BlockchainInfoConnector::block_by_hash_url(&hash);
 
             true
         }
@@ -110,7 +116,7 @@ mod tests {
 
     #[test]
     fn block_by_hash_url_creates_correct_url() {
-        let actual_url = BlockchainInfoHttpBlockSource::block_by_hash_url(
+        let actual_url = BlockchainInfoConnector::block_by_hash_url(
             "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
         );
 

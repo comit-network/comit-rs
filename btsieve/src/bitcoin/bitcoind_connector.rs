@@ -1,6 +1,6 @@
 use crate::{
     bitcoin::{self, bitcoin_http_request_for_hex_encoded_object},
-    blocksource::BlockSource,
+    BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
 use futures::Future;
@@ -13,13 +13,13 @@ struct ChainInfo {
 }
 
 #[derive(Clone)]
-pub struct BitcoindHttpBlockSource {
+pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
     client: Client,
 }
 
-impl BitcoindHttpBlockSource {
+impl BitcoindConnector {
     pub fn new(base_url: Url, _network: Network) -> Result<Self, reqwest::UrlError> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
@@ -35,7 +35,7 @@ impl BitcoindHttpBlockSource {
     }
 }
 
-impl BlockSource for BitcoindHttpBlockSource {
+impl LatestBlock for BitcoindConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
@@ -66,6 +66,12 @@ impl BlockSource for BitcoindHttpBlockSource {
                 .and_then(move |latest_block_hash| cloned_self.block_by_hash(latest_block_hash)),
         )
     }
+}
+
+impl BlockByHash for BitcoindConnector {
+    type Error = bitcoin::Error;
+    type Block = bitcoin_support::Block;
+    type BlockHash = String;
 
     fn block_by_hash(
         &self,
@@ -97,7 +103,7 @@ mod tests {
     #[test]
     fn constructor_does_not_fail_for_base_urls() {
         for base_url in base_urls() {
-            let result = BitcoindHttpBlockSource::new(base_url, Network::Regtest);
+            let result = BitcoindConnector::new(base_url, Network::Regtest);
 
             assert!(result.is_ok());
         }
@@ -109,7 +115,7 @@ mod tests {
     fn build_sub_url_should_never_fail() {
         fn prop(hash: String) -> bool {
             for base_url in base_urls() {
-                let blocksource = BitcoindHttpBlockSource::new(base_url, Network::Regtest).unwrap();
+                let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
                 blocksource.raw_block_by_hash_url(&hash);
             }
@@ -123,7 +129,7 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let blocksource = BitcoindHttpBlockSource::new(base_url, Network::Regtest).unwrap();
+            let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
             let chaininfo_url = blocksource.chaininfo_url.clone();
             let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(

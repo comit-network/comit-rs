@@ -1,9 +1,13 @@
-pub mod bitcoind_http_blocksource;
-pub mod blockchain_info_bitcoin_http_blocksource;
-pub mod queries;
+mod bitcoind_connector;
+mod blockchain_info_connector;
+mod queries;
 
-pub use self::queries::TransactionQuery;
-use crate::{blocksource::BlockSource, matching_transactions::MatchingTransactions};
+pub use self::{
+    bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
+    queries::TransactionQuery,
+};
+
+use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize};
 use futures::{future::Future, Stream};
 use reqwest::{r#async::Client, Url};
@@ -12,7 +16,7 @@ use tokio::timer::Interval;
 
 impl<B> MatchingTransactions<TransactionQuery> for Arc<B>
 where
-    B: BlockSource<Block = bitcoin_support::Block> + Send + Sync + 'static,
+    B: LatestBlock<Block = bitcoin_support::Block> + BlockByHash<Block = bitcoin_support::Block>,
 {
     type Transaction = bitcoin_support::Transaction;
 
