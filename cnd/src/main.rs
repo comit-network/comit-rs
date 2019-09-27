@@ -1,10 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use btsieve::{
-    bitcoin::bitcoind_http_blocksource::BitcoindHttpBlockSource,
-    ethereum::web3_http_blocksource::Web3HttpBlockSource,
-};
+use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     comit_client::Client,
     comit_i_routes,
@@ -54,11 +51,11 @@ fn main() -> Result<(), failure::Error> {
     let ledger_events = LedgerEventDependencies {
         bitcoin_blocksource: {
             let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
-            Arc::new(BitcoindHttpBlockSource::new(node_url, network)?)
+            Arc::new(BitcoindConnector::new(node_url, network)?)
         },
         ethereum_blocksource: {
             let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
-            Arc::new(Web3HttpBlockSource::new(node_url, network)?)
+            Arc::new(Web3Connector::new(node_url, network)?)
         },
     };
 

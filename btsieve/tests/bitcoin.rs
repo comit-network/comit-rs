@@ -1,8 +1,8 @@
 use bitcoin_support::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
 use btsieve::{
-    bitcoin::{bitcoind_http_blocksource::BitcoindHttpBlockSource, TransactionQuery},
-    matching_transactions::MatchingTransactions,
+    bitcoin::{BitcoindConnector, TransactionQuery},
+    MatchingTransactions,
 };
 use futures::{Future, Stream};
 use images::coblox_bitcoincore::BitcoinCore;
@@ -30,7 +30,7 @@ fn bitcoin_transaction_query_e2e_test() {
     url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
         .unwrap();
 
-    let blocksource = Arc::new(BitcoindHttpBlockSource::new(url, Network::Regtest).unwrap());
+    let blocksource = Arc::new(BitcoindConnector::new(url, Network::Regtest).unwrap());
 
     let target_address = client.get_new_address(None, None).unwrap();
 
