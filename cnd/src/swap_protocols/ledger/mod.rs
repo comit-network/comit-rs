@@ -22,10 +22,6 @@ pub trait Ledger:
     + FromHttpLedger
     + Into<LedgerKind>
 {
-    type Quantity: Debug + Copy + Send + Sync + 'static;
-    type TxId: Debug + Clone + DeserializeOwned + Serialize + Send + Sync + PartialEq + 'static;
-    type Pubkey: Clone + Debug + Send + Sync + 'static;
-    type Address: Debug + Clone + Send + Sync + 'static;
     type Identity: Clone
         + Copy
         + Debug
@@ -45,8 +41,6 @@ pub trait Ledger:
         + Sync
         + PartialEq
         + 'static;
-
-    fn address_for_identity(&self, identity: Self::Identity) -> Self::Address;
 }
 
 #[derive(Clone, Derivative)]

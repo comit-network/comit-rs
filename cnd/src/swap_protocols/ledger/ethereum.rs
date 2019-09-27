@@ -1,6 +1,5 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use ethereum_support::{Address, EtherQuantity, Network, Transaction, H256};
-use secp256k1_keypair::PublicKey;
+use ethereum_support::{Address, Network, Transaction};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Ethereum {
@@ -22,16 +21,8 @@ impl Default for Ethereum {
 }
 
 impl Ledger for Ethereum {
-    type Quantity = EtherQuantity;
-    type TxId = H256;
-    type Pubkey = PublicKey;
-    type Address = Address;
     type Identity = Address;
     type Transaction = Transaction;
-
-    fn address_for_identity(&self, address: Address) -> Address {
-        address
-    }
 }
 
 impl From<Ethereum> for LedgerKind {
