@@ -14,16 +14,14 @@ struct ChainInfo {
 
 #[derive(Clone)]
 pub struct BitcoindHttpBlockSource {
-    network: Network,
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
     client: Client,
 }
 
 impl BitcoindHttpBlockSource {
-    pub fn new(base_url: Url, network: Network) -> Result<Self, reqwest::UrlError> {
+    pub fn new(base_url: Url, _network: Network) -> Result<Self, reqwest::UrlError> {
         Ok(Self {
-            network,
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
             client: Client::new(),
@@ -41,11 +39,6 @@ impl BlockSource for BitcoindHttpBlockSource {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
-    type Network = bitcoin_support::Network;
-
-    fn network(&self) -> Self::Network {
-        self.clone().network
-    }
 
     fn latest_block(
         &self,

@@ -4,9 +4,6 @@ pub trait BlockSource {
     type Error: std::fmt::Debug;
     type Block;
     type BlockHash;
-    type Network;
-
-    fn network(&self) -> Self::Network;
 
     fn latest_block(
         &self,

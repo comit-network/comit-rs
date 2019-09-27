@@ -27,16 +27,14 @@ pub enum Error {
 pub struct Web3HttpBlockSource {
     _event_loop_handle: EventLoopHandle,
     web3: Arc<Web3<Http>>,
-    network: Network,
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(node_url: Url, network: Network) -> Result<Self, web3::Error> {
+    pub fn new(node_url: Url, _network: Network) -> Result<Self, web3::Error> {
         let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
         Ok(Self {
             _event_loop_handle: event_loop_handle,
             web3: Arc::new(Web3::new(http_transport)),
-            network,
         })
     }
 }
@@ -45,11 +43,6 @@ impl BlockSource for Web3HttpBlockSource {
     type Error = web3::Error;
     type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
     type BlockHash = ethereum_support::H256;
-    type Network = ethereum_support::Network;
-
-    fn network(&self) -> Self::Network {
-        self.network
-    }
 
     fn latest_block(
         &self,
@@ -86,10 +79,8 @@ impl TransactionReceiptBlockSource for Web3HttpBlockSource {
 
 impl<B> MatchingTransactions<TransactionQuery> for Arc<B>
 where
-    B: BlockSource<
-            Block = Option<ethereum_support::Block<ethereum_support::Transaction>>,
-            Network = ethereum_support::Network,
-        > + Send
+    B: BlockSource<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
+        + Send
         + Sync
         + 'static,
 {
@@ -99,14 +90,9 @@ where
         &self,
         query: TransactionQuery,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
-        let poll_interval = match self.network() {
-            Network::Mainnet => 5000,
-            Network::Ropsten => 5000,
-            Network::Regtest => 500,
-            Network::Unknown => 1000,
-        };
+        let poll_interval = 500;
 
-        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} miliseconds", self.network(), poll_interval);
+        log::info!(target: "ethereum::blocksource", "polling for new blocks every {} ms", poll_interval);
 
         let cloned_self = self.clone();
 
@@ -148,7 +134,6 @@ impl<B> MatchingTransactions<EventQuery> for Arc<B>
 where
     B: TransactionReceiptBlockSource<
             Block = Option<ethereum_support::Block<ethereum_support::Transaction>>,
-            Network = ethereum_support::Network,
             TransactionHash = ethereum_support::H256,
             TransactionReceipt = Option<ethereum_support::TransactionReceipt>,
         > + Send
@@ -161,16 +146,11 @@ where
         &self,
         query: EventQuery,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        let poll_interval = match self.network() {
-            Network::Mainnet => 5,
-            Network::Ropsten => 5,
-            Network::Regtest => 1,
-            Network::Unknown => 1,
-        };
+        let poll_interval = 500;
 
-        log::info!(target: "ethereum::blocksource", "polling for new blocks on {} every {} seconds", self.network(), poll_interval);
+        log::info!(target: "ethereum::blocksource", "polling for new blocks every {} ms", poll_interval);
 
-        let stream = Interval::new_interval(Duration::from_secs(poll_interval))
+        let stream = Interval::new_interval(Duration::from_millis(poll_interval))
             .map_err(|e| {
                 log::warn!(target: "ethereum::blocksource", "error encountered during polling: {:?}", e);
             })

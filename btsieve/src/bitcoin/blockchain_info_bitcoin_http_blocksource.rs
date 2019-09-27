@@ -15,7 +15,6 @@ struct BlockchainInfoLatestBlock {
 #[derive(Clone)]
 pub struct BlockchainInfoHttpBlockSource {
     client: Client,
-    network: Network,
 }
 
 impl BlockchainInfoHttpBlockSource {
@@ -36,7 +35,6 @@ impl BlockchainInfoHttpBlockSource {
 
         Ok(Self {
             client: Client::new(),
-            network,
         })
     }
 
@@ -55,11 +53,6 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
-    type Network = bitcoin_support::Network;
-
-    fn network(&self) -> Self::Network {
-        self.clone().network
-    }
 
     fn latest_block(
         &self,
