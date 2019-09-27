@@ -3,5 +3,4 @@ target/
 .dependabot/
 .githooks/
 api_tests/
-.docker/cnd/Dockerfile
-.docker/btsieve/Dockerfile
+.docker/Dockerfile
