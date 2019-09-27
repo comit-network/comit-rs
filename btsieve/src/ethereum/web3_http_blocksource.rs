@@ -10,10 +10,11 @@ use crate::{
         Web3,
     },
 };
-use ethereum_support::{Network, TransactionId};
+use ethereum_support::{Network, TransactionAndReceipt, TransactionId};
+use reqwest::Url;
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
-use web3::types::BlockNumber;
+use web3::{transports::EventLoopHandle, types::BlockNumber};
 
 #[derive(Debug)]
 pub enum Error {
@@ -21,15 +22,18 @@ pub enum Error {
 }
 
 pub struct Web3HttpBlockSource {
+    _event_loop_handle: EventLoopHandle,
     web3: Arc<Web3<Http>>,
     network: Network,
 }
 
 impl Web3HttpBlockSource {
-    pub fn new(web3: Arc<Web3<Http>>) -> impl Future<Item = Self, Error = web3::Error> {
-        web3.clone().net().version().map(move |version| Self {
-            web3,
-            network: Network::from_network_id(version),
+    pub fn new(node_url: Url, network: Network) -> Result<Self, web3::Error> {
+        let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
+        Ok(Self {
+            _event_loop_handle: event_loop_handle,
+            web3: Arc::new(Web3::new(http_transport)),
+            network,
         })
     }
 }
@@ -157,7 +161,7 @@ where
         + Sync
         + 'static,
 {
-    type Transaction = ethereum_support::Transaction;
+    type Transaction = TransactionAndReceipt;
 
     fn matching_transactions(
         &self,
@@ -217,7 +221,10 @@ where
                                     Ok(Some(ref receipt))
                                         if query.matches_transaction_receipt(receipt.clone()) =>
                                     {
-                                        Ok(Some(transaction))
+                                        Ok(Some(TransactionAndReceipt {
+                                            transaction,
+                                            receipt: receipt.clone(),
+                                        }))
                                     }
                                     Err(e) => {
                                         log::error!(

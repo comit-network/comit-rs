@@ -127,6 +127,7 @@ export class LedgerRunner {
             const port = container.getMappedPort(8545);
 
             return {
+                network: "regtest",
                 rpc_url: `http://${host}:${port}`,
             };
         } else {

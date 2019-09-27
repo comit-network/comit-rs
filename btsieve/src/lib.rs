@@ -4,22 +4,8 @@
 pub mod bitcoin;
 pub mod blocksource;
 pub mod ethereum;
-pub mod expected_version_header;
-mod in_memory_query_repository;
-mod in_memory_query_result_repository;
-pub mod load_settings;
-pub mod logging;
 pub mod matching_transactions;
-mod query_repository;
-mod query_result_repository;
-pub mod route_factory;
-pub mod routes;
-pub mod settings;
 
-pub use crate::{
-    in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
-    query_result_repository::*, route_factory::*, routes::*,
-};
 pub use ethereum_support::web3;
 use std::cmp::Ordering;
 

@@ -1,5 +1,7 @@
-use super::file::{Btsieve, Comit, Database, File, HttpSocket, Network};
+use super::file::{Comit, Database, File, HttpSocket, Network};
+use crate::config::file::{Bitcoin, Ethereum};
 use log::LevelFilter;
+use reqwest::Url;
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -13,9 +15,10 @@ pub struct Settings {
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
-    pub btsieve: Btsieve,
     pub web_gui: Option<HttpSocket>,
     pub logging: Logging,
+    pub bitcoin: Bitcoin,
+    pub ethereum: Ethereum,
 }
 
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
@@ -33,9 +36,10 @@ impl Settings {
             network,
             http_api,
             database,
-            btsieve,
             web_gui,
             logging,
+            bitcoin,
+            ethereum,
         } = config_file;
 
         Self {
@@ -43,7 +47,6 @@ impl Settings {
             network,
             http_api,
             database,
-            btsieve,
             web_gui,
             logging: {
                 let Logging {
@@ -57,6 +60,16 @@ impl Settings {
                     })
                     .unwrap_or_default()
             },
+            bitcoin: bitcoin.unwrap_or_else(|| Bitcoin {
+                network: bitcoin_support::Network::Regtest,
+                node_url: Url::parse("http://localhost:18443")
+                    .expect("static string to be a valid url"),
+            }),
+            ethereum: ethereum.unwrap_or_else(|| Ethereum {
+                network: ethereum_support::Network::Regtest,
+                node_url: Url::parse("http://localhost:8545")
+                    .expect("static string to be a valid url"),
+            }),
         }
     }
 }

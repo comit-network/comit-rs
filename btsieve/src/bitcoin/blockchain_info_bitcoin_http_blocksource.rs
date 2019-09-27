@@ -4,7 +4,7 @@ use crate::{
 };
 use bitcoin_support::Network;
 use futures::Future;
-use reqwest::r#async::Client;
+use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -38,6 +38,26 @@ impl BlockchainInfoHttpBlockSource {
             client: Client::new(),
             network,
         })
+    }
+
+    fn block_by_hash_url(block_hash: &str) -> Url {
+        let mut url = Url::parse("https://blockchain.info/rawblock/")
+            .unwrap()
+            .join(&block_hash)
+            .unwrap();
+        url.set_query(Some("format=hex"));
+
+        url
+    }
+
+    fn tx_by_hash_url(transaction_hash: &str) -> Url {
+        let mut url = Url::parse("https://blockchain.info/rawtx/")
+            .unwrap()
+            .join(&transaction_hash)
+            .unwrap();
+        url.set_query(Some("format=hex"));
+
+        url
     }
 }
 
@@ -80,11 +100,8 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let raw_block_by_hash_url =
-            format!("https://blockchain.info/rawblock/{}?format=hex", block_hash);
-
         let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(
-            raw_block_by_hash_url,
+            Self::block_by_hash_url(&block_hash),
             self.client.clone(),
         );
 
@@ -97,13 +114,8 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
         &self,
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let raw_transaction_by_hash_url = format!(
-            "https://blockchain.info/rawtx/{}?format=hex",
-            transaction_hash
-        );
-
         let transaction = bitcoin_http_request_for_hex_encoded_object::<Self::Transaction>(
-            raw_transaction_by_hash_url,
+            Self::tx_by_hash_url(&transaction_hash),
             self.client.clone(),
         );
 
@@ -113,5 +125,55 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
                 transaction
             );
         }))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use super::*;
+
+    #[test]
+    fn block_by_hash_url_never_panics() {
+        fn prop(hash: String) -> bool {
+            BlockchainInfoHttpBlockSource::block_by_hash_url(&hash);
+
+            true
+        }
+
+        quickcheck::quickcheck(prop as fn(String) -> bool)
+    }
+
+    #[test]
+    fn block_by_hash_url_creates_correct_url() {
+        let actual_url = BlockchainInfoHttpBlockSource::block_by_hash_url(
+            "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
+        );
+
+        let expected_url = Url::parse("https://blockchain.info/rawblock/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02?format=hex").unwrap();
+
+        assert_eq!(actual_url, expected_url);
+    }
+
+    #[test]
+    fn tx_by_hash_url_never_panics() {
+        fn prop(hash: String) -> bool {
+            BlockchainInfoHttpBlockSource::tx_by_hash_url(&hash);
+
+            true
+        }
+
+        quickcheck::quickcheck(prop as fn(String) -> bool)
+    }
+
+    #[test]
+    fn tx_by_hash_url_creates_correct_url() {
+        let actual_url = BlockchainInfoHttpBlockSource::tx_by_hash_url(
+            "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
+        );
+
+        let expected_url = Url::parse("https://blockchain.info/rawtx/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02?format=hex").unwrap();
+
+        assert_eq!(actual_url, expected_url);
     }
 }

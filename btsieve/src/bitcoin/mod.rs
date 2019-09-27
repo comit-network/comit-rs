@@ -6,7 +6,7 @@ pub use self::queries::TransactionQuery;
 use crate::{blocksource::BlockSource, matching_transactions::MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize, Network};
 use futures::{future::Future, Stream};
-use reqwest::r#async::Client;
+use reqwest::{r#async::Client, Url};
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
 
@@ -65,11 +65,11 @@ where
 }
 
 pub fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
-    request_url: String,
+    request_url: Url,
     client: Client,
 ) -> impl Future<Item = T, Error = Error> {
     client
-        .get(request_url.as_str())
+        .get(request_url)
         .send()
         .and_then(|mut response| response.text())
         .map_err(Error::Reqwest)

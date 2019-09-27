@@ -104,10 +104,6 @@ extend = "e2e-tests-flow"
 workspace = false
 extend = "dry-tests-flow"
 
-[tasks.btsieve]
-workspace = false
-extend = "btsieve-tests-flow"
-
 [tasks.webgui]
 workspace = false
 extend = "webgui-tests-flow"
@@ -235,24 +231,6 @@ done;
 yarn run test $files;
 '''
 ]
-
-######################################
-# btsieve API Test flow #
-[tasks.btsieve-tests-flow]
-description = "Defines the btsieve API tests flow."
-workspace = false
-dependencies = [
-    "build",
-    "pre-api-tests",
-    "btsieve-tests",
-]
-
-[tasks.btsieve-tests]
-description = "Runs btsieve API tests."
-workspace = false
-private = true
-install_script = ["(cd ./api_tests; yarn install;)"]
-script = ["cd ./api_tests; yarn run test btsieve"]
 
 ######################################
 # all API Tests flow #

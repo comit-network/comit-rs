@@ -9,17 +9,6 @@ export interface CndConfigFile {
     database?: { sqlite: string };
     web_gui?: { address: string; port: number };
     network: { listen: string[] };
-    btsieve: {
-        url: string;
-        bitcoin: {
-            poll_interval_secs: number;
-            network: string;
-        };
-        ethereum: {
-            poll_interval_secs: number;
-            network: string;
-        };
-    };
 }
 
 interface BtsieveBitcoin {
@@ -29,18 +18,12 @@ interface BtsieveBitcoin {
 
 interface BtsieveEthereum {
     node_url: string;
+    network: string;
 }
 
 export interface BtsieveConfigFile {
     bitcoin?: BtsieveBitcoin;
     ethereum?: BtsieveEthereum;
-    http_api: {
-        address_bind: string;
-        port_bind: number;
-    };
-    log_levels: {
-        btsieve: string;
-    };
 }
 
 export class E2ETestActorConfig {
@@ -61,22 +44,13 @@ export class E2ETestActorConfig {
         this.webGuiPort = webGuiPort;
     }
 
-    public generateCndConfigFile(): CndConfigFile {
+    public generateCndConfigFile(
+        btsieveConfig: BtsieveConfigFile
+    ): CndConfigFile {
         const dbPath = tempfile(".sqlite");
         return {
             comit: {
                 secret_seed: this.seed,
-            },
-            btsieve: {
-                url: `http://localhost:${BTSIEVE_BASE_CONFIG.http_api.port_bind}`,
-                bitcoin: {
-                    poll_interval_secs: 1,
-                    network: "regtest",
-                },
-                ethereum: {
-                    poll_interval_secs: 1,
-                    network: "regtest",
-                },
             },
             http_api: {
                 address: "0.0.0.0",
@@ -94,6 +68,7 @@ export class E2ETestActorConfig {
                       port: this.webGuiPort,
                   }
                 : undefined,
+            ...btsieveConfig,
         };
     }
 }
@@ -124,9 +99,7 @@ export const DAVID_CONFIG = new E2ETestActorConfig(
 export function createBtsieveConfig(
     ledgerConfig: LedgerConfig
 ): BtsieveConfigFile {
-    const config: BtsieveConfigFile = {
-        ...BTSIEVE_BASE_CONFIG,
-    };
+    const config: BtsieveConfigFile = {};
 
     if (ledgerConfig.bitcoin) {
         config.bitcoin = btsieveBitcoinConfig(ledgerConfig.bitcoin);
@@ -153,18 +126,9 @@ export function btsieveEthereumConfig(
 ): BtsieveEthereum {
     return {
         node_url: nodeConfig.rpc_url,
+        network: nodeConfig.network,
     };
 }
-
-export const BTSIEVE_BASE_CONFIG: BtsieveConfigFile = {
-    http_api: {
-        address_bind: "0.0.0.0",
-        port_bind: 8181,
-    },
-    log_levels: {
-        btsieve: "DEBUG",
-    },
-};
 
 export const CND_CONFIGS: {
     [actor: string]: E2ETestActorConfig | undefined;
