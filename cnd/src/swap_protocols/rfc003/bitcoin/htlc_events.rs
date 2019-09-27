@@ -15,8 +15,8 @@ use crate::{
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
 use btsieve::{
-    bitcoin::{bitcoind_http_blocksource::BitcoindHttpBlockSource, TransactionQuery},
-    matching_transactions::MatchingTransactions,
+    bitcoin::{BitcoindConnector, TransactionQuery},
+    MatchingTransactions,
 };
 use futures::{
     future::{self, Either},
@@ -24,7 +24,7 @@ use futures::{
 };
 use std::sync::Arc;
 
-impl HtlcEvents<Bitcoin, Amount> for Arc<BitcoindHttpBlockSource> {
+impl HtlcEvents<Bitcoin, Amount> for Arc<BitcoindConnector> {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
