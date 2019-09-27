@@ -1,8 +1,5 @@
 use crate::seed::Seed;
-use btsieve::{
-    bitcoin::bitcoind_http_blocksource::BitcoindHttpBlockSource,
-    ethereum::web3_http_blocksource::Web3HttpBlockSource,
-};
+use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use std::sync::Arc;
 
 mod client_impl;
@@ -48,6 +45,6 @@ pub mod bob {
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct LedgerEventDependencies {
-    pub bitcoin_blocksource: Arc<BitcoindHttpBlockSource>,
-    pub ethereum_blocksource: Arc<Web3HttpBlockSource>,
+    pub bitcoin_blocksource: Arc<BitcoindConnector>,
+    pub ethereum_blocksource: Arc<Web3Connector>,
 }

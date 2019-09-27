@@ -15,12 +15,8 @@ use crate::{
     },
 };
 use btsieve::{
-    ethereum::{
-        queries::{EventMatcher, Topic},
-        web3_http_blocksource::Web3HttpBlockSource,
-        EventQuery, TransactionQuery,
-    },
-    matching_transactions::MatchingTransactions,
+    ethereum::{EventMatcher, EventQuery, Topic, TransactionQuery, Web3Connector},
+    MatchingTransactions,
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
@@ -41,7 +37,7 @@ lazy_static::lazy_static! {
     pub static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
 }
 
-impl HtlcEvents<Ethereum, EtherQuantity> for Arc<Web3HttpBlockSource> {
+impl HtlcEvents<Ethereum, EtherQuantity> for Arc<Web3Connector> {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -93,7 +89,7 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 }
 
 fn htlc_redeemed_or_refunded<A: Asset>(
-    block_source: Arc<Web3HttpBlockSource>,
+    block_source: Arc<Web3Connector>,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
@@ -168,7 +164,7 @@ mod erc20 {
     use super::*;
     use ethereum_support::{Erc20Quantity, U256};
 
-    impl HtlcEvents<Ethereum, Erc20Token> for Arc<Web3HttpBlockSource> {
+    impl HtlcEvents<Ethereum, Erc20Token> for Arc<Web3Connector> {
         fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,

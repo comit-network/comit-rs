@@ -99,7 +99,7 @@ impl EventQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::web3::types::{
+    use ethereum_support::web3::types::{
         Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
     };
     use spectral::prelude::*;

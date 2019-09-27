@@ -74,8 +74,7 @@ impl<AL, AA> Actions for alice::State<AL, Ethereum, AA, Erc20Token>
 where
     AL: Ledger,
     AA: Asset,
-    (AL, AA): FundAction<AL, AA>,
-    (AL, AA): RefundAction<AL, AA>,
+    (AL, AA): FundAction<AL, AA> + RefundAction<AL, AA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
