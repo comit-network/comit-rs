@@ -45,7 +45,7 @@
         "@types/rimraf": "^2.0.2",
         "@types/scrypt": "^6.0.0",
         "@types/tempfile": "^3.0.0",
-        "@types/urijs": "^1.19.3",
+        "@types/urijs": "^1.19.4",
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
         "json-schema-to-typescript": "^7.1.0",
