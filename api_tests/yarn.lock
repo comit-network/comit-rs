@@ -145,10 +145,10 @@
   resolved "https://registry.yarnpkg.com/@types/tv4/-/tv4-1.2.29.tgz#4c6d2222b03245dd2104f4fd67f54d1658985911"
   integrity sha512-NtJmi+XbYocrLb5Au4Q64srX4FlCPDvrSF/OnK3H0QJwrw40tIUoQPDoUHnZ5wpAB2KThtVyeS+kOEQyZabORg==
 
-"@types/urijs@^1.19.3":
-  version "1.19.3"
-  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.3.tgz#ed90d38baf3eff1627544ad6ed3bcdeb79ef3533"
-  integrity sha512-L5tP2dEIV+OMVEVRhf8PCFMNMyO5ZBodrXpEqnGczky60lcv8l5Kl9Yi4J1yxhSVfHUe+Pr2nXJfDM+rUYNs3w==
+"@types/urijs@^1.19.4":
+  version "1.19.4"
+  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.4.tgz#29c4a694d4842d7f95e359a26223fc1865f1ab13"
+  integrity sha512-uHUvuLfy4YkRHL4UH8J8oRsINhdEHd9ymag7KJZVT94CjAmY1njoUzhazJsZjwfy+IpWKQKGVyXCwzhZvg73Fg==
 
 "@uphold/request-logger@^2.0.0":
   version "2.0.0"
