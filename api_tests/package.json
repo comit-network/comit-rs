@@ -16,7 +16,7 @@
     "license": "ISC",
     "dependencies": {
         "bignumber.js": "^9.0.0",
-        "bitcoin-core": "^2.2.1",
+        "bitcoin-core": "^3.0.0",
         "bitcoinjs-lib": "^5.1.6",
         "chai": "^4.2.0",
         "chai-each": "^0.0.1",
