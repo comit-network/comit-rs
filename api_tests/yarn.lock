@@ -327,13 +327,12 @@ bip66@^1.1.0:
   dependencies:
     safe-buffer "^5.0.1"
 
-bitcoin-core@^2.2.1:
-  version "2.2.1"
-  resolved "https://registry.yarnpkg.com/bitcoin-core/-/bitcoin-core-2.2.1.tgz#be146ae902184e79a592b0d9cb98340dddfd6d3f"
-  integrity sha512-uyTCXTB/E0DBES+1djf4FKb4e2qykKPNVPftsEYxZROLp0qvDjXtE3d8cdPdCUJZK6n96yt6aHlv7RHryzAMaw==
+bitcoin-core@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/bitcoin-core/-/bitcoin-core-3.0.0.tgz#3ad59a16b6748d8b60937affae6c5f1df2db770d"
+  integrity sha512-fdh8V/5lxDXwbq6KUCd9PjbTDe1kPGFM1brSFByuzMb+VSArr1qF422qbAJvW0dLQSaRhVDb7WC+a602QM70FQ==
   dependencies:
     "@uphold/request-logger" "^2.0.0"
-    bluebird "^3.4.1"
     debugnyan "^1.0.0"
     json-bigint "^0.2.0"
     lodash "^4.0.0"
@@ -382,11 +381,6 @@ bl@^3.0.0:
   integrity sha512-EUAyP5UHU5hxF8BPT0LKW8gjYLhq1DQIcneOX/pL/m2Alo+OYDQAJlHq+yseMP50Os2nHXOSic6Ss3vSQeyf4A==
   dependencies:
     readable-stream "^3.0.1"
-
-bluebird@^3.4.1:
-  version "3.5.5"
-  resolved "https://registry.yarnpkg.com/bluebird/-/bluebird-3.5.5.tgz#a8d0afd73251effbbd5fe384a77d73003c17a71f"
-  integrity sha512-5am6HnnfN+urzt4yfg7IgTbotDjIT/u8AJpEt0sIU9FtXfVeezXAPKswrG+xKUCOYAINpSdgZVDU6QFh+cuH3w==
 
 bn.js@^4.11.8, bn.js@^4.4.0:
   version "4.11.8"
@@ -615,10 +609,10 @@ commander@^2.12.1:
   resolved "https://registry.yarnpkg.com/commander/-/commander-2.20.0.tgz#d58bb2b5c1ee8f87b0d340027e9e94e222c5a422"
   integrity sha512-7j2y+40w61zy6YC2iRNpUe/NwhNyoXrYpHMrSunaMG64nRnaf96zO/KMQR4OyN/UnE5KLyEBnKHd4aG3rskjpQ==
 
-commander@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/commander/-/commander-3.0.1.tgz#4595aec3530525e671fb6f85fb173df8ff8bf57a"
-  integrity sha512-UNgvDd+csKdc9GD4zjtkHKQbT8Aspt2jCBqNSPp53vAS0L1tS9sXB2TCEOPHJ7kt9bN/niWkYj8T3RQSoMXdSQ==
+commander@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/commander/-/commander-3.0.2.tgz#6837c3fb677ad9933d1cfba42dd14d5117d6b39e"
+  integrity sha512-Gar0ASD4BDyKC4hl4DwHqDrmvjoxWKZigVnAbn5H1owvm4CxCPdb0HQDehwNYMJpla5+M2tPmPARzhtYuwpHow==
 
 component-emitter@^1.2.0:
   version "1.3.0"
