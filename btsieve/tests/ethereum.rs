@@ -1,6 +1,6 @@
 use btsieve::{
-    ethereum::{web3_http_blocksource::Web3HttpBlockSource, TransactionQuery},
-    matching_transactions::MatchingTransactions,
+    ethereum::{TransactionQuery, Web3Connector},
+    MatchingTransactions,
 };
 use ethereum_support::{TransactionRequest, U256};
 use futures::{Future, Stream};
@@ -31,7 +31,7 @@ fn ethereum_transaction_query_e2e_test() {
         .unwrap();
 
     let blocksource =
-        Arc::new(Web3HttpBlockSource::new(url, ethereum_support::Network::Regtest).unwrap());
+        Arc::new(Web3Connector::new(url, ethereum_support::Network::Regtest).unwrap());
 
     let mut runtime = Runtime::new().unwrap();
 

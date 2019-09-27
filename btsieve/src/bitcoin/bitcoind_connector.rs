@@ -1,6 +1,6 @@
 use crate::{
     bitcoin::{self, bitcoin_http_request_for_hex_encoded_object},
-    blocksource::BlockSource,
+    BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
 use futures::Future;
@@ -13,21 +13,17 @@ struct ChainInfo {
 }
 
 #[derive(Clone)]
-pub struct BitcoindHttpBlockSource {
-    network: Network,
+pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
-    raw_tx_by_hash_url: Url,
     client: Client,
 }
 
-impl BitcoindHttpBlockSource {
-    pub fn new(base_url: Url, network: Network) -> Result<Self, reqwest::UrlError> {
+impl BitcoindConnector {
+    pub fn new(base_url: Url, _network: Network) -> Result<Self, reqwest::UrlError> {
         Ok(Self {
-            network,
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
-            raw_tx_by_hash_url: base_url.join("rest/tx/")?,
             client: Client::new(),
         })
     }
@@ -37,25 +33,12 @@ impl BitcoindHttpBlockSource {
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
     }
-
-    fn raw_tx_by_hash_url(&self, tx_hash: &str) -> Url {
-        self.raw_tx_by_hash_url
-            .join(&format!("{}.hex", tx_hash))
-            .expect("building url should work")
-    }
 }
 
-impl BlockSource for BitcoindHttpBlockSource {
+impl LatestBlock for BitcoindConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
-    type TransactionHash = String;
-    type Transaction = bitcoin_support::Transaction;
-    type Network = bitcoin_support::Network;
-
-    fn network(&self) -> Self::Network {
-        self.clone().network
-    }
 
     fn latest_block(
         &self,
@@ -83,6 +66,12 @@ impl BlockSource for BitcoindHttpBlockSource {
                 .and_then(move |latest_block_hash| cloned_self.block_by_hash(latest_block_hash)),
         )
     }
+}
+
+impl BlockByHash for BitcoindConnector {
+    type Error = bitcoin::Error;
+    type Block = bitcoin_support::Block;
+    type BlockHash = String;
 
     fn block_by_hash(
         &self,
@@ -95,22 +84,6 @@ impl BlockSource for BitcoindHttpBlockSource {
 
         Box::new(block.inspect(|block| {
             log::trace!("Fetched block from bitcoind: {:?}", block);
-        }))
-    }
-
-    fn transaction_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let url = self.raw_tx_by_hash_url(&transaction_hash);
-
-        let transaction = bitcoin_http_request_for_hex_encoded_object::<Self::Transaction>(
-            url,
-            self.client.clone(),
-        );
-
-        Box::new(transaction.inspect(|transaction| {
-            log::debug!("Fetched transaction from bitcoind: {:?}", transaction);
         }))
     }
 }
@@ -130,7 +103,7 @@ mod tests {
     #[test]
     fn constructor_does_not_fail_for_base_urls() {
         for base_url in base_urls() {
-            let result = BitcoindHttpBlockSource::new(base_url, Network::Regtest);
+            let result = BitcoindConnector::new(base_url, Network::Regtest);
 
             assert!(result.is_ok());
         }
@@ -142,10 +115,9 @@ mod tests {
     fn build_sub_url_should_never_fail() {
         fn prop(hash: String) -> bool {
             for base_url in base_urls() {
-                let blocksource = BitcoindHttpBlockSource::new(base_url, Network::Regtest).unwrap();
+                let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
                 blocksource.raw_block_by_hash_url(&hash);
-                blocksource.raw_tx_by_hash_url(&hash);
             }
 
             true // not panicing is good enough for this test
@@ -157,14 +129,11 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let blocksource = BitcoindHttpBlockSource::new(base_url, Network::Regtest).unwrap();
+            let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
             let chaininfo_url = blocksource.chaininfo_url.clone();
             let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(
                 "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
-            );
-            let raw_tx_by_hash_url = blocksource.raw_tx_by_hash_url(
-                "3795b4be992bea63e56b0ecad2493e8918fda258e9fcad8c0d0d5174916a5e18",
             );
 
             assert_eq!(
@@ -172,7 +141,6 @@ mod tests {
                 Url::parse("http://localhost:8080/rest/chaininfo.json").unwrap()
             );
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
-            assert_eq!(raw_tx_by_hash_url, Url::parse("http://localhost:8080/rest/tx/3795b4be992bea63e56b0ecad2493e8918fda258e9fcad8c0d0d5174916a5e18.hex").unwrap());
         }
     }
 }

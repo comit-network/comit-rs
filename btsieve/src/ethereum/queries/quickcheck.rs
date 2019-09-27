@@ -1,5 +1,5 @@
-use crate::web3::types::{Bytes, Transaction, H160, H256, U128, U256};
 use ::quickcheck::Arbitrary;
+use ethereum_support::web3::types::{Bytes, Transaction, H160, H256, U128, U256};
 
 #[derive(Clone, Debug)]
 pub struct Quickcheck<I>(pub I);

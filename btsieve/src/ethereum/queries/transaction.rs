@@ -50,10 +50,8 @@ impl TransactionQuery {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        ethereum::queries::quickcheck::Quickcheck,
-        web3::types::{Bytes, Transaction},
-    };
+    use crate::ethereum::queries::quickcheck::Quickcheck;
+    use ethereum_support::web3::types::{Bytes, Transaction};
     use spectral::prelude::*;
 
     #[test]

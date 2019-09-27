@@ -1,10 +1,14 @@
-pub mod bitcoind_http_blocksource;
-pub mod blockchain_info_bitcoin_http_blocksource;
-pub mod queries;
+mod bitcoind_connector;
+mod blockchain_info_connector;
+mod queries;
 
-pub use self::queries::TransactionQuery;
-use crate::{blocksource::BlockSource, matching_transactions::MatchingTransactions};
-use bitcoin_support::{consensus::Decodable, deserialize, Network};
+pub use self::{
+    bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
+    queries::TransactionQuery,
+};
+
+use crate::{BlockByHash, LatestBlock, MatchingTransactions};
+use bitcoin_support::{consensus::Decodable, deserialize};
 use futures::{future::Future, Stream};
 use reqwest::{r#async::Client, Url};
 use std::{sync::Arc, time::Duration};
@@ -12,10 +16,7 @@ use tokio::timer::Interval;
 
 impl<B> MatchingTransactions<TransactionQuery> for Arc<B>
 where
-    B: BlockSource<Block = bitcoin_support::Block, Network = bitcoin_support::Network>
-        + Send
-        + Sync
-        + 'static,
+    B: LatestBlock<Block = bitcoin_support::Block> + BlockByHash<Block = bitcoin_support::Block>,
 {
     type Transaction = bitcoin_support::Transaction;
 
@@ -23,16 +24,9 @@ where
         &self,
         query: TransactionQuery,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        // The Bitcoin blockchain has a mining interval of about 10 minutes.
-        // The poll interval is configured to once every 2 minutes for mainnet and
-        // testnet so we don't have to wait to long to see a new block.
-        let poll_interval = match self.network() {
-            Network::Mainnet => 120_000,
-            Network::Testnet => 120_000,
-            Network::Regtest => 300,
-        };
+        let poll_interval = 300;
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind on {} every {} seconds", self.network(), poll_interval);
+        log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind every {} ms", poll_interval);
 
         let cloned_self = self.clone();
 
