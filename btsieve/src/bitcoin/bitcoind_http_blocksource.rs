@@ -17,7 +17,6 @@ pub struct BitcoindHttpBlockSource {
     network: Network,
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
-    raw_tx_by_hash_url: Url,
     client: Client,
 }
 
@@ -27,7 +26,6 @@ impl BitcoindHttpBlockSource {
             network,
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
-            raw_tx_by_hash_url: base_url.join("rest/tx/")?,
             client: Client::new(),
         })
     }
@@ -37,20 +35,12 @@ impl BitcoindHttpBlockSource {
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
     }
-
-    fn raw_tx_by_hash_url(&self, tx_hash: &str) -> Url {
-        self.raw_tx_by_hash_url
-            .join(&format!("{}.hex", tx_hash))
-            .expect("building url should work")
-    }
 }
 
 impl BlockSource for BitcoindHttpBlockSource {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
-    type TransactionHash = String;
-    type Transaction = bitcoin_support::Transaction;
     type Network = bitcoin_support::Network;
 
     fn network(&self) -> Self::Network {
@@ -97,22 +87,6 @@ impl BlockSource for BitcoindHttpBlockSource {
             log::trace!("Fetched block from bitcoind: {:?}", block);
         }))
     }
-
-    fn transaction_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let url = self.raw_tx_by_hash_url(&transaction_hash);
-
-        let transaction = bitcoin_http_request_for_hex_encoded_object::<Self::Transaction>(
-            url,
-            self.client.clone(),
-        );
-
-        Box::new(transaction.inspect(|transaction| {
-            log::debug!("Fetched transaction from bitcoind: {:?}", transaction);
-        }))
-    }
 }
 
 #[cfg(test)]
@@ -145,7 +119,6 @@ mod tests {
                 let blocksource = BitcoindHttpBlockSource::new(base_url, Network::Regtest).unwrap();
 
                 blocksource.raw_block_by_hash_url(&hash);
-                blocksource.raw_tx_by_hash_url(&hash);
             }
 
             true // not panicing is good enough for this test
@@ -163,16 +136,12 @@ mod tests {
             let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(
                 "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
             );
-            let raw_tx_by_hash_url = blocksource.raw_tx_by_hash_url(
-                "3795b4be992bea63e56b0ecad2493e8918fda258e9fcad8c0d0d5174916a5e18",
-            );
 
             assert_eq!(
                 chaininfo_url,
                 Url::parse("http://localhost:8080/rest/chaininfo.json").unwrap()
             );
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
-            assert_eq!(raw_tx_by_hash_url, Url::parse("http://localhost:8080/rest/tx/3795b4be992bea63e56b0ecad2493e8918fda258e9fcad8c0d0d5174916a5e18.hex").unwrap());
         }
     }
 }

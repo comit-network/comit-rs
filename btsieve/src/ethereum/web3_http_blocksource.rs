@@ -10,11 +10,14 @@ use crate::{
         Web3,
     },
 };
-use ethereum_support::{Network, TransactionAndReceipt, TransactionId};
+use ethereum_support::{Network, TransactionAndReceipt};
 use reqwest::Url;
 use std::{sync::Arc, time::Duration};
 use tokio::timer::Interval;
-use web3::{transports::EventLoopHandle, types::BlockNumber};
+use web3::{
+    transports::EventLoopHandle,
+    types::{BlockNumber, H256},
+};
 
 #[derive(Debug)]
 pub enum Error {
@@ -42,8 +45,6 @@ impl BlockSource for Web3HttpBlockSource {
     type Error = web3::Error;
     type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
     type BlockHash = ethereum_support::H256;
-    type TransactionHash = ethereum_support::H256;
-    type Transaction = Option<ethereum_support::Transaction>;
     type Network = ethereum_support::Network;
 
     fn network(&self) -> Self::Network {
@@ -67,18 +68,11 @@ impl BlockSource for Web3HttpBlockSource {
         let web = self.web3.clone();
         Box::new(web.eth().block_with_txs(BlockId::Hash(block_hash)))
     }
-
-    fn transaction_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let web = self.web3.clone();
-        Box::new(web.eth().transaction(TransactionId::Hash(transaction_hash)))
-    }
 }
 
 impl TransactionReceiptBlockSource for Web3HttpBlockSource {
     type TransactionReceipt = Option<ethereum_support::TransactionReceipt>;
+    type TransactionHash = H256;
 
     fn transaction_receipt(
         &self,

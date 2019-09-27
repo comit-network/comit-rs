@@ -4,8 +4,6 @@ pub trait BlockSource {
     type Error: std::fmt::Debug;
     type Block;
     type BlockHash;
-    type TransactionHash;
-    type Transaction;
     type Network;
 
     fn network(&self) -> Self::Network;
@@ -17,14 +15,11 @@ pub trait BlockSource {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
-    fn transaction_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static>;
 }
 
 pub trait TransactionReceiptBlockSource: BlockSource {
     type TransactionReceipt;
+    type TransactionHash;
 
     fn transaction_receipt(
         &self,

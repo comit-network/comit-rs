@@ -49,24 +49,12 @@ impl BlockchainInfoHttpBlockSource {
 
         url
     }
-
-    fn tx_by_hash_url(transaction_hash: &str) -> Url {
-        let mut url = Url::parse("https://blockchain.info/rawtx/")
-            .unwrap()
-            .join(&transaction_hash)
-            .unwrap();
-        url.set_query(Some("format=hex"));
-
-        url
-    }
 }
 
 impl BlockSource for BlockchainInfoHttpBlockSource {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
     type BlockHash = String;
-    type TransactionHash = String;
-    type Transaction = bitcoin_support::Transaction;
     type Network = bitcoin_support::Network;
 
     fn network(&self) -> Self::Network {
@@ -109,23 +97,6 @@ impl BlockSource for BlockchainInfoHttpBlockSource {
             log::trace!("Fetched block from blockchain.info: {:?}", block);
         }))
     }
-
-    fn transaction_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Transaction, Error = Self::Error> + Send + 'static> {
-        let transaction = bitcoin_http_request_for_hex_encoded_object::<Self::Transaction>(
-            Self::tx_by_hash_url(&transaction_hash),
-            self.client.clone(),
-        );
-
-        Box::new(transaction.inspect(|transaction| {
-            log::debug!(
-                "Fetched transaction from blockchain.info: {:?}",
-                transaction
-            );
-        }))
-    }
 }
 
 #[cfg(test)]
@@ -151,28 +122,6 @@ mod tests {
         );
 
         let expected_url = Url::parse("https://blockchain.info/rawblock/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02?format=hex").unwrap();
-
-        assert_eq!(actual_url, expected_url);
-    }
-
-    #[test]
-    fn tx_by_hash_url_never_panics() {
-        fn prop(hash: String) -> bool {
-            BlockchainInfoHttpBlockSource::tx_by_hash_url(&hash);
-
-            true
-        }
-
-        quickcheck::quickcheck(prop as fn(String) -> bool)
-    }
-
-    #[test]
-    fn tx_by_hash_url_creates_correct_url() {
-        let actual_url = BlockchainInfoHttpBlockSource::tx_by_hash_url(
-            "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
-        );
-
-        let expected_url = Url::parse("https://blockchain.info/rawtx/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02?format=hex").unwrap();
 
         assert_eq!(actual_url, expected_url);
     }
