@@ -1,3 +1,4 @@
+#![allow(clippy::type_repetition_in_bounds)]
 use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::{
