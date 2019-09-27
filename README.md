@@ -31,7 +31,7 @@ All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
 1. `cargo install --path .`
 2. startup bitcoin node with `-regtest` and `-rest`
 3. startup ethereum node with JSON-RPC interface exposed at `localhost:8545`
-2. startup cnd: `cnd` (or `./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
+4. startup cnd: `cnd` (or `./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
 
 If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` by default).
 
