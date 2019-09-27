@@ -1,8 +1,5 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use bitcoin_support::{
-    Address, Amount, IntoP2wpkhAddress, Network, PubkeyHash, Transaction, TransactionId,
-};
-use secp256k1_keypair::PublicKey;
+use bitcoin_support::{Network, PubkeyHash, Transaction};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
@@ -24,16 +21,8 @@ impl Default for Bitcoin {
 }
 
 impl Ledger for Bitcoin {
-    type Quantity = Amount;
-    type TxId = TransactionId;
-    type Pubkey = PublicKey;
-    type Address = Address;
     type Identity = PubkeyHash;
     type Transaction = Transaction;
-
-    fn address_for_identity(&self, pubkeyhash: PubkeyHash) -> Address {
-        pubkeyhash.into_p2wpkh_address(self.network)
-    }
 }
 
 impl From<Bitcoin> for LedgerKind {
