@@ -582,7 +582,6 @@ dependencies = [
  "http 0.1.18 (registry+https://github.com/rust-lang/crates.io-index)",
  "http-api-problem 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "hyper 0.12.35 (registry+https://github.com/rust-lang/crates.io-index)",
- "key_gen 0.1.0",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libp2p 0.12.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "libp2p-comit 0.1.0",
@@ -1611,17 +1610,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "winapi 0.2.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "winapi-build 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
-name = "key_gen"
-version = "0.1.0"
-dependencies = [
- "bitcoin_support 0.1.0",
- "ethereum_support 0.1.0",
- "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "secp256k1_keypair 0.1.0",
- "tiny-keccak 1.5.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
