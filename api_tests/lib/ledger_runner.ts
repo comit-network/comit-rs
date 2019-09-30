@@ -1,5 +1,5 @@
 import { createWriteStream } from "fs";
-import { GenericContainer, StartedTestContainer, LogWaitStrategy } from "testcontainers";
+import { GenericContainer, StartedTestContainer, Wait } from "testcontainers";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
@@ -165,7 +165,7 @@ async function startBitcoinContainer(): Promise<StartedTestContainer> {
             "-rest",
         ])
         .withExposedPorts(18443)
-        .withWaitStrategy(new LogWaitStrategy("Flushed wallet.dat"))
+        .withWaitStrategy(Wait.forLogMessage("Flushed wallet.dat"))
         .start();
 }
 
@@ -180,6 +180,6 @@ async function startEthereumContainer(): Promise<StartedTestContainer> {
             "--jsonrpc-cors='all'",
         ])
         .withExposedPorts(8545)
-        .withWaitStrategy(new LogWaitStrategy("Public node URL:"))
+        .withWaitStrategy(Wait.forLogMessage("Public node URL:"))
         .start();
 }
