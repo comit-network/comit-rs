@@ -1,7 +1,5 @@
 import { createWriteStream } from "fs";
-import { GenericContainer } from "testcontainers";
-import { StartedTestContainer } from "testcontainers/dist/test-container";
-import { LogWaitStrategy } from "testcontainers/dist/wait-strategy";
+import { GenericContainer, StartedTestContainer, LogWaitStrategy } from "testcontainers";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
