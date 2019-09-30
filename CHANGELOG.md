@@ -6,7 +6,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 ### Changed
-- Merged btsieve into cnd to be able to run comit-rs with a single binary.
+- Embed btsieve as a library inside cnd: From now on, you'll only need to run cnd to use COMIT.
 
 ## [0.2.1] - 2019-09-24
 ### Changed
