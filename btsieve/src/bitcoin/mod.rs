@@ -2,6 +2,9 @@ mod bitcoind_connector;
 mod blockchain_info_connector;
 mod queries;
 
+#[cfg(test)]
+mod quickcheck_impls;
+
 pub use self::{
     bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
     queries::TransactionQuery,
