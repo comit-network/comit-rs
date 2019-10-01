@@ -8,7 +8,6 @@ import glob from "glob";
 import Mocha from "mocha";
 import path from "path";
 import rimraf from "rimraf";
-import { BtsieveRunner } from "./lib/btsieve_runner";
 import { CndRunner } from "./lib/cnd_runner";
 import { createBtsieveConfig } from "./lib/config";
 import { LedgerRunner } from "./lib/ledger_runner";
@@ -52,16 +51,11 @@ async function runTests(testFiles: string[]) {
     const cndPath = process.env.CND_BIN
         ? process.env.CND_BIN
         : projectRoot + "/target/debug/cnd";
-    const btsievePath = process.env.BTSIEVE_BIN
-        ? process.env.BTSIEVE_BIN
-        : projectRoot + "/target/debug/btsieve";
 
     const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
-    const btsieveRunner = new BtsieveRunner(projectRoot, btsievePath, logDir);
 
     async function cleanupAll() {
         try {
-            btsieveRunner.stopBtsieve();
             nodeRunner.stopCnds();
             await ledgerRunner.stopLedgers();
         } catch (e) {
@@ -93,25 +87,23 @@ async function runTests(testFiles: string[]) {
 
         if (config.ledgers) {
             await ledgerRunner.ensureLedgersRunning(config.ledgers);
-
-            const ledgerConfigs = await ledgerRunner.getLedgerConfig();
-
-            // We don't stop the ledgers between the test files
-            // Make sure the btsieve we start is only configured to the ledgers that it needs as per the config file of the test
-            const btsieveConfig = createBtsieveConfig({
-                bitcoin: config.ledgers.includes("bitcoin")
-                    ? ledgerConfigs.bitcoin
-                    : undefined,
-                ethereum: config.ledgers.includes("ethereum")
-                    ? ledgerConfigs.ethereum
-                    : undefined,
-            });
-
-            await btsieveRunner.ensureBtsieveRunningWithConfig(btsieveConfig);
         }
 
         if (config.actors) {
-            await nodeRunner.ensureCndsRunning(config.actors);
+            const ledgerConfigs = await ledgerRunner.getLedgerConfig();
+
+            const btsieveConfig = config.ledgers
+                ? createBtsieveConfig({
+                      bitcoin: config.ledgers.includes("bitcoin")
+                          ? ledgerConfigs.bitcoin
+                          : undefined,
+                      ethereum: config.ledgers.includes("ethereum")
+                          ? ledgerConfigs.ethereum
+                          : undefined,
+                  })
+                : {};
+
+            await nodeRunner.ensureCndsRunning(config.actors, btsieveConfig);
         }
 
         global.ledgerConfigs = await ledgerRunner.getLedgerConfig();
@@ -136,7 +128,6 @@ async function runTests(testFiles: string[]) {
         }
 
         nodeRunner.stopCnds();
-        btsieveRunner.stopBtsieve();
     }
 
     await cleanupAll();

@@ -3,55 +3,49 @@
 
 pub mod bitcoin;
 pub mod ethereum;
-pub mod expected_version_header;
-mod in_memory_query_repository;
-mod in_memory_query_result_repository;
-pub mod load_settings;
-pub mod logging;
-pub mod matching_transactions;
-mod query_repository;
-mod query_result_repository;
-pub mod route_factory;
-pub mod routes;
-pub mod settings;
 
-pub use crate::{
-    in_memory_query_repository::*, in_memory_query_result_repository::*, query_repository::*,
-    query_result_repository::*, route_factory::*, routes::*,
-};
-pub use ethereum_support::web3;
-use std::cmp::Ordering;
+#[cfg(test)]
+pub mod quickcheck;
 
-#[derive(PartialEq, PartialOrd)]
-pub struct QueryId(pub String);
+use futures::{Future, Stream};
 
-#[derive(PartialEq)]
-pub struct QueryMatch(pub QueryId, pub String);
+pub trait MatchingTransactions<Q>: Send + Sync + 'static {
+    type Transaction;
 
-impl From<String> for QueryId {
-    fn from(item: String) -> Self {
-        Self(item)
-    }
+    fn matching_transactions(
+        &self,
+        query: Q,
+    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send>;
 }
 
-impl PartialOrd for QueryMatch {
-    fn partial_cmp(&self, other: &QueryMatch) -> Option<Ordering> {
-        self.0.partial_cmp(&other.0)
-    }
+pub trait LatestBlock: Send + Sync + 'static {
+    type Error: std::fmt::Debug;
+    type Block;
+    type BlockHash;
+
+    fn latest_block(
+        &self,
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
 }
 
-pub trait IntoTransactionId: 'static {
-    fn into_transaction_id(&self) -> String;
+pub trait BlockByHash: Send + Sync + 'static {
+    type Error: std::fmt::Debug;
+    type Block;
+    type BlockHash;
+
+    fn block_by_hash(
+        &self,
+        block_hash: Self::BlockHash,
+    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
 }
 
-impl IntoTransactionId for ethereum_support::Transaction {
-    fn into_transaction_id(&self) -> String {
-        format!("{:x}", self.hash)
-    }
-}
+pub trait ReceiptByHash: Send + Sync + 'static {
+    type Receipt;
+    type TransactionHash;
+    type Error: std::fmt::Debug;
 
-impl IntoTransactionId for bitcoin_support::Transaction {
-    fn into_transaction_id(&self) -> String {
-        format!("{:x}", self.txid())
-    }
+    fn receipt_by_hash(
+        &self,
+        transaction_hash: Self::TransactionHash,
+    ) -> Box<dyn Future<Item = Self::Receipt, Error = Self::Error> + Send + 'static>;
 }

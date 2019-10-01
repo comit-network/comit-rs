@@ -2,35 +2,24 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::{
-    db::models::{InsertableMetadata, Metadata},
-    swap_protocols::{
-        metadata_store as ms,
-        metadata_store::{AssetKind, LedgerKind, MetadataStore, Role},
-        SwapId,
-    },
-};
+use crate::db::models::{InsertableSwap, Swap, SwapId};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use libp2p::PeerId;
 use std::{
-    convert::TryFrom,
     fs::File,
     io,
     path::{Path, PathBuf},
-    str::FromStr,
 };
 
-/// This module provides an Sqlite backed persistent MetadataStore.
+/// This module provides persistent storage by way of Sqlite.
 
 #[derive(Debug)]
 pub enum Error {
-    PathStr, // Cannot convert db path to a string.
-    NoPath,  // Something went terminally wrong with the path string conversion.
+    PathConversion, // Cannot convert db path to a string.
+    NoPath,         // Failed to generate a valid path for the database file.
     Connection(diesel::ConnectionError),
     Migrations(diesel_migrations::RunMigrationsError),
     Io(io::Error),
     Diesel(diesel::result::Error),
-    Parse, // General parse error when reading from the database.
 }
 
 impl From<diesel::ConnectionError> for Error {
@@ -58,75 +47,108 @@ impl From<diesel::result::Error> for Error {
 }
 
 #[derive(Debug)]
-pub struct SqliteMetadataStore {
+pub struct Sqlite {
     db: PathBuf,
 }
 
-impl SqliteMetadataStore {
+impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
-    /// When this returns an Sqlite database exists at 'db' and connection to
-    /// the database has been verified.
-    pub fn new(db: Option<PathBuf>) -> Result<SqliteMetadataStore, Error> {
-        let db = db.or_else(default_db_path).ok_or(Error::NoPath)?;
+    /// When this returns an Sqlite database exists at 'db', a
+    /// successful connection to the database has been made, and
+    /// the database migrations have been run.
+    pub fn new(db: Option<PathBuf>) -> Result<Sqlite, Error> {
+        let file = db.or_else(default_db_path).ok_or(Error::NoPath)?;
+        let db = Sqlite { db: file };
 
-        create_database_if_needed(&db)?;
+        db.create_database_if_needed()?;
+        let connection = db.connect()?;
+        embedded_migrations::run(&connection)?;
 
-        let conn = establish_connection(&db)?;
-
-        embedded_migrations::run(&conn)?;
-
-        Ok(SqliteMetadataStore { db })
+        Ok(db)
     }
-}
 
-impl MetadataStore for SqliteMetadataStore {
-    fn get(&self, key: SwapId) -> Result<Option<ms::Metadata>, ms::Error> {
-        // Imports aliases so we can refer to the table and table fields.
-        use self::schema::metadatas::dsl::*;
+    /// Get swap with swap_id 'key' from the database.
+    pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
+        use self::schema::swaps::dsl::*;
 
-        let key = key.to_string();
-        let conn = establish_connection(&self.db)?;
+        let connection = self.connect()?;
 
-        metadatas
+        swaps
             .filter(swap_id.eq(key))
-            .first(&conn)
+            .first(&connection)
             .optional()
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))?
-            .map(|m: Metadata| ms::Metadata::try_from(m.clone()))
-            .transpose()
+            .map_err(Error::Diesel)
     }
 
-    fn insert(&self, metadata: ms::Metadata) -> Result<(), ms::Error> {
-        let md = Metadata::new(metadata);
-        let new = InsertableMetadata::new(&md);
+    /// Inserts a swap into the database.  swap_id's are unique, attempting
+    /// to insert a swap with a duplicate swap_id is an error.
+    /// Returns 1 if a swap was inserted.
+    pub fn insert(&self, swap: InsertableSwap) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
 
-        let conn = establish_connection(&self.db)?;
-        diesel::insert_into(schema::metadatas::table)
-            .values(new)
-            .execute(&conn)
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))
-            .map(|res| {
-                if res == 1 {
-                    log::trace!("Row inserted (swap id: {})", md.swap_id);
-                } else {
-                    log::trace!("Row already exists (swap id: {})", md.swap_id);
-                }
-            })
+        let connection = self.connect()?;
+
+        diesel::insert_into(swaps)
+            .values(&swap)
+            .execute(&connection)
+            .map_err(Error::Diesel)
     }
 
-    fn all(&self) -> Result<Vec<ms::Metadata>, ms::Error> {
-        // Imports aliases so we can refer to the table and table fields.
-        use self::schema::metadatas::dsl::*;
+    /// Gets all the swaps from the database.
+    pub fn all(&self) -> Result<Vec<Swap>, Error> {
+        use self::schema::swaps::dsl::*;
+        let connection = self.connect()?;
 
-        let conn = establish_connection(&self.db)?;
+        swaps.load(&connection).map_err(Error::Diesel)
+    }
 
-        metadatas
-            .load::<Metadata>(&conn)
-            .map_err(|err| ms::Error::Sqlite(Error::Diesel(err)))?
-            .iter()
-            .map(|m| ms::Metadata::try_from(m.clone()))
-            .collect()
+    /// Deletes a swap with swap_id 'key' from the database.
+    /// Returns 1 a swap was deleted, 0 otherwise.
+    pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = self.connect()?;
+
+        diesel::delete(swaps.filter(swap_id.eq(key)))
+            .execute(&connection)
+            .map_err(Error::Diesel)
+    }
+
+    fn create_database_if_needed(&self) -> Result<(), Error> {
+        let db = &self.db;
+
+        if db.exists() {
+            log::info!("Found Sqlite database: {}", db.display());
+        } else {
+            log::info!("Creating Sqlite database: {}", db.display());
+
+            if let Some(parent) = db.parent() {
+                std::fs::create_dir_all(parent)?;
+            }
+
+            File::create(db)?;
+        }
+
+        Ok(())
+    }
+
+    fn connect(&self) -> Result<SqliteConnection, Error> {
+        let database_url = self.db.to_str().ok_or(Error::PathConversion)?;
+        let connection = SqliteConnection::establish(&database_url)?;
+        Ok(connection)
+    }
+
+    // Surely there is a more memory efficient way of doing this,
+    // however, we only use this function for testing.
+    #[allow(dead_code)]
+    fn count(&self) -> Result<usize, Error> {
+        use self::schema::swaps::dsl::*;
+
+        let connection = self.connect()?;
+        let records: Vec<Swap> = swaps.load(&connection).map_err(Error::Diesel)?;
+
+        Ok(records.len())
     }
 }
 
@@ -134,51 +156,161 @@ pub fn default_db_path() -> Option<PathBuf> {
     crate::data_dir().map(|dir| Path::join(&dir, "cnd.sqlite"))
 }
 
-fn create_database_if_needed(db: &Path) -> Result<(), Error> {
-    if db.exists() {
-        log::info!("Found Sqlite database: {}", db.display());
-    } else {
-        log::info!("Creating Sqlite database: {}", db.display());
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::db::models::SwapId;
+    use std::str::FromStr;
 
-        if let Some(parent) = db.parent() {
-            std::fs::create_dir_all(parent)?;
+    fn new_temp_db() -> Sqlite {
+        let temp_file = tempfile::Builder::new()
+            .suffix(".sqlite")
+            .tempfile()
+            .unwrap();
+        let temp_file_path = temp_file.into_temp_path().to_path_buf();
+        Sqlite::new(Some(temp_file_path)).expect("failed to create database")
+    }
+
+    fn insertable_swap() -> InsertableSwap {
+        let id = example_swap_id();
+        create_insertable_swap(id)
+    }
+
+    fn another_insertable_swap() -> InsertableSwap {
+        let id = another_example_swap_id();
+        create_insertable_swap(id)
+    }
+
+    fn example_swap_id() -> SwapId {
+        SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
+    }
+
+    fn another_example_swap_id() -> SwapId {
+        SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
+    }
+
+    fn create_insertable_swap(swap_id: SwapId) -> InsertableSwap {
+        InsertableSwap { swap_id }
+    }
+
+    #[test]
+    fn can_create_a_new_temp_database() {
+        let _db = new_temp_db();
+    }
+
+    #[test]
+    fn can_count_empty_database() {
+        let db = new_temp_db();
+        assert_eq!(0, db.count().unwrap());
+    }
+
+    #[test]
+    fn insert_return_vaule_is_as_expected() {
+        let db = new_temp_db();
+
+        let swap = insertable_swap();
+        let rows_inserted = db.insert(swap).unwrap();
+        assert_eq!(rows_inserted, 1);
+    }
+
+    #[test]
+    fn count_works_afer_insert() {
+        let db = new_temp_db();
+        let swap = insertable_swap();
+
+        let _rows_inserted = db.insert(swap).unwrap();
+        assert_eq!(1, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_not_add_same_record_twice() {
+        let db = new_temp_db();
+        let swap = insertable_swap();
+
+        let _res = db.insert(swap).unwrap();
+
+        let swap_with_same_swap_id = insertable_swap();
+        let res = db.insert(swap_with_same_swap_id);
+        if res.is_ok() {
+            panic!("insert duplicate swap_id should err");
         }
 
-        File::create(db)?;
+        assert_eq!(1, db.count().unwrap());
     }
-    Ok(())
-}
 
-fn establish_connection(db: &Path) -> Result<SqliteConnection, Error> {
-    let database_url = db.to_str().ok_or(Error::PathStr)?;
-    let conn = SqliteConnection::establish(&database_url)?;
-    Ok(conn)
-}
+    #[test]
+    fn can_add_multiple_different_swaps() {
+        let db = new_temp_db();
 
-impl TryFrom<Metadata> for ms::Metadata {
-    type Error = ms::Error;
+        let s1 = insertable_swap();
+        let s2 = another_insertable_swap();
 
-    fn try_from(md: Metadata) -> Result<Self, Self::Error> {
-        // These map_err calls can be removed once Metadata uses types and
-        // implements the FromSql trait.
-        let swap_id = SwapId::from_str(md.swap_id.as_str()).map_err(|_| Error::Parse)?;
-        let alpha_ledger =
-            LedgerKind::from_str(md.alpha_ledger.as_str()).map_err(|_| Error::Parse)?;
-        let beta_ledger =
-            LedgerKind::from_str(md.beta_ledger.as_str()).map_err(|_| Error::Parse)?;
-        let alpha_asset = AssetKind::from_str(md.alpha_asset.as_str()).map_err(|_| Error::Parse)?;
-        let beta_asset = AssetKind::from_str(md.beta_asset.as_str()).map_err(|_| Error::Parse)?;
-        let role = Role::from_str(md.role.as_str()).map_err(|_| Error::Parse)?;
-        let counterparty = PeerId::from_str(md.counterparty.as_str()).map_err(|_| Error::Parse)?;
+        let rows_inserted = db.insert(s1).unwrap();
+        assert_eq!(rows_inserted, 1);
 
-        Ok(ms::Metadata {
-            swap_id,
-            alpha_ledger,
-            beta_ledger,
-            alpha_asset,
-            beta_asset,
-            role,
-            counterparty,
-        })
+        let rows_inserted = db.insert(s2).unwrap();
+        assert_eq!(rows_inserted, 1);
+
+        assert_eq!(2, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_add_a_swap_and_read_it() {
+        let db = new_temp_db();
+
+        let swap_id = example_swap_id();
+        let swap = create_insertable_swap(swap_id);
+
+        let _ = db.insert(swap).unwrap();
+
+        let swap = db.get(swap_id).expect("database error");
+        match swap {
+            Some(swap) => assert_eq!(swap.swap_id, swap_id),
+            None => panic!("no record returned"),
+        }
+    }
+
+    #[test]
+    fn can_add_a_swap_and_delete_it() {
+        let db = new_temp_db();
+
+        let swap_id = example_swap_id();
+        let swap = create_insertable_swap(swap_id);
+
+        let _ = db.insert(swap).unwrap();
+
+        let res = db.delete(swap_id).expect("database delete error");
+        assert_eq!(res, 1);
+
+        let swap = db.get(swap_id).expect("database get error");
+        if swap.is_some() {
+            panic!("false positive");
+        }
+
+        assert_eq!(0, db.count().unwrap());
+    }
+
+    #[test]
+    fn can_delete_a_non_existant_swap() {
+        let db = new_temp_db();
+
+        let swap_id = example_swap_id();
+
+        let res = db.delete(swap_id).expect("database delete error");
+        assert_eq!(res, 0);
+    }
+
+    #[test]
+    fn can_get_all_the_swaps() {
+        let db = new_temp_db();
+
+        let s1 = insertable_swap();
+        let s2 = another_insertable_swap();
+
+        let _ = db.insert(s1).unwrap();
+        let _ = db.insert(s2).unwrap();
+
+        let records = db.all().unwrap();
+        assert_eq!(records.len(), 2);
     }
 }

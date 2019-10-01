@@ -90,8 +90,7 @@ impl<BL, BA> Actions for bob::State<Ethereum, BL, Erc20Token, BA>
 where
     BL: Ledger,
     BA: Asset,
-    (BL, BA): FundAction<BL, BA>,
-    (BL, BA): RefundAction<BL, BA>,
+    (BL, BA): FundAction<BL, BA> + RefundAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<

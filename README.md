@@ -28,16 +28,14 @@ All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
 
 ## Build & Run
 
-1. `cargo build`
-2. Put a [(default)](btsieve/config/btsieve.toml) config file into `~/.config/comit/btsieve.toml` or pass `--config <config_file>`.
-3. startup bitcoin node (port to be set according to btsieve configuration)
-4. startup ethereum node (port to be set according to btsieve configuration)
-5. startup btsieve: `target/debug/btsieve`
-6. startup cnd: `target/debug/cnd`
+1. `cargo install --path .`
+2. startup bitcoin node with `-regtest` and `-rest`
+3. startup ethereum node with JSON-RPC interface exposed at `localhost:8545`
+4. startup cnd: `cnd` (or `./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
 
 If the `[web_gui]` section is specified in the configuration file the current release of the user interface [comit-i](https://github.com/comit-network/comit-i) will be served once cnd is started up (served at `localhost:8080` by default).
 
-Keep in mind that in order to do a swap locally you will need to start two instances of cnd and at least one instance of btsieve. 
+Keep in mind that in order to do a swap locally you will need to start two instances of cnd.
 
 ## Setup testing/dev environment
 
@@ -54,7 +52,6 @@ Keep in mind that in order to do a swap locally you will need to start two insta
 - `cargo make all` also runs the whole test suite, including end-to-end tests.
 - `cargo make format` to format Rust code
 - `cargo make ts-fix` to format Typescript code
-- `cargo make btsieve` to run btsieve tests
 - `cargo make dry` to run cnd dry tests
 - `cargo make api` to run all API tests
 - `cargo make e2e` to run cnd end-to-end tests
@@ -66,9 +63,6 @@ Alternatively, you can run the end-to-end tests and TypeScript related actions u
 - `yarn run test <path to test file>`: run all tests in this test file, supports shell glob on the path
 - `yarn run fix`: run prettier and linter to fix format
 - `yarn run check`: run tsc (to check validity of TypeScript code) and verify format
-
-
-
 
 ## Contributing
 

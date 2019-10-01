@@ -1,5 +1,5 @@
 use crate::{
-    btsieve::{BitcoinQuery, QueryBitcoin},
+    stream_ext::StreamExt,
     swap_protocols::{
         ledger::Bitcoin,
         rfc003::{
@@ -14,41 +14,54 @@ use crate::{
     },
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
+use btsieve::{
+    bitcoin::{BitcoindConnector, TransactionQuery},
+    MatchingTransactions,
+};
 use futures::{
     future::{self, Either},
-    Future,
+    Future, Stream,
 };
 use std::sync::Arc;
 
-impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
+impl HtlcEvents<Bitcoin, Amount> for Arc<BitcoindConnector> {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
-        let id = htlc_params.query_id_deployed();
-        let query_bitcoin = Arc::clone(&self);
-        let deployed_future = self
-            .create(&id, BitcoinQuery::deploy_htlc(htlc_params.compute_address()))
-            .and_then(move |query_id| query_bitcoin.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::Btsieve)
-            .and_then(move |tx| {
-                let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
-                    .ok_or_else(|| {
-                        rfc003::Error::Internal(
-                            "Query returned Bitcoin transaction that didn't match the requested address".into(),
-                        )
-                    })?;
+        let future = self
+            .matching_transactions(TransactionQuery {
+                to_address: Some(htlc_params.compute_address()),
+                from_outpoint: None,
+                unlock_script: None,
+            })
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
+            })
+            .and_then({
+                let htlc_params = htlc_params.clone();
 
-                Ok(Deployed {
-                    location: OutPoint {
-                        txid: tx.txid(),
-                        vout,
-                    },
-                    transaction: tx,
-                })
+                move |tx| {
+                    let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
+                        .ok_or_else(|| {
+                            rfc003::Error::Internal(
+                                "Query returned Bitcoin transaction that didn't match the requested address".into(),
+                            )
+                        })?;
+
+                    Ok(Deployed {
+                        location: OutPoint {
+                            txid: tx.txid(),
+                            vout,
+                        },
+                        transaction: tx,
+                    })
+                }
             });
 
-        Box::new(deployed_future)
+        Box::new(future)
     }
 
     fn htlc_funded(
@@ -68,53 +81,50 @@ impl HtlcEvents<Bitcoin, Amount> for Arc<dyn QueryBitcoin + Send + Sync> {
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-        _: &Funded<Bitcoin, Amount>,
+        _htlc_funding: &Funded<Bitcoin, Amount>,
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
-            let query_bitcoin = Arc::clone(&self);
-            let id = htlc_params.query_id_refunded();
-            let refunded_query = self
-                .create(&id, BitcoinQuery::refund_htlc(htlc_deployment.location))
-                .inspect(|query_id| log::debug!("Refund query id {:?}", query_id))
-                .map_err(rfc003::Error::Btsieve);
-
-            refunded_query
-                .and_then(move |query_id| {
-                    query_bitcoin
-                        .transaction_first_result(&query_id)
-                        .map_err(rfc003::Error::Btsieve)
-                })
-                .map(Refunded::<Bitcoin>::new)
+            self.matching_transactions(TransactionQuery {
+                to_address: None,
+                from_outpoint: Some(htlc_deployment.location),
+                unlock_script: Some(vec![vec![]]),
+            })
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
+            })
+            .and_then(|transaction| Ok(Refunded { transaction }))
         };
 
         let redeemed_future = {
-            let query_bitcoin = Arc::clone(&self);
-            let id = htlc_params.query_id_redeemed();
-            let redeemed_query = self
-                .create(&id, BitcoinQuery::redeem_htlc(htlc_deployment.location))
-                .inspect(|query_id| log::debug!("Redeem query id {:?}", query_id))
-                .map_err(rfc003::Error::Btsieve);
+            self.matching_transactions(TransactionQuery {
+                to_address: None,
+                from_outpoint: Some(htlc_deployment.location),
+                unlock_script: Some(vec![vec![1u8]]),
+            })
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
+            })
+            .and_then({
+                let htlc_params = htlc_params.clone();
 
-            redeemed_query.and_then(move |query_id| {
-                query_bitcoin
-                    .transaction_first_result(&query_id)
-                    .map_err(rfc003::Error::Btsieve)
-                    .and_then(move |transaction| {
-                        let secret = extract_secret(&transaction, &htlc_params.secret_hash)
-                            .ok_or_else(|| {
-                                log::error!(
-                                    "Redeem transaction didn't have secret it in: {:?}",
-                                    transaction
-                                );
-                                rfc003::Error::Internal(
-                                    "Redeem transaction didn't have the secret in it".into(),
-                                )
-                            })?;
-                        Ok(Redeemed {
-                            transaction,
-                            secret,
-                        })
+                move |tx| {
+                    let secret =
+                        extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
+                            log::error!("Redeem transaction didn't have secret it in: {:?}", tx);
+                            rfc003::Error::Internal(
+                                "Redeem transaction didn't have the secret in it".into(),
+                            )
+                        })?;
+
+                    Ok(Redeemed {
+                        transaction: tx,
+                        secret,
                     })
+                }
             })
         };
 

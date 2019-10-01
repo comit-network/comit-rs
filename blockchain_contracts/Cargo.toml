@@ -17,7 +17,7 @@ rust-crypto = "0.2"
 rust_bitcoin = { version = "0.19.1", package = "bitcoin" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-strum = "0.15"
+strum = "0.16"
 strum_macros = "0.16"
 tiny-keccak = "1.5"
 web3 = { version = "0.8", default-features = false, features = ["http"] }

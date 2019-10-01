@@ -1,30 +1,15 @@
-use crate::{
-    ethereum::queries::{create_receipt_future, create_transaction_future, to_h256, PayloadKind},
-    query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ToHttpPayload},
-};
-use derivative::Derivative;
 use ethbloom::Input;
 use ethereum_support::{
-    web3::{
-        transports::Http,
-        types::{TransactionReceipt, H256},
-        Web3,
-    },
+    web3::types::{TransactionReceipt, H256},
     Address, Block, Bytes, Transaction,
 };
-use futures::{
-    future::{self, Future},
-    stream::{FuturesOrdered, Stream},
-};
-use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
-struct Topic(H256);
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
+pub struct Topic(pub H256);
 
-#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct EventQuery {
-    event_matchers: Vec<EventMatcher>,
+    pub event_matchers: Vec<EventMatcher>,
 }
 
 /// Event Matcher work similar as web3 filters:
@@ -53,11 +38,11 @@ pub struct EventQuery {
 /// .. ] //Other data omitted
 /// }
 /// ```
-#[derive(Debug, Clone, Serialize, Deserialize, Default, Eq, PartialEq)]
-struct EventMatcher {
-    address: Option<Address>,
-    data: Option<Bytes>,
-    topics: Vec<Option<Topic>>,
+#[derive(Debug, Clone, Default, Eq, PartialEq)]
+pub struct EventMatcher {
+    pub address: Option<Address>,
+    pub data: Option<Bytes>,
+    pub topics: Vec<Option<Topic>>,
 }
 
 impl EventQuery {
@@ -111,75 +96,10 @@ impl EventQuery {
     }
 }
 
-impl QueryType for EventQuery {
-    fn route() -> &'static str {
-        "logs"
-    }
-}
-
-#[derive(Deserialize, Derivative, Debug)]
-#[derivative(Default)]
-#[serde(rename_all = "snake_case")]
-pub enum ReturnAs {
-    #[derivative(Default)]
-    TransactionId,
-    Transaction,
-    Receipt,
-    TransactionAndReceipt,
-}
-
-impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = Web3<Http>;
-    type Item = PayloadKind;
-
-    fn to_http_payload(
-        &self,
-        return_as: &ReturnAs,
-        client: &Web3<Http>,
-    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send + 'static> {
-        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
-
-        let future = self
-            .0
-            .iter()
-            .filter_map(to_h256)
-            .map(to_payload)
-            .collect::<FuturesOrdered<_>>()
-            .collect();
-
-        Box::new(future)
-    }
-}
-
-fn to_payload(
-    client: &Web3<Http>,
-    transaction_id: H256,
-    return_as: &ReturnAs,
-) -> Box<dyn Future<Item = PayloadKind, Error = Error> + Send> {
-    let tx_future = create_transaction_future(client, transaction_id);
-    let receipt_future = create_receipt_future(client, transaction_id);
-
-    match return_as {
-        ReturnAs::Transaction => {
-            Box::new(tx_future.map(|transaction| PayloadKind::Transaction { transaction }))
-        }
-        ReturnAs::Receipt => {
-            Box::new(receipt_future.map(|receipt| PayloadKind::Receipt { receipt }))
-        }
-        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
-        ReturnAs::TransactionAndReceipt => Box::new(tx_future.join(receipt_future).map(
-            move |(transaction, receipt)| PayloadKind::TransactionAndReceipt {
-                transaction,
-                receipt,
-            },
-        )),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::web3::types::{
+    use ethereum_support::web3::types::{
         Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
     };
     use spectral::prelude::*;

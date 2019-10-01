@@ -1,26 +1,12 @@
-use crate::{
-    ethereum::queries::{create_transaction_future, to_h256, PayloadKind},
-    query_result_repository::QueryResult,
-    route_factory::{Error, QueryType, ToHttpPayload},
-};
-use derivative::Derivative;
-use ethereum_support::{
-    web3::{transports::Http, types::H256, Web3},
-    Address, Bytes, Transaction,
-};
-use futures::{
-    future::{self, Future},
-    stream::{FuturesOrdered, Stream},
-};
-use serde::{Deserialize, Serialize};
+use ethereum_support::{Address, Bytes, Transaction};
 
-#[derive(Serialize, Deserialize, Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Default, Debug, Eq, PartialEq)]
 pub struct TransactionQuery {
-    from_address: Option<Address>,
-    to_address: Option<Address>,
-    is_contract_creation: Option<bool>,
-    transaction_data: Option<Bytes>,
-    transaction_data_length: Option<usize>,
+    pub from_address: Option<Address>,
+    pub to_address: Option<Address>,
+    pub is_contract_creation: Option<bool>,
+    pub transaction_data: Option<Bytes>,
+    pub transaction_data_length: Option<usize>,
 }
 
 impl TransactionQuery {
@@ -61,65 +47,11 @@ impl TransactionQuery {
     }
 }
 
-impl QueryType for TransactionQuery {
-    fn route() -> &'static str {
-        "transactions"
-    }
-}
-
-#[derive(Deserialize, Derivative, Debug)]
-#[derivative(Default)]
-#[serde(rename_all = "snake_case")]
-pub enum ReturnAs {
-    #[derivative(Default)]
-    TransactionId,
-    Transaction,
-}
-
-impl ToHttpPayload<ReturnAs> for QueryResult {
-    type Client = Web3<Http>;
-    type Item = PayloadKind;
-
-    fn to_http_payload(
-        &self,
-        return_as: &ReturnAs,
-        client: &Web3<Http>,
-    ) -> Box<dyn Future<Item = Vec<Self::Item>, Error = Error> + Send + 'static> {
-        let to_payload = |transaction_id: H256| to_payload(client, transaction_id, return_as);
-
-        let future = self
-            .0
-            .iter()
-            .filter_map(to_h256)
-            .map(to_payload)
-            .collect::<FuturesOrdered<_>>()
-            .collect();
-
-        Box::new(future)
-    }
-}
-
-fn to_payload(
-    client: &Web3<Http>,
-    transaction_id: H256,
-    return_as: &ReturnAs,
-) -> Box<dyn Future<Item = PayloadKind, Error = Error> + Send> {
-    match return_as {
-        ReturnAs::Transaction => Box::new(
-            create_transaction_future(client, transaction_id)
-                .map(|transaction| PayloadKind::Transaction { transaction }),
-        ),
-        ReturnAs::TransactionId => Box::new(future::ok(PayloadKind::Id { id: transaction_id })),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        ethereum::queries::quickcheck::Quickcheck,
-        web3::types::{Bytes, Transaction},
-    };
+    use crate::quickcheck::Quickcheck;
+    use ethereum_support::web3::types::{Bytes, Transaction};
     use spectral::prelude::*;
 
     #[test]

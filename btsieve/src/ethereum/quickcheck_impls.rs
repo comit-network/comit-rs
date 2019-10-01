@@ -1,8 +1,6 @@
-use crate::web3::types::{Bytes, Transaction, H160, H256, U128, U256};
+use crate::quickcheck::Quickcheck;
 use ::quickcheck::Arbitrary;
-
-#[derive(Clone, Debug)]
-pub struct Quickcheck<I>(pub I);
+use ethereum_support::web3::types::{Bytes, Transaction, H160, H256, U128, U256};
 
 impl From<Quickcheck<U128>> for U128 {
     fn from(source: Quickcheck<U128>) -> Self {

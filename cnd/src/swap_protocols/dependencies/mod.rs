@@ -1,7 +1,5 @@
-use crate::{
-    btsieve::{QueryBitcoin, QueryEthereum},
-    seed::Seed,
-};
+use crate::seed::Seed;
+use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use std::sync::Arc;
 
 mod client_impl;
@@ -47,16 +45,6 @@ pub mod bob {
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct LedgerEventDependencies {
-    pub query_bitcoin: Arc<dyn QueryBitcoin + Send + Sync + 'static>,
-    pub query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
-}
-
-impl<Q: QueryBitcoin + QueryEthereum + Send + Sync + 'static> From<Q> for LedgerEventDependencies {
-    fn from(querier: Q) -> Self {
-        let queries = Arc::new(querier);
-        LedgerEventDependencies {
-            query_bitcoin: queries.clone(),
-            query_ethereum: queries.clone(),
-        }
-    }
+    pub bitcoin_blocksource: Arc<BitcoindConnector>,
+    pub ethereum_blocksource: Arc<Web3Connector>,
 }

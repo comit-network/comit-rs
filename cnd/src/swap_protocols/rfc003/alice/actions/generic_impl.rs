@@ -16,8 +16,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    (AL, AA): FundAction<AL, AA>,
-    (AL, AA): RefundAction<AL, AA>,
+    (AL, AA): FundAction<AL, AA> + RefundAction<AL, AA>,
     (BL, BA): RedeemAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]

@@ -15,7 +15,6 @@ extern crate diesel_migrations;
 #[macro_use]
 pub mod libp2p_comit_ext;
 
-pub mod btsieve;
 pub mod comit_api;
 pub mod comit_client;
 pub mod comit_i_routes;
@@ -26,6 +25,7 @@ pub mod logging;
 pub mod network;
 pub mod seed;
 pub mod std_ext;
+pub mod stream_ext;
 pub mod swap_protocols;
 
 use directories::ProjectDirs;

@@ -1,5 +1,5 @@
 use crate::{
-    btsieve::{EthereumQuery, EventMatcher, QueryEthereum, Topic},
+    stream_ext::StreamExt,
     swap_protocols::{
         asset::Asset,
         ledger::Ethereum,
@@ -14,13 +14,17 @@ use crate::{
         },
     },
 };
+use btsieve::{
+    ethereum::{EventMatcher, EventQuery, Topic, TransactionQuery, Web3Connector},
+    MatchingTransactions,
+};
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
     TransactionAndReceipt, H256,
 };
 use futures::{
     future::{self, Either},
-    Future,
+    Future, Stream,
 };
 use std::sync::Arc;
 
@@ -33,26 +37,30 @@ lazy_static::lazy_static! {
     pub static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
 }
 
-impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync + 'static> {
+impl HtlcEvents<Ethereum, EtherQuantity> for Arc<Web3Connector> {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
     ) -> Box<DeployedFuture<Ethereum>> {
-        let id = htlc_params.query_id_deployed();
-        let query_ethereum = Arc::clone(&self);
-        let deployed_future = query_ethereum
-            .create(
-                &id,
-                EthereumQuery::contract_deployment(htlc_params.bytecode()),
-            )
-            .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::Btsieve)
+        let future = self
+            .matching_transactions(TransactionQuery {
+                from_address: None,
+                to_address: None,
+                is_contract_creation: Some(true),
+                transaction_data: Some(htlc_params.bytecode()),
+                transaction_data_length: None,
+            })
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
+            })
             .map(|tx| Deployed {
                 location: calcualte_contract_address_from_deployment_transaction(&tx),
                 transaction: tx,
             });
 
-        Box::new(deployed_future)
+        Box::new(future)
     }
 
     fn htlc_funded(
@@ -72,12 +80,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Arc<dyn QueryEthereum + Send + Sync
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, EtherQuantity>,
     ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
-        htlc_redeemed_or_refunded(
-            Arc::clone(&self),
-            htlc_params,
-            htlc_deployment,
-            htlc_funding,
-        )
+        htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
     }
 }
 
@@ -86,41 +89,44 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 }
 
 fn htlc_redeemed_or_refunded<A: Asset>(
-    query_ethereum: Arc<dyn QueryEthereum + Send + Sync + 'static>,
-    htlc_params: HtlcParams<Ethereum, A>,
+    block_source: Arc<Web3Connector>,
+    _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
     let refunded_future = {
-        let id = htlc_params.query_id_refunded();
-        let query_ethereum = Arc::clone(&query_ethereum);
-        query_ethereum
-            .create(&id, EthereumQuery::Event {
+        block_source
+            .matching_transactions(EventQuery {
                 event_matchers: vec![EventMatcher {
                     address: Some(htlc_deployment.location),
                     data: None,
                     topics: vec![Some(Topic(*REFUND_LOG_MSG))],
                 }],
             })
-            .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-            .map_err(rfc003::Error::Btsieve)
-            .map(Refunded::<Ethereum>::new)
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
+            })
+            .map(|transaction| Refunded {
+                transaction: transaction.transaction,
+            })
     };
 
     let redeemed_future = {
-        let query_ethereum = Arc::clone(&query_ethereum);
-        let id = htlc_params.query_id_redeemed();
-        query_ethereum
-            .create(&id, EthereumQuery::Event {
-                event_matchers: vec![EventMatcher {
-                    address: Some(htlc_deployment.location),
-                    data: None,
-                    topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
-                }],
+        block_source.matching_transactions(EventQuery {
+            event_matchers: vec![EventMatcher {
+                address: Some(htlc_deployment.location),
+                data: None,
+                topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
+            }]
+        })
+            .map_err(|_| rfc003::Error::Btsieve)
+            .first_or_else(|| {
+                log::warn!("stream of matching transactions ended before yielding a value");
+                rfc003::Error::Btsieve
             })
-            .and_then(move |query_id| query_ethereum.transaction_and_receipt_first_result(&query_id))
-            .map_err(rfc003::Error::Btsieve)
-            .and_then(move |TransactionAndReceipt {transaction, receipt}| {
+            .and_then(|TransactionAndReceipt { transaction, receipt }| {
                 receipt
                     .logs
                     .into_iter()
@@ -128,14 +134,13 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                     .ok_or_else(|| {
                         rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
                     }).and_then(|log| {
-
                     let log_data = log.data.0.as_ref();
                     let secret = Secret::from_vec(log_data)
                         .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {:?}: {:?}", transaction.hash, e)))?;
 
                     Ok(Redeemed {
-                            transaction,
-                            secret,
+                        transaction,
+                        secret,
                     })
                 })
             })
@@ -159,69 +164,81 @@ mod erc20 {
     use super::*;
     use ethereum_support::{Erc20Quantity, U256};
 
-    impl HtlcEvents<Ethereum, Erc20Token> for Arc<dyn QueryEthereum + Send + Sync + 'static> {
+    impl HtlcEvents<Ethereum, Erc20Token> for Arc<Web3Connector> {
         fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
         ) -> Box<DeployedFuture<Ethereum>> {
-            let id = htlc_params.query_id_deployed();
-            let query_ethereum = Arc::clone(&self);
-            let deployed_future = query_ethereum
-                .create(
-                    &id,
-                    EthereumQuery::contract_deployment(htlc_params.bytecode()),
-                )
-                .and_then(move |query_id| query_ethereum.transaction_first_result(&query_id))
-                .map_err(rfc003::Error::Btsieve)
-                .map(|tx| Deployed {
-                    location: calcualte_contract_address_from_deployment_transaction(&tx),
-                    transaction: tx,
+            let future = self
+                .matching_transactions(TransactionQuery {
+                    from_address: None,
+                    to_address: None,
+                    is_contract_creation: Some(true),
+                    transaction_data: Some(htlc_params.bytecode()),
+                    transaction_data_length: None,
+                })
+                .map_err(|_| rfc003::Error::Btsieve)
+                .first_or_else(|| {
+                    log::warn!("stream of matching transactions ended before yielding a value");
+                    rfc003::Error::Btsieve
+                })
+                .map(|transaction| Deployed {
+                    location: calcualte_contract_address_from_deployment_transaction(&transaction),
+                    transaction,
                 });
 
-            Box::new(deployed_future)
+            Box::new(future)
         }
 
         fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-            deployment: &Deployed<Ethereum>,
+            htlc_deployment: &Deployed<Ethereum>,
         ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
-            let id = htlc_params.query_id_funded();
-            let query_ethereum = Arc::clone(&self);
-            let funded_future = self
-                .create(&id, EthereumQuery::Event {
+            let future = self
+                .matching_transactions(EventQuery {
                     event_matchers: vec![EventMatcher {
                         address: Some(htlc_params.asset.token_contract),
                         data: None,
                         topics: vec![
                             Some(Topic(*super::TRANSFER_LOG_MSG)),
                             None,
-                            Some(Topic(deployment.location.into())),
+                            Some(Topic(htlc_deployment.location.into())),
                         ],
                     }],
                 })
-                .and_then(move |query_id| {
-                    query_ethereum.transaction_and_receipt_first_result(&query_id)
+                .map_err(|_| rfc003::Error::Btsieve)
+                .first_or_else(|| {
+                    log::warn!("stream of matching transactions ended before yielding a value");
+                    rfc003::Error::Btsieve
                 })
-                .map_err(rfc003::Error::Btsieve)
                 .and_then(
                     |TransactionAndReceipt {
-                              transaction,
-                              receipt,
-                          }| {
-                        receipt.logs.into_iter().find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG)).ok_or_else(|| {
-                            log::warn!("receipt for transaction {:?} did not contain any Transfer events", transaction.hash);
-                            rfc003::Error::IncorrectFunding
-                        }).map(|log| {
-                            let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
-                            let asset = Erc20Token::new(log.address, quantity);
+                         transaction,
+                         receipt,
+                     }| {
+                        receipt
+                            .logs
+                            .into_iter()
+                            .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
+                            .ok_or_else(|| {
+                                log::warn!(
+                                "receipt for transaction {:?} did not contain any Transfer events",
+                                transaction.hash
+                            );
+                                rfc003::Error::IncorrectFunding
+                            })
+                            .map(|log| {
+                                let quantity =
+                                    Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+                                let asset = Erc20Token::new(log.address, quantity);
 
-                            Funded { transaction, asset }
-                        })
+                                Funded { transaction, asset }
+                            })
                     },
                 );
 
-            Box::new(funded_future)
+            Box::new(future)
         }
 
         fn htlc_redeemed_or_refunded(
@@ -230,12 +247,7 @@ mod erc20 {
             htlc_deployment: &Deployed<Ethereum>,
             htlc_funding: &Funded<Ethereum, Erc20Token>,
         ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
-            htlc_redeemed_or_refunded(
-                Arc::clone(&self),
-                htlc_params,
-                htlc_deployment,
-                htlc_funding,
-            )
+            htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
         }
     }
 }
