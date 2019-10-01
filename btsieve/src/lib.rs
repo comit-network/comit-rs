@@ -3,6 +3,7 @@
 
 pub mod bitcoin;
 pub mod ethereum;
+pub mod first_or_else;
 
 #[cfg(test)]
 pub mod quickcheck;

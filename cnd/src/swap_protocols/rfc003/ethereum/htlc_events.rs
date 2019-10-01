@@ -1,21 +1,19 @@
-use crate::{
-    stream_ext::StreamExt,
-    swap_protocols::{
-        asset::Asset,
-        ledger::Ethereum,
-        rfc003::{
-            self,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
-            Secret,
+use crate::swap_protocols::{
+    asset::Asset,
+    ledger::Ethereum,
+    rfc003::{
+        self,
+        events::{
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+            RedeemedOrRefundedFuture, Refunded,
         },
+        state_machine::HtlcParams,
+        Secret,
     },
 };
 use btsieve::{
     ethereum::{EventMatcher, EventQuery, Topic, TransactionQuery, Web3Connector},
+    first_or_else::StreamExt,
     MatchingTransactions,
 };
 use ethereum_support::{
