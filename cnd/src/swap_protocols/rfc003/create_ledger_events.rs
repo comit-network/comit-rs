@@ -17,7 +17,7 @@ pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
 impl CreateLedgerEvents<Bitcoin, Amount> for LedgerEventDependencies {
     fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, Amount>> {
         Box::new(LedgerEventFutures::new(Box::new(
-            self.bitcoin_blocksource.clone(),
+            self.bitcoin_connector.clone(),
         )))
     }
 }
@@ -25,7 +25,7 @@ impl CreateLedgerEvents<Bitcoin, Amount> for LedgerEventDependencies {
 impl CreateLedgerEvents<Ethereum, EtherQuantity> for LedgerEventDependencies {
     fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, EtherQuantity>> {
         Box::new(LedgerEventFutures::new(Box::new(
-            self.ethereum_blocksource.clone(),
+            self.ethereum_connector.clone(),
         )))
     }
 }
@@ -33,7 +33,7 @@ impl CreateLedgerEvents<Ethereum, EtherQuantity> for LedgerEventDependencies {
 impl CreateLedgerEvents<Ethereum, Erc20Token> for LedgerEventDependencies {
     fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, Erc20Token>> {
         Box::new(LedgerEventFutures::new(Box::new(
-            self.ethereum_blocksource.clone(),
+            self.ethereum_connector.clone(),
         )))
     }
 }

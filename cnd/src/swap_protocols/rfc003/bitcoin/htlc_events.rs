@@ -22,9 +22,8 @@ use futures::{
     future::{self, Either},
     Future, Stream,
 };
-use std::sync::Arc;
 
-impl HtlcEvents<Bitcoin, Amount> for Arc<BitcoindConnector> {
+impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,

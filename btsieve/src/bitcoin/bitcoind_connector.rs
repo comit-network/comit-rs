@@ -41,7 +41,7 @@ impl LatestBlock for BitcoindConnector {
     type BlockHash = bitcoin_support::BlockId;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let latest_block_hash = self
             .client

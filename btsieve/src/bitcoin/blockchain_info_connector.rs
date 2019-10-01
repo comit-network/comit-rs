@@ -55,7 +55,7 @@ impl LatestBlock for BlockchainInfoConnector {
     type BlockHash = String;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let latest_block_url = "https://blockchain.info/latestblock";
         let latest_block_without_tx = self

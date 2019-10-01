@@ -24,7 +24,7 @@ pub trait LatestBlock: Send + Sync + 'static {
     type BlockHash;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
 }
 

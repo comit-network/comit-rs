@@ -14,12 +14,14 @@ use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize};
 use futures::{future::Future, Stream};
 use reqwest::{r#async::Client, Url};
-use std::{sync::Arc, time::Duration};
+use std::time::Duration;
 use tokio::timer::Interval;
 
-impl<B> MatchingTransactions<TransactionQuery> for Arc<B>
+impl<B> MatchingTransactions<TransactionQuery> for B
 where
-    B: LatestBlock<Block = bitcoin_support::Block> + BlockByHash<Block = bitcoin_support::Block>,
+    B: LatestBlock<Block = bitcoin_support::Block>
+        + BlockByHash<Block = bitcoin_support::Block>
+        + Clone,
 {
     type Transaction = bitcoin_support::Transaction;
 
@@ -31,21 +33,21 @@ where
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind every {} ms", poll_interval);
 
-        let cloned_self = self.clone();
-
         let stream = Interval::new_interval(Duration::from_millis(poll_interval))
             .map_err(|e| {
                 log::warn!(target: "bitcoin::blocksource", "error encountered during polling: {:?}", e);
             })
-            .and_then( move |_| {
-                cloned_self
+            .and_then( {
+                let mut this = self.clone();
+                move |_| {
+                this
                     .latest_block()
                     .map(Some)
                     .or_else(|e| {
                         log::warn!(target: "bitcoin::blocksource", "error encountered during polling {:?}", e);
                         Ok(None)
                     })
-            })
+            }})
             .filter_map(|maybe_block| maybe_block)
             .map(move |block| {
                 block
