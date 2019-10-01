@@ -4,6 +4,9 @@
 pub mod bitcoin;
 pub mod ethereum;
 
+#[cfg(test)]
+pub mod quickcheck;
+
 use futures::{Future, Stream};
 
 pub trait MatchingTransactions<Q>: Send + Sync + 'static {

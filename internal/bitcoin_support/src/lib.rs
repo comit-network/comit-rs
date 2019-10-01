@@ -10,7 +10,10 @@ pub use bitcoin::{
         transaction::{OutPoint, SigHashType, Transaction, TxIn, TxOut},
     },
     consensus::{self, deserialize, encode::serialize_hex, serialize},
-    hashes::{hash160::Hash as Hash160, hex::FromHex, sha256d::Hash as Sha256dHash, Hash},
+    hashes::{
+        hash160::Hash as Hash160, hex::FromHex, sha256d::Hash as Sha256dHash, Error as HashesError,
+        Hash,
+    },
     secp256k1,
     util::{
         amount,

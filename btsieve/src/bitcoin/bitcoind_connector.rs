@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct ChainInfo {
-    bestblockhash: String,
+    bestblockhash: bitcoin_support::BlockId,
 }
 
 #[derive(Clone)]
@@ -28,7 +28,7 @@ impl BitcoindConnector {
         })
     }
 
-    fn raw_block_by_hash_url(&self, block_hash: &str) -> Url {
+    fn raw_block_by_hash_url(&self, block_hash: &bitcoin_support::BlockId) -> Url {
         self.raw_block_by_hash_url
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
@@ -38,7 +38,7 @@ impl BitcoindConnector {
 impl LatestBlock for BitcoindConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
-    type BlockHash = String;
+    type BlockHash = bitcoin_support::BlockId;
 
     fn latest_block(
         &self,
@@ -71,7 +71,7 @@ impl LatestBlock for BitcoindConnector {
 impl BlockByHash for BitcoindConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
-    type BlockHash = String;
+    type BlockHash = bitcoin_support::BlockId;
 
     fn block_by_hash(
         &self,
@@ -92,6 +92,7 @@ impl BlockByHash for BitcoindConnector {
 mod tests {
 
     use super::*;
+    use crate::quickcheck::Quickcheck;
 
     fn base_urls() -> Vec<Url> {
         vec![
@@ -113,7 +114,7 @@ mod tests {
     // functions and they never panic, hence it is fine to use them in production
     #[test]
     fn build_sub_url_should_never_fail() {
-        fn prop(hash: String) -> bool {
+        fn prop(hash: Quickcheck<bitcoin_support::BlockId>) -> bool {
             for base_url in base_urls() {
                 let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
@@ -123,7 +124,7 @@ mod tests {
             true // not panicing is good enough for this test
         }
 
-        quickcheck::quickcheck(prop as fn(String) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<bitcoin_support::BlockId>) -> bool)
     }
 
     #[test]
@@ -132,14 +133,15 @@ mod tests {
             let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
             let chaininfo_url = blocksource.chaininfo_url.clone();
-            let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(
-                "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
-            );
-
             assert_eq!(
                 chaininfo_url,
                 Url::parse("http://localhost:8080/rest/chaininfo.json").unwrap()
             );
+
+            let block_id = "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02"
+                .parse()
+                .unwrap();
+            let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(&block_id);
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
         }
     }
