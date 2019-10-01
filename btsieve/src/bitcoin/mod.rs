@@ -12,10 +12,27 @@ pub use self::{
 
 use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize};
-use futures::{future::Future, Stream};
+use futures::{future::Future, Poll, Stream};
 use reqwest::{r#async::Client, Url};
 use std::time::Duration;
 use tokio::timer::Interval;
+
+struct MatchingTransactionsStream<C> {
+    connector: C,
+    query: TransactionQuery,
+}
+
+impl<C> Stream for MatchingTransactionsStream<C>
+where
+    C: LatestBlock<Block = bitcoin_support::Block> + BlockByHash<Block = bitcoin_support::Block>,
+{
+    type Item = bitcoin_support::Transaction;
+    type Error = ();
+
+    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
+        unimplemented!()
+    }
+}
 
 impl<B> MatchingTransactions<TransactionQuery> for B
 where
@@ -33,31 +50,36 @@ where
 
         log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind every {} ms", poll_interval);
 
-        let stream = Interval::new_interval(Duration::from_millis(poll_interval))
-            .map_err(|e| {
-                log::warn!(target: "bitcoin::blocksource", "error encountered during polling: {:?}", e);
-            })
-            .and_then( {
-                let mut this = self.clone();
-                move |_| {
-                this
-                    .latest_block()
-                    .map(Some)
-                    .or_else(|e| {
-                        log::warn!(target: "bitcoin::blocksource", "error encountered during polling {:?}", e);
-                        Ok(None)
-                    })
-            }})
-            .filter_map(|maybe_block| maybe_block)
-            .map(move |block| {
-                block
-                    .txdata
-                    .into_iter()
-                    .filter(|tx| query.matches(&tx))
-                    .collect::<Vec<Self::Transaction>>()
-            })
-            .map(futures::stream::iter_ok)
-            .flatten();
+        let stream = MatchingTransactionsStream {
+            connector: self.clone(),
+            query,
+        };
+
+        // let stream = Interval::new_interval(Duration::from_millis(poll_interval))
+        //     .map_err(|e| {
+        //         log::warn!(target: "bitcoin::blocksource", "error encountered during
+        // polling: {:?}", e);     })
+        //     .and_then( {
+        //         let mut this = self.clone();
+        //         move |_| {
+        //         this
+        //             .latest_block()
+        //             .map(Some)
+        //             .or_else(|e| {
+        //                 log::warn!(target: "bitcoin::blocksource", "error encountered
+        // during polling {:?}", e);                 Ok(None)
+        //             })
+        //     }})
+        //     .filter_map(|maybe_block| maybe_block)
+        //     .map(move |block| {
+        //         block
+        //             .txdata
+        //             .into_iter()
+        //             .filter(|tx| query.matches(&tx))
+        //             .collect::<Vec<Self::Transaction>>()
+        //     })
+        //     .map(futures::stream::iter_ok)
+        //     .flatten();
 
         Box::new(stream)
     }
