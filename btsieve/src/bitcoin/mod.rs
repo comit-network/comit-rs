@@ -11,34 +11,71 @@ pub use self::{
 };
 
 use crate::{BlockByHash, LatestBlock, MatchingTransactions};
-use bitcoin_support::{consensus::Decodable, deserialize};
-use futures::{future::Future, Poll, Stream};
+use bitcoin_support::{consensus::Decodable, deserialize, BitcoinHash};
+use futures::{future::Future, Async, Poll, Stream};
 use reqwest::{r#async::Client, Url};
-use std::time::Duration;
+use std::{fmt::Debug, time::Duration};
 use tokio::timer::Interval;
 
-struct MatchingTransactionsStream<C> {
-    connector: C,
-    query: TransactionQuery,
+enum State<E> {
+    Initial,
+    FetchingGenesisBlock {
+        future: Box<dyn Future<Item = bitcoin_support::Block, Error = E> + Send + 'static>,
+    },
+    HaveGenesisBlock {
+        block: bitcoin_support::Block,
+    },
+    Poisoned,
 }
 
-impl<C> Stream for MatchingTransactionsStream<C>
+struct MatchingTransactionsStream<C, E> {
+    connector: C,
+    query: TransactionQuery,
+    state: State<E>,
+}
+
+impl<C, E> Stream for MatchingTransactionsStream<C, E>
 where
-    C: LatestBlock<Block = bitcoin_support::Block> + BlockByHash<Block = bitcoin_support::Block>,
+    C: LatestBlock<Block = bitcoin_support::Block, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, Error = E>,
+    E: Debug,
 {
     type Item = bitcoin_support::Transaction;
-    type Error = ();
+    type Error = E;
 
     fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        unimplemented!()
+        match std::mem::replace(&mut self.state, State::Poisoned) {
+            State::Initial => {
+                self.state = State::FetchingGenesisBlock {
+                    future: self.connector.latest_block(),
+                };
+                self.poll()
+            }
+            State::FetchingGenesisBlock { mut future } => match future.poll() {
+                Ok(Async::Ready(block)) => {
+                    self.state = State::HaveGenesisBlock { block };
+                    self.poll()
+                }
+                Ok(Async::NotReady) => {
+                    self.state = State::FetchingGenesisBlock { future };
+                    Ok(Async::NotReady)
+                }
+                Err(e) => Err(e),
+            },
+            State::HaveGenesisBlock { block } => {
+                panic!("Yes, here's a block: {}", block.bitcoin_hash())
+            }
+            Poisoned => panic!("I died"),
+        }
     }
 }
 
-impl<B> MatchingTransactions<TransactionQuery> for B
+impl<B, E> MatchingTransactions<TransactionQuery> for B
 where
-    B: LatestBlock<Block = bitcoin_support::Block>
-        + BlockByHash<Block = bitcoin_support::Block>
+    B: LatestBlock<Block = bitcoin_support::Block, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, Error = E>
         + Clone,
+    E: Debug + 'static,
 {
     type Transaction = bitcoin_support::Transaction;
 
@@ -53,6 +90,7 @@ where
         let stream = MatchingTransactionsStream {
             connector: self.clone(),
             query,
+            state: State::<E>::Initial,
         };
 
         // let stream = Interval::new_interval(Duration::from_millis(poll_interval))
@@ -81,7 +119,9 @@ where
         //     .map(futures::stream::iter_ok)
         //     .flatten();
 
-        Box::new(stream)
+        Box::new(stream.map_err(|e| {
+            log::error!("{:?}", e);
+        }))
     }
 }
 
