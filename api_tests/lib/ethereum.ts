@@ -202,6 +202,6 @@ export class EthereumWallet {
         const wallet = new ethers.Wallet(this.keypair.privateKey, ethersClient);
         tx.nonce = await wallet.getTransactionCount("latest");
         const signedTx = await wallet.sign(tx);
-        return await ethersClient.sendTransaction(signedTx);
+        return ethersClient.sendTransaction(signedTx);
     }
 }
