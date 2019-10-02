@@ -554,7 +554,7 @@ dependencies = [
 
 [[package]]
 name = "cnd"
-version = "0.2.1"
+version = "0.3.0"
 dependencies = [
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoin_rpc_test_helpers 0.1.0",
