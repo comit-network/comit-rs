@@ -1,7 +1,7 @@
 [package]
 authors = ["CoBloX developers <team@coblox.tech>"]
 name = "cnd"
-version = "0.2.1"
+version = "0.3.0"
 edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
 
@@ -33,6 +33,7 @@ hyper = "0.12"
 lazy_static = "1"
 libp2p = { version = "0.12" }
 libp2p-comit = { path = "../libp2p-comit" }
+libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
 maplit = "1"
 mime = "0.3"
