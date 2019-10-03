@@ -1,0 +1,5 @@
+status = ["ci/circleci: debug-build-test"]
+pr_status = [
+    "ci/circleci: debug-build-test",
+    "license/cla"
+]

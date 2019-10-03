@@ -2,6 +2,7 @@
 
 [![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
+[![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
 
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 

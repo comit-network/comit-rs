@@ -3,7 +3,10 @@ workflows:
   version: 2
   main:
     jobs:
-      - debug-build-test
+      - debug-build-test:
+          filters: # ignore .tmp branches from bors
+            branches:
+              ignore: /^(staging.tmp|trying.tmp)$/
       - release-build-test:
           filters: # runs for "release/" branches and all tags.
             branches:
