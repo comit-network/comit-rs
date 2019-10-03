@@ -1,0 +1,2 @@
+status = ["status-success=ci/circleci: debug-build-test"]
+pr_status = ["status-success=ci/circleci: debug-build-test"]
