@@ -2,7 +2,7 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::db::models::{InsertableSwap, Swap, SwapId};
+use crate::db::models::{InsertableSwap, SqlText, Swap, SwapId};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     fs::File,
@@ -69,7 +69,7 @@ impl Sqlite {
     }
 
     /// Get swap with swap_id 'key' from the database.
-    pub fn get(&self, key: SwapId) -> Result<Option<Swap>, Error> {
+    pub fn get(&self, key: SqlText<SwapId>) -> Result<Option<Swap>, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = self.connect()?;
@@ -105,7 +105,7 @@ impl Sqlite {
 
     /// Deletes a swap with swap_id 'key' from the database.
     /// Returns 1 a swap was deleted, 0 otherwise.
-    pub fn delete(&self, key: SwapId) -> Result<usize, Error> {
+    pub fn delete(&self, key: SqlText<SwapId>) -> Result<usize, Error> {
         use self::schema::swaps::dsl::*;
 
         let connection = self.connect()?;
@@ -159,8 +159,52 @@ pub fn default_db_path() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::models::SwapId;
+    use crate::db::models::{self, AssetKind, InsertableSwap, LedgerKind, Role, SwapId};
     use std::str::FromStr;
+
+    fn instantiate_test_case_1() -> InsertableSwap {
+        let swap_id = SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
+
+        InsertableSwap::new(
+            swap_id,
+            LedgerKind::Bitcoin,
+            LedgerKind::Ethereum,
+            AssetKind::Bitcoin,
+            AssetKind::Erc20,
+            Role::Alice,
+        )
+    }
+
+    fn instantiate_test_case_2() -> InsertableSwap {
+        let swap_id = SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap();
+
+        InsertableSwap::new(
+            swap_id,
+            LedgerKind::Ethereum,
+            LedgerKind::Bitcoin,
+            AssetKind::Erc20,
+            AssetKind::Bitcoin,
+            Role::Bob,
+        )
+    }
+
+    impl PartialEq<models::Swap> for InsertableSwap {
+        fn eq(&self, other: &models::Swap) -> bool {
+            self.swap_id == other.swap_id
+                && self.alpha_ledger == other.alpha_ledger
+                && self.beta_ledger == other.beta_ledger
+                && self.alpha_asset == other.alpha_asset
+                && self.beta_asset == other.beta_asset
+                && self.role == other.role
+        }
+    }
+
+    // Argument types the opposite way around to eq() above.
+    impl PartialEq<InsertableSwap> for models::Swap {
+        fn eq(&self, other: &InsertableSwap) -> bool {
+            other == self
+        }
+    }
 
     fn new_temp_db() -> Sqlite {
         let temp_file = tempfile::Builder::new()
@@ -168,82 +212,61 @@ mod tests {
             .tempfile()
             .unwrap();
         let temp_file_path = temp_file.into_temp_path().to_path_buf();
-        Sqlite::new(Some(temp_file_path)).expect("failed to create database")
-    }
-
-    fn insertable_swap() -> InsertableSwap {
-        let id = example_swap_id();
-        create_insertable_swap(id)
-    }
-
-    fn another_insertable_swap() -> InsertableSwap {
-        let id = another_example_swap_id();
-        create_insertable_swap(id)
-    }
-
-    fn example_swap_id() -> SwapId {
-        SwapId::from_str("aaaaaaaa-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
-    }
-
-    fn another_example_swap_id() -> SwapId {
-        SwapId::from_str("bbbbbbbb-ecf2-4cc6-b35c-b4351ac28a34").unwrap()
-    }
-
-    fn create_insertable_swap(swap_id: SwapId) -> InsertableSwap {
-        InsertableSwap { swap_id }
+        Sqlite::new(Some(temp_file_path)).expect("failed to create db")
     }
 
     #[test]
-    fn can_create_a_new_temp_database() {
+    fn can_create_a_new_temp_db() {
         let _db = new_temp_db();
     }
 
     #[test]
-    fn can_count_empty_database() {
+    fn can_count_empty_db() {
         let db = new_temp_db();
-        assert_eq!(0, db.count().unwrap());
+        assert_eq!(0, db.count().expect("db count error"));
     }
 
     #[test]
     fn insert_return_vaule_is_as_expected() {
         let db = new_temp_db();
 
-        let swap = insertable_swap();
-        let rows_inserted = db.insert(swap).unwrap();
+        let swap = instantiate_test_case_1();
+        let rows_inserted = db.insert(swap).expect("db insert error");
         assert_eq!(rows_inserted, 1);
     }
 
     #[test]
     fn count_works_afer_insert() {
         let db = new_temp_db();
-        let swap = insertable_swap();
 
-        let _rows_inserted = db.insert(swap).unwrap();
-        assert_eq!(1, db.count().unwrap());
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
+
+        assert_eq!(1, db.count().expect("db count error"));
     }
 
     #[test]
     fn can_not_add_same_record_twice() {
         let db = new_temp_db();
-        let swap = insertable_swap();
 
-        let _res = db.insert(swap).unwrap();
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
-        let swap_with_same_swap_id = insertable_swap();
+        let swap_with_same_swap_id = instantiate_test_case_1();
         let res = db.insert(swap_with_same_swap_id);
         if res.is_ok() {
             panic!("insert duplicate swap_id should err");
         }
 
-        assert_eq!(1, db.count().unwrap());
+        assert_eq!(1, db.count().expect("db count error"));
     }
 
     #[test]
     fn can_add_multiple_different_swaps() {
         let db = new_temp_db();
 
-        let s1 = insertable_swap();
-        let s2 = another_insertable_swap();
+        let s1 = instantiate_test_case_1();
+        let s2 = instantiate_test_case_2();
 
         let rows_inserted = db.insert(s1).unwrap();
         assert_eq!(rows_inserted, 1);
@@ -251,66 +274,73 @@ mod tests {
         let rows_inserted = db.insert(s2).unwrap();
         assert_eq!(rows_inserted, 1);
 
-        assert_eq!(2, db.count().unwrap());
+        assert_eq!(2, db.count().expect("db count error"));
     }
 
     #[test]
     fn can_add_a_swap_and_read_it() {
         let db = new_temp_db();
 
-        let swap_id = example_swap_id();
-        let swap = create_insertable_swap(swap_id);
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
-        let _ = db.insert(swap).unwrap();
+        let res = db.get(swap.swap_id).expect("db get error");
+        let got = res.unwrap();
 
-        let swap = db.get(swap_id).expect("database error");
-        match swap {
-            Some(swap) => assert_eq!(swap.swap_id, swap_id),
-            None => panic!("no record returned"),
-        }
+        assert_eq!(got.swap_id, swap.swap_id);
     }
 
     #[test]
     fn can_add_a_swap_and_delete_it() {
         let db = new_temp_db();
 
-        let swap_id = example_swap_id();
-        let swap = create_insertable_swap(swap_id);
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
 
-        let _ = db.insert(swap).unwrap();
+        let rows_effected = db.delete(swap.swap_id).expect("db delete error");
+        assert_eq!(rows_effected, 1);
 
-        let res = db.delete(swap_id).expect("database delete error");
-        assert_eq!(res, 1);
-
-        let swap = db.get(swap_id).expect("database get error");
+        let swap = db.get(swap.swap_id).expect("db get error");
         if swap.is_some() {
             panic!("false positive");
         }
 
-        assert_eq!(0, db.count().unwrap());
+        assert_eq!(0, db.count().expect("db count error"));
     }
 
     #[test]
     fn can_delete_a_non_existant_swap() {
         let db = new_temp_db();
-
-        let swap_id = example_swap_id();
-
-        let res = db.delete(swap_id).expect("database delete error");
-        assert_eq!(res, 0);
+        let swap = instantiate_test_case_1();
+        let rows_effected = db.delete(swap.swap_id).expect("db delete error");
+        assert_eq!(rows_effected, 0);
     }
 
     #[test]
     fn can_get_all_the_swaps() {
         let db = new_temp_db();
 
-        let s1 = insertable_swap();
-        let s2 = another_insertable_swap();
+        let s1 = instantiate_test_case_1();
+        let s2 = instantiate_test_case_2();
 
-        let _ = db.insert(s1).unwrap();
-        let _ = db.insert(s2).unwrap();
+        let _rows_inserted = db.insert(s1).expect("db insert 1 error");
+        let _rows_inserted = db.insert(s2).expect("db insert 2 error");
+        assert_eq!(2, db.count().expect("db count error"));
 
-        let records = db.all().unwrap();
+        let records = db.all().expect("db all error");
         assert_eq!(records.len(), 2);
+    }
+
+    #[test]
+    fn swap_serializes_and_deserializes_correctly() {
+        let db = new_temp_db();
+
+        let swap = instantiate_test_case_1();
+        let _rows_inserted = db.insert(swap).expect("db insert error");
+
+        let res = db.get(swap.swap_id).expect("db get error");
+        let got = res.unwrap();
+
+        assert_eq!(got, swap);
     }
 }
