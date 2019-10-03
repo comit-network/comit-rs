@@ -1,7 +1,7 @@
 use crate::Hash160;
 use bitcoin::hashes::Hash;
 use hex::{self, FromHex};
-use secp256k1_keypair::{KeyPair, PublicKey};
+use secp256k1_omni_context::{KeyPair, PublicKey};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -133,7 +133,7 @@ impl Serialize for PubkeyHash {
 mod test {
     use super::*;
     use crate::PrivateKey;
-    use secp256k1_keypair::KeyPair;
+    use secp256k1_omni_context::KeyPair;
     use std::str::FromStr;
 
     #[test]

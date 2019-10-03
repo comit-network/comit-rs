@@ -1,6 +1,6 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{Hash160, PubkeyHash, Script};
-use secp256k1_keypair::KeyPair;
+use secp256k1_omni_context::KeyPair;
 
 /// Utility function to generate the `prev_script` for a p2wpkh adddress.
 /// A standard p2wpkh locking script of:

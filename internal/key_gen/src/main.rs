@@ -5,14 +5,14 @@
 use bitcoin::{Network, PrivateKey};
 use bitcoin_support::PubkeyHash;
 use ethereum_support::Address;
-use secp256k1_keypair::{KeyPair, PublicKey};
+use secp256k1_omni_context::{KeyPair, PublicKey};
 use std::env;
 
 fn main() {
     let keypair = match env::args().nth(1) {
         Some(existing_key) => KeyPair::from_secret_key_hex(existing_key.as_ref()).unwrap(),
         None => {
-            let mut rng = secp256k1_keypair::rand::OsRng::new().unwrap();
+            let mut rng = secp256k1_omni_context::rand::OsRng::new().unwrap();
             KeyPair::new(&mut rng)
         }
     };

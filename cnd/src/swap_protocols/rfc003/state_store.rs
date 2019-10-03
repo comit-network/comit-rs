@@ -288,7 +288,7 @@ mod tests {
             alpha_asset: Amount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
-            alpha_ledger_refund_identity: secp256k1_keypair::KeyPair::from_secret_key_slice(
+            alpha_ledger_refund_identity: secp256k1_omni_context::KeyPair::from_secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
             )

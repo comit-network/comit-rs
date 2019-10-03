@@ -3,7 +3,7 @@ use bitcoin_support::{
     self, Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction,
     TxIn, TxOut,
 };
-use secp256k1_keypair::{Message, SECP};
+use secp256k1_omni_context::{Message, SECP};
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -173,7 +173,7 @@ mod test {
     use super::*;
     use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_keypair::KeyPair;
+    use secp256k1_omni_context::KeyPair;
     use std::str::FromStr;
 
     #[test]
