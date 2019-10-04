@@ -8,7 +8,7 @@ description = "A b(lockchain) t(ransaction) sieve that allows clients to detect 
 [dependencies]
 bitcoin_support = { path = "../internal/bitcoin_support" }
 derivative = "1"
-ethbloom = "0.6.4"
+ethbloom = "0.8.0"
 ethereum_support = { path = "../internal/ethereum_support" }
 futures = "0.1"
 hex = "0.4"
