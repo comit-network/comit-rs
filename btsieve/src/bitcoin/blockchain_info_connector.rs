@@ -3,9 +3,9 @@ use crate::{
     BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
-use futures::Future;
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
+use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {

@@ -122,7 +122,7 @@ where
                     .filter(|tx| query.matches(&tx))
                     .collect::<Vec<Self::Transaction>>()
             })
-            .map(futures::stream::iter_ok)
+            .map(tokio::prelude::stream::iter_ok)
             .flatten();
 
         Box::new(stream)
@@ -211,7 +211,7 @@ this
                         }
                     });
 
-                    futures::stream::futures_unordered(result_futures)
+                    tokio::prelude::stream::futures_unordered(result_futures)
                 }
             })
             .flatten()

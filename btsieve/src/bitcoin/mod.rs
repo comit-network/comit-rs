@@ -12,70 +12,20 @@ pub use self::{
 
 use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize, BitcoinHash};
-use futures::{future::Future, Async, Poll, Stream};
+use futures::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
-use std::{fmt::Debug, time::Duration};
-use tokio::timer::Interval;
+use std::{collections::HashSet, fmt::Debug};
+use tokio::{
+    prelude::{future::Future, stream, Stream},
+    timer::Delay,
+};
 
-enum State<E> {
-    Initial,
-    FetchingGenesisBlock {
-        future: Box<dyn Future<Item = bitcoin_support::Block, Error = E> + Send + 'static>,
-    },
-    HaveGenesisBlock {
-        block: bitcoin_support::Block,
-    },
-    Poisoned,
-}
-
-struct MatchingTransactionsStream<C, E> {
-    connector: C,
-    query: TransactionQuery,
-    state: State<E>,
-}
-
-impl<C, E> Stream for MatchingTransactionsStream<C, E>
+impl<C, E> MatchingTransactions<TransactionQuery> for C
 where
     C: LatestBlock<Block = bitcoin_support::Block, Error = E>
-        + BlockByHash<Block = bitcoin_support::Block, Error = E>,
-    E: Debug,
-{
-    type Item = bitcoin_support::Transaction;
-    type Error = E;
-
-    fn poll(&mut self) -> Poll<Option<Self::Item>, Self::Error> {
-        match std::mem::replace(&mut self.state, State::Poisoned) {
-            State::Initial => {
-                self.state = State::FetchingGenesisBlock {
-                    future: self.connector.latest_block(),
-                };
-                self.poll()
-            }
-            State::FetchingGenesisBlock { mut future } => match future.poll() {
-                Ok(Async::Ready(block)) => {
-                    self.state = State::HaveGenesisBlock { block };
-                    self.poll()
-                }
-                Ok(Async::NotReady) => {
-                    self.state = State::FetchingGenesisBlock { future };
-                    Ok(Async::NotReady)
-                }
-                Err(e) => Err(e),
-            },
-            State::HaveGenesisBlock { block } => {
-                panic!("Yes, here's a block: {}", block.bitcoin_hash())
-            }
-            Poisoned => panic!("I died"),
-        }
-    }
-}
-
-impl<B, E> MatchingTransactions<TransactionQuery> for B
-where
-    B: LatestBlock<Block = bitcoin_support::Block, Error = E>
-        + BlockByHash<Block = bitcoin_support::Block, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, BlockHash = String, Error = E>
         + Clone,
-    E: Debug + 'static,
+    E: Debug + Send + 'static,
 {
     type Transaction = bitcoin_support::Transaction;
 
@@ -83,45 +33,79 @@ where
         &self,
         query: TransactionQuery,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        let poll_interval = 300;
+        let matching_transaction = Box::pin(matching_transaction(self.clone(), query)).compat();
 
-        log::info!(target: "bitcoin::blocksource", "polling for new blocks from bitcoind every {} ms", poll_interval);
+        // convert future of single matching transaction into stream
+        Box::new(stream::futures_unordered(vec![matching_transaction]))
+    }
+}
 
-        let stream = MatchingTransactionsStream {
-            connector: self.clone(),
-            query,
-            state: State::<E>::Initial,
+async fn matching_transaction<C, E>(
+    blockchain_connector: C,
+    query: TransactionQuery,
+) -> Result<bitcoin_support::Transaction, ()>
+where
+    C: LatestBlock<Block = bitcoin_support::Block, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, BlockHash = String, Error = E>
+        + Clone,
+    E: Debug + Send + 'static,
+{
+    let mut prev_blockhashes: HashSet<bitcoin_support::Sha256dHash> = HashSet::new();
+
+    loop {
+        let latest_block: bitcoin_support::Block = blockchain_connector
+            .clone()
+            .latest_block()
+            .compat()
+            .await
+            .expect("Could not get latest block. TODO: log and try again later");
+
+        // have we seen this block before?
+        if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
+            // try again in a bit
+            Delay::new(
+                std::time::Instant::now()
+                    // TODO: How long should we wait for?
+                    .checked_add(std::time::Duration::from_secs(10))
+                    .expect("Could not create deadline"),
+            )
+            .compat()
+            .await
+            .expect("Waiting for delay failed");
+            continue;
+        }
+
+        // does this block contain the matching transaction?
+        if let Some(transaction) = latest_block
+            .clone()
+            .txdata
+            .into_iter()
+            .find(|transaction| query.matches(&transaction))
+        {
+            return Ok(transaction);
         };
 
-        // let stream = Interval::new_interval(Duration::from_millis(poll_interval))
-        //     .map_err(|e| {
-        //         log::warn!(target: "bitcoin::blocksource", "error encountered during
-        // polling: {:?}", e);     })
-        //     .and_then( {
-        //         let mut this = self.clone();
-        //         move |_| {
-        //         this
-        //             .latest_block()
-        //             .map(Some)
-        //             .or_else(|e| {
-        //                 log::warn!(target: "bitcoin::blocksource", "error encountered
-        // during polling {:?}", e);                 Ok(None)
-        //             })
-        //     }})
-        //     .filter_map(|maybe_block| maybe_block)
-        //     .map(move |block| {
-        //         block
-        //             .txdata
-        //             .into_iter()
-        //             .filter(|tx| query.matches(&tx))
-        //             .collect::<Vec<Self::Transaction>>()
-        //     })
-        //     .map(futures::stream::iter_ok)
-        //     .flatten();
+        // have we seen this block's parent?
+        let block = latest_block;
+        while !prev_blockhashes.contains(&block.header.prev_blockhash) {
+            let block = blockchain_connector
+                .block_by_hash(format!("{:x}", &block.header.prev_blockhash))
+                .compat()
+                .await
+                .expect("Couldn't get block by hash. Should log and try again later?");
 
-        Box::new(stream.map_err(|e| {
-            log::error!("{:?}", e);
-        }))
+            prev_blockhashes.insert(block.bitcoin_hash());
+
+            // does this block contain the matching transaction?
+            if let Some(transaction) = block
+                .clone()
+                .txdata
+                .into_iter()
+                .find(|transaction| query.matches(&transaction))
+            {
+                return Ok(transaction);
+            };
+        }
     }
 }
 

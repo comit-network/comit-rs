@@ -8,7 +8,7 @@ pub mod first_or_else;
 #[cfg(test)]
 pub mod quickcheck;
 
-use futures::{Future, Stream};
+use tokio::prelude::{Future, Stream};
 
 pub trait MatchingTransactions<Q>: Send + Sync + 'static {
     type Transaction;
