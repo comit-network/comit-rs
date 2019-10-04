@@ -29,7 +29,7 @@
         "multiaddr": "^7.1.0",
         "satoshi-bitcoin": "^1.0.4",
         "tempfile": "^3.0.0",
-        "testcontainers": "^2.0.0",
+        "testcontainers": "^2.1.0",
         "urijs": "^1.19.1"
     },
     "devDependencies": {
