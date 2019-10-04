@@ -15,6 +15,9 @@ update_configs:
           dependency_name: "primitive-types"
       - match:
           dependency_name: "rlp"
+      # we only depend on ethbloom to access certain types. our version needs to match whichever version web3 is transitively bringing in
+      - match:
+          dependency_name: "ethbloom"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "weekly"
