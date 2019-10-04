@@ -104,7 +104,16 @@ impl Serialize for Http<ethereum_support::Transaction> {
     }
 }
 
-impl_serialize_http!(bitcoin_support::PubkeyHash);
+impl Serialize for Http<crate::bitcoin::PublicKey> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let public_key = self.0.into_inner();
+        serializer.serialize_str(&format!("{}", public_key))
+    }
+}
+
 impl_serialize_type_with_fields!(bitcoin_support::OutPoint { "txid" => txid, "vout" => vout });
 impl_serialize_http!(ethereum_support::H160);
 impl_serialize_http!(SwapId);
@@ -233,10 +242,10 @@ mod tests {
             HashFunction, SwapId, SwapProtocol,
         },
     };
-    use bitcoin_support::{self, FromHex, OutPoint, PubkeyHash, Script, Sha256dHash, TxIn};
+    use bitcoin_support::{self, FromHex, OutPoint, Script, Sha256dHash, TxIn};
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
-    use std::{convert::TryFrom, str::FromStr};
+    use std::str::FromStr;
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
@@ -323,9 +332,12 @@ mod tests {
 
     #[test]
     fn http_identity_serializes_correctly_to_json() {
-        let bitcoin_identity: Vec<u8> =
-            hex::decode("c021f17be99c6adfbcba5d38ee0d292c0399d2f5").unwrap();
-        let bitcoin_identity = PubkeyHash::try_from(&bitcoin_identity[..]).unwrap();
+        let bitcoin_identity = crate::bitcoin::PublicKey::new(
+            "02ef606e64a51b07373f81e042887e8e9c3806f0ff3fe3711df18beba8b82d82e6"
+                .parse()
+                .unwrap(),
+        );
+
         let ethereum_identity = H160::repeat_byte(7);
 
         let bitcoin_identity = Http(bitcoin_identity);
@@ -336,7 +348,7 @@ mod tests {
 
         assert_eq!(
             &bitcoin_identity_serialized,
-            r#""c021f17be99c6adfbcba5d38ee0d292c0399d2f5""#
+            r#""02ef606e64a51b07373f81e042887e8e9c3806f0ff3fe3711df18beba8b82d82e6""#
         );
         assert_eq!(
             &ethereum_identity_serialized,

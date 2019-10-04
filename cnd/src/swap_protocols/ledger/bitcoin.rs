@@ -1,5 +1,5 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use bitcoin_support::{Network, PubkeyHash, Transaction};
+use bitcoin_support::{Network, Transaction};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
@@ -21,7 +21,7 @@ impl Default for Bitcoin {
 }
 
 impl Ledger for Bitcoin {
-    type Identity = PubkeyHash;
+    type Identity = crate::bitcoin::PublicKey;
     type Transaction = Transaction;
 }
 

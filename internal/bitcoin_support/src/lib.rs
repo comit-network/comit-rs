@@ -19,7 +19,7 @@ pub use bitcoin::{
         bip143::SighashComponents,
         bip32::{self, ChainCode, ChildNumber, ExtendedPrivKey, ExtendedPubKey, Fingerprint},
         hash::BitcoinHash,
-        key::PrivateKey,
+        key::{PrivateKey, PublicKey},
         Error,
     },
     Address, Amount,
