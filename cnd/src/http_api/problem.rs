@@ -14,7 +14,6 @@ pub struct MissingQueryParameter {
     pub description: &'static str,
 }
 
-
 pub fn state_store() -> HttpApiProblem {
     log::error!("State store didn't have state in it despite having the metadata");
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
@@ -127,9 +126,7 @@ pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
     if let Some(err) = rejection.find_cause::<HttpApiProblem>() {
         log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", err);
 
-        let code = err
-            .status
-            .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+        let code = err.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         let json = warp::reply::json(err);
         return Ok(warp::reply::with_status(json, code));
     }
