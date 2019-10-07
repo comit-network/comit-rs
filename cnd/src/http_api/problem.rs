@@ -5,13 +5,7 @@ use crate::swap_protocols::{
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
-use std::{error::Error, fmt};
 use warp::{Rejection, Reply};
-
-#[derive(Debug)]
-pub struct HttpApiProblemStdError {
-    inner: HttpApiProblem,
-}
 
 #[derive(Debug, Serialize)]
 pub struct MissingQueryParameter {
@@ -20,23 +14,6 @@ pub struct MissingQueryParameter {
     pub description: &'static str,
 }
 
-impl From<HttpApiProblem> for HttpApiProblemStdError {
-    fn from(problem: HttpApiProblem) -> Self {
-        Self { inner: problem }
-    }
-}
-
-impl fmt::Display for HttpApiProblemStdError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.inner.title)
-    }
-}
-
-impl Error for HttpApiProblemStdError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        None
-    }
-}
 
 pub fn state_store() -> HttpApiProblem {
     log::error!("State store didn't have state in it despite having the metadata");
@@ -147,15 +124,15 @@ impl From<rfc003::state_machine::Error> for HttpApiProblem {
 }
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(err) = rejection.find_cause::<HttpApiProblemStdError>() {
+    if let Some(err) = rejection.find_cause::<HttpApiProblem>() {
         log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", err);
 
         let code = err
-            .inner
             .status
             .unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-        let json = warp::reply::json(&err.inner);
+        let json = warp::reply::json(err);
         return Ok(warp::reply::with_status(json, code));
     }
+
     Err(rejection)
 }
