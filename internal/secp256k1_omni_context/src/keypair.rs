@@ -6,6 +6,7 @@ use std::{convert::Into, str::FromStr};
 #[derive(Debug)]
 pub enum Error {
     NoSecretKeyProvided,
+    MultipleSecretKeysProvided,
     Secp256k1(secp256k1::Error),
 }
 
@@ -19,6 +20,7 @@ impl From<secp256k1::Error> for Error {
 pub struct Builder {
     secp: Secp256k1<secp256k1::All>,
     secret_key_slice: Option<Vec<u8>>,
+    secret_key_hex: Option<String>,
 }
 
 impl Builder {
@@ -26,6 +28,7 @@ impl Builder {
         Builder {
             secp,
             secret_key_slice: None,
+            secret_key_hex: None,
         }
     }
 
@@ -37,16 +40,35 @@ impl Builder {
         }
     }
 
+    pub fn secret_key_hex(self, key: &str) -> Builder {
+        Builder {
+            secret_key_hex: Some(key.to_string()),
+            ..self
+        }
+    }
+
     pub fn build(self) -> Result<KeyPair, Error> {
         match self {
             Self {
                 secret_key_slice: None,
+                secret_key_hex: None,
                 ..
             } => Err(Error::NoSecretKeyProvided),
             Self {
+                secret_key_slice: Some(_),
+                secret_key_hex: Some(_),
+                ..
+            } => Err(Error::MultipleSecretKeysProvided),
+            Self {
                 secret_key_slice: Some(slice),
                 secp,
+                ..
             } => Ok(SecretKey::from_slice(&slice).map(|secret_key| (secp, secret_key).into())?),
+            Self {
+                secret_key_hex: Some(hex),
+                secp,
+                ..
+            } => Ok(SecretKey::from_str(hex.as_str()).map(|secret_key| (secp, secret_key).into())?),
         }
     }
 }
@@ -75,13 +97,6 @@ impl KeyPair {
 
     pub fn keys(self) -> (SecretKey, PublicKey) {
         (self.secret_key, self.public_key)
-    }
-
-    pub fn from_secret_key_hex(
-        secp_context: Secp256k1<secp256k1::All>,
-        key: &str,
-    ) -> Result<KeyPair, secp256k1::Error> {
-        SecretKey::from_str(key).map(|secret_key| (secp_context, secret_key).into())
     }
 
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
