@@ -119,9 +119,7 @@ pub struct KeyPair {
     secp: Secp256k1<secp256k1::All>,
 }
 
-// TODO: Make it a builder instead.
 impl KeyPair {
-    // TODO: Should this really consume self?
     pub fn secret_key(self) -> SecretKey {
         self.secret_key
     }
