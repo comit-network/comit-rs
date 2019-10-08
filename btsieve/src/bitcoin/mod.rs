@@ -53,11 +53,19 @@ where
     let mut prev_blockhashes: HashSet<bitcoin_support::Sha256dHash> = HashSet::new();
 
     loop {
-        let latest_block: bitcoin_support::Block = blockchain_connector
-            .latest_block()
-            .compat()
-            .await
-            .expect("Could not get latest block. TODO: log and try again later");
+        let latest_block = match blockchain_connector.latest_block().compat().await {
+            Ok(block) => block,
+            Err(e) => {
+                log::warn!("Could not get latest block: {:?}", e,);
+
+                // try again after a short delay
+                Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
+                    .compat()
+                    .await
+                    .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
+                continue;
+            }
+        };
 
         // have we seen this block before?
         if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
