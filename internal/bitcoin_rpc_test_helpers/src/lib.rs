@@ -1,28 +1,21 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use bitcoin_support::{
-    Address, Amount, IntoP2wpkhAddress, Network, OutPoint, Sha256dHash, TransactionId, TxOut,
-};
+use bitcoin::{hashes::sha256d::Hash as Sha256dHash, Address, Amount, OutPoint, TxOut};
 
 pub trait RegtestHelperClient {
-    fn find_utxo_at_tx_for_address(&self, txid: &TransactionId, address: &Address)
-        -> Option<TxOut>;
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint;
+    fn find_utxo_at_tx_for_address(&self, txid: &Sha256dHash, address: &Address) -> Option<TxOut>;
+    fn find_vout_for_address(&self, txid: &Sha256dHash, address: &Address) -> OutPoint;
     fn mine_bitcoins(&self);
-    fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
+    fn create_p2wpkh_vout_at(
         &self,
-        dest: D,
+        dest: bitcoin::secp256k1::PublicKey,
         value: Amount,
     ) -> (Sha256dHash, OutPoint);
 }
 
 impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
-    fn find_utxo_at_tx_for_address(
-        &self,
-        txid: &TransactionId,
-        address: &Address,
-    ) -> Option<TxOut> {
+    fn find_utxo_at_tx_for_address(&self, txid: &Sha256dHash, address: &Address) -> Option<TxOut> {
         let address = address.clone();
         let unspent = self
             .list_unspent(Some(1), None, Some(&[address]), None, None)
@@ -38,7 +31,7 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
             })
     }
 
-    fn find_vout_for_address(&self, txid: &TransactionId, address: &Address) -> OutPoint {
+    fn find_vout_for_address(&self, txid: &Sha256dHash, address: &Address) -> OutPoint {
         let tx = self.get_raw_transaction(&txid, None).unwrap();
 
         #[allow(clippy::cast_possible_truncation)]
@@ -63,12 +56,18 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         self.generate(101, None).unwrap();
     }
 
-    fn create_p2wpkh_vout_at<D: IntoP2wpkhAddress>(
+    fn create_p2wpkh_vout_at(
         &self,
-        dest: D,
+        public_key: bitcoin::secp256k1::PublicKey,
         amount: Amount,
     ) -> (Sha256dHash, OutPoint) {
-        let address = dest.into_p2wpkh_address(Network::Regtest);
+        let address = bitcoin::Address::p2wpkh(
+            &bitcoin::util::key::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            bitcoin::Network::Regtest,
+        );
 
         let txid = self
             .send_to_address(&address.clone(), amount, None, None, None, None, None, None)
