@@ -2,7 +2,8 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::print_stdout)]
 
-use bitcoin_support::{IntoP2wpkhAddress, Network, PrivateKey, PubkeyHash};
+use bitcoin::{Network, PrivateKey};
+use bitcoin_support::PubkeyHash;
 use ethereum_support::Address;
 use secp256k1_keypair::{KeyPair, PublicKey};
 use std::env;
@@ -20,12 +21,12 @@ fn main() {
     let public_key = keypair.public_key();
     let mainnet_private_key = PrivateKey {
         compressed: true,
-        network: Network::Mainnet.into(),
+        network: Network::Bitcoin,
         key: secret_key,
     };
     let testnet_private_key = PrivateKey {
         compressed: true,
-        network: Network::Testnet.into(),
+        network: Network::Testnet,
         key: secret_key,
     };
 
@@ -46,16 +47,34 @@ fn main() {
     let eth_address = to_ethereum_address(&public_key);
     println!("eth_address: {:?}", eth_address);
     {
-        let btc_address_mainnet = public_key.into_p2wpkh_address(Network::Mainnet);
+        let btc_address_mainnet = bitcoin::Address::p2wpkh(
+            &bitcoin::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            Network::Bitcoin,
+        );
         println!("btc_address_p2wpkh_mainnet: {:?}", btc_address_mainnet);
     }
 
     {
-        let btc_address_testnet = public_key.into_p2wpkh_address(Network::Testnet);
+        let btc_address_testnet = bitcoin::Address::p2wpkh(
+            &bitcoin::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            Network::Testnet,
+        );
         println!("btc_address_p2wpkh_testnet: {:?}", btc_address_testnet);
     }
     {
-        let btc_address_regtest = public_key.into_p2wpkh_address(Network::Regtest);
+        let btc_address_regtest = bitcoin::Address::p2wpkh(
+            &bitcoin::PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            Network::Regtest,
+        );
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
     println!("pubkey_hash: {:x}", PubkeyHash::from(public_key));

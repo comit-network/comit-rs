@@ -5,6 +5,7 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
+bitcoin = "0.19.1"
 bitcoin_support  = { path = "../bitcoin_support" }
 ethereum_support = { path = "../ethereum_support" }
 hex = "0.4"

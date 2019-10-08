@@ -1,9 +1,5 @@
-use crate::{network::Network, Hash160};
-use bitcoin::{
-    hashes::Hash,
-    util::{address::Payload, key::PublicKey as BitcoinPublicKey},
-    Address,
-};
+use crate::Hash160;
+use bitcoin::hashes::Hash;
 use hex::{self, FromHex};
 use secp256k1_keypair::{KeyPair, PublicKey};
 use serde::{
@@ -14,34 +10,6 @@ use std::{
     convert::TryFrom,
     fmt::{self, Display},
 };
-
-pub trait IntoP2wpkhAddress {
-    fn into_p2wpkh_address(self, network: Network) -> Address;
-}
-
-impl IntoP2wpkhAddress for PublicKey {
-    fn into_p2wpkh_address(self, network: Network) -> Address {
-        Address::p2wpkh(
-            &BitcoinPublicKey {
-                compressed: true, // Only used for serialization
-                key: self,
-            },
-            network.into(),
-        )
-    }
-}
-
-impl IntoP2wpkhAddress for PubkeyHash {
-    fn into_p2wpkh_address(self, network: Network) -> Address {
-        Address {
-            payload: Payload::WitnessProgram {
-                version: bitcoin::bech32::u5::try_from_u8(0).expect("0 is a valid u5"),
-                program: self.as_ref().to_vec(),
-            },
-            network: network.into(),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct PubkeyHash(Hash160);
@@ -182,20 +150,6 @@ mod test {
             )
             .unwrap()
         )
-    }
-
-    #[test]
-    fn generates_same_address_from_private_key_as_btc_address_generator() {
-        // https://kimbatt.github.io/btc-address-generator/
-        let private_key =
-            PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-        let keypair: KeyPair = private_key.key.into();
-        let address = keypair.public_key().into_p2wpkh_address(Network::Mainnet);
-
-        assert_eq!(
-            address,
-            Address::from_str("bc1qmxq0cu0jktxyy2tz3je7675eca0ydcevgqlpgh").unwrap()
-        );
     }
 
     #[test]
