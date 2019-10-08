@@ -78,12 +78,7 @@ where
         }
 
         // does this block contain the matching transaction?
-        if let Some(transaction) = latest_block
-            .clone()
-            .txdata
-            .into_iter()
-            .find(|transaction| query.matches(&transaction))
-        {
+        if let Some(transaction) = check_block_against_query(&latest_block, &query) {
             return Ok(transaction);
         };
 
@@ -101,12 +96,7 @@ where
                     prev_blockhashes.insert(block.bitcoin_hash());
 
                     // does this block contain the matching transaction?
-                    if let Some(transaction) = block
-                        .clone()
-                        .txdata
-                        .into_iter()
-                        .find(|transaction| query.matches(&transaction))
-                    {
+                    if let Some(transaction) = check_block_against_query(&block, &query) {
                         return Ok(transaction);
                     };
                 }
@@ -128,6 +118,17 @@ where
             }
         }
     }
+}
+
+fn check_block_against_query(
+    block: &bitcoin_support::Block,
+    query: &TransactionQuery,
+) -> Option<bitcoin_support::Transaction> {
+    block
+        .clone()
+        .txdata
+        .into_iter()
+        .find(|transaction| query.matches(&transaction))
 }
 
 pub fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
