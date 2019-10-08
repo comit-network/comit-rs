@@ -61,16 +61,11 @@ where
 
         // have we seen this block before?
         if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
-            // try again in a bit
-            Delay::new(
-                std::time::Instant::now()
-                    // TODO: How long should we wait for?
-                    .checked_add(std::time::Duration::from_secs(1))
-                    .expect("Could not create deadline"),
-            )
-            .compat()
-            .await
-            .expect("Waiting for delay failed");
+            // try again after a short delay
+            Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
+                .compat()
+                .await
+                .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
             continue;
         }
 
