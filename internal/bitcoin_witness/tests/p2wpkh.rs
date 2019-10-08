@@ -3,7 +3,7 @@ use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
 use secp256k1::Secp256k1;
-use secp256k1_omni_context::{secp256k1, KeyPair};
+use secp256k1_omni_context::{secp256k1, Builder};
 use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
@@ -20,7 +20,10 @@ fn redeem_single_p2wpkh() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = (secp.clone(), private_key.key).into();
+    let keypair = Builder::new(secp.clone())
+        .secret_key(private_key.key)
+        .build()
+        .unwrap();
 
     let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.clone().public_key(), input_amount);
 
@@ -64,10 +67,16 @@ fn redeem_two_p2wpkh() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair_1: KeyPair = (secp.clone(), private_key_1.key).into();
+    let keypair_1 = Builder::new(secp.clone())
+        .secret_key(private_key_1.key)
+        .build()
+        .unwrap();
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
-    let keypair_2: KeyPair = (secp.clone(), private_key_2.key).into();
+    let keypair_2 = Builder::new(secp.clone())
+        .secret_key(private_key_2.key)
+        .build()
+        .unwrap();
 
     let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.clone().public_key(), input_amount);
     let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.clone().public_key(), input_amount);

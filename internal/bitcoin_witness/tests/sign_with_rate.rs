@@ -3,7 +3,7 @@ use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
 use secp256k1::Secp256k1;
-use secp256k1_omni_context::{secp256k1, KeyPair};
+use secp256k1_omni_context::{secp256k1, Builder, KeyPair};
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
@@ -19,7 +19,10 @@ fn sign_with_rate() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = (secp.clone(), private_key.key).into();
+    let keypair: KeyPair = Builder::new(secp.clone())
+        .secret_key(private_key.key)
+        .build()
+        .unwrap();
 
     let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.clone().public_key(), input_amount);
 

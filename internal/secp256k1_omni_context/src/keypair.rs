@@ -1,7 +1,7 @@
 use secp256k1::{
     self, rand::Rng, Message, PublicKey, RecoverableSignature, Secp256k1, SecretKey, Signature,
 };
-use std::{convert::Into, str::FromStr};
+use std::str::FromStr;
 
 #[derive(Debug)]
 pub enum Error {
@@ -31,6 +31,13 @@ impl Builder {
             secret_key_slice: None,
             secret_key_hex: None,
             secret_key: None,
+        }
+    }
+
+    pub fn secret_key(self, secret_key: SecretKey) -> Builder {
+        Builder {
+            secret_key: Some(secret_key),
+            ..self
         }
     }
 
@@ -75,18 +82,29 @@ impl Builder {
                     secret_key: Some(secret_key),
                     secp,
                     ..
-                } => Ok((secp, secret_key).into()),
+                } => Ok(KeyPair {
+                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
+                    secret_key,
+                    secp,
+                }),
                 Self {
                     secret_key_slice: Some(slice),
                     secp,
                     ..
-                } => Ok(SecretKey::from_slice(&slice).map(|secret_key| (secp, secret_key).into())?),
+                } => Ok(SecretKey::from_slice(&slice).map(|secret_key| KeyPair {
+                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
+                    secret_key,
+                    secp,
+                })?),
                 Self {
                     secret_key_hex: Some(hex),
                     secp,
                     ..
-                } => Ok(SecretKey::from_str(hex.as_str())
-                    .map(|secret_key| (secp, secret_key).into())?),
+                } => Ok(SecretKey::from_str(hex.as_str()).map(|secret_key| KeyPair {
+                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
+                    secret_key,
+                    secp,
+                })?),
                 Self { .. } => unreachable!(),
             },
             _ => Err(Error::MultipleSecretKeysProvided),
@@ -122,17 +140,6 @@ impl KeyPair {
 
     pub fn sign_ecdsa_recoverable(&self, message: Message) -> RecoverableSignature {
         self.secp.sign_recoverable(&message, &self.secret_key)
-    }
-}
-
-impl From<(Secp256k1<secp256k1::All>, SecretKey)> for KeyPair {
-    fn from(secp_secret_key: (Secp256k1<secp256k1::All>, SecretKey)) -> KeyPair {
-        let (secp, secret_key) = secp_secret_key;
-        KeyPair {
-            public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
-            secret_key,
-            secp,
-        }
     }
 }
 

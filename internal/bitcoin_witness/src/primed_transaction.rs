@@ -179,7 +179,7 @@ mod test {
     use super::*;
     use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_omni_context::KeyPair;
+    use secp256k1_omni_context::Builder;
     use std::str::FromStr;
 
     #[test]
@@ -187,7 +187,10 @@ mod test {
         let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
-        let keypair: KeyPair = (secp.clone(), private_key.key).into();
+        let keypair = Builder::new(secp.clone())
+            .secret_key(private_key.key)
+            .build()
+            .unwrap();
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
         let txid = Sha256dHash::default();
 
