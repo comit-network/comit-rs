@@ -86,8 +86,9 @@ where
         let block = latest_block;
         while prev_blockhashes.len() > 1 && !prev_blockhashes.contains(&block.header.prev_blockhash)
         {
+            let parent_blockhash = block.header.prev_blockhash;
             let result_block = blockchain_connector
-                .block_by_hash(block.header.prev_blockhash)
+                .block_by_hash(parent_blockhash)
                 .compat()
                 .await;
 
@@ -104,7 +105,7 @@ where
                     log::warn!(
                         "Could not get parent of block {}, with blockhash {}: {:?}",
                         block.bitcoin_hash(),
-                        block.header.prev_blockhash,
+                        parent_blockhash,
                         e,
                     );
 
