@@ -1,7 +1,7 @@
 use crate::Hash160;
 use bitcoin::hashes::Hash;
 use hex::{self, FromHex};
-use secp256k1_omni_context::{KeyPair, PublicKey};
+use secp256k1_omni_context::{secp256k1::PublicKey, KeyPair};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -133,14 +133,19 @@ impl Serialize for PubkeyHash {
 mod test {
     use super::*;
     use crate::PrivateKey;
-    use secp256k1_omni_context::KeyPair;
+    use secp256k1_omni_context::{
+        secp256k1::{self, Secp256k1},
+        KeyPair,
+    };
     use std::str::FromStr;
 
     #[test]
     fn correct_pubkeyhash_from_private_key() {
+        let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
+
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
-        let keypair: KeyPair = private_key.key.into();
+        let keypair: KeyPair = (secp, private_key.key).into();
         let pubkey_hash: PubkeyHash = keypair.public_key().into();
 
         assert_eq!(
