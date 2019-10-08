@@ -21,6 +21,7 @@ pub struct Builder {
     secp: Secp256k1<secp256k1::All>,
     secret_key_slice: Option<Vec<u8>>,
     secret_key_hex: Option<String>,
+    secret_key: Option<SecretKey>,
 }
 
 impl Builder {
@@ -29,6 +30,7 @@ impl Builder {
             secp,
             secret_key_slice: None,
             secret_key_hex: None,
+            secret_key: None,
         }
     }
 
@@ -47,28 +49,47 @@ impl Builder {
         }
     }
 
+    pub fn rng<R: Rng>(self, rng: &mut R) -> Builder {
+        Builder {
+            secret_key: Some(SecretKey::new(rng)),
+            ..self
+        }
+    }
+
     pub fn build(self) -> Result<KeyPair, Error> {
-        match self {
-            Self {
-                secret_key_slice: None,
-                secret_key_hex: None,
-                ..
-            } => Err(Error::NoSecretKeyProvided),
-            Self {
-                secret_key_slice: Some(_),
-                secret_key_hex: Some(_),
-                ..
-            } => Err(Error::MultipleSecretKeysProvided),
-            Self {
-                secret_key_slice: Some(slice),
-                secp,
-                ..
-            } => Ok(SecretKey::from_slice(&slice).map(|secret_key| (secp, secret_key).into())?),
-            Self {
-                secret_key_hex: Some(hex),
-                secp,
-                ..
-            } => Ok(SecretKey::from_str(hex.as_str()).map(|secret_key| (secp, secret_key).into())?),
+        let mut secret_keys_count = 0;
+        if self.secret_key.is_some() {
+            secret_keys_count += 1;
+        }
+        if self.secret_key_slice.is_some() {
+            secret_keys_count += 1;
+        }
+        if self.secret_key_hex.is_some() {
+            secret_keys_count += 1;
+        }
+
+        match secret_keys_count {
+            0 => Err(Error::NoSecretKeyProvided),
+            1 => match self {
+                Self {
+                    secret_key: Some(secret_key),
+                    secp,
+                    ..
+                } => Ok((secp, secret_key).into()),
+                Self {
+                    secret_key_slice: Some(slice),
+                    secp,
+                    ..
+                } => Ok(SecretKey::from_slice(&slice).map(|secret_key| (secp, secret_key).into())?),
+                Self {
+                    secret_key_hex: Some(hex),
+                    secp,
+                    ..
+                } => Ok(SecretKey::from_str(hex.as_str())
+                    .map(|secret_key| (secp, secret_key).into())?),
+                Self { .. } => unreachable!(),
+            },
+            _ => Err(Error::MultipleSecretKeysProvided),
         }
     }
 }
@@ -82,10 +103,6 @@ pub struct KeyPair {
 
 // TODO: Make it a builder instead.
 impl KeyPair {
-    pub fn new<R: Rng>(secp: Secp256k1<secp256k1::All>, rng: &mut R) -> KeyPair {
-        (secp, SecretKey::new(rng)).into()
-    }
-
     // TODO: Should this really consume self?
     pub fn secret_key(self) -> SecretKey {
         self.secret_key

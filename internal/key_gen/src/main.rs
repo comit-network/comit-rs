@@ -7,7 +7,7 @@ use bitcoin_support::PubkeyHash;
 use ethereum_support::Address;
 use secp256k1_omni_context::{
     secp256k1::{self, PublicKey, Secp256k1},
-    Builder, KeyPair,
+    Builder,
 };
 use std::env;
 
@@ -20,7 +20,7 @@ fn main() {
             .unwrap(),
         None => {
             let mut rng = secp256k1_omni_context::secp256k1::rand::OsRng::new().unwrap();
-            KeyPair::new(secp, &mut rng)
+            Builder::new(secp).rng(&mut rng).build().unwrap()
         }
     };
 
