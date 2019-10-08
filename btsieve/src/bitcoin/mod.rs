@@ -62,7 +62,7 @@ where
                 Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
                     .compat()
                     .await
-                    .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
+                    .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
                 continue;
             }
         };
@@ -73,7 +73,7 @@ where
             Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
                 .compat()
                 .await
-                .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
+                .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
             continue;
         }
 
@@ -112,7 +112,7 @@ where
                     Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
                         .compat()
                         .await
-                        .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
+                        .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
                     continue;
                 }
             }
