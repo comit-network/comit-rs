@@ -3,20 +3,19 @@ use btsieve::{
     bitcoin::TransactionQuery, first_or_else::StreamExt, BlockByHash, LatestBlock,
     MatchingTransactions,
 };
-use futures::{Future, IntoFuture};
 use serde::export::fmt::Debug;
 use std::{
     collections::HashMap,
     str::FromStr,
     time::{Duration, Instant},
 };
-use tokio::prelude::FutureExt;
+use tokio::prelude::{Future, FutureExt, IntoFuture};
 
 #[derive(Clone)]
 struct BitcoinConnectorMock {
     all_blocks: HashMap<bitcoin_support::BlockId, Block>,
     latest_blocks: Vec<Block>,
-    latest_time_return_block: Option<Instant>,
+    latest_time_return_block: Instant,
     current_latest_block_index: usize,
 }
 
@@ -30,7 +29,7 @@ impl BitcoinConnectorMock {
                     hm
                 }),
             latest_blocks: latest_blocks.into_iter().cloned().collect(),
-            latest_time_return_block: None,
+            latest_time_return_block: Instant::now(),
             current_latest_block_index: 0,
         }
     }
@@ -48,14 +47,9 @@ impl LatestBlock for BitcoinConnectorMock {
             return Box::new(Err(()).into_future());
         }
 
-        let latest_time_return_block = self
-            .latest_time_return_block
-            .get_or_insert_with(|| Instant::now());
-
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
-        if latest_time_return_block.elapsed() >= Duration::from_secs(1) {
-            *latest_time_return_block = Instant::now();
-
+        if self.latest_time_return_block.elapsed() >= Duration::from_secs(1) {
+            self.latest_time_return_block = Instant::now();
             if self
                 .latest_blocks
                 .get(self.current_latest_block_index + 1)
@@ -64,7 +58,6 @@ impl LatestBlock for BitcoinConnectorMock {
                 self.current_latest_block_index += 1;
             }
         }
-
         Box::new(Ok(latest_block).into_future())
     }
 }

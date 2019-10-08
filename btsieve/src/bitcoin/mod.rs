@@ -12,7 +12,7 @@ pub use self::{
 
 use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize, BitcoinHash};
-use futures::{compat::Future01CompatExt, FutureExt, TryFutureExt};
+use futures::{compat::Future01CompatExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
 use std::{collections::HashSet, fmt::Debug};
 use tokio::{
@@ -23,7 +23,7 @@ use tokio::{
 impl<C, E> MatchingTransactions<TransactionQuery> for C
 where
     C: LatestBlock<Block = bitcoin_support::Block, Error = E>
-        + BlockByHash<Block = bitcoin_support::Block, BlockHash = String, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, BlockHash = bitcoin_support::BlockId, Error = E>
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -41,12 +41,12 @@ where
 }
 
 async fn matching_transaction<C, E>(
-    blockchain_connector: C,
+    mut blockchain_connector: C,
     query: TransactionQuery,
 ) -> Result<bitcoin_support::Transaction, ()>
 where
     C: LatestBlock<Block = bitcoin_support::Block, Error = E>
-        + BlockByHash<Block = bitcoin_support::Block, BlockHash = String, Error = E>
+        + BlockByHash<Block = bitcoin_support::Block, BlockHash = bitcoin_support::BlockId, Error = E>
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -54,7 +54,6 @@ where
 
     loop {
         let latest_block: bitcoin_support::Block = blockchain_connector
-            .clone()
             .latest_block()
             .compat()
             .await
@@ -66,7 +65,7 @@ where
             Delay::new(
                 std::time::Instant::now()
                     // TODO: How long should we wait for?
-                    .checked_add(std::time::Duration::from_secs(10))
+                    .checked_add(std::time::Duration::from_secs(1))
                     .expect("Could not create deadline"),
             )
             .compat()
@@ -87,9 +86,10 @@ where
 
         // have we seen this block's parent?
         let block = latest_block;
-        while !prev_blockhashes.contains(&block.header.prev_blockhash) {
+        while prev_blockhashes.len() > 1 && !prev_blockhashes.contains(&block.header.prev_blockhash)
+        {
             let block = blockchain_connector
-                .block_by_hash(format!("{:x}", &block.header.prev_blockhash))
+                .block_by_hash(block.header.prev_blockhash)
                 .compat()
                 .await
                 .expect("Couldn't get block by hash. Should log and try again later?");

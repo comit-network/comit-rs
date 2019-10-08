@@ -4,7 +4,6 @@ use btsieve::{
     bitcoin::{BitcoindConnector, TransactionQuery},
     MatchingTransactions,
 };
-use futures::{Future, Stream};
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;
 use std::{
@@ -12,7 +11,11 @@ use std::{
     time::{Duration, Instant},
 };
 use testcontainers::*;
-use tokio::{prelude::FutureExt, runtime::Runtime, timer::Delay};
+use tokio::{
+    prelude::{Future, FutureExt, Stream},
+    runtime::Runtime,
+    timer::Delay,
+};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for bitcoin queries
@@ -67,7 +70,7 @@ fn bitcoin_transaction_query_e2e_test() {
 
             transaction_hash
         })
-        .map_err(|_| ());;
+        .map_err(|_| ());
 
     let mut runtime = Runtime::new().unwrap();
 

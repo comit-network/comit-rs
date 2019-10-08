@@ -3,11 +3,14 @@ use btsieve::{
     MatchingTransactions,
 };
 use ethereum_support::{TransactionRequest, U256};
-use futures::{Future, Stream};
 use reqwest::Url;
 use std::time::{Duration, Instant};
 use testcontainers::*;
-use tokio::{prelude::FutureExt, runtime::Runtime, timer::Delay};
+use tokio::{
+    prelude::{Future, FutureExt, Stream},
+    runtime::Runtime,
+    timer::Delay,
+};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum queries
