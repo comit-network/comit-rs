@@ -14,7 +14,7 @@ use crate::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin_support::{consensus::Decodable, deserialize, BitcoinHash};
 use futures::{compat::Future01CompatExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
-use std::{collections::HashSet, fmt::Debug};
+use std::{collections::HashSet, fmt::Debug, ops::Add};
 use tokio::{
     prelude::{future::Future, stream, Stream},
     timer::Delay,
@@ -88,23 +88,41 @@ where
         let block = latest_block;
         while prev_blockhashes.len() > 1 && !prev_blockhashes.contains(&block.header.prev_blockhash)
         {
-            let block = blockchain_connector
+            let result_block = blockchain_connector
                 .block_by_hash(block.header.prev_blockhash)
                 .compat()
-                .await
-                .expect("Couldn't get block by hash. Should log and try again later?");
+                .await;
 
-            prev_blockhashes.insert(block.bitcoin_hash());
+            match result_block {
+                Ok(block) => {
+                    prev_blockhashes.insert(block.bitcoin_hash());
 
-            // does this block contain the matching transaction?
-            if let Some(transaction) = block
-                .clone()
-                .txdata
-                .into_iter()
-                .find(|transaction| query.matches(&transaction))
-            {
-                return Ok(transaction);
-            };
+                    // does this block contain the matching transaction?
+                    if let Some(transaction) = block
+                        .clone()
+                        .txdata
+                        .into_iter()
+                        .find(|transaction| query.matches(&transaction))
+                    {
+                        return Ok(transaction);
+                    };
+                }
+                Err(e) => {
+                    log::warn!(
+                        "Could not get parent of block {}, with blockhash {}: {:?}",
+                        block.bitcoin_hash(),
+                        block.header.prev_blockhash,
+                        e,
+                    );
+
+                    // try again after a short delay
+                    Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
+                        .compat()
+                        .await
+                        .unwrap_or_else(|e| log::warn!("Waiting for delay failed: {:?}", e));
+                    continue;
+                }
+            }
         }
     }
 }
