@@ -1,8 +1,55 @@
 use secp256k1::{
-    self, rand::Rng, Error, Message, PublicKey, RecoverableSignature, Secp256k1, SecretKey,
-    Signature,
+    self, rand::Rng, Message, PublicKey, RecoverableSignature, Secp256k1, SecretKey, Signature,
 };
 use std::{convert::Into, str::FromStr};
+
+#[derive(Debug)]
+pub enum Error {
+    NoSecretKeyProvided,
+    Secp256k1(secp256k1::Error),
+}
+
+impl From<secp256k1::Error> for Error {
+    fn from(err: secp256k1::Error) -> Self {
+        Error::Secp256k1(err)
+    }
+}
+
+#[derive(Debug)]
+pub struct Builder {
+    secp: Secp256k1<secp256k1::All>,
+    secret_key_slice: Option<Vec<u8>>,
+}
+
+impl Builder {
+    pub fn new(secp: Secp256k1<secp256k1::All>) -> Builder {
+        Builder {
+            secp,
+            secret_key_slice: None,
+        }
+    }
+
+    pub fn secret_key_slice(self, data: &[u8]) -> Builder {
+        let vec = data.to_vec();
+        Builder {
+            secret_key_slice: Some(vec),
+            ..self
+        }
+    }
+
+    pub fn build(self) -> Result<KeyPair, Error> {
+        match self {
+            Self {
+                secret_key_slice: None,
+                ..
+            } => Err(Error::NoSecretKeyProvided),
+            Self {
+                secret_key_slice: Some(slice),
+                secp,
+            } => Ok(SecretKey::from_slice(&slice).map(|secret_key| (secp, secret_key).into())?),
+        }
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct KeyPair {
@@ -30,17 +77,10 @@ impl KeyPair {
         (self.secret_key, self.public_key)
     }
 
-    pub fn from_secret_key_slice(
-        secp: Secp256k1<secp256k1::All>,
-        data: &[u8],
-    ) -> Result<KeyPair, Error> {
-        SecretKey::from_slice(data).map(|secret_key| (secp, secret_key).into())
-    }
-
     pub fn from_secret_key_hex(
         secp_context: Secp256k1<secp256k1::All>,
         key: &str,
-    ) -> Result<KeyPair, Error> {
+    ) -> Result<KeyPair, secp256k1::Error> {
         SecretKey::from_str(key).map(|secret_key| (secp_context, secret_key).into())
     }
 
@@ -86,14 +126,14 @@ mod test {
 
     #[test]
     fn correct_keypair_from_secret_key_slice() {
-        let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
         // taken from: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-        let keypair = KeyPair::from_secret_key_slice(
-            secp,
-            &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                .unwrap(),
-        )
-        .unwrap();
+        let keypair = Builder::new(Secp256k1::new())
+            .secret_key_slice(
+                &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
+                    .unwrap(),
+            )
+            .build()
+            .unwrap();
 
         assert_eq!(
             keypair.public_key(),
