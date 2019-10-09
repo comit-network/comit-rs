@@ -46,6 +46,7 @@ fn ethereum_transaction_query_e2e_test() {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
+            event_matchers: vec![],
         })
         .take(1)
         .into_future()
@@ -82,5 +83,8 @@ fn ethereum_transaction_query_e2e_test() {
     let (actual_transaction, (funding_transaction, _)) =
         runtime.block_on(future_with_timeout).unwrap();
 
-    assert_eq!(funding_transaction.unwrap().hash, actual_transaction)
+    assert_eq!(
+        funding_transaction.unwrap().transaction.hash,
+        actual_transaction
+    )
 }

@@ -5,6 +5,6 @@ mod web3_connector;
 mod quickcheck_impls;
 
 pub use self::{
-    queries::{EventMatcher, EventQuery, Topic, TransactionQuery},
+    queries::{EventMatcher, Topic, TransactionQuery},
     web3_connector::Web3Connector,
 };
