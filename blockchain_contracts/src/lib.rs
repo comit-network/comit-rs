@@ -12,7 +12,6 @@ pub use self::fit_into_placeholder_slice::{
     EthereumTimestamp, FitIntoPlaceholderSlice, SecretHash, TokenQuantity,
 };
 
-// TODO: Remove this, only binary should instantiate a secp context
 lazy_static! {
     pub static ref SECP: Secp256k1<rust_bitcoin::secp256k1::All> = Secp256k1::new();
 }
