@@ -10,14 +10,16 @@ use crate::{
     bitcoin_helper::RegtestHelperClient,
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
-use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness};
+use bitcoin_witness::{
+    secp256k1::{PublicKey, SecretKey},
+    PrimedInput, PrimedTransaction, UnlockParameters, Witness,
+};
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 use rust_bitcoin::{
     consensus::encode::serialize_hex,
     hashes::{hash160, sha256d, Hash},
     network::constants::Network,
-    secp256k1::{PublicKey, SecretKey},
     Address, Amount, OutPoint, PrivateKey,
 };
 use spectral::prelude::*;
@@ -169,7 +171,7 @@ fn redeem_htlc_with_secret() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&blockchain_contracts::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -208,7 +210,7 @@ fn refund_htlc() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&*blockchain_contracts::SECP, fee);
 
     let refund_tx_hex = serialize_hex(&refund_tx);
 
@@ -270,7 +272,7 @@ fn redeem_htlc_with_long_secret() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&*blockchain_contracts::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -311,7 +313,7 @@ fn redeem_htlc_with_short_secret() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&*blockchain_contracts::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 

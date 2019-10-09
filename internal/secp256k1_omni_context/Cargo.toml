@@ -1,11 +1,10 @@
 [package]
-name = "secp256k1_keypair"
+name = "secp256k1_omni_context"
 version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
-lazy_static = "1"
 secp256k1 = { version = "0.12", features = ["rand"] }
 serde = { version = "1", features = ["derive"] }
 

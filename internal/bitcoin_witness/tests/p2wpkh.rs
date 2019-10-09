@@ -2,7 +2,8 @@ use bitcoin_rpc_test_helpers::RegtestHelperClient;
 use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
-use secp256k1_keypair::KeyPair;
+use secp256k1::Secp256k1;
+use secp256k1_omni_context::{secp256k1, Builder};
 use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
@@ -11,6 +12,7 @@ use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Dock
 fn redeem_single_p2wpkh() {
     let _ = env_logger::try_init();
 
+    let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
     let docker = Cli::default();
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
@@ -18,9 +20,12 @@ fn redeem_single_p2wpkh() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair: KeyPair = private_key.key.into();
+    let keypair = Builder::new(secp.clone())
+        .secret_key(private_key.key)
+        .build()
+        .unwrap();
 
-    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.public_key(), input_amount);
+    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.clone().public_key(), input_amount);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -30,11 +35,11 @@ fn redeem_single_p2wpkh() {
         inputs: vec![PrimedInput::new(
             outpoint,
             input_amount,
-            keypair.p2wpkh_unlock_parameters(),
+            keypair.clone().p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&secp, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -56,18 +61,25 @@ fn redeem_two_p2wpkh() {
     let docker = Cli::default();
     let container = docker.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
+    let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
 
     client.mine_bitcoins();
     let input_amount = Amount::from_sat(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair_1: KeyPair = private_key_1.key.into();
+    let keypair_1 = Builder::new(secp.clone())
+        .secret_key(private_key_1.key)
+        .build()
+        .unwrap();
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
-    let keypair_2: KeyPair = private_key_2.key.into();
+    let keypair_2 = Builder::new(secp.clone())
+        .secret_key(private_key_2.key)
+        .build()
+        .unwrap();
 
-    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.public_key(), input_amount);
-    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.public_key(), input_amount);
+    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.clone().public_key(), input_amount);
+    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.clone().public_key(), input_amount);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -80,7 +92,7 @@ fn redeem_two_p2wpkh() {
         ],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&secp, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 

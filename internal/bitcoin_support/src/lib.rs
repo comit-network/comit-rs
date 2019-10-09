@@ -14,7 +14,6 @@ pub use bitcoin::{
         hash160::Hash as Hash160, hex::FromHex, sha256d::Hash as Sha256dHash, Error as HashesError,
         Hash,
     },
-    secp256k1,
     util::{
         amount,
         bip143::SighashComponents,
@@ -25,6 +24,7 @@ pub use bitcoin::{
     },
     Address, Amount,
 };
+pub use secp256k1_omni_context;
 pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 
