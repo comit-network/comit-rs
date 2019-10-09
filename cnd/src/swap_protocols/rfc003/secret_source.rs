@@ -15,14 +15,16 @@ impl SecretSource for Seed {
     fn secp256k1_redeem(&self) -> KeyPair {
         Builder::new(crate::SECP.clone())
             .secret_key_slice(self.sha256_with_seed(&[b"REDEEM"]).as_ref())
-            .build()
             .expect("The probability of this happening is < 1 in 2^120")
+            .build()
+            .expect("Infaillible because Secret key is provided")
     }
 
     fn secp256k1_refund(&self) -> KeyPair {
         Builder::new(crate::SECP.clone())
             .secret_key_slice(self.sha256_with_seed(&[b"REFUND"]).as_ref())
-            .build()
             .expect("The probability of this happening is < 1 in 2^120")
+            .build()
+            .expect("Infaillible because Secret key is provided")
     }
 }

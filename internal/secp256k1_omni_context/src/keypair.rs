@@ -6,7 +6,6 @@ use std::str::FromStr;
 #[derive(Debug)]
 pub enum Error {
     NoSecretKeyProvided,
-    MultipleSecretKeysProvided,
     Secp256k1(secp256k1::Error),
 }
 
@@ -19,8 +18,6 @@ impl From<secp256k1::Error> for Error {
 #[derive(Debug)]
 pub struct Builder {
     secp: Secp256k1<secp256k1::All>,
-    secret_key_slice: Option<Vec<u8>>,
-    secret_key_hex: Option<String>,
     secret_key: Option<SecretKey>,
 }
 
@@ -28,8 +25,6 @@ impl Builder {
     pub fn new(secp: Secp256k1<secp256k1::All>) -> Builder {
         Builder {
             secp,
-            secret_key_slice: None,
-            secret_key_hex: None,
             secret_key: None,
         }
     }
@@ -41,21 +36,6 @@ impl Builder {
         }
     }
 
-    pub fn secret_key_slice(self, data: &[u8]) -> Builder {
-        let vec = data.to_vec();
-        Builder {
-            secret_key_slice: Some(vec),
-            ..self
-        }
-    }
-
-    pub fn secret_key_hex(self, key: &str) -> Builder {
-        Builder {
-            secret_key_hex: Some(key.to_string()),
-            ..self
-        }
-    }
-
     pub fn rng<R: Rng>(self, rng: &mut R) -> Builder {
         Builder {
             secret_key: Some(SecretKey::new(rng)),
@@ -63,51 +43,33 @@ impl Builder {
         }
     }
 
-    pub fn build(self) -> Result<KeyPair, Error> {
-        let mut secret_keys_count = 0;
-        if self.secret_key.is_some() {
-            secret_keys_count += 1;
-        }
-        if self.secret_key_slice.is_some() {
-            secret_keys_count += 1;
-        }
-        if self.secret_key_hex.is_some() {
-            secret_keys_count += 1;
-        }
+    pub fn secret_key_slice(self, data: &[u8]) -> Result<Builder, Error> {
+        Ok(SecretKey::from_slice(data).map(|secret_key| Builder {
+            secret_key: Some(secret_key),
+            ..self
+        })?)
+    }
 
-        match secret_keys_count {
-            0 => Err(Error::NoSecretKeyProvided),
-            1 => match self {
-                Self {
-                    secret_key: Some(secret_key),
-                    secp,
-                    ..
-                } => Ok(KeyPair {
-                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
-                    secret_key,
-                    secp,
-                }),
-                Self {
-                    secret_key_slice: Some(slice),
-                    secp,
-                    ..
-                } => Ok(SecretKey::from_slice(&slice).map(|secret_key| KeyPair {
-                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
-                    secret_key,
-                    secp,
-                })?),
-                Self {
-                    secret_key_hex: Some(hex),
-                    secp,
-                    ..
-                } => Ok(SecretKey::from_str(hex.as_str()).map(|secret_key| KeyPair {
-                    public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
-                    secret_key,
-                    secp,
-                })?),
-                Self { .. } => unreachable!(),
-            },
-            _ => Err(Error::MultipleSecretKeysProvided),
+    pub fn secret_key_hex(self, hex: &str) -> Result<Builder, Error> {
+        Ok(SecretKey::from_str(hex).map(|secret_key| Builder {
+            secret_key: Some(secret_key),
+            ..self
+        })?)
+    }
+
+    pub fn build(self) -> Result<KeyPair, Error> {
+        match self {
+            Builder {
+                secret_key: None, ..
+            } => Err(Error::NoSecretKeyProvided),
+            Builder {
+                secret_key: Some(secret_key),
+                secp,
+            } => Ok(KeyPair {
+                public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
+                secret_key,
+                secp,
+            }),
         }
     }
 }
@@ -169,6 +131,7 @@ mod test {
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
             )
+            .unwrap()
             .build()
             .unwrap();
 
