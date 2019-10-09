@@ -16,6 +16,7 @@ fn main() {
     let keypair = match env::args().nth(1) {
         Some(existing_key) => Builder::new(secp.clone())
             .secret_key_hex(existing_key.as_ref())
+            .unwrap()
             .build()
             .unwrap(),
         None => {

@@ -289,12 +289,8 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: Builder::new(crate::SECP.clone())
-                .secret_key_slice(
-                    &hex::decode(
-                        "18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725",
-                    )
-                    .unwrap(),
-                )
+                .secret_key_hex("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
+                .unwrap()
                 .build()
                 .unwrap()
                 .into(),
