@@ -51,8 +51,44 @@ where
     E: Debug + Send + 'static,
 {
     let mut prev_blockhashes: HashSet<bitcoin_support::Sha256dHash> = HashSet::new();
+    let mut missing_block_futures: Vec<_> = Vec::new();
 
     loop {
+        // look at missing block futures and go 1 block back in time for each one:
+        // return if transaction is found
+        // add another future to the list if parent block is not known
+        // do nothing if parent block is known
+        let mut new_missing_block_futures = Vec::new();
+        for (block_future, blockhash) in missing_block_futures.into_iter() {
+            match block_future.await {
+                Ok(block) => {
+                    // does this block contain the matching transaction?
+                    match check_block_against_query(&block, &query) {
+                        Some(transaction) => return Ok(transaction.clone()),
+                        None => {
+                            let parent_blockhash = block.header.prev_blockhash;
+                            let unknown_parent = prev_blockhashes.insert(parent_blockhash);
+
+                            if unknown_parent {
+                                let future = blockchain_connector
+                                    .block_by_hash(parent_blockhash)
+                                    .compat();
+                                new_missing_block_futures.push((future, parent_blockhash));
+                            }
+                        }
+                    };
+                }
+                Err(e) => {
+                    log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
+
+                    // try again in the next iteration
+                    let future = blockchain_connector.block_by_hash(blockhash).compat();
+                    new_missing_block_futures.push((future, blockhash));
+                }
+            };
+        }
+        missing_block_futures = new_missing_block_futures;
+
         let latest_block = match blockchain_connector.latest_block().compat().await {
             Ok(block) => block,
             Err(e) => {
@@ -79,57 +115,29 @@ where
 
         // does this block contain the matching transaction?
         if let Some(transaction) = check_block_against_query(&latest_block, &query) {
-            return Ok(transaction);
+            return Ok(transaction.clone());
         };
 
         // have we seen this block's parent?
-        let block = latest_block;
-        while prev_blockhashes.len() > 1 && !prev_blockhashes.contains(&block.header.prev_blockhash)
+        if prev_blockhashes.len() > 1
+            && !prev_blockhashes.contains(&latest_block.header.prev_blockhash)
         {
-            let parent_blockhash = block.header.prev_blockhash;
-            let result_block = blockchain_connector
-                .block_by_hash(parent_blockhash)
-                .compat()
-                .await;
+            let blockhash = latest_block.header.prev_blockhash;
+            let future = blockchain_connector.block_by_hash(blockhash).compat();
 
-            match result_block {
-                Ok(block) => {
-                    prev_blockhashes.insert(block.bitcoin_hash());
-
-                    // does this block contain the matching transaction?
-                    if let Some(transaction) = check_block_against_query(&block, &query) {
-                        return Ok(transaction);
-                    };
-                }
-                Err(e) => {
-                    log::warn!(
-                        "Could not get parent of block {}, with blockhash {}: {:?}",
-                        block.bitcoin_hash(),
-                        parent_blockhash,
-                        e,
-                    );
-
-                    // try again after a short delay
-                    Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-                        .compat()
-                        .await
-                        .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
-                    continue;
-                }
-            }
+            missing_block_futures.push((future, blockhash));
         }
     }
 }
 
-fn check_block_against_query(
-    block: &bitcoin_support::Block,
+fn check_block_against_query<'b>(
+    block: &'b bitcoin_support::Block,
     query: &TransactionQuery,
-) -> Option<bitcoin_support::Transaction> {
+) -> Option<&'b bitcoin_support::Transaction> {
     block
-        .clone()
         .txdata
-        .into_iter()
-        .find(|transaction| query.matches(&transaction))
+        .iter()
+        .find(|transaction| query.matches(transaction))
 }
 
 pub fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
