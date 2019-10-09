@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
     time::{Duration, Instant},
 };
-use tokio::prelude::{Future, FutureExt, IntoFuture};
+use tokio::prelude::{future, Future, FutureExt, IntoFuture};
 
 #[derive(Clone)]
 struct BitcoinConnectorMock {
@@ -71,6 +71,16 @@ impl BlockByHash for BitcoinConnectorMock {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+        // if the genesis block is reached return a future that never resolves so
+        // that we can model the behaviour of considering a chain of blocks that
+        // will definitely not contain the transaction specified in the query
+        // i.e. due to a blockchain reorganisation
+        if block_hash
+            == from_hex("0000000000000000000000000000000000000000000000000000000000000000")
+        {
+            return Box::new(future::empty());
+        }
+
         Box::new(
             self.all_blocks
                 .get(&block_hash)
@@ -101,6 +111,58 @@ fn find_transaction_in_missing_block() {
     let transaction = wait(future);
 
     let expected_transaction = from_hex("0200000001fa456ea2584ca4ae735288fd797a59d5816132b22b284bb6210b797b6f16f332000000004847304402206196fe7cda1f1b7fccf98e42e8acc6a17a4459b35311d28173f40858868876bb0220540e17cadd26f17340b473917c81001f79a0aff103fa9901297830e001005d7f01feffffff0200e1f5050000000017a914ef5d02af9adce39e8d28c19043d087432b1d7d1587640210240100000017a9141e15086742fde2656b3f82ca18ed624663723b328733000000");
+    assert_eq!(transaction, expected_transaction);
+}
+
+#[test]
+fn find_transaction_if_blockchain_reorganisation() {
+    // first block returned by latest_block
+    let block_query_genesis = from_hex(
+        include_str!("./find_transaction_if_blockchain_reorganisation/query_genesis_block.hex")
+            .trim(),
+    );
+
+    let block_containing_transaction = from_hex(
+        include_str!("./find_transaction_if_blockchain_reorganisation/transaction_block.hex")
+            .trim(),
+    );
+
+    // second block returned by latest block, whose parent we've never seen before
+    let stale_block = from_hex(
+        include_str!("./find_transaction_if_blockchain_reorganisation/stale_block.hex").trim(),
+    );
+
+    let connector = BitcoinConnectorMock::new(
+        vec![
+            &block_query_genesis,
+            &stale_block,
+            &block_containing_transaction,
+        ],
+        vec![
+            &block_query_genesis,
+            &stale_block,
+            &block_containing_transaction,
+        ],
+    );
+
+    let future = connector
+        .matching_transactions(TransactionQuery {
+            to_address: Some(
+                Address::from_str(
+                    include_str!("./find_transaction_if_blockchain_reorganisation/address").trim(),
+                )
+                .unwrap(),
+            ),
+            from_outpoint: None,
+            unlock_script: None,
+        })
+        .first_or_else(|| panic!());
+
+    let transaction = wait(future);
+
+    let expected_transaction = from_hex(
+        include_str!("./find_transaction_if_blockchain_reorganisation/transaction.hex").trim(),
+    );
     assert_eq!(transaction, expected_transaction);
 }
 
