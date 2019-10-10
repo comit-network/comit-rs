@@ -5,8 +5,9 @@ authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"
 
 [dependencies]
+bitcoin = "0.19.1"
 bitcoin_support  = { path = "../bitcoin_support" }
 ethereum_support = { path = "../ethereum_support" }
 hex = "0.4"
-secp256k1_keypair = { path = "../secp256k1_keypair" }
+secp256k1_omni_context = { path = "../secp256k1_omni_context" }
 tiny-keccak = "1.5.0"

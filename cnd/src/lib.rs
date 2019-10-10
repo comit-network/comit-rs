@@ -30,6 +30,13 @@ pub mod swap_protocols;
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
+use bitcoin_support::secp256k1_omni_context::secp256k1;
+use lazy_static::lazy_static;
+
+lazy_static! {
+    pub static ref SECP: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+}
+
 // Linux: /home/<user>/.config/comit/
 // Windows: C:\Users\<user>\AppData\Roaming\comit\config\
 // OSX: /Users/<user>/Library/Preferences/comit/

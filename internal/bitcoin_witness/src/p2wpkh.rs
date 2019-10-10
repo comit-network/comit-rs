@@ -1,6 +1,6 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{Hash160, PubkeyHash, Script};
-use secp256k1_keypair::KeyPair;
+use secp256k1_omni_context::KeyPair;
 
 /// Utility function to generate the `prev_script` for a p2wpkh adddress.
 /// A standard p2wpkh locking script of:
@@ -29,8 +29,8 @@ impl UnlockP2wpkh for KeyPair {
     fn p2wpkh_unlock_parameters(self) -> UnlockParameters {
         UnlockParameters {
             witness: vec![
-                Witness::Signature(self.secret_key()),
-                Witness::PublicKey(self.public_key()),
+                Witness::Signature(self.clone().secret_key()),
+                Witness::PublicKey(self.clone().public_key()),
             ],
             sequence: super::SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             locktime: 0,
@@ -43,13 +43,22 @@ impl UnlockP2wpkh for KeyPair {
 mod test {
     use super::*;
     use bitcoin_support::PrivateKey;
+    use secp256k1_omni_context::{
+        secp256k1::{self, Secp256k1},
+        Builder,
+    };
     use std::str::FromStr;
+
     #[test]
     fn correct_prev_script() {
+        let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
         let private_key =
             PrivateKey::from_str("L4r4Zn5sy3o5mjiAdezhThkU37mcdN4eGp4aeVM4ZpotGTcnWc6k").unwrap();
 
-        let keypair: KeyPair = private_key.key.into();
+        let keypair = Builder::new(secp)
+            .secret_key(private_key.key)
+            .build()
+            .unwrap();
         let input_parameters = keypair.p2wpkh_unlock_parameters();
         // Note: You might expect it to be a is_p2wpkh() but it shouldn't be.
         assert!(
