@@ -54,8 +54,8 @@ where
     let mut missing_block_futures: Vec<_> = Vec::new();
 
     loop {
-        // Delay so that we don't overload the connector,
-        // should probably be defined by the blockchain connector
+        // Delay so that we don't overload the machine given the assumption
+        // that latest_block and block_by_hash resolve quickly
         Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
             .compat()
             .await
