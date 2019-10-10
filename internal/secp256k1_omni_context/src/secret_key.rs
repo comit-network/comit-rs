@@ -79,10 +79,6 @@ pub struct SecretKey {
 }
 
 impl SecretKey {
-    pub fn secret_key(self) -> secp256k1::SecretKey {
-        self.secret_key
-    }
-
     pub fn public_key(&self) -> PublicKey {
         secp256k1::PublicKey::from_secret_key(&self.secp, &self.secret_key)
     }
@@ -100,11 +96,11 @@ impl SecretKey {
     }
 }
 
-// impl From<SecretKey> for secp256k1::SecretKey {
-//    fn from(secret_key: SecretKey) -> Self {
-//        secret_key.secret_key
-//    }
-//}
+impl From<SecretKey> for secp256k1::SecretKey {
+    fn from(secret_key: SecretKey) -> Self {
+        secret_key.secret_key
+    }
+}
 
 #[cfg(test)]
 mod test {

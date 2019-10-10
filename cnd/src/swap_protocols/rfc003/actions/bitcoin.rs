@@ -41,7 +41,7 @@ impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
             output: PrimedInput::new(
                 htlc_location,
                 Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
-                htlc.unlock_after_timeout(secret_source.secp256k1_refund().secret_key()),
+                htlc.unlock_after_timeout(secret_source.secp256k1_refund().into()),
             ),
             network: htlc_params.ledger.network,
         }
@@ -64,7 +64,7 @@ impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
                 htlc_location,
                 htlc_params.asset,
                 htlc.unlock_with_secret(
-                    secret_source.secp256k1_redeem().secret_key(),
+                    secret_source.secp256k1_redeem().into(),
                     secret.into_raw_secret(),
                 ),
             ),
