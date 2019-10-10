@@ -125,6 +125,70 @@ fn find_transaction_in_missing_block() {
 }
 
 #[test]
+fn find_transaction_in_missing_block_with_big_gap() {
+    let block1 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex")
+            .trim(),
+    );
+    let block2 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex")
+            .trim(),
+    );
+    let block3 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block3.hex")
+            .trim(),
+    );
+    let block4 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block4.hex")
+            .trim(),
+    );
+    let block5 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block5.hex")
+            .trim(),
+    );
+    let block6 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block6.hex")
+            .trim(),
+    );
+    let block7 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block7.hex")
+            .trim(),
+    );
+    let block8 = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex")
+            .trim(),
+    );
+
+    let connector = BitcoinConnectorMock::new(vec![&block1, &block8], vec![
+        &block1, &block2, &block3, &block4, &block5, &block6, &block7, &block8,
+    ]);
+
+    let future = connector
+        .matching_transactions(TransactionQuery {
+            to_address: Some(
+                Address::from_str(
+                    include_str!(
+                        "./test_data/find_transaction_in_missing_block_with_big_gap/address"
+                    )
+                    .trim(),
+                )
+                .unwrap(),
+            ),
+            from_outpoint: None,
+            unlock_script: None,
+        })
+        .first_or_else(|| panic!());
+
+    let transaction = wait(future);
+
+    let expected_transaction = from_hex(
+        include_str!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex")
+            .trim(),
+    );
+    assert_eq!(transaction, expected_transaction);
+}
+
+#[test]
 fn find_transaction_if_blockchain_reorganisation() {
     // first block returned by latest_block
     let block_query_genesis = from_hex(

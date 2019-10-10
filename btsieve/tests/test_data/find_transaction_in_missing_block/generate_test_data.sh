@@ -13,9 +13,10 @@ docker_run
 generate_101_blocks
 
 generate_block "./block1.hex"
-generate_block "./block2.hex"
 
 create_transaction "./address" "./transaction.hex"
+generate_block "./block2.hex"
+
 generate_block "./block3.hex"
 
 docker_stop
