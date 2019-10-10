@@ -1,6 +1,6 @@
 use crate::witness::{UnlockParameters, Witness};
 use bitcoin_support::{Hash160, PubkeyHash, Script};
-use secp256k1_omni_context::KeyPair;
+use secp256k1_omni_context::SecretKey;
 
 /// Utility function to generate the `prev_script` for a p2wpkh adddress.
 /// A standard p2wpkh locking script of:
@@ -25,7 +25,7 @@ pub trait UnlockP2wpkh {
     fn p2wpkh_unlock_parameters(self) -> UnlockParameters;
 }
 
-impl UnlockP2wpkh for KeyPair {
+impl UnlockP2wpkh for SecretKey {
     fn p2wpkh_unlock_parameters(self) -> UnlockParameters {
         UnlockParameters {
             witness: vec![

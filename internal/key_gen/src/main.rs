@@ -13,7 +13,7 @@ use std::env;
 
 fn main() {
     let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
-    let keypair = match env::args().nth(1) {
+    let secret_key = match env::args().nth(1) {
         Some(existing_key) => Builder::new(secp.clone())
             .secret_key_hex(existing_key.as_ref())
             .unwrap()
@@ -25,7 +25,7 @@ fn main() {
         }
     };
 
-    let (secret_key, public_key) = keypair.keys();
+    let (secret_key, public_key) = secret_key.keys();
     let mainnet_private_key = PrivateKey {
         compressed: true,
         network: Network::Bitcoin,

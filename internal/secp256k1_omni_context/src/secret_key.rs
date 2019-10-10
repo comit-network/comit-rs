@@ -1,6 +1,4 @@
-use secp256k1::{
-    self, rand::Rng, Message, PublicKey, RecoverableSignature, Secp256k1, SecretKey, Signature,
-};
+use secp256k1::{self, rand::Rng, Message, PublicKey, RecoverableSignature, Secp256k1, Signature};
 use std::str::FromStr;
 
 #[derive(Debug)]
@@ -18,7 +16,7 @@ impl From<secp256k1::Error> for Error {
 #[derive(Debug)]
 pub struct Builder {
     secp: Secp256k1<secp256k1::All>,
-    secret_key: Option<SecretKey>,
+    secret_key: Option<secp256k1::SecretKey>,
 }
 
 impl Builder {
@@ -29,7 +27,7 @@ impl Builder {
         }
     }
 
-    pub fn secret_key(self, secret_key: SecretKey) -> Builder {
+    pub fn secret_key(self, secret_key: secp256k1::SecretKey) -> Builder {
         Builder {
             secret_key: Some(secret_key),
             ..self
@@ -38,26 +36,30 @@ impl Builder {
 
     pub fn rng<R: Rng>(self, rng: &mut R) -> Builder {
         Builder {
-            secret_key: Some(SecretKey::new(rng)),
+            secret_key: Some(secp256k1::SecretKey::new(rng)),
             ..self
         }
     }
 
     pub fn secret_key_slice(self, data: &[u8]) -> Result<Builder, Error> {
-        Ok(SecretKey::from_slice(data).map(|secret_key| Builder {
-            secret_key: Some(secret_key),
-            ..self
-        })?)
+        Ok(
+            secp256k1::SecretKey::from_slice(data).map(|secret_key| Builder {
+                secret_key: Some(secret_key),
+                ..self
+            })?,
+        )
     }
 
     pub fn secret_key_hex(self, hex: &str) -> Result<Builder, Error> {
-        Ok(SecretKey::from_str(hex).map(|secret_key| Builder {
-            secret_key: Some(secret_key),
-            ..self
-        })?)
+        Ok(
+            secp256k1::SecretKey::from_str(hex).map(|secret_key| Builder {
+                secret_key: Some(secret_key),
+                ..self
+            })?,
+        )
     }
 
-    pub fn build(self) -> Result<KeyPair, Error> {
+    pub fn build(self) -> Result<SecretKey, Error> {
         match self {
             Builder {
                 secret_key: None, ..
@@ -65,33 +67,28 @@ impl Builder {
             Builder {
                 secret_key: Some(secret_key),
                 secp,
-            } => Ok(KeyPair {
-                public_key: secp256k1::PublicKey::from_secret_key(&secp, &secret_key),
-                secret_key,
-                secp,
-            }),
+            } => Ok(SecretKey { secret_key, secp }),
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct KeyPair {
-    secret_key: SecretKey,
-    public_key: PublicKey,
+pub struct SecretKey {
+    secret_key: secp256k1::SecretKey,
     secp: Secp256k1<secp256k1::All>,
 }
 
-impl KeyPair {
-    pub fn secret_key(self) -> SecretKey {
+impl SecretKey {
+    pub fn secret_key(self) -> secp256k1::SecretKey {
         self.secret_key
     }
 
-    pub fn public_key(self) -> PublicKey {
-        self.public_key
+    pub fn public_key(&self) -> PublicKey {
+        secp256k1::PublicKey::from_secret_key(&self.secp, &self.secret_key)
     }
 
-    pub fn keys(self) -> (SecretKey, PublicKey) {
-        (self.secret_key, self.public_key)
+    pub fn keys(self) -> (secp256k1::SecretKey, PublicKey) {
+        (self.secret_key, self.public_key())
     }
 
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
@@ -103,21 +100,11 @@ impl KeyPair {
     }
 }
 
-impl From<(Secp256k1<secp256k1::All>, SecretKey, PublicKey)> for KeyPair {
-    fn from(pair: (Secp256k1<secp256k1::All>, SecretKey, PublicKey)) -> KeyPair {
-        KeyPair {
-            secp: pair.0,
-            secret_key: pair.1,
-            public_key: pair.2,
-        }
-    }
-}
-
-impl From<KeyPair> for (SecretKey, PublicKey) {
-    fn from(keypair: KeyPair) -> (SecretKey, PublicKey) {
-        (keypair.secret_key, keypair.public_key)
-    }
-}
+// impl From<SecretKey> for secp256k1::SecretKey {
+//    fn from(secret_key: SecretKey) -> Self {
+//        secret_key.secret_key
+//    }
+//}
 
 #[cfg(test)]
 mod test {
