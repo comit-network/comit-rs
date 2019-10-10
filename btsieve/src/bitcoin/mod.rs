@@ -54,15 +54,10 @@ where
     let mut missing_block_futures: Vec<_> = Vec::new();
 
     loop {
-        // look at missing block futures and go 1 block back in time for each one:
-        // return if transaction is found
-        // add another future to the list if parent block is not known
-        // do nothing if parent block is known
         let mut new_missing_block_futures = Vec::new();
         for (block_future, blockhash) in missing_block_futures.into_iter() {
             match block_future.await {
                 Ok(block) => {
-                    // does this block contain the matching transaction?
                     match check_block_against_query(&block, &query) {
                         Some(transaction) => return Ok(transaction.clone()),
                         None => {
@@ -81,7 +76,6 @@ where
                 Err(e) => {
                     log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
 
-                    // try again in the next iteration
                     let future = blockchain_connector.block_by_hash(blockhash).compat();
                     new_missing_block_futures.push((future, blockhash));
                 }
@@ -94,7 +88,6 @@ where
             Err(e) => {
                 log::warn!("Could not get latest block: {:?}", e,);
 
-                // try again after a short delay
                 Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
                     .compat()
                     .await
@@ -103,9 +96,8 @@ where
             }
         };
 
-        // have we seen this block before?
+        // If we can't insert then we have seen this block
         if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
-            // try again after a short delay
             Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
                 .compat()
                 .await
@@ -113,12 +105,10 @@ where
             continue;
         }
 
-        // does this block contain the matching transaction?
         if let Some(transaction) = check_block_against_query(&latest_block, &query) {
             return Ok(transaction.clone());
         };
 
-        // have we seen this block's parent?
         if prev_blockhashes.len() > 1
             && !prev_blockhashes.contains(&latest_block.header.prev_blockhash)
         {
