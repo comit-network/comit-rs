@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+### Changed
+- **Breaking:** Change the identity for the Bitcoin Ledger from a public key hash to a public key. This change impacts the HTTP and the COMIT API of cnd. 
+
 ## [0.3.0] - 2019-10-02
 ### Changed
 - Embed btsieve as a library inside cnd: From now on, you'll only need to run cnd to use COMIT.

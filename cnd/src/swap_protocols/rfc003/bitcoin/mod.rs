@@ -5,7 +5,7 @@ use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{state_machine::HtlcParams, Ledger},
 };
-use bitcoin_support::{Address, Amount, OutPoint};
+use bitcoin_support::{Address, Amount, Hash, OutPoint};
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
@@ -16,10 +16,16 @@ impl Ledger for Bitcoin {
 
 impl From<HtlcParams<Bitcoin, Amount>> for BitcoinHtlc {
     fn from(htlc_params: HtlcParams<Bitcoin, Amount>) -> Self {
+        let refund_public_key = htlc_params.refund_identity.into_inner();
+        let redeem_public_key = htlc_params.redeem_identity.into_inner();
+
+        let refund_identity = bitcoin_support::Hash160::hash(&refund_public_key.key.serialize());
+        let redeem_identity = bitcoin_support::Hash160::hash(&redeem_public_key.key.serialize());
+
         BitcoinHtlc::new(
             htlc_params.expiry.into(),
-            htlc_params.refund_identity.into(),
-            htlc_params.redeem_identity.into(),
+            refund_identity,
+            redeem_identity,
             htlc_params.secret_hash.into_raw(),
         )
     }
