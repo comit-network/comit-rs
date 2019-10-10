@@ -273,7 +273,7 @@ mod tests {
             HashFunction, Timestamp,
         },
     };
-    use bitcoin_support::{secp256k1_omni_context::Builder, Amount};
+    use bitcoin_support::Amount;
     use ethereum_support::EtherQuantity;
     use spectral::prelude::*;
     use std::sync::Arc;
@@ -281,6 +281,13 @@ mod tests {
     #[test]
     fn insert_and_get_state() {
         let state_store = InMemoryStateStore::default();
+
+        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::new(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275"
+                .parse()
+                .unwrap(),
+        );
+
         let request = Request {
             id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
@@ -288,12 +295,7 @@ mod tests {
             alpha_asset: Amount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
-            alpha_ledger_refund_identity: Builder::new(crate::SECP.clone())
-                .secret_key_hex("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
-                .unwrap()
-                .build()
-                .unwrap()
-                .into(),
+            alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
                 .parse()
                 .unwrap(),
