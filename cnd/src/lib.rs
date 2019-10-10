@@ -32,7 +32,7 @@ pub mod swap_protocols;
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
-use bitcoin_support::secp256k1_omni_context::secp256k1;
+use bitcoin_support::secp_wrapper::secp256k1;
 use lazy_static::lazy_static;
 
 lazy_static! {

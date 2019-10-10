@@ -24,7 +24,7 @@ pub use bitcoin::{
     },
     Address, Amount,
 };
-pub use secp256k1_omni_context;
+pub use secp_wrapper;
 pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 

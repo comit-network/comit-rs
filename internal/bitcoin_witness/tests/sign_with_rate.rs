@@ -3,7 +3,7 @@ use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
 use secp256k1::Secp256k1;
-use secp256k1_omni_context::{secp256k1, Builder, SecretKey};
+use secp_wrapper::{secp256k1, Builder, SecretKey};
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 

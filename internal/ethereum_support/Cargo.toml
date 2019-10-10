@@ -10,7 +10,7 @@ byteorder = "1.3"
 lazy_static = "1"
 num = "0.2"
 regex = "1.3"
-secp256k1_omni_context = { path = "../secp256k1_omni_context" }
+secp_wrapper = { path = "../secp_wrapper" }
 serde = { version = "1", features = ["derive"] }
 strum = "0.16"
 strum_macros = "0.16"

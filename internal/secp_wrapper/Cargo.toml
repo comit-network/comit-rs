@@ -1,5 +1,5 @@
 [package]
-name = "secp256k1_omni_context"
+name = "secp_wrapper"
 version = "0.1.0"
 authors = [ "CoBloX developers <team@coblox.tech>" ]
 edition = "2018"

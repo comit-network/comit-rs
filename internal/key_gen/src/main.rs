@@ -5,7 +5,7 @@
 use bitcoin::{Network, PrivateKey};
 use bitcoin_support::PubkeyHash;
 use ethereum_support::Address;
-use secp256k1_omni_context::{
+use secp_wrapper::{
     secp256k1::{self, PublicKey, Secp256k1},
     Builder,
 };
@@ -20,7 +20,7 @@ fn main() {
             .build()
             .unwrap(),
         None => {
-            let mut rng = secp256k1_omni_context::secp256k1::rand::OsRng::new().unwrap();
+            let mut rng = secp_wrapper::secp256k1::rand::OsRng::new().unwrap();
             Builder::new(secp).rng(&mut rng).build().unwrap()
         }
     };

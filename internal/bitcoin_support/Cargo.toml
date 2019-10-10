@@ -9,7 +9,7 @@ bigdecimal = "0.1.0"
 bitcoin = { version = "0.19.1", features = ["use-serde"] }
 hex = "0.4"
 lazy_static = "1"
-secp256k1_omni_context = { path = "../secp256k1_omni_context" }
+secp_wrapper = { path = "../secp_wrapper" }
 serde = { version = "1", features = ["derive"] }
 strum = "0.16"
 strum_macros = "0.16"

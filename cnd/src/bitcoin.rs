@@ -6,7 +6,7 @@
 //!       libraries
 //!     - Common functionality that is not (yet) available upstream
 
-use bitcoin_support::secp256k1_omni_context::secp256k1;
+use bitcoin_support::secp_wrapper::secp256k1;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
