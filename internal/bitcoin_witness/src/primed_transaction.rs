@@ -182,7 +182,7 @@ mod test {
         let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
-        let keypair = Builder::new(secp.clone())
+        let secret_key = Builder::new(secp.clone())
             .secret_key(private_key.key)
             .build()
             .unwrap();
@@ -196,7 +196,7 @@ mod test {
                     vout: 1, // First number I found that gave me a 71 byte signature
                 },
                 Amount::from_btc(1.0).expect("Should convert 1.0 in bitcoin amount"),
-                keypair.p2wpkh_unlock_parameters(),
+                secret_key.p2wpkh_unlock_parameters(),
             )],
             output_address: dst_addr,
             secp,

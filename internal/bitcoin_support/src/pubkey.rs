@@ -146,11 +146,11 @@ mod test {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
 
-        let keypair = Builder::new(secp)
+        let secret_key = Builder::new(secp)
             .secret_key(private_key.key)
             .build()
             .unwrap();
-        let pubkey_hash: PubkeyHash = keypair.public_key().into();
+        let pubkey_hash: PubkeyHash = secret_key.public_key().into();
 
         assert_eq!(
             pubkey_hash,

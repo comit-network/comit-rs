@@ -55,11 +55,11 @@ mod test {
         let private_key =
             PrivateKey::from_str("L4r4Zn5sy3o5mjiAdezhThkU37mcdN4eGp4aeVM4ZpotGTcnWc6k").unwrap();
 
-        let keypair = Builder::new(secp)
+        let secret_key = Builder::new(secp)
             .secret_key(private_key.key)
             .build()
             .unwrap();
-        let input_parameters = keypair.p2wpkh_unlock_parameters();
+        let input_parameters = secret_key.p2wpkh_unlock_parameters();
         // Note: You might expect it to be a is_p2wpkh() but it shouldn't be.
         assert!(
             input_parameters.prev_script.is_p2pkh(),

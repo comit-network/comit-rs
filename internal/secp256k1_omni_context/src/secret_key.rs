@@ -103,9 +103,9 @@ mod test {
     use super::*;
 
     #[test]
-    fn correct_keypair_from_secret_key_slice() {
+    fn correct_secret_key_from_secret_key_slice() {
         // taken from: https://en.bitcoin.it/wiki/Technical_background_of_version_1_Bitcoin_addresses
-        let keypair = Builder::new(Secp256k1::new())
+        let secret_key = Builder::new(Secp256k1::new())
             .secret_key_slice(
                 &hex::decode("18e14a7b6a307f426a94f8114701e7c8e774e7f9a47e2c2035db29a206321725")
                     .unwrap(),
@@ -115,7 +115,7 @@ mod test {
             .unwrap();
 
         assert_eq!(
-            keypair.public_key(),
+            secret_key.public_key(),
             PublicKey::from_str(
                 "0250863ad64a87ae8a2fe83c1af1a8403cb53f53e486d8511dad8a04887e5b2352"
             )

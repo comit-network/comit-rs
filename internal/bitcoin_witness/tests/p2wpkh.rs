@@ -20,12 +20,12 @@ fn redeem_single_p2wpkh() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair = Builder::new(secp.clone())
+    let secret_key = Builder::new(secp.clone())
         .secret_key(private_key.key)
         .build()
         .unwrap();
 
-    let (_, outpoint) = client.create_p2wpkh_vout_at(keypair.clone().public_key(), input_amount);
+    let (_, outpoint) = client.create_p2wpkh_vout_at(secret_key.public_key(), input_amount);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -35,7 +35,7 @@ fn redeem_single_p2wpkh() {
         inputs: vec![PrimedInput::new(
             outpoint,
             input_amount,
-            keypair.clone().p2wpkh_unlock_parameters(),
+            secret_key.clone().p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
         secp,
@@ -68,19 +68,19 @@ fn redeem_two_p2wpkh() {
     let input_amount = Amount::from_sat(100_000_001);
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let keypair_1 = Builder::new(secp.clone())
+    let secret_key_1 = Builder::new(secp.clone())
         .secret_key(private_key_1.key)
         .build()
         .unwrap();
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
-    let keypair_2 = Builder::new(secp.clone())
+    let secret_key_2 = Builder::new(secp.clone())
         .secret_key(private_key_2.key)
         .build()
         .unwrap();
 
-    let (_, vout_1) = client.create_p2wpkh_vout_at(keypair_1.clone().public_key(), input_amount);
-    let (_, vout_2) = client.create_p2wpkh_vout_at(keypair_2.clone().public_key(), input_amount);
+    let (_, vout_1) = client.create_p2wpkh_vout_at(secret_key_1.clone().public_key(), input_amount);
+    let (_, vout_2) = client.create_p2wpkh_vout_at(secret_key_2.clone().public_key(), input_amount);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -88,8 +88,16 @@ fn redeem_two_p2wpkh() {
 
     let redeem_tx = PrimedTransaction {
         inputs: vec![
-            PrimedInput::new(vout_1, input_amount, keypair_1.p2wpkh_unlock_parameters()),
-            PrimedInput::new(vout_2, input_amount, keypair_2.p2wpkh_unlock_parameters()),
+            PrimedInput::new(
+                vout_1,
+                input_amount,
+                secret_key_1.p2wpkh_unlock_parameters(),
+            ),
+            PrimedInput::new(
+                vout_2,
+                input_amount,
+                secret_key_2.p2wpkh_unlock_parameters(),
+            ),
         ],
         output_address: alice_addr.clone(),
         secp,

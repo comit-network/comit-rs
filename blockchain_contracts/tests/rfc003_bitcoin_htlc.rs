@@ -157,7 +157,7 @@ fn redeem_htlc_with_secret() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -167,7 +167,7 @@ fn redeem_htlc_with_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_with_secret(keypair, SECRET.clone()),
+            htlc.unlock_with_secret(secret_key, SECRET.clone()),
         )],
         output_address: alice_addr.clone(),
         secp: blockchain_contracts::SECP.clone(),
@@ -197,7 +197,7 @@ fn refund_htlc() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
+    let (_, vout, input_amount, htlc, refund_timestamp, _, secret_key) =
         fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
@@ -207,7 +207,7 @@ fn refund_htlc() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_after_timeout(keypair),
+            htlc.unlock_after_timeout(secret_key),
         )],
         output_address: alice_addr.clone(),
         secp: blockchain_contracts::SECP.clone(),
@@ -260,7 +260,7 @@ fn redeem_htlc_with_long_secret() {
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
     assert_eq!(secret.0.len(), 38);
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -270,7 +270,7 @@ fn redeem_htlc_with_long_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
+            unlock_with_custom_size_secret(htlc, secret_key, secret),
         )],
         output_address: alice_addr.clone(),
         secp: blockchain_contracts::SECP.clone(),
@@ -302,7 +302,7 @@ fn redeem_htlc_with_short_secret() {
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();
     assert_eq!(secret.0.len(), 17);
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -312,7 +312,7 @@ fn redeem_htlc_with_short_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
+            unlock_with_custom_size_secret(htlc, secret_key, secret),
         )],
         output_address: alice_addr.clone(),
         secp: blockchain_contracts::SECP.clone(),
