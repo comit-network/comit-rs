@@ -117,6 +117,13 @@ where
 
             missing_block_futures.push((future, blockhash));
         }
+
+        // Delay so that we don't overload the connector,
+        // should probably be defined by the blockchain connector
+        Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
+            .compat()
+            .await
+            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
     }
 }
 
