@@ -54,6 +54,13 @@ where
     let mut missing_block_futures: Vec<_> = Vec::new();
 
     loop {
+        // Delay so that we don't overload the connector,
+        // should probably be defined by the blockchain connector
+        Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
+            .compat()
+            .await
+            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
+
         let mut new_missing_block_futures = Vec::new();
         for (block_future, blockhash) in missing_block_futures.into_iter() {
             match block_future.await {
@@ -87,21 +94,12 @@ where
             Ok(block) => block,
             Err(e) => {
                 log::warn!("Could not get latest block: {:?}", e,);
-
-                Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-                    .compat()
-                    .await
-                    .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
                 continue;
             }
         };
 
         // If we can't insert then we have seen this block
         if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
-            Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-                .compat()
-                .await
-                .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
             continue;
         }
 
@@ -117,13 +115,6 @@ where
 
             missing_block_futures.push((future, blockhash));
         }
-
-        // Delay so that we don't overload the connector,
-        // should probably be defined by the blockchain connector
-        Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-            .compat()
-            .await
-            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
     }
 }
 
