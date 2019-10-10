@@ -51,7 +51,7 @@ impl FromStr for CustomSizeSecret {
 }
 
 fn diff(first: Timestamp, second: Timestamp) -> u32 {
-    u32::from(first).checked_sub(u32::from(second)).unwrap_or(0)
+    u32::from(first).saturating_sub(u32::from(second))
 }
 
 pub fn sleep_until(timestamp: Timestamp) {
