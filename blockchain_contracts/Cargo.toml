@@ -11,7 +11,6 @@ byteorder = "1.3"
 hex = "0.4"
 hex-literal = "0.2"
 itertools = "0.8.0"
-lazy_static = "1"
 regex = "1.3"
 rust-crypto = "0.2"
 rust_bitcoin = { version = "0.19.1", package = "bitcoin" }

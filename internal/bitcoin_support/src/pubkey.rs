@@ -1,7 +1,7 @@
 use crate::Hash160;
 use bitcoin::hashes::Hash;
 use hex::{self, FromHex};
-use secp256k1_omni_context::{secp256k1::PublicKey, KeyPair};
+use secp256k1_omni_context::{PublicKey, SecretKey};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -30,9 +30,9 @@ impl From<PublicKey> for PubkeyHash {
     }
 }
 
-impl From<KeyPair> for PubkeyHash {
-    fn from(key_pair: KeyPair) -> Self {
-        key_pair.public_key().into()
+impl From<SecretKey> for PubkeyHash {
+    fn from(secret_key: SecretKey) -> Self {
+        secret_key.public_key().into()
     }
 }
 
@@ -146,11 +146,11 @@ mod test {
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
 
-        let keypair = Builder::new(secp)
+        let secret_key = Builder::new(secp)
             .secret_key(private_key.key)
             .build()
             .unwrap();
-        let pubkey_hash: PubkeyHash = keypair.public_key().into();
+        let pubkey_hash: PubkeyHash = secret_key.public_key().into();
 
         assert_eq!(
             pubkey_hash,

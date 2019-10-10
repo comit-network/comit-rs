@@ -11,8 +11,7 @@ use crate::{
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
 use bitcoin_witness::{
-    secp256k1::{PublicKey, SecretKey},
-    PrimedInput, PrimedTransaction, UnlockParameters, Witness,
+    secp256k1, Builder, PrimedInput, PrimedTransaction, SecretKey, UnlockParameters, Witness,
 };
 use bitcoincore_rpc::RpcApi;
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
@@ -82,9 +81,7 @@ fn unlock_with_custom_size_secret(
 }
 
 fn pubkey_hash(secret_key: &SecretKey) -> hash160::Hash {
-    let public_key = PublicKey::from_secret_key(&*blockchain_contracts::SECP, &secret_key);
-
-    hash160::Hash::hash(&public_key.serialize())
+    hash160::Hash::hash(&secret_key.public_key().serialize())
 }
 
 fn fund_htlc(
@@ -99,12 +96,25 @@ fn fund_htlc(
     SecretKey,
     SecretKey,
 ) {
-    let redeem_privkey =
-        PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt").unwrap();
-    let refund_privkey =
-        PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx").unwrap();
-    let redeem_pubkey_hash = pubkey_hash(&redeem_privkey.key);
-    let refund_pubkey_hash = pubkey_hash(&refund_privkey.key);
+    let secp: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+    let redeem_secret_key = Builder::new(secp.clone())
+        .secret_key(
+            PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt")
+                .unwrap()
+                .key,
+        )
+        .build()
+        .unwrap();
+    let refund_secret_key = Builder::new(secp.clone())
+        .secret_key(
+            PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx")
+                .unwrap()
+                .key,
+        )
+        .build()
+        .unwrap();
+    let redeem_pubkey_hash = pubkey_hash(&redeem_secret_key);
+    let refund_pubkey_hash = pubkey_hash(&refund_secret_key);
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
@@ -143,8 +153,8 @@ fn fund_htlc(
         amount,
         htlc,
         refund_timestamp,
-        redeem_privkey.key,
-        refund_privkey.key,
+        redeem_secret_key,
+        refund_secret_key,
     )
 }
 
@@ -157,7 +167,7 @@ fn redeem_htlc_with_secret() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, SECRET_HASH);
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -167,11 +177,11 @@ fn redeem_htlc_with_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_with_secret(keypair, SECRET.clone()),
+            htlc.unlock_with_secret(secret_key, SECRET.clone()),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(&blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -196,7 +206,7 @@ fn refund_htlc() {
     let client = new_tc_bitcoincore_client(&container);
     client.generate(101, None).unwrap();
 
-    let (_, vout, input_amount, htlc, refund_timestamp, _, keypair) =
+    let (_, vout, input_amount, htlc, refund_timestamp, _, secret_key) =
         fund_htlc(&client, SECRET_HASH);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
@@ -206,11 +216,11 @@ fn refund_htlc() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_after_timeout(keypair),
+            htlc.unlock_after_timeout(secret_key),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let refund_tx_hex = serialize_hex(&refund_tx);
 
@@ -258,7 +268,7 @@ fn redeem_htlc_with_long_secret() {
     let secret = CustomSizeSecret::from_str("Grandmother, what big secret you have!").unwrap();
     assert_eq!(secret.0.len(), 38);
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -268,11 +278,11 @@ fn redeem_htlc_with_long_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
+            unlock_with_custom_size_secret(htlc, secret_key, secret),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -299,7 +309,7 @@ fn redeem_htlc_with_short_secret() {
     let secret = CustomSizeSecret::from_str("teeny-weeny-bunny").unwrap();
     assert_eq!(secret.0.len(), 17);
 
-    let (_, vout, input_amount, htlc, _, keypair, _) = fund_htlc(&client, secret.hash());
+    let (_, vout, input_amount, htlc, _, secret_key, _) = fund_htlc(&client, secret.hash());
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
 
@@ -309,11 +319,11 @@ fn redeem_htlc_with_short_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            unlock_with_custom_size_secret(htlc, keypair, secret),
+            unlock_with_custom_size_secret(htlc, secret_key, secret),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 

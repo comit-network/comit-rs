@@ -3,7 +3,7 @@ use bitcoin_support::{
     self, Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction,
     TxIn, TxOut,
 };
-use secp256k1_omni_context::secp256k1::{self, Message, Secp256k1};
+use secp256k1_omni_context::secp256k1::Message;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -71,10 +71,8 @@ pub struct PrimedTransaction {
     pub output_address: Address,
 }
 
-// TODO: Rethink how to handle secp management or just accept it goes away with
-// bitcoin miniscript.
 impl PrimedTransaction {
-    fn _sign(self, secp: &Secp256k1<secp256k1::All>, transaction: &mut Transaction) {
+    fn _sign(self, transaction: &mut Transaction) {
         for (i, primed_input) in self.inputs.into_iter().enumerate() {
             let input_parameters = primed_input.input_parameters;
             for (j, witness) in input_parameters.witness.iter().enumerate() {
@@ -89,7 +87,7 @@ impl PrimedTransaction {
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
                     let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
                         .expect("Should not fail because it is a hash");
-                    let signature = secp.sign(&message_to_sign, &secret_key);
+                    let signature = secret_key.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_der().to_vec();
                     serialized_signature.push(SigHashType::All as u8);
@@ -106,11 +104,7 @@ impl PrimedTransaction {
             .max()
     }
 
-    pub fn sign_with_rate(
-        self,
-        secp: &Secp256k1<secp256k1::All>,
-        fee_per_byte: usize,
-    ) -> Result<Transaction, Error> {
+    pub fn sign_with_rate(self, fee_per_byte: usize) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight = transaction.get_weight();
@@ -127,18 +121,18 @@ impl PrimedTransaction {
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
-        self._sign(secp, &mut transaction);
+        self._sign(&mut transaction);
         Ok(transaction)
     }
 
-    pub fn sign_with_fee(self, secp: &Secp256k1<secp256k1::All>, fee: Amount) -> Transaction {
+    pub fn sign_with_fee(self, fee: Amount) -> Transaction {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         transaction.output[0].value = (self.total_input_value() - fee).as_sat();
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
-        self._sign(secp, &mut transaction);
+        self._sign(&mut transaction);
         transaction
     }
 
@@ -179,7 +173,10 @@ mod test {
     use super::*;
     use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_omni_context::Builder;
+    use secp256k1_omni_context::{
+        secp256k1::{self, Secp256k1},
+        Builder,
+    };
     use std::str::FromStr;
 
     #[test]
@@ -187,7 +184,7 @@ mod test {
         let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
-        let keypair = Builder::new(secp.clone())
+        let secret_key = Builder::new(secp.clone())
             .secret_key(private_key.key)
             .build()
             .unwrap();
@@ -201,7 +198,7 @@ mod test {
                     vout: 1, // First number I found that gave me a 71 byte signature
                 },
                 Amount::from_btc(1.0).expect("Should convert 1.0 in bitcoin amount"),
-                keypair.p2wpkh_unlock_parameters(),
+                secret_key.p2wpkh_unlock_parameters(),
             )],
             output_address: dst_addr,
         };
@@ -210,7 +207,7 @@ mod test {
         let rate = 42;
 
         let estimated_weight = primed_txn.estimate_weight();
-        let transaction = primed_txn.sign_with_rate(&secp, rate).unwrap();
+        let transaction = primed_txn.sign_with_rate(rate).unwrap();
 
         let actual_weight = transaction.get_weight();
         let fee = total_input_value.as_sat() - transaction.output[0].value;

@@ -23,7 +23,7 @@ impl InMemoryWallet {
         InMemoryWallet {
             secret_key,
             public_key: rust_bitcoin::secp256k1::PublicKey::from_secret_key(
-                &*blockchain_contracts::SECP,
+                &*super::SECP,
                 &secret_key,
             ),
             chain_id,
@@ -41,7 +41,7 @@ impl Wallet for InMemoryWallet {
         let hash: [u8; 32] = tx.hash(self.chain_id).into();
         // `from_slice` can be replaced with `from` once https://github.com/rust-bitcoin/rust-secp256k1/issues/106 is done
         let message = Message::from_slice(&hash).expect("Cannot fail as it is a [u8; 32]");
-        let signature = blockchain_contracts::SECP.sign_recoverable(&message, &self.secret_key);
+        let signature = super::SECP.sign_recoverable(&message, &self.secret_key);
 
         let (rec_id, signature) = signature.serialize_compact();
 
