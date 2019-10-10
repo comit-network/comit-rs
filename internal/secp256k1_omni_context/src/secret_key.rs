@@ -83,10 +83,6 @@ impl SecretKey {
         secp256k1::PublicKey::from_secret_key(&self.secp, &self.secret_key)
     }
 
-    pub fn keys(self) -> (secp256k1::SecretKey, PublicKey) {
-        (self.secret_key, self.public_key())
-    }
-
     pub fn sign_ecdsa(&self, message: Message) -> Signature {
         self.secp.sign(&message, &self.secret_key)
     }

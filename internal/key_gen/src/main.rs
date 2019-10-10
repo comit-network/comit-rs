@@ -25,7 +25,8 @@ fn main() {
         }
     };
 
-    let (secret_key, public_key) = secret_key.keys();
+    let public_key = secret_key.public_key();
+    let secret_key = secret_key.into();
     let mainnet_private_key = PrivateKey {
         compressed: true,
         network: Network::Bitcoin,
