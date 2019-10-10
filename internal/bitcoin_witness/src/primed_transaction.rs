@@ -87,7 +87,7 @@ impl PrimedTransaction {
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
                     let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
                         .expect("Should not fail because it is a hash");
-                    let signature = secret_key.sign_ecdsa(message_to_sign);
+                    let signature = secret_key.sign(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_der().to_vec();
                     serialized_signature.push(SigHashType::All as u8);

@@ -83,11 +83,11 @@ impl SecretKey {
         secp256k1::PublicKey::from_secret_key(&self.secp, &self.secret_key)
     }
 
-    pub fn sign_ecdsa(&self, message: Message) -> Signature {
+    pub fn sign(&self, message: Message) -> Signature {
         self.secp.sign(&message, &self.secret_key)
     }
 
-    pub fn sign_ecdsa_recoverable(&self, message: Message) -> RecoverableSignature {
+    pub fn sign_recoverable(&self, message: Message) -> RecoverableSignature {
         self.secp.sign_recoverable(&message, &self.secret_key)
     }
 }
