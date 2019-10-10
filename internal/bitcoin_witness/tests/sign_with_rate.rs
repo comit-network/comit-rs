@@ -37,9 +37,10 @@ fn sign_with_rate() {
             keypair.p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
+        secp,
     };
 
-    let redeem_tx = primed_tx.sign_with_rate(&secp, rate).unwrap();
+    let redeem_tx = primed_tx.sign_with_rate(rate).unwrap();
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
