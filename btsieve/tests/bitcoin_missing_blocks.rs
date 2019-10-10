@@ -9,7 +9,7 @@ use std::{
     str::FromStr,
     time::{Duration, Instant},
 };
-use tokio::prelude::{future, Future, FutureExt, IntoFuture};
+use tokio::prelude::{Future, FutureExt, IntoFuture};
 
 #[derive(Clone)]
 struct BitcoinConnectorMock {
@@ -71,16 +71,6 @@ impl BlockByHash for BitcoinConnectorMock {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        // if the genesis block is reached return a future that never resolves so
-        // that we can model the behaviour of considering a chain of blocks that
-        // will definitely not contain the transaction specified in the query
-        // i.e. due to a blockchain reorganisation
-        if block_hash
-            == from_hex("0000000000000000000000000000000000000000000000000000000000000000")
-        {
-            return Box::new(future::empty());
-        }
-
         Box::new(
             self.all_blocks
                 .get(&block_hash)
@@ -191,37 +181,26 @@ fn find_transaction_in_missing_block_with_big_gap() {
 #[test]
 fn find_transaction_if_blockchain_reorganisation() {
     // first block returned by latest_block
-    let block_query_genesis = from_hex(
-        include_str!(
-            "./test_data/find_transaction_if_blockchain_reorganisation/query_genesis_block.hex"
-        )
-        .trim(),
+    let block1 = from_hex(
+        include_str!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex").trim(),
     );
 
-    let block_containing_transaction = from_hex(
+    let block2_with_transaction = from_hex(
         include_str!(
-            "./test_data/find_transaction_if_blockchain_reorganisation/transaction_block.hex"
+            "./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"
         )
         .trim(),
     );
 
     // second block returned by latest block, whose parent we've never seen before
-    let stale_block = from_hex(
-        include_str!("./test_data/find_transaction_if_blockchain_reorganisation/stale_block.hex")
+    let block1b_stale = from_hex(
+        include_str!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex")
             .trim(),
     );
 
     let connector = BitcoinConnectorMock::new(
-        vec![
-            &block_query_genesis,
-            &stale_block,
-            &block_containing_transaction,
-        ],
-        vec![
-            &block_query_genesis,
-            &stale_block,
-            &block_containing_transaction,
-        ],
+        vec![&block1, &block1b_stale, &block2_with_transaction],
+        vec![&block1, &block2_with_transaction, &block1b_stale],
     );
 
     let future = connector
@@ -244,6 +223,87 @@ fn find_transaction_if_blockchain_reorganisation() {
 
     let expected_transaction = from_hex(
         include_str!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex")
+            .trim(),
+    );
+    assert_eq!(transaction, expected_transaction);
+}
+
+#[test]
+fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
+    let block1 = from_hex(
+        include_str!(
+            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block1.hex"
+        )
+        .trim(),
+    );
+
+    let block2 = from_hex(
+        include_str!(
+            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block2.hex"
+        )
+        .trim(),
+    );
+
+    let block3 = from_hex(
+        include_str!(
+            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block3.hex"
+        )
+        .trim(),
+    );
+
+    // first block returned by latest_block
+    let block4 = from_hex(
+        include_str!(
+            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"
+        )
+        .trim(),
+    );
+
+    let block5_with_transaction = from_hex(
+        include_str!(
+            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex"
+        )
+        .trim(),
+    );
+
+    // second block returned by latest block, whose parent we've never seen before
+    let block4b_stale = from_hex(
+        include_str!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex")
+            .trim(),
+    );
+
+    let connector = BitcoinConnectorMock::new(
+        vec![&block4, &block4b_stale, &block5_with_transaction],
+        vec![
+            &block1,
+            &block2,
+            &block3,
+            &block4,
+            &block5_with_transaction,
+            &block4b_stale,
+        ],
+    );
+
+    let future = connector
+        .matching_transactions(TransactionQuery {
+            to_address: Some(
+                Address::from_str(
+                    include_str!(
+                        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+                    )
+                    .trim(),
+                )
+                .unwrap(),
+            ),
+            from_outpoint: None,
+            unlock_script: None,
+        })
+        .first_or_else(|| panic!());
+
+    let transaction = wait(future);
+
+    let expected_transaction = from_hex(
+        include_str!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex")
             .trim(),
     );
     assert_eq!(transaction, expected_transaction);
