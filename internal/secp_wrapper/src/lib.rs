@@ -20,7 +20,7 @@
 //!
 //! let secret_key = Builder::new(secp).rng(&mut rng).build().unwrap();
 //!
-//! let message_to_sign = Message::from_slice(&b"I said that.").unwrap();
+//! let message_to_sign = Message::from_slice(b"Something with a 32 bytes length").unwrap();
 //! let signature = secret_key.sign(message_to_sign);
 //! ```
 
