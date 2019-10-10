@@ -170,8 +170,9 @@ fn redeem_htlc_with_secret() {
             htlc.unlock_with_secret(keypair, SECRET.clone()),
         )],
         output_address: alice_addr.clone(),
+        secp: blockchain_contracts::SECP.clone(),
     }
-    .sign_with_fee(&blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -209,8 +210,9 @@ fn refund_htlc() {
             htlc.unlock_after_timeout(keypair),
         )],
         output_address: alice_addr.clone(),
+        secp: blockchain_contracts::SECP.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let refund_tx_hex = serialize_hex(&refund_tx);
 
@@ -271,8 +273,9 @@ fn redeem_htlc_with_long_secret() {
             unlock_with_custom_size_secret(htlc, keypair, secret),
         )],
         output_address: alice_addr.clone(),
+        secp: blockchain_contracts::SECP.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -312,8 +315,9 @@ fn redeem_htlc_with_short_secret() {
             unlock_with_custom_size_secret(htlc, keypair, secret),
         )],
         output_address: alice_addr.clone(),
+        secp: blockchain_contracts::SECP.clone(),
     }
-    .sign_with_fee(&*blockchain_contracts::SECP, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 

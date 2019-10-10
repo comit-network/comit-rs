@@ -38,8 +38,9 @@ fn redeem_single_p2wpkh() {
             keypair.clone().p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
+        secp,
     }
-    .sign_with_fee(&secp, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -91,8 +92,9 @@ fn redeem_two_p2wpkh() {
             PrimedInput::new(vout_2, input_amount, keypair_2.p2wpkh_unlock_parameters()),
         ],
         output_address: alice_addr.clone(),
+        secp,
     }
-    .sign_with_fee(&secp, fee);
+    .sign_with_fee(fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
