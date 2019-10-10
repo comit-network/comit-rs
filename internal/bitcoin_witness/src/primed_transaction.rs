@@ -3,7 +3,7 @@ use bitcoin_support::{
     self, Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction,
     TxIn, TxOut,
 };
-use secp256k1_omni_context::secp256k1::{self, Message, Secp256k1};
+use secp256k1_omni_context::secp256k1::Message;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -69,7 +69,6 @@ impl PrimedInput {
 pub struct PrimedTransaction {
     pub inputs: Vec<PrimedInput>,
     pub output_address: Address,
-    pub secp: Secp256k1<secp256k1::All>,
 }
 
 impl PrimedTransaction {
@@ -88,7 +87,7 @@ impl PrimedTransaction {
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
                     let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
                         .expect("Should not fail because it is a hash");
-                    let signature = self.secp.sign(&message_to_sign, &secret_key);
+                    let signature = secret_key.sign_ecdsa(message_to_sign);
 
                     let mut serialized_signature = signature.serialize_der().to_vec();
                     serialized_signature.push(SigHashType::All as u8);
@@ -174,7 +173,10 @@ mod test {
     use super::*;
     use crate::p2wpkh::UnlockP2wpkh;
     use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_omni_context::Builder;
+    use secp256k1_omni_context::{
+        secp256k1::{self, Secp256k1},
+        Builder,
+    };
     use std::str::FromStr;
 
     #[test]
@@ -199,7 +201,6 @@ mod test {
                 secret_key.p2wpkh_unlock_parameters(),
             )],
             output_address: dst_addr,
-            secp,
         };
         let total_input_value = primed_txn.total_input_value();
 

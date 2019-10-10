@@ -33,7 +33,6 @@ pub mod bitcoin {
             PrimedTransaction {
                 inputs: vec![self.output],
                 output_address: to_address,
-                secp: crate::SECP.clone(),
             }
         }
     }

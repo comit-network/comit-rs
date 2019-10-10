@@ -38,7 +38,6 @@ fn redeem_single_p2wpkh() {
             secret_key.clone().p2wpkh_unlock_parameters(),
         )],
         output_address: alice_addr.clone(),
-        secp,
     }
     .sign_with_fee(fee);
 
@@ -100,7 +99,6 @@ fn redeem_two_p2wpkh() {
             ),
         ],
         output_address: alice_addr.clone(),
-        secp,
     }
     .sign_with_fee(fee);
 

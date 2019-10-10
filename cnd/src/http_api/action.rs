@@ -145,7 +145,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 let network = self.network;
                 let transaction =
                     self.spend_to(address)
-                        .sign_with_rate( fee_per_wu)
+                        .sign_with_rate(fee_per_wu)
                         .map_err(|e| {
                             log::error!("Could not sign Bitcoin transaction: {:?}", e);
                             match e {

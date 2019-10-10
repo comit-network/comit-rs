@@ -2,6 +2,6 @@
 #![forbid(unsafe_code)]
 
 pub use crate::secret_key::*;
-pub use secp256k1;
+pub use secp256k1::{self, PublicKey};
 
 mod secret_key;

@@ -18,4 +18,5 @@ pub use crate::{
     primed_transaction::{Error, PrimedInput, PrimedTransaction},
     witness::{UnlockParameters, Witness},
 };
-pub use secp256k1_omni_context::secp256k1;
+pub use secp256k1::PublicKey;
+pub use secp256k1_omni_context::{secp256k1, Builder, SecretKey};
