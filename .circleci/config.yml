@@ -27,7 +27,6 @@ jobs:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
-      docker_layer_caching: true
     environment:
       RUST_TEST_THREADS: "8"
     steps:
@@ -47,7 +46,6 @@ jobs:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
-      docker_layer_caching: true
     environment:
       RUST_TEST_THREADS: "8"
     steps:
@@ -79,7 +77,6 @@ jobs:
     working_directory: ~/comit
     machine:
       image: ubuntu-1604:201903-01
-      docker_layer_caching: true
     environment:
       RUST_TEST_THREADS: "8"
     steps:
