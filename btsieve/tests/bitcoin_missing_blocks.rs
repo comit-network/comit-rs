@@ -20,15 +20,18 @@ struct BitcoinConnectorMock {
 }
 
 impl BitcoinConnectorMock {
-    fn new(latest_blocks: Vec<&Block>, all_blocks: Vec<&Block>) -> Self {
+    fn new(
+        latest_blocks: impl IntoIterator<Item = Block>,
+        all_blocks: impl IntoIterator<Item = Block>,
+    ) -> Self {
         BitcoinConnectorMock {
             all_blocks: all_blocks
                 .into_iter()
                 .fold(HashMap::new(), |mut hm, block| {
-                    hm.insert(block.bitcoin_hash(), block.clone());
+                    hm.insert(block.bitcoin_hash(), block);
                     hm
                 }),
-            latest_blocks: latest_blocks.into_iter().cloned().collect(),
+            latest_blocks: latest_blocks.into_iter().collect(),
             latest_time_return_block: Instant::now(),
             current_latest_block_index: 0,
         }
@@ -83,12 +86,17 @@ impl BlockByHash for BitcoinConnectorMock {
 
 #[test]
 fn find_transaction_in_missing_block() {
-    let block1 = include_hex!("./test_data/find_transaction_in_missing_block/block1.hex");
-    let block2 = include_hex!("./test_data/find_transaction_in_missing_block/block2.hex");
-    let block3 = include_hex!("./test_data/find_transaction_in_missing_block/block3.hex");
-
-    let connector =
-        BitcoinConnectorMock::new(vec![&block1, &block3], vec![&block1, &block2, &block3]);
+    let connector = BitcoinConnectorMock::new(
+        vec![
+            include_hex!("./test_data/find_transaction_in_missing_block/block1.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block/block3.hex"),
+        ],
+        vec![
+            include_hex!("./test_data/find_transaction_in_missing_block/block1.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block/block2.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block/block3.hex"),
+        ],
+    );
 
     let future = connector
         .matching_transactions(TransactionQuery {
@@ -112,27 +120,22 @@ fn find_transaction_in_missing_block() {
 
 #[test]
 fn find_transaction_in_missing_block_with_big_gap() {
-    let block1 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex");
-    let block2 = include_hex!(
-        "./test_data/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex"
+    let connector = BitcoinConnectorMock::new(
+        vec![
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex"),
+        ],
+        vec![
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block3.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block4.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block5.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block6.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block7.hex"),
+            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex"),
+        ],
     );
-    let block3 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block3.hex");
-    let block4 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block4.hex");
-    let block5 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block5.hex");
-    let block6 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block6.hex");
-    let block7 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block7.hex");
-    let block8 =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex");
-
-    let connector = BitcoinConnectorMock::new(vec![&block1, &block8], vec![
-        &block1, &block2, &block3, &block4, &block5, &block6, &block7, &block8,
-    ]);
 
     let future = connector
         .matching_transactions(TransactionQuery {
@@ -159,21 +162,17 @@ fn find_transaction_in_missing_block_with_big_gap() {
 
 #[test]
 fn find_transaction_if_blockchain_reorganisation() {
-    // first block returned by latest_block
-    let block1 =
-        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex");
-
-    let block2_with_transaction = include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"
-    );
-
-    // second block returned by latest block, whose parent we've never seen before
-    let block1b_stale =
-        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex");
-
     let connector = BitcoinConnectorMock::new(
-        vec![&block1, &block1b_stale, &block2_with_transaction],
-        vec![&block1, &block2_with_transaction, &block1b_stale],
+        vec![
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
+        ],
+        vec![
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
+        ],
     );
 
     let future = connector
@@ -201,45 +200,19 @@ fn find_transaction_if_blockchain_reorganisation() {
 
 #[test]
 fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
-    let block1 = include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block1.hex"
-    );
-
-    let block2 = include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block2.hex"
-    );
-
-    let block3 = include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block3.hex"
-    );
-
-    // first block returned by latest_block
-    let block4 = include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"
-    );
-
-    let block5_with_transaction = from_hex(
-        include_str!(
-            "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex"
-        )
-        ,
-    );
-
-    // second block returned by latest block, whose parent we've never seen before
-    let block4b_stale = from_hex(
-        include_str!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex")
-            ,
-    );
-
     let connector = BitcoinConnectorMock::new(
-        vec![&block4, &block4b_stale, &block5_with_transaction],
         vec![
-            &block1,
-            &block2,
-            &block3,
-            &block4,
-            &block5_with_transaction,
-            &block4b_stale,
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex")
+        ],
+        vec![
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block1.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block2.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block3.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex"),
+            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
         ],
     );
 
