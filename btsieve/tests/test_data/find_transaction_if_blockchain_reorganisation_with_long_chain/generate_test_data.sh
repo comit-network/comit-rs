@@ -7,14 +7,7 @@ source "../lib.sh"
 sudo rm -rf /tmp/bitcoin
 
 # Clean up generated files from previous run
-rm_file_if_exists "./block1.hex"
-rm_file_if_exists "./block2.hex"
-rm_file_if_exists "./block3.hex"
-rm_file_if_exists "./block4.hex"
-rm_file_if_exists "./block4b_stale.hex"
-rm_file_if_exists "./block5_with_transaction.hex"
-rm_file_if_exists "./transaction.hex"
-rm_file_if_exists "./address"
+rm -f "./block1.hex" "./block2.hex" "./block3.hex" "./block4.hex" "./block4b_stale.hex" "./block5_with_transaction.hex" "./transaction.hex" "./address"
 
 docker_run
 

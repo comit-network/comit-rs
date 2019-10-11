@@ -4,9 +4,7 @@ set -e
 source "../lib.sh"
 
 # Clean up generated files from previous run
-rm_file_if_exists "./block1.hex"
-rm_file_if_exists "./block2.hex"
-rm_file_if_exists "./block3.hex"
+rm -f "./block1.hex" "./block2.hex" "./block3.hex"
 
 docker_run
 

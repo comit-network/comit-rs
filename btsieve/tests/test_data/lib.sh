@@ -1,13 +1,5 @@
 container="" # Set by docker_run
 
-rm_file_if_exists() {
-    local file=$1
-
-    if [ -f $file ] ; then
-        rm $file
-    fi
-}
-
 docker_run() {
     container=$(docker run -d -v /tmp/bitcoin:/root/.bitcoin coblox/bitcoin-core -regtest)
     echo "Create container $container ... sleeping"
