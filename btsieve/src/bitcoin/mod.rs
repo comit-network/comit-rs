@@ -66,14 +66,13 @@ where
                     match check_block_against_query(&block, &query) {
                         Some(transaction) => return Ok(transaction.clone()),
                         None => {
-                            let parent_blockhash = block.header.prev_blockhash;
-                            let unknown_parent = prev_blockhashes.insert(parent_blockhash);
+                            let prev_blockhash = block.header.prev_blockhash;
+                            let unknown_parent = prev_blockhashes.insert(prev_blockhash);
 
                             if unknown_parent {
-                                let future = blockchain_connector
-                                    .block_by_hash(parent_blockhash)
-                                    .compat();
-                                new_missing_block_futures.push((future, parent_blockhash));
+                                let future =
+                                    blockchain_connector.block_by_hash(prev_blockhash).compat();
+                                new_missing_block_futures.push((future, prev_blockhash));
                             }
                         }
                     };
@@ -108,10 +107,10 @@ where
         if prev_blockhashes.len() > 1
             && !prev_blockhashes.contains(&latest_block.header.prev_blockhash)
         {
-            let blockhash = latest_block.header.prev_blockhash;
-            let future = blockchain_connector.block_by_hash(blockhash).compat();
+            let prev_blockhash = latest_block.header.prev_blockhash;
+            let future = blockchain_connector.block_by_hash(prev_blockhash).compat();
 
-            missing_block_futures.push((future, blockhash));
+            missing_block_futures.push((future, prev_blockhash));
         }
     }
 }
