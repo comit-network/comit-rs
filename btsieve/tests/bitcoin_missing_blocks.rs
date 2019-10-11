@@ -113,9 +113,10 @@ fn find_transaction_in_missing_block() {
 
     let transaction = wait(future);
 
-    let expected_transaction =
-        include_hex!("./test_data/find_transaction_in_missing_block/transaction.hex");
-    assert_eq!(transaction, expected_transaction);
+    assert_eq!(
+        include_hex!("./test_data/find_transaction_in_missing_block/transaction.hex"),
+        expected_transaction
+    );
 }
 
 #[test]
@@ -155,9 +156,10 @@ fn find_transaction_in_missing_block_with_big_gap() {
 
     let transaction = wait(future);
 
-    let expected_transaction =
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex");
-    assert_eq!(transaction, expected_transaction);
+    assert_eq!(
+        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex"),
+        expected_transaction
+    );
 }
 
 #[test]
@@ -193,9 +195,10 @@ fn find_transaction_if_blockchain_reorganisation() {
 
     let transaction = wait(future);
 
-    let expected_transaction =
-        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex");
-    assert_eq!(transaction, expected_transaction);
+    assert_eq!(
+        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex"),
+        expected_transaction
+    );
 }
 
 #[test]
@@ -234,10 +237,12 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
 
     let transaction = wait(future);
 
-    let expected_transaction = include_hex!(
+    assert_eq!(
+        include_hex!(
         "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex"
+    ),
+        expected_transaction
     );
-    assert_eq!(transaction, expected_transaction);
 }
 
 #[macro_export]
