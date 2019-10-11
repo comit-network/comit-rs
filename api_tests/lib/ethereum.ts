@@ -146,14 +146,14 @@ export class EthereumWallet {
 
         value = ethers.utils.bigNumberify(value);
 
-        const chainId = await ethersClient.getNetwork();
+        const network = await ethersClient.getNetwork();
         const tx: TransactionRequest = {
             gasPrice: "0x0",
             gasLimit,
             to,
             data,
             value: value.toHexString(),
-            chainId: chainId.chainId,
+            chainId: network.chainId,
         };
         return this.signAndSend(tx);
     }
@@ -186,13 +186,14 @@ export class EthereumWallet {
 
         value = ethers.utils.bigNumberify(value);
 
+        const network = await ethersClient.getNetwork();
         const tx: TransactionRequest = {
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x0",
             gasLimit,
             data,
             value: value.toHexString(),
-            chainId: 17,
+            chainId: network.chainId,
         };
 
         return this.signAndSend(tx);
