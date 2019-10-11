@@ -1,7 +1,13 @@
 container="" # Set by docker_run
 
 docker_run() {
-    container=$(docker run -d -v /tmp/bitcoin:/root/.bitcoin coblox/bitcoin-core -regtest)
+    if [ $# -eq 0 ]; then
+        container=$(docker run -d coblox/bitcoin-core -regtest)
+    else
+        local temp_dir="$1"
+        container=$(docker run -d -v $temp_dir:/root/.bitcoin coblox/bitcoin-core -regtest)
+    fi
+
     echo "Create container $container ... sleeping"
     sleep 2
 }
@@ -44,7 +50,7 @@ generate_block() {
 
 create_transaction() {
     if [ $# -ne 2 ]; then
-        echo "Incorrect number of parameters on create_transaction"
+        echo "Incorrect number of parameters on generate_block"
         exit 2
     fi
 
