@@ -1,27 +1,31 @@
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{serialize_hex, Address, Amount, PrivateKey};
-use bitcoin_witness::{
-    secp256k1::{PublicKey, Secp256k1},
-    PrimedInput, PrimedTransaction, UnlockP2wpkh,
-};
+pub mod bitcoin_helper;
+
+use crate::bitcoin_helper::new_tc_bitcoincore_client;
+use bitcoin_helper::rpc::RegtestHelperClient;
+use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
+use rust_bitcoin::{
+    consensus::encode::serialize_hex,
+    secp256k1::{self, Secp256k1},
+    Address, Amount, PrivateKey,
+};
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 #[test]
 fn sign_with_rate() {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
     let docker = Cli::default();
     let secp = Secp256k1::new();
 
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
-    client.mine_bitcoins();
+    let client = new_tc_bitcoincore_client(&container);
+    client.generate(101, None).unwrap();
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
     let secret_key = private_key.key;
-    let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &secret_key);
 
     let (_, outpoint) = client.create_p2wpkh_vout_at(public_key, input_amount);
 

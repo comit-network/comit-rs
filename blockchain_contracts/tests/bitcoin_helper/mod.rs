@@ -3,6 +3,24 @@
 
 use rust_bitcoin::{hashes::sha256d, Address, OutPoint, TxOut};
 use std::convert::TryFrom;
+use testcontainers::{images::coblox_bitcoincore::BitcoinCore, Container, Docker};
+
+pub mod rpc;
+
+pub fn new_tc_bitcoincore_client<D: Docker>(
+    container: &Container<'_, D, BitcoinCore>,
+) -> bitcoincore_rpc::Client {
+    let port = container.get_host_port(18443).unwrap();
+    let auth = container.image().auth();
+
+    let endpoint = format!("http://localhost:{}", port);
+
+    bitcoincore_rpc::Client::new(
+        endpoint,
+        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
+    )
+    .unwrap()
+}
 
 pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(&self, txid: &sha256d::Hash, address: &Address)

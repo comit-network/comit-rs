@@ -1,7 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use bitcoin::{hashes::sha256d::Hash as Sha256dHash, Address, Amount, OutPoint, TxOut};
+use rust_bitcoin::{
+    hashes::sha256d::Hash as Sha256dHash, Address, Amount, Network, OutPoint, PublicKey, TxOut,
+};
 
 pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(&self, txid: &Sha256dHash, address: &Address) -> Option<TxOut>;
@@ -9,7 +11,7 @@ pub trait RegtestHelperClient {
     fn mine_bitcoins(&self);
     fn create_p2wpkh_vout_at(
         &self,
-        dest: bitcoin::secp256k1::PublicKey,
+        dest: rust_bitcoin::secp256k1::PublicKey,
         value: Amount,
     ) -> (Sha256dHash, OutPoint);
 }
@@ -58,15 +60,15 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
 
     fn create_p2wpkh_vout_at(
         &self,
-        public_key: bitcoin::secp256k1::PublicKey,
+        public_key: rust_bitcoin::secp256k1::PublicKey,
         amount: Amount,
     ) -> (Sha256dHash, OutPoint) {
-        let address = bitcoin::Address::p2wpkh(
-            &bitcoin::util::key::PublicKey {
+        let address = Address::p2wpkh(
+            &PublicKey {
                 compressed: true,
                 key: public_key,
             },
-            bitcoin::Network::Regtest,
+            Network::Regtest,
         );
 
         let txid = self

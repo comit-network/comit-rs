@@ -9,7 +9,6 @@ bitcoin_support = { path = "../bitcoin_support" }
 failure = "0.1"
 
 [dev-dependencies]
-bitcoin_rpc_test_helpers = { path = "../bitcoin_rpc_test_helpers" }
 bitcoincore-rpc = "0.8.0-rc1"
 env_logger = "0.7"
 hex = "0.4"

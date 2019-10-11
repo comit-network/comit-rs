@@ -10,6 +10,7 @@ use crate::{
     bitcoin_helper::RegtestHelperClient,
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
+use bitcoin_helper::new_tc_bitcoincore_client;
 use bitcoin_witness::{
     secp256k1::{self, SecretKey},
     PrimedInput, PrimedTransaction, UnlockParameters, Witness,
@@ -25,22 +26,7 @@ use rust_bitcoin::{
 use secp256k1::{PublicKey, Secp256k1};
 use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
-use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
-
-pub fn new_tc_bitcoincore_client<D: Docker>(
-    container: &Container<'_, D, BitcoinCore>,
-) -> bitcoincore_rpc::Client {
-    let port = container.get_host_port(18443).unwrap();
-    let auth = container.image().auth();
-
-    let endpoint = format!("http://localhost:{}", port);
-
-    bitcoincore_rpc::Client::new(
-        endpoint,
-        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
-    )
-    .unwrap()
-}
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness

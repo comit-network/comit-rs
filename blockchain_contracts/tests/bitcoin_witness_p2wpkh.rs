@@ -1,27 +1,30 @@
-use bitcoin_rpc_test_helpers::RegtestHelperClient;
-use bitcoin_support::{
-    bitcoin::secp256k1::{self, PublicKey, Secp256k1},
-    serialize_hex, Address, Amount, PrivateKey,
-};
+pub mod bitcoin_helper;
+
+use bitcoin_helper::{new_tc_bitcoincore_client, rpc::RegtestHelperClient};
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
+use rust_bitcoin::{
+    consensus::encode::serialize_hex,
+    secp256k1::{self, Secp256k1},
+    Address, Amount, PrivateKey,
+};
 use spectral::prelude::*;
 use std::str::FromStr;
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 #[test]
 fn redeem_single_p2wpkh() {
-    let _ = env_logger::try_init();
+    let _ = pretty_env_logger::try_init();
 
     let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
     let docker = Cli::default();
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     client.mine_bitcoins();
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
-    let public_key = PublicKey::from_secret_key(&secp, &private_key.key);
+    let public_key = secp256k1::PublicKey::from_secret_key(&secp, &private_key.key);
     let (_, outpoint) = client.create_p2wpkh_vout_at(public_key, input_amount);
 
     let alice_addr: Address = client.get_new_address(None, None).unwrap();
@@ -57,7 +60,7 @@ fn redeem_single_p2wpkh() {
 fn redeem_two_p2wpkh() {
     let docker = Cli::default();
     let container = docker.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_tc_bitcoincore_client(&container);
     let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
 
     client.mine_bitcoins();
@@ -66,12 +69,12 @@ fn redeem_two_p2wpkh() {
     let private_key_1 =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
     let secret_key_1 = private_key_1.key;
-    let public_key_1 = PublicKey::from_secret_key(&secp, &secret_key_1);
+    let public_key_1 = secp256k1::PublicKey::from_secret_key(&secp, &secret_key_1);
 
     let private_key_2 =
         PrivateKey::from_str("L1dDXCRQuNuhinf5SHbAmNUncovqFdA6ozJP4mbT7Mg53tWFFMFL").unwrap();
     let secret_key_2 = private_key_2.key;
-    let public_key_2 = PublicKey::from_secret_key(&secp, &secret_key_2);
+    let public_key_2 = secp256k1::PublicKey::from_secret_key(&secp, &secret_key_2);
 
     let (_, vout_1) = client.create_p2wpkh_vout_at(public_key_1, input_amount);
     let (_, vout_2) = client.create_p2wpkh_vout_at(public_key_2, input_amount);

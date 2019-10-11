@@ -221,15 +221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoin_rpc_test_helpers"
-version = "0.1.0"
-dependencies = [
- "bitcoin 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
- "testcontainers 0.8.1 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "bitcoin_support"
 version = "0.1.0"
 dependencies = [
@@ -248,7 +239,6 @@ dependencies = [
 name = "bitcoin_witness"
 version = "0.1.0"
 dependencies = [
- "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
  "env_logger 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -555,7 +545,6 @@ name = "cnd"
 version = "0.3.0"
 dependencies = [
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_rpc_test_helpers 0.1.0",
  "bitcoin_support 0.1.0",
  "bitcoin_witness 0.1.0",
  "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
