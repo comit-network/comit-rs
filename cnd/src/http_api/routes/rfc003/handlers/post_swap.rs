@@ -164,8 +164,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
 
 impl ToIdentities<Bitcoin, Ethereum> for OnlyRedeem<Ethereum> {
     fn to_identities(&self, secret_source: &dyn SecretSource) -> Identities<Bitcoin, Ethereum> {
-        let refund_public_key = secret_source.secp256k1_refund().public_key();
-        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::new(refund_public_key);
+        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
+            &*crate::SECP,
+            &secret_source.secp256k1_refund(),
+        );
 
         Identities {
             alpha_ledger_refund_identity,
@@ -176,8 +178,10 @@ impl ToIdentities<Bitcoin, Ethereum> for OnlyRedeem<Ethereum> {
 
 impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
     fn to_identities(&self, secret_source: &dyn SecretSource) -> Identities<Ethereum, Bitcoin> {
-        let redeem_public_key = secret_source.secp256k1_redeem().public_key();
-        let beta_ledger_redeem_identity = crate::bitcoin::PublicKey::new(redeem_public_key);
+        let beta_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
+            &*crate::SECP,
+            &secret_source.secp256k1_redeem(),
+        );
 
         Identities {
             alpha_ledger_refund_identity: self.alpha_ledger_refund_identity,

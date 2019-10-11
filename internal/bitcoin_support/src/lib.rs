@@ -3,6 +3,7 @@
 
 pub use crate::{blocks::*, network::*, pubkey::*, transaction::*};
 pub use bitcoin::{
+    self,
     blockdata::{
         block::{Block, BlockHeader},
         opcodes,
@@ -24,7 +25,6 @@ pub use bitcoin::{
     },
     Address, Amount,
 };
-pub use secp256k1_omni_context;
 pub use Sha256dHash as TransactionId;
 pub use Sha256dHash as BlockId;
 

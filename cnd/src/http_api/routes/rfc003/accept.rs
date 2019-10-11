@@ -33,8 +33,10 @@ impl IntoAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
         self,
         secret_source: &dyn SecretSource,
     ) -> AcceptResponseBody<Ethereum, Bitcoin> {
-        let beta_ledger_refund_identity =
-            crate::bitcoin::PublicKey::new(secret_source.secp256k1_refund().public_key());
+        let beta_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
+            &*crate::SECP,
+            &secret_source.secp256k1_refund(),
+        );
         AcceptResponseBody {
             alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity,
@@ -64,8 +66,10 @@ impl IntoAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
         self,
         secret_source: &dyn SecretSource,
     ) -> AcceptResponseBody<Bitcoin, Ethereum> {
-        let alpha_ledger_redeem_identity =
-            crate::bitcoin::PublicKey::new(secret_source.secp256k1_redeem().public_key());
+        let alpha_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
+            &*crate::SECP,
+            &secret_source.secp256k1_redeem(),
+        );
         AcceptResponseBody {
             beta_ledger_refund_identity: self.beta_ledger_refund_identity,
             alpha_ledger_redeem_identity,

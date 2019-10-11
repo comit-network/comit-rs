@@ -1,5 +1,7 @@
-use bitcoin_support::Script;
-use secp256k1_omni_context::{PublicKey, SecretKey};
+use bitcoin_support::{
+    bitcoin::secp256k1::{PublicKey, SecretKey},
+    Script,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum Witness {

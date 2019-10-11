@@ -1,7 +1,9 @@
 use crate::Hash160;
-use bitcoin::hashes::Hash;
+use bitcoin::{
+    hashes::Hash,
+    secp256k1::{self, PublicKey, Secp256k1, SecretKey},
+};
 use hex::{self, FromHex};
-use secp256k1_omni_context::{PublicKey, SecretKey};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -13,6 +15,13 @@ use std::{
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct PubkeyHash(Hash160);
+
+#[allow(dead_code)] // Only used in tests at the moment
+impl PubkeyHash {
+    fn new<C: secp256k1::Signing>(secp: &Secp256k1<C>, secret_key: &SecretKey) -> Self {
+        secp256k1::PublicKey::from_secret_key(secp, secret_key).into()
+    }
+}
 
 impl From<Hash160> for PubkeyHash {
     fn from(hash: Hash160) -> PubkeyHash {
@@ -27,12 +36,6 @@ impl From<PublicKey> for PubkeyHash {
                 &public_key.serialize(),
             ),
         )
-    }
-}
-
-impl From<SecretKey> for PubkeyHash {
-    fn from(secret_key: SecretKey) -> Self {
-        secret_key.public_key().into()
     }
 }
 
@@ -133,24 +136,15 @@ impl Serialize for PubkeyHash {
 mod test {
     use super::*;
     use crate::PrivateKey;
-    use secp256k1_omni_context::{
-        secp256k1::{self, Secp256k1},
-        Builder,
-    };
     use std::str::FromStr;
 
     #[test]
     fn correct_pubkeyhash_from_private_key() {
-        let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
+        let secp = Secp256k1::signing_only();
 
         let private_key =
             PrivateKey::from_str("L253jooDhCtNXJ7nVKy7ijtns7vU4nY49bYWqUH8R9qUAUZt87of").unwrap();
-
-        let secret_key = Builder::new(secp)
-            .secret_key(private_key.key)
-            .build()
-            .unwrap();
-        let pubkey_hash: PubkeyHash = secret_key.public_key().into();
+        let pubkey_hash = PubkeyHash::new(&secp, &private_key.key);
 
         assert_eq!(
             pubkey_hash,
