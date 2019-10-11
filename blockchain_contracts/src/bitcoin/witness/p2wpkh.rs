@@ -1,6 +1,9 @@
-use crate::witness::{UnlockParameters, Witness};
-use bitcoin_support::{Hash160, PubkeyHash, Script};
-use secp256k1_omni_context::SecretKey;
+use crate::bitcoin::witness::{PubkeyHash, UnlockParameters, Witness};
+use rust_bitcoin::{
+    hashes::hash160,
+    secp256k1::{self, PublicKey, SecretKey},
+    Script,
+};
 
 /// Utility function to generate the `prev_script` for a p2wpkh adddress.
 /// A standard p2wpkh locking script of:
@@ -10,7 +13,7 @@ use secp256k1_omni_context::SecretKey;
 /// in the unlocking script. See BIP 143.
 /// This function simply returns the latter as a Script.
 fn generate_prev_script(public_key_hash: PubkeyHash) -> Script {
-    let public_key_hash: Hash160 = public_key_hash.into();
+    let public_key_hash: hash160::Hash = public_key_hash.into();
 
     let mut prev_script = vec![0x76, 0xa9, 0x14];
 
@@ -22,19 +25,23 @@ fn generate_prev_script(public_key_hash: PubkeyHash) -> Script {
 }
 
 pub trait UnlockP2wpkh {
-    fn p2wpkh_unlock_parameters(self) -> UnlockParameters;
+    fn p2wpkh_unlock_parameters<C: secp256k1::Signing>(
+        self,
+        secp: &secp256k1::Secp256k1<C>,
+    ) -> UnlockParameters;
 }
 
 impl UnlockP2wpkh for SecretKey {
-    fn p2wpkh_unlock_parameters(self) -> UnlockParameters {
+    fn p2wpkh_unlock_parameters<C: secp256k1::Signing>(
+        self,
+        secp: &secp256k1::Secp256k1<C>,
+    ) -> UnlockParameters {
+        let public_key = PublicKey::from_secret_key(secp, &self);
         UnlockParameters {
-            witness: vec![
-                Witness::Signature(self.clone()),
-                Witness::PublicKey(self.clone().public_key()),
-            ],
+            witness: vec![Witness::Signature(self), Witness::PublicKey(public_key)],
             sequence: super::SEQUENCE_ALLOW_NTIMELOCK_NO_RBF,
             locktime: 0,
-            prev_script: generate_prev_script(self.public_key().into()),
+            prev_script: generate_prev_script(public_key.into()),
         }
     }
 }
@@ -42,11 +49,7 @@ impl UnlockP2wpkh for SecretKey {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin_support::PrivateKey;
-    use secp256k1_omni_context::{
-        secp256k1::{self, Secp256k1},
-        Builder,
-    };
+    use rust_bitcoin::{secp256k1::Secp256k1, PrivateKey};
     use std::str::FromStr;
 
     #[test]
@@ -55,11 +58,7 @@ mod test {
         let private_key =
             PrivateKey::from_str("L4r4Zn5sy3o5mjiAdezhThkU37mcdN4eGp4aeVM4ZpotGTcnWc6k").unwrap();
 
-        let secret_key = Builder::new(secp)
-            .secret_key(private_key.key)
-            .build()
-            .unwrap();
-        let input_parameters = secret_key.p2wpkh_unlock_parameters();
+        let input_parameters = private_key.key.p2wpkh_unlock_parameters(&secp);
         // Note: You might expect it to be a is_p2wpkh() but it shouldn't be.
         assert!(
             input_parameters.prev_script.is_p2pkh(),

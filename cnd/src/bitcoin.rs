@@ -6,7 +6,7 @@
 //!       libraries
 //!     - Common functionality that is not (yet) available upstream
 
-use bitcoin_support::secp256k1_omni_context::secp256k1;
+use bitcoin_support::bitcoin::secp256k1;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -22,6 +22,13 @@ impl PublicKey {
             compressed: true, // we always want the PublicKey to be serialized in a compressed way
             key,
         })
+    }
+
+    pub fn from_secret_key<C: secp256k1::Signing>(
+        secp: &secp256k1::Secp256k1<C>,
+        secret_key: &secp256k1::SecretKey,
+    ) -> Self {
+        Self::new(secp256k1::PublicKey::from_secret_key(secp, secret_key))
     }
 
     pub fn into_inner(self) -> bitcoin_support::PublicKey {

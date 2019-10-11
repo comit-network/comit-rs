@@ -5,6 +5,7 @@ use crate::{
         SwapId, Timestamp,
     },
 };
+use blockchain_contracts::bitcoin::witness;
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
@@ -145,18 +146,18 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
                 let network = self.network;
                 let transaction =
                     self.spend_to(address)
-                        .sign_with_rate(fee_per_wu)
+                        .sign_with_rate(&*crate::SECP, fee_per_wu)
                         .map_err(|e| {
                             log::error!("Could not sign Bitcoin transaction: {:?}", e);
                             match e {
-                                bitcoin_witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
+                                witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
                                     "Fee is too high.",
                                 )
                                 .set_status(StatusCode::BAD_REQUEST)
                                 .set_detail(
                                     "The Fee per byte/WU provided makes the total fee higher than the spendable input value.",
                                 ),
-                                bitcoin_witness::Error::OverflowingFee => HttpApiProblem::new(
+                                witness::Error::OverflowingFee => HttpApiProblem::new(
                                     "Fee is too high.",
                                 )
                                     .set_status(StatusCode::BAD_REQUEST)

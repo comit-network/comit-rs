@@ -1,9 +1,10 @@
-use crate::witness::{UnlockParameters, Witness};
-use bitcoin_support::{
-    self, Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction,
-    TxIn, TxOut,
+use crate::bitcoin::witness::{UnlockParameters, Witness};
+use rust_bitcoin::{
+    hashes::Hash,
+    secp256k1::{self, Message, Secp256k1},
+    util::bip143::SighashComponents,
+    Address, Amount, OutPoint, Script, SigHashType, Transaction, TxIn, TxOut,
 };
-use secp256k1_omni_context::secp256k1::Message;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
@@ -72,7 +73,7 @@ pub struct PrimedTransaction {
 }
 
 impl PrimedTransaction {
-    fn _sign(self, transaction: &mut Transaction) {
+    fn _sign<C: secp256k1::Signing>(self, secp: &Secp256k1<C>, transaction: &mut Transaction) {
         for (i, primed_input) in self.inputs.into_iter().enumerate() {
             let input_parameters = primed_input.input_parameters;
             for (j, witness) in input_parameters.witness.iter().enumerate() {
@@ -87,7 +88,7 @@ impl PrimedTransaction {
                     // implemented for Hashes See https://github.com/rust-bitcoin/rust-secp256k1/issues/106
                     let message_to_sign = Message::from_slice(&hash_to_sign.into_inner())
                         .expect("Should not fail because it is a hash");
-                    let signature = secret_key.sign_ecdsa(message_to_sign);
+                    let signature = secp.sign(&message_to_sign, secret_key);
 
                     let mut serialized_signature = signature.serialize_der().to_vec();
                     serialized_signature.push(SigHashType::All as u8);
@@ -104,7 +105,11 @@ impl PrimedTransaction {
             .max()
     }
 
-    pub fn sign_with_rate(self, fee_per_byte: usize) -> Result<Transaction, Error> {
+    pub fn sign_with_rate<C: secp256k1::Signing>(
+        self,
+        secp: &Secp256k1<C>,
+        fee_per_byte: usize,
+    ) -> Result<Transaction, Error> {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         let weight = transaction.get_weight();
@@ -121,18 +126,22 @@ impl PrimedTransaction {
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
-        self._sign(&mut transaction);
+        self._sign(secp, &mut transaction);
         Ok(transaction)
     }
 
-    pub fn sign_with_fee(self, fee: Amount) -> Transaction {
+    pub fn sign_with_fee<C: secp256k1::Signing>(
+        self,
+        secp: &Secp256k1<C>,
+        fee: Amount,
+    ) -> Transaction {
         let mut transaction = self._transaction_without_signatures_or_output_values();
 
         transaction.output[0].value = (self.total_input_value() - fee).as_sat();
 
         transaction.lock_time = self.max_locktime().unwrap_or(0);
 
-        self._sign(&mut transaction);
+        self._sign(secp, &mut transaction);
         transaction
     }
 
@@ -171,25 +180,17 @@ impl PrimedTransaction {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::p2wpkh::UnlockP2wpkh;
-    use bitcoin_support::{Address, PrivateKey, Sha256dHash};
-    use secp256k1_omni_context::{
-        secp256k1::{self, Secp256k1},
-        Builder,
-    };
+    use crate::bitcoin::witness::p2wpkh::UnlockP2wpkh;
+    use rust_bitcoin::{hashes::sha256d, Address, PrivateKey};
     use std::str::FromStr;
 
     #[test]
     fn estimate_weight_and_sign_with_fee_are_correct_p2wpkh() -> Result<(), failure::Error> {
-        let secp: Secp256k1<secp256k1::All> = Secp256k1::new();
+        let secp = Secp256k1::signing_only();
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
-        let secret_key = Builder::new(secp.clone())
-            .secret_key(private_key.key)
-            .build()
-            .unwrap();
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
-        let txid = Sha256dHash::default();
+        let txid = sha256d::Hash::default();
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(
@@ -198,7 +199,7 @@ mod test {
                     vout: 1, // First number I found that gave me a 71 byte signature
                 },
                 Amount::from_btc(1.0).expect("Should convert 1.0 in bitcoin amount"),
-                secret_key.p2wpkh_unlock_parameters(),
+                private_key.key.p2wpkh_unlock_parameters(&secp),
             )],
             output_address: dst_addr,
         };
@@ -207,7 +208,7 @@ mod test {
         let rate = 42;
 
         let estimated_weight = primed_txn.estimate_weight();
-        let transaction = primed_txn.sign_with_rate(rate).unwrap();
+        let transaction = primed_txn.sign_with_rate(&secp, rate).unwrap();
 
         let actual_weight = transaction.get_weight();
         let fee = total_input_value.as_sat() - transaction.output[0].value;

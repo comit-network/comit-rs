@@ -1,9 +1,8 @@
-use crate::Hash160;
-use bitcoin::{
-    hashes::Hash,
+use hex::{self, FromHex};
+use rust_bitcoin::{
+    hashes::{hash160, Hash},
     secp256k1::{self, PublicKey, Secp256k1, SecretKey},
 };
-use hex::{self, FromHex};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -14,7 +13,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct PubkeyHash(Hash160);
+pub struct PubkeyHash(hash160::Hash);
 
 #[allow(dead_code)] // Only used in tests at the moment
 impl PubkeyHash {
@@ -23,8 +22,8 @@ impl PubkeyHash {
     }
 }
 
-impl From<Hash160> for PubkeyHash {
-    fn from(hash: Hash160) -> PubkeyHash {
+impl From<hash160::Hash> for PubkeyHash {
+    fn from(hash: hash160::Hash) -> PubkeyHash {
         PubkeyHash(hash)
     }
 }
@@ -32,7 +31,7 @@ impl From<Hash160> for PubkeyHash {
 impl From<PublicKey> for PubkeyHash {
     fn from(public_key: PublicKey) -> PubkeyHash {
         PubkeyHash(
-            <bitcoin::hashes::hash160::Hash as bitcoin::hashes::Hash>::hash(
+            <rust_bitcoin::hashes::hash160::Hash as rust_bitcoin::hashes::Hash>::hash(
                 &public_key.serialize(),
             ),
         )
@@ -40,17 +39,17 @@ impl From<PublicKey> for PubkeyHash {
 }
 
 impl<'a> TryFrom<&'a [u8]> for PubkeyHash {
-    type Error = bitcoin::hashes::error::Error;
+    type Error = rust_bitcoin::hashes::error::Error;
 
     fn try_from(value: &[u8]) -> Result<Self, Self::Error> {
-        Ok(PubkeyHash(Hash160::from_slice(value)?))
+        Ok(PubkeyHash(hash160::Hash::from_slice(value)?))
     }
 }
 
 #[derive(Debug)]
 pub enum FromHexError {
     HexConversion(hex::FromHexError),
-    HashConversion(bitcoin::hashes::error::Error),
+    HashConversion(rust_bitcoin::hashes::error::Error),
 }
 
 impl From<hex::FromHexError> for FromHexError {
@@ -59,8 +58,8 @@ impl From<hex::FromHexError> for FromHexError {
     }
 }
 
-impl From<bitcoin::hashes::error::Error> for FromHexError {
-    fn from(err: bitcoin::hashes::error::Error) -> Self {
+impl From<rust_bitcoin::hashes::error::Error> for FromHexError {
+    fn from(err: rust_bitcoin::hashes::error::Error) -> Self {
         FromHexError::HashConversion(err)
     }
 }
@@ -85,8 +84,8 @@ impl AsRef<[u8]> for PubkeyHash {
     }
 }
 
-impl Into<Hash160> for PubkeyHash {
-    fn into(self) -> Hash160 {
+impl Into<hash160::Hash> for PubkeyHash {
+    fn into(self) -> hash160::Hash {
         self.0
     }
 }
@@ -135,7 +134,7 @@ impl Serialize for PubkeyHash {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::PrivateKey;
+    use rust_bitcoin::PrivateKey;
     use std::str::FromStr;
 
     #[test]

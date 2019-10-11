@@ -1,10 +1,15 @@
 use crate::{
+    bitcoin::witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF},
     fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
     SecretHash,
 };
-use bitcoin_witness::{SecretKey, UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
-use rust_bitcoin::{hashes::hash160, network::constants::Network, Address, Script};
+use rust_bitcoin::{
+    hashes::hash160,
+    network::constants::Network,
+    secp256k1::{self, Secp256k1, SecretKey},
+    Address, Script,
+};
 
 // contract template RFC: https://github.com/comit-network/RFCs/blob/master/RFC-005-SWAP-Basic-Bitcoin.adoc#contract
 pub const CONTRACT_TEMPLATE: [u8;97] = hex!("6382012088a82010000000000000000000000000000000000000000000000000000000000000018876a9143000000000000000000000000000000000000003670420000002b17576a91440000000000000000000000000000000000000046888ac");
@@ -50,8 +55,13 @@ impl BitcoinHtlc {
         Address::p2wsh(&Script::from(self.script.clone()), network)
     }
 
-    pub fn unlock_with_secret(self, secret_key: SecretKey, secret: [u8; 32]) -> UnlockParameters {
-        let public_key = secret_key.public_key();
+    pub fn unlock_with_secret<C: secp256k1::Signing>(
+        self,
+        secp: &Secp256k1<C>,
+        secret_key: SecretKey,
+        secret: [u8; 32],
+    ) -> UnlockParameters {
+        let public_key = secp256k1::PublicKey::from_secret_key(secp, &secret_key);
         UnlockParameters {
             witness: vec![
                 Witness::Signature(secret_key),
@@ -66,8 +76,12 @@ impl BitcoinHtlc {
         }
     }
 
-    pub fn unlock_after_timeout(self, secret_key: SecretKey) -> UnlockParameters {
-        let public_key = secret_key.public_key();
+    pub fn unlock_after_timeout<C: secp256k1::Signing>(
+        self,
+        secp: &Secp256k1<C>,
+        secret_key: SecretKey,
+    ) -> UnlockParameters {
+        let public_key = secp256k1::PublicKey::from_secret_key(secp, &secret_key);
         UnlockParameters {
             witness: vec![
                 Witness::Signature(secret_key),

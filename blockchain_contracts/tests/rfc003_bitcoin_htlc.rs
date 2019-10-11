@@ -10,35 +10,22 @@ use crate::{
     bitcoin_helper::RegtestHelperClient,
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
-use bitcoin_witness::{
-    secp256k1, Builder, PrimedInput, PrimedTransaction, SecretKey, UnlockParameters, Witness,
-};
+use bitcoin_helper::new_tc_bitcoincore_client;
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::{
+    rfc003::bitcoin_htlc::BitcoinHtlc,
+    witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness},
+};
 use rust_bitcoin::{
     consensus::encode::serialize_hex,
     hashes::{hash160, sha256d, Hash},
     network::constants::Network,
+    secp256k1::{self, PublicKey, Secp256k1, SecretKey},
     Address, Amount, OutPoint, PrivateKey,
 };
 use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
-use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Container, Docker};
-
-pub fn new_tc_bitcoincore_client<D: Docker>(
-    container: &Container<'_, D, BitcoinCore>,
-) -> bitcoincore_rpc::Client {
-    let port = container.get_host_port(18443).unwrap();
-    let auth = container.image().auth();
-
-    let endpoint = format!("http://localhost:{}", port);
-
-    bitcoincore_rpc::Client::new(
-        endpoint,
-        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
-    )
-    .unwrap()
-}
+use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};
 
 /// Mimic the functionality of [`BitcoinHtlc#unlock_with_secret`](method)
 /// except that we want to insert our "CustomSizeSecret" on the witness
@@ -53,7 +40,11 @@ fn unlock_with_custom_size_secret(
 ) -> UnlockParameters {
     let placeholder_secret = [0u8; 32];
     // First, unlock the HTLC with a placeholder secret
-    let parameters = htlc.unlock_with_secret(secret_key, placeholder_secret);
+    let parameters = htlc.unlock_with_secret(
+        &*crate::ethereum_helper::SECP,
+        secret_key,
+        placeholder_secret,
+    );
 
     let UnlockParameters {
         mut witness,
@@ -80,8 +71,11 @@ fn unlock_with_custom_size_secret(
     }
 }
 
-fn pubkey_hash(secret_key: &SecretKey) -> hash160::Hash {
-    hash160::Hash::hash(&secret_key.public_key().serialize())
+fn pubkey_hash<C: secp256k1::Signing>(
+    secp: &Secp256k1<C>,
+    secret_key: &SecretKey,
+) -> hash160::Hash {
+    hash160::Hash::hash(&PublicKey::from_secret_key(&secp, &secret_key).serialize())
 }
 
 fn fund_htlc(
@@ -97,24 +91,16 @@ fn fund_htlc(
     SecretKey,
 ) {
     let secp: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
-    let redeem_secret_key = Builder::new(secp.clone())
-        .secret_key(
-            PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt")
-                .unwrap()
-                .key,
-        )
-        .build()
-        .unwrap();
-    let refund_secret_key = Builder::new(secp.clone())
-        .secret_key(
-            PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx")
-                .unwrap()
-                .key,
-        )
-        .build()
-        .unwrap();
-    let redeem_pubkey_hash = pubkey_hash(&redeem_secret_key);
-    let refund_pubkey_hash = pubkey_hash(&refund_secret_key);
+    let redeem_secret_key =
+        PrivateKey::from_str("cSrWvMrWE3biZinxPZc1hSwMMEdYgYsFpB6iEoh8KraLqYZUUCtt")
+            .unwrap()
+            .key;
+    let refund_secret_key =
+        PrivateKey::from_str("cNZUJxVXghSri4dUaNW8ES3KiFyDoWVffLYDz7KMcHmKhLdFyZPx")
+            .unwrap()
+            .key;
+    let redeem_pubkey_hash = pubkey_hash(&secp, &redeem_secret_key);
+    let refund_pubkey_hash = pubkey_hash(&secp, &refund_secret_key);
 
     let current_time = client.get_blockchain_info().unwrap().mediantime;
     let current_time = u32::try_from(current_time).unwrap();
@@ -177,11 +163,11 @@ fn redeem_htlc_with_secret() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_with_secret(secret_key, SECRET.clone()),
+            htlc.unlock_with_secret(&crate::ethereum_helper::SECP, secret_key, SECRET.clone()),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&crate::ethereum_helper::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -216,11 +202,11 @@ fn refund_htlc() {
         inputs: vec![PrimedInput::new(
             vout,
             input_amount,
-            htlc.unlock_after_timeout(secret_key),
+            htlc.unlock_after_timeout(&crate::ethereum_helper::SECP, secret_key),
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&crate::ethereum_helper::SECP, fee);
 
     let refund_tx_hex = serialize_hex(&refund_tx);
 
@@ -282,7 +268,7 @@ fn redeem_htlc_with_long_secret() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&crate::ethereum_helper::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
@@ -323,7 +309,7 @@ fn redeem_htlc_with_short_secret() {
         )],
         output_address: alice_addr.clone(),
     }
-    .sign_with_fee(fee);
+    .sign_with_fee(&crate::ethereum_helper::SECP, fee);
 
     let redeem_tx_hex = serialize_hex(&redeem_tx);
 
