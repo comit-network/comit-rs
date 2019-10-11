@@ -3,13 +3,12 @@ use btsieve::{
     bitcoin::TransactionQuery, first_or_else::StreamExt, BlockByHash, LatestBlock,
     MatchingTransactions,
 };
-use serde::export::fmt::Debug;
 use std::{
     collections::HashMap,
     str::FromStr,
     time::{Duration, Instant},
 };
-use tokio::prelude::{Future, FutureExt, IntoFuture};
+use tokio::prelude::{Future, IntoFuture};
 
 #[derive(Clone)]
 struct BitcoinConnectorMock {
@@ -98,7 +97,7 @@ fn find_transaction_in_missing_block() {
         ],
     );
 
-    let future = connector
+    let expected_transaction: bitcoin_support::Transaction = connector
         .matching_transactions(TransactionQuery {
             to_address: Some(
                 Address::from_str(
@@ -109,13 +108,13 @@ fn find_transaction_in_missing_block() {
             from_outpoint: None,
             unlock_script: None,
         })
-        .first_or_else(|| panic!());
-
-    let transaction = wait(future);
+        .first_or_else(|| panic!())
+        .wait()
+        .unwrap();
 
     assert_eq!(
-        include_hex!("./test_data/find_transaction_in_missing_block/transaction.hex"),
-        expected_transaction
+        expected_transaction,
+        include_hex!("./test_data/find_transaction_in_missing_block/transaction.hex")
     );
 }
 
@@ -138,7 +137,7 @@ fn find_transaction_in_missing_block_with_big_gap() {
         ],
     );
 
-    let future = connector
+    let expected_transaction: bitcoin_support::Transaction = connector
         .matching_transactions(TransactionQuery {
             to_address: Some(
                 Address::from_str(
@@ -152,13 +151,13 @@ fn find_transaction_in_missing_block_with_big_gap() {
             from_outpoint: None,
             unlock_script: None,
         })
-        .first_or_else(|| panic!());
-
-    let transaction = wait(future);
+        .first_or_else(|| panic!())
+        .wait()
+        .unwrap();
 
     assert_eq!(
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex"),
-        expected_transaction
+        expected_transaction,
+        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex")
     );
 }
 
@@ -177,7 +176,7 @@ fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let future = connector
+    let expected_transaction: bitcoin_support::Transaction = connector
         .matching_transactions(TransactionQuery {
             to_address: Some(
                 Address::from_str(
@@ -191,13 +190,13 @@ fn find_transaction_if_blockchain_reorganisation() {
             from_outpoint: None,
             unlock_script: None,
         })
-        .first_or_else(|| panic!());
-
-    let transaction = wait(future);
+        .first_or_else(|| panic!())
+        .wait()
+        .unwrap();
 
     assert_eq!(
-        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex"),
-        expected_transaction
+        expected_transaction,
+        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex")
     );
 }
 
@@ -219,7 +218,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let future = connector
+    let expected_transaction: bitcoin_support::Transaction = connector
         .matching_transactions(TransactionQuery {
             to_address: Some(
                 Address::from_str(
@@ -233,15 +232,15 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
             from_outpoint: None,
             unlock_script: None,
         })
-        .first_or_else(|| panic!());
-
-    let transaction = wait(future);
+        .first_or_else(|| panic!())
+        .wait()
+        .unwrap();
 
     assert_eq!(
+        expected_transaction,
         include_hex!(
         "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex"
-    ),
-        expected_transaction
+    )
     );
 }
 
@@ -255,13 +254,4 @@ macro_rules! include_hex {
 fn from_hex<T: Decodable>(hex: &str) -> T {
     let bytes = hex::decode(hex.trim()).unwrap();
     deserialize(bytes.as_slice()).unwrap()
-}
-
-fn wait<T: Send + 'static, E: Debug + Send + 'static>(
-    future: impl Future<Item = T, Error = E> + Send + 'static,
-) -> T {
-    let mut runtime = tokio::runtime::Runtime::new().unwrap();
-    runtime
-        .block_on(future.timeout(Duration::from_secs(10)))
-        .unwrap()
 }
