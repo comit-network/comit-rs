@@ -20,7 +20,7 @@ fn sign_with_rate() {
 
     let container = docker.run(BitcoinCore::default());
     let client = new_tc_bitcoincore_client(&container);
-    client.generate(101, None).unwrap();
+    client.mine_bitcoins();
     let input_amount = Amount::from_sat(100_000_001);
     let private_key =
         PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm").unwrap();
