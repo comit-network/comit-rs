@@ -3,11 +3,12 @@
 
 pub mod bitcoin;
 pub mod ethereum;
+pub mod first_or_else;
 
 #[cfg(test)]
 pub mod quickcheck;
 
-use futures::{Future, Stream};
+use tokio::prelude::{Future, Stream};
 
 pub trait MatchingTransactions<Q>: Send + Sync + 'static {
     type Transaction;
@@ -24,7 +25,7 @@ pub trait LatestBlock: Send + Sync + 'static {
     type BlockHash;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
 }
 

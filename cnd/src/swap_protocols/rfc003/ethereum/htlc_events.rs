@@ -1,21 +1,19 @@
-use crate::{
-    stream_ext::StreamExt,
-    swap_protocols::{
-        asset::Asset,
-        ledger::Ethereum,
-        rfc003::{
-            self,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
-            Secret,
+use crate::swap_protocols::{
+    asset::Asset,
+    ledger::Ethereum,
+    rfc003::{
+        self,
+        events::{
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+            RedeemedOrRefundedFuture, Refunded,
         },
+        state_machine::HtlcParams,
+        Secret,
     },
 };
 use btsieve::{
     ethereum::{EventMatcher, EventQuery, Topic, TransactionQuery, Web3Connector},
+    first_or_else::StreamExt,
     MatchingTransactions,
 };
 use ethereum_support::{
@@ -26,7 +24,6 @@ use futures::{
     future::{self, Either},
     Future, Stream,
 };
-use std::sync::Arc;
 
 lazy_static::lazy_static! {
     /// keccak256(Redeemed())
@@ -37,7 +34,7 @@ lazy_static::lazy_static! {
     pub static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
 }
 
-impl HtlcEvents<Ethereum, EtherQuantity> for Arc<Web3Connector> {
+impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
@@ -89,13 +86,13 @@ fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 }
 
 fn htlc_redeemed_or_refunded<A: Asset>(
-    block_source: Arc<Web3Connector>,
+    ethereum_connector: Web3Connector,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
     let refunded_future = {
-        block_source
+        ethereum_connector
             .matching_transactions(EventQuery {
                 event_matchers: vec![EventMatcher {
                     address: Some(htlc_deployment.location),
@@ -114,7 +111,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     };
 
     let redeemed_future = {
-        block_source.matching_transactions(EventQuery {
+        ethereum_connector.matching_transactions(EventQuery {
             event_matchers: vec![EventMatcher {
                 address: Some(htlc_deployment.location),
                 data: None,
@@ -164,7 +161,7 @@ mod erc20 {
     use super::*;
     use ethereum_support::{Erc20Quantity, U256};
 
-    impl HtlcEvents<Ethereum, Erc20Token> for Arc<Web3Connector> {
+    impl HtlcEvents<Ethereum, Erc20Token> for Web3Connector {
         fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,

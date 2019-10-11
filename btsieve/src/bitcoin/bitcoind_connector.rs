@@ -3,9 +3,9 @@ use crate::{
     BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
-use futures::Future;
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
+use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct ChainInfo {
@@ -41,7 +41,7 @@ impl LatestBlock for BitcoindConnector {
     type BlockHash = bitcoin_support::BlockId;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let latest_block_hash = self
             .client

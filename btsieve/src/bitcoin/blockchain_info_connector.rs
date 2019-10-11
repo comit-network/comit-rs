@@ -3,9 +3,9 @@ use crate::{
     BlockByHash, LatestBlock,
 };
 use bitcoin_support::Network;
-use futures::Future;
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
+use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
@@ -55,7 +55,7 @@ impl LatestBlock for BlockchainInfoConnector {
     type BlockHash = String;
 
     fn latest_block(
-        &self,
+        &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let latest_block_url = "https://blockchain.info/latestblock";
         let latest_block_without_tx = self

@@ -1,6 +1,6 @@
 #![allow(missing_debug_implementations)] // Combinators don't need to implement debug
 
-use futures::{Async, Future, Poll, Stream};
+use tokio::prelude::{Async, Future, Poll, Stream};
 
 pub trait StreamExt: Stream {
     /// Returns a future that resolves with the first element of the stream

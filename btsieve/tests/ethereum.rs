@@ -3,14 +3,14 @@ use btsieve::{
     MatchingTransactions,
 };
 use ethereum_support::{TransactionRequest, U256};
-use futures::{Future, Stream};
 use reqwest::Url;
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use testcontainers::*;
-use tokio::{prelude::FutureExt, runtime::Runtime, timer::Delay};
+use tokio::{
+    prelude::{Future, FutureExt, Stream},
+    runtime::Runtime,
+    timer::Delay,
+};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum queries
@@ -30,8 +30,8 @@ fn ethereum_transaction_query_e2e_test() {
     url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
         .unwrap();
 
-    let blocksource =
-        Arc::new(Web3Connector::new(url, ethereum_support::Network::Regtest).unwrap());
+    let (connector, _event_loop) =
+        Web3Connector::new(url, ethereum_support::Network::Regtest).unwrap();
 
     let mut runtime = Runtime::new().unwrap();
 
@@ -39,7 +39,7 @@ fn ethereum_transaction_query_e2e_test() {
 
     let target_address = accounts[0];
 
-    let funding_transaction = blocksource
+    let funding_transaction = connector
         .matching_transactions(TransactionQuery {
             from_address: None,
             to_address: Some(target_address),

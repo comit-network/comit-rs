@@ -26,7 +26,6 @@ pub mod logging;
 pub mod network;
 pub mod seed;
 pub mod std_ext;
-pub mod stream_ext;
 pub mod swap_protocols;
 
 use directories::ProjectDirs;

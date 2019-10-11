@@ -48,15 +48,19 @@ fn main() -> Result<(), failure::Error> {
     let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
 
+    let bitcoin_connector = {
+        let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
+        BitcoindConnector::new(node_url, network)?
+    };
+
+    let (ethereum_connector, _event_loop_handle) = {
+        let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
+        Web3Connector::new(node_url, network)?
+    };
+
     let ledger_events = LedgerEventDependencies {
-        bitcoin_blocksource: {
-            let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
-            Arc::new(BitcoindConnector::new(node_url, network)?)
-        },
-        ethereum_blocksource: {
-            let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
-            Arc::new(Web3Connector::new(node_url, network)?)
-        },
+        bitcoin_connector,
+        ethereum_connector,
     };
 
     let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {

@@ -45,6 +45,6 @@ pub mod bob {
 #[allow(missing_debug_implementations)]
 #[derive(Clone)]
 pub struct LedgerEventDependencies {
-    pub bitcoin_blocksource: Arc<BitcoindConnector>,
-    pub ethereum_blocksource: Arc<Web3Connector>,
+    pub bitcoin_connector: BitcoindConnector,
+    pub ethereum_connector: Web3Connector,
 }

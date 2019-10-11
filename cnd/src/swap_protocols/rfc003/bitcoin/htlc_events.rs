@@ -1,30 +1,27 @@
-use crate::{
-    stream_ext::StreamExt,
-    swap_protocols::{
-        ledger::Bitcoin,
-        rfc003::{
-            self,
-            bitcoin::extract_secret::extract_secret,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
+use crate::swap_protocols::{
+    ledger::Bitcoin,
+    rfc003::{
+        self,
+        bitcoin::extract_secret::extract_secret,
+        events::{
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+            RedeemedOrRefundedFuture, Refunded,
         },
+        state_machine::HtlcParams,
     },
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
 use btsieve::{
     bitcoin::{BitcoindConnector, TransactionQuery},
+    first_or_else::StreamExt,
     MatchingTransactions,
 };
 use futures::{
     future::{self, Either},
     Future, Stream,
 };
-use std::sync::Arc;
 
-impl HtlcEvents<Bitcoin, Amount> for Arc<BitcoindConnector> {
+impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,

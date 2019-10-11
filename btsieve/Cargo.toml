@@ -10,7 +10,7 @@ bitcoin_support = { path = "../internal/bitcoin_support" }
 derivative = "1"
 ethbloom = "0.6.4"
 ethereum_support = { path = "../internal/ethereum_support" }
-futures = "0.1"
+futures-preview = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"] }
 hex = "0.4"
 log = "0.4"
 reqwest = { version = "0.9", default-features = false }
