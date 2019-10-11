@@ -29,6 +29,11 @@ generate_101_blocks() {
 }
 
 generate_block() {
+    if [ $# -ne 1 ]; then
+        echo "Incorrect number of parameters on generate_block"
+        exit 2
+    fi
+
     local path="$1"
 
     docker exec $container bitcoin-cli -regtest generate 1 > /dev/null
@@ -38,6 +43,11 @@ generate_block() {
 }
 
 create_transaction() {
+    if [ $# -ne 2 ]; then
+        echo "Incorrect number of parameters on create_transaction"
+        exit 2
+    fi
+
     local address_path="$1"
     local transaction_path="$2"
 
