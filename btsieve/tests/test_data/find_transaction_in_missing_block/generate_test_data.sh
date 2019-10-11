@@ -12,6 +12,7 @@ generate_101_blocks
 
 generate_block "./block1.hex"
 
+# Created transaction will be included in the next generated block
 create_transaction "./address" "./transaction.hex"
 generate_block "./block2.hex"
 
