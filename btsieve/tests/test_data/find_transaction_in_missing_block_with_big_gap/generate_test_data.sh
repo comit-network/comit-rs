@@ -3,6 +3,11 @@ set -e
 
 source "../lib.sh"
 
+# This script was used to conveniently generate the test data for the test
+# "find_transaction_in_missing_block_with_big_gap" located in "../../bitcoin_missing_blocks.rs".
+# If the test changes, you can modify this script accordingly and run it again
+# to generate different test data.
+
 # Clean up generated files from previous run
 rm -f "./block1.hex" "./block2_with_transaction.hex" "./block3.hex" "./block4.hex" "./block5.hex" "./block6.hex" "./block7.hex" "./block8.hex"
 

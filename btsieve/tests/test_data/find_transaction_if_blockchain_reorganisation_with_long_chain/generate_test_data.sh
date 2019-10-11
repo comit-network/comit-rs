@@ -3,6 +3,12 @@ set -e
 
 source "../lib.sh"
 
+# This script was used to conveniently generate the test data for the test
+# "find_transaction_if_blockchain_reorganisation_with_long_chain"
+# located in "../../bitcoin_missing_blocks.rs".
+# If the test changes, you can modify this script accordingly and run it again
+# to generate different test data.
+
 # Strategy followed to cause a blockchain reorganisation:
 #
 # 1. Start a bitcoin node inside a docker container with a volume.
