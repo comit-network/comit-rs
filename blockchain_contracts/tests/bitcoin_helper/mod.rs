@@ -1,11 +1,9 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-use rust_bitcoin::{hashes::sha256d, Address, OutPoint, TxOut};
+use rust_bitcoin::{hashes::sha256d, Address, Amount, Network, OutPoint, PublicKey, TxOut};
 use std::convert::TryFrom;
 use testcontainers::{images::coblox_bitcoincore::BitcoinCore, Container, Docker};
-
-pub mod rpc;
 
 pub fn new_tc_bitcoincore_client<D: Docker>(
     container: &Container<'_, D, BitcoinCore>,
@@ -26,6 +24,12 @@ pub trait RegtestHelperClient {
     fn find_utxo_at_tx_for_address(&self, txid: &sha256d::Hash, address: &Address)
         -> Option<TxOut>;
     fn find_vout_for_address(&self, txid: &sha256d::Hash, address: &Address) -> OutPoint;
+    fn mine_bitcoins(&self);
+    fn create_p2wpkh_vout_at(
+        &self,
+        dest: rust_bitcoin::secp256k1::PublicKey,
+        value: Amount,
+    ) -> (sha256d::Hash, OutPoint);
 }
 
 impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
@@ -43,12 +47,9 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
         unspent
             .into_iter()
             .find(|utxo| utxo.txid == *txid)
-            .map(|result| {
-                let value = u64::try_from(result.amount.as_sat()).unwrap();
-                TxOut {
-                    value,
-                    script_pubkey: result.script_pub_key,
-                }
+            .map(|result| TxOut {
+                value: result.amount.as_sat(),
+                script_pubkey: result.script_pub_key,
             })
     }
 
@@ -67,5 +68,33 @@ impl<Rpc: bitcoincore_rpc::RpcApi> RegtestHelperClient for Rpc {
                 }
             })
             .unwrap()
+    }
+
+    fn mine_bitcoins(&self) {
+        self.generate(101, None).unwrap();
+    }
+
+    fn create_p2wpkh_vout_at(
+        &self,
+        public_key: rust_bitcoin::secp256k1::PublicKey,
+        amount: Amount,
+    ) -> (sha256d::Hash, OutPoint) {
+        let address = Address::p2wpkh(
+            &PublicKey {
+                compressed: true,
+                key: public_key,
+            },
+            Network::Regtest,
+        );
+
+        let txid = self
+            .send_to_address(&address.clone(), amount, None, None, None, None, None, None)
+            .unwrap();
+
+        self.generate(1, None).unwrap();
+
+        let vout = self.find_vout_for_address(&txid, &address);
+
+        (txid, vout)
     }
 }

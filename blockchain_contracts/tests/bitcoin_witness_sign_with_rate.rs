@@ -1,7 +1,7 @@
 pub mod bitcoin_helper;
 
 use crate::bitcoin_helper::new_tc_bitcoincore_client;
-use bitcoin_helper::rpc::RegtestHelperClient;
+use bitcoin_helper::RegtestHelperClient;
 use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
 use rust_bitcoin::{
