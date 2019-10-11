@@ -12,7 +12,7 @@ pub trait Actions {
 
 pub mod bitcoin {
     use bitcoin_support::{Address, Amount, Network};
-    use bitcoin_witness::{PrimedInput, PrimedTransaction};
+    use blockchain_contracts::bitcoin::witness::{PrimedInput, PrimedTransaction};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SendToAddress {

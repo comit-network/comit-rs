@@ -1,9 +1,9 @@
-use crate::witness::{UnlockParameters, Witness};
-use bitcoin_support::{
-    self,
-    bitcoin::secp256k1::{self, Message, Secp256k1},
-    Address, Amount, Hash, OutPoint, Script, SigHashType, SighashComponents, Transaction, TxIn,
-    TxOut,
+use crate::bitcoin::witness::{UnlockParameters, Witness};
+use rust_bitcoin::{
+    hashes::Hash,
+    secp256k1::{self, Message, Secp256k1},
+    util::bip143::SighashComponents,
+    Address, Amount, OutPoint, Script, SigHashType, Transaction, TxIn, TxOut,
 };
 
 #[derive(Debug, PartialEq)]
@@ -180,8 +180,8 @@ impl PrimedTransaction {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::p2wpkh::UnlockP2wpkh;
-    use bitcoin_support::{Address, PrivateKey, Sha256dHash};
+    use crate::bitcoin::witness::p2wpkh::UnlockP2wpkh;
+    use rust_bitcoin::{hashes::sha256d, Address, PrivateKey};
     use std::str::FromStr;
 
     #[test]
@@ -190,7 +190,7 @@ mod test {
         let private_key =
             PrivateKey::from_str("L4nZrdzNnawCtaEcYGWuPqagQA3dJxVPgN8ARTXaMLCxiYCy89wm")?;
         let dst_addr = Address::from_str("bc1q87v7fjxcs29xvtz8kdu79u2tjfn3ppu0c3e6cl")?;
-        let txid = Sha256dHash::default();
+        let txid = sha256d::Hash::default();
 
         let primed_txn = PrimedTransaction {
             inputs: vec![PrimedInput::new(

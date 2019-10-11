@@ -8,7 +8,6 @@ description = "Reference implementation of a COMIT network daemon."
 [dependencies]
 binary_macros = "0.6"
 bitcoin_support = { path = "../internal/bitcoin_support" }
-bitcoin_witness = { path = "../internal/bitcoin_witness" }
 blockchain_contracts = { path = "../blockchain_contracts" }
 btsieve = { version = "0.1.0", path = "../btsieve" }
 chrono = { version = "0.4", features = ["serde"] }

@@ -1,5 +1,5 @@
-use bitcoin_support::{
-    bitcoin::secp256k1::{PublicKey, SecretKey},
+use rust_bitcoin::{
+    secp256k1::{PublicKey, SecretKey},
     Script,
 };
 

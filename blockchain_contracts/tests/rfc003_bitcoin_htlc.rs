@@ -11,19 +11,18 @@ use crate::{
     htlc_harness::{CustomSizeSecret, Timestamp, SECRET, SECRET_HASH},
 };
 use bitcoin_helper::new_tc_bitcoincore_client;
-use bitcoin_witness::{
-    secp256k1::{self, SecretKey},
-    PrimedInput, PrimedTransaction, UnlockParameters, Witness,
-};
 use bitcoincore_rpc::RpcApi;
-use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
+use blockchain_contracts::bitcoin::{
+    rfc003::bitcoin_htlc::BitcoinHtlc,
+    witness::{PrimedInput, PrimedTransaction, UnlockParameters, Witness},
+};
 use rust_bitcoin::{
     consensus::encode::serialize_hex,
     hashes::{hash160, sha256d, Hash},
     network::constants::Network,
+    secp256k1::{self, PublicKey, Secp256k1, SecretKey},
     Address, Amount, OutPoint, PrivateKey,
 };
-use secp256k1::{PublicKey, Secp256k1};
 use spectral::prelude::*;
 use std::{convert::TryFrom, str::FromStr, thread::sleep, time::Duration};
 use testcontainers::{clients::Cli, images::coblox_bitcoincore::BitcoinCore, Docker};

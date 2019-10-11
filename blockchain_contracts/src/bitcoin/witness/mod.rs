@@ -1,6 +1,3 @@
-#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
-#![forbid(unsafe_code)]
-
 // https://github.com/bitcoin/bips/blob/master/bip-0125.mediawiki
 // Wallets that don't want to signal replaceability should use either a
 // max sequence number (0xffffffff) or a sequence number of
@@ -11,11 +8,10 @@ pub const SEQUENCE_DISALLOW_NTIMELOCK_NO_RBF: u32 = 0xFFFF_FFFF;
 
 mod p2wpkh;
 mod primed_transaction;
+mod pubkey_hash;
 mod witness;
 
-pub use crate::{
-    p2wpkh::UnlockP2wpkh,
-    primed_transaction::{Error, PrimedInput, PrimedTransaction},
-    witness::{UnlockParameters, Witness},
-};
-pub use bitcoin_support::bitcoin::secp256k1;
+pub use p2wpkh::UnlockP2wpkh;
+pub use primed_transaction::{Error, PrimedInput, PrimedTransaction};
+pub use pubkey_hash::PubkeyHash;
+pub use witness::{UnlockParameters, Witness};

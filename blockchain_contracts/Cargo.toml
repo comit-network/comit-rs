@@ -6,7 +6,6 @@ edition = "2018"
 description = "Blockchain contracts used by COMIT-network daemons to execute cryptographic protocols."
 
 [dependencies]
-bitcoin_witness = { path = "../internal/bitcoin_witness" }
 byteorder = "1.3"
 hex = "0.4"
 hex-literal = "0.2"

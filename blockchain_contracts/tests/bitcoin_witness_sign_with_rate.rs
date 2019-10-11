@@ -2,8 +2,8 @@ pub mod bitcoin_helper;
 
 use crate::bitcoin_helper::new_tc_bitcoincore_client;
 use bitcoin_helper::RegtestHelperClient;
-use bitcoin_witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use bitcoincore_rpc::RpcApi;
+use blockchain_contracts::bitcoin::witness::{PrimedInput, PrimedTransaction, UnlockP2wpkh};
 use rust_bitcoin::{
     consensus::encode::serialize_hex,
     secp256k1::{self, Secp256k1},

@@ -1,8 +1,8 @@
 use crate::{
+    bitcoin::witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF},
     fit_into_placeholder_slice::{BitcoinTimestamp, FitIntoPlaceholderSlice},
     SecretHash,
 };
-use bitcoin_witness::{UnlockParameters, Witness, SEQUENCE_ALLOW_NTIMELOCK_NO_RBF};
 use hex_literal::hex;
 use rust_bitcoin::{
     hashes::hash160,
