@@ -4,6 +4,7 @@ name = "cnd"
 version = "0.3.0"
 edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
+build = "src/build.rs"
 
 [dependencies]
 binary_macros = "0.6"
@@ -69,3 +70,6 @@ serde_urlencoded = "0.6"
 spectral = "0.6"
 tempfile = "3.1.0"
 tiny-keccak = "1.5"
+
+[build-dependencies]
+vergen = "3"

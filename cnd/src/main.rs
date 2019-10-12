@@ -24,6 +24,7 @@ use libp2p::{
 use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
+    process,
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
@@ -33,6 +34,15 @@ mod logging;
 
 fn main() -> Result<(), failure::Error> {
     let options = cli::Options::from_args();
+    if options.version {
+        println!(
+            "Version: {} based on {}\nBuilt On: {}",
+            env!("VERGEN_SHA"),
+            env!("VERGEN_SEMVER"),
+            env!("VERGEN_BUILD_TIMESTAMP")
+        );
+        process::exit(0);
+    }
 
     let config_file = options
         .config_file
