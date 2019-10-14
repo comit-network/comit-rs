@@ -52,8 +52,8 @@ impl TransactionQuery {
         }
     }
 
-    pub fn event_matches_block(&self, block: &Block<Transaction>) -> bool {
-        self.events.iter().all(|log_events| {
+    pub fn can_skip_block(&self, block: &Block<Transaction>) -> bool {
+        !self.events.iter().all(|log_events| {
             log_events.topics.iter().all(|topic| {
                 topic.as_ref().map_or(true, |topic| {
                     block
@@ -396,7 +396,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_block_with_bloom_filter_should_match_query() {
+    fn given_a_block_with_bloom_filter_cannot_skip_block() {
         let tx = Transaction {
             to: Some(*CONTRACT_ADDRESS),
             ..Transaction::default()
@@ -410,11 +410,11 @@ mod tests {
         let event = Event::for_token_contract_with_transfer_topics();
         let query = transaction_query_from_event(event);
 
-        assert_that!(query.event_matches_block(&block)).is_true()
+        assert_that!(query.can_skip_block(&block)).is_false()
     }
 
     #[test]
-    fn given_a_block_without_bloom_filter_should_not_match_query() {
+    fn given_a_block_without_bloom_filter_can_skip_block() {
         let tx = Transaction {
             to: Some(*CONTRACT_ADDRESS),
             ..Transaction::default()
@@ -428,7 +428,7 @@ mod tests {
         let event = Event::for_token_contract_with_transfer_topics();
         let query = transaction_query_from_event(event);
 
-        assert_that!(query.event_matches_block(&block)).is_false()
+        assert_that!(query.can_skip_block(&block)).is_true()
     }
 
     #[test]
@@ -624,7 +624,7 @@ mod tests {
     }
 
     #[test]
-    fn event_matches_block_returns_true_for_empty_events() {
+    fn given_query_with_empty_events_cannot_skip_block() {
         let block = Block::default();
         let query = TransactionQuery {
             from_address: None,
@@ -635,7 +635,7 @@ mod tests {
             events: Vec::new(),
         };
 
-        assert!(query.event_matches_block(&block))
+        assert_that!(query.can_skip_block(&block)).is_false()
     }
 
     #[test]

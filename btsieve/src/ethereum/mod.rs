@@ -69,7 +69,7 @@ where
             }
         };
 
-        if !query.event_matches_block(&latest_block) {
+        if query.can_skip_block(&latest_block) {
             continue;
         }
 
