@@ -624,4 +624,34 @@ mod tests {
 
         assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
     }
+
+    #[test]
+    fn event_matches_block_returns_true_for_empty_event_matchers() {
+        let block = Block::default();
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: None,
+            transaction_data_length: None,
+            event_matchers: Vec::new(),
+        };
+
+        assert!(query.event_matches_block(&block))
+    }
+
+    #[test]
+    fn event_matches_transaction_receipt_returns_true_for_empty_event_matchers() {
+        let receipt = TransactionReceipt::default();
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: None,
+            transaction_data: None,
+            transaction_data_length: None,
+            event_matchers: Vec::new(),
+        };
+
+        assert!(query.event_matches_transaction_receipt(&receipt))
+    }
 }
