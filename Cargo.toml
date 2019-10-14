@@ -1,2 +1,2 @@
 [workspace]
-members = ["cnd", "btsieve", "blockchain_contracts", "libp2p-comit", "internal/*"]
+members = ["cnd", "btsieve", "libp2p-comit", "internal/*"]
