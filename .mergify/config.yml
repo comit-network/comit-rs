@@ -1,0 +1,8 @@
+pull_request_rules:
+  - name: instruct bors to merge dependabot PRs with passing tests
+    conditions:
+      - "author=dependabot-preview[bot]"
+      - "status-success=ci/circleci: debug-build-test"
+    actions:
+      comment:
+        message: "bors r+"
