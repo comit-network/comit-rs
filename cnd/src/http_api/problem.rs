@@ -3,7 +3,7 @@ use crate::swap_protocols::{
     rfc003::{self, actions::ActionKind, state_store},
 };
 use http::StatusCode;
-use http_api_problem::HttpApiProblem;
+use http_api_problem::{HttpApiProblem, PROBLEM_JSON_MEDIA_TYPE};
 use serde::Serialize;
 use warp::{Rejection, Reply};
 
@@ -128,7 +128,12 @@ pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
 
         let code = err.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
         let json = warp::reply::json(err);
-        return Ok(warp::reply::with_status(json, code));
+
+        return Ok(warp::reply::with_header(
+            warp::reply::with_status(json, code),
+            "content-type",
+            PROBLEM_JSON_MEDIA_TYPE,
+        ));
     }
 
     Err(rejection)
