@@ -23,7 +23,7 @@ impl TransactionQuery {
                 is_contract_creation,
                 transaction_data,
                 transaction_data_length,
-                events: _,
+                ..
             } => {
                 let mut result = true;
 
