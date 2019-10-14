@@ -11,7 +11,7 @@ pub struct TransactionQuery {
     pub is_contract_creation: Option<bool>,
     pub transaction_data: Option<Bytes>,
     pub transaction_data_length: Option<usize>,
-    pub event_matchers: Vec<EventMatcher>, // Empty if we are not matching events.
+    pub events: Vec<Event>, // Empty if we are not matching events.
 }
 
 impl TransactionQuery {
@@ -23,7 +23,7 @@ impl TransactionQuery {
                 is_contract_creation,
                 transaction_data,
                 transaction_data_length,
-                event_matchers: _,
+                events: _,
             } => {
                 let mut result = true;
 
@@ -53,8 +53,8 @@ impl TransactionQuery {
     }
 
     pub fn event_matches_block(&self, block: &Block<Transaction>) -> bool {
-        self.event_matchers.iter().all(|log_matcher| {
-            log_matcher.topics.iter().all(|topic| {
+        self.events.iter().all(|log_events| {
+            log_events.topics.iter().all(|topic| {
                 topic.as_ref().map_or(true, |topic| {
                     block
                         .logs_bloom
@@ -68,51 +68,49 @@ impl TransactionQuery {
         &self,
         transaction_receipt: &TransactionReceipt,
     ) -> bool {
-        self.event_matchers
-            .iter()
-            .all(|event_matcher| match event_matcher {
-                EventMatcher {
-                    address: None,
-                    data: None,
-                    topics,
-                } if topics.is_empty() => false,
-                EventMatcher {
-                    address,
-                    data,
-                    topics,
-                } => transaction_receipt.logs.iter().any(|tx_log| {
-                    if address
-                        .as_ref()
-                        .map_or(false, |address| address != &tx_log.address)
-                    {
-                        return false;
-                    }
+        self.events.iter().all(|event_| match event_ {
+            Event {
+                address: None,
+                data: None,
+                topics,
+            } if topics.is_empty() => false,
+            Event {
+                address,
+                data,
+                topics,
+            } => transaction_receipt.logs.iter().any(|tx_log| {
+                if address
+                    .as_ref()
+                    .map_or(false, |address| address != &tx_log.address)
+                {
+                    return false;
+                }
 
-                    if data.as_ref().map_or(false, |data| data != &tx_log.data) {
-                        return false;
-                    }
+                if data.as_ref().map_or(false, |data| data != &tx_log.data) {
+                    return false;
+                }
 
-                    if tx_log.topics.len() == topics.len() {
-                        tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
-                            let topic = &topics[index];
-                            topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
-                        })
-                    } else {
-                        false
-                    }
-                }),
-            })
+                if tx_log.topics.len() == topics.len() {
+                    tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
+                        let topic = &topics[index];
+                        topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+                    })
+                } else {
+                    false
+                }
+            }),
+        })
     }
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
 pub struct Topic(pub H256);
 
-/// Event Matcher work similar as web3 filters:
+/// Event  work similar as web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
-/// E.g. this `EventMatcher` would match this `Log`:
+/// E.g. this `Event` would match this `Log`:
 /// ```rust, ignore
-/// EventMatcher {
+/// Event {
 /// address: 0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59,
 /// data: None,
 /// topics: [
@@ -135,7 +133,7 @@ pub struct Topic(pub H256);
 /// }
 /// ```
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
-pub struct EventMatcher {
+pub struct Event {
     pub address: Option<Address>,
     pub data: Option<Bytes>,
     pub topics: Vec<Option<Topic>>,
@@ -162,7 +160,7 @@ mod tests {
                 is_contract_creation: Some(true),
                 transaction_data: None,
                 transaction_data_length: None,
-                event_matchers: vec![],
+                events: vec![],
             };
 
             let mut transaction = transaction.0;
@@ -186,7 +184,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let transaction = Transaction {
@@ -208,7 +206,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let transaction = Transaction {
@@ -231,7 +229,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let transaction = Transaction {
@@ -254,7 +252,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let transaction = Transaction {
@@ -274,7 +272,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let query_data_length = TransactionQuery {
@@ -283,7 +281,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: Some(5),
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let refund_query = TransactionQuery {
@@ -292,7 +290,7 @@ mod tests {
             is_contract_creation: Some(false),
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
-            event_matchers: vec![],
+            events: vec![],
         };
 
         let transaction = Transaction {
@@ -349,9 +347,9 @@ mod tests {
         }
     }
 
-    impl EventMatcher {
+    impl Event {
         fn new() -> Self {
-            EventMatcher {
+            Event {
                 address: None,
                 data: None,
                 topics: vec![],
@@ -375,25 +373,25 @@ mod tests {
         }
     }
 
-    fn event_query_from_matcher(matcher: EventMatcher) -> TransactionQuery {
+    fn transaction_query_from_event(event: Event) -> TransactionQuery {
         TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: vec![matcher],
+            events: vec![event],
         }
     }
 
-    fn event_query_from_matchers(event_matchers: Vec<EventMatcher>) -> TransactionQuery {
+    fn transaction_query_from_events(events: Vec<Event>) -> TransactionQuery {
         TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers,
+            events,
         }
     }
 
@@ -409,8 +407,8 @@ mod tests {
             ..Block::default()
         };
 
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
-        let query = event_query_from_matcher(matcher);
+        let event = Event::for_token_contract_with_transfer_topics();
+        let query = transaction_query_from_event(event);
 
         assert_that!(query.event_matches_block(&block)).is_true()
     }
@@ -427,16 +425,16 @@ mod tests {
             ..Block::default()
         };
 
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
-        let query = event_query_from_matcher(matcher);
+        let event = Event::for_token_contract_with_transfer_topics();
+        let query = transaction_query_from_event(event);
 
         assert_that!(query.event_matches_block(&block)).is_false()
     }
 
     #[test]
     fn given_a_transaction_receipt_should_match_query() {
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
-        let query = event_query_from_matcher(matcher);
+        let event = Event::for_token_contract_with_transfer_topics();
+        let query = transaction_query_from_event(event);
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -454,8 +452,8 @@ mod tests {
 
     #[test]
     fn given_an_empty_transaction_receipt_should_not_match_query() {
-        let matcher = EventMatcher::for_token_contract_with_transfer_topics();
-        let query = event_query_from_matcher(matcher);
+        let event = Event::for_token_contract_with_transfer_topics();
+        let query = transaction_query_from_event(event);
 
         let receipt = TransactionReceipt::default();
 
@@ -464,9 +462,9 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_should_match_two_log_query() {
-        let query = event_query_from_matchers(vec![
-            EventMatcher::for_token_contract_with_transfer_topics(),
-            EventMatcher::new()
+        let query = transaction_query_from_events(vec![
+            Event::for_token_contract_with_transfer_topics(),
+            Event::new()
                 .for_contract(*CONTRACT_ADDRESS)
                 .with_topics(vec![Some(Topic(*UNKNOWN_LOG_MSG))]),
         ]);
@@ -494,7 +492,7 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
-        let query = event_query_from_matchers(vec![EventMatcher::new()
+        let query = transaction_query_from_events(vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
 
@@ -514,7 +512,7 @@ mod tests {
 
     #[test]
     fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
-        let query = event_query_from_matchers(vec![EventMatcher::new()
+        let query = transaction_query_from_events(vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
 
@@ -542,7 +540,7 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = event_query_from_matchers(vec![EventMatcher {
+        let query = transaction_query_from_events(vec![Event {
             address: Some(*CONTRACT_ADDRESS),
             data: Some(Bytes::from(vec![1, 2, 3])),
             topics: vec![
@@ -576,7 +574,7 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = event_query_from_matchers(vec![EventMatcher::new()
+        let query = transaction_query_from_events(vec![Event::new()
             .for_contract(*CONTRACT_ADDRESS)
             .with_topics(vec![None, None, Some(Topic(to_address))])]);
 
@@ -604,7 +602,7 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = event_query_from_matchers(vec![EventMatcher {
+        let query = transaction_query_from_events(vec![Event {
             address: Some(*CONTRACT_ADDRESS),
             data: None,
             topics: vec![Some(Topic(to_address))],
@@ -626,7 +624,7 @@ mod tests {
     }
 
     #[test]
-    fn event_matches_block_returns_true_for_empty_event_matchers() {
+    fn event_matches_block_returns_true_for_empty_events() {
         let block = Block::default();
         let query = TransactionQuery {
             from_address: None,
@@ -634,14 +632,14 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: Vec::new(),
+            events: Vec::new(),
         };
 
         assert!(query.event_matches_block(&block))
     }
 
     #[test]
-    fn event_matches_transaction_receipt_returns_true_for_empty_event_matchers() {
+    fn event_matches_transaction_receipt_returns_true_for_empty_events() {
         let receipt = TransactionReceipt::default();
         let query = TransactionQuery {
             from_address: None,
@@ -649,7 +647,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            event_matchers: Vec::new(),
+            events: Vec::new(),
         };
 
         assert!(query.event_matches_transaction_receipt(&receipt))

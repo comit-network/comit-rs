@@ -5,7 +5,7 @@ mod web3_connector;
 mod quickcheck_impls;
 
 pub use self::{
-    queries::{EventMatcher, Topic, TransactionQuery},
+    queries::{Event, Topic, TransactionQuery},
     web3_connector::Web3Connector,
 };
 use crate::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash};
