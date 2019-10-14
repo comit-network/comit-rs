@@ -21,8 +21,8 @@ use std::{
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct File {
     pub comit: Comit,
-    pub network: Network,
-    pub http_api: HttpSocket,
+    pub network: Option<Network>,
+    pub http_api: Option<HttpSocket>,
     pub database: Option<Database>,
     pub web_gui: Option<HttpSocket>,
     pub logging: Option<Logging>,
@@ -32,20 +32,12 @@ pub struct File {
 
 impl File {
     pub fn default<R: Rng>(rand: R) -> Self {
-        let comit_listen = "/ip4/0.0.0.0/tcp/9939"
-            .parse()
-            .expect("cnd listen address could not be parsed");
         let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
         File {
             comit: Comit { secret_seed: seed },
-            network: Network {
-                listen: vec![comit_listen],
-            },
-            http_api: HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8000,
-            },
+            network: None,
+            http_api: None,
             database: None,
             web_gui: Some(HttpSocket {
                 address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),

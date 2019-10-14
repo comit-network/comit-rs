@@ -2,6 +2,7 @@ use super::file::{Comit, Database, File, HttpSocket, Network};
 use crate::config::file::{Bitcoin, Ethereum};
 use log::LevelFilter;
 use reqwest::Url;
+use std::net::{IpAddr, Ipv4Addr};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -41,7 +42,22 @@ impl Settings {
             bitcoin,
             ethereum,
         } = config_file;
-
+        let http_api = match http_api {
+            None => HttpSocket {
+                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                port: 8000,
+            },
+            Some(val) => val,
+        };
+        let comit_listen = "/ip4/0.0.0.0/tcp/9939"
+            .parse()
+            .expect("cnd listen address could not be parsed");
+        let network = match network {
+            None => Network {
+                listen: vec![comit_listen],
+            },
+            Some(val) => val,
+        };
         Self {
             comit,
             network,
