@@ -66,7 +66,7 @@ impl TransactionQuery {
 
     pub fn event_matches_transaction_receipt(
         &self,
-        transaction_receipt: TransactionReceipt,
+        transaction_receipt: &TransactionReceipt,
     ) -> bool {
         self.event_matchers
             .iter()
@@ -449,7 +449,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_true()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
     }
 
     #[test]
@@ -459,7 +459,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_false()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
     }
 
     #[test]
@@ -489,7 +489,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_true()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
     }
 
     #[test]
@@ -509,7 +509,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_false()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
     }
 
     #[test]
@@ -530,7 +530,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_false()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
     }
 
     #[test]
@@ -564,7 +564,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_true()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
     }
 
     #[test]
@@ -592,7 +592,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_true()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
     }
 
     #[test]
@@ -622,6 +622,6 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(receipt)).is_false()
+        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
     }
 }
