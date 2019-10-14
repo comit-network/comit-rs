@@ -74,10 +74,6 @@ where
         }
 
         for transaction in latest_block.transactions.iter() {
-            if !query.matches(transaction) {
-                continue;
-            }
-
             let result = blockchain_connector
                 .receipt_by_hash(transaction.hash)
                 .compat()
@@ -99,13 +95,12 @@ where
                 }
             };
 
-            if !query.event_matches_transaction_receipt(&receipt) {
-                continue;
-            }
-            return Ok(TransactionAndReceipt {
-                transaction: transaction.clone(),
-                receipt,
-            });
+            if query.matches(transaction) || query.event_matches_transaction_receipt(&receipt) {
+                return Ok(TransactionAndReceipt {
+                    transaction: transaction.clone(),
+                    receipt,
+                });
+            };
         }
     }
 }
