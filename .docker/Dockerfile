@@ -6,7 +6,6 @@ COPY ./btsieve ./btsieve
 COPY ./internal ./internal
 COPY ./cnd ./cnd
 COPY ./libp2p-comit ./libp2p-comit
-COPY ./blockchain_contracts ./blockchain_contracts
 COPY ./Cargo.toml ./Cargo.toml
 COPY ./Cargo.lock ./Cargo.lock
 
