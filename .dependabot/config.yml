@@ -2,7 +2,7 @@ version: 1
 update_configs:
   - package_manager: "rust:cargo"
     directory: "/"
-    update_schedule: "weekly"
+    update_schedule: "daily"
     default_labels:
       - "dependencies"
     allowed_updates:
@@ -23,7 +23,7 @@ update_configs:
           dependency_name: "libsqlite3-sys"
   - package_manager: "javascript"
     directory: "/api_tests"
-    update_schedule: "weekly"
+    update_schedule: "daily"
     default_labels:
       - "dependencies"
     allowed_updates:
