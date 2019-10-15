@@ -229,4 +229,110 @@ mod tests {
         let result = query.matches(&transaction);
         assert_that(&result).is_false();
     }
+
+    // given_query_transaction_data_transaction_matches() above, goes with the
+    // following two tests to cover all combinations of `is_contract_creation`.
+
+    #[test]
+    fn given_transaction_data_with_negative_contract_does_not_match() {
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(false),
+            transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let transaction = Transaction {
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_false();
+    }
+
+    #[test]
+    fn given_transaction_data_with_positive_contract_creation_matches() {
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let transaction = Transaction {
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_true();
+    }
+
+    #[test]
+    fn given_transaction_data_with_negative_contract_and_to_address_matches() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: Some(to_address),
+            is_contract_creation: Some(false),
+            transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let transaction = Transaction {
+            to: Some(to_address),
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_true();
+    }
+
+    #[test]
+    fn given_transaction_data_with_negative_contract_and_no_to_address_does_not_match() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: Some(to_address),
+            is_contract_creation: Some(false),
+            transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let transaction = Transaction {
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_false();
+    }
+
+    #[test]
+    fn given_transaction_data_with_positive_contract_and_to_address_does_not_match() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
+        let query = TransactionQuery {
+            from_address: None,
+            to_address: Some(to_address),
+            is_contract_creation: Some(true),
+            transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
+            transaction_data_length: None,
+        };
+
+        let transaction = Transaction {
+            to: Some(to_address),
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_false();
+    }
 }
