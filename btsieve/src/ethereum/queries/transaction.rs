@@ -166,6 +166,8 @@ mod tests {
 
     #[test]
     fn given_query_transaction_data_transaction_matches() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
         let query_data = TransactionQuery {
             from_address: None,
             to_address: None,
@@ -184,14 +186,14 @@ mod tests {
 
         let refund_query = TransactionQuery {
             from_address: None,
-            to_address: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
+            to_address: Some(to_address),
             is_contract_creation: Some(false),
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
         };
 
         let transaction = Transaction {
-            to: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
+            to: Some(to_address),
             input: Bytes::from(vec![1, 2, 3, 4, 5]),
             ..Transaction::default()
         };
