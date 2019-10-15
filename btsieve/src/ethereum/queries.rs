@@ -65,7 +65,7 @@ impl TransactionQuery {
     }
 
     pub fn events_exist_in_receipt(&self, transaction_receipt: &TransactionReceipt) -> bool {
-        self.events.iter().all(|event_| match event_ {
+        self.events.iter().all(|event| match event {
             Event {
                 address: None,
                 data: None,
