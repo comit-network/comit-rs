@@ -74,7 +74,7 @@ impl TransactionQuery {
     }
 }
 
-fn events_exist_in_receipt(events: &Vec<Event>, receipt: &TransactionReceipt) -> bool {
+fn events_exist_in_receipt(events: &[Event], receipt: &TransactionReceipt) -> bool {
     events.iter().all(|event| match event {
         Event {
             address: None,
