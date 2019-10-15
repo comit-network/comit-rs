@@ -383,12 +383,6 @@ mod tests {
             self.topics = topics;
             self
         }
-
-        fn for_token_contract_with_transfer_topics() -> Self {
-            Self::new()
-                .for_contract(*CONTRACT_ADDRESS)
-                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])
-        }
     }
 
     fn transaction_query_from_event(event: Event) -> TransactionQuery {
@@ -414,7 +408,9 @@ mod tests {
             ..Block::default()
         };
 
-        let event = Event::for_token_contract_with_transfer_topics();
+        let event = Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
         let query = transaction_query_from_event(event);
 
         assert_that!(query.can_skip_block(&block)).is_false()
@@ -432,7 +428,9 @@ mod tests {
             ..Block::default()
         };
 
-        let event = Event::for_token_contract_with_transfer_topics();
+        let event = Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
         let query = transaction_query_from_event(event);
 
         assert_that!(query.can_skip_block(&block)).is_true()
@@ -440,7 +438,9 @@ mod tests {
 
     #[test]
     fn query_event_found_in_receipt() {
-        let events = vec![Event::for_token_contract_with_transfer_topics()];
+        let events = vec![Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -458,7 +458,9 @@ mod tests {
 
     #[test]
     fn query_events_not_found_in_empty_receipt() {
-        let events = vec![Event::for_token_contract_with_transfer_topics()];
+        let events = vec![Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let receipt = TransactionReceipt::default();
 
@@ -468,7 +470,9 @@ mod tests {
     #[test]
     fn query_event_with_two_logs_found_in_receipt() {
         let events = vec![
-            Event::for_token_contract_with_transfer_topics(),
+            Event::new()
+                .for_contract(*CONTRACT_ADDRESS)
+                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]),
             Event::new()
                 .for_contract(*CONTRACT_ADDRESS)
                 .with_topics(vec![Some(Topic(*UNKNOWN_LOG_MSG))]),
