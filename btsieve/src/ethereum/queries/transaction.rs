@@ -168,7 +168,7 @@ mod tests {
     fn given_query_transaction_data_transaction_matches() {
         let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
 
-        let query_data = TransactionQuery {
+        let query = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -176,7 +176,21 @@ mod tests {
             transaction_data_length: None,
         };
 
-        let query_data_length = TransactionQuery {
+        let transaction = Transaction {
+            to: Some(to_address),
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_true();
+    }
+
+    #[test]
+    fn given_query_transaction_data_length_transaction_matches() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
+        let query = TransactionQuery {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -184,7 +198,21 @@ mod tests {
             transaction_data_length: Some(5),
         };
 
-        let refund_query = TransactionQuery {
+        let transaction = Transaction {
+            to: Some(to_address),
+            input: Bytes::from(vec![1, 2, 3, 4, 5]),
+            ..Transaction::default()
+        };
+
+        let result = query.matches(&transaction);
+        assert_that(&result).is_true();
+    }
+
+    #[test]
+    fn given_empty_query_transaction_data_does_not_match() {
+        let to_address = "0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap();
+
+        let query = TransactionQuery {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: Some(false),
@@ -198,13 +226,7 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query_data.matches(&transaction);
-        assert_that(&result).is_true();
-
-        let result = query_data_length.matches(&transaction);
-        assert_that(&result).is_true();
-
-        let result = refund_query.matches(&transaction);
+        let result = query.matches(&transaction);
         assert_that(&result).is_false();
     }
 }
