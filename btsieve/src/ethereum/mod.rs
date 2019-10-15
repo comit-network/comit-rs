@@ -95,7 +95,7 @@ where
                 }
             };
 
-            if query.matches(transaction) && query.events_exist_in_receipt(&receipt) {
+            if query.matches(transaction, &receipt) {
                 return Ok(TransactionAndReceipt {
                     transaction: transaction.clone(),
                     receipt,

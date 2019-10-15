@@ -11,11 +11,11 @@ pub struct TransactionQuery {
     pub is_contract_creation: Option<bool>,
     pub transaction_data: Option<Bytes>,
     pub transaction_data_length: Option<usize>,
-    pub events: Vec<Event>, // Empty if we are not matching events.
+    pub events: Option<Vec<Event>>,
 }
 
 impl TransactionQuery {
-    pub fn matches(&self, transaction: &Transaction) -> bool {
+    pub fn matches(&self, transaction: &Transaction, receipt: &TransactionReceipt) -> bool {
         match self {
             Self {
                 from_address,
@@ -23,7 +23,7 @@ impl TransactionQuery {
                 is_contract_creation,
                 transaction_data,
                 transaction_data_length,
-                ..
+                events,
             } => {
                 let mut result = true;
 
@@ -47,57 +47,66 @@ impl TransactionQuery {
                 if let Some(transaction_data_length) = transaction_data_length {
                     result = result && (transaction.input.0.len() == *transaction_data_length);
                 }
+
+                if let Some(events) = events {
+                    result = result && events_exist_in_receipt(events, receipt)
+                }
+
                 result
             }
         }
     }
 
     pub fn can_skip_block(&self, block: &Block<Transaction>) -> bool {
-        !self.events.iter().all(|log_events| {
-            log_events.topics.iter().all(|topic| {
-                topic.as_ref().map_or(true, |topic| {
-                    block
-                        .logs_bloom
-                        .contains_input(Input::Raw(topic.0.as_ref()))
-                })
-            })
-        })
-    }
-
-    pub fn events_exist_in_receipt(&self, transaction_receipt: &TransactionReceipt) -> bool {
-        self.events.iter().all(|event| match event {
-            Event {
-                address: None,
-                data: None,
-                topics,
-            } if topics.is_empty() => false,
-            Event {
-                address,
-                data,
-                topics,
-            } => transaction_receipt.logs.iter().any(|tx_log| {
-                if address
-                    .as_ref()
-                    .map_or(false, |address| address != &tx_log.address)
-                {
-                    return false;
-                }
-
-                if data.as_ref().map_or(false, |data| data != &tx_log.data) {
-                    return false;
-                }
-
-                if tx_log.topics.len() == topics.len() {
-                    tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
-                        let topic = &topics[index];
-                        topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+        match self.events {
+            None => false,
+            Some(ref events) if events.is_empty() && block.logs_bloom.is_empty() => false,
+            Some(ref events) => !events.iter().all(|event| {
+                event.topics.iter().all(|topic| {
+                    topic.as_ref().map_or(true, |topic| {
+                        block
+                            .logs_bloom
+                            .contains_input(Input::Raw(topic.0.as_ref()))
                     })
-                } else {
-                    false
-                }
+                })
             }),
-        })
+        }
     }
+}
+
+fn events_exist_in_receipt(events: &Vec<Event>, receipt: &TransactionReceipt) -> bool {
+    events.iter().all(|event| match event {
+        Event {
+            address: None,
+            data: None,
+            topics,
+        } if topics.is_empty() => false,
+        Event {
+            address,
+            data,
+            topics,
+        } => receipt.logs.iter().any(|tx_log| {
+            if address
+                .as_ref()
+                .map_or(false, |address| address != &tx_log.address)
+            {
+                return false;
+            }
+
+            if data.as_ref().map_or(false, |data| data != &tx_log.data) {
+                return false;
+            }
+
+            if tx_log.topics.len() == topics.len() {
+                tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
+                    let topic = &topics[index];
+                    topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+                })
+            } else {
+                false
+            }
+        }),
+    })
 }
 
 #[derive(Debug, Clone, Default, Eq, PartialEq)]
@@ -157,7 +166,7 @@ mod tests {
                 is_contract_creation: Some(true),
                 transaction_data: None,
                 transaction_data_length: None,
-                events: vec![],
+                events: None,
             };
 
             let mut transaction = transaction.0;
@@ -165,7 +174,9 @@ mod tests {
             transaction.from = from_address;
             transaction.to = None;
 
-            query.matches(&transaction)
+            let receipt = TransactionReceipt::default();
+
+            query.matches(&transaction, &receipt)
         }
 
         quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
@@ -181,7 +192,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let transaction = Transaction {
@@ -189,7 +200,9 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query.matches(&transaction);
+        let receipt = TransactionReceipt::default();
+
+        let result = query.matches(&transaction, &receipt);
         assert_that(&result).is_false();
     }
 
@@ -203,7 +216,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let transaction = Transaction {
@@ -212,7 +225,9 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query.matches(&transaction);
+        let receipt = TransactionReceipt::default();
+
+        let result = query.matches(&transaction, &receipt);
         assert_that(&result).is_true();
     }
 
@@ -226,7 +241,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let transaction = Transaction {
@@ -235,7 +250,9 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query.matches(&transaction);
+        let receipt = TransactionReceipt::default();
+
+        let result = query.matches(&transaction, &receipt);
         assert_that(&result).is_false();
     }
 
@@ -249,7 +266,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let transaction = Transaction {
@@ -257,7 +274,9 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query.matches(&transaction);
+        let receipt = TransactionReceipt::default();
+
+        let result = query.matches(&transaction, &receipt);
         assert_that(&result).is_false();
     }
 
@@ -269,7 +288,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: Some(Bytes::from(vec![1, 2, 3, 4, 5])),
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let query_data_length = TransactionQuery {
@@ -278,7 +297,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: Some(5),
-            events: vec![],
+            events: None,
         };
 
         let refund_query = TransactionQuery {
@@ -287,7 +306,7 @@ mod tests {
             is_contract_creation: Some(false),
             transaction_data: Some(Bytes::from(vec![])),
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         };
 
         let transaction = Transaction {
@@ -296,13 +315,15 @@ mod tests {
             ..Transaction::default()
         };
 
-        let result = query_data.matches(&transaction);
+        let receipt = TransactionReceipt::default();
+
+        let result = query_data.matches(&transaction, &receipt);
         assert_that(&result).is_true();
 
-        let result = query_data_length.matches(&transaction);
+        let result = query_data_length.matches(&transaction, &receipt);
         assert_that(&result).is_true();
 
-        let result = refund_query.matches(&transaction);
+        let result = refund_query.matches(&transaction, &receipt);
         assert_that(&result).is_false();
     }
 
@@ -377,18 +398,7 @@ mod tests {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![event],
-        }
-    }
-
-    fn transaction_query_from_events(events: Vec<Event>) -> TransactionQuery {
-        TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events,
+            events: Some(vec![event]),
         }
     }
 
@@ -430,8 +440,7 @@ mod tests {
 
     #[test]
     fn query_event_found_in_receipt() {
-        let event = Event::for_token_contract_with_transfer_topics();
-        let query = transaction_query_from_event(event);
+        let events = vec![Event::for_token_contract_with_transfer_topics()];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -444,27 +453,26 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
     }
 
     #[test]
     fn query_events_not_found_in_empty_receipt() {
-        let event = Event::for_token_contract_with_transfer_topics();
-        let query = transaction_query_from_event(event);
+        let events = vec![Event::for_token_contract_with_transfer_topics()];
 
         let receipt = TransactionReceipt::default();
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
     }
 
     #[test]
     fn query_event_with_two_logs_found_in_receipt() {
-        let query = transaction_query_from_events(vec![
+        let events = vec![
             Event::for_token_contract_with_transfer_topics(),
             Event::new()
                 .for_contract(*CONTRACT_ADDRESS)
                 .with_topics(vec![Some(Topic(*UNKNOWN_LOG_MSG))]),
-        ]);
+        ];
 
         let log1 = Log {
             address: *CONTRACT_ADDRESS,
@@ -484,14 +492,14 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
     }
 
     #[test]
     fn query_event_not_found_in_receipt_if_address_differs() {
-        let query = transaction_query_from_events(vec![Event::new()
+        let events = vec![Event::new()
             .for_contract(Address::repeat_byte(1))
-            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -504,14 +512,14 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
     }
 
     #[test]
     fn query_event_not_found_in_receipt_if_address_and_topics_differ() {
-        let query = transaction_query_from_events(vec![Event::new()
+        let events = vec![Event::new()
             .for_contract(Address::repeat_byte(1))
-            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -525,7 +533,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
     }
 
     #[test]
@@ -537,7 +545,7 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = transaction_query_from_events(vec![Event {
+        let events = vec![Event {
             address: Some(*CONTRACT_ADDRESS),
             data: Some(Bytes::from(vec![1, 2, 3])),
             topics: vec![
@@ -545,7 +553,7 @@ mod tests {
                 Some(Topic(from_address)),
                 Some(Topic(to_address)),
             ],
-        }]);
+        }];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -559,7 +567,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
     }
 
     #[test]
@@ -571,9 +579,9 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = transaction_query_from_events(vec![Event::new()
+        let events = vec![Event::new()
             .for_contract(*CONTRACT_ADDRESS)
-            .with_topics(vec![None, None, Some(Topic(to_address))])]);
+            .with_topics(vec![None, None, Some(Topic(to_address))])];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -587,7 +595,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
     }
 
     #[test]
@@ -599,11 +607,11 @@ mod tests {
             H256::from_str("0000000000000000000000000A81e8be41b21f651a71aaB1A85c6813b8bBcCf8")
                 .unwrap();
 
-        let query = transaction_query_from_events(vec![Event {
+        let events = vec![Event {
             address: Some(*CONTRACT_ADDRESS),
             data: None,
             topics: vec![Some(Topic(to_address))],
-        }]);
+        }];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -617,19 +625,26 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
     }
 
     #[test]
-    fn given_query_with_empty_events_cannot_skip_block() {
+    fn given_query_without_events_cannot_skip_block() {
         let block = Block::default();
         let query = TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: Vec::new(),
+            events: None,
+            ..TransactionQuery::default()
+        };
+
+        assert_that!(query.can_skip_block(&block)).is_false()
+    }
+
+    #[test]
+    fn given_query_with_empty_events_and_block_with_no_events_cannot_skip_block() {
+        let block = Block::default();
+        let query = TransactionQuery {
+            events: Some(Vec::new()),
+            ..TransactionQuery::default()
         };
 
         assert_that!(query.can_skip_block(&block)).is_false()
@@ -637,16 +652,9 @@ mod tests {
 
     #[test]
     fn events_found_in_receipt_returns_true_for_empty_events() {
+        let events = Vec::new();
         let receipt = TransactionReceipt::default();
-        let query = TransactionQuery {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: Vec::new(),
-        };
 
-        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
     }
 }

@@ -46,7 +46,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
                 is_contract_creation: Some(true),
                 transaction_data: Some(htlc_params.bytecode()),
                 transaction_data_length: None,
-                events: vec![],
+                events: None,
             })
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
@@ -100,11 +100,11 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 is_contract_creation: None,
                 transaction_data: None,
                 transaction_data_length: None,
-                events: vec![Event {
+                events: Some(vec![Event {
                     address: Some(htlc_deployment.location),
                     data: None,
                     topics: vec![Some(Topic(*REFUND_LOG_MSG))],
-                }],
+                }]),
             })
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
@@ -123,11 +123,11 @@ fn htlc_redeemed_or_refunded<A: Asset>(
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![Event {
+            events: Some(vec![Event {
                 address: Some(htlc_deployment.location),
                 data: None,
                 topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
-            }]
+            }])
         })
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
@@ -184,7 +184,7 @@ mod erc20 {
                     is_contract_creation: Some(true),
                     transaction_data: Some(htlc_params.bytecode()),
                     transaction_data_length: None,
-                    events: vec![],
+                    events: None,
                 })
                 .map_err(|_| rfc003::Error::Btsieve)
                 .first_or_else(|| {
@@ -213,7 +213,7 @@ mod erc20 {
                     is_contract_creation: None,
                     transaction_data: None,
                     transaction_data_length: None,
-                    events: vec![Event {
+                    events: Some(vec![Event {
                         address: Some(htlc_params.asset.token_contract),
                         data: None,
                         topics: vec![
@@ -221,7 +221,7 @@ mod erc20 {
                             None,
                             Some(Topic(htlc_deployment.location.into())),
                         ],
-                    }],
+                    }]),
                 })
                 .map_err(|_| rfc003::Error::Btsieve)
                 .first_or_else(|| {

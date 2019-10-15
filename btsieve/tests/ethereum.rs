@@ -46,7 +46,7 @@ fn ethereum_transaction_query_e2e_test() {
             is_contract_creation: None,
             transaction_data: None,
             transaction_data_length: None,
-            events: vec![],
+            events: None,
         })
         .take(1)
         .into_future()
