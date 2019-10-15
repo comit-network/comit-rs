@@ -95,7 +95,7 @@ where
                 }
             };
 
-            if query.matches(transaction) || query.event_matches_transaction_receipt(&receipt) {
+            if query.matches(transaction) && query.event_matches_transaction_receipt(&receipt) {
                 return Ok(TransactionAndReceipt {
                     transaction: transaction.clone(),
                     receipt,
