@@ -64,10 +64,7 @@ impl TransactionQuery {
         })
     }
 
-    pub fn event_matches_transaction_receipt(
-        &self,
-        transaction_receipt: &TransactionReceipt,
-    ) -> bool {
+    pub fn events_exist_in_receipt(&self, transaction_receipt: &TransactionReceipt) -> bool {
         self.events.iter().all(|event_| match event_ {
             Event {
                 address: None,
@@ -432,7 +429,7 @@ mod tests {
     }
 
     #[test]
-    fn given_a_transaction_receipt_should_match_query() {
+    fn query_event_found_in_receipt() {
         let event = Event::for_token_contract_with_transfer_topics();
         let query = transaction_query_from_event(event);
 
@@ -447,21 +444,21 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
     }
 
     #[test]
-    fn given_an_empty_transaction_receipt_should_not_match_query() {
+    fn query_events_not_found_in_empty_receipt() {
         let event = Event::for_token_contract_with_transfer_topics();
         let query = transaction_query_from_event(event);
 
         let receipt = TransactionReceipt::default();
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
     }
 
     #[test]
-    fn given_a_transaction_receipt_should_match_two_log_query() {
+    fn query_event_with_two_logs_found_in_receipt() {
         let query = transaction_query_from_events(vec![
             Event::for_token_contract_with_transfer_topics(),
             Event::new()
@@ -487,11 +484,11 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
     }
 
     #[test]
-    fn given_a_transaction_receipt_with_address_should_not_match_with_different_address() {
+    fn query_event_not_found_in_receipt_if_address_differs() {
         let query = transaction_query_from_events(vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
@@ -507,11 +504,11 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
     }
 
     #[test]
-    fn given_a_transaction_receipt_with_address_should_not_match_with_different_topic() {
+    fn query_event_not_found_in_receipt_if_address_and_topics_differ() {
         let query = transaction_query_from_events(vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])]);
@@ -528,11 +525,11 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
     }
 
     #[test]
-    fn given_a_transfer_log_should_match_transfer_query() {
+    fn query_transfer_log_event_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -562,11 +559,11 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
     }
 
     #[test]
-    fn given_a_transfer_log_should_match_partial_topics_query() {
+    fn query_event_with_partial_topics_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -590,11 +587,11 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_true()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
     }
 
     #[test]
-    fn given_a_transfer_log_should_not_match_short_query() {
+    fn query_event_with_fewer_topics_not_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -620,7 +617,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(query.event_matches_transaction_receipt(&receipt)).is_false()
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_false()
     }
 
     #[test]
@@ -639,7 +636,7 @@ mod tests {
     }
 
     #[test]
-    fn event_matches_transaction_receipt_returns_true_for_empty_events() {
+    fn events_found_in_receipt_returns_true_for_empty_events() {
         let receipt = TransactionReceipt::default();
         let query = TransactionQuery {
             from_address: None,
@@ -650,6 +647,6 @@ mod tests {
             events: Vec::new(),
         };
 
-        assert!(query.event_matches_transaction_receipt(&receipt))
+        assert_that!(query.events_exist_in_receipt(&receipt)).is_true()
     }
 }
