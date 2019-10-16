@@ -396,15 +396,26 @@ mod tests {
         }
     }
 
-    #[test]
-    fn cannot_skip_block_containing_transaction_with_event() {
+    fn mainnet_block() -> Block<Transaction> {
         let block: Block<Transaction> =
             serde_json::from_str(include_str!("./test_data/block.json"))
                 .expect("failed to deserialize block");
 
+        block
+    }
+
+    fn mainnet_transaction_receipt() -> TransactionReceipt {
         let receipt: TransactionReceipt =
             serde_json::from_str(include_str!("./test_data/receipt.json"))
                 .expect("failed to deserialize receipt");
+
+        receipt
+    }
+
+    #[test]
+    fn cannot_skip_block_containing_transaction_with_event() {
+        let block: mainnet_block();
+        let receipt = mainnet_transaction_receipt();
 
         let event = Event::new()
             .for_contract(receipt.logs[0].address)
