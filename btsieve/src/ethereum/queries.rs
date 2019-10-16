@@ -439,8 +439,8 @@ mod tests {
     #[test]
     fn cannot_skip_block_containing_transaction_with_event() {
         let block: mainnet_block();
-        let receipt = mainnet_transaction_receipt();
 
+        let receipt = mainnet_transaction_receipt();
         let event = Event::new()
             .for_contract(receipt.logs[0].address)
             .with_topics(vec![
@@ -448,7 +448,6 @@ mod tests {
                 Some(Topic(receipt.logs[0].topics[1])),
                 Some(Topic(receipt.logs[0].topics[2])),
             ]);
-
         let query = transaction_query_from_event(event);
 
         assert_that!(query.can_skip_block(&block)).is_false();
