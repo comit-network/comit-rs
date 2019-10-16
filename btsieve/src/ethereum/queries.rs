@@ -396,20 +396,44 @@ mod tests {
         }
     }
 
+    let test_data_mainnet_block: Option<Block<Transaction>> = None; // Read once from file.
+
     fn mainnet_block() -> Block<Transaction> {
-        let block: Block<Transaction> =
-            serde_json::from_str(include_str!("./test_data/block.json"))
+
+        fn read_from_file() -> Block<Transaction> {
+            let block: Block<Transaction> =
+                serde_json::from_str(include_str!("./test_data/block.json"))
                 .expect("failed to deserialize block");
 
-        block
+            block
+        }
+
+        if test_data_mainnet_block.is_none() {
+            let block = read_from_file();
+            test_data_mainnet_block = Some(block);
+        }
+
+        test_data_mainnet_block.unwrap()
     }
 
+    let test_data_mainnet_transaction_receipt: Option<TransactionReceipt> = None; // Read once from file.
+
     fn mainnet_transaction_receipt() -> TransactionReceipt {
-        let receipt: TransactionReceipt =
-            serde_json::from_str(include_str!("./test_data/receipt.json"))
+
+        fn read_from_file() -> TransactionReceipt {
+            let transaction_receipt: TransactionReceipt =
+                serde_json::from_str(include_str!("./test_data/receipt.json"))
                 .expect("failed to deserialize receipt");
 
-        receipt
+            receipt
+        }
+
+        if test_data_mainnet_transaction_receipt.is_none() {
+            let receipt = read_from_file();
+            test_data_mainnet_transaction_receipt = Some(receipt);
+        }
+
+        test_data_mainnet_transaction_receipt.unwrap()
     }
 
     #[test]
