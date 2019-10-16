@@ -397,20 +397,23 @@ mod tests {
     }
 
     #[test]
-    fn given_a_block_with_bloom_filter_cannot_skip_block() {
-        let tx = Transaction {
-            to: Some(*CONTRACT_ADDRESS),
-            ..Transaction::default()
-        };
-        let block = Block {
-            logs_bloom: *REDEEM_BLOOM,
-            transactions: vec![tx.clone()],
-            ..Block::default()
-        };
+    fn cannot_skip_block_containing_transaction_with_event() {
+        let block: Block<Transaction> =
+            serde_json::from_str(include_str!("./test_data/block.json"))
+                .expect("failed to deserialize block");
+
+        let receipt: TransactionReceipt =
+            serde_json::from_str(include_str!("./test_data/receipt.json"))
+                .expect("failed to deserialize receipt");
 
         let event = Event::new()
-            .for_contract(*CONTRACT_ADDRESS)
-            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
+            .for_contract(receipt.logs[0].address)
+            .with_topics(vec![
+                Some(Topic(receipt.logs[0].topics[0])),
+                Some(Topic(receipt.logs[0].topics[1])),
+                Some(Topic(receipt.logs[0].topics[2])),
+            ]);
+
         let query = transaction_query_from_event(event);
 
         assert_that!(query.can_skip_block(&block)).is_false();
