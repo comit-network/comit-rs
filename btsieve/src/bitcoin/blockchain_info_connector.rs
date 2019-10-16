@@ -9,7 +9,7 @@ use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
-    hash: String,
+    hash: bitcoin_support::BlockId,
 }
 
 #[derive(Clone)]
@@ -38,7 +38,8 @@ impl BlockchainInfoConnector {
         })
     }
 
-    fn block_by_hash_url(block_hash: &str) -> Url {
+    fn block_by_hash_url(block_hash: &bitcoin_support::BlockId) -> Url {
+        let block_hash = format!("{}", block_hash);
         let mut url = Url::parse("https://blockchain.info/rawblock/")
             .unwrap()
             .join(&block_hash)
@@ -52,7 +53,7 @@ impl BlockchainInfoConnector {
 impl LatestBlock for BlockchainInfoConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
-    type BlockHash = String;
+    type BlockHash = bitcoin_support::BlockId;
 
     fn latest_block(
         &mut self,
@@ -81,7 +82,7 @@ impl LatestBlock for BlockchainInfoConnector {
 impl BlockByHash for BlockchainInfoConnector {
     type Error = bitcoin::Error;
     type Block = bitcoin_support::Block;
-    type BlockHash = String;
+    type BlockHash = bitcoin_support::BlockId;
 
     fn block_by_hash(
         &self,
@@ -100,25 +101,28 @@ impl BlockByHash for BlockchainInfoConnector {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use crate::quickcheck::Quickcheck;
+    use std::str::FromStr;
 
     #[test]
     fn block_by_hash_url_never_panics() {
-        fn prop(hash: String) -> bool {
+        fn prop(hash: Quickcheck<bitcoin_support::BlockId>) -> bool {
             BlockchainInfoConnector::block_by_hash_url(&hash);
 
             true
         }
 
-        quickcheck::quickcheck(prop as fn(String) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<bitcoin_support::BlockId>) -> bool)
     }
 
     #[test]
     fn block_by_hash_url_creates_correct_url() {
-        let actual_url = BlockchainInfoConnector::block_by_hash_url(
+        let block_id = bitcoin_support::BlockId::from_str(
             "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
-        );
+        )
+        .unwrap();
+        let actual_url = BlockchainInfoConnector::block_by_hash_url(&block_id);
 
         let expected_url = Url::parse("https://blockchain.info/rawblock/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02?format=hex").unwrap();
 
