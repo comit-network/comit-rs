@@ -121,7 +121,7 @@ mod tests {
         if !regex.is_match(&message) {
             panic!(
                 "Log message didn't match expected pattern!\n\n\
-                 Pattern: {}\n\
+                 TransactionPattern: {}\n\
                  Message: {}\n",
                 pattern, message
             );

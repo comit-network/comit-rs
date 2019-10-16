@@ -3,13 +3,18 @@ use bitcoin_support::{
 };
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
-pub struct TransactionQuery {
+/// If the field is set to Some(foo) then only transactions matching foo are
+/// returned. Otherwise, when the field is set to None, no pattern matching is
+/// done for this field.
+pub struct TransactionPattern {
     pub to_address: Option<Address>,
     pub from_outpoint: Option<OutPoint>,
     pub unlock_script: Option<Vec<Vec<u8>>>,
 }
 
-impl TransactionQuery {
+impl TransactionPattern {
+    /// Does matching based on patterns in self.  If all fields are None any
+    /// transaction matches i.e., returns true.
     pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
             Self {
@@ -17,25 +22,32 @@ impl TransactionQuery {
                 from_outpoint,
                 unlock_script,
             } => {
-                let mut result = true;
+                if let Some(to_address) = to_address {
+                    if !transaction.spends_to(to_address) {
+                        return false;
+                    }
+                }
 
-                result = result
-                    && match to_address {
-                        Some(to_address) => transaction.spends_to(to_address),
-                        _ => result,
-                    };
-
-                result = result
-                    && match (from_outpoint, unlock_script) {
-                        (Some(from_outpoint), Some(unlock_script)) => {
-                            transaction.spends_from_with(from_outpoint, unlock_script)
+                match (from_outpoint, unlock_script) {
+                    (Some(from_outpoint), Some(unlock_script)) => {
+                        if !transaction.spends_from_with(from_outpoint, unlock_script) {
+                            return false;
                         }
-                        (Some(from_outpoint), None) => transaction.spends_from(from_outpoint),
-                        (None, Some(unlock_script)) => transaction.spends_with(unlock_script),
-                        (..) => result,
-                    };
+                    }
+                    (Some(from_outpoint), None) => {
+                        if !transaction.spends_from(from_outpoint) {
+                            return false;
+                        }
+                    }
+                    (None, Some(unlock_script)) => {
+                        if !transaction.spends_with(unlock_script) {
+                            return false;
+                        }
+                    }
+                    (None, None) => return true,
+                };
 
-                result
+                true
             }
         }
     }
@@ -67,55 +79,55 @@ mod tests {
     }
 
     #[test]
-    fn given_transaction_with_to_then_to_address_query_matches() {
+    fn given_transaction_with_to_then_to_address_pattern_matches() {
         let tx = parse_raw_tx(WITNESS_TX);
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             to_address: Some("329XTScM6cJgu8VZvaqYWpfuxT1eQDSJkP".parse().unwrap()),
             from_outpoint: None,
             unlock_script: None,
         };
 
-        let result = query.matches(&tx);
+        let result = pattern.matches(&tx);
         assert_that(&result).is_true();
     }
 
     #[test]
-    fn given_a_witness_transaction_with_unlock_script_then_unlock_script_query_matches() {
+    fn given_a_witness_transaction_with_unlock_script_then_unlock_script_pattern_matches() {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec![
             "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
             "01",
         ]);
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             to_address: None,
             from_outpoint: None,
             unlock_script: Some(unlock_script),
         };
 
-        let result = query.matches(&tx);
+        let result = pattern.matches(&tx);
         assert_that(&result).is_true();
     }
 
     #[test]
-    fn given_a_witness_transaction_with_different_unlock_script_then_unlock_script_query_wont_match(
+    fn given_a_witness_transaction_with_different_unlock_script_then_unlock_script_pattern_wont_match(
     ) {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec!["102030405060708090", "00"]);
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             to_address: None,
             from_outpoint: None,
             unlock_script: Some(unlock_script),
         };
 
-        let result = query.matches(&tx);
+        let result = pattern.matches(&tx);
         assert_that(&result).is_false();
     }
 
     #[test]
-    fn given_a_witness_transaction_with_unlock_script_then_spends_from_with_query_match() {
+    fn given_a_witness_transaction_with_unlock_script_then_spends_from_with_pattern_match() {
         let tx = parse_raw_tx(WITNESS_TX);
         let unlock_script = create_unlock_script_stack(vec![
             "0344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f",
@@ -126,13 +138,13 @@ mod tests {
             1u32,
         );
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             to_address: None,
             from_outpoint: Some(outpoint),
             unlock_script: Some(unlock_script),
         };
 
-        let result = query.matches(&tx);
+        let result = pattern.matches(&tx);
         assert_that(&result).is_true();
     }
 }

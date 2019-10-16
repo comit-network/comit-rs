@@ -5,7 +5,10 @@ use ethereum_support::{
 };
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
-pub struct TransactionQuery {
+/// If the field is set to Some(foo) then only transactions matching foo are
+/// returned. Otherwise, when the field is set to None, no pattern matching is
+/// done for this field.
+pub struct TransactionPattern {
     pub from_address: Option<Address>,
     pub to_address: Option<Address>,
     pub is_contract_creation: Option<bool>,
@@ -14,7 +17,9 @@ pub struct TransactionQuery {
     pub events: Option<Vec<Event>>,
 }
 
-impl TransactionQuery {
+impl TransactionPattern {
+    /// Does matching based on patterns in self.  If all fields are None any
+    /// transaction matches i.e., returns true.
     pub fn matches(&self, transaction: &Transaction, receipt: &TransactionReceipt) -> bool {
         match self {
             Self {
@@ -25,34 +30,46 @@ impl TransactionQuery {
                 transaction_data_length,
                 events,
             } => {
-                let mut result = true;
-
                 if let Some(from_address) = from_address {
-                    result = result && (transaction.from == *from_address);
+                    if transaction.from != *from_address {
+                        return false;
+                    }
                 }
 
                 if let Some(to_address) = to_address {
-                    result = result && (transaction.to == Some(*to_address));
+                    if transaction.to != Some(*to_address) {
+                        return false;
+                    }
                 }
 
                 if let Some(is_contract_creation) = is_contract_creation {
-                    // to_address is None for contract creations
-                    result = result && (*is_contract_creation == transaction.to.is_none());
+                    // transaction.to address is None if, and only if, the transaction creates a
+                    // contract
+                    if transaction.to.is_none() != *is_contract_creation {
+                        return false;
+                    }
                 }
 
                 if let Some(transaction_data) = transaction_data {
-                    result = result && (transaction.input == *transaction_data);
+                    if transaction.input != *transaction_data {
+                        return false;
+                    }
                 }
 
                 if let Some(transaction_data_length) = transaction_data_length {
-                    result = result && (transaction.input.0.len() == *transaction_data_length);
+                    if transaction.input.0.len() != *transaction_data_length {
+                        return false;
+                    }
                 }
 
                 if let Some(events) = events {
-                    result = result && events_exist_in_receipt(events, receipt)
+                    if !events_exist_in_receipt(events, receipt) {
+                        return false;
+                    }
                 }
 
-                result
+                // If all fields are set to None, any transaction matches.
+                true
             }
         }
     }
@@ -156,11 +173,11 @@ mod tests {
     use std::str::FromStr;
 
     #[test]
-    fn given_query_from_arbitrary_address_contract_creation_transaction_matches() {
+    fn given_pattern_from_arbitrary_address_contract_creation_transaction_matches() {
         fn prop(from_address: Quickcheck<Address>, transaction: Quickcheck<Transaction>) -> bool {
             let from_address = from_address.0;
 
-            let query = TransactionQuery {
+            let pattern = TransactionPattern {
                 from_address: Some(from_address),
                 to_address: None,
                 is_contract_creation: Some(true),
@@ -176,17 +193,17 @@ mod tests {
 
             let receipt = TransactionReceipt::default();
 
-            query.matches(&transaction, &receipt)
+            pattern.matches(&transaction, &receipt)
         }
 
         quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
     }
 
     #[test]
-    fn given_query_from_address_doesnt_match() {
+    fn given_pattern_from_address_doesnt_match() {
         let from_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             from_address: Some(from_address),
             to_address: None,
             is_contract_creation: None,
@@ -202,15 +219,15 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = query.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
     #[test]
-    fn given_query_to_address_transaction_matches() {
+    fn given_pattern_to_address_transaction_matches() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -227,15 +244,15 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = query.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
     }
 
     #[test]
-    fn given_query_to_address_transaction_doesnt_match() {
+    fn given_pattern_to_address_transaction_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -252,15 +269,15 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = query.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
     #[test]
-    fn given_query_to_address_transaction_with_to_none_doesnt_match() {
+    fn given_pattern_to_address_transaction_with_to_none_doesnt_match() {
         let to_address = "a00f2cac7bad9285ecfd59e8860f5b2d8622e099".parse().unwrap();
 
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             from_address: None,
             to_address: Some(to_address),
             is_contract_creation: None,
@@ -276,13 +293,13 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = query.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
     #[test]
-    fn given_query_transaction_data_transaction_matches() {
-        let query_data = TransactionQuery {
+    fn given_pattern_transaction_data_transaction_matches() {
+        let pattern_data = TransactionPattern {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -291,7 +308,7 @@ mod tests {
             events: None,
         };
 
-        let query_data_length = TransactionQuery {
+        let pattern_data_length = TransactionPattern {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -300,7 +317,7 @@ mod tests {
             events: None,
         };
 
-        let refund_query = TransactionQuery {
+        let refund_pattern = TransactionPattern {
             from_address: None,
             to_address: Some("0bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb".parse().unwrap()),
             is_contract_creation: Some(false),
@@ -317,13 +334,13 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = query_data.matches(&transaction, &receipt);
+        let result = pattern_data.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
 
-        let result = query_data_length.matches(&transaction, &receipt);
+        let result = pattern_data_length.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
 
-        let result = refund_query.matches(&transaction, &receipt);
+        let result = refund_pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
@@ -385,8 +402,8 @@ mod tests {
         }
     }
 
-    fn transaction_query_from_event(event: Event) -> TransactionQuery {
-        TransactionQuery {
+    fn transaction_pattern_from_event(event: Event) -> TransactionPattern {
+        TransactionPattern {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -428,9 +445,9 @@ mod tests {
                 Some(Topic(receipt.logs[0].topics[1])),
                 Some(Topic(receipt.logs[0].topics[2])),
             ]);
-        let query = transaction_query_from_event(event);
+        let pattern = transaction_pattern_from_event(event);
 
-        assert_that!(query.can_skip_block(&block)).is_false();
+        assert_that!(pattern.can_skip_block(&block)).is_false();
     }
 
     #[test]
@@ -448,13 +465,13 @@ mod tests {
         let event = Event::new()
             .for_contract(*CONTRACT_ADDRESS)
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
-        let query = transaction_query_from_event(event);
+        let pattern = transaction_pattern_from_event(event);
 
-        assert_that!(query.can_skip_block(&block)).is_true();
+        assert_that!(pattern.can_skip_block(&block)).is_true();
     }
 
     #[test]
-    fn query_event_found_in_receipt() {
+    fn pattern_event_found_in_receipt() {
         let events = vec![Event::new()
             .for_contract(*CONTRACT_ADDRESS)
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
@@ -474,7 +491,7 @@ mod tests {
     }
 
     #[test]
-    fn query_events_not_found_in_empty_receipt() {
+    fn pattern_events_not_found_in_empty_receipt() {
         let events = vec![Event::new()
             .for_contract(*CONTRACT_ADDRESS)
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
@@ -485,7 +502,7 @@ mod tests {
     }
 
     #[test]
-    fn query_event_with_two_logs_found_in_receipt() {
+    fn pattern_event_with_two_logs_found_in_receipt() {
         let events = vec![
             Event::new()
                 .for_contract(*CONTRACT_ADDRESS)
@@ -517,7 +534,7 @@ mod tests {
     }
 
     #[test]
-    fn query_event_not_found_in_receipt_if_address_differs() {
+    fn pattern_event_not_found_in_receipt_if_address_differs() {
         let events = vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
@@ -537,7 +554,7 @@ mod tests {
     }
 
     #[test]
-    fn query_event_not_found_in_receipt_if_address_and_topics_differ() {
+    fn pattern_event_not_found_in_receipt_if_address_and_topics_differ() {
         let events = vec![Event::new()
             .for_contract(Address::repeat_byte(1))
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
@@ -558,7 +575,7 @@ mod tests {
     }
 
     #[test]
-    fn query_transfer_log_event_found_in_receipt() {
+    fn pattern_transfer_log_event_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -592,7 +609,7 @@ mod tests {
     }
 
     #[test]
-    fn query_event_with_partial_topics_found_in_receipt() {
+    fn pattern_event_with_partial_topics_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -620,7 +637,7 @@ mod tests {
     }
 
     #[test]
-    fn query_event_with_fewer_topics_not_found_in_receipt() {
+    fn pattern_event_with_fewer_topics_not_found_in_receipt() {
         let from_address =
             H256::from_str("00000000000000000000000000a329c0648769a73afac7f9381e08fb43dbea72")
                 .unwrap();
@@ -650,25 +667,25 @@ mod tests {
     }
 
     #[test]
-    fn given_query_without_events_cannot_skip_block() {
+    fn given_pattern_without_events_cannot_skip_block() {
         let block = Block::default();
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             events: None,
-            ..TransactionQuery::default()
+            ..TransactionPattern::default()
         };
 
-        assert_that!(query.can_skip_block(&block)).is_false();
+        assert_that!(pattern.can_skip_block(&block)).is_false();
     }
 
     #[test]
-    fn given_query_with_empty_events_and_block_with_no_events_cannot_skip_block() {
+    fn given_pattern_with_empty_events_and_block_with_no_events_cannot_skip_block() {
         let block = Block::default();
-        let query = TransactionQuery {
+        let pattern = TransactionPattern {
             events: Some(Vec::new()),
-            ..TransactionQuery::default()
+            ..TransactionPattern::default()
         };
 
-        assert_that!(query.can_skip_block(&block)).is_false();
+        assert_that!(pattern.can_skip_block(&block)).is_false();
     }
 
     #[test]

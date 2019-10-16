@@ -12,7 +12,7 @@ use crate::swap_protocols::{
 };
 use bitcoin_support::{Amount, FindOutput, OutPoint};
 use btsieve::{
-    bitcoin::{BitcoindConnector, TransactionQuery},
+    bitcoin::{BitcoindConnector, TransactionPattern},
     first_or_else::StreamExt,
     MatchingTransactions,
 };
@@ -27,7 +27,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
         let future = self
-            .matching_transactions(TransactionQuery {
+            .matching_transactions(TransactionPattern {
                 to_address: Some(htlc_params.compute_address()),
                 from_outpoint: None,
                 unlock_script: None,
@@ -81,7 +81,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         _htlc_funding: &Funded<Bitcoin, Amount>,
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
-            self.matching_transactions(TransactionQuery {
+            self.matching_transactions(TransactionPattern {
                 to_address: None,
                 from_outpoint: Some(htlc_deployment.location),
                 unlock_script: Some(vec![vec![]]),
@@ -95,7 +95,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         };
 
         let redeemed_future = {
-            self.matching_transactions(TransactionQuery {
+            self.matching_transactions(TransactionPattern {
                 to_address: None,
                 from_outpoint: Some(htlc_deployment.location),
                 unlock_script: Some(vec![vec![1u8]]),

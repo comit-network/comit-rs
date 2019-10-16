@@ -1,7 +1,7 @@
 use bitcoin_support::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
 use btsieve::{
-    bitcoin::{BitcoindConnector, TransactionQuery},
+    bitcoin::{BitcoindConnector, TransactionPattern},
     MatchingTransactions,
 };
 use images::coblox_bitcoincore::BitcoinCore;
@@ -18,12 +18,12 @@ use tokio::{
 };
 
 /// A very basic e2e test that verifies that we glued all our code together
-/// correctly for bitcoin queries
+/// correctly for bitcoin transaction pattern matching.
 ///
 /// We send money to an address and check if the transaction that we filter out
-/// is the same one as the one that was returned when we sent the money
+/// is the same one as the one that was returned when we sent the money.
 #[test]
-fn bitcoin_transaction_query_e2e_test() {
+fn bitcoin_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(BitcoinCore::default());
     let client = tc_bitcoincore_client::new(&container);
@@ -41,7 +41,7 @@ fn bitcoin_transaction_query_e2e_test() {
     client.generate(101, None).unwrap();
 
     let funding_transaction = blocksource
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             to_address: Some(target_address.clone()),
             from_outpoint: None,
             unlock_script: None,

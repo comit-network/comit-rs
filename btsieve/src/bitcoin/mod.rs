@@ -1,13 +1,13 @@
 mod bitcoind_connector;
 mod blockchain_info_connector;
-mod queries;
+mod transaction_pattern;
 
 #[cfg(test)]
 mod quickcheck_impls;
 
 pub use self::{
     bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
-    queries::TransactionQuery,
+    transaction_pattern::TransactionPattern,
 };
 
 use crate::{BlockByHash, LatestBlock, MatchingTransactions};
@@ -20,7 +20,7 @@ use tokio::{
     timer::Delay,
 };
 
-impl<C, E> MatchingTransactions<TransactionQuery> for C
+impl<C, E> MatchingTransactions<TransactionPattern> for C
 where
     C: LatestBlock<Block = bitcoin_support::Block, Error = E>
         + BlockByHash<Block = bitcoin_support::Block, BlockHash = bitcoin_support::BlockId, Error = E>
@@ -31,16 +31,16 @@ where
 
     fn matching_transactions(
         &self,
-        query: TransactionQuery,
+        pattern: TransactionPattern,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        let matching_transaction = Box::pin(matching_transaction(self.clone(), query)).compat();
+        let matching_transaction = Box::pin(matching_transaction(self.clone(), pattern)).compat();
         Box::new(stream::futures_unordered(vec![matching_transaction]))
     }
 }
 
 async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
-    query: TransactionQuery,
+    pattern: TransactionPattern,
 ) -> Result<bitcoin_support::Transaction, ()>
 where
     C: LatestBlock<Block = bitcoin_support::Block, Error = E>
@@ -63,7 +63,7 @@ where
         for (block_future, blockhash) in missing_block_futures.into_iter() {
             match block_future.await {
                 Ok(block) => {
-                    match check_block_against_query(&block, &query) {
+                    match check_block_against_pattern(&block, &pattern) {
                         Some(transaction) => return Ok(transaction.clone()),
                         None => {
                             let prev_blockhash = block.header.prev_blockhash;
@@ -100,7 +100,7 @@ where
             continue;
         }
 
-        if let Some(transaction) = check_block_against_query(&latest_block, &query) {
+        if let Some(transaction) = check_block_against_pattern(&latest_block, &pattern) {
             return Ok(transaction.clone());
         };
 
@@ -115,14 +115,14 @@ where
     }
 }
 
-fn check_block_against_query<'b>(
+fn check_block_against_pattern<'b>(
     block: &'b bitcoin_support::Block,
-    query: &TransactionQuery,
+    pattern: &TransactionPattern,
 ) -> Option<&'b bitcoin_support::Transaction> {
     block
         .txdata
         .iter()
-        .find(|transaction| query.matches(transaction))
+        .find(|transaction| pattern.matches(transaction))
 }
 
 pub fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(

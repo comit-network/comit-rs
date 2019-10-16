@@ -12,7 +12,7 @@ use crate::swap_protocols::{
     },
 };
 use btsieve::{
-    ethereum::{Event, Topic, TransactionQuery, Web3Connector},
+    ethereum::{Event, Topic, TransactionPattern, Web3Connector},
     first_or_else::StreamExt,
     MatchingTransactions,
 };
@@ -40,7 +40,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
     ) -> Box<DeployedFuture<Ethereum>> {
         let future = self
-            .matching_transactions(TransactionQuery {
+            .matching_transactions(TransactionPattern {
                 from_address: None,
                 to_address: None,
                 is_contract_creation: Some(true),
@@ -94,7 +94,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
     let refunded_future = {
         ethereum_connector
-            .matching_transactions(TransactionQuery {
+            .matching_transactions(TransactionPattern {
                 from_address: None,
                 to_address: None,
                 is_contract_creation: None,
@@ -117,7 +117,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     };
 
     let redeemed_future = {
-        ethereum_connector.matching_transactions(TransactionQuery {
+        ethereum_connector.matching_transactions(TransactionPattern {
             from_address: None,
             to_address: None,
             is_contract_creation: None,
@@ -178,7 +178,7 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
         ) -> Box<DeployedFuture<Ethereum>> {
             let future = self
-                .matching_transactions(TransactionQuery {
+                .matching_transactions(TransactionPattern {
                     from_address: None,
                     to_address: None,
                     is_contract_creation: Some(true),
@@ -207,7 +207,7 @@ mod erc20 {
             htlc_deployment: &Deployed<Ethereum>,
         ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
             let future = self
-                .matching_transactions(TransactionQuery {
+                .matching_transactions(TransactionPattern {
                     from_address: None,
                     to_address: None,
                     is_contract_creation: None,

@@ -10,12 +10,12 @@ pub mod quickcheck;
 
 use tokio::prelude::{Future, Stream};
 
-pub trait MatchingTransactions<Q>: Send + Sync + 'static {
+pub trait MatchingTransactions<P>: Send + Sync + 'static {
     type Transaction;
 
     fn matching_transactions(
         &self,
-        query: Q,
+        pattern: P,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send>;
 }
 

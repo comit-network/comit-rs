@@ -1,11 +1,11 @@
-mod queries;
+mod transaction_pattern;
 mod web3_connector;
 
 #[cfg(test)]
 mod quickcheck_impls;
 
 pub use self::{
-    queries::{Event, Topic, TransactionQuery},
+    transaction_pattern::{Event, Topic, TransactionPattern},
     web3_connector::Web3Connector,
 };
 use crate::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash};
@@ -17,7 +17,7 @@ use tokio::{
     timer::Delay,
 };
 
-impl<C> MatchingTransactions<TransactionQuery> for C
+impl<C> MatchingTransactions<TransactionPattern> for C
 where
     C: LatestBlock<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
         + BlockByHash<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
@@ -30,16 +30,16 @@ where
 
     fn matching_transactions(
         &self,
-        query: TransactionQuery,
+        pattern: TransactionPattern,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
-        let matching_transaction = Box::pin(matching_transaction(self.clone(), query)).compat();
+        let matching_transaction = Box::pin(matching_transaction(self.clone(), pattern)).compat();
         Box::new(stream::futures_unordered(vec![matching_transaction]))
     }
 }
 
 async fn matching_transaction<C>(
     mut blockchain_connector: C,
-    query: TransactionQuery,
+    pattern: TransactionPattern,
 ) -> Result<TransactionAndReceipt, ()>
 where
     C: LatestBlock<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
@@ -69,7 +69,7 @@ where
             }
         };
 
-        if query.can_skip_block(&latest_block) {
+        if pattern.can_skip_block(&latest_block) {
             continue;
         }
 
@@ -95,7 +95,7 @@ where
                 }
             };
 
-            if query.matches(transaction, &receipt) {
+            if pattern.matches(transaction, &receipt) {
                 return Ok(TransactionAndReceipt {
                     transaction: transaction.clone(),
                     receipt,
