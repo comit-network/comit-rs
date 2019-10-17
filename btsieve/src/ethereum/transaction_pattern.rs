@@ -413,43 +413,6 @@ mod tests {
         }
     }
 
-    // Before adding any more tests using the following two functions please
-    // add a macro so we can make the following calls in each unit test:
-    //
-    //  block = mainnet(./test_data/block.json);
-    //  receipt = mainnet(./test_data/receipt.json);
-
-    fn mainnet_block() -> Block<Transaction> {
-        let block: Block<Transaction> =
-            serde_json::from_str(include_str!("./test_data/block.json"))
-                .expect("failed to deserialize block");
-        block
-    }
-
-    fn mainnet_transaction_receipt() -> TransactionReceipt {
-        let receipt: TransactionReceipt =
-            serde_json::from_str(include_str!("./test_data/receipt.json"))
-                .expect("failed to deserialize receipt");
-        receipt
-    }
-
-    #[test]
-    fn cannot_skip_block_containing_transaction_with_event() {
-        let block = mainnet_block();
-
-        let receipt = mainnet_transaction_receipt();
-        let event = Event::new()
-            .for_contract(receipt.logs[0].address)
-            .with_topics(vec![
-                Some(Topic(receipt.logs[0].topics[0])),
-                Some(Topic(receipt.logs[0].topics[1])),
-                Some(Topic(receipt.logs[0].topics[2])),
-            ]);
-        let pattern = transaction_pattern_from_event(event);
-
-        assert_that!(pattern.can_skip_block(&block)).is_false();
-    }
-
     #[test]
     fn given_a_block_without_bloom_filter_can_skip_block() {
         let tx = Transaction {
