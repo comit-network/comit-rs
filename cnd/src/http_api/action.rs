@@ -115,7 +115,7 @@ impl From<bitcoin::SendToAddress> for ActionResponseBody {
         } = action;
         ActionResponseBody::BitcoinSendAmountToAddress {
             to,
-            amount: format!("{}", amount.as_sat()),
+            amount: amount.as_sat().to_string(),
             network,
         }
     }

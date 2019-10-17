@@ -67,7 +67,7 @@ impl ToDecimalStr for U256 {
         // At time of writing BigDecimal always puts . and pads zeroes
         // up to the precision in f, so TRAILING_ZEROS does the right
         // thing in all cases.
-        let fmt_dec = format!("{}", self.to_bigdec(scale));
+        let fmt_dec = self.to_bigdec(scale).to_string();
         TRAILING_ZEROS.replace(fmt_dec.as_str(), "").to_string()
     }
 }

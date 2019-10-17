@@ -41,7 +41,7 @@ impl Serialize for PublicKey {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&format!("{}", self.0))
+        serializer.serialize_str(&self.0.to_string())
     }
 }
 

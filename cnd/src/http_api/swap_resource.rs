@@ -107,7 +107,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 status,
                 protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
                 parameters,
-                role: format!("{}", metadata.role),
+                role: metadata.role.to_string(),
                 counterparty: Http(metadata.counterparty),
                 state: match include_state {
                     IncludeState::Yes => Some(SwapState::<AL, BL> {

@@ -80,7 +80,7 @@ mod tests {
     fn test_display_and_debug_not_implemented() {
         let seed = Seed::new_random(OsRng).unwrap();
 
-        let out = format!("{}", seed);
+        let out = seed.to_string();
         assert_eq!(out, "Seed([*****])".to_string());
         let debug = format!("{:?}", seed);
         assert_eq!(debug, "Seed([*****])".to_string());
