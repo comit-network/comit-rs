@@ -8,7 +8,7 @@ lazy_static! {
 
 #[test]
 fn display_ethereum() {
-    assert_eq!(format!("{}", EtherQuantity::from_eth(9000.0)), "9000 ETH");
+    assert_eq!(EtherQuantity::from_eth(9000.0).to_string(), "9000 ETH");
 }
 
 #[test]
@@ -50,18 +50,20 @@ fn ether_quantity_back_into_f64() {
 
 #[test]
 fn fractional_ethereum_format() {
-    assert_eq!(format!("{}", EtherQuantity::from_eth(0.1234)), "0.1234 ETH")
+    assert_eq!(EtherQuantity::from_eth(0.1234).to_string(), "0.1234 ETH")
 }
 
 #[test]
 fn whole_ethereum_format() {
-    assert_eq!(format!("{}", EtherQuantity::from_eth(12.0)), "12 ETH");
+    assert_eq!(EtherQuantity::from_eth(12.0).to_string(), "12 ETH");
 }
 
 #[test]
 fn ethereum_with_small_fraction_format() {
     assert_eq!(
-        format!("{}", EtherQuantity::from_str("1234.00000100").unwrap()),
+        EtherQuantity::from_str("1234.00000100")
+            .unwrap()
+            .to_string(),
         "1234.000001 ETH"
     )
 }
@@ -69,7 +71,7 @@ fn ethereum_with_small_fraction_format() {
 #[test]
 fn one_hundren_ethereum_format() {
     assert_eq!(
-        format!("{}", EtherQuantity::from_str("100").unwrap()),
+        EtherQuantity::from_str("100").unwrap().to_string(),
         "100 ETH"
     )
 }

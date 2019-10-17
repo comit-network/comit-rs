@@ -97,7 +97,7 @@ impl ToHeader for AssetKind {
     fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
             AssetKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin")
-                .with_parameter("quantity", format!("{}", bitcoin.as_sat()))?,
+                .with_parameter("quantity", bitcoin.as_sat().to_string())?,
             AssetKind::Ether(ether) => {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
             }

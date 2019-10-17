@@ -39,7 +39,7 @@ impl BlockchainInfoConnector {
     }
 
     fn block_by_hash_url(block_hash: &bitcoin_support::BlockId) -> Url {
-        let block_hash = format!("{}", block_hash);
+        let block_hash = block_hash.to_string();
         let mut url = Url::parse("https://blockchain.info/rawblock/")
             .unwrap()
             .join(&block_hash)

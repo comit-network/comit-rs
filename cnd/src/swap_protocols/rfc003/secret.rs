@@ -247,7 +247,7 @@ mod tests {
 
         let hash = secret.hash();
 
-        let formatted_hash = format!("{}", hash);
+        let formatted_hash = hash.to_string();
 
         assert_eq!(
             formatted_hash,

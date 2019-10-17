@@ -74,7 +74,7 @@ impl Serialize for Http<bitcoin_support::Transaction> {
     where
         S: Serializer,
     {
-        serializer.serialize_str(&format!("{}", self.0.txid()))
+        serializer.serialize_str(&self.0.txid().to_string())
     }
 }
 
@@ -110,7 +110,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
         S: Serializer,
     {
         let public_key = self.0.into_inner();
-        serializer.serialize_str(&format!("{}", public_key))
+        serializer.serialize_str(&public_key.to_string())
     }
 }
 

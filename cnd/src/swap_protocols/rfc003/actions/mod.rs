@@ -125,11 +125,11 @@ mod tests {
 
     #[test]
     fn action_kind_serializes_into_lowercase_str() {
-        assert_eq!(format!("{}", ActionKind::Accept), "accept".to_string());
-        assert_eq!(format!("{}", ActionKind::Decline), "decline".to_string());
-        assert_eq!(format!("{}", ActionKind::Fund), "fund".to_string());
-        assert_eq!(format!("{}", ActionKind::Refund), "refund".to_string());
-        assert_eq!(format!("{}", ActionKind::Redeem), "redeem".to_string());
-        assert_eq!(format!("{}", ActionKind::Deploy), "deploy".to_string());
+        assert_eq!(ActionKind::Accept.to_string(), "accept".to_string());
+        assert_eq!(ActionKind::Decline.to_string(), "decline".to_string());
+        assert_eq!(ActionKind::Fund.to_string(), "fund".to_string());
+        assert_eq!(ActionKind::Refund.to_string(), "refund".to_string());
+        assert_eq!(ActionKind::Redeem.to_string(), "redeem".to_string());
+        assert_eq!(ActionKind::Deploy.to_string(), "deploy".to_string());
     }
 }
