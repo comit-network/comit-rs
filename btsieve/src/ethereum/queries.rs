@@ -203,7 +203,7 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         let result = query.matches(&transaction, &receipt);
-        assert_that(&result).is_false();
+        assert_that!(&result).is_false();
     }
 
     #[test]
@@ -228,7 +228,7 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         let result = query.matches(&transaction, &receipt);
-        assert_that(&result).is_true();
+        assert_that!(&result).is_true();
     }
 
     #[test]
@@ -253,7 +253,7 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         let result = query.matches(&transaction, &receipt);
-        assert_that(&result).is_false();
+        assert_that!(&result).is_false();
     }
 
     #[test]
@@ -277,7 +277,7 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         let result = query.matches(&transaction, &receipt);
-        assert_that(&result).is_false();
+        assert_that!(&result).is_false();
     }
 
     #[test]
@@ -318,13 +318,13 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         let result = query_data.matches(&transaction, &receipt);
-        assert_that(&result).is_true();
+        assert_that!(&result).is_true();
 
         let result = query_data_length.matches(&transaction, &receipt);
-        assert_that(&result).is_true();
+        assert_that!(&result).is_true();
 
         let result = refund_query.matches(&transaction, &receipt);
-        assert_that(&result).is_false();
+        assert_that!(&result).is_false();
     }
 
     lazy_static::lazy_static! {
@@ -383,12 +383,6 @@ mod tests {
             self.topics = topics;
             self
         }
-
-        fn for_token_contract_with_transfer_topics() -> Self {
-            Self::new()
-                .for_contract(*CONTRACT_ADDRESS)
-                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])
-        }
     }
 
     fn transaction_query_from_event(event: Event) -> TransactionQuery {
@@ -402,22 +396,41 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_a_block_with_bloom_filter_cannot_skip_block() {
-        let tx = Transaction {
-            to: Some(*CONTRACT_ADDRESS),
-            ..Transaction::default()
-        };
-        let block = Block {
-            logs_bloom: *REDEEM_BLOOM,
-            transactions: vec![tx.clone()],
-            ..Block::default()
-        };
+    // Before adding any more tests using the following two functions please
+    // add a macro so we can make the following calls in each unit test:
+    //
+    //  block = mainnet(./test_data/block.json);
+    //  receipt = mainnet(./test_data/receipt.json);
 
-        let event = Event::for_token_contract_with_transfer_topics();
+    fn mainnet_block() -> Block<Transaction> {
+        let block: Block<Transaction> =
+            serde_json::from_str(include_str!("./test_data/block.json"))
+                .expect("failed to deserialize block");
+        block
+    }
+
+    fn mainnet_transaction_receipt() -> TransactionReceipt {
+        let receipt: TransactionReceipt =
+            serde_json::from_str(include_str!("./test_data/receipt.json"))
+                .expect("failed to deserialize receipt");
+        receipt
+    }
+
+    #[test]
+    fn cannot_skip_block_containing_transaction_with_event() {
+        let block = mainnet_block();
+
+        let receipt = mainnet_transaction_receipt();
+        let event = Event::new()
+            .for_contract(receipt.logs[0].address)
+            .with_topics(vec![
+                Some(Topic(receipt.logs[0].topics[0])),
+                Some(Topic(receipt.logs[0].topics[1])),
+                Some(Topic(receipt.logs[0].topics[2])),
+            ]);
         let query = transaction_query_from_event(event);
 
-        assert_that!(query.can_skip_block(&block)).is_false()
+        assert_that!(query.can_skip_block(&block)).is_false();
     }
 
     #[test]
@@ -432,15 +445,19 @@ mod tests {
             ..Block::default()
         };
 
-        let event = Event::for_token_contract_with_transfer_topics();
+        let event = Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
         let query = transaction_query_from_event(event);
 
-        assert_that!(query.can_skip_block(&block)).is_true()
+        assert_that!(query.can_skip_block(&block)).is_true();
     }
 
     #[test]
     fn query_event_found_in_receipt() {
-        let events = vec![Event::for_token_contract_with_transfer_topics()];
+        let events = vec![Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let log = Log {
             address: *CONTRACT_ADDRESS,
@@ -453,22 +470,26 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
     }
 
     #[test]
     fn query_events_not_found_in_empty_receipt() {
-        let events = vec![Event::for_token_contract_with_transfer_topics()];
+        let events = vec![Event::new()
+            .for_contract(*CONTRACT_ADDRESS)
+            .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))])];
 
         let receipt = TransactionReceipt::default();
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false();
     }
 
     #[test]
     fn query_event_with_two_logs_found_in_receipt() {
         let events = vec![
-            Event::for_token_contract_with_transfer_topics(),
+            Event::new()
+                .for_contract(*CONTRACT_ADDRESS)
+                .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]),
             Event::new()
                 .for_contract(*CONTRACT_ADDRESS)
                 .with_topics(vec![Some(Topic(*UNKNOWN_LOG_MSG))]),
@@ -492,7 +513,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
     }
 
     #[test]
@@ -512,7 +533,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false();
     }
 
     #[test]
@@ -533,7 +554,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false();
     }
 
     #[test]
@@ -567,7 +588,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
     }
 
     #[test]
@@ -595,7 +616,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
     }
 
     #[test]
@@ -625,7 +646,7 @@ mod tests {
             ..TransactionReceipt::default()
         };
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_false();
     }
 
     #[test]
@@ -636,7 +657,7 @@ mod tests {
             ..TransactionQuery::default()
         };
 
-        assert_that!(query.can_skip_block(&block)).is_false()
+        assert_that!(query.can_skip_block(&block)).is_false();
     }
 
     #[test]
@@ -647,7 +668,7 @@ mod tests {
             ..TransactionQuery::default()
         };
 
-        assert_that!(query.can_skip_block(&block)).is_false()
+        assert_that!(query.can_skip_block(&block)).is_false();
     }
 
     #[test]
@@ -655,6 +676,6 @@ mod tests {
         let events = Vec::new();
         let receipt = TransactionReceipt::default();
 
-        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true()
+        assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
     }
 }
