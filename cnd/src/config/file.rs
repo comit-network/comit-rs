@@ -163,10 +163,10 @@ impl File {
                         "Config path does not exist, creating directories recursively: {:?}",
                         path
                     );
-                    fs::create_dir_all(path).map_err(|error| {
+                    fs::create_dir_all(path).map_err(|e| {
                         config_rs::ConfigError::Message(format!(
                             "Could not create folders: {:?}: {:?}",
-                            path, error
+                            path, e
                         ))
                     })
                 } else {
@@ -180,19 +180,19 @@ impl File {
         config_file: PathBuf,
         default_settings: &File,
     ) -> Result<(), config_rs::ConfigError> {
-        let toml_string = toml::to_string(&default_settings).map_err(|error| {
-            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", error))
+        let toml_string = toml::to_string(&default_settings).map_err(|e| {
+            config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", e))
         })?;
-        let mut file = std::fs::File::create(config_file.clone()).map_err(|error| {
+        let mut file = std::fs::File::create(config_file.clone()).map_err(|e| {
             config_rs::ConfigError::Message(format!(
                 "Could not create config file: {:?} {:?}",
-                config_file, error
+                config_file, e
             ))
         })?;
-        file.write_all(toml_string.as_bytes()).map_err(|error| {
+        file.write_all(toml_string.as_bytes()).map_err(|e| {
             config_rs::ConfigError::Message(format!(
                 "Could not write to file: {:?}: {:?}",
-                config_file, error
+                config_file, e
             ))
         })
     }
