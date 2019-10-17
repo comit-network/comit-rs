@@ -1,6 +1,6 @@
 use bitcoin_support::{consensus::Decodable, deserialize, Address, BitcoinHash, Block};
 use btsieve::{
-    bitcoin::TransactionQuery, first_or_else::StreamExt, BlockByHash, LatestBlock,
+    bitcoin::TransactionPattern, first_or_else::StreamExt, BlockByHash, LatestBlock,
     MatchingTransactions,
 };
 use std::{
@@ -98,7 +98,7 @@ fn find_transaction_in_missing_block() {
     );
 
     let expected_transaction: bitcoin_support::Transaction = connector
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
                     include_str!("./test_data/find_transaction_in_missing_block/address").trim(),
@@ -138,7 +138,7 @@ fn find_transaction_in_missing_block_with_big_gap() {
     );
 
     let expected_transaction: bitcoin_support::Transaction = connector
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
                     include_str!(
@@ -177,7 +177,7 @@ fn find_transaction_if_blockchain_reorganisation() {
     );
 
     let expected_transaction: bitcoin_support::Transaction = connector
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
                     include_str!(
@@ -219,7 +219,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
     );
 
     let expected_transaction: bitcoin_support::Transaction = connector
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
                     include_str!(

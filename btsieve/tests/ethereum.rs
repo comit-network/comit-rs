@@ -1,5 +1,5 @@
 use btsieve::{
-    ethereum::{TransactionQuery, Web3Connector},
+    ethereum::{TransactionPattern, Web3Connector},
     MatchingTransactions,
 };
 use ethereum_support::{TransactionRequest, U256};
@@ -13,13 +13,13 @@ use tokio::{
 };
 
 /// A very basic e2e test that verifies that we glued all our code together
-/// correctly for ethereum queries
+/// correctly for ethereum transaction pattern matching.
 ///
 /// We get the default account from the node and send some money to it
 /// from the parity dev account. Afterwards we verify that the tx hash of
 /// the sent tx equals the one that we found through btsieve.
 #[test]
-fn ethereum_transaction_query_e2e_test() {
+fn ethereum_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(images::parity_parity::ParityEthereum::default());
 
@@ -40,7 +40,7 @@ fn ethereum_transaction_query_e2e_test() {
     let target_address = accounts[0];
 
     let funding_transaction = connector
-        .matching_transactions(TransactionQuery {
+        .matching_transactions(TransactionPattern {
             from_address: None,
             to_address: Some(target_address),
             is_contract_creation: None,
