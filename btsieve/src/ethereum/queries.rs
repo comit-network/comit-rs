@@ -396,49 +396,29 @@ mod tests {
         }
     }
 
-    let test_data_mainnet_block: Option<Block<Transaction>> = None; // Read once from file.
+    // Before adding any more tests using the following two functions please
+    // add a macro so we can make the following calls in each unit test:
+    //
+    //  block = mainnet(./test_data/block.json);
+    //  receipt = mainnet(./test_data/receipt.json);
 
     fn mainnet_block() -> Block<Transaction> {
-
-        fn read_from_file() -> Block<Transaction> {
-            let block: Block<Transaction> =
-                serde_json::from_str(include_str!("./test_data/block.json"))
+        let block: Block<Transaction> =
+            serde_json::from_str(include_str!("./test_data/block.json"))
                 .expect("failed to deserialize block");
-
-            block
-        }
-
-        if test_data_mainnet_block.is_none() {
-            let block = read_from_file();
-            test_data_mainnet_block = Some(block);
-        }
-
-        test_data_mainnet_block.unwrap()
+        block
     }
 
-    let test_data_mainnet_transaction_receipt: Option<TransactionReceipt> = None; // Read once from file.
-
     fn mainnet_transaction_receipt() -> TransactionReceipt {
-
-        fn read_from_file() -> TransactionReceipt {
-            let transaction_receipt: TransactionReceipt =
-                serde_json::from_str(include_str!("./test_data/receipt.json"))
+        let receipt: TransactionReceipt =
+            serde_json::from_str(include_str!("./test_data/receipt.json"))
                 .expect("failed to deserialize receipt");
-
-            receipt
-        }
-
-        if test_data_mainnet_transaction_receipt.is_none() {
-            let receipt = read_from_file();
-            test_data_mainnet_transaction_receipt = Some(receipt);
-        }
-
-        test_data_mainnet_transaction_receipt.unwrap()
+        receipt
     }
 
     #[test]
     fn cannot_skip_block_containing_transaction_with_event() {
-        let block: mainnet_block();
+        let block = mainnet_block();
 
         let receipt = mainnet_transaction_receipt();
         let event = Event::new()
