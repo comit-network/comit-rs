@@ -87,13 +87,13 @@ impl BlockByHash for BitcoinConnectorMock {
 fn find_transaction_in_missing_block() {
     let connector = BitcoinConnectorMock::new(
         vec![
-            include_hex!("./test_data/find_transaction_in_missing_block/block1.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block3.hex"),
         ],
         vec![
-            include_hex!("./test_data/find_transaction_in_missing_block/block1.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block/block2.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block2.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block3.hex"),
         ],
     );
 
@@ -101,7 +101,8 @@ fn find_transaction_in_missing_block() {
         .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
-                    include_str!("./test_data/find_transaction_in_missing_block/address").trim(),
+                    include_str!("./test_data/bitcoin/find_transaction_in_missing_block/address")
+                        .trim(),
                 )
                 .unwrap(),
             ),
@@ -114,7 +115,7 @@ fn find_transaction_in_missing_block() {
 
     assert_eq!(
         expected_transaction,
-        include_hex!("./test_data/find_transaction_in_missing_block/transaction.hex")
+        include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/transaction.hex")
     );
 }
 
@@ -122,18 +123,18 @@ fn find_transaction_in_missing_block() {
 fn find_transaction_in_missing_block_with_big_gap() {
     let connector = BitcoinConnectorMock::new(
         vec![
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block8.hex"),
         ],
         vec![
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block1.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block3.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block4.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block5.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block6.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block7.hex"),
-            include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/block8.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block4.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block5.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block6.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block7.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block8.hex"),
         ],
     );
 
@@ -142,7 +143,7 @@ fn find_transaction_in_missing_block_with_big_gap() {
             to_address: Some(
                 Address::from_str(
                     include_str!(
-                        "./test_data/find_transaction_in_missing_block_with_big_gap/address"
+                        "./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
                     )
                     .trim(),
                 )
@@ -157,7 +158,9 @@ fn find_transaction_in_missing_block_with_big_gap() {
 
     assert_eq!(
         expected_transaction,
-        include_hex!("./test_data/find_transaction_in_missing_block_with_big_gap/transaction.hex")
+        include_hex!(
+            "./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/transaction.hex"
+        )
     );
 }
 
@@ -165,14 +168,14 @@ fn find_transaction_in_missing_block_with_big_gap() {
 fn find_transaction_if_blockchain_reorganisation() {
     let connector = BitcoinConnectorMock::new(
         vec![
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
         ],
         vec![
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block2_with_transaction.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block1b_stale.hex"),
         ],
     );
 
@@ -181,7 +184,7 @@ fn find_transaction_if_blockchain_reorganisation() {
             to_address: Some(
                 Address::from_str(
                     include_str!(
-                        "./test_data/find_transaction_if_blockchain_reorganisation/address"
+                        "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
                     )
                     .trim(),
                 )
@@ -196,7 +199,9 @@ fn find_transaction_if_blockchain_reorganisation() {
 
     assert_eq!(
         expected_transaction,
-        include_hex!("./test_data/find_transaction_if_blockchain_reorganisation/transaction.hex")
+        include_hex!(
+            "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/transaction.hex"
+        )
     );
 }
 
@@ -204,17 +209,17 @@ fn find_transaction_if_blockchain_reorganisation() {
 fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
     let connector = BitcoinConnectorMock::new(
         vec![
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex")
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex")
         ],
         vec![
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block1.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block2.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block3.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex"),
-            include_hex!("./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block2.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block5_with_transaction.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block4b_stale.hex"),
         ],
     );
 
@@ -223,7 +228,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
             to_address: Some(
                 Address::from_str(
                     include_str!(
-                        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+                        "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
                     ).trim()
                     ,
                 )
@@ -239,7 +244,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
     assert_eq!(
         expected_transaction,
         include_hex!(
-        "./test_data/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex"
+        "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex"
     )
     );
 }
