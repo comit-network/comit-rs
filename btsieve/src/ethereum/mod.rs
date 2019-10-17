@@ -50,8 +50,8 @@ where
         > + Clone,
 {
     loop {
-        // Delay so that we don't overload the machine given the assumption
-        // that latest_block and block_by_hash resolve quickly
+        // Delay so that we don't overload the CPU in the event that
+        // latest_block() and block_by_hash() resolve quickly.
         Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
             .compat()
             .await
