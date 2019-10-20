@@ -25,7 +25,7 @@
         "commander": "^3.0.2",
         "ethers": "^4.0.38",
         "glob": "^7.1.4",
-        "mocha": "^6.2.1",
+        "mocha": "^6.2.2",
         "multiaddr": "^7.1.0",
         "satoshi-bitcoin": "^1.0.4",
         "tempfile": "^3.0.0",
