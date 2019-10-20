@@ -7,7 +7,7 @@ use diesel::{
     Insertable, Queryable, *,
 };
 use std::{fmt, ops::Deref, str::FromStr, string::ToString};
-use uuid::{parser::ParseError, Uuid};
+use uuid::Uuid;
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct Swap {
@@ -55,7 +55,7 @@ impl InsertableSwap {
 pub struct SwapId(Uuid);
 
 impl FromStr for SwapId {
-    type Err = ParseError;
+    type Err = uuid::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Uuid::from_str(s).map(SwapId)
     }
