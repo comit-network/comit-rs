@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
-use uuid::{parser::ParseError, Uuid};
+use uuid::Uuid;
 
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SwapId(pub Uuid);
@@ -12,7 +12,7 @@ impl Default for SwapId {
 }
 
 impl FromStr for SwapId {
-    type Err = ParseError;
+    type Err = uuid::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Uuid::from_str(s).map(SwapId)
     }

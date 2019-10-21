@@ -52,7 +52,7 @@ strum_macros = "0.16"
 tokio = "0.1"
 toml = "0.5"
 url_serde = "0.2.0"
-uuid = { version = "0.7", features = ["serde", "v4"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1.0.2"
 warp = { version = "0.1", default-features = false }
 
