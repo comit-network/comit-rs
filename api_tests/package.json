@@ -30,7 +30,7 @@
         "satoshi-bitcoin": "^1.0.4",
         "tempfile": "^3.0.0",
         "testcontainers": "^2.1.0",
-        "urijs": "^1.19.1"
+        "urijs": "^1.19.2"
     },
     "devDependencies": {
         "@iarna/toml": "^2.2.3",
