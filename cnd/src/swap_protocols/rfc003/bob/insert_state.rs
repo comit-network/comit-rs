@@ -31,7 +31,7 @@ pub trait InsertState: Send + Sync + 'static {
     ) -> Result<(), Error>;
 }
 
-impl<S: StateStore> InsertState for dependencies::bob::ProtocolDependencies<S> {
+impl InsertState for dependencies::bob::ProtocolDependencies {
     #[allow(clippy::type_complexity)]
     fn insert_state<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,

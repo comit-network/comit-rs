@@ -30,7 +30,7 @@ pub trait BobSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: StateStore> BobSpawner for dependencies::bob::ProtocolDependencies<S> {
+impl BobSpawner for dependencies::bob::ProtocolDependencies {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
