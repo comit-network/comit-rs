@@ -40,7 +40,7 @@ use crate::{
         LedgerEventDependencies, Metadata, MetadataStore, SwapId, SwapProtocol,
     },
 };
-use bitcoin_support::{amount::Denomination, Amount as BitcoinAmount};
+use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
 use ethereum_support::{Erc20Token, EtherQuantity};
 use futures::sync::oneshot::Sender;
 use libp2p::PeerId;
@@ -82,7 +82,7 @@ impl Serialize for Http<BitcoinAmount> {
     }
 }
 
-impl Serialize for Http<bitcoin_support::Transaction> {
+impl Serialize for Http<bitcoin::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -127,7 +127,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
     }
 }
 
-impl_serialize_type_with_fields!(bitcoin_support::OutPoint { "txid" => txid, "vout" => vout });
+impl_serialize_type_with_fields!(bitcoin::OutPoint { "txid" => txid, "vout" => vout });
 impl_serialize_http!(ethereum_support::H160);
 impl_serialize_http!(SwapId);
 
@@ -387,7 +387,10 @@ mod tests {
             HashFunction, SwapId, SwapProtocol,
         },
     };
-    use bitcoin_support::{self, FromHex, OutPoint, Script, Sha256dHash, TxIn};
+    use bitcoin::{
+        hashes::{hex::FromHex, sha256d},
+        OutPoint, Script, TxIn,
+    };
     use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::str::FromStr;
@@ -422,7 +425,7 @@ mod tests {
 
     #[test]
     fn http_ledger_serializes_correctly_to_json() {
-        let bitcoin = Bitcoin::new(bitcoin_support::Network::Regtest);
+        let bitcoin = Bitcoin::new(bitcoin::Network::Regtest);
         let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
 
         let bitcoin = Http(bitcoin);
@@ -443,7 +446,7 @@ mod tests {
 
     #[test]
     fn http_transaction_serializes_correctly_to_json() {
-        let bitcoin_tx = bitcoin_support::Transaction {
+        let bitcoin_tx = bitcoin::Transaction {
             version: 1,
             lock_time: 0,
             input: vec![TxIn {
@@ -504,7 +507,7 @@ mod tests {
     #[test]
     fn http_htlc_location_serializes_correctly_to_json() {
         let bitcoin_htlc_location = OutPoint {
-            txid: Sha256dHash::from_hex(
+            txid: sha256d::Hash::from_hex(
                 "ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024",
             )
             .unwrap(),

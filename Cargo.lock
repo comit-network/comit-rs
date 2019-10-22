@@ -221,21 +221,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "bitcoin_support"
-version = "0.1.0"
-dependencies = [
- "bigdecimal 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde 1.0.101 (registry+https://github.com/rust-lang/crates.io-index)",
- "serde_json 1.0.41 (registry+https://github.com/rust-lang/crates.io-index)",
- "spectral 0.6.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strum 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "strum_macros 0.16.0 (registry+https://github.com/rust-lang/crates.io-index)",
-]
-
-[[package]]
 name = "bitcoincore-rpc"
 version = "0.8.0-rc1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -350,7 +335,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "btsieve"
 version = "0.1.0"
 dependencies = [
- "bitcoin_support 0.1.0",
+ "bitcoin 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "ethbloom 0.6.4 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -509,7 +494,7 @@ name = "cnd"
 version = "0.3.0"
 dependencies = [
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
+ "bitcoin 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "bitcoincore-rpc 0.8.0-rc1 (registry+https://github.com/rust-lang/crates.io-index)",
  "blockchain_contracts 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "btsieve 0.1.0",
@@ -1625,7 +1610,6 @@ name = "key_gen"
 version = "0.1.0"
 dependencies = [
  "bitcoin 0.19.2 (registry+https://github.com/rust-lang/crates.io-index)",
- "bitcoin_support 0.1.0",
  "ethereum_support 0.1.0",
  "hex 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",

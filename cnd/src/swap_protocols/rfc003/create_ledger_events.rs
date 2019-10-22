@@ -7,7 +7,7 @@ use crate::swap_protocols::{
         Ledger,
     },
 };
-use bitcoin_support::Amount;
+use bitcoin::Amount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 
 pub trait CreateLedgerEvents<L: Ledger, A: Asset> {

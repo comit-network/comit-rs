@@ -6,7 +6,7 @@
 //!       libraries
 //!     - Common functionality that is not (yet) available upstream
 
-use bitcoin_support::bitcoin::secp256k1;
+use bitcoin::secp256k1;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -14,11 +14,11 @@ use serde::{
 use std::fmt;
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct PublicKey(bitcoin_support::PublicKey);
+pub struct PublicKey(bitcoin::PublicKey);
 
 impl PublicKey {
     pub fn new(key: secp256k1::PublicKey) -> Self {
-        Self(bitcoin_support::PublicKey {
+        Self(bitcoin::PublicKey {
             compressed: true, // we always want the PublicKey to be serialized in a compressed way
             key,
         })
@@ -31,7 +31,7 @@ impl PublicKey {
         Self::new(secp256k1::PublicKey::from_secret_key(secp, secret_key))
     }
 
-    pub fn into_inner(self) -> bitcoin_support::PublicKey {
+    pub fn into_inner(self) -> bitcoin::PublicKey {
         self.0
     }
 }

@@ -31,11 +31,9 @@ pub mod swap_protocols;
 use directories::ProjectDirs;
 use std::path::PathBuf;
 
-use bitcoin_support::bitcoin::secp256k1;
-use lazy_static::lazy_static;
-
-lazy_static! {
-    pub static ref SECP: secp256k1::Secp256k1<secp256k1::All> = secp256k1::Secp256k1::new();
+lazy_static::lazy_static! {
+    pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
+        ::bitcoin::secp256k1::Secp256k1::new();
 }
 
 // Linux: /home/<user>/.config/comit/

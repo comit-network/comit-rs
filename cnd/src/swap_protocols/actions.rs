@@ -11,21 +11,21 @@ pub trait Actions {
 }
 
 pub mod bitcoin {
-    use bitcoin_support::{Address, Amount, Network};
+    use bitcoin::{Address, Amount};
     use blockchain_contracts::bitcoin::witness::{PrimedInput, PrimedTransaction};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SendToAddress {
         pub to: Address,
         pub amount: Amount,
-        pub network: Network,
+        pub network: bitcoin::Network,
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SpendOutput {
         // Remember: One man's input is another man's output!
         pub output: PrimedInput,
-        pub network: Network,
+        pub network: bitcoin::Network,
     }
 
     impl SpendOutput {

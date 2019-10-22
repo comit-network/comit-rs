@@ -1,7 +1,10 @@
 use crate::{
     http_api::problem,
     swap_protocols::{
-        actions::{bitcoin, ethereum},
+        actions::{
+            bitcoin::{SendToAddress, SpendOutput},
+            ethereum,
+        },
         SwapId, Timestamp,
     },
 };
@@ -23,7 +26,7 @@ pub trait ListRequiredFields {
 #[serde(untagged)]
 pub enum ActionExecutionParameters {
     BitcoinAddressAndFee {
-        address: bitcoin_support::Address,
+        address: bitcoin::Address,
         fee_per_wu: String,
     },
     None {},
@@ -34,13 +37,13 @@ pub enum ActionExecutionParameters {
 #[serde(tag = "type", content = "payload")]
 pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
-        to: bitcoin_support::Address,
+        to: bitcoin::Address,
         amount: String,
-        network: bitcoin_support::Network,
+        network: bitcoin::Network,
     },
     BitcoinBroadcastSignedTransaction {
         hex: String,
-        network: bitcoin_support::Network,
+        network: bitcoin::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_median_block_time: Option<Timestamp>,
     },
@@ -64,8 +67,8 @@ pub enum ActionResponseBody {
 
 impl ActionResponseBody {
     fn bitcoin_broadcast_signed_transaction(
-        transaction: &bitcoin_support::Transaction,
-        network: bitcoin_support::Network,
+        transaction: &bitcoin::Transaction,
+        network: bitcoin::Network,
     ) -> Self {
         let min_median_block_time = if transaction.lock_time == 0 {
             None
@@ -77,7 +80,7 @@ impl ActionResponseBody {
         };
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: bitcoin_support::serialize_hex(transaction),
+            hex: bitcoin::consensus::encode::serialize_hex(transaction),
             network,
             min_median_block_time,
         }
@@ -91,7 +94,7 @@ pub trait IntoResponsePayload {
     ) -> Result<ActionResponseBody, HttpApiProblem>;
 }
 
-impl IntoResponsePayload for bitcoin::SendToAddress {
+impl IntoResponsePayload for SendToAddress {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
@@ -106,9 +109,9 @@ impl IntoResponsePayload for bitcoin::SendToAddress {
     }
 }
 
-impl From<bitcoin::SendToAddress> for ActionResponseBody {
-    fn from(action: bitcoin::SendToAddress) -> Self {
-        let bitcoin::SendToAddress {
+impl From<SendToAddress> for ActionResponseBody {
+    fn from(action: SendToAddress) -> Self {
+        let SendToAddress {
             to,
             amount,
             network,
@@ -121,13 +124,13 @@ impl From<bitcoin::SendToAddress> for ActionResponseBody {
     }
 }
 
-impl ListRequiredFields for bitcoin::SendToAddress {
+impl ListRequiredFields for SendToAddress {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![]
     }
 }
 
-impl IntoResponsePayload for bitcoin::SpendOutput {
+impl IntoResponsePayload for SpendOutput {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
@@ -192,7 +195,7 @@ impl IntoResponsePayload for bitcoin::SpendOutput {
     }
 }
 
-impl ListRequiredFields for bitcoin::SpendOutput {
+impl ListRequiredFields for SpendOutput {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![
             siren::Field {
@@ -303,7 +306,7 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin_support::{Address as BitcoinAddress, Network as BitcoinNetwork};
+    use bitcoin::Address as BitcoinAddress;
     use ethereum_support::{Address as EthereumAddress, Network as EthereumNetwork, U256};
     use std::str::FromStr;
 
@@ -348,10 +351,10 @@ mod test {
 
     #[test]
     fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
-        let response_body = ActionResponseBody::from(bitcoin::SendToAddress {
+        let response_body = ActionResponseBody::from(SendToAddress {
             to: BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap(),
-            amount: bitcoin_support::Amount::from_btc(1.0).unwrap(),
-            network: BitcoinNetwork::Regtest,
+            amount: bitcoin::Amount::from_btc(1.0).unwrap(),
+            network: bitcoin::Network::Regtest,
         });
 
         let serialized = serde_json::to_string(&response_body).unwrap();

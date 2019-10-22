@@ -7,7 +7,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin_support::amount::Denomination;
+use bitcoin::util::amount::Denomination;
 use ethereum_support::Erc20Token;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
@@ -77,9 +77,8 @@ impl FromHeader for AssetKind {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
                 let quantity = header.take_parameter::<String>("quantity")?;
-                let amount =
-                    bitcoin_support::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
-                        .map_err(|e| serde_json::Error::custom(e.to_string()))?;
+                let amount = bitcoin::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+                    .map_err(|e| serde_json::Error::custom(e.to_string()))?;
 
                 AssetKind::Bitcoin(amount)
             }
@@ -132,7 +131,7 @@ impl FromHeader for Decision {
 mod tests {
     use super::*;
     use crate::swap_protocols::HashFunction;
-    use bitcoin_support::Amount;
+    use bitcoin::Amount;
     use ethereum_support::{Address, Erc20Quantity, U256};
     use spectral::prelude::*;
 
@@ -223,9 +222,9 @@ mod tests {
     }
 
     #[test]
-    fn bitcoin_ledger_to_header() {
+    fn bitcoin_ledger_testnet_to_header() {
         let ledger = LedgerKind::Bitcoin(Bitcoin {
-            network: bitcoin_support::Network::Testnet,
+            network: bitcoin::Network::Testnet,
         });
         let header = ledger.to_header().unwrap();
 

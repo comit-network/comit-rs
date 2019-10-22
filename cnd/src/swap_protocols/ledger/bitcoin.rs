@@ -1,5 +1,5 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use bitcoin_support::{Network, Transaction};
+use bitcoin::{Network, Transaction};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {

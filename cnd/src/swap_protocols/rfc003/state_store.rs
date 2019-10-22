@@ -269,7 +269,7 @@ mod tests {
             HashFunction, Timestamp,
         },
     };
-    use bitcoin_support::Amount;
+    use bitcoin::Amount;
     use ethereum_support::{Address, EtherQuantity};
     use spectral::prelude::*;
 

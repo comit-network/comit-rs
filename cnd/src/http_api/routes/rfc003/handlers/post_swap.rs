@@ -8,7 +8,7 @@ use crate::{
         HashFunction, SwapId, Timestamp,
     },
 };
-use bitcoin_support::Amount as BitcoinAmount;
+use bitcoin::Amount as BitcoinAmount;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};

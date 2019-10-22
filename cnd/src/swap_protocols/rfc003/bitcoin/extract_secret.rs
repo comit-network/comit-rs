@@ -1,5 +1,5 @@
 use crate::swap_protocols::rfc003::secret::{Secret, SecretHash};
-use bitcoin_support::Transaction;
+use bitcoin::Transaction;
 
 pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
     transaction.input.iter().find_map(|txin| {
@@ -16,7 +16,7 @@ pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Op
 #[cfg(test)]
 mod test {
     use super::*;
-    use bitcoin_support::{deserialize, OutPoint, Script, Transaction, TxIn};
+    use bitcoin::{consensus::encode::deserialize, OutPoint, Script, Transaction, TxIn};
     use spectral::prelude::*;
     use std::str::FromStr;
 

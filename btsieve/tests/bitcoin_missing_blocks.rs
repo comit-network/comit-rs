@@ -1,4 +1,9 @@
-use bitcoin_support::{consensus::Decodable, deserialize, Address, BitcoinHash, Block};
+use bitcoin::{
+    consensus::{deserialize, Decodable},
+    hashes::sha256d,
+    util::hash::BitcoinHash,
+    Address,
+};
 use btsieve::{
     bitcoin::TransactionPattern, first_or_else::StreamExt, BlockByHash, LatestBlock,
     MatchingTransactions,
@@ -12,16 +17,16 @@ use tokio::prelude::{Future, IntoFuture};
 
 #[derive(Clone)]
 struct BitcoinConnectorMock {
-    all_blocks: HashMap<bitcoin_support::BlockId, Block>,
-    latest_blocks: Vec<Block>,
+    all_blocks: HashMap<sha256d::Hash, bitcoin::Block>,
+    latest_blocks: Vec<bitcoin::Block>,
     latest_time_return_block: Instant,
     current_latest_block_index: usize,
 }
 
 impl BitcoinConnectorMock {
     fn new(
-        latest_blocks: impl IntoIterator<Item = Block>,
-        all_blocks: impl IntoIterator<Item = Block>,
+        latest_blocks: impl IntoIterator<Item = bitcoin::Block>,
+        all_blocks: impl IntoIterator<Item = bitcoin::Block>,
     ) -> Self {
         BitcoinConnectorMock {
             all_blocks: all_blocks
@@ -39,8 +44,8 @@ impl BitcoinConnectorMock {
 
 impl LatestBlock for BitcoinConnectorMock {
     type Error = ();
-    type Block = bitcoin_support::Block;
-    type BlockHash = bitcoin_support::BlockId;
+    type Block = bitcoin::Block;
+    type BlockHash = sha256d::Hash;
 
     fn latest_block(
         &mut self,
@@ -66,8 +71,8 @@ impl LatestBlock for BitcoinConnectorMock {
 
 impl BlockByHash for BitcoinConnectorMock {
     type Error = ();
-    type Block = bitcoin_support::Block;
-    type BlockHash = bitcoin_support::BlockId;
+    type Block = bitcoin::Block;
+    type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
         &self,
@@ -97,7 +102,7 @@ fn find_transaction_in_missing_block() {
         ],
     );
 
-    let expected_transaction: bitcoin_support::Transaction = connector
+    let expected_transaction: bitcoin::Transaction = connector
         .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
@@ -138,7 +143,7 @@ fn find_transaction_in_missing_block_with_big_gap() {
         ],
     );
 
-    let expected_transaction: bitcoin_support::Transaction = connector
+    let expected_transaction: bitcoin::Transaction = connector
         .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
@@ -179,7 +184,7 @@ fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let expected_transaction: bitcoin_support::Transaction = connector
+    let expected_transaction: bitcoin::Transaction = connector
         .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(
@@ -223,7 +228,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let expected_transaction: bitcoin_support::Transaction = connector
+    let expected_transaction: bitcoin::Transaction = connector
         .matching_transactions(TransactionPattern {
             to_address: Some(
                 Address::from_str(

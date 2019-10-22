@@ -27,7 +27,7 @@ macro_rules! with_swap_types {
             ledger::{Bitcoin, Ethereum},
             metadata_store::{AssetKind, LedgerKind, Metadata},
         };
-        use bitcoin_support::Amount;
+        use bitcoin::Amount;
         use ethereum_support::{Erc20Token, EtherQuantity};
         let metadata = $metadata;
 
