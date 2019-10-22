@@ -357,9 +357,8 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     }
 }
 
-fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
+pub fn spawn<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset, B: BobSpawner>(
     bob_spawner: &B,
-    counterparty: PeerId,
     swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
 ) -> Box<dyn Future<Item = Response, Error = Infallible> + Send + 'static>
 where
@@ -367,65 +366,63 @@ where
 {
     let swap_id = swap_request.id;
 
-    unimplemented!("Tobin is fixing this")
-    //    match bob_spawner.spawn(swap_request) {
-    //        Ok(response_future) => Box::new(response_future.then(move |result|
-    // {            let response = match result {
-    //                Ok(Ok(accept_body)) => {
-    //                    let body = rfc003::messages::AcceptResponseBody::<AL,
-    // BL> {                        beta_ledger_refund_identity:
-    // accept_body.beta_ledger_refund_identity,
-    // alpha_ledger_redeem_identity: accept_body.alpha_ledger_redeem_identity,
-    //                    };
-    //                    Response::empty()
-    //                        .with_header(
-    //                            "decision",
-    //                            Decision::Accepted
-    //                                .to_header()
-    //                                .expect("Decision should not fail to
-    // serialize"),                        )
-    //                        .with_body(
-    //                            serde_json::to_value(body)
-    //                                .expect("body should always serialize into
-    // serde_json::Value"),                        )
-    //                }
-    //                Ok(Err(decline_body)) => Response::empty()
-    //                    .with_header(
-    //                        "decision",
-    //                        Decision::Declined
-    //                            .to_header()
-    //                            .expect("Decision shouldn't fail to
-    // serialize"),                    )
-    //                    .with_body(
-    //                        serde_json::to_value(decline_body)
-    //                            .expect("decline body should always serialize
-    // into serde_json::Value"),                    ),
-    //                Err(_) => {
-    //                    log::warn!(
-    //                        "Failed to receive from oneshot channel for swap
-    // {}",                        swap_id
-    //                    );
-    //                    Response::empty().with_header(
-    //                        "decision",
-    //                        Decision::Declined
-    //                            .to_header()
-    //                            .expect("Decision should not fail to
-    // serialize"),                    )
-    //                }
-    //            };
-    //
-    //            Ok(response)
-    //        })),
-    //        Err(e) => {
-    //            log::error!("Unable to spawn Bob: {:?}", e);
-    //            Box::new(futures::future::ok(
-    //                Response::empty().with_header(
-    //                    "decision",
-    //                    Decision::Declined
-    //                        .to_header()
-    //                        .expect("Decision should not fail to serialize"),
-    //                ),
-    //            ))
-    //        }
-    //    }
+    match bob_spawner.spawn(swap_request) {
+        Ok(response_future) => Box::new(response_future.then(move |result| {
+            let response = match result {
+                Ok(Ok(accept_body)) => {
+                    let body = rfc003::messages::AcceptResponseBody::<AL, BL> {
+                        beta_ledger_refund_identity: accept_body.beta_ledger_refund_identity,
+                        alpha_ledger_redeem_identity: accept_body.alpha_ledger_redeem_identity,
+                    };
+                    Response::empty()
+                        .with_header(
+                            "decision",
+                            Decision::Accepted
+                                .to_header()
+                                .expect("Decision should not fail to serialize"),
+                        )
+                        .with_body(
+                            serde_json::to_value(body)
+                                .expect("body should always serialize into serde_json::Value"),
+                        )
+                }
+                Ok(Err(decline_body)) => Response::empty()
+                    .with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_header()
+                            .expect("Decision shouldn't fail to serialize"),
+                    )
+                    .with_body(
+                        serde_json::to_value(decline_body)
+                            .expect("decline body should always serialize into serde_json::Value"),
+                    ),
+                Err(_) => {
+                    log::warn!(
+                        "Failed to receive from oneshot channel for swap {}",
+                        swap_id
+                    );
+                    Response::empty().with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_header()
+                            .expect("Decision should not fail to serialize"),
+                    )
+                }
+            };
+
+            Ok(response)
+        })),
+        Err(e) => {
+            log::error!("Unable to spawn Bob: {:?}", e);
+            Box::new(futures::future::ok(
+                Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_header()
+                        .expect("Decision should not fail to serialize"),
+                ),
+            ))
+        }
+    }
 }
