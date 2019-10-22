@@ -1,4 +1,7 @@
-use crate::{seed::Seed, swap_protocols::InMemoryMetadataStore};
+use crate::{
+    seed::Seed,
+    swap_protocols::{rfc003::state_store::InMemoryStateStore, InMemoryMetadataStore},
+};
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use std::sync::Arc;
 
@@ -8,15 +11,15 @@ pub mod alice {
     use super::*;
 
     #[allow(missing_debug_implementations)]
-    pub struct ProtocolDependencies<S, C> {
+    pub struct ProtocolDependencies<C> {
         pub ledger_events: LedgerEventDependencies,
         pub metadata_store: Arc<InMemoryMetadataStore>,
-        pub state_store: Arc<S>,
+        pub state_store: Arc<InMemoryStateStore>,
         pub seed: Seed,
         pub client: Arc<C>,
     }
 
-    impl<S, C> Clone for ProtocolDependencies<S, C> {
+    impl<C> Clone for ProtocolDependencies<C> {
         fn clone(&self) -> Self {
             Self {
                 ledger_events: self.ledger_events.clone(),
@@ -33,14 +36,14 @@ pub mod bob {
     use super::*;
 
     #[allow(missing_debug_implementations)]
-    pub struct ProtocolDependencies<S> {
+    pub struct ProtocolDependencies {
         pub ledger_events: LedgerEventDependencies,
         pub metadata_store: Arc<InMemoryMetadataStore>,
-        pub state_store: Arc<S>,
+        pub state_store: Arc<InMemoryStateStore>,
         pub seed: Seed,
     }
 
-    impl<S> Clone for ProtocolDependencies<S> {
+    impl Clone for ProtocolDependencies {
         fn clone(&self) -> Self {
             Self {
                 ledger_events: self.ledger_events.clone(),
