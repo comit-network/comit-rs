@@ -51,7 +51,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: StateStore, C: Client> AliceSpawner for swap_protocols::alice::ProtocolDependencies<S, C> {
+impl<C: Client> AliceSpawner for swap_protocols::alice::ProtocolDependencies<C> {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
