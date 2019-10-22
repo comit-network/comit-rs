@@ -8,12 +8,14 @@ use crate::{
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
+    libp2p_comit_ext::ToHeader,
     swap_protocols::{
         actions::Actions,
         rfc003::{
+            self,
             actions::{Action, ActionKind},
             bob::BobSpawner,
-            messages::{AcceptResponseBody, DeclineResponseBody},
+            messages::Decision,
             state_store::StateStore,
         },
         MetadataStore, SwapId,
@@ -21,6 +23,7 @@ use crate::{
 };
 use futures::sync::oneshot;
 use http_api_problem::HttpApiProblem;
+use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
@@ -48,12 +51,11 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
 
             // For each request in the state store
             // - get channel out of HashMap inside ComitNode using swap_id
-            // - call network::spawn with BobSpawner and the request
-            // - write the response to the channel
+            // - call B::spawn and the request
+            // - create the Response from rfc003::messages::Accept../Decline..
+            // - write the Response to the channel
 
-            let response_channel: oneshot::Sender<Response>> = {
-                unimplemented!("make this build")
-            }
+            let response_channel: oneshot::Sender<Response> = { unimplemented!("make this build") };
 
             state
                 .actions()
@@ -66,12 +68,13 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                             |body| {
                                 let request = state.request();
                                 let accept_response_body = action.accept(body);
-                                let message = Ok(accept_response_body);
 
+                                let response = rfc003_accept_response(accept_response_body);
                                 response_channel
-                                    .send(message.clone())
+                                    .send(response)
                                     .expect("TODO: ERROR HANDLING");
 
+                                let message = Ok(accept_response_body);
                                 bob_spawner.spawn(request, message);
 
                                 Ok(ActionResponseBody::None)
@@ -84,12 +87,13 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                                 let request = state.request();
                                 let decline_response_body =
                                     action.decline(to_swap_decline_reason(body.reason));
-                                let message = Err(decline_response_body);
 
+                                let response = rfc003_decline_response(decline_response_body);
                                 response_channel
-                                    .send(message.clone())
+                                    .send(response)
                                     .expect("TODO: ERROR HANDLING");
 
+                                let message = Err(decline_response_body);
                                 bob_spawner.spawn(request, message);
 
                                 Ok(ActionResponseBody::None)
@@ -340,4 +344,34 @@ where
             title: None,
         }
     }
+}
+
+fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
+    body: rfc003::messages::AcceptResponseBody<AL, BL>,
+) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Accepted
+                .to_header()
+                .expect("Decision should not fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("body should always serialize into serde_json::Value"),
+        )
+}
+
+fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Declined
+                .to_header()
+                .expect("Decision shouldn't fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("decline body should always serialize into serde_json::Value"),
+        )
 }
