@@ -10,6 +10,7 @@ use crate::swap_protocols::{
         state_store::{self, StateStore},
         Ledger,
     },
+    MetadataStore,
 };
 use futures::{sync::mpsc, Future, Stream};
 use futures_core::{
@@ -18,22 +19,6 @@ use futures_core::{
 };
 use http_api_problem::HttpApiProblem;
 use std::sync::Arc;
-
-#[derive(Debug)]
-pub enum Error {
-    Storage(state_store::Error),
-    Metadata(metadata_store::Error),
-}
-
-impl From<Error> for HttpApiProblem {
-    fn from(e: Error) -> Self {
-        use self::Error::*;
-        match e {
-            Storage(e) => e.into(),
-            Metadata(e) => e.into(),
-        }
-    }
-}
 
 pub trait BobSpawner: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]

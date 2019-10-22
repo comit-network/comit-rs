@@ -4,14 +4,14 @@ use crate::{
         asset::{Asset, AssetKind},
         rfc003::{
             self,
-            bob::BobSpawner,
+            bob::{BobSpawner, InsertState},
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
             CreateLedgerEvents,
         },
         HashFunction, LedgerEventDependencies, LedgerKind, SwapId, SwapProtocol,
     },
 };
-use futures::future::Future;
+use futures::{future::Future, sync::oneshot};
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
@@ -41,6 +41,8 @@ pub struct ComitNode<TSubstream, B> {
     bob: B,
     #[behaviour(ignore)]
     task_executor: TaskExecutor,
+    #[behaviour(ignore)]
+    response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -58,7 +60,7 @@ impl Display for DialInformation {
     }
 }
 
-impl<TSubstream, B> ComitNode<TSubstream, B> {
+impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
     pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -76,6 +78,7 @@ impl<TSubstream, B> ComitNode<TSubstream, B> {
             mdns: Mdns::new()?,
             bob,
             task_executor,
+            response_channels: HashMap::new(),
         })
     }
 
@@ -87,6 +90,182 @@ impl<TSubstream, B> ComitNode<TSubstream, B> {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
+
+    fn handle_request(
+        &mut self,
+        counterparty: PeerId,
+        mut request: ValidatedInboundRequest,
+    ) -> Result<SwapId, Box<dyn Future<Item = Response, Error = Infallible> + Send>> {
+        match request.request_type() {
+            "SWAP" => {
+                let protocol: SwapProtocol = header!(request
+                    .take_header("protocol")
+                    .map(SwapProtocol::from_header));
+                match protocol {
+                    SwapProtocol::Rfc003(hash_function) => {
+                        let swap_id = header!(request.take_header("id").map(SwapId::from_header));
+                        let alpha_ledger = header!(request
+                            .take_header("alpha_ledger")
+                            .map(LedgerKind::from_header));
+                        let beta_ledger = header!(request
+                            .take_header("beta_ledger")
+                            .map(LedgerKind::from_header));
+                        let alpha_asset = header!(request
+                            .take_header("alpha_asset")
+                            .map(AssetKind::from_header));
+                        let beta_asset = header!(request
+                            .take_header("beta_asset")
+                            .map(AssetKind::from_header));
+
+                        match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
+                            (
+                                LedgerKind::Bitcoin(alpha_ledger),
+                                LedgerKind::Ethereum(beta_ledger),
+                                AssetKind::Bitcoin(alpha_asset),
+                                AssetKind::Ether(beta_asset),
+                            ) => {
+                                let request = rfc003_swap_request(
+                                    swap_id,
+                                    alpha_ledger,
+                                    beta_ledger,
+                                    alpha_asset,
+                                    beta_asset,
+                                    hash_function,
+                                    body!(request.take_body_as()),
+                                );
+                                self.bob
+                                    .insert_state(counterparty, request)
+                                    .expect("Could not write to metadatastore");
+
+                                Ok(swap_id)
+                            }
+                            (
+                                LedgerKind::Ethereum(alpha_ledger),
+                                LedgerKind::Bitcoin(beta_ledger),
+                                AssetKind::Ether(alpha_asset),
+                                AssetKind::Bitcoin(beta_asset),
+                            ) => {
+                                let request = rfc003_swap_request(
+                                    swap_id,
+                                    alpha_ledger,
+                                    beta_ledger,
+                                    alpha_asset,
+                                    beta_asset,
+                                    hash_function,
+                                    body!(request.take_body_as()),
+                                );
+                                self.bob
+                                    .insert_state(counterparty, request)
+                                    .expect("Could not write to metadatastore");
+
+                                Ok(swap_id)
+                            }
+                            (
+                                LedgerKind::Bitcoin(alpha_ledger),
+                                LedgerKind::Ethereum(beta_ledger),
+                                AssetKind::Bitcoin(alpha_asset),
+                                AssetKind::Erc20(beta_asset),
+                            ) => {
+                                let request = rfc003_swap_request(
+                                    swap_id,
+                                    alpha_ledger,
+                                    beta_ledger,
+                                    alpha_asset,
+                                    beta_asset,
+                                    hash_function,
+                                    body!(request.take_body_as()),
+                                );
+                                self.bob
+                                    .insert_state(counterparty, request)
+                                    .expect("Could not write to metadatastore");
+
+                                Ok(swap_id)
+                            }
+                            (
+                                LedgerKind::Ethereum(alpha_ledger),
+                                LedgerKind::Bitcoin(beta_ledger),
+                                AssetKind::Erc20(alpha_asset),
+                                AssetKind::Bitcoin(beta_asset),
+                            ) => {
+                                let request = rfc003_swap_request(
+                                    swap_id,
+                                    alpha_ledger,
+                                    beta_ledger,
+                                    alpha_asset,
+                                    beta_asset,
+                                    hash_function,
+                                    body!(request.take_body_as()),
+                                );
+                                self.bob
+                                    .insert_state(counterparty, request)
+                                    .expect("Could not write to metadatastore");
+
+                                Ok(swap_id)
+                            }
+                            (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
+                                log::warn!(
+                                    "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
+                                );
+
+                                let decline_body = DeclineResponseBody {
+                                    reason: Some(SwapDeclineReason::UnsupportedSwap),
+                                };
+
+                                Err(Box::new(futures::future::ok(
+                                    Response::empty()
+                                        .with_header(
+                                            "decision",
+                                            Decision::Declined
+                                                .to_header()
+                                                .expect("Decision should not fail to serialize"),
+                                        )
+                                        .with_body(serde_json::to_value(decline_body).expect(
+                                            "decline body should always serialize into serde_json::Value",
+                                        )),
+                                )))
+                            }
+                        }
+                    }
+                    SwapProtocol::Unknown(protocol) => {
+                        log::warn!("the swap protocol {} is currently not supported", protocol);
+
+                        let decline_body = DeclineResponseBody {
+                            reason: Some(SwapDeclineReason::UnsupportedProtocol),
+                        };
+                        Err(Box::new(futures::future::ok(
+                            Response::empty()
+                                .with_header(
+                                    "decision",
+                                    Decision::Declined
+                                        .to_header()
+                                        .expect("Decision should not fail to serialize"),
+                                )
+                                .with_body(serde_json::to_value(decline_body).expect(
+                                    "decline body should always serialize into serde_json::Value",
+                                )),
+                        )))
+                    }
+                }
+            }
+
+            // This case is just catered for, because of rust. It can only happen
+            // if there is a typo in the request_type within the program. The request
+            // type is checked on the messaging layer and will be handled there if
+            // an unknown request_type is passed in.
+            request_type => {
+                log::warn!("request type '{}' is unknown", request_type);
+
+                Err(Box::new(futures::future::ok(
+                    Response::empty().with_header(
+                        "decision",
+                        Decision::Declined
+                            .to_header()
+                            .expect("Decision should not fail to serialize"),
+                    ),
+                )))
+            }
+        }
+    }
 }
 
 pub trait SwarmInfo: Send + Sync + 'static {
@@ -96,7 +275,7 @@ pub trait SwarmInfo: Send + Sync + 'static {
 
 impl<
         TTransport: Transport + Send + 'static,
-        B: BobSpawner + Send + 'static,
+        B: InsertState + BobSpawner + Send + 'static,
         TMuxer: StreamMuxer + Send + Sync + 'static,
     > SwarmInfo for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>, B>>>
 where
@@ -124,7 +303,7 @@ where
     }
 }
 
-impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
+impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
     for ComitNode<TSubstream, B>
 {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
@@ -132,19 +311,27 @@ impl<TSubstream, B: BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
                 let PendingInboundRequest { request, channel } = request;
 
-                let generated_response = handle_request(&self.bob, peer_id, request);
+                match self.handle_request(peer_id, request) {
+                    Ok(id) => {
+                        self.response_channels.insert(id, channel);
+                    }
+                    Err(err_future) => {
+                        let future = err_future
+                            .and_then(|response| {
+                                channel.send(response).unwrap_or_else(|_| {
+                                    log::debug!(
+                                        "failed to send response through
+                        channel"
+                                    )
+                                });
 
-                let future = generated_response
-                    .and_then(|response| {
-                        channel.send(response).unwrap_or_else(|_| {
-                            log::debug!("failed to send response through channel")
-                        });
+                                Ok(())
+                            })
+                            .map_err(|_| unreachable!("error is Infallible"));
 
-                        Ok(())
-                    })
-                    .map_err(|_| unreachable!("error is Infallible"));
-
-                self.task_executor.spawn(future);
+                        self.task_executor.spawn(future);
+                    }
+                }
             }
         }
     }
@@ -165,170 +352,6 @@ impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
                     log::trace!("address {} of peer {} expired", address, peer)
                 }
             }
-        }
-    }
-}
-
-fn handle_request<B: BobSpawner>(
-    bob: &B,
-    counterparty: PeerId,
-    mut request: ValidatedInboundRequest,
-) -> Box<dyn Future<Item = Response, Error = Infallible> + Send> {
-    match request.request_type() {
-        "SWAP" => {
-            let protocol: SwapProtocol = header!(request
-                .take_header("protocol")
-                .map(SwapProtocol::from_header));
-            match protocol {
-                SwapProtocol::Rfc003(hash_function) => {
-                    let swap_id = header!(request.take_header("id").map(SwapId::from_header));
-                    let alpha_ledger = header!(request
-                        .take_header("alpha_ledger")
-                        .map(LedgerKind::from_header));
-                    let beta_ledger = header!(request
-                        .take_header("beta_ledger")
-                        .map(LedgerKind::from_header));
-                    let alpha_asset = header!(request
-                        .take_header("alpha_asset")
-                        .map(AssetKind::from_header));
-                    let beta_asset = header!(request
-                        .take_header("beta_asset")
-                        .map(AssetKind::from_header));
-
-                    match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
-                        (
-                            LedgerKind::Bitcoin(alpha_ledger),
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Ether(beta_asset),
-                        ) => spawn(
-                            bob,
-                            counterparty,
-                            rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            ),
-                        ),
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::Bitcoin(beta_ledger),
-                            AssetKind::Ether(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => spawn(
-                            bob,
-                            counterparty,
-                            rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            ),
-                        ),
-                        (
-                            LedgerKind::Bitcoin(alpha_ledger),
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Erc20(beta_asset),
-                        ) => spawn(
-                            bob,
-                            counterparty,
-                            rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            ),
-                        ),
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::Bitcoin(beta_ledger),
-                            AssetKind::Erc20(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => spawn(
-                            bob,
-                            counterparty,
-                            rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            ),
-                        ),
-                        (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
-                            log::warn!(
-                                "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
-                            );
-
-                            let decline_body = DeclineResponseBody {
-                                reason: Some(SwapDeclineReason::UnsupportedSwap),
-                            };
-
-                            Box::new(futures::future::ok(
-                                Response::empty()
-                                    .with_header(
-                                        "decision",
-                                        Decision::Declined
-                                            .to_header()
-                                            .expect("Decision should not fail to serialize"),
-                                    )
-                                    .with_body(serde_json::to_value(decline_body).expect(
-                                        "decline body should always serialize into serde_json::Value",
-                                    )),
-                            ))
-                        }
-                    }
-                }
-                SwapProtocol::Unknown(protocol) => {
-                    log::warn!("the swap protocol {} is currently not supported", protocol);
-
-                    let decline_body = DeclineResponseBody {
-                        reason: Some(SwapDeclineReason::UnsupportedProtocol),
-                    };
-                    Box::new(futures::future::ok(
-                        Response::empty()
-                            .with_header(
-                                "decision",
-                                Decision::Declined
-                                    .to_header()
-                                    .expect("Decision should not fail to serialize"),
-                            )
-                            .with_body(serde_json::to_value(decline_body).expect(
-                                "decline body should always serialize into serde_json::Value",
-                            )),
-                    ))
-                }
-            }
-        }
-
-        // This case is just catered for, because of rust. It can only happen
-        // if there is a typo in the request_type within the program. The request
-        // type is checked on the messaging layer and will be handled there if
-        // an unknown request_type is passed in.
-        request_type => {
-            log::warn!("request type '{}' is unknown", request_type);
-
-            Box::new(futures::future::ok(
-                Response::empty().with_header(
-                    "decision",
-                    Decision::Declined
-                        .to_header()
-                        .expect("Decision should not fail to serialize"),
-                ),
-            ))
         }
     }
 }

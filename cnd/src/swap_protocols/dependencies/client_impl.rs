@@ -12,7 +12,7 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            bob::BobSpawner,
+            bob::{BobSpawner, InsertState},
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
         },
         SwapProtocol,
@@ -39,7 +39,7 @@ type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003
 >;
 
 impl<
-        B: BobSpawner,
+        B: InsertState + BobSpawner,
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
     > Client for Mutex<Swarm<TTransport, ComitNode<TSubstream, B>>>

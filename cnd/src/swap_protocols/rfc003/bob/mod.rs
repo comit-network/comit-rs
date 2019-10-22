@@ -1,8 +1,9 @@
 pub mod actions;
 mod communication_events;
+mod insert_state;
 mod spawner;
 
-pub use self::{communication_events::*, spawner::*};
+pub use self::{communication_events::*, insert_state::*, spawner::*};
 
 use crate::swap_protocols::{
     asset::Asset,
