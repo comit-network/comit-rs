@@ -67,15 +67,14 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                         .and_then({
                             |body| {
                                 let request = state.request();
-                                let accept_response_body = action.accept(body);
+                                let accept_body = action.accept(body);
 
-                                let response = rfc003_accept_response(accept_response_body);
+                                let response = rfc003_accept_response(accept_body.clone());
                                 response_channel
                                     .send(response)
                                     .expect("TODO: ERROR HANDLING");
 
-                                let message = Ok(accept_response_body);
-                                bob_spawner.spawn(request, message);
+                                bob_spawner.spawn(request, Ok(accept_body));
 
                                 Ok(ActionResponseBody::None)
                             }
@@ -85,16 +84,15 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                         .and_then({
                             |body| {
                                 let request = state.request();
-                                let decline_response_body =
+                                let decline_body =
                                     action.decline(to_swap_decline_reason(body.reason));
 
-                                let response = rfc003_decline_response(decline_response_body);
+                                let response = rfc003_decline_response(decline_body.clone());
                                 response_channel
                                     .send(response)
                                     .expect("TODO: ERROR HANDLING");
 
-                                let message = Err(decline_response_body);
-                                bob_spawner.spawn(request, message);
+                                bob_spawner.spawn(request, Err(decline_body));
 
                                 Ok(ActionResponseBody::None)
                             }
@@ -131,6 +129,36 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
                 Ok(action)
             })
     }
+}
+
+fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
+    body: rfc003::messages::AcceptResponseBody<AL, BL>,
+) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Accepted
+                .to_header()
+                .expect("Decision should not fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("body should always serialize into serde_json::Value"),
+        )
+}
+
+fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Declined
+                .to_header()
+                .expect("Decision shouldn't fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("decline body should always serialize into serde_json::Value"),
+        )
 }
 
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund, I>
@@ -344,34 +372,4 @@ where
             title: None,
         }
     }
-}
-
-fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
-    body: rfc003::messages::AcceptResponseBody<AL, BL>,
-) -> Response {
-    Response::empty()
-        .with_header(
-            "decision",
-            Decision::Accepted
-                .to_header()
-                .expect("Decision should not fail to serialize"),
-        )
-        .with_body(
-            serde_json::to_value(body)
-                .expect("body should always serialize into serde_json::Value"),
-        )
-}
-
-fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Response {
-    Response::empty()
-        .with_header(
-            "decision",
-            Decision::Declined
-                .to_header()
-                .expect("Decision shouldn't fail to serialize"),
-        )
-        .with_body(
-            serde_json::to_value(body)
-                .expect("decline body should always serialize into serde_json::Value"),
-        )
 }

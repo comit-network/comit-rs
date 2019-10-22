@@ -41,8 +41,8 @@ impl<T: MetadataStore, S: StateStore> InsertState
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Result<(), Error> {
         let id = swap_request.id;
-        let swap_seed = Arc::new(self.seed.swap_seed(id));
-        let bob = bob::State::new(swap_request.clone(), swap_seed);
+        let seed = self.seed.swap_seed(id);
+        let bob = bob::State::proposed(swap_request.clone(), seed);
 
         let metadata = Metadata::new(
             id,

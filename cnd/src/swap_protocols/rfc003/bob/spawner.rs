@@ -1,23 +1,21 @@
 use crate::swap_protocols::{
     asset::Asset,
     dependencies::{self, LedgerEventDependencies},
-    metadata_store::{self, MetadataStore},
+    metadata_store::MetadataStore,
     rfc003::{
         self,
         bob::{self, State, SwapCommunication},
         create_ledger_events::CreateLedgerEvents,
         state_machine,
-        state_store::{self, StateStore},
+        state_store::StateStore,
         Ledger,
     },
-    MetadataStore,
 };
 use futures::{sync::mpsc, Future, Stream};
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
-use http_api_problem::HttpApiProblem;
 use std::sync::Arc;
 
 pub trait BobSpawner: Send + Sync + 'static {

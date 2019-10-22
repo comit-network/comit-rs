@@ -53,6 +53,17 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
+    pub fn proposed(request: Request<AL, BL, AA, BA>, secret_source: impl SecretSource) -> Self {
+        Self {
+            swap_communication: SwapCommunication::Proposed { request },
+            alpha_ledger_state: LedgerState::NotDeployed,
+            beta_ledger_state: LedgerState::NotDeployed,
+            secret_source: Arc::new(secret_source),
+            secret: None,
+            error: None,
+        }
+    }
+
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
