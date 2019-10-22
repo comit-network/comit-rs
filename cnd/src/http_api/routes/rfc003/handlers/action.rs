@@ -46,9 +46,14 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                 .ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
-            let response_channel: oneshot::Sender<
-                Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>,
-            > = unimplemented!("get this out of the HashMap inside `ComitNode`");
+            // For each request in the state store
+            // - get channel out of HashMap inside ComitNode using swap_id
+            // - call network::spawn with BobSpawner and the request
+            // - write the response to the channel
+
+            let response_channel: oneshot::Sender<Response>> = {
+                unimplemented!("make this build")
+            }
 
             state
                 .actions()
