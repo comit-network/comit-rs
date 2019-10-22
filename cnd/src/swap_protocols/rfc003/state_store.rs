@@ -12,7 +12,7 @@ use crate::swap_protocols::{
     swap_id::SwapId,
 };
 use either::Either;
-use std::{any::Any, collections::HashMap, hash::Hash, sync::Mutex};
+use std::{any::Any, collections::HashMap, sync::Mutex};
 
 #[derive(Debug)]
 pub enum Error {
@@ -26,11 +26,11 @@ pub trait StateStore: Send + Sync + 'static {
 }
 
 #[derive(Default, Debug)]
-pub struct InMemoryStateStore<K: Hash + Eq> {
-    states: Mutex<HashMap<K, Box<dyn Any + Send + Sync>>>,
+pub struct InMemoryStateStore {
+    states: Mutex<HashMap<SwapId, Box<dyn Any + Send + Sync>>>,
 }
 
-impl StateStore for InMemoryStateStore<SwapId> {
+impl StateStore for InMemoryStateStore {
     fn insert<A: ActorState>(&self, key: SwapId, value: A) {
         let mut states = self.states.lock().unwrap();
         states.insert(key, Box::new(value));
