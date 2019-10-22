@@ -24,7 +24,7 @@
         "chai-json-schema": "^1.5.0",
         "commander": "^3.0.2",
         "ethers": "^4.0.38",
-        "glob": "^7.1.4",
+        "glob": "^7.1.5",
         "mocha": "^6.2.2",
         "multiaddr": "^7.1.0",
         "satoshi-bitcoin": "^1.0.4",
