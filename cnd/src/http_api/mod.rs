@@ -29,7 +29,7 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         ledger::{ethereum, Bitcoin, Ethereum},
-        metadata_store,
+        metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
             alice::{self, AliceSpawner},
             bob::BobSpawner,
@@ -38,7 +38,7 @@ use crate::{
             state_store::{self, StateStore},
             ActorState, CreateLedgerEvents, Ledger,
         },
-        LedgerEventDependencies, Metadata, MetadataStore, SwapId, SwapProtocol,
+        LedgerEventDependencies, Metadata, SwapId, SwapProtocol,
     },
 };
 use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
@@ -306,15 +306,15 @@ impl<'de> Deserialize<'de> for DialInformation {
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
 #[derive(Debug)]
-pub struct Dependencies<M, S, A, B, N> {
-    pub metadata_store: Arc<M>,
+pub struct Dependencies<S, A, B, N> {
+    pub metadata_store: Arc<InMemoryMetadataStore>,
     pub state_store: Arc<S>,
     pub alice_spawner: Arc<A>,
     pub bob_spawner: Arc<B>,
     pub network: Arc<N>,
 }
 
-impl<M, S, A, B, N> Clone for Dependencies<M, S, A, B, N> {
+impl<S, A, B, N> Clone for Dependencies<S, A, B, N> {
     fn clone(&self) -> Self {
         Self {
             metadata_store: Arc::clone(&self.metadata_store),
@@ -326,9 +326,8 @@ impl<M, S, A, B, N> Clone for Dependencies<M, S, A, B, N> {
     }
 }
 
-impl<M: MetadataStore, S, A, B, N> MetadataStore for Dependencies<M, S, A, B, N>
+impl<S, A, B, N> MetadataStore for Dependencies<S, A, B, N>
 where
-    M: Send + Sync + 'static,
     S: Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -347,9 +346,8 @@ where
     }
 }
 
-impl<M, S: StateStore, AS, B, N> StateStore for Dependencies<M, S, AS, B, N>
+impl<S: StateStore, AS, B, N> StateStore for Dependencies<S, AS, B, N>
 where
-    M: Send + Sync + 'static,
     S: Send + Sync + 'static,
     AS: Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -368,9 +366,8 @@ where
     }
 }
 
-impl<M, S, A, B: BobSpawner, N> BobSpawner for Dependencies<M, S, A, B, N>
+impl<S, A, B: BobSpawner, N> BobSpawner for Dependencies<S, A, B, N>
 where
-    M: Send + Sync + 'static,
     S: Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -387,9 +384,8 @@ where
     }
 }
 
-impl<M, S, A: AliceSpawner, B, N> AliceSpawner for Dependencies<M, S, A, B, N>
+impl<S, A: AliceSpawner, B, N> AliceSpawner for Dependencies<S, A, B, N>
 where
-    M: Send + Sync + 'static,
     S: Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
@@ -408,9 +404,8 @@ where
     }
 }
 
-impl<M, S, A, B, N: Network> Network for Dependencies<M, S, A, B, N>
+impl<S, A, B, N: Network> Network for Dependencies<S, A, B, N>
 where
-    M: Send + Sync + 'static,
     S: Send + Sync + 'static,
     A: Send + Sync + 'static,
     B: Send + Sync + 'static,
