@@ -12,16 +12,19 @@ use crate::{
         actions::Actions,
         rfc003::{
             actions::{Action, ActionKind},
+            bob::BobSpawner,
+            messages::{AcceptResponseBody, DeclineResponseBody},
             state_store::StateStore,
         },
         MetadataStore, SwapId,
     },
 };
+use futures::sync::oneshot;
 use http_api_problem::HttpApiProblem;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<T: MetadataStore, S: StateStore>(
+pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -29,6 +32,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore>(
     query_params: ActionExecutionParameters,
     metadata_store: &T,
     state_store: &S,
+    bob_spawner: &B,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
     let metadata = metadata_store
         .get(id)?
@@ -42,6 +46,10 @@ pub fn handle_action<T: MetadataStore, S: StateStore>(
                 .ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
+            let response_channel: oneshot::Sender<
+                Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>,
+            > = unimplemented!("get this out of the HashMap inside `ComitNode`");
+
             state
                 .actions()
                 .into_iter()
@@ -49,19 +57,38 @@ pub fn handle_action<T: MetadataStore, S: StateStore>(
                 .and_then(|action| match action {
                     Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
                         .map_err(problem::deserialize)
-                        .and_then(|body| {
-                            action
-                                .accept(body)
-                                .map(|_| ActionResponseBody::None)
-                                .map_err(|_| problem::action_already_done(action_kind))
+                        .and_then({
+                            |body| {
+                                let request = state.request();
+                                let accept_response_body = action.accept(body);
+                                let message = Ok(accept_response_body);
+
+                                response_channel
+                                    .send(message.clone())
+                                    .expect("TODO: ERROR HANDLING");
+
+                                bob_spawner.spawn(request, message);
+
+                                Ok(ActionResponseBody::None)
+                            }
                         }),
                     Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
                         .map_err(problem::deserialize)
-                        .and_then(|body| {
-                            action
-                                .decline(to_swap_decline_reason(body.reason))
-                                .map(|_| ActionResponseBody::None)
-                                .map_err(|_| problem::action_already_done(action_kind))
+                        .and_then({
+                            |body| {
+                                let request = state.request();
+                                let decline_response_body =
+                                    action.decline(to_swap_decline_reason(body.reason));
+                                let message = Err(decline_response_body);
+
+                                response_channel
+                                    .send(message.clone())
+                                    .expect("TODO: ERROR HANDLING");
+
+                                bob_spawner.spawn(request, message);
+
+                                Ok(ActionResponseBody::None)
+                            }
                         }),
                     Action::Deploy(action) => action.into_response_payload(query_params),
                     Action::Fund(action) => action.into_response_payload(query_params),

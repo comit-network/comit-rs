@@ -21,7 +21,8 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: SwarmInfo>(
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    alice_protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    bob_protocol_dependencies: swap_protocols::bob::ProtocolDependencies<T, S>,
     origin_auth: String,
     swarm_info: Arc<SI>,
     peer_id: PeerId,
@@ -30,7 +31,8 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
     let rfc003 = swaps.and(warp::path(RFC003));
     let metadata_store = warp::any().map(move || Arc::clone(&metadata_store));
     let state_store = warp::any().map(move || Arc::clone(&state_store));
-    let protocol_dependencies = warp::any().map(move || protocol_dependencies.clone());
+    let alice_protocol_dependencies = warp::any().map(move || alice_protocol_dependencies.clone());
+    let bob_protocol_dependencies = warp::any().map(move || bob_protocol_dependencies.clone());
     let swarm_info = warp::any().map(move || Arc::clone(&swarm_info));
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
@@ -38,7 +40,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
-        .and(protocol_dependencies.clone())
+        .and(alice_protocol_dependencies.clone())
         .and(warp::body::json())
         .and_then(http_api::routes::rfc003::post_swap);
 
@@ -67,6 +69,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
         .and(metadata_store.clone())
         .and(state_store.clone())
+        .and(bob_protocol_dependencies.clone())
         .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::routes::rfc003::action);
 

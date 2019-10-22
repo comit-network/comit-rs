@@ -33,12 +33,22 @@ pub mod bob {
     use super::*;
 
     #[allow(missing_debug_implementations)]
-    #[derive(Clone)]
     pub struct ProtocolDependencies<T, S> {
         pub ledger_events: LedgerEventDependencies,
         pub metadata_store: Arc<T>,
         pub state_store: Arc<S>,
         pub seed: Seed,
+    }
+
+    impl<T, S> Clone for ProtocolDependencies<T, S> {
+        fn clone(&self) -> Self {
+            Self {
+                ledger_events: self.ledger_events.clone(),
+                metadata_store: Arc::clone(&self.metadata_store),
+                state_store: Arc::clone(&self.state_store),
+                seed: self.seed,
+            }
+        }
     }
 }
 

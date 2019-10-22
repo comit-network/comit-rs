@@ -18,6 +18,7 @@ pub fn state_store() -> HttpApiProblem {
     log::error!("State store didn't have state in it despite having the metadata");
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
+
 pub fn swap_not_found() -> HttpApiProblem {
     HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND)
 }

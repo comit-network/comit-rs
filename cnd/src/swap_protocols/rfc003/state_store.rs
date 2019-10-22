@@ -1,9 +1,8 @@
 use crate::swap_protocols::{
     rfc003::{
         ledger_state::LedgerState,
-        messages::AcceptResponseBody,
         state_machine::{
-            Accepted, AlphaDeployed, AlphaFunded, AlphaFundedBetaDeployed, AlphaFundedBetaRedeemed,
+            AlphaDeployed, AlphaFunded, AlphaFundedBetaDeployed, AlphaFundedBetaRedeemed,
             AlphaFundedBetaRefunded, AlphaIncorrectlyFunded, AlphaRedeemedBetaFunded,
             AlphaRefundedBetaFunded, BothFunded, Error as ErrorState, Final, SwapOutcome,
             SwapStates,
@@ -65,15 +64,8 @@ impl StateStore for InMemoryStateStore<SwapId> {
 
         match update {
             SS::Start(_) => {
-                log::warn!("Attempted to save Start state for key {}", key);
+                log::warn!("Attempted to update Start state for key {}", key);
                 return;
-            }
-            SS::Accepted(Accepted { swap }) => actor_state.set_response(Ok(AcceptResponseBody {
-                alpha_ledger_redeem_identity: swap.alpha_ledger_redeem_identity,
-                beta_ledger_refund_identity: swap.beta_ledger_refund_identity,
-            })),
-            SS::Final(Final(SwapOutcome::Declined { reason, .. })) => {
-                actor_state.set_response(Err(reason))
             }
             SS::AlphaDeployed(AlphaDeployed { alpha_deployed, .. }) => {
                 *actor_state.alpha_ledger_mut() = Deployed {
@@ -269,24 +261,28 @@ mod tests {
         seed::Seed,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            rfc003::{alice, messages::Request, Secret},
+            rfc003::{
+                alice,
+                messages::{AcceptResponseBody, Request},
+                Secret,
+            },
             HashFunction, Timestamp,
         },
     };
     use bitcoin_support::Amount;
-    use ethereum_support::EtherQuantity;
+    use ethereum_support::{Address, EtherQuantity};
     use spectral::prelude::*;
-    use std::sync::Arc;
 
     #[test]
     fn insert_and_get_state() {
         let state_store = InMemoryStateStore::default();
 
-        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::new(
+        let bitcoin_pub_key = crate::bitcoin::PublicKey::new(
             "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275"
                 .parse()
                 .unwrap(),
         );
+        let ethereum_address: Address = "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap();
 
         let request = Request {
             id: SwapId::default(),
@@ -295,18 +291,21 @@ mod tests {
             alpha_asset: Amount::from_btc(1.0).unwrap(),
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: "8457037fcd80a8650c4692d7fcfc1d0a96b92867"
-                .parse()
-                .unwrap(),
+            alpha_ledger_refund_identity: bitcoin_pub_key,
+            beta_ledger_redeem_identity: ethereum_address.clone(),
             alpha_expiry: Timestamp::from(2_000_000_000),
             beta_expiry: Timestamp::from(2_000_000_000),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),
         };
+        let accept_response_body = AcceptResponseBody {
+            beta_ledger_refund_identity: ethereum_address,
+            alpha_ledger_redeem_identity: bitcoin_pub_key,
+        };
+
         let id = SwapId::default();
         let seed = Seed::from(*b"hello world, you are beautiful!!");
-        let secret_source = Arc::new(seed.swap_seed(id));
-        let state = alice::State::new(request, secret_source);
+        let secret_source = seed.swap_seed(id);
+        let state = alice::State::accepted(request, accept_response_body, secret_source);
 
         state_store
             .insert::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(id, state.clone());

@@ -1,7 +1,7 @@
 use crate::{seed::Seed, swap_protocols::rfc003::Secret};
 use bitcoin_support::bitcoin::secp256k1::SecretKey;
 
-pub trait SecretSource: Send + Sync {
+pub trait SecretSource: Send + Sync + 'static {
     fn secret(&self) -> Secret;
     fn secp256k1_redeem(&self) -> SecretKey;
     fn secp256k1_refund(&self) -> SecretKey;

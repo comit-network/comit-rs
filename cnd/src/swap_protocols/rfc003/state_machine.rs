@@ -7,10 +7,9 @@ use crate::swap_protocols::{
         self,
         events::{self, Deployed, Funded, Redeemed, Refunded},
         ledger::Ledger,
-        messages::{AcceptResponseBody, DeclineResponseBody},
         SaveState, SecretHash,
     },
-    HashFunction, SwapId, Timestamp,
+    HashFunction, Timestamp,
 };
 use either::Either;
 use futures::{future, try_ready, Async, Future};
@@ -74,23 +73,6 @@ pub struct OngoingSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
-    pub fn new(start: Start<AL, BL, AA, BA>, response: AcceptResponseBody<AL, BL>) -> Self {
-        OngoingSwap {
-            alpha_ledger: start.alpha_ledger,
-            beta_ledger: start.beta_ledger,
-            alpha_asset: start.alpha_asset,
-            beta_asset: start.beta_asset,
-            hash_function: start.hash_function,
-            alpha_ledger_redeem_identity: response.alpha_ledger_redeem_identity,
-            alpha_ledger_refund_identity: start.alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: start.beta_ledger_redeem_identity,
-            beta_ledger_refund_identity: response.beta_ledger_refund_identity,
-            alpha_expiry: start.alpha_expiry,
-            beta_expiry: start.beta_expiry,
-            secret_hash: start.secret_hash,
-        }
-    }
-
     pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
         HtlcParams {
             asset: self.alpha_asset,
@@ -116,10 +98,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    Declined {
-        start: Start<AL, BL, AA, BA>,
-        reason: DeclineResponseBody,
-    },
+    //    Declined {
+    //        request: Request<AL, BL, AA, BA>,
+    //        reason: DeclineResponseBody,
+    //    },
     AlphaRefunded {
         swap: OngoingSwap<AL, BL, AA, BA>,
         alpha_deployed: Deployed<AL>,
@@ -175,30 +157,14 @@ pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub alpha_ledger_events: Box<dyn events::LedgerEvents<AL, AA>>,
     pub beta_ledger_events: Box<dyn events::LedgerEvents<BL, BA>>,
     pub state_repo: Arc<dyn SaveState<AL, BL, AA, BA>>,
-    pub communication_events: Box<dyn events::CommunicationEvents<AL, BL, AA, BA>>,
 }
 
 #[derive(StateMachineFuture)]
 #[state_machine_future(context = "Context", derive(Clone, Debug, PartialEq))]
 #[allow(missing_debug_implementations)]
 pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    #[state_machine_future(start, transitions(Accepted, Final))]
-    Start {
-        id: SwapId,
-        alpha_ledger_refund_identity: AL::Identity,
-        beta_ledger_redeem_identity: BL::Identity,
-        alpha_ledger: AL,
-        beta_ledger: BL,
-        alpha_asset: AA,
-        beta_asset: BA,
-        hash_function: HashFunction,
-        alpha_expiry: Timestamp,
-        beta_expiry: Timestamp,
-        secret_hash: SecretHash,
-    },
-
-    #[state_machine_future(transitions(AlphaDeployed))]
-    Accepted { swap: OngoingSwap<AL, BL, AA, BA> },
+    #[state_machine_future(start, transitions(AlphaDeployed))]
+    Start { swap: OngoingSwap<AL, BL, AA, BA> },
 
     #[state_machine_future(transitions(AlphaFunded, AlphaIncorrectlyFunded, Final))]
     AlphaDeployed {
@@ -296,45 +262,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>
         state: &'s mut RentToOwn<'s, Start<AL, BL, AA, BA>>,
         context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
     ) -> Result<Async<AfterStart<AL, BL, AA, BA>>, rfc003::Error> {
-        let request = rfc003::messages::Request {
-            id: state.id,
-            alpha_asset: state.alpha_asset,
-            beta_asset: state.beta_asset,
-            alpha_ledger: state.alpha_ledger,
-            beta_ledger: state.beta_ledger,
-            hash_function: state.hash_function,
-            alpha_ledger_refund_identity: state.alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: state.beta_ledger_redeem_identity,
-            alpha_expiry: state.alpha_expiry,
-            beta_expiry: state.beta_expiry,
-            secret_hash: state.secret_hash,
-        };
-
-        let response = try_ready!(context
-            .communication_events
-            .request_responded(&request)
-            .poll());
-
-        let state = state.take();
-
-        match response {
-            Ok(swap_accepted) => transition_save!(context.state_repo, Accepted {
-                swap: OngoingSwap::new(state, swap_accepted),
-            }),
-            Err(reason) => transition_save!(
-                context.state_repo,
-                Final(SwapOutcome::Declined {
-                    start: state,
-                    reason
-                })
-            ),
-        }
-    }
-
-    fn poll_accepted<'s, 'c>(
-        state: &'s mut RentToOwn<'s, Accepted<AL, BL, AA, BA>>,
-        context: &'c mut RentToOwn<'c, Context<AL, BL, AA, BA>>,
-    ) -> Result<Async<AfterAccepted<AL, BL, AA, BA>>, rfc003::Error> {
         let alpha_deployed = try_ready!(context
             .alpha_ledger_events
             .htlc_deployed(state.swap.alpha_htlc_params())
@@ -780,7 +707,6 @@ macro_rules! impl_display {
 }
 
 impl_display!(Start);
-impl_display!(Accepted);
 impl_display!(AlphaDeployed);
 impl_display!(AlphaFunded);
 impl_display!(AlphaIncorrectlyFunded);

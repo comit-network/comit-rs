@@ -24,6 +24,7 @@ use std::sync::Arc;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
+use crate::swap_protocols::rfc003::bob::BobSpawner;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<A: AliceSpawner>(
@@ -51,14 +52,16 @@ pub fn get_swap<T: MetadataStore, S: StateStore>(
         .map_err(into_rejection)
 }
 
+// TODO: Remove two arguments here (they are in the dependencies struct)
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<T: MetadataStore, S: StateStore>(
+pub fn action<T: MetadataStore, S: StateStore, B: BobSpawner>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
+    bob_spawner: B,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
     let metadata_store = metadata_store.as_ref();
@@ -72,6 +75,7 @@ pub fn action<T: MetadataStore, S: StateStore>(
         query_params,
         metadata_store,
         state_store,
+        &bob_spawner,
     )
     .map(|body| warp::reply::json(&body))
     .map_err(into_rejection)

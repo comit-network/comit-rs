@@ -75,7 +75,7 @@ fn main() -> Result<(), failure::Error> {
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(bob_protocol_dependencies, runtime.executor())?;
+    let behaviour = network::ComitNode::new(bob_protocol_dependencies.clone(), runtime.executor())?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -101,6 +101,7 @@ fn main() -> Result<(), failure::Error> {
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         alice_protocol_dependencies,
+        bob_protocol_dependencies,
         Arc::clone(&swarm),
         local_peer_id,
         &mut runtime,
@@ -131,7 +132,8 @@ fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo
     settings: &Settings,
     metadata_store: Arc<T>,
     state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    alice_protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
+    bob_protocol_dependencies: swap_protocols::bob::ProtocolDependencies<T, S>,
     swarm_info: Arc<SI>,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
@@ -139,7 +141,8 @@ fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo
     let routes = route_factory::create(
         metadata_store,
         state_store,
-        protocol_dependencies,
+        alice_protocol_dependencies,
+        bob_protocol_dependencies,
         auth_origin(&settings),
         swarm_info,
         peer_id,
