@@ -130,13 +130,10 @@ impl FromHeader for Decision {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
-        libp2p_comit_ext::{FromHeader, ToHeader},
-        swap_protocols::{asset::AssetKind, HashFunction, LedgerKind, SwapProtocol},
-    };
+    use super::*;
+    use crate::swap_protocols::HashFunction;
     use bitcoin_support::Amount;
-    use ethereum_support::{Address, Erc20Quantity, Erc20Token, U256};
-    use libp2p_comit::frame::Header;
+    use ethereum_support::{Address, Erc20Quantity, U256};
     use spectral::prelude::*;
 
     #[test]
@@ -208,5 +205,35 @@ mod tests {
         let quantity = AssetKind::from_header(header).unwrap();
         let amount = Amount::from_btc(1.0).unwrap();
         assert_eq!(quantity, AssetKind::Bitcoin(amount));
+    }
+
+    #[test]
+    fn ethereum_ledger_to_header() {
+        let ledger = LedgerKind::Ethereum(Ethereum {
+            network: ethereum_support::Network::Ropsten,
+        });
+        let header = ledger.to_header().unwrap();
+
+        assert_eq!(
+            header,
+            Header::with_str_value("ethereum")
+                .with_parameter("network", "ropsten")
+                .unwrap()
+        );
+    }
+
+    #[test]
+    fn bitcoin_ledger_to_header() {
+        let ledger = LedgerKind::Bitcoin(Bitcoin {
+            network: bitcoin_support::Network::Testnet,
+        });
+        let header = ledger.to_header().unwrap();
+
+        assert_eq!(
+            header,
+            Header::with_str_value("bitcoin")
+                .with_parameter("network", "testnet")
+                .unwrap()
+        );
     }
 }
