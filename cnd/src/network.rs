@@ -10,7 +10,10 @@ use crate::{
         HashFunction, LedgerKind, SwapId, SwapProtocol,
     },
 };
-use futures::{future::Future, sync::oneshot};
+use futures::{
+    future::Future,
+    sync::oneshot::{self, Sender},
+};
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
@@ -41,7 +44,7 @@ pub struct ComitNode<TSubstream, B> {
     #[behaviour(ignore)]
     task_executor: TaskExecutor,
     #[behaviour(ignore)]
-    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
+    response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,11 +63,7 @@ impl Display for DialInformation {
 }
 
 impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
-    pub fn new(
-        bob: B,
-        task_executor: TaskExecutor,
-        response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
-    ) -> Result<Self, io::Error> {
+    pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
@@ -81,7 +80,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
             mdns: Mdns::new()?,
             bob,
             task_executor,
-            response_channels,
+            response_channels: HashMap::new(),
         })
     }
 
@@ -271,16 +270,17 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
     }
 }
 
-pub trait SwarmInfo: Send + Sync + 'static {
+pub trait Network: Send + Sync + 'static {
     fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
     fn listen_addresses(&self) -> Vec<Multiaddr>;
+    fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
 }
 
 impl<
         TTransport: Transport + Send + 'static,
         B: InsertState + BobSpawner + Send + 'static,
         TMuxer: StreamMuxer + Send + Sync + 'static,
-    > SwarmInfo for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>, B>>>
+    > Network for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>, B>>>
 where
     <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
     <TMuxer as StreamMuxer>::Substream: Send + 'static,
@@ -304,6 +304,12 @@ where
             .cloned()
             .collect()
     }
+
+    fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
+        let mut swarm = self.lock().unwrap();
+
+        swarm.response_channels.remove(&swap)
+    }
 }
 
 impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
@@ -316,8 +322,7 @@ impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<Behav
 
                 match self.handle_request(peer_id, request) {
                     Ok(id) => {
-                        let mut response_channels = self.response_channels.lock().unwrap();
-                        response_channels.insert(id, channel);
+                        self.response_channels.insert(id, channel);
                     }
                     Err(err_future) => {
                         let future = err_future

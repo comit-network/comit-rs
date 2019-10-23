@@ -85,7 +85,7 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     }
 }
 
-#[derive(Clone, derivative::Derivative)]
+#[derive(Clone, derivative::Derivative, Default)]
 #[derivative(Debug)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
     phantom_data: PhantomData<(AL, BL)>,

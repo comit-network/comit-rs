@@ -19,24 +19,18 @@ use crate::{
         MetadataStore, SwapId,
     },
 };
-use futures::sync::oneshot;
 use hyper::header;
-use libp2p_comit::frame::Response;
-use std::{
-    collections::HashMap,
-    sync::{Arc, Mutex},
-};
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::swap_protocols::rfc003::bob::BobSpawner;
+use crate::{network::Network, swap_protocols::rfc003::bob::BobSpawner};
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<A: AliceSpawner>(
-    alice_spawner: A,
+pub fn post_swap<D: AliceSpawner>(
+    dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(&alice_spawner, request_body_kind)
+    handle_post_swap(&dependencies, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -47,43 +41,25 @@ pub fn post_swap<A: AliceSpawner>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<T: MetadataStore, S: StateStore>(
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
+pub fn get_swap<D: MetadataStore + StateStore>(
+    dependencies: D,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_swap(metadata_store.as_ref(), state_store.as_ref(), id)
+    handle_get_swap(&dependencies, id)
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(into_rejection)
 }
 
-// TODO: Remove two arguments here (they are in the dependencies struct)
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<T: MetadataStore, S: StateStore, B: BobSpawner>(
+pub fn action<D: MetadataStore + StateStore + BobSpawner + Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    bob_spawner: B,
+    dependencies: D,
     body: serde_json::Value,
-    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 ) -> Result<impl Reply, Rejection> {
-    let metadata_store = metadata_store.as_ref();
-    let state_store = state_store.as_ref();
-
-    handle_action(
-        method,
-        id,
-        action_kind,
-        body,
-        query_params,
-        metadata_store,
-        state_store,
-        &bob_spawner,
-        response_channels,
-    )
-    .map(|body| warp::reply::json(&body))
-    .map_err(into_rejection)
+    handle_action(method, id, action_kind, body, query_params, dependencies)
+        .map(|body| warp::reply::json(&body))
+        .map_err(into_rejection)
 }

@@ -292,7 +292,7 @@ mod tests {
             beta_asset: EtherQuantity::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: bitcoin_pub_key,
-            beta_ledger_redeem_identity: ethereum_address.clone(),
+            beta_ledger_redeem_identity: ethereum_address,
             alpha_expiry: Timestamp::from(2_000_000_000),
             beta_expiry: Timestamp::from(2_000_000_000),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),

@@ -9,6 +9,7 @@ use crate::{
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
     libp2p_comit_ext::ToHeader,
+    network::Network,
     swap_protocols::{
         actions::Actions,
         rfc003::{
@@ -21,37 +22,26 @@ use crate::{
         MetadataStore, SwapId,
     },
 };
-use futures::sync::oneshot;
 use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    sync::{Arc, Mutex},
-};
+use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
+pub fn handle_action<D: MetadataStore + StateStore + BobSpawner + Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    metadata_store: &T,
-    state_store: &S,
-    bob_spawner: &B,
-    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
+    dependencies: D,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata = metadata_store
-        .get(id)?
-        .ok_or_else(problem::swap_not_found)?;
+    let metadata = MetadataStore::get(&dependencies, id)?.ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
         &metadata,
         (|| {
-            let state = state_store
-                .get::<ROLE>(&id)?
-                .ok_or_else(problem::state_store)?;
+            let state =
+                StateStore::get::<ROLE>(&dependencies, &id)?.ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
             state
@@ -64,9 +54,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let mut response_channels = response_channels.lock().unwrap();
-                                    let channel = response_channels
-                                        .remove(&id)
+                                    let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let accept_body = action.accept(body);
@@ -75,7 +63,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    bob_spawner.spawn(request, Ok(accept_body));
+                                    BobSpawner::spawn(&dependencies, request, Ok(accept_body));
 
                                     Ok(ActionResponseBody::None)
                                 }
@@ -84,9 +72,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let mut response_channels = response_channels.lock().unwrap();
-                                    let channel = response_channels
-                                        .remove(&id)
+                                    let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let decline_body =
@@ -96,7 +82,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    bob_spawner.spawn(request, Err(decline_body));
+                                    BobSpawner::spawn(&dependencies, request, Err(decline_body));
 
                                     Ok(ActionResponseBody::None)
                                 }
