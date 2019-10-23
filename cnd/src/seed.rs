@@ -1,8 +1,16 @@
-use crate::swap_protocols::SwapId;
+use crate::{std_ext::path::PrintablePath, swap_protocols::SwapId};
+use base64;
 use crypto::{digest::Digest, sha2::Sha256};
+use pem;
 use rand::Rng;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::{
+    ffi::OsStr,
+    fmt,
+    fs::{self, File},
+    io::{self, Write},
+    path::{Path, PathBuf},
+};
 
 pub const SEED_LENGTH: usize = 32;
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -40,6 +48,168 @@ impl Seed {
         rand.try_fill(&mut arr[..])?;
         Ok(Seed(arr))
     }
+
+    /// Construct a seed from base64 data read in from pem file.
+    pub fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
+        let file = Path::new(&seed_file);
+        log::info!(
+            "Found secret seed file, reading from {}",
+            PrintablePath(&file.to_path_buf())
+        );
+
+        let contents = fs::read_to_string(file)?;
+        let pem = pem::parse(contents)?;
+        let bytes = seed_from_pem(&pem::encode(&pem))?;
+
+        Ok(Seed::from(bytes))
+    }
+
+    /// Read the seed from the default location if it exists, otherwise
+    /// generate a random seed and write it to the default location.
+    pub fn from_default_file_or_generate<R: Rng>(rand: R) -> Result<Seed, Error> {
+        let path = default_seed_path()?;
+
+        if path.exists() {
+            return Self::from_file(path);
+        }
+
+        let random_seed = Seed::new_random(rand)?;
+        random_seed.write_to(path)?;
+        Ok(random_seed)
+    }
+
+    fn write_to(&self, seed_file: PathBuf) -> Result<(), Error> {
+        ensure_directory_exists(seed_file.clone())?;
+        self.write_to_file(seed_file)?;
+        Ok(())
+    }
+
+    fn write_to_file(&self, path: PathBuf) -> Result<(), Error> {
+        let out = format!(
+            "-----BEGIN SECRET SEED-----\n{}\n-----END SECRET SEED-----\n",
+            base64::encode(&self.0)
+        );
+
+        let mut file = File::create(path.clone())?;
+        file.write_all(out.as_bytes())?;
+
+        log::info!(
+            "No seed file found, creating default at {}",
+            PrintablePath(&path)
+        );
+
+        Ok(())
+    }
+}
+
+fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
+    if let Some(path) = file.parent() {
+        if !path.exists() {
+            log::info!(
+                "Secret seed parent directory does not exist, creating recursively: {}",
+                PrintablePath(&file)
+            );
+            fs::create_dir_all(path)?;
+        }
+    }
+    Ok(())
+}
+
+// Validates and returns the bytes from a pem string.
+fn seed_from_pem(pem: &str) -> Result<[u8; 32], Error> {
+    // At this stage we know we have a valid pem string but
+    // we do not know what it contains.  Validate by:
+    // - Payload should be 32 bytes of base64 encoded data
+    // - Consider all tags valid
+    // - Check there is only one line of non-tag data
+
+    let mut lines = pem.lines();
+    if !lines.next().ok_or(Error::PemFileParse)?.contains("BEGIN") {
+        return Err(Error::PemFileParse);
+    }
+
+    let seed_base64 = lines.next().ok_or(Error::PemFileParse)?;
+
+    if !lines.next().ok_or(Error::PemFileParse)?.contains("END") {
+        return Err(Error::PemFileParse);
+    }
+
+    let bytes = base64::decode(seed_base64)?;
+    if bytes.len() != SEED_LENGTH {
+        return Err(Error::IncorrectLength(bytes.len()));
+    }
+
+    let mut array = [0; SEED_LENGTH];
+    for (i, b) in bytes.iter().enumerate() {
+        array[i] = *b;
+    }
+
+    Ok(array)
+}
+
+fn default_seed_path() -> Result<PathBuf, Error> {
+    crate::data_dir()
+        .map(|dir| Path::join(&dir, "secret_seed.pem"))
+        .ok_or_else(|| {
+            panic!("TODO: error handling");
+        })
+}
+
+pub enum Error {
+    Io(io::Error),
+    PemFileParse,
+    PemParse(pem::PemError),
+    IncorrectLength(usize),
+    Rand(rand::Error),
+    Decode(base64::DecodeError),
+}
+
+impl std::error::Error for Error {}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "secret seed file error")
+    }
+}
+
+impl fmt::Debug for Error {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "secret seed: ")?;
+        match self {
+            Error::Io(e) => write!(f, "io error: {:?}", e),
+            Error::PemFileParse => write!(f, "pem format incorrect"),
+            Error::PemParse(e) => write!(f, "pem format incorrect: {:?}", e),
+            Error::IncorrectLength(x) => {
+                write!(f, "expected 32 bytes of base64 encode, got {} bytes", x)
+            }
+            Error::Rand(e) => write!(f, "random number error: {:?}", e),
+            Error::Decode(e) => write!(f, "base64 parse error: {:?}", e),
+        }
+    }
+}
+
+impl From<base64::DecodeError> for Error {
+    fn from(e: base64::DecodeError) -> Error {
+        Error::Decode(e)
+    }
+}
+
+impl From<io::Error> for Error {
+    fn from(e: io::Error) -> Error {
+        Error::Io(e)
+    }
+}
+
+impl From<pem::PemError> for Error {
+    fn from(e: pem::PemError) -> Error {
+        Error::PemParse(e)
+    }
+}
+
+impl From<rand::Error> for Error {
+    fn from(e: rand::Error) -> Error {
+        Error::Rand(e)
+    }
 }
 
 impl From<[u8; 32]> for Seed {
@@ -51,7 +221,13 @@ impl From<[u8; 32]> for Seed {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pem;
     use rand::rngs::OsRng;
+
+    #[test]
+    fn seed_byte_string_must_be_32_bytes_long() {
+        let _seed = Seed::from(*b"this string is exactly 32 bytes!");
+    }
 
     #[test]
     fn data_and_seed_used_to_calculate_hash() {
@@ -84,5 +260,68 @@ mod tests {
         assert_eq!(out, "Seed([*****])".to_string());
         let debug = format!("{:?}", seed);
         assert_eq!(debug, "Seed([*****])".to_string());
+    }
+
+    // 32 bytes base64 encoded.
+    const PEM: &str = "-----BEGIN SECRET SEED-----
+syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
+-----END SECRET SEED-----
+";
+
+    #[test]
+    fn pem_library_works_as_expected() {
+        let pem = pem::parse(PEM).unwrap();
+        assert_eq!(pem.tag, "SECRET SEED");
+    }
+
+    #[test]
+    fn seed_from_pem_works() {
+        let want = base64::decode("syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=").unwrap();
+        let got = seed_from_pem(PEM).unwrap();
+        assert_eq!(got, *want);
+    }
+
+    #[test]
+    #[should_panic]
+    fn seed_from_pem_fails_for_short_seed() {
+        let short = "-----BEGIN SECRET SEED-----
+6516513
+-----END SECRET SEED-----
+";
+        let _ = seed_from_pem(short).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn seed_from_pem_fails_for_long_seed() {
+        let long = "-----BEGIN SECRET SEED-----
+syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XMsyl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM
+-----END SECRET SEED-----
+";
+        let _ = seed_from_pem(long).unwrap();
+    }
+
+    #[test]
+    #[should_panic]
+    fn seed_from_pem_fails_for_multi_line_key() {
+        let multi = "-----BEGIN SECRET SEED-----
+mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
+mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
+-----END SECRET SEED-----
+";
+        let _ = seed_from_pem(multi).unwrap();
+    }
+
+    #[test]
+    fn round_trip_through_file_write_read() {
+        let tmpfile = tempfile::NamedTempFile::new().expect("Could not create temp file");
+        let path = tmpfile.path().to_path_buf();
+
+        let seed = Seed::new_random(OsRng).unwrap();
+        seed.write_to_file(path.clone())
+            .expect("Write seed to temp file");
+
+        let rinsed = Seed::from_file(path).expect("Read from temp file");
+        assert_eq!(seed.0, rinsed.0);
     }
 }

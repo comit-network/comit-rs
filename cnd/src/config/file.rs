@@ -1,8 +1,7 @@
-use crate::{seed::Seed, std_ext::path::PrintablePath};
+use crate::std_ext::path::PrintablePath;
 use config as config_rs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
-use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
@@ -20,7 +19,7 @@ use std::{
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct File {
-    pub comit: Comit,
+    pub comit: Option<Comit>,
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
@@ -31,14 +30,13 @@ pub struct File {
 }
 
 impl File {
-    pub fn default<R: Rng>(rand: R) -> Self {
+    pub fn default() -> Self {
         let comit_listen = "/ip4/0.0.0.0/tcp/9939"
             .parse()
             .expect("cnd listen address could not be parsed");
-        let seed = Seed::new_random(rand).expect("Could not generate random seed");
 
         File {
-            comit: Comit { secret_seed: seed },
+            comit: None,
             network: Network {
                 listen: vec![comit_listen],
             },
@@ -66,7 +64,7 @@ pub struct Logging {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Comit {
-    pub secret_seed: Seed,
+    pub secret_seed_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -107,7 +105,7 @@ pub struct Ethereum {
 }
 
 impl File {
-    pub fn read_or_create_default<R: Rng>(rand: R) -> Result<Self, config_rs::ConfigError> {
+    pub fn read_or_create_default() -> Result<Self, config_rs::ConfigError> {
         let path = Self::default_config_path()?;
 
         if path.exists() {
@@ -198,18 +196,13 @@ impl File {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rand::rngs::mock::StepRng;
-    use reqwest::Url;
+    use log::LevelFilter;
     use spectral::prelude::*;
     use tempfile::NamedTempFile;
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
         logging: Logging,
-    }
-
-    fn rng() -> StepRng {
-        StepRng::new(0, 0)
     }
 
     #[test]
@@ -278,7 +271,7 @@ mod tests {
     fn complete_logging_section_is_optional() {
         let config_without_logging_section = File {
             logging: None,
-            ..File::default(rng())
+            ..File::default()
         };
         let temp_file = temp_toml_file();
         let temp_file_path = temp_file.into_temp_path().to_path_buf();
@@ -301,7 +294,7 @@ mod tests {
 
     #[test]
     fn read_and_write_config_work() {
-        let config = File::default(rng());
+        let config = File::default();
         let temp_file = temp_toml_file();
         let path = temp_file.into_temp_path().to_path_buf();
 

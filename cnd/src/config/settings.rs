@@ -11,7 +11,7 @@ use reqwest::Url;
 /// are created from a given `Config`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
-    pub comit: Comit,
+    pub comit: Option<Comit>,
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
@@ -78,7 +78,6 @@ mod tests {
 
     use super::*;
     use crate::config::file;
-    use rand::rngs::OsRng;
     use spectral::prelude::*;
 
     #[test]
@@ -88,7 +87,7 @@ mod tests {
                 level: None,
                 structured: None,
             }),
-            ..File::default(OsRng)
+            ..File::default()
         };
 
         let settings = Settings::from_config_file_and_defaults(config_file);
@@ -105,7 +104,7 @@ mod tests {
                 level: None,
                 structured: Some(true),
             }),
-            ..File::default(OsRng)
+            ..File::default()
         };
 
         let settings = Settings::from_config_file_and_defaults(config_file);
@@ -119,7 +118,7 @@ mod tests {
     fn logging_section_defaults_to_debug_and_false() {
         let config_file = File {
             logging: None,
-            ..File::default(OsRng)
+            ..File::default()
         };
 
         let settings = Settings::from_config_file_and_defaults(config_file);
