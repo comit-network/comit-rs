@@ -232,7 +232,7 @@ mod tests {
         assert_eq!(
             header,
             Header::with_str_value("ethereum")
-                .with_parameter("network", "ropsten")
+                .with_parameter("network", 3)
                 .unwrap()
         );
     }
