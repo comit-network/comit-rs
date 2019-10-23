@@ -4,8 +4,13 @@ use crate::{
     network::SwarmInfo,
     swap_protocols::{self, rfc003::state_store, MetadataStore, SwapId},
 };
+use futures::sync::oneshot;
 use libp2p::PeerId;
-use std::sync::Arc;
+use libp2p_comit::frame::Response;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
@@ -26,6 +31,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
     origin_auth: String,
     swarm_info: Arc<SI>,
     peer_id: PeerId,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
@@ -36,6 +42,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
     let swarm_info = warp::any().map(move || Arc::clone(&swarm_info));
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
+    let response_channels = warp::any().map(move || Arc::clone(&response_channels));
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -71,6 +78,7 @@ pub fn create<T: MetadataStore, S: state_store::StateStore, C: Client, SI: Swarm
         .and(state_store.clone())
         .and(bob_protocol_dependencies.clone())
         .and(warp::body::json().or(empty_json_body).unify())
+        .and(response_channels)
         .and_then(http_api::routes::rfc003::action);
 
     let get_peers = warp::get2()

@@ -19,8 +19,13 @@ use crate::{
         MetadataStore, SwapId,
     },
 };
+use futures::sync::oneshot;
 use hyper::header;
-use std::sync::Arc;
+use libp2p_comit::frame::Response;
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex},
+};
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
@@ -63,6 +68,7 @@ pub fn action<T: MetadataStore, S: StateStore, B: BobSpawner>(
     state_store: Arc<S>,
     bob_spawner: B,
     body: serde_json::Value,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 ) -> Result<impl Reply, Rejection> {
     let metadata_store = metadata_store.as_ref();
     let state_store = state_store.as_ref();
@@ -76,6 +82,7 @@ pub fn action<T: MetadataStore, S: StateStore, B: BobSpawner>(
         metadata_store,
         state_store,
         &bob_spawner,
+        response_channels,
     )
     .map(|body| warp::reply::json(&body))
     .map_err(into_rejection)

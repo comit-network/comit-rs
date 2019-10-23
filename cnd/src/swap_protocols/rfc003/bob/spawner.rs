@@ -11,7 +11,7 @@ use crate::swap_protocols::{
         Ledger,
     },
 };
-use futures::{sync::mpsc, Future, Stream};
+use futures::{sync::mpsc, Stream};
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},

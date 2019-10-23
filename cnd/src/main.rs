@@ -1,6 +1,5 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
-
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     comit_client::Client,
@@ -13,16 +12,18 @@ use cnd::{
         self,
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::state_store::{InMemoryStateStore, StateStore},
-        LedgerEventDependencies,
+        LedgerEventDependencies, SwapId,
     },
 };
-use futures::{stream, Future, Stream};
+use futures::{stream, sync::oneshot, Future, Stream};
 use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
+use libp2p_comit::frame::Response;
 use rand::rngs::OsRng;
 use std::{
+    collections::HashMap,
     net::SocketAddr,
     sync::{Arc, Mutex},
 };
@@ -74,8 +75,13 @@ fn main() -> Result<(), failure::Error> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
+    let response_channels = Arc::new(Mutex::new(HashMap::new()));
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(bob_protocol_dependencies.clone(), runtime.executor())?;
+    let behaviour = network::ComitNode::new(
+        bob_protocol_dependencies.clone(),
+        runtime.executor(),
+        Arc::clone(&response_channels),
+    )?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -105,6 +111,7 @@ fn main() -> Result<(), failure::Error> {
         Arc::clone(&swarm),
         local_peer_id,
         &mut runtime,
+        response_channels,
     );
 
     spawn_comit_i_instance(settings, &mut runtime);
@@ -137,6 +144,7 @@ fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo
     swarm_info: Arc<SI>,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 ) {
     let routes = route_factory::create(
         metadata_store,
@@ -146,6 +154,7 @@ fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo
         auth_origin(&settings),
         swarm_info,
         peer_id,
+        response_channels,
     );
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);

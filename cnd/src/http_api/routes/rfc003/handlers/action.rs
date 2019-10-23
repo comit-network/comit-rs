@@ -24,7 +24,11 @@ use crate::{
 use futures::sync::oneshot;
 use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
-use std::fmt::Debug;
+use std::{
+    collections::HashMap,
+    fmt::Debug,
+    sync::{Arc, Mutex},
+};
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
 pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
@@ -36,6 +40,7 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
     metadata_store: &T,
     state_store: &S,
     bob_spawner: &B,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
     let metadata = metadata_store
         .get(id)?
@@ -49,58 +54,58 @@ pub fn handle_action<T: MetadataStore, S: StateStore, B: BobSpawner>(
                 .ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
-            // For each request in the state store
-            // - get channel out of HashMap inside ComitNode using swap_id
-            // - call B::spawn and the request
-            // - create the Response from rfc003::messages::Accept../Decline..
-            // - write the Response to the channel
-
-            let response_channel: oneshot::Sender<Response> = { unimplemented!("make this build") };
-
             state
                 .actions()
                 .into_iter()
                 .select_action(action_kind, method)
-                .and_then(|action| match action {
-                    Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
-                        .map_err(problem::deserialize)
-                        .and_then({
-                            |body| {
-                                let request = state.request();
-                                let accept_body = action.accept(body);
+                .and_then({
+                    |action| match action {
+                        Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
+                            .map_err(problem::deserialize)
+                            .and_then({
+                                |body| {
+                                    let mut response_channels = response_channels.lock().unwrap();
+                                    let channel = response_channels
+                                        .remove(&id)
+                                        .ok_or_else(problem::missing_channel)?;
 
-                                let response = rfc003_accept_response(accept_body.clone());
-                                response_channel
-                                    .send(response)
-                                    .expect("TODO: ERROR HANDLING");
+                                    let accept_body = action.accept(body);
 
-                                bob_spawner.spawn(request, Ok(accept_body));
+                                    let response = rfc003_accept_response(accept_body.clone());
+                                    channel.send(response).map_err(problem::send_over_channel)?;
 
-                                Ok(ActionResponseBody::None)
-                            }
-                        }),
-                    Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
-                        .map_err(problem::deserialize)
-                        .and_then({
-                            |body| {
-                                let request = state.request();
-                                let decline_body =
-                                    action.decline(to_swap_decline_reason(body.reason));
+                                    let request = state.request();
+                                    bob_spawner.spawn(request, Ok(accept_body));
 
-                                let response = rfc003_decline_response(decline_body.clone());
-                                response_channel
-                                    .send(response)
-                                    .expect("TODO: ERROR HANDLING");
+                                    Ok(ActionResponseBody::None)
+                                }
+                            }),
+                        Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
+                            .map_err(problem::deserialize)
+                            .and_then({
+                                |body| {
+                                    let mut response_channels = response_channels.lock().unwrap();
+                                    let channel = response_channels
+                                        .remove(&id)
+                                        .ok_or_else(problem::missing_channel)?;
 
-                                bob_spawner.spawn(request, Err(decline_body));
+                                    let decline_body =
+                                        action.decline(to_swap_decline_reason(body.reason));
 
-                                Ok(ActionResponseBody::None)
-                            }
-                        }),
-                    Action::Deploy(action) => action.into_response_payload(query_params),
-                    Action::Fund(action) => action.into_response_payload(query_params),
-                    Action::Redeem(action) => action.into_response_payload(query_params),
-                    Action::Refund(action) => action.into_response_payload(query_params),
+                                    let response = rfc003_decline_response(decline_body.clone());
+                                    channel.send(response).map_err(problem::send_over_channel)?;
+
+                                    let request = state.request();
+                                    bob_spawner.spawn(request, Err(decline_body));
+
+                                    Ok(ActionResponseBody::None)
+                                }
+                            }),
+                        Action::Deploy(action) => action.into_response_payload(query_params),
+                        Action::Fund(action) => action.into_response_payload(query_params),
+                        Action::Redeem(action) => action.into_response_payload(query_params),
+                        Action::Refund(action) => action.into_response_payload(query_params),
+                    }
                 })
         })
     )

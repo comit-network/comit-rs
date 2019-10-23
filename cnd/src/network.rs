@@ -41,7 +41,7 @@ pub struct ComitNode<TSubstream, B> {
     #[behaviour(ignore)]
     task_executor: TaskExecutor,
     #[behaviour(ignore)]
-    response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -60,7 +60,11 @@ impl Display for DialInformation {
 }
 
 impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
-    pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
+    pub fn new(
+        bob: B,
+        task_executor: TaskExecutor,
+        response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
+    ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
@@ -77,7 +81,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
             mdns: Mdns::new()?,
             bob,
             task_executor,
-            response_channels: HashMap::new(),
+            response_channels,
         })
     }
 
@@ -312,7 +316,8 @@ impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<Behav
 
                 match self.handle_request(peer_id, request) {
                     Ok(id) => {
-                        self.response_channels.insert(id, channel);
+                        let mut response_channels = self.response_channels.lock().unwrap();
+                        response_channels.insert(id, channel);
                     }
                     Err(err_future) => {
                         let future = err_future

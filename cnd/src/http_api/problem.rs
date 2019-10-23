@@ -4,6 +4,7 @@ use crate::swap_protocols::{
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
+use libp2p_comit::frame::Response;
 use serde::Serialize;
 use warp::{Rejection, Reply};
 
@@ -12,6 +13,16 @@ pub struct MissingQueryParameter {
     pub name: &'static str,
     pub data_type: &'static str,
     pub description: &'static str,
+}
+
+pub fn missing_channel() -> HttpApiProblem {
+    log::error!("Channel for swap was not found in hash map");
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
+pub fn send_over_channel(_e: Response) -> HttpApiProblem {
+    log::error!("Sending response over channel failed");
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
 pub fn state_store() -> HttpApiProblem {
