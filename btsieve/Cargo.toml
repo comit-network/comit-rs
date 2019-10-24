@@ -23,6 +23,4 @@ bitcoincore-rpc = "0.8.0-rc1"
 lazy_static = "1.4.0"
 quickcheck = "0.7"
 spectral = "0.6"
-tc_bitcoincore_client = { path = "../internal/tc_bitcoincore_client" }
-tc_web3_client = { path = "../internal/tc_web3_client" }
 testcontainers = "0.8"

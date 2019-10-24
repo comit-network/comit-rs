@@ -1,9 +1,0 @@
-[package]
-name = "tc_bitcoincore_client"
-version = "0.1.0"
-authors = [ "CoBloX developers <team@coblox.tech>" ]
-edition = "2018"
-
-[dependencies]
-bitcoincore-rpc = "0.8.0-rc1"
-testcontainers = "0.8"

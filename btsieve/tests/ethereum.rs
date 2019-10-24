@@ -2,7 +2,13 @@ use btsieve::{
     ethereum::{TransactionPattern, Web3Connector},
     MatchingTransactions,
 };
-use ethereum_support::{TransactionRequest, U256};
+use ethereum_support::{
+    web3::{
+        transports::{EventLoopHandle, Http},
+        Web3,
+    },
+    TransactionRequest, U256,
+};
 use reqwest::Url;
 use std::time::{Duration, Instant};
 use testcontainers::*;
@@ -23,7 +29,7 @@ fn ethereum_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(images::parity_parity::ParityEthereum::default());
 
-    let (_handle, client) = tc_web3_client::new(&container);
+    let (_handle, client) = new_web3_client(&container);
 
     let mut url = Url::parse("http://localhost").unwrap();
     #[allow(clippy::cast_possible_truncation)]
@@ -87,4 +93,16 @@ fn ethereum_transaction_pattern_e2e_test() {
         funding_transaction.unwrap().transaction.hash,
         actual_transaction
     )
+}
+
+pub fn new_web3_client<D: Docker, E: Image>(
+    container: &Container<'_, D, E>,
+) -> (EventLoopHandle, Web3<Http>) {
+    let port = container.get_host_port(8545).unwrap();
+    let endpoint = format!("http://localhost:{}", port);
+
+    let (event_loop, transport) = Http::new(&endpoint).unwrap();
+    let web3 = Web3::new(transport);
+
+    (event_loop, web3)
 }
