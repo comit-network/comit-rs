@@ -13,8 +13,7 @@ use crate::swap_protocols::{
         Ledger, Secret,
     },
 };
-use failure::_core::marker::PhantomData;
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 /// Defines the set of actions available in the RFC003 protocol
 #[derive(Debug, Clone, PartialEq, strum_macros::EnumDiscriminants)]
