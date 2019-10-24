@@ -26,7 +26,7 @@ use tokio::{
 fn bitcoin_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(BitcoinCore::default());
-    let client = tc_bitcoincore_client::new(&container);
+    let client = new_bitcoincore_client(&container);
 
     let mut url = Url::parse("http://localhost").unwrap();
     #[allow(clippy::cast_possible_truncation)]
@@ -82,4 +82,19 @@ fn bitcoin_transaction_pattern_e2e_test() {
         runtime.block_on(future_with_timeout).unwrap();
 
     assert_eq!(funding_transaction.unwrap().txid(), actual_transaction)
+}
+
+pub fn new_bitcoincore_client<D: Docker>(
+    container: &Container<'_, D, BitcoinCore>,
+) -> bitcoincore_rpc::Client {
+    let port = container.get_host_port(18443).unwrap();
+    let auth = container.image().auth();
+
+    let endpoint = format!("http://localhost:{}", port);
+
+    bitcoincore_rpc::Client::new(
+        endpoint,
+        bitcoincore_rpc::Auth::UserPass(auth.username().to_owned(), auth.password().to_owned()),
+    )
+    .unwrap()
 }

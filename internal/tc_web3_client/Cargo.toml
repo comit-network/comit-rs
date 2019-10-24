@@ -1,9 +1,0 @@
-[package]
-name = "tc_web3_client"
-version = "0.1.0"
-authors = [ "CoBloX developers <team@coblox.tech>" ]
-edition = "2018"
-
-[dependencies]
-testcontainers = "0.8"
-web3 = { version = "0.8", default-features = false, features = ["http"] }
