@@ -32,6 +32,7 @@ pub enum ActionExecutionParameters {
     None {},
 }
 
+/// `network` field here for backward compatibility, to be removed with #TODO
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
@@ -52,12 +53,14 @@ pub enum ActionResponseBody {
         amount: ethereum_support::EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
+        chain_id: ethereum_support::ChainId,
     },
     EthereumCallContract {
         contract_address: ethereum_support::Address,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
+        chain_id: ethereum_support::ChainId,
         network: ethereum_support::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
@@ -231,6 +234,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
             data,
             amount,
             gas_limit,
+            chain_id,
             network,
         } = self;
         match query_params {
@@ -238,6 +242,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
                 data,
                 amount,
                 gas_limit,
+                chain_id,
                 network,
             }),
             _ => Err(problem::unexpected_query_parameters(
@@ -264,6 +269,7 @@ impl IntoResponsePayload for ethereum::CallContract {
             data,
             gas_limit,
             network,
+            chain_id,
             min_block_timestamp,
         } = self;
         match query_params {
@@ -272,6 +278,7 @@ impl IntoResponsePayload for ethereum::CallContract {
                 data,
                 gas_limit,
                 network,
+                chain_id,
                 min_block_timestamp,
             }),
             _ => Err(problem::unexpected_query_parameters(
@@ -307,7 +314,7 @@ impl IntoResponsePayload for Infallible {
 mod test {
     use super::*;
     use bitcoin::Address as BitcoinAddress;
-    use ethereum_support::{Address as EthereumAddress, Network as EthereumNetwork, U256};
+    use ethereum_support::{Address as EthereumAddress, ChainId, U256};
     use std::str::FromStr;
 
     #[test]
@@ -335,17 +342,19 @@ mod test {
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
         let addr = EthereumAddress::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let chain_id = ChainId::new(3);
         let contract = ActionResponseBody::EthereumCallContract {
             contract_address: addr,
             data: None,
             gas_limit: U256::from(1),
-            network: EthereumNetwork::Ropsten,
+            chain_id,
+            network: chain_id.into(),
             min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}}"#
+            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","chain_id":3,"network":"ropsten"}}"#
         );
     }
 

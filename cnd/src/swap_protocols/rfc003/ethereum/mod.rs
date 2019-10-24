@@ -87,6 +87,7 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
             data: htlc.into(),
             amount: htlc_params.asset,
             gas_limit,
+            chain_id: htlc_params.ledger.chain_id,
             network: htlc_params.ledger.network,
         }
     }
@@ -101,6 +102,7 @@ impl From<HtlcParams<Ethereum, Erc20Token>> for DeployContract {
             data: htlc.into(),
             amount: EtherQuantity::zero(),
             gas_limit,
+            chain_id: htlc_params.ledger.chain_id,
             network: htlc_params.ledger.network,
         }
     }

@@ -56,6 +56,7 @@ impl HttpLedger {
 pub enum Error {
     WrongLedger,
     ParameterNotFound,
+    UnknownNetwork,
     Serde(serde_json::Error),
 }
 

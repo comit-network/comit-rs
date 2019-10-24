@@ -50,7 +50,7 @@ impl ToHeader for LedgerKind {
                 },
             )?,
             LedgerKind::Ethereum(ethereum) => {
-                Header::with_str_value("ethereum").with_parameter("network", ethereum.network)?
+                Header::with_str_value("ethereum").with_parameter("network", ethereum.chain_id)?
             }
             unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
@@ -224,9 +224,7 @@ mod tests {
 
     #[test]
     fn ethereum_ledger_to_header() {
-        let ledger = LedgerKind::Ethereum(Ethereum {
-            network: ethereum_support::Network::Ropsten,
-        });
+        let ledger = LedgerKind::Ethereum(Ethereum::new(ethereum_support::ChainId::ropsten()));
         let header = ledger.to_header().unwrap();
 
         assert_eq!(

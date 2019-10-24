@@ -40,14 +40,15 @@ pub mod bitcoin {
 
 pub mod ethereum {
     use crate::swap_protocols::Timestamp;
-    use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity, Network};
+    use ethereum_support::{web3::types::U256, Address, Bytes, ChainId, EtherQuantity, Network};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct DeployContract {
         pub data: Bytes,
         pub amount: EtherQuantity,
         pub gas_limit: U256,
-        pub network: Network,
+        pub chain_id: ChainId,
+        pub network: Network, // To be removed with #TODO
     }
 
     #[derive(Debug, Clone, PartialEq)]
@@ -55,6 +56,7 @@ pub mod ethereum {
         pub to: Address,
         pub data: Option<Bytes>,
         pub gas_limit: U256,
+        pub chain_id: ChainId,
         pub network: Network,
         pub min_block_timestamp: Option<Timestamp>,
     }

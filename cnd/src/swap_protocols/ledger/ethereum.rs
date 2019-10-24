@@ -1,21 +1,29 @@
 use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use ethereum_support::{Address, Network, Transaction};
+use ethereum_support::{Address, ChainId, Network, Transaction};
+use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+/// `network` is only kept for backward compatibility with client
+/// and must be removed with issue #TODO
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub struct Ethereum {
     pub network: Network,
+    pub chain_id: ChainId,
 }
 
 impl Ethereum {
-    pub fn new(network: Network) -> Self {
-        Ethereum { network }
+    pub fn new(chain: ChainId) -> Self {
+        Ethereum {
+            network: chain.into(),
+            chain_id: chain,
+        }
     }
 }
 
 impl Default for Ethereum {
     fn default() -> Self {
         Ethereum {
-            network: Network::Regtest,
+            network: ChainId::regtest().into(),
+            chain_id: ChainId::regtest(),
         }
     }
 }

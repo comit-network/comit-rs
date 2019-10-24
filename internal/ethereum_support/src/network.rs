@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(
     Clone,
@@ -31,6 +32,45 @@ impl Network {
             "3" => Network::Ropsten,
             "17" => Network::Regtest,
             _ => Network::Unknown,
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug, Deserialize, Eq, Hash, PartialEq, Serialize)]
+pub struct ChainId(u32);
+
+impl ChainId {
+    pub fn new(chain_id: u32) -> ChainId {
+        ChainId(chain_id)
+    }
+    pub fn mainnet() -> ChainId {
+        ChainId(1)
+    }
+
+    pub fn ropsten() -> ChainId {
+        ChainId(3)
+    }
+
+    pub fn regtest() -> ChainId {
+        ChainId(17)
+    }
+}
+
+impl From<ChainId> for Network {
+    fn from(chain: ChainId) -> Self {
+        Network::from_network_id(chain.0.to_string())
+    }
+}
+
+impl TryFrom<Network> for ChainId {
+    type Error = ();
+
+    fn try_from(network: Network) -> Result<Self, ()> {
+        match network {
+            Network::Mainnet => Ok(ChainId::mainnet()),
+            Network::Regtest => Ok(ChainId::regtest()),
+            Network::Ropsten => Ok(ChainId::ropsten()),
+            Network::Unknown => Err(()),
         }
     }
 }
