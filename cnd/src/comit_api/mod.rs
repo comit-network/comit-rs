@@ -20,7 +20,18 @@ fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(header.take_parameter("network")?)),
+            "bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(
+                match header.take_parameter::<String>("network")?.as_ref() {
+                    "mainnet" => bitcoin::Network::Bitcoin,
+                    "testnet" => bitcoin::Network::Testnet,
+                    "regtest" => bitcoin::Network::Regtest,
+                    _ => {
+                        return Err(serde_json::Error::custom(
+                            "unexpected bitcoin network variant",
+                        ))
+                    }
+                },
+            )),
             "ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
             other => LedgerKind::Unknown(other.to_string()),
         })
@@ -30,9 +41,14 @@ impl FromHeader for LedgerKind {
 impl ToHeader for LedgerKind {
     fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            LedgerKind::Bitcoin(bitcoin) => {
-                Header::with_str_value("bitcoin").with_parameter("network", bitcoin.network)?
-            }
+            LedgerKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin").with_parameter(
+                "network",
+                match bitcoin.network {
+                    bitcoin::Network::Bitcoin => "mainnet",
+                    bitcoin::Network::Testnet => "testnet",
+                    bitcoin::Network::Regtest => "regtest",
+                },
+            )?,
             LedgerKind::Ethereum(ethereum) => {
                 Header::with_str_value("ethereum").with_parameter("network", ethereum.network)?
             }
@@ -222,17 +238,44 @@ mod tests {
     }
 
     #[test]
-    fn bitcoin_ledger_testnet_to_header() {
-        let ledger = LedgerKind::Bitcoin(Bitcoin {
-            network: bitcoin::Network::Testnet,
-        });
-        let header = ledger.to_header().unwrap();
+    fn bitcoin_ledger_to_header_roundtrip() {
+        let ledgerkinds = vec![
+            LedgerKind::Bitcoin(Bitcoin {
+                network: bitcoin::Network::Bitcoin,
+            }),
+            LedgerKind::Bitcoin(Bitcoin {
+                network: bitcoin::Network::Testnet,
+            }),
+            LedgerKind::Bitcoin(Bitcoin {
+                network: bitcoin::Network::Regtest,
+            }),
+        ];
 
-        assert_eq!(
-            header,
+        let headers = vec![
+            Header::with_str_value("bitcoin")
+                .with_parameter("network", "mainnet")
+                .unwrap(),
             Header::with_str_value("bitcoin")
                 .with_parameter("network", "testnet")
-                .unwrap()
-        );
+                .unwrap(),
+            Header::with_str_value("bitcoin")
+                .with_parameter("network", "regtest")
+                .unwrap(),
+        ];
+
+        let serialized_headers = ledgerkinds
+            .iter()
+            .map(|ledger| ledger.to_header())
+            .collect::<Result<Vec<Header>, serde_json::Error>>()
+            .unwrap();
+
+        let constructed_ledgerkinds = serialized_headers
+            .iter()
+            .map(|header| LedgerKind::from_header(header.clone()))
+            .collect::<Result<Vec<LedgerKind>, serde_json::Error>>()
+            .unwrap();
+
+        assert_eq!(serialized_headers, headers);
+        assert_eq!(constructed_ledgerkinds, ledgerkinds);
     }
 }

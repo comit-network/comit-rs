@@ -43,7 +43,7 @@ pub trait Ledger:
         + 'static;
 }
 
-#[derive(Clone, Derivative)]
+#[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum LedgerKind {
     Bitcoin(Bitcoin),

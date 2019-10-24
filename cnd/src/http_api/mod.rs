@@ -52,10 +52,9 @@ use serde::{
 };
 use std::sync::Arc;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Http<I>(pub I);
 
-impl_serialize_type_name_with_fields!(Bitcoin { "network" => network });
 impl_from_http_ledger!(Bitcoin { network });
 
 impl FromHttpAsset for BitcoinAmount {
@@ -150,6 +149,31 @@ impl Serialize for Http<PeerId> {
         S: Serializer,
     {
         serializer.serialize_str(&self.0.to_base58()[..])
+    }
+}
+
+impl Serialize for Http<bitcoin::Network> {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(match self.0 {
+            bitcoin::Network::Bitcoin => "mainnet",
+            bitcoin::Network::Testnet => "testnet",
+            bitcoin::Network::Regtest => "regtest",
+        })
+    }
+}
+
+impl Serialize for Http<Bitcoin> {
+    fn serialize<S>(&self, serializer: S) -> Result<<S as Serializer>::Ok, <S as Serializer>::Error>
+    where
+        S: Serializer,
+    {
+        let mut state = serializer.serialize_struct("", 2)?;
+        state.serialize_field("name", "bitcoin")?;
+        state.serialize_field("network", &Http(self.0.network))?;
+        state.end()
     }
 }
 
@@ -424,9 +448,55 @@ mod tests {
     }
 
     #[test]
-    fn http_ledger_serializes_correctly_to_json() {
-        let bitcoin = Bitcoin::new(bitcoin::Network::Regtest);
-        let ethereum = Ethereum::new(ethereum_support::Network::Regtest);
+    fn bitcoin_http_ledger_regtest_serializes_correctly_to_json() {
+        let input = &[
+            Http(Bitcoin::new(bitcoin::Network::Bitcoin)),
+            Http(Bitcoin::new(bitcoin::Network::Testnet)),
+            Http(Bitcoin::new(bitcoin::Network::Regtest)),
+        ];
+
+        let expected = &[
+            r#"{"name":"bitcoin","network":"mainnet"}"#,
+            r#"{"name":"bitcoin","network":"testnet"}"#,
+            r#"{"name":"bitcoin","network":"regtest"}"#,
+        ];
+
+        let actual = input
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<Vec<String>, serde_json::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
+        let input = &[
+            Http(Ethereum::new(ethereum_support::Network::Mainnet)),
+            Http(Ethereum::new(ethereum_support::Network::Ropsten)),
+            Http(Ethereum::new(ethereum_support::Network::Regtest)),
+        ];
+
+        let expected = &[
+            r#"{"name":"ethereum","network":"mainnet"}"#,
+            r#"{"name":"ethereum","network":"ropsten"}"#,
+            r#"{"name":"ethereum","network":"regtest"}"#,
+        ];
+
+        let actual = input
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<Vec<String>, serde_json::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn http_ledger_testnet_serializes_correctly_to_json() {
+        let bitcoin = Bitcoin::new(bitcoin::Network::Testnet);
+        let ethereum = Ethereum::new(ethereum_support::Network::Ropsten);
 
         let bitcoin = Http(bitcoin);
         let ethereum = Http(ethereum);
@@ -436,11 +506,11 @@ mod tests {
 
         assert_eq!(
             &bitcoin_serialized,
-            r#"{"name":"bitcoin","network":"regtest"}"#
+            r#"{"name":"bitcoin","network":"testnet"}"#
         );
         assert_eq!(
             &ethereum_serialized,
-            r#"{"name":"ethereum","network":"regtest"}"#
+            r#"{"name":"ethereum","network":"ropsten"}"#
         );
     }
 

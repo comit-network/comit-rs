@@ -1,5 +1,5 @@
 use crate::{
-    http_api::problem,
+    http_api::{problem, Http},
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -39,11 +39,11 @@ pub enum ActionResponseBody {
     BitcoinSendAmountToAddress {
         to: bitcoin::Address,
         amount: String,
-        network: bitcoin::Network,
+        network: Http<bitcoin::Network>,
     },
     BitcoinBroadcastSignedTransaction {
         hex: String,
-        network: bitcoin::Network,
+        network: Http<bitcoin::Network>,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_median_block_time: Option<Timestamp>,
     },
@@ -81,7 +81,7 @@ impl ActionResponseBody {
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
             hex: bitcoin::consensus::encode::serialize_hex(transaction),
-            network,
+            network: Http(network),
             min_median_block_time,
         }
     }
@@ -119,7 +119,7 @@ impl From<SendToAddress> for ActionResponseBody {
         ActionResponseBody::BitcoinSendAmountToAddress {
             to,
             amount: amount.as_sat().to_string(),
-            network,
+            network: Http(network),
         }
     }
 }
@@ -351,16 +351,39 @@ mod test {
 
     #[test]
     fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
-        let response_body = ActionResponseBody::from(SendToAddress {
-            to: BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap(),
-            amount: bitcoin::Amount::from_btc(1.0).unwrap(),
-            network: bitcoin::Network::Regtest,
-        });
+        let to = BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap();
+        let amount = bitcoin::Amount::from_btc(1.0).unwrap();
 
-        let serialized = serde_json::to_string(&response_body).unwrap();
-        assert_eq!(
-            serialized,
+        let input = &[
+            ActionResponseBody::from(SendToAddress {
+                to: to.clone(),
+                amount,
+                network: bitcoin::Network::Bitcoin,
+            }),
+            ActionResponseBody::from(SendToAddress {
+                to: to.clone(),
+                amount,
+                network: bitcoin::Network::Testnet,
+            }),
+            ActionResponseBody::from(SendToAddress {
+                to: to.clone(),
+                amount,
+                network: bitcoin::Network::Regtest,
+            }),
+        ];
+
+        let expected = &[
+            r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"mainnet"}}"#,
+            r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"testnet"}}"#,
             r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"regtest"}}"#
-        );
+        ];
+
+        let actual = input
+            .iter()
+            .map(serde_json::to_string)
+            .collect::<Result<Vec<String>, serde_json::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
     }
 }
