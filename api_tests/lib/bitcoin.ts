@@ -19,6 +19,7 @@ export interface BitcoinNodeConfig {
     password: string;
     host: string;
     rpcPort: number;
+    p2pPort: number;
 }
 
 interface GetBlockchainInfoResponse {
