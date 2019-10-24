@@ -87,11 +87,9 @@ impl<T: MetadataStore, S: StateStore, C: Client> AliceSpawner
             let ledger_events = self.ledger_events.clone();
             let state_store = Arc::clone(&self.state_store);
 
-            // For legacy reasons, we also store the communication in the state store
-            // This value is overwritten as soon as we have a reply from the other party
-            state_store.insert(id, State::proposed(swap_request.clone(), swap_seed));
-
             async move {
+                state_store.insert(id, State::proposed(swap_request.clone(), swap_seed));
+
                 let alice_state = client
                     .send_rfc003_swap_request(bob_dial_info.clone(), swap_request.clone())
                     .compat()
