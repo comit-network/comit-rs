@@ -1,5 +1,5 @@
 mod bitcoin;
-mod ethereum;
+pub mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 

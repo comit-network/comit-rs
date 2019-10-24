@@ -1,11 +1,11 @@
 use crate::swap_protocols::{
     actions::ethereum::{CallContract, DeployContract},
-    ledger::Ethereum,
+    ledger::{ethereum::ChainId, Ethereum},
     rfc003::{state_machine::HtlcParams, Secret},
     Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
-use ethereum_support::{Bytes, ChainId, Erc20Token, Network};
+use ethereum_support::{Bytes, Erc20Token, Network};
 
 pub fn deploy_action(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> DeployContract {
     htlc_params.into()

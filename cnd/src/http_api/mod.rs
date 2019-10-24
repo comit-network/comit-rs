@@ -27,7 +27,7 @@ use crate::{
     network::{DialInformation, Network},
     swap_protocols::{
         asset::Asset,
-        ledger::{Bitcoin, Ethereum},
+        ledger::{ethereum, Bitcoin, Ethereum},
         metadata_store,
         rfc003::{
             alice::{self, AliceSpawner},
@@ -41,7 +41,7 @@ use crate::{
     },
 };
 use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
-use ethereum_support::{ChainId, Erc20Token, EtherQuantity};
+use ethereum_support::{Erc20Token, EtherQuantity};
 use futures::sync::oneshot::Sender;
 use libp2p::PeerId;
 use libp2p_comit::frame::Response;
@@ -101,7 +101,7 @@ impl FromHttpLedger for Ethereum {
         let chain_id = ledger.parameter("chain_id").or_else(|e| {
             ledger
                 .parameter::<ethereum_support::Network>("network")
-                .and_then(|network| ChainId::try_from(network).map_err(|_| e))
+                .and_then(|network| ethereum::ChainId::try_from(network).map_err(|_| e))
         })?;
 
         Ok(Ethereum {
@@ -434,9 +434,7 @@ mod tests {
         hashes::{hex::FromHex, sha256d},
         OutPoint, Script, TxIn,
     };
-    use ethereum_support::{
-        self, ChainId, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256,
-    };
+    use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::str::FromStr;
 
@@ -494,9 +492,9 @@ mod tests {
     #[test]
     fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            Http(Ethereum::new(ethereum_support::ChainId::new(1))),
-            Http(Ethereum::new(ethereum_support::ChainId::new(3))),
-            Http(Ethereum::new(ethereum_support::ChainId::new(17))),
+            Http(Ethereum::new(ethereum::ChainId::new(1))),
+            Http(Ethereum::new(ethereum::ChainId::new(3))),
+            Http(Ethereum::new(ethereum::ChainId::new(17))),
         ];
 
         let expected = &[
@@ -517,7 +515,7 @@ mod tests {
     #[test]
     fn http_ledger_serializes_correctly_to_json() {
         let bitcoin = Bitcoin::new(bitcoin::Network::Testnet);
-        let ethereum = Ethereum::new(ChainId::new(3));
+        let ethereum = Ethereum::new(ethereum::ChainId::new(3));
 
         let bitcoin = Http(bitcoin);
         let ethereum = Http(ethereum);

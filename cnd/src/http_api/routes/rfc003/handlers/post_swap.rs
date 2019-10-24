@@ -194,8 +194,7 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 mod tests {
 
     use super::*;
-    use crate::network::DialInformation;
-    use ethereum_support::ChainId;
+    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
     use spectral::prelude::*;
 
     #[test]

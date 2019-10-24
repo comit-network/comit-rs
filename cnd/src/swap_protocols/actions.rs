@@ -39,8 +39,8 @@ pub mod bitcoin {
 }
 
 pub mod ethereum {
-    use crate::swap_protocols::Timestamp;
-    use ethereum_support::{web3::types::U256, Address, Bytes, ChainId, EtherQuantity, Network};
+    use crate::swap_protocols::{ledger::ethereum::ChainId, Timestamp};
+    use ethereum_support::{web3::types::U256, Address, Bytes, EtherQuantity, Network};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct DeployContract {

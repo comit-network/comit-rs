@@ -5,7 +5,7 @@ use crate::{
             bitcoin::{SendToAddress, SpendOutput},
             ethereum,
         },
-        SwapId, Timestamp,
+        ledger, SwapId, Timestamp,
     },
 };
 use blockchain_contracts::bitcoin::witness;
@@ -53,14 +53,14 @@ pub enum ActionResponseBody {
         amount: ethereum_support::EtherQuantity,
         gas_limit: ethereum_support::U256,
         network: ethereum_support::Network,
-        chain_id: ethereum_support::ChainId,
+        chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
         contract_address: ethereum_support::Address,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
-        chain_id: ethereum_support::ChainId,
+        chain_id: ledger::ethereum::ChainId,
         network: ethereum_support::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
@@ -313,8 +313,9 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::swap_protocols::ledger::ethereum::ChainId;
     use bitcoin::Address as BitcoinAddress;
-    use ethereum_support::{Address as EthereumAddress, ChainId, U256};
+    use ethereum_support::{Address as EthereumAddress, U256};
     use std::str::FromStr;
 
     #[test]
