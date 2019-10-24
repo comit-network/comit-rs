@@ -153,13 +153,10 @@ impl File {
 
     fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
-            None => {
-                log::trace!("Config path is root path");
-                Ok(())
-            }
+            None => Ok(()),
             Some(path) => {
                 if !path.exists() {
-                    log::debug!(
+                    println!(
                         "Config path does not exist, creating directories recursively: {:?}",
                         path
                     );
@@ -201,7 +198,6 @@ impl File {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use log::LevelFilter;
     use rand::rngs::mock::StepRng;
     use reqwest::Url;
     use spectral::prelude::*;
