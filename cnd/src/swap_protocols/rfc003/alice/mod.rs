@@ -54,6 +54,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             error: None,
         }
     }
+
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
         response: AcceptResponseBody<AL, BL>,
