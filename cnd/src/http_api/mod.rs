@@ -248,10 +248,9 @@ impl<'de> Deserialize<'de> for DialInformation {
 /// A struct for capturing dependencies that are needed within the HTTP API
 /// controllers.
 ///
-/// This is a facade that implements all the required traits and simplify
-/// forwards them to another implementation. This allows us to keep the number
-/// arguments to HTTP API controllers small and still access all the
-/// functionality we need.
+/// This is a facade that implements all the required traits and forwards them
+/// to another implementation. This allows us to keep the number of arguments to
+/// HTTP API controllers small and still access all the functionality we need.
 #[derive(Debug)]
 pub struct Dependencies<M, S, A, B, N> {
     pub metadata_store: Arc<M>,
