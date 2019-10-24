@@ -8,65 +8,90 @@ use crate::{
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
+    libp2p_comit_ext::ToHeader,
+    network::Network,
     swap_protocols::{
         actions::Actions,
         rfc003::{
+            self,
             actions::{Action, ActionKind},
+            bob::BobSpawner,
+            messages::Decision,
             state_store::StateStore,
         },
         MetadataStore, SwapId,
     },
 };
 use http_api_problem::HttpApiProblem;
+use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<T: MetadataStore, S: StateStore>(
+pub fn handle_action<D: MetadataStore + StateStore + BobSpawner + Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    metadata_store: &T,
-    state_store: &S,
+    dependencies: D,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata = metadata_store
-        .get(id)?
-        .ok_or_else(problem::swap_not_found)?;
+    let metadata = MetadataStore::get(&dependencies, id)?.ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
         &metadata,
         (|| {
-            let state = state_store
-                .get::<ROLE>(&id)?
-                .ok_or_else(problem::state_store)?;
+            let state =
+                StateStore::get::<ROLE>(&dependencies, &id)?.ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
             state
                 .actions()
                 .into_iter()
                 .select_action(action_kind, method)
-                .and_then(|action| match action {
-                    Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
-                        .map_err(problem::deserialize)
-                        .and_then(|body| {
-                            action
-                                .accept(body)
-                                .map(|_| ActionResponseBody::None)
-                                .map_err(|_| problem::action_already_done(action_kind))
-                        }),
-                    Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
-                        .map_err(problem::deserialize)
-                        .and_then(|body| {
-                            action
-                                .decline(to_swap_decline_reason(body.reason))
-                                .map(|_| ActionResponseBody::None)
-                                .map_err(|_| problem::action_already_done(action_kind))
-                        }),
-                    Action::Deploy(action) => action.into_response_payload(query_params),
-                    Action::Fund(action) => action.into_response_payload(query_params),
-                    Action::Redeem(action) => action.into_response_payload(query_params),
-                    Action::Refund(action) => action.into_response_payload(query_params),
+                .and_then({
+                    |action| match action {
+                        Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
+                            .map_err(problem::deserialize)
+                            .and_then({
+                                |body| {
+                                    let channel = Network::pending_request_for(&dependencies, id)
+                                        .ok_or_else(problem::missing_channel)?;
+
+                                    let accept_body = action.accept(body);
+
+                                    let response = rfc003_accept_response(accept_body.clone());
+                                    channel.send(response).map_err(problem::send_over_channel)?;
+
+                                    let request = state.request();
+                                    BobSpawner::spawn(&dependencies, request, Ok(accept_body));
+
+                                    Ok(ActionResponseBody::None)
+                                }
+                            }),
+                        Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
+                            .map_err(problem::deserialize)
+                            .and_then({
+                                |body| {
+                                    let channel = Network::pending_request_for(&dependencies, id)
+                                        .ok_or_else(problem::missing_channel)?;
+
+                                    let decline_body =
+                                        action.decline(to_swap_decline_reason(body.reason));
+
+                                    let response = rfc003_decline_response(decline_body.clone());
+                                    channel.send(response).map_err(problem::send_over_channel)?;
+
+                                    let request = state.request();
+                                    BobSpawner::spawn(&dependencies, request, Err(decline_body));
+
+                                    Ok(ActionResponseBody::None)
+                                }
+                            }),
+                        Action::Deploy(action) => action.into_response_payload(query_params),
+                        Action::Fund(action) => action.into_response_payload(query_params),
+                        Action::Redeem(action) => action.into_response_payload(query_params),
+                        Action::Refund(action) => action.into_response_payload(query_params),
+                    }
                 })
         })
     )
@@ -95,6 +120,36 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
                 Ok(action)
             })
     }
+}
+
+fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
+    body: rfc003::messages::AcceptResponseBody<AL, BL>,
+) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Accepted
+                .to_header()
+                .expect("Decision should not fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("body should always serialize into serde_json::Value"),
+        )
+}
+
+fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Response {
+    Response::empty()
+        .with_header(
+            "decision",
+            Decision::Declined
+                .to_header()
+                .expect("Decision shouldn't fail to serialize"),
+        )
+        .with_body(
+            serde_json::to_value(body)
+                .expect("decline body should always serialize into serde_json::Value"),
+        )
 }
 
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund, I>

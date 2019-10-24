@@ -7,14 +7,11 @@ use crate::{
 };
 use http_api_problem::HttpApiProblem;
 
-pub fn handle_get_swap<T: MetadataStore, S: StateStore>(
-    metadata_store: &T,
-    state_store: &S,
+pub fn handle_get_swap<D: MetadataStore + StateStore>(
+    dependencies: &D,
     id: SwapId,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    let metadata = metadata_store
-        .get(id)?
-        .ok_or_else(problem::swap_not_found)?;
+    let metadata = MetadataStore::get(dependencies, id)?.ok_or_else(problem::swap_not_found)?;
 
-    build_rfc003_siren_entity(state_store, id, metadata, IncludeState::Yes)
+    build_rfc003_siren_entity(dependencies, id, metadata, IncludeState::Yes)
 }

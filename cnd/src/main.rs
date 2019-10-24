@@ -1,18 +1,20 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
-
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
-    comit_client::Client,
     comit_i_routes,
     config::{self, Settings},
-    http_api::route_factory,
-    network::{self, SwarmInfo},
+    http_api::{self, route_factory},
+    network::{self, Network},
     seed::Seed,
     swap_protocols::{
         self,
         metadata_store::{InMemoryMetadataStore, MetadataStore},
-        rfc003::state_store::{InMemoryStateStore, StateStore},
+        rfc003::{
+            alice::AliceSpawner,
+            bob::BobSpawner,
+            state_store::{InMemoryStateStore, StateStore},
+        },
         LedgerEventDependencies,
     },
 };
@@ -75,7 +77,7 @@ fn main() -> Result<(), failure::Error> {
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(bob_protocol_dependencies, runtime.executor())?;
+    let behaviour = network::ComitNode::new(bob_protocol_dependencies.clone(), runtime.executor())?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -96,15 +98,15 @@ fn main() -> Result<(), failure::Error> {
         client: Arc::clone(&swarm),
     };
 
-    spawn_warp_instance(
-        &settings,
-        Arc::clone(&metadata_store),
-        Arc::clone(&state_store),
-        alice_protocol_dependencies,
-        Arc::clone(&swarm),
-        local_peer_id,
-        &mut runtime,
-    );
+    let dependencies = http_api::Dependencies {
+        metadata_store: Arc::clone(&metadata_store),
+        state_store: Arc::clone(&state_store),
+        alice_spawner: Arc::new(alice_protocol_dependencies),
+        bob_spawner: Arc::new(bob_protocol_dependencies),
+        network: Arc::clone(&swarm),
+    };
+
+    spawn_warp_instance(&settings, local_peer_id, &mut runtime, dependencies);
 
     spawn_comit_i_instance(settings, &mut runtime);
 
@@ -127,23 +129,15 @@ fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn spawn_warp_instance<T: MetadataStore, S: StateStore, C: Client, SI: SwarmInfo>(
+fn spawn_warp_instance<
+    D: MetadataStore + StateStore + Network + BobSpawner + AliceSpawner + Clone,
+>(
     settings: &Settings,
-    metadata_store: Arc<T>,
-    state_store: Arc<S>,
-    protocol_dependencies: swap_protocols::alice::ProtocolDependencies<T, S, C>,
-    swarm_info: Arc<SI>,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
+    dependencies: D,
 ) {
-    let routes = route_factory::create(
-        metadata_store,
-        state_store,
-        protocol_dependencies,
-        auth_origin(&settings),
-        swarm_info,
-        peer_id,
-    );
+    let routes = route_factory::create(auth_origin(&settings), peer_id, dependencies);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 

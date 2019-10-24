@@ -5,14 +5,15 @@ pub mod ether;
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        bob::ResponseSender,
-        messages::{DeclineResponseBody, IntoAcceptResponseBody, SwapDeclineReason},
+        messages::{
+            AcceptResponseBody, DeclineResponseBody, IntoAcceptResponseBody, SwapDeclineReason,
+        },
         secret_source::SecretSource,
         state_machine::HtlcParams,
         Ledger, Secret,
     },
 };
-use std::sync::Arc;
+use std::{marker::PhantomData, sync::Arc};
 
 /// Defines the set of actions available in the RFC003 protocol
 #[derive(Debug, Clone, PartialEq, strum_macros::EnumDiscriminants)]
@@ -62,59 +63,42 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
 #[derivative(Debug)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
     #[derivative(Debug = "ignore")]
-    sender: ResponseSender<AL, BL>,
-    #[derivative(Debug = "ignore")]
     secret_source: Arc<dyn SecretSource>,
+    phantom_data: PhantomData<(AL, BL)>,
 }
 
 impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     #[allow(clippy::type_complexity)]
-    pub fn new(sender: ResponseSender<AL, BL>, secret_source: Arc<dyn SecretSource>) -> Self {
+    pub fn new(secret_source: Arc<dyn SecretSource>) -> Self {
         Self {
-            sender,
             secret_source,
+            phantom_data: PhantomData,
         }
     }
-    pub fn accept<P: IntoAcceptResponseBody<AL, BL>>(&self, partial_response: P) -> Result<(), ()> {
-        let mut sender = self.sender.lock().unwrap();
 
-        match sender.take() {
-            Some(sender) => {
-                sender
-                    .send(Ok(
-                        partial_response.into_accept_response_body(self.secret_source.as_ref())
-                    ))
-                    .expect("Action shouldn't outlive BobToAlice");
-                Ok(())
-            }
-            None => Err(()),
-        }
+    pub fn accept<P: IntoAcceptResponseBody<AL, BL>>(
+        &self,
+        partial_response: P,
+    ) -> AcceptResponseBody<AL, BL> {
+        partial_response.into_accept_response_body(self.secret_source.as_ref())
     }
 }
 
-#[derive(Clone, derivative::Derivative)]
+#[derive(Clone, derivative::Derivative, Default)]
 #[derivative(Debug)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
-    #[derivative(Debug = "ignore")]
-    sender: ResponseSender<AL, BL>,
+    phantom_data: PhantomData<(AL, BL)>,
 }
 
 impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
-    pub fn new(sender: ResponseSender<AL, BL>) -> Self {
-        Self { sender }
+    pub fn new() -> Self {
+        Self {
+            phantom_data: PhantomData,
+        }
     }
 
-    pub fn decline(&self, reason: Option<SwapDeclineReason>) -> Result<(), ()> {
-        let mut sender = self.sender.lock().unwrap();
-        match sender.take() {
-            Some(sender) => {
-                sender
-                    .send(Err(DeclineResponseBody { reason }))
-                    .expect("Action shouldn't outlive BobToAlice");
-                Ok(())
-            }
-            None => Err(()),
-        }
+    pub fn decline(&self, reason: Option<SwapDeclineReason>) -> DeclineResponseBody {
+        DeclineResponseBody { reason }
     }
 }
 

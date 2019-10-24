@@ -30,15 +30,10 @@ where
 
     fn actions(&self) -> Vec<Self::ActionKind> {
         let (request, response) = match &self.swap_communication {
-            SwapCommunication::Proposed {
-                pending_response, ..
-            } => {
+            SwapCommunication::Proposed { .. } => {
                 return vec![
-                    Action::Accept(Accept::new(
-                        pending_response.sender.clone(),
-                        Arc::clone(&self.secret_source),
-                    )),
-                    Action::Decline(Decline::new(pending_response.sender.clone())),
+                    Action::Accept(Accept::new(Arc::clone(&self.secret_source))),
+                    Action::Decline(Decline::new()),
                 ];
             }
             SwapCommunication::Accepted {
@@ -104,15 +99,10 @@ where
 
     fn actions(&self) -> Vec<Self::ActionKind> {
         let (request, response) = match &self.swap_communication {
-            SwapCommunication::Proposed {
-                pending_response, ..
-            } => {
+            SwapCommunication::Proposed { .. } => {
                 return vec![
-                    Action::Accept(Accept::new(
-                        pending_response.sender.clone(),
-                        Arc::clone(&self.secret_source),
-                    )),
-                    Action::Decline(Decline::new(pending_response.sender.clone())),
+                    Action::Accept(Accept::new(Arc::clone(&self.secret_source))),
+                    Action::Decline(Decline::new()),
                 ];
             }
             SwapCommunication::Accepted {

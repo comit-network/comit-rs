@@ -4,22 +4,15 @@ mod spawner;
 
 pub use self::{actions::*, communication_events::*, spawner::*};
 
-use crate::{
-    comit_client,
-    network::DialInformation,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            self,
-            events::LedgerEvents,
-            ledger::Ledger,
-            ledger_state::LedgerState,
-            messages::{AcceptResponseBody, DeclineResponseBody, Request},
-            save_state::SaveState,
-            secret_source::SecretSource,
-            state_machine::{Context, FutureSwapOutcome, Start, Swap},
-            ActorState, Secret,
-        },
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        self,
+        ledger::Ledger,
+        ledger_state::LedgerState,
+        messages::{AcceptResponseBody, DeclineResponseBody, Request},
+        secret_source::SecretSource,
+        ActorState, Secret,
     },
 };
 use derivative::Derivative;
@@ -52,37 +45,42 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
-    pub fn new_state_machine<C: comit_client::Client>(
-        &self,
-        alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
-        beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
-        comit_client: Arc<C>,
-        bob_dial_info: DialInformation,
-        save_state: Arc<dyn SaveState<AL, BL, AA, BA>>,
-    ) -> Box<FutureSwapOutcome<AL, BL, AA, BA>> {
-        let swap_request = self.request();
-        let start_state = Start {
-            id: swap_request.id,
-            alpha_ledger: swap_request.alpha_ledger,
-            beta_ledger: swap_request.beta_ledger,
-            alpha_asset: swap_request.alpha_asset,
-            beta_asset: swap_request.beta_asset,
-            hash_function: swap_request.hash_function,
-            alpha_ledger_refund_identity: swap_request.alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: swap_request.beta_ledger_redeem_identity,
-            alpha_expiry: swap_request.alpha_expiry,
-            beta_expiry: swap_request.beta_expiry,
-            secret_hash: swap_request.secret_hash,
-        };
+    pub fn proposed(request: Request<AL, BL, AA, BA>, secret_source: impl SecretSource) -> Self {
+        Self {
+            swap_communication: SwapCommunication::Proposed { request },
+            alpha_ledger_state: LedgerState::NotDeployed,
+            beta_ledger_state: LedgerState::NotDeployed,
+            secret_source: Arc::new(secret_source),
+            error: None,
+        }
+    }
 
-        let context = Context {
-            alpha_ledger_events,
-            beta_ledger_events,
-            communication_events: Box::new(AliceToBob::new(comit_client, bob_dial_info)),
-            state_repo: save_state,
-        };
+    pub fn accepted(
+        request: Request<AL, BL, AA, BA>,
+        response: AcceptResponseBody<AL, BL>,
+        secret_source: impl SecretSource,
+    ) -> Self {
+        Self {
+            swap_communication: SwapCommunication::Accepted { request, response },
+            alpha_ledger_state: LedgerState::NotDeployed,
+            beta_ledger_state: LedgerState::NotDeployed,
+            secret_source: Arc::new(secret_source),
+            error: None,
+        }
+    }
 
-        Box::new(Swap::start_in(start_state, context))
+    pub fn declined(
+        request: Request<AL, BL, AA, BA>,
+        response: DeclineResponseBody,
+        secret_source: impl SecretSource,
+    ) -> Self {
+        Self {
+            swap_communication: SwapCommunication::Declined { request, response },
+            alpha_ledger_state: LedgerState::NotDeployed,
+            beta_ledger_state: LedgerState::NotDeployed,
+            secret_source: Arc::new(secret_source),
+            error: None,
+        }
     }
 
     pub fn request(&self) -> Request<AL, BL, AA, BA> {
@@ -92,16 +90,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             | SwapCommunication::Declined { request, .. } => request.clone(),
         }
     }
-
-    pub fn new(request: Request<AL, BL, AA, BA>, secret_source: Arc<dyn SecretSource>) -> Self {
-        Self {
-            swap_communication: SwapCommunication::Proposed { request },
-            alpha_ledger_state: LedgerState::NotDeployed,
-            beta_ledger_state: LedgerState::NotDeployed,
-            secret_source,
-            error: None,
-        }
-    }
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, AA, BA> {
@@ -109,26 +97,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     type BL = BL;
     type AA = AA;
     type BA = BA;
-
-    fn set_response(&mut self, response: Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>) {
-        match self.swap_communication {
-            SwapCommunication::Proposed { ref request } => match response {
-                Ok(response) => {
-                    self.swap_communication = SwapCommunication::Accepted {
-                        request: request.clone(),
-                        response,
-                    }
-                }
-                Err(response) => {
-                    self.swap_communication = SwapCommunication::Declined {
-                        request: request.clone(),
-                        response,
-                    }
-                }
-            },
-            _ => log::error!("Tried to set a response after it's already set"),
-        }
-    }
 
     fn set_secret(&mut self, _secret: Secret) {
         // ignored because Alice already knows the secret
