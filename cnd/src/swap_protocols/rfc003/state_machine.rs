@@ -98,10 +98,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum SwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    //    Declined {
-    //        request: Request<AL, BL, AA, BA>,
-    //        reason: DeclineResponseBody,
-    //    },
     AlphaRefunded {
         swap: OngoingSwap<AL, BL, AA, BA>,
         alpha_deployed: Deployed<AL>,
