@@ -2,8 +2,7 @@
 #![forbid(unsafe_code)]
 #![allow(clippy::print_stdout)]
 
-use bitcoin::{Network, PrivateKey};
-use bitcoin_support::PubkeyHash;
+use bitcoin::{hashes::Hash, Network, PrivateKey};
 use ethereum_support::Address;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use std::{env, str::FromStr};
@@ -77,7 +76,10 @@ fn main() {
         );
         println!("btc_address_p2wpkh_regtest: {:?}", btc_address_regtest);
     }
-    println!("pubkey_hash: {:x}", PubkeyHash::from(public_key));
+    println!(
+        "pubkey_hash: {:x}",
+        bitcoin::hashes::hash160::Hash::hash(&public_key.serialize())
+    );
 }
 
 fn to_ethereum_address(key: &PublicKey) -> Address {

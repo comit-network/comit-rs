@@ -1,15 +1,12 @@
-use crate::{
-    bitcoin::{self, bitcoin_http_request_for_hex_encoded_object},
-    BlockByHash, LatestBlock,
-};
-use bitcoin_support::Network;
+use crate::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock};
+use bitcoin::{hashes::sha256d, Network};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
 use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
-    hash: bitcoin_support::BlockId,
+    hash: sha256d::Hash,
 }
 
 #[derive(Clone)]
@@ -18,16 +15,16 @@ pub struct BlockchainInfoConnector {
 }
 
 impl BlockchainInfoConnector {
-    pub fn new(network: Network) -> Result<Self, bitcoin::Error> {
+    pub fn new(network: Network) -> Result<Self, crate::bitcoin::Error> {
         // Currently configured for Mainnet only because blockchain.info does not
         // support hex-encoded block retrieval for testnet.
 
-        if network != Network::Mainnet {
+        if network != Network::Bitcoin {
             log::error!(
                 "Network {} not supported for bitcoin http blocksource",
                 network
             );
-            return Err(bitcoin::Error::UnsupportedNetwork(format!(
+            return Err(crate::bitcoin::Error::UnsupportedNetwork(format!(
                 "Network {} currently not supported for bitcoin http plocksource",
                 network
             )));
@@ -38,7 +35,7 @@ impl BlockchainInfoConnector {
         })
     }
 
-    fn block_by_hash_url(block_hash: &bitcoin_support::BlockId) -> Url {
+    fn block_by_hash_url(block_hash: &sha256d::Hash) -> Url {
         let block_hash = block_hash.to_string();
         let mut url = Url::parse("https://blockchain.info/rawblock/")
             .unwrap()
@@ -51,9 +48,9 @@ impl BlockchainInfoConnector {
 }
 
 impl LatestBlock for BlockchainInfoConnector {
-    type Error = bitcoin::Error;
-    type Block = bitcoin_support::Block;
-    type BlockHash = bitcoin_support::BlockId;
+    type Error = crate::bitcoin::Error;
+    type Block = bitcoin::Block;
+    type BlockHash = sha256d::Hash;
 
     fn latest_block(
         &mut self,
@@ -63,11 +60,11 @@ impl LatestBlock for BlockchainInfoConnector {
             .client
             .get(latest_block_url)
             .send()
-            .map_err(bitcoin::Error::Reqwest)
+            .map_err(crate::bitcoin::Error::Reqwest)
             .and_then(move |mut response| {
                 response
                     .json::<BlockchainInfoLatestBlock>()
-                    .map_err(bitcoin::Error::Reqwest)
+                    .map_err(crate::bitcoin::Error::Reqwest)
             });
 
         let cloned_self = self.clone();
@@ -80,9 +77,9 @@ impl LatestBlock for BlockchainInfoConnector {
 }
 
 impl BlockByHash for BlockchainInfoConnector {
-    type Error = bitcoin::Error;
-    type Block = bitcoin_support::Block;
-    type BlockHash = bitcoin_support::BlockId;
+    type Error = crate::bitcoin::Error;
+    type Block = bitcoin::Block;
+    type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
         &self,
@@ -107,18 +104,18 @@ mod tests {
 
     #[test]
     fn block_by_hash_url_never_panics() {
-        fn prop(hash: Quickcheck<bitcoin_support::BlockId>) -> bool {
+        fn prop(hash: Quickcheck<sha256d::Hash>) -> bool {
             BlockchainInfoConnector::block_by_hash_url(&hash);
 
             true
         }
 
-        quickcheck::quickcheck(prop as fn(Quickcheck<bitcoin_support::BlockId>) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<sha256d::Hash>) -> bool)
     }
 
     #[test]
     fn block_by_hash_url_creates_correct_url() {
-        let block_id = bitcoin_support::BlockId::from_str(
+        let block_id = sha256d::Hash::from_str(
             "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02",
         )
         .unwrap();

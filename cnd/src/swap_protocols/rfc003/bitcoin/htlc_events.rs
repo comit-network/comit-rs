@@ -10,9 +10,9 @@ use crate::swap_protocols::{
         state_machine::HtlcParams,
     },
 };
-use bitcoin_support::{Amount, FindOutput, OutPoint};
+use bitcoin::{Amount, OutPoint};
 use btsieve::{
-    bitcoin::{BitcoindConnector, TransactionPattern},
+    bitcoin::{BitcoindConnector, TransactionExt, TransactionPattern},
     first_or_else::StreamExt,
     MatchingTransactions,
 };

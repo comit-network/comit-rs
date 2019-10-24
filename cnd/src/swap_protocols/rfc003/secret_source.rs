@@ -1,5 +1,5 @@
 use crate::{seed::Seed, swap_protocols::rfc003::Secret};
-use bitcoin_support::bitcoin::secp256k1::SecretKey;
+use bitcoin::secp256k1::SecretKey;
 
 pub trait SecretSource: Send + Sync + 'static {
     fn secret(&self) -> Secret;

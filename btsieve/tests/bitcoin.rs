@@ -1,4 +1,4 @@
-use bitcoin_support::{Amount, Network};
+use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
 use btsieve::{
     bitcoin::{BitcoindConnector, TransactionPattern},

@@ -6,7 +6,7 @@ version = "0.1.0"
 description = "A b(lockchain) t(ransaction) sieve that allows clients to detect when certain events happen on a blockchain."
 
 [dependencies]
-bitcoin_support = { path = "../internal/bitcoin_support" }
+bitcoin = "0.19.1"
 derivative = "1"
 ethbloom = "0.6.4"
 ethereum_support = { path = "../internal/ethereum_support" }

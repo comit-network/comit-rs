@@ -8,7 +8,7 @@ use crate::swap_protocols::{
         Secret,
     },
 };
-use bitcoin_support::{Amount, OutPoint, Transaction};
+use bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
 impl FundAction<Bitcoin, Amount> for (Bitcoin, Amount) {

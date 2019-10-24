@@ -1,6 +1,5 @@
-use bitcoin_support::{
-    Address, OutPoint, SpendsFrom, SpendsFromWith, SpendsTo, SpendsWith, Transaction,
-};
+use crate::bitcoin::transaction_ext::TransactionExt;
+use ::bitcoin::{Address, OutPoint, Transaction};
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
 /// If the field is set to Some(foo) then only transactions matching foo are
@@ -56,7 +55,10 @@ impl TransactionPattern {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use bitcoin_support::{deserialize, FromHex, OutPoint, Sha256dHash, Transaction};
+    use bitcoin::{
+        consensus::deserialize,
+        hashes::{hex::FromHex, sha256d},
+    };
     use spectral::prelude::*;
 
     const WITNESS_TX: & str = "0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000";
@@ -73,7 +75,7 @@ mod tests {
 
     fn create_outpoint(tx: &str, vout: u32) -> OutPoint {
         OutPoint {
-            txid: Sha256dHash::from_hex(tx).unwrap(),
+            txid: sha256d::Hash::from_hex(tx).unwrap(),
             vout,
         }
     }

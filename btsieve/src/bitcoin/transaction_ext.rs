@@ -1,26 +1,18 @@
-use crate::script::Instruction::{Error, Op, PushBytes};
 use bitcoin::{
-    blockdata::transaction::Transaction, util::address::Address as BitcoinAddress, OutPoint, TxIn,
-    TxOut,
+    blockdata::{script::Instruction, transaction::Transaction},
+    util::address::Address as BitcoinAddress,
+    OutPoint, TxIn, TxOut,
 };
 
-pub trait SpendsTo {
+pub trait TransactionExt {
     fn spends_to(&self, address: &BitcoinAddress) -> bool;
-}
-
-pub trait SpendsFrom {
     fn spends_from(&self, outpoint: &OutPoint) -> bool;
-}
-
-pub trait SpendsFromWith {
     fn spends_from_with(&self, outpoint: &OutPoint, script: &[Vec<u8>]) -> bool;
-}
-
-pub trait SpendsWith {
     fn spends_with(&self, script: &[Vec<u8>]) -> bool;
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)>;
 }
 
-impl SpendsTo for Transaction {
+impl TransactionExt for Transaction {
     fn spends_to(&self, address: &BitcoinAddress) -> bool {
         let address_script_pubkey = address.script_pubkey();
 
@@ -29,31 +21,41 @@ impl SpendsTo for Transaction {
             .map(|out| &out.script_pubkey)
             .any(|script_pub_key| script_pub_key == &address_script_pubkey)
     }
-}
 
-impl SpendsFrom for Transaction {
     fn spends_from(&self, outpoint: &OutPoint) -> bool {
         self.input
             .iter()
             .map(|input| &input.previous_output)
             .any(|previous_outpoint| previous_outpoint == outpoint)
     }
-}
 
-impl SpendsFromWith for Transaction {
     fn spends_from_with(&self, outpoint: &OutPoint, unlock_script: &[Vec<u8>]) -> bool {
         self.input
             .iter()
             .filter(|previous_outpoint| &previous_outpoint.previous_output == outpoint)
             .any(|txin| any_unlock_script_matches(txin, unlock_script))
     }
-}
 
-impl SpendsWith for Transaction {
     fn spends_with(&self, unlock_script: &[Vec<u8>]) -> bool {
         self.input
             .iter()
             .any(|txin| any_unlock_script_matches(txin, unlock_script))
+    }
+
+    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)> {
+        let to_address_script_pubkey = to_address.script_pubkey();
+
+        self.output
+            .iter()
+            .enumerate()
+            .map(|(index, txout)| {
+                // Casting a usize to u32 can lead to truncation on 64bit platforms
+                // However, bitcoin limits the number of inputs to u32 anyway, so this
+                // is not a problem for us.
+                #[allow(clippy::cast_possible_truncation)]
+                (index as u32, txout)
+            })
+            .find(|(_, txout)| txout.script_pubkey == to_address_script_pubkey)
     }
 }
 
@@ -64,36 +66,22 @@ fn any_unlock_script_matches(txin: &TxIn, unlock_script: &[Vec<u8>]) -> bool {
                 txin.script_sig
                     .iter(true)
                     .any(|instruction| match instruction {
-                        PushBytes(data) => (item as &[u8]) == data,
-                        Op(_) => false,
-                        Error(_) => false,
+                        Instruction::PushBytes(data) => (item as &[u8]) == data,
+                        Instruction::Op(_) => false,
+                        Instruction::Error(_) => false,
                     })
             })
     })
 }
 
-pub trait FindOutput {
-    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)>;
-}
-
-#[allow(clippy::cast_possible_truncation)]
-impl FindOutput for Transaction {
-    fn find_output(&self, to_address: &BitcoinAddress) -> Option<(u32, &TxOut)> {
-        let to_address_script_pubkey = to_address.script_pubkey();
-
-        self.output
-            .iter()
-            .enumerate()
-            .map(|(index, txout)| (index as u32, txout))
-            .find(|(_, txout)| txout.script_pubkey == to_address_script_pubkey)
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::Sha256dHash;
-    use bitcoin::{blockdata::transaction::TxOut, consensus::deserialize, hashes::hex::FromHex};
+    use bitcoin::{
+        blockdata::transaction::TxOut,
+        consensus::deserialize,
+        hashes::{hex::FromHex, sha256d::Hash as Sha256dHash},
+    };
     use spectral::prelude::*;
 
     const WITNESS_TX: & str = "0200000000010124e06fe5594b941d06c7385dc7307ec694a41f7d307423121855ee17e47e06ad0100000000ffffffff0137aa0b000000000017a914050377baa6e8c5a07aed125d0ef262c6d5b67a038705483045022100d780139514f39ed943179e4638a519101bae875ec1220b226002bcbcb147830b0220273d1efb1514a77ee3dd4adee0e896b7e76be56c6d8e73470ae9bd91c91d700c01210344f8f459494f74ebb87464de9b74cdba3709692df4661159857988966f94262f20ec9e9fb3c669b2354ea026ab3da82968a2e7ab9398d5cbed4e78e47246f2423e01015b63a82091d6a24697ed31932537ae598d3de3131e1fcd0641b9ac4be7afcb376386d71e8876a9149f4a0cf348b478336cb1d87ea4c8313a7ca3de1967029000b27576a91465252e57f727a27f32c77098e14d88d8dbec01816888ac00000000";

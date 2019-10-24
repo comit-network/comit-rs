@@ -61,7 +61,7 @@ impl Settings {
                     .unwrap_or_default()
             },
             bitcoin: bitcoin.unwrap_or_else(|| Bitcoin {
-                network: bitcoin_support::Network::Regtest,
+                network: bitcoin::Network::Regtest,
                 node_url: Url::parse("http://localhost:18443")
                     .expect("static string to be a valid url"),
             }),

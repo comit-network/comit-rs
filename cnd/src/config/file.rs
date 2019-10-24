@@ -94,7 +94,8 @@ pub struct Database {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Bitcoin {
-    pub network: bitcoin_support::Network,
+    #[serde(with = "super::serde_bitcoin_network")]
+    pub network: bitcoin::Network,
     #[serde(with = "url_serde")]
     pub node_url: reqwest::Url,
 }
@@ -203,6 +204,7 @@ mod tests {
     use super::*;
     use log::LevelFilter;
     use rand::rngs::mock::StepRng;
+    use reqwest::Url;
     use spectral::prelude::*;
     use tempfile::NamedTempFile;
 
@@ -230,6 +232,47 @@ mod tests {
                 structured: None,
             },
         });
+    }
+
+    #[test]
+    fn bitcoin_serializes_correctly() {
+        let file_contents = vec![
+            r#"
+            network = "mainnet"
+            node_url = "http://example.com"
+            "#,
+            r#"
+            network = "testnet"
+            node_url = "http://example.com"
+            "#,
+            r#"
+            network = "regtest"
+            node_url = "http://example.com"
+            "#,
+        ];
+
+        let expected = vec![
+            Bitcoin {
+                network: bitcoin::Network::Bitcoin,
+                node_url: Url::parse("http://example.com").unwrap(),
+            },
+            Bitcoin {
+                network: bitcoin::Network::Testnet,
+                node_url: Url::parse("http://example.com").unwrap(),
+            },
+            Bitcoin {
+                network: bitcoin::Network::Regtest,
+                node_url: Url::parse("http://example.com").unwrap(),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
     }
 
     fn temp_toml_file() -> NamedTempFile {
