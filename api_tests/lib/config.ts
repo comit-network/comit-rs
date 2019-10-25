@@ -27,7 +27,7 @@ export interface BtsieveConfigFile {
 export class E2ETestActorConfig {
     public readonly httpApiPort: number;
     public readonly comitPort: number;
-    public readonly seed: string;
+    public readonly seed: Uint8Array;
     public readonly webGuiPort?: number;
 
     constructor(
@@ -38,7 +38,7 @@ export class E2ETestActorConfig {
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
-        this.seed = seed;
+        this.seed = new Uint8Array(Buffer.from(seed, "hex"));
         this.webGuiPort = webGuiPort;
     }
 
