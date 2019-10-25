@@ -59,9 +59,21 @@ impl Seed {
 
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
-        let bytes = seed_from_pem(&pem::encode(&pem))?;
 
-        Ok(Seed::from(bytes))
+        Seed::from_pem(pem)
+    }
+
+    pub fn from_pem(pem: pem::Pem) -> Result<Seed, Error> {
+        if pem.contents.len() != SEED_LENGTH {
+            return Err(Error::IncorrectLength(pem.contents.len()));
+        }
+
+        let mut array = [0; SEED_LENGTH];
+        for (i, b) in pem.contents.iter().enumerate() {
+            array[i] = *b;
+        }
+
+        Ok(Seed::from(array))
     }
 
     /// Read the seed from the default location if it exists, otherwise
@@ -113,38 +125,6 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
         }
     }
     Ok(())
-}
-
-// Validates and returns the bytes from a pem string.
-fn seed_from_pem(pem: &str) -> Result<[u8; 32], Error> {
-    // At this stage we know we have a valid pem string but
-    // we do not know what it contains.  Validate by:
-    // - Payload should be 32 bytes of base64 encoded data
-    // - Consider all tags valid
-    // - Check there is only one line of non-tag data
-
-    let mut lines = pem.lines();
-    if !lines.next().ok_or(Error::PemFileParse)?.contains("BEGIN") {
-        return Err(Error::PemFileParse);
-    }
-
-    let seed_base64 = lines.next().ok_or(Error::PemFileParse)?;
-
-    if !lines.next().ok_or(Error::PemFileParse)?.contains("END") {
-        return Err(Error::PemFileParse);
-    }
-
-    let bytes = base64::decode(seed_base64)?;
-    if bytes.len() != SEED_LENGTH {
-        return Err(Error::IncorrectLength(bytes.len()));
-    }
-
-    let mut array = [0; SEED_LENGTH];
-    for (i, b) in bytes.iter().enumerate() {
-        array[i] = *b;
-    }
-
-    Ok(array)
 }
 
 fn default_seed_path() -> Result<PathBuf, Error> {
@@ -277,8 +257,9 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
     #[test]
     fn seed_from_pem_works() {
         let want = base64::decode("syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=").unwrap();
-        let got = seed_from_pem(PEM).unwrap();
-        assert_eq!(got, *want);
+        let pem = pem::parse(PEM).unwrap();
+        let got = Seed::from_pem(pem).unwrap();
+        assert_eq!(got.0, *want);
     }
 
     #[test]
@@ -288,28 +269,20 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
 6516513
 -----END SECRET SEED-----
 ";
-        let _ = seed_from_pem(short).unwrap();
+        let pem = pem::parse(short).unwrap();
+        let _seed = Seed::from_pem(pem).unwrap();
     }
 
     #[test]
     #[should_panic]
     fn seed_from_pem_fails_for_long_seed() {
         let long = "-----BEGIN SECRET SEED-----
-syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XMsyl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM
------END SECRET SEED-----
-";
-        let _ = seed_from_pem(long).unwrap();
-    }
-
-    #[test]
-    #[should_panic]
-    fn seed_from_pem_fails_for_multi_line_key() {
-        let multi = "-----BEGIN SECRET SEED-----
 mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
 mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
 -----END SECRET SEED-----
 ";
-        let _ = seed_from_pem(multi).unwrap();
+        let pem = pem::parse(long).unwrap();
+        let _seed = Seed::from_pem(pem).unwrap();
     }
 
     #[test]
