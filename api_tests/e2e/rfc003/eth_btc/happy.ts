@@ -37,7 +37,7 @@ declare var global: HarnessGlobal;
     const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: "ethereum",
-            network: "regtest",
+            chain_id: 17,
         },
         beta_ledger: {
             name: "bitcoin",

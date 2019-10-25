@@ -53,7 +53,7 @@ declare var global: HarnessGlobal;
         },
         beta_ledger: {
             name: "ethereum",
-            network: "regtest",
+            chain_id: 17,
         },
         alpha_asset: {
             name: "bitcoin",

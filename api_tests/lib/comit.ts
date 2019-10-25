@@ -19,7 +19,7 @@ export type LedgerAction =
               data: string;
               amount: string;
               gas_limit: string;
-              network: string;
+              chain_id: number;
           };
       }
     | {
@@ -28,7 +28,7 @@ export type LedgerAction =
               contract_address: string;
               data: string;
               gas_limit: string;
-              network: string;
+              chain_id: number;
               min_block_timestamp?: number;
           };
       };
@@ -41,7 +41,8 @@ export interface Asset {
 
 export interface Ledger {
     name: string;
-    network: string;
+    network?: string;
+    chain_id?: number;
 }
 
 export interface SwapRequest {

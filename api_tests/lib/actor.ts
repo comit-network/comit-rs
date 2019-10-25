@@ -157,11 +157,6 @@ export class Actor {
     }
 
     public async doLedgerAction(action: LedgerAction) {
-        const network = action.payload.network;
-        if (network !== "regtest") {
-            throw Error("Expected network regtest, found " + network);
-        }
-
         // wait 1 second to make sure that both parties have created a btsieve
         // query to watch for the action that is about to be performed. Should
         // be removed with https://github.com/comit-network/comit-rs/issues/1289
@@ -218,9 +213,11 @@ export class Actor {
             }
             case "ethereum-deploy-contract": {
                 action.payload.should.include.all.keys("data", "amount");
-                const { data, amount } = action.payload;
+                const { data, amount, chain_id } = action.payload;
 
-                return this.wallet.eth().deploy_contract(data, amount);
+                return this.wallet
+                    .eth()
+                    .deploy_contract(data, amount, chain_id);
             }
             case "ethereum-call-contract": {
                 action.payload.should.include.all.keys(
@@ -233,6 +230,7 @@ export class Actor {
                     data,
                     gas_limit,
                     min_block_timestamp,
+                    chain_id,
                 } = action.payload;
 
                 if (
@@ -255,7 +253,13 @@ export class Actor {
 
                 return this.wallet
                     .eth()
-                    .sendEthTransactionTo(contract_address, data, 0, gas_limit);
+                    .sendEthTransactionTo(
+                        contract_address,
+                        data,
+                        0,
+                        gas_limit,
+                        chain_id
+                    );
             }
             default:
                 throw Error(`Action ${action} is not unsupported`);

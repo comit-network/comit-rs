@@ -31,7 +31,7 @@ import { sleep } from "../lib/util";
                     },
                     beta_ledger: {
                         name: "ethereum",
-                        network: "regtest",
+                        chain_id: 17,
                     },
                     alpha_asset: {
                         name: "bitcoin",
@@ -95,7 +95,7 @@ import { sleep } from "../lib/util";
                     },
                     beta_ledger: {
                         name: "ethereum",
-                        network: "regtest",
+                        chain_id: 17,
                     },
                     alpha_asset: {
                         name: "bitcoin",
