@@ -18,7 +18,6 @@ interface BtsieveBitcoin {
 
 interface BtsieveEthereum {
     node_url: string;
-    network: string;
 }
 
 export interface BtsieveConfigFile {
@@ -126,7 +125,6 @@ export function btsieveEthereumConfig(
 ): BtsieveEthereum {
     return {
         node_url: nodeConfig.rpc_url,
-        network: nodeConfig.network,
     };
 }
 

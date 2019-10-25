@@ -9,7 +9,6 @@ let ethersClient: JsonRpcProvider;
 
 export interface EthereumNodeConfig {
     rpc_url: string;
-    network: string;
 }
 
 function createEthereumClient(ethConfig: EthereumNodeConfig) {
