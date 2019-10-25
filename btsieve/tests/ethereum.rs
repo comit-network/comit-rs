@@ -36,8 +36,7 @@ fn ethereum_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
         .unwrap();
 
-    let (connector, _event_loop) =
-        Web3Connector::new(url, ethereum_support::Network::Regtest).unwrap();
+    let (connector, _event_loop) = Web3Connector::new(url).unwrap();
 
     let mut runtime = Runtime::new().unwrap();
 
