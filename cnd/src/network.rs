@@ -4,8 +4,9 @@ use crate::{
         asset::{Asset, AssetKind},
         rfc003::{
             self,
-            bob::{BobSpawner, InsertState},
+            bob::BobSpawner,
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            InsertState,
         },
         HashFunction, LedgerKind, SwapId, SwapProtocol,
     },
@@ -136,7 +137,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     body!(request.take_body_as()),
                                 );
                                 self.bob
-                                    .insert_state(counterparty, request)
+                                    .insert_state_into_stores(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -157,7 +158,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     body!(request.take_body_as()),
                                 );
                                 self.bob
-                                    .insert_state(counterparty, request)
+                                    .insert_state_into_stores(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -178,7 +179,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     body!(request.take_body_as()),
                                 );
                                 self.bob
-                                    .insert_state(counterparty, request)
+                                    .insert_state_into_stores(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -199,7 +200,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     body!(request.take_body_as()),
                                 );
                                 self.bob
-                                    .insert_state(counterparty, request)
+                                    .insert_state_into_stores(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)

@@ -1,9 +1,14 @@
 use crate::{
+    comit_client::Client,
     http_api,
     network::Network,
     swap_protocols::{
         self,
-        rfc003::{alice::AliceSpawner, bob::BobSpawner, state_store::StateStore},
+        rfc003::{
+            alice::{AliceSpawner, InitiateSwapRequest},
+            bob::BobSpawner,
+            state_store::StateStore,
+        },
         MetadataStore, SwapId,
     },
 };
@@ -20,7 +25,16 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<D: MetadataStore + StateStore + AliceSpawner + BobSpawner + Network + Clone>(
+pub fn create<
+    D: MetadataStore
+        + StateStore
+        + AliceSpawner
+        + BobSpawner
+        + Network
+        + Clone
+        + InitiateSwapRequest
+        + Client,
+>(
     origin_auth: String,
     peer_id: PeerId,
     dependencies: D,

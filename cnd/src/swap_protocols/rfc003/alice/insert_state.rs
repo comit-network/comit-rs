@@ -1,13 +1,16 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    dependencies,
-    metadata_store::{Metadata, MetadataStore, Role},
-    rfc003::{self, bob, insert_state::Error, state_store::StateStore, InsertState, Ledger},
+use crate::{
+    comit_client::Client,
+    swap_protocols::{
+        asset::Asset,
+        dependencies,
+        metadata_store::{Metadata, MetadataStore, Role},
+        rfc003::{self, alice, insert_state::Error, state_store::StateStore, InsertState, Ledger},
+    },
 };
 use libp2p::PeerId;
 use std::sync::Arc;
 
-impl InsertState for dependencies::bob::ProtocolDependencies {
+impl<C: Client> InsertState for dependencies::alice::ProtocolDependencies<C> {
     #[allow(clippy::type_complexity)]
     fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
@@ -16,7 +19,7 @@ impl InsertState for dependencies::bob::ProtocolDependencies {
     ) -> Result<(), Error> {
         let id = swap_request.id;
         let seed = self.seed.swap_seed(id);
-        let state = bob::State::proposed(swap_request.clone(), seed);
+        let state = alice::State::proposed(swap_request.clone(), seed);
 
         let metadata = Metadata::new(
             id,
@@ -24,7 +27,7 @@ impl InsertState for dependencies::bob::ProtocolDependencies {
             swap_request.beta_ledger.into(),
             swap_request.alpha_asset.into(),
             swap_request.beta_asset.into(),
-            Role::Bob,
+            Role::Alice,
             counterparty,
         );
 

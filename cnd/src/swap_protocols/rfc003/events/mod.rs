@@ -8,13 +8,7 @@ pub use self::ledger_event_futures::*;
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{
-        self,
-        ledger::Ledger,
-        messages::{AcceptResponseBody, DeclineResponseBody},
-        state_machine::HtlcParams,
-        Secret,
-    },
+    rfc003::{self, ledger::Ledger, state_machine::HtlcParams, Secret},
 };
 use serde::{Deserialize, Serialize};
 use tokio::{self, prelude::future::Either};
@@ -22,7 +16,7 @@ use tokio::{self, prelude::future::Either};
 type Future<I> = dyn tokio::prelude::Future<Item = I, Error = rfc003::Error> + Send;
 
 #[allow(type_alias_bounds)]
-pub type ResponseFuture<AL, BL> = Future<Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>>;
+pub type ResponseFuture<AL, BL> = Future<rfc003::Response<AL, BL>>;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Funded<L: Ledger, A: Asset> {
@@ -72,13 +66,6 @@ pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
         htlc_deployment: &Deployed<L>,
         htlc_funding: &Funded<L, A>,
     ) -> &mut RedeemedOrRefundedFuture<L>;
-}
-
-pub trait CommunicationEvents<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>: Send {
-    fn request_responded(
-        &mut self,
-        request: &rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> &mut ResponseFuture<AL, BL>;
 }
 
 pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {

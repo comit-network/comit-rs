@@ -1,10 +1,16 @@
 use crate::{
+    comit_client::Client,
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::DialInformation,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{self, alice::AliceSpawner, messages::ToRequest, Ledger, SecretSource},
+        rfc003::{
+            self,
+            alice::{AliceSpawner, InitiateSwapRequest},
+            messages::ToRequest,
+            Ledger, SecretSource,
+        },
         HashFunction, SwapId, Timestamp,
     },
 };
@@ -13,24 +19,28 @@ use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<A: AliceSpawner>(
-    alice_spawner: &A,
+pub fn handle_post_swap<A: AliceSpawner + InitiateSwapRequest + Client>(
+    alice: &A,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
+            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
+            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
+            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            alice_spawner.spawn(id, body.peer.clone(), Box::new(body))?
+            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
             log::error!(
@@ -40,7 +50,7 @@ pub fn handle_post_swap<A: AliceSpawner>(
                 body.alpha_ledger,
                 body.beta_ledger
             );
-            return Err(problem::unsupported());
+            Err(problem::unsupported())
         }
         SwapRequestBodyKind::MalformedRequest(body) => {
             log::error!(
@@ -48,14 +58,12 @@ pub fn handle_post_swap<A: AliceSpawner>(
                 serde_json::to_string(&body)
                     .expect("failed to serialize serde_json::Value as string ?!")
             );
-            return Err(HttpApiProblem::with_title_and_type_from_status(
-                HttpStatusCode::BAD_REQUEST,
+            Err(
+                HttpApiProblem::with_title_and_type_from_status(HttpStatusCode::BAD_REQUEST)
+                    .set_detail("The request body was malformed."),
             )
-            .set_detail("The request body was malformed."));
         }
-    };
-
-    Ok(SwapCreated { id })
+    }
 }
 
 #[derive(Serialize, Debug)]

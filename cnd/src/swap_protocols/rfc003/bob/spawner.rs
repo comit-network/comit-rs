@@ -22,10 +22,7 @@ pub trait BobSpawner: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
-        response: Result<
-            rfc003::messages::AcceptResponseBody<AL, BL>,
-            rfc003::messages::DeclineResponseBody,
-        >,
+        response: rfc003::Response<AL, BL>,
     ) where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
@@ -35,10 +32,7 @@ impl BobSpawner for dependencies::bob::ProtocolDependencies {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
-        response: Result<
-            rfc003::messages::AcceptResponseBody<AL, BL>,
-            rfc003::messages::DeclineResponseBody,
-        >,
+        response: rfc003::Response<AL, BL>,
     ) where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
