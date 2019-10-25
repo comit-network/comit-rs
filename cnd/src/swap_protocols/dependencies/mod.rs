@@ -11,22 +11,22 @@ pub mod alice {
     use super::*;
 
     #[allow(missing_debug_implementations)]
-    pub struct ProtocolDependencies<C> {
+    pub struct ProtocolDependencies<S> {
         pub ledger_events: LedgerEventDependencies,
         pub metadata_store: Arc<InMemoryMetadataStore>,
         pub state_store: Arc<InMemoryStateStore>,
         pub seed: Seed,
-        pub client: Arc<C>,
+        pub swarm: Arc<S>,
     }
 
-    impl<C> Clone for ProtocolDependencies<C> {
+    impl<S> Clone for ProtocolDependencies<S> {
         fn clone(&self) -> Self {
             Self {
                 ledger_events: self.ledger_events.clone(),
                 metadata_store: Arc::clone(&self.metadata_store),
                 state_store: Arc::clone(&self.state_store),
                 seed: self.seed,
-                client: Arc::clone(&self.client),
+                swarm: Arc::clone(&self.swarm),
             }
         }
     }

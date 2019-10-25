@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
+    comit_client::Client,
     comit_i_routes,
     config::{self, Settings},
     http_api::{self, route_factory},
@@ -11,7 +12,7 @@ use cnd::{
         self,
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::{
-            alice::AliceSpawner,
+            alice::{AliceSpawner, InitiateSwapRequest},
             bob::BobSpawner,
             state_store::{InMemoryStateStore, StateStore},
         },
@@ -98,7 +99,7 @@ fn main() -> Result<(), failure::Error> {
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed,
-        client: Arc::clone(&swarm),
+        swarm: Arc::clone(&swarm),
     };
 
     let dependencies = http_api::Dependencies {
@@ -106,7 +107,7 @@ fn main() -> Result<(), failure::Error> {
         state_store: Arc::clone(&state_store),
         alice_spawner: Arc::new(alice_protocol_dependencies),
         bob_spawner: Arc::new(bob_protocol_dependencies),
-        network: Arc::clone(&swarm),
+        swarm: Arc::clone(&swarm),
     };
 
     spawn_warp_instance(&settings, local_peer_id, &mut runtime, dependencies);
@@ -133,7 +134,14 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 }
 
 fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + BobSpawner + AliceSpawner + Clone,
+    D: MetadataStore
+        + StateStore
+        + Network
+        + BobSpawner
+        + AliceSpawner
+        + Clone
+        + InitiateSwapRequest
+        + Client,
 >(
     settings: &Settings,
     peer_id: PeerId,

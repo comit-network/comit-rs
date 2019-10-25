@@ -1,6 +1,11 @@
 use crate::{
     network::DialInformation,
-    swap_protocols::{self, asset::Asset},
+    swap_protocols::{
+        self,
+        asset::Asset,
+        dependencies::LedgerEventDependencies,
+        rfc003::{self, create_ledger_events::CreateLedgerEvents},
+    },
 };
 use futures::Future;
 use std::io;
@@ -15,15 +20,9 @@ pub trait Client: Send + Sync + 'static {
         &self,
         peer_identity: DialInformation,
         request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> Box<
-        dyn Future<
-                Item = Result<
-                    swap_protocols::rfc003::messages::AcceptResponseBody<AL, BL>,
-                    swap_protocols::rfc003::messages::DeclineResponseBody,
-                >,
-                Error = RequestError,
-            > + Send,
-    >;
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
+    where
+        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
 #[derive(Clone, Debug, PartialEq)]

@@ -1,6 +1,6 @@
 pub mod actions;
 pub mod asset;
-mod dependencies;
+pub mod dependencies;
 pub mod ledger;
 pub mod metadata_store;
 pub mod rfc003;

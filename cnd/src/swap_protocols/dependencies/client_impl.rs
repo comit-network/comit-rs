@@ -10,10 +10,13 @@ use crate::{
     swap_protocols::{
         self,
         asset::Asset,
+        dependencies::LedgerEventDependencies,
         rfc003::{
             self,
-            bob::{BobSpawner, InsertState},
-            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            bob::BobSpawner,
+            create_ledger_events::CreateLedgerEvents,
+            messages::{Decision, SwapDeclineReason},
+            InsertState,
         },
         SwapProtocol,
     },
@@ -29,14 +32,6 @@ use tokio::{io::AsyncRead, prelude::AsyncWrite};
 pub struct Reason {
     pub value: SwapDeclineReason,
 }
-
-#[allow(type_alias_bounds)]
-type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003::Ledger> = Box<
-    dyn Future<
-            Item = Result<rfc003::messages::AcceptResponseBody<AL, BL>, DeclineResponseBody>,
-            Error = RequestError,
-        > + Send,
->;
 
 impl<
         B: InsertState + BobSpawner,
@@ -56,7 +51,10 @@ where
         &self,
         dial_information: DialInformation,
         request: rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> SwapResponse<AL, BL> {
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
+    where
+        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+    {
         let request = build_swap_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
 
