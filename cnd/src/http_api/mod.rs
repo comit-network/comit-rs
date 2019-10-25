@@ -90,7 +90,20 @@ impl Serialize for Http<bitcoin::Transaction> {
     }
 }
 
-impl_serialize_type_name_with_fields!(Ethereum { "chain_id" => chain_id, "network" => network });
+impl Serialize for Http<Ethereum> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let network: ethereum_support::Network = self.0.chain_id.into();
+
+        let mut state = serializer.serialize_struct("", 3)?;
+        state.serialize_field("name", "ethereum")?;
+        state.serialize_field("chain_id", &self.0.chain_id)?;
+        state.serialize_field("network", &network)?;
+        state.end()
+    }
+}
 
 // Can re-use macro once `network` is removed with #TODO
 impl FromHttpLedger for Ethereum {
@@ -104,10 +117,7 @@ impl FromHttpLedger for Ethereum {
                 .and_then(|network| ethereum::ChainId::try_from(network).map_err(|_| e))
         })?;
 
-        Ok(Ethereum {
-            chain_id,
-            network: chain_id.into(),
-        })
+        Ok(Ethereum { chain_id })
     }
 }
 

@@ -5,7 +5,7 @@ use crate::swap_protocols::{
     Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
-use ethereum_support::{Bytes, Erc20Token, Network};
+use ethereum_support::{Bytes, Erc20Token};
 
 pub fn deploy_action(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> DeployContract {
     htlc_params.into()
@@ -17,7 +17,6 @@ pub fn fund_action(
     beta_htlc_location: ethereum_support::Address,
 ) -> CallContract {
     let chain_id = htlc_params.ledger.chain_id;
-    let network = htlc_params.ledger.network;
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
     let data =
@@ -28,14 +27,12 @@ pub fn fund_action(
         data: Some(data),
         gas_limit,
         chain_id,
-        network,
         min_block_timestamp: None,
     }
 }
 
 pub fn refund_action(
     chain_id: ChainId,
-    network: Network,
     expiry: Timestamp,
     beta_htlc_location: ethereum_support::Address,
 ) -> CallContract {
@@ -47,7 +44,6 @@ pub fn refund_action(
         data: Some(data),
         gas_limit,
         chain_id,
-        network,
         min_block_timestamp: Some(expiry),
     }
 }
@@ -56,7 +52,6 @@ pub fn redeem_action(
     alpha_htlc_location: ethereum_support::Address,
     secret: Secret,
     chain_id: ChainId,
-    network: Network,
 ) -> CallContract {
     let data = Bytes::from(secret.as_raw_secret().to_vec());
     let gas_limit = Erc20Htlc::tx_gas_limit();
@@ -66,7 +61,6 @@ pub fn redeem_action(
         data: Some(data),
         gas_limit,
         chain_id,
-        network,
         min_block_timestamp: None,
     }
 }

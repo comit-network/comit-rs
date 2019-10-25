@@ -235,7 +235,6 @@ impl IntoResponsePayload for ethereum::DeployContract {
             amount,
             gas_limit,
             chain_id,
-            network,
         } = self;
         match query_params {
             ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumDeployContract {
@@ -243,7 +242,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
                 amount,
                 gas_limit,
                 chain_id,
-                network,
+                network: chain_id.into(),
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::ContractDeploy",
@@ -268,7 +267,6 @@ impl IntoResponsePayload for ethereum::CallContract {
             to,
             data,
             gas_limit,
-            network,
             chain_id,
             min_block_timestamp,
         } = self;
@@ -277,8 +275,8 @@ impl IntoResponsePayload for ethereum::CallContract {
                 contract_address: to,
                 data,
                 gas_limit,
-                network,
                 chain_id,
+                network: chain_id.into(),
                 min_block_timestamp,
             }),
             _ => Err(problem::unexpected_query_parameters(

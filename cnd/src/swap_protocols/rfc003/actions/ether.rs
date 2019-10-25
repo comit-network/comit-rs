@@ -34,7 +34,6 @@ impl RefundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
             data: None,
             gas_limit,
             chain_id: htlc_params.ledger.chain_id,
-            network: htlc_params.ledger.network,
             min_block_timestamp: Some(htlc_params.expiry),
         }
     }
@@ -56,7 +55,6 @@ impl RedeemAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
             data: Some(data),
             gas_limit,
             chain_id: htlc_params.ledger.chain_id,
-            network: htlc_params.ledger.network,
             min_block_timestamp: None,
         }
     }

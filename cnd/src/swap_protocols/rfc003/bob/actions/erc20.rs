@@ -73,7 +73,6 @@ where
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(Action::Refund(erc20::refund_action(
                 request.beta_ledger.chain_id,
-                request.beta_ledger.network,
                 request.beta_expiry,
                 *htlc_location,
             )));
@@ -118,14 +117,9 @@ where
 
         use self::LedgerState::*;
         let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => {
-                vec![Action::Redeem(erc20::redeem_action(
-                    *htlc_location,
-                    secret,
-                    request.alpha_ledger.chain_id,
-                    request.alpha_ledger.network,
-                ))]
-            }
+            (Funded { htlc_location, .. }, _, Some(secret)) => vec![Action::Redeem(
+                erc20::redeem_action(*htlc_location, secret, request.alpha_ledger.chain_id),
+            )],
             (Funded { .. }, NotDeployed, _) => vec![Action::Fund(<(BL, BA)>::fund_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
