@@ -1,4 +1,5 @@
 use crate::{
+    db::{SaveMessage, SaveRfc003Messages},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -30,7 +31,9 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>(
+pub fn handle_action<
+    D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -61,6 +64,11 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let accept_body = action.accept(body);
+                                    //                                    let _ =
+                                    // SaveMessage::save_message(
+                                    //                                        &dependencies,
+                                    //                                        accept_body.clone(),
+                                    //                                    );
 
                                     let response = rfc003_accept_response(accept_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
@@ -98,6 +106,11 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>
 
                                     let decline_body =
                                         action.decline(to_swap_decline_reason(body.reason));
+                                    //                                    let _ =
+                                    // SaveMessage::save_message(
+                                    //                                        &dependencies,
+                                    //                                        decline_body.clone(),
+                                    //                                    );
 
                                     let response = rfc003_decline_response(decline_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;

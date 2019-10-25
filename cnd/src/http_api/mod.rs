@@ -33,7 +33,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
+use bitcoin::util::amount::Denomination;
 use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
@@ -48,19 +48,19 @@ pub struct Http<I>(pub I);
 
 impl_from_http_ledger!(Bitcoin { network });
 
-impl FromHttpAsset for BitcoinAmount {
+impl FromHttpAsset for bitcoin::Amount {
     fn from_http_asset(mut asset: HttpAsset) -> Result<Self, asset::Error> {
         let name = String::from("bitcoin");
         asset.is_asset(name.as_ref())?;
 
         let quantity = asset.parameter::<String>("quantity")?;
 
-        BitcoinAmount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+        bitcoin::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
             .map_err(|_| asset::Error::Parsing)
     }
 }
 
-impl Serialize for Http<BitcoinAmount> {
+impl Serialize for Http<bitcoin::Amount> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -291,11 +291,10 @@ impl<'de> Deserialize<'de> for DialInformation {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::{
         http_api::Http,
         swap_protocols::{
-            ledger::{Bitcoin, Ethereum},
+            ledger::{ethereum, Bitcoin, Ethereum},
             HashFunction, SwapId, SwapProtocol,
         },
     };
@@ -309,7 +308,7 @@ mod tests {
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = BitcoinAmount::from_btc(1.0).unwrap();
+        let bitcoin = bitcoin::Amount::from_btc(1.0).unwrap();
         let ether = EtherQuantity::from_eth(1.0);
         let pay = Erc20Token::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),

@@ -1,7 +1,9 @@
 mod models;
+mod save_message;
 mod schema;
 embed_migrations!("./migrations");
 
+pub use self::save_message::{SaveMessage, SaveRfc003Messages};
 use crate::{
     db::models::{InsertableSwap, SqlText, Swap},
     swap_protocols::SwapId,
@@ -49,7 +51,7 @@ impl From<diesel::result::Error> for Error {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Sqlite {
     db: PathBuf,
 }

@@ -94,6 +94,89 @@ pub enum AssetKind {
     Erc20,
 }
 
+// Sqlite only supports signed integers, hence we need to wrap this to make it
+// type-safe to fetch it from the DB
+#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Integer"]
+pub struct ChainId(pub u32);
+
+impl<DB> ToSql<Integer, DB> for ChainId
+where
+    DB: Backend,
+    i32: ToSql<Integer, DB>,
+{
+    fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+        let number = i32::try_from(self.0)?;
+
+        number.to_sql(out)
+    }
+}
+
+impl<DB> FromSql<Integer, DB> for ChainId
+where
+    DB: Backend,
+    i32: FromSql<Integer, DB>,
+{
+    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+        let number = i32::from_sql(bytes)?;
+        let id = u32::try_from(number)?;
+
+        Ok(ChainId(id))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
+pub struct Satoshis(pub u64);
+
+// Sqlite doesn't support very large numbers, hence we are storing wei as binary
+// data
+#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
+#[sql_type = "Binary"]
+pub struct Wei(pub U256);
+
+impl<DB> ToSql<Binary, DB> for Wei
+where
+    DB: Backend,
+    Vec<u8>: ToSql<Binary, DB>,
+{
+    fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+        let bytes: [u8; 32] = self.0.into();
+
+        bytes.to_vec().to_sql(out)
+    }
+}
+
+impl<DB> FromSql<Binary, DB> for Wei
+where
+    DB: Backend,
+    Vec<u8>: FromSql<Binary, DB>,
+{
+    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
+        let vec = Vec::<u8>::from_sql(bytes)?;
+
+        Ok(Wei(U256::from(vec.as_slice())))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct EthereumAddress(pub ethereum_support::Address);
+
+impl FromStr for EthereumAddress {
+    type Err = <ethereum_support::Address as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        s.parse().map(EthereumAddress)
+    }
+}
+
+impl fmt::Display for EthereumAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:x}", self.0)
+    }
+}
+
+/// Custom diesel new-type that works as long as T implements `Display` and
+/// `FromStr`.
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
 #[sql_type = "Text"]
 pub struct SqlText<T>(pub T);
@@ -141,6 +224,7 @@ where
 mod database_serialization_format_stability_tests {
 
     use super::*;
+    use crate::swap_protocols::HashFunction;
 
     #[test]
     fn swap_id() {
@@ -167,6 +251,36 @@ mod database_serialization_format_stability_tests {
         test::<Role>("Alice");
         test::<Role>("Bob");
         assert_num_variants::<Role>(2)
+    }
+
+    #[test]
+    fn bitcoin_network() {
+        test::<bitcoin::Network>("bitcoin");
+        test::<bitcoin::Network>("testnet");
+        test::<bitcoin::Network>("regtest");
+    }
+
+    #[test]
+    fn bitcoin_amount() {
+        test::<Satoshis>("100000000000");
+    }
+
+    #[test]
+    fn hash_function() {
+        test::<HashFunction>("SHA-256");
+        assert_num_variants::<HashFunction>(1)
+    }
+
+    #[test]
+    fn bitcoin_public_key() {
+        test::<bitcoin::PublicKey>(
+            "0216867374f539badfd90d7b2269008d893ae7bd4f9ee7c695c967d01d6953c401",
+        );
+    }
+
+    #[test]
+    fn ethereum_address() {
+        test::<EthereumAddress>("68917b35bacf71dbadf37628b3b7f290f6d88877");
     }
 
     fn test<T: fmt::Display + FromStr>(stored_value: &str)

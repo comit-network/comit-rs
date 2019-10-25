@@ -3,6 +3,7 @@
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
+    db::{SaveRfc003Messages, Sqlite},
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -90,6 +91,7 @@ fn main() -> Result<(), failure::Error> {
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
+        db: Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone())).unwrap(),
     };
 
     spawn_warp_instance(
@@ -119,7 +121,14 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 }
 
 fn spawn_warp_instance<
-    D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed,
+    D: Clone
+        + MetadataStore
+        + StateStore
+        + Network
+        + SendRequest
+        + Spawn
+        + SwapSeed
+        + SaveRfc003Messages,
 >(
     settings: &Settings,
     peer_id: PeerId,

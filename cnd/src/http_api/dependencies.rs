@@ -1,4 +1,5 @@
 use crate::{
+    db::{self, SaveMessage, SaveRfc003Messages, Sqlite},
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
@@ -36,6 +37,7 @@ pub struct Dependencies<S> {
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: Seed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
+    pub db: Sqlite,
 }
 
 impl<S> Clone for Dependencies<S> {
@@ -46,6 +48,7 @@ impl<S> Clone for Dependencies<S> {
             state_store: Arc::clone(&self.state_store),
             seed: self.seed,
             swarm: Arc::clone(&self.swarm),
+            db: self.db.clone(),
         }
     }
 }
@@ -143,5 +146,17 @@ where
 {
     fn swap_seed(&self, id: SwapId) -> Seed {
         self.seed.swap_seed(id)
+    }
+}
+
+impl<S> SaveRfc003Messages for Dependencies<S> where S: Send + Sync + 'static {}
+
+impl<S, M> SaveMessage<M> for Dependencies<S>
+where
+    S: Send + Sync + 'static,
+    Sqlite: SaveMessage<M>,
+{
+    fn save_message(&self, message: M) -> Result<(), db::Error> {
+        self.db.save_message(message)
     }
 }
