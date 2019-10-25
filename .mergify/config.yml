@@ -6,3 +6,14 @@ pull_request_rules:
     actions:
       comment:
         message: "bors r+"
+  - name: instruct bors to merge PRs with passing tests and 2 approvals
+    conditions:
+      - "#approved-reviews-by>=2"
+      - "status-success=ci/circleci: debug-build-test"
+      - label!=work-in-progress
+      - label!=blocked
+      - label!=no-mergify
+      - head~=^(?!release.*).*$
+    actions:
+      comment:
+        message: "bors r+"
