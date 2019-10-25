@@ -137,11 +137,9 @@ fn default_seed_path() -> Result<PathBuf, Error> {
 
 pub enum Error {
     Io(io::Error),
-    PemFileParse,
     PemParse(pem::PemError),
     IncorrectLength(usize),
     Rand(rand::Error),
-    Decode(base64::DecodeError),
 }
 
 impl std::error::Error for Error {}
@@ -157,20 +155,12 @@ impl fmt::Debug for Error {
         write!(f, "secret seed: ")?;
         match self {
             Error::Io(e) => write!(f, "io error: {:?}", e),
-            Error::PemFileParse => write!(f, "pem format incorrect"),
             Error::PemParse(e) => write!(f, "pem format incorrect: {:?}", e),
             Error::IncorrectLength(x) => {
                 write!(f, "expected 32 bytes of base64 encode, got {} bytes", x)
             }
             Error::Rand(e) => write!(f, "random number error: {:?}", e),
-            Error::Decode(e) => write!(f, "base64 parse error: {:?}", e),
         }
-    }
-}
-
-impl From<base64::DecodeError> for Error {
-    fn from(e: base64::DecodeError) -> Error {
-        Error::Decode(e)
     }
 }
 
