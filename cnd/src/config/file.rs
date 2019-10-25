@@ -112,7 +112,7 @@ impl File {
                 "No configuration file found, creating default at {}",
                 PrintablePath(&path)
             );
-            Self::default(rand).write_to(&path)
+            Self::default().write_to(&path)
         }
     }
 
@@ -190,6 +190,7 @@ impl File {
 mod tests {
     use super::*;
     use log::LevelFilter;
+    use reqwest::Url;
     use spectral::prelude::*;
     use tempfile::NamedTempFile;
 
