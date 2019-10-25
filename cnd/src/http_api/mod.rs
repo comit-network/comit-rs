@@ -9,6 +9,7 @@ pub mod asset;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
+mod ethereum_network;
 mod problem;
 mod swap_resource;
 
@@ -95,7 +96,7 @@ impl Serialize for Http<Ethereum> {
     where
         S: Serializer,
     {
-        let network: ethereum_support::Network = self.0.chain_id.into();
+        let network: ethereum_network::Network = self.0.chain_id.into();
 
         let mut state = serializer.serialize_struct("", 3)?;
         state.serialize_field("name", "ethereum")?;
@@ -113,7 +114,7 @@ impl FromHttpLedger for Ethereum {
 
         let chain_id = ledger.parameter("chain_id").or_else(|e| {
             ledger
-                .parameter::<ethereum_support::Network>("network")
+                .parameter::<ethereum_network::Network>("network")
                 .and_then(|network| ethereum::ChainId::try_from(network).map_err(|_| e))
         })?;
 

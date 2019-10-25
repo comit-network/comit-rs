@@ -1,5 +1,5 @@
 use crate::{
-    http_api::{problem, Http},
+    http_api::{ethereum_network, problem, Http},
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -52,7 +52,7 @@ pub enum ActionResponseBody {
         data: ethereum_support::Bytes,
         amount: ethereum_support::EtherQuantity,
         gas_limit: ethereum_support::U256,
-        network: ethereum_support::Network,
+        network: ethereum_network::Network,
         chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
@@ -61,7 +61,7 @@ pub enum ActionResponseBody {
         data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
         chain_id: ledger::ethereum::ChainId,
-        network: ethereum_support::Network,
+        network: ethereum_network::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
