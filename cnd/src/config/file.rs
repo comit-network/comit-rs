@@ -19,7 +19,6 @@ use std::{
 /// for filling in default values for absent configuration options.
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct File {
-    pub comit: Option<Comit>,
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
@@ -36,7 +35,6 @@ impl File {
             .expect("cnd listen address could not be parsed");
 
         File {
-            comit: None,
             network: Network {
                 listen: vec![comit_listen],
             },
@@ -60,11 +58,6 @@ impl File {
 pub struct Logging {
     pub level: Option<LevelFilter>,
     pub structured: Option<bool>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct Comit {
-    pub secret_seed_file: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]

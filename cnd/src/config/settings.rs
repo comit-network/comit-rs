@@ -1,4 +1,4 @@
-use super::file::{Comit, Database, File, HttpSocket, Network};
+use super::file::{Database, File, HttpSocket, Network};
 use crate::config::file::{Bitcoin, Ethereum};
 use log::LevelFilter;
 use reqwest::Url;
@@ -11,7 +11,6 @@ use reqwest::Url;
 /// are created from a given `Config`.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
-    pub comit: Option<Comit>,
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
@@ -32,7 +31,6 @@ pub struct Logging {
 impl Settings {
     pub fn from_config_file_and_defaults(config_file: File) -> Self {
         let File {
-            comit,
             network,
             http_api,
             database,
@@ -43,7 +41,6 @@ impl Settings {
         } = config_file;
 
         Self {
-            comit,
             network,
             http_api,
             database,

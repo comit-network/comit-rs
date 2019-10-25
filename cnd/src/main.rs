@@ -45,14 +45,7 @@ fn main() -> Result<(), failure::Error> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    let seed_file = match options.secret_seed_file {
-        Some(file) => Some(file),
-        None => match settings.comit.clone() {
-            Some(comit) => Some(comit.secret_seed_file),
-            None => None,
-        },
-    };
-    let seed = match seed_file {
+    let seed = match options.secret_seed_file {
         Some(file) => Seed::from_file(file)?,
         None => Seed::from_default_file_or_generate(OsRng)?,
     };
