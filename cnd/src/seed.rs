@@ -91,12 +91,11 @@ impl Seed {
 
     fn write_to(&self, seed_file: PathBuf) -> Result<(), Error> {
         ensure_directory_exists(seed_file.clone())?;
-        self.write_to_file(seed_file)?;
+        self._write_to(seed_file)?;
         Ok(())
     }
 
-    // Use write_to() to ensure directory tree exists before writing to file.
-    fn write_to_file(&self, path: PathBuf) -> Result<(), Error> {
+    fn _write_to(&self, path: PathBuf) -> Result<(), Error> {
         let pem = Pem {
             tag: String::from("SECRET SEED"),
             contents: self.0.to_vec(),
@@ -283,7 +282,7 @@ mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
         let path = tmpfile.path().to_path_buf();
 
         let seed = Seed::new_random(OsRng).unwrap();
-        seed.write_to_file(path.clone())
+        seed._write_to(path.clone())
             .expect("Write seed to temp file");
 
         let rinsed = Seed::from_file(path).expect("Read from temp file");
