@@ -81,11 +81,17 @@ impl Seed {
         let path = default_seed_path()?;
 
         if path.exists() {
-            return Self::from_file(path);
+            return Self::from_file(&path);
         }
 
         let random_seed = Seed::new_random(rand)?;
-        random_seed.write_to(path)?;
+        random_seed.write_to(path.clone())?;
+
+        log::info!(
+            "No seed file found, creating default at {}",
+            PrintablePath(&path)
+        );
+
         Ok(random_seed)
     }
 
@@ -105,11 +111,6 @@ impl Seed {
 
         let mut file = File::create(path.clone())?;
         file.write_all(pem_string.as_bytes())?;
-
-        log::info!(
-            "No seed file found, creating default at {}",
-            PrintablePath(&path)
-        );
 
         Ok(())
     }
