@@ -42,7 +42,7 @@
         "@types/glob": "^7.1.1",
         "@types/mocha": "^5.2.6",
         "@types/node": "^10.14",
-        "@types/rimraf": "^2.0.2",
+        "@types/rimraf": "^2.0.3",
         "@types/scrypt": "^6.0.0",
         "@types/tempfile": "^3.0.0",
         "@types/urijs": "^1.19.4",
