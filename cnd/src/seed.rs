@@ -1,7 +1,6 @@
 use crate::{std_ext::path::PrintablePath, swap_protocols::SwapId};
-use base64;
 use crypto::{digest::Digest, sha2::Sha256};
-use pem;
+use pem::{encode, Pem};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -96,14 +95,17 @@ impl Seed {
         Ok(())
     }
 
+    // Use write_to() to ensure directory tree exists before writing to file.
     fn write_to_file(&self, path: PathBuf) -> Result<(), Error> {
-        let out = format!(
-            "-----BEGIN SECRET SEED-----\n{}\n-----END SECRET SEED-----\n",
-            base64::encode(&self.0)
-        );
+        let pem = Pem {
+            tag: String::from("SECRET SEED"),
+            contents: self.0.to_vec(),
+        };
+
+        let pem_string = encode(&pem);
 
         let mut file = File::create(path.clone())?;
-        file.write_all(out.as_bytes())?;
+        file.write_all(pem_string.as_bytes())?;
 
         log::info!(
             "No seed file found, creating default at {}",
