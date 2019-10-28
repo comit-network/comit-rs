@@ -39,11 +39,17 @@ export interface Asset {
     token_contract?: string;
 }
 
-export interface Ledger {
+export interface BitcoinLedger {
     name: string;
-    network?: string;
-    chain_id?: number;
+    network: string;
 }
+
+export interface EthereumLedger {
+    name: string;
+    chain_id: number;
+}
+
+export type Ledger = BitcoinLedger | EthereumLedger;
 
 export interface SwapRequest {
     alpha_ledger: Ledger;
