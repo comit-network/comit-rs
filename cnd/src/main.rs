@@ -45,7 +45,7 @@ fn main() -> Result<(), failure::Error> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    let seed = match options.secret_seed_file {
+    let seed = match options.seed_file {
         Some(file) => Seed::from_file(file)?,
         None => Seed::from_default_file_or_generate(OsRng)?,
     };
@@ -126,8 +126,8 @@ fn main() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
-    let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
+fn derive_key_pair(seed: &Seed) -> identity::Keypair {
+    let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
 }

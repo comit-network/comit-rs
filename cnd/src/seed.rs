@@ -52,7 +52,7 @@ impl Seed {
     pub fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
         let file = Path::new(&seed_file);
         log::info!(
-            "Found secret seed file, reading from {}",
+            "Found seed file, reading from {}",
             PrintablePath(&file.to_path_buf())
         );
 
@@ -64,15 +64,15 @@ impl Seed {
 
     pub fn from_pem(pem: pem::Pem) -> Result<Seed, Error> {
         if pem.contents.len() != SEED_LENGTH {
-            return Err(Error::IncorrectLength(pem.contents.len()));
-        }
+            Err(Error::IncorrectLength(pem.contents.len()))
+        } else {
+            let mut array = [0; SEED_LENGTH];
+            for (i, b) in pem.contents.iter().enumerate() {
+                array[i] = *b;
+            }
 
-        let mut array = [0; SEED_LENGTH];
-        for (i, b) in pem.contents.iter().enumerate() {
-            array[i] = *b;
+            Ok(Seed::from(array))
         }
-
-        Ok(Seed::from(array))
     }
 
     /// Read the seed from the default location if it exists, otherwise
@@ -103,7 +103,7 @@ impl Seed {
 
     fn _write_to(&self, path: PathBuf) -> Result<(), Error> {
         let pem = Pem {
-            tag: String::from("SECRET SEED"),
+            tag: String::from("SEED"),
             contents: self.0.to_vec(),
         };
 
@@ -120,7 +120,7 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     if let Some(path) = file.parent() {
         if !path.exists() {
             log::info!(
-                "Secret seed parent directory does not exist, creating recursively: {}",
+                "Seed file parent directory does not exist, creating recursively: {}",
                 PrintablePath(&file)
             );
             fs::create_dir_all(path)?;
@@ -131,7 +131,7 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
 
 fn default_seed_path() -> Result<PathBuf, Error> {
     crate::data_dir()
-        .map(|dir| Path::join(&dir, "secret_seed.pem"))
+        .map(|dir| Path::join(&dir, "seed.pem"))
         .ok_or(Error::NoDefaultPath)
 }
 
@@ -147,13 +147,13 @@ impl std::error::Error for Error {}
 
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "secret seed file error")
+        write!(f, "seed file error")
     }
 }
 
 impl fmt::Debug for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "secret seed: ")?;
+        write!(f, "seed: ")?;
         match self {
             Error::Io(e) => write!(f, "io error: {:?}", e),
             Error::PemParse(e) => write!(f, "pem format incorrect: {:?}", e),
@@ -235,15 +235,15 @@ mod tests {
     }
 
     // 32 bytes base64 encoded.
-    const PEM: &str = "-----BEGIN SECRET SEED-----
+    const PEM: &str = "-----BEGIN SEED-----
 syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
------END SECRET SEED-----
+-----END SEED-----
 ";
 
     #[test]
     fn pem_library_works_as_expected() {
         let pem = pem::parse(PEM).unwrap();
-        assert_eq!(pem.tag, "SECRET SEED");
+        assert_eq!(pem.tag, "SEED");
     }
 
     #[test]
@@ -257,9 +257,9 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
     #[test]
     #[should_panic]
     fn seed_from_pem_fails_for_short_seed() {
-        let short = "-----BEGIN SECRET SEED-----
+        let short = "-----BEGIN SEED-----
 6516513
------END SECRET SEED-----
+-----END SEED-----
 ";
         let pem = pem::parse(short).unwrap();
         let _seed = Seed::from_pem(pem).unwrap();
@@ -268,10 +268,10 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
     #[test]
     #[should_panic]
     fn seed_from_pem_fails_for_long_seed() {
-        let long = "-----BEGIN SECRET SEED-----
+        let long = "-----BEGIN SEED-----
 mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
 mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
------END SECRET SEED-----
+-----END SEED-----
 ";
         let pem = pem::parse(long).unwrap();
         let _seed = Seed::from_pem(pem).unwrap();

@@ -8,6 +8,6 @@ pub struct Options {
     pub config_file: Option<PathBuf>,
 
     /// Path to secret seed file.
-    #[structopt(short = "s", long = "secret-seed-file", parse(from_os_str))]
-    pub secret_seed_file: Option<PathBuf>,
+    #[structopt(short = "s", long = "seed-file", parse(from_os_str))]
+    pub seed_file: Option<PathBuf>,
 }

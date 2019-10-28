@@ -45,12 +45,12 @@ export class CndRunner {
                 "config.toml"
             );
 
-            const pemObject = new PEMObject("SECRET SEED", cndconfig.seed);
+            const pemObject = new PEMObject("SEED", cndconfig.seed);
             const seedFile = await tempWrite(pemObject.encoded, "seed.pem");
 
             const process = spawn(
                 this.bin,
-                ["--config", configFile, "--secret-seed-file", seedFile],
+                ["--config", configFile, "--seed-file", seedFile],
                 {
                     cwd: this.projectRoot,
                     stdio: [
