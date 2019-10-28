@@ -55,10 +55,8 @@ fn main() -> Result<(), failure::Error> {
         BitcoindConnector::new(node_url, network)?
     };
 
-    let (ethereum_connector, _event_loop_handle) = {
-        let config::file::Ethereum { node_url, network } = settings.clone().ethereum;
-        Web3Connector::new(node_url, network)?
-    };
+    let (ethereum_connector, _event_loop_handle) =
+        { Web3Connector::new(settings.clone().ethereum.node_url)? };
 
     let ledger_events = LedgerEventDependencies {
         bitcoin_connector,

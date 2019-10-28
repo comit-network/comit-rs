@@ -7,7 +7,7 @@ use ethereum_support::{
         types::BlockId,
         Web3,
     },
-    BlockNumber, Network,
+    BlockNumber,
 };
 use reqwest::Url;
 use std::sync::Arc;
@@ -18,7 +18,7 @@ pub struct Web3Connector {
 }
 
 impl Web3Connector {
-    pub fn new(node_url: Url, _network: Network) -> Result<(Self, EventLoopHandle), web3::Error> {
+    pub fn new(node_url: Url) -> Result<(Self, EventLoopHandle), web3::Error> {
         let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
         Ok((
             Self {

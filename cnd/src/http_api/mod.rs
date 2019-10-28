@@ -9,6 +9,7 @@ pub mod asset;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
+mod ethereum_network;
 mod problem;
 mod swap_resource;
 
@@ -27,7 +28,7 @@ use crate::{
     network::{DialInformation, Network},
     swap_protocols::{
         asset::Asset,
-        ledger::{Bitcoin, Ethereum},
+        ledger::{ethereum, Bitcoin, Ethereum},
         metadata_store,
         rfc003::{
             alice::{self, AliceSpawner},
@@ -50,7 +51,7 @@ use serde::{
     ser::SerializeStruct,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::sync::Arc;
+use std::{convert::TryFrom, sync::Arc};
 
 #[derive(Clone, Debug)]
 pub struct Http<I>(pub I);
@@ -90,8 +91,37 @@ impl Serialize for Http<bitcoin::Transaction> {
     }
 }
 
-impl_serialize_type_name_with_fields!(Ethereum { "network" => network });
-impl_from_http_ledger!(Ethereum { network });
+impl Serialize for Http<Ethereum> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let network: ethereum_network::Network = self.0.chain_id.into();
+
+        let mut state = serializer.serialize_struct("", 3)?;
+        state.serialize_field("name", "ethereum")?;
+        state.serialize_field("chain_id", &self.0.chain_id)?;
+        state.serialize_field("network", &network)?;
+        state.end()
+    }
+}
+
+// Can re-use macro once `network` is removed with #1580
+impl FromHttpLedger for Ethereum {
+    fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, ledger::Error> {
+        let name = String::from("ethereum");
+        ledger.is_ledger(name.as_ref())?;
+
+        let chain_id = ledger.parameter("chain_id").or_else(|e| {
+            ledger
+                .parameter::<ethereum_network::Network>("network")
+                .and_then(|network| ethereum::ChainId::try_from(network).map_err(|_| e))
+        })?;
+
+        Ok(Ethereum { chain_id })
+    }
+}
+
 impl_serialize_type_name_with_fields!(EtherQuantity := "ether" { "quantity" });
 impl_serialize_type_name_with_fields!(Erc20Token := "erc20" { "quantity" => quantity, "token_contract" => token_contract });
 impl_from_http_quantity_asset!(EtherQuantity, Ether);
@@ -473,15 +503,15 @@ mod tests {
     #[test]
     fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            Http(Ethereum::new(ethereum_support::Network::Mainnet)),
-            Http(Ethereum::new(ethereum_support::Network::Ropsten)),
-            Http(Ethereum::new(ethereum_support::Network::Regtest)),
+            Http(Ethereum::new(ethereum::ChainId::new(1))),
+            Http(Ethereum::new(ethereum::ChainId::new(3))),
+            Http(Ethereum::new(ethereum::ChainId::new(17))),
         ];
 
         let expected = &[
-            r#"{"name":"ethereum","network":"mainnet"}"#,
-            r#"{"name":"ethereum","network":"ropsten"}"#,
-            r#"{"name":"ethereum","network":"regtest"}"#,
+            r#"{"name":"ethereum","chain_id":1,"network":"mainnet"}"#,
+            r#"{"name":"ethereum","chain_id":3,"network":"ropsten"}"#,
+            r#"{"name":"ethereum","chain_id":17,"network":"regtest"}"#,
         ];
 
         let actual = input
@@ -494,9 +524,9 @@ mod tests {
     }
 
     #[test]
-    fn http_ledger_testnet_serializes_correctly_to_json() {
+    fn http_ledger_serializes_correctly_to_json() {
         let bitcoin = Bitcoin::new(bitcoin::Network::Testnet);
-        let ethereum = Ethereum::new(ethereum_support::Network::Ropsten);
+        let ethereum = Ethereum::new(ethereum::ChainId::new(3));
 
         let bitcoin = Http(bitcoin);
         let ethereum = Http(ethereum);
@@ -510,7 +540,7 @@ mod tests {
         );
         assert_eq!(
             &ethereum_serialized,
-            r#"{"name":"ethereum","network":"ropsten"}"#
+            r#"{"name":"ethereum","chain_id":3,"network":"ropsten"}"#
         );
     }
 

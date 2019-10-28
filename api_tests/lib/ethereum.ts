@@ -9,7 +9,6 @@ let ethersClient: JsonRpcProvider;
 
 export interface EthereumNodeConfig {
     rpc_url: string;
-    network: string;
 }
 
 function createEthereumClient(ethConfig: EthereumNodeConfig) {
@@ -138,7 +137,8 @@ export class EthereumWallet {
         to: string,
         data: string,
         value: BigNumber | string | number = 0,
-        gasLimit: string = "0x100000"
+        gasLimit: string = "0x100000",
+        chainId: number = 17
     ) {
         if (!to) {
             throw new Error("`to` cannot be null");
@@ -146,14 +146,13 @@ export class EthereumWallet {
 
         value = ethers.utils.bigNumberify(value);
 
-        const network = await ethersClient.getNetwork();
         const tx: TransactionRequest = {
             gasPrice: "0x0",
             gasLimit,
             to,
             data,
             value: value.toHexString(),
-            chainId: network.chainId,
+            chainId,
         };
         return this.signAndSend(tx);
     }
@@ -179,20 +178,20 @@ export class EthereumWallet {
     public async deploy_contract(
         data: string = "0x0",
         value: BigNumber | number | string = "0",
+        chainId: number = 17,
         gasLimit = "0x3D0900"
     ) {
         const nonce = await ethersClient.getTransactionCount(this.address());
 
         value = ethers.utils.bigNumberify(value);
 
-        const network = await ethersClient.getNetwork();
         const tx: TransactionRequest = {
             nonce: "0x" + nonce.toString(16),
             gasPrice: "0x0",
             gasLimit,
             data,
             value: value.toHexString(),
-            chainId: network.chainId,
+            chainId,
         };
 
         return this.signAndSend(tx);

@@ -1,11 +1,11 @@
 use crate::{
-    http_api::{problem, Http},
+    http_api::{ethereum_network, problem, Http},
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
             ethereum,
         },
-        SwapId, Timestamp,
+        ledger, SwapId, Timestamp,
     },
 };
 use blockchain_contracts::bitcoin::witness;
@@ -32,6 +32,7 @@ pub enum ActionExecutionParameters {
     None {},
 }
 
+/// `network` field here for backward compatibility, to be removed with #1580
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
@@ -51,14 +52,16 @@ pub enum ActionResponseBody {
         data: ethereum_support::Bytes,
         amount: ethereum_support::EtherQuantity,
         gas_limit: ethereum_support::U256,
-        network: ethereum_support::Network,
+        network: ethereum_network::Network,
+        chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
         contract_address: ethereum_support::Address,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<ethereum_support::Bytes>,
         gas_limit: ethereum_support::U256,
-        network: ethereum_support::Network,
+        chain_id: ledger::ethereum::ChainId,
+        network: ethereum_network::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
@@ -231,14 +234,15 @@ impl IntoResponsePayload for ethereum::DeployContract {
             data,
             amount,
             gas_limit,
-            network,
+            chain_id,
         } = self;
         match query_params {
             ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumDeployContract {
                 data,
                 amount,
                 gas_limit,
-                network,
+                chain_id,
+                network: chain_id.into(),
             }),
             _ => Err(problem::unexpected_query_parameters(
                 "ethereum::ContractDeploy",
@@ -263,7 +267,7 @@ impl IntoResponsePayload for ethereum::CallContract {
             to,
             data,
             gas_limit,
-            network,
+            chain_id,
             min_block_timestamp,
         } = self;
         match query_params {
@@ -271,7 +275,8 @@ impl IntoResponsePayload for ethereum::CallContract {
                 contract_address: to,
                 data,
                 gas_limit,
-                network,
+                chain_id,
+                network: chain_id.into(),
                 min_block_timestamp,
             }),
             _ => Err(problem::unexpected_query_parameters(
@@ -306,8 +311,9 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::swap_protocols::ledger::ethereum::ChainId;
     use bitcoin::Address as BitcoinAddress;
-    use ethereum_support::{Address as EthereumAddress, Network as EthereumNetwork, U256};
+    use ethereum_support::{Address as EthereumAddress, U256};
     use std::str::FromStr;
 
     #[test]
@@ -335,17 +341,19 @@ mod test {
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
         let addr = EthereumAddress::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let chain_id = ChainId::new(3);
         let contract = ActionResponseBody::EthereumCallContract {
             contract_address: addr,
             data: None,
             gas_limit: U256::from(1),
-            network: EthereumNetwork::Ropsten,
+            chain_id,
+            network: chain_id.into(),
             min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","network":"ropsten"}}"#
+            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","chain_id":3,"network":"ropsten"}}"#
         );
     }
 

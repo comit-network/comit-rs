@@ -51,7 +51,7 @@ where
                 *htlc_location,
             ))],
             Funded { htlc_location, .. } => vec![Action::Refund(erc20::refund_action(
-                request.alpha_ledger.network,
+                request.alpha_ledger.chain_id,
                 request.alpha_expiry,
                 *htlc_location,
             ))],
@@ -120,7 +120,7 @@ where
             actions.push(Action::Redeem(erc20::redeem_action(
                 *htlc_location,
                 self.secret_source.secret(),
-                request.beta_ledger.network,
+                request.beta_ledger.chain_id,
             )));
         }
         actions

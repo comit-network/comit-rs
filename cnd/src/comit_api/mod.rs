@@ -50,7 +50,7 @@ impl ToHeader for LedgerKind {
                 },
             )?,
             LedgerKind::Ethereum(ethereum) => {
-                Header::with_str_value("ethereum").with_parameter("network", ethereum.network)?
+                Header::with_str_value("ethereum").with_parameter("network", ethereum.chain_id)?
             }
             unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
@@ -146,7 +146,7 @@ impl FromHeader for Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap_protocols::HashFunction;
+    use crate::swap_protocols::{ledger::ethereum, HashFunction};
     use bitcoin::Amount;
     use ethereum_support::{Address, Erc20Quantity, U256};
     use spectral::prelude::*;
@@ -224,15 +224,13 @@ mod tests {
 
     #[test]
     fn ethereum_ledger_to_header() {
-        let ledger = LedgerKind::Ethereum(Ethereum {
-            network: ethereum_support::Network::Ropsten,
-        });
+        let ledger = LedgerKind::Ethereum(Ethereum::new(ethereum::ChainId::ropsten()));
         let header = ledger.to_header().unwrap();
 
         assert_eq!(
             header,
             Header::with_str_value("ethereum")
-                .with_parameter("network", "ropsten")
+                .with_parameter("network", 3)
                 .unwrap()
         );
     }

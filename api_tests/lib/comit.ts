@@ -19,7 +19,7 @@ export type LedgerAction =
               data: string;
               amount: string;
               gas_limit: string;
-              network: string;
+              chain_id: number;
           };
       }
     | {
@@ -28,7 +28,7 @@ export type LedgerAction =
               contract_address: string;
               data: string;
               gas_limit: string;
-              network: string;
+              chain_id: number;
               min_block_timestamp?: number;
           };
       };
@@ -39,10 +39,17 @@ export interface Asset {
     token_contract?: string;
 }
 
-export interface Ledger {
+export interface BitcoinLedger {
     name: string;
     network: string;
 }
+
+export interface EthereumLedger {
+    name: string;
+    chain_id: number;
+}
+
+export type Ledger = BitcoinLedger | EthereumLedger;
 
 export interface SwapRequest {
     alpha_ledger: Ledger;

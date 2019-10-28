@@ -194,7 +194,7 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 mod tests {
 
     use super::*;
-    use crate::network::DialInformation;
+    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
     use spectral::prelude::*;
 
     #[test]
@@ -289,6 +289,54 @@ mod tests {
                     .parse()
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
+            },
+        })
+    }
+
+    #[test]
+    fn can_deserialize_swap_request_body_with_chain_id() {
+        let body = r#"{
+                "alpha_ledger": {
+                    "name": "bitcoin",
+                    "network": "regtest"
+                },
+                "beta_ledger": {
+                    "name": "ethereum",
+                    "chain_id": 3
+                },
+                "alpha_asset": {
+                    "name": "bitcoin",
+                    "quantity": "100000000"
+                },
+                "beta_asset": {
+                    "name": "ether",
+                    "quantity": "10000000000000000000"
+                },
+                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+                "alpha_expiry": 2000000000,
+                "beta_expiry": 2000000000,
+                "peer": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+            }"#;
+
+        let body = serde_json::from_str(body);
+
+        assert_that(&body).is_ok_containing(SwapRequestBody {
+            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
+            beta_asset: EtherQuantity::from_eth(10.0),
+            alpha_ledger: Bitcoin::default(),
+            beta_ledger: Ethereum::new(ChainId::new(3)),
+            alpha_expiry: Timestamp::from(2_000_000_000),
+            beta_expiry: Timestamp::from(2_000_000_000),
+            partial_identities: OnlyRedeem::<Ethereum> {
+                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                    .parse()
+                    .unwrap(),
+            },
+            peer: DialInformation {
+                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                    .parse()
+                    .unwrap(),
+                address_hint: None,
             },
         })
     }

@@ -23,7 +23,7 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
     const beta = {
         ledger: {
             name: "ethereum",
-            network: "regtest",
+            network: "regtest", // Replaced with chain_id. Keep deprecated way to confirm backward compatibility
         },
         asset: {
             name: "ether",

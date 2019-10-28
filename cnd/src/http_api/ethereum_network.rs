@@ -1,4 +1,6 @@
+use crate::swap_protocols::ledger::ethereum::ChainId;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 #[derive(
     Clone,
@@ -31,6 +33,25 @@ impl Network {
             "3" => Network::Ropsten,
             "17" => Network::Regtest,
             _ => Network::Unknown,
+        }
+    }
+}
+
+impl From<ChainId> for Network {
+    fn from(chain: ChainId) -> Self {
+        Network::from_network_id(u32::from(chain).to_string())
+    }
+}
+
+impl TryFrom<Network> for ChainId {
+    type Error = ();
+
+    fn try_from(network: Network) -> Result<Self, ()> {
+        match network {
+            Network::Mainnet => Ok(ChainId::mainnet()),
+            Network::Regtest => Ok(ChainId::regtest()),
+            Network::Ropsten => Ok(ChainId::ropsten()),
+            Network::Unknown => Err(()),
         }
     }
 }

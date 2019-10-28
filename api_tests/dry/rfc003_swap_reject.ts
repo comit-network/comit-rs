@@ -26,7 +26,7 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
     const beta = {
         ledger: {
             name: "ethereum",
-            network: "regtest",
+            chain_id: 17,
         },
         asset: {
             name: "ether",
@@ -53,7 +53,7 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
                     },
                     beta_ledger: {
                         name: beta.ledger.name,
-                        network: beta.ledger.network,
+                        chain_id: beta.ledger.chain_id,
                     },
                     alpha_asset: {
                         name: alpha.asset.name,
@@ -106,7 +106,7 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
                     },
                     beta_ledger: {
                         name: beta.ledger.name,
-                        network: beta.ledger.network,
+                        chain_id: beta.ledger.chain_id,
                     },
                     alpha_asset: {
                         name: alpha.asset.name,
