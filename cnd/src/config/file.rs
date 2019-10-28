@@ -121,7 +121,7 @@ impl File {
                 "No configuration file found, creating default at {}",
                 PrintablePath(&path)
             );
-            Self::default(rand).write_to(path)
+            Self::default(rand).write_to(&path)
         }
     }
 
@@ -133,8 +133,8 @@ impl File {
         config.try_into()
     }
 
-    pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        Self::ensure_directory_exists(config_file.clone())?;
+    pub fn write_to(self, config_file: &Path) -> Result<Self, config_rs::ConfigError> {
+        Self::ensure_directory_exists(config_file)?;
 
         Self::write_to_file(config_file, &self)?;
 
@@ -151,7 +151,7 @@ impl File {
             })
     }
 
-    fn ensure_directory_exists(config_file: PathBuf) -> Result<(), config_rs::ConfigError> {
+    fn ensure_directory_exists(config_file: &Path) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
             None => {
                 log::trace!("Config path is root path");
@@ -177,13 +177,13 @@ impl File {
     }
 
     fn write_to_file(
-        config_file: PathBuf,
+        config_file: &Path,
         default_settings: &File,
     ) -> Result<(), config_rs::ConfigError> {
         let toml_string = toml::to_string(&default_settings).map_err(|e| {
             config_rs::ConfigError::Message(format!("Could not serialize config: {:?}", e))
         })?;
-        let mut file = std::fs::File::create(config_file.clone()).map_err(|e| {
+        let mut file = std::fs::File::create(config_file).map_err(|e| {
             config_rs::ConfigError::Message(format!(
                 "Could not create config file: {:?} {:?}",
                 config_file, e
@@ -287,7 +287,7 @@ mod tests {
         let temp_file = temp_toml_file();
         let temp_file_path = temp_file.into_temp_path().to_path_buf();
         config_without_logging_section
-            .write_to(temp_file_path.clone())
+            .write_to(&temp_file_path)
             .unwrap();
 
         let config_file_contents = std::fs::read_to_string(temp_file_path.clone()).unwrap();
@@ -309,7 +309,7 @@ mod tests {
         let temp_file = temp_toml_file();
         let path = temp_file.into_temp_path().to_path_buf();
 
-        let expected = config.write_to(path.clone()).unwrap();
+        let expected = config.write_to(&path).unwrap();
         let actual = File::read(path);
 
         assert_that(&actual).is_ok_containing(&expected);
