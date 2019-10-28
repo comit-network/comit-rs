@@ -110,6 +110,10 @@ export class Actor {
     }
 
     public async accept() {
+        if (!this.swap) {
+            throw new Error("Cannot accept inexistent swap");
+        }
+
         this.swap.accept(Actor.defaultActionConfig);
     }
 
