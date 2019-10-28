@@ -134,7 +134,7 @@ impl File {
     }
 
     pub fn write_to(self, config_file: PathBuf) -> Result<Self, config_rs::ConfigError> {
-        Self::ensure_directory_exists(&config_file)?;
+        Self::ensure_directory_exists(config_file.clone())?;
 
         Self::write_to_file(config_file, &self)?;
 
@@ -151,7 +151,7 @@ impl File {
             })
     }
 
-    fn ensure_directory_exists(config_file: &PathBuf) -> Result<(), config_rs::ConfigError> {
+    fn ensure_directory_exists(config_file: PathBuf) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
             None => {
                 log::trace!("Config path is root path");
