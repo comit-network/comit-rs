@@ -1,4 +1,4 @@
-import { createActors } from "../../../lib2/create_actors";
+import { createActors } from "../../../lib_sdk/create_actors";
 
 setTimeout(function() {
     describe("happy path", function() {
