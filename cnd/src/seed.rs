@@ -132,9 +132,7 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
 fn default_seed_path() -> Result<PathBuf, Error> {
     crate::data_dir()
         .map(|dir| Path::join(&dir, "secret_seed.pem"))
-        .ok_or_else(|| {
-            panic!("TODO: error handling");
-        })
+        .ok_or(Error::NoDefaultPath)
 }
 
 pub enum Error {
@@ -142,6 +140,7 @@ pub enum Error {
     PemParse(pem::PemError),
     IncorrectLength(usize),
     Rand(rand::Error),
+    NoDefaultPath,
 }
 
 impl std::error::Error for Error {}
@@ -162,6 +161,7 @@ impl fmt::Debug for Error {
                 write!(f, "expected 32 bytes of base64 encode, got {} bytes", x)
             }
             Error::Rand(e) => write!(f, "random number error: {:?}", e),
+            Error::NoDefaultPath => write!(f, "failed to generate default path"),
         }
     }
 }
