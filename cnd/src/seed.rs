@@ -234,17 +234,20 @@ mod tests {
         assert_eq!(debug, "Seed([*****])".to_string());
     }
 
-    // 32 bytes base64 encoded.
-    const PEM: &str = "-----BEGIN SEED-----
+    #[test]
+    fn seed_from_pem_works() {
+        let payload: &str = "syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=";
+
+        // 32 bytes base64 encoded.
+        let pem_string: &str = "-----BEGIN SEED-----
 syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
 -----END SEED-----
 ";
 
-    #[test]
-    fn seed_from_pem_works() {
-        let want = base64::decode("syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=").unwrap();
-        let pem = pem::parse(PEM).unwrap();
+        let want = base64::decode(payload).unwrap();
+        let pem = pem::parse(pem_string).unwrap();
         let got = Seed::from_pem(pem).unwrap();
+
         assert_eq!(got.0, *want);
     }
 
