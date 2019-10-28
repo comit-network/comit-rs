@@ -252,14 +252,21 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
     }
 
     #[test]
-    #[should_panic]
     fn seed_from_pem_fails_for_short_seed() {
         let short = "-----BEGIN SEED-----
-6516513
+VnZUNFZ4dlY=
 -----END SEED-----
 ";
         let pem = pem::parse(short).unwrap();
-        let _seed = Seed::from_pem(pem).unwrap();
+        match Seed::from_pem(pem) {
+            Ok(_) => panic!("should fail for short payload"),
+            Err(e) => {
+                match e {
+                    Error::IncorrectLength(_) => {} // pass
+                    _ => panic!("should fail with IncorrectLength error"),
+                }
+            }
+        }
     }
 
     #[test]
@@ -271,7 +278,15 @@ mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
 -----END SEED-----
 ";
         let pem = pem::parse(long).unwrap();
-        let _seed = Seed::from_pem(pem).unwrap();
+        match Seed::from_pem(pem) {
+            Ok(_) => panic!("should fail for short payload"),
+            Err(e) => {
+                match e {
+                    Error::IncorrectLength(_) => {} // pass
+                    _ => panic!("should fail with IncorrectLength error"),
+                }
+            }
+        }
     }
 
     #[test]
