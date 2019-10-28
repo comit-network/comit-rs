@@ -106,7 +106,7 @@ impl Serialize for Http<Ethereum> {
     }
 }
 
-// Can re-use macro once `network` is removed with #TODO
+// Can re-use macro once `network` is removed with #1580
 impl FromHttpLedger for Ethereum {
     fn from_http_ledger(mut ledger: HttpLedger) -> Result<Self, ledger::Error> {
         let name = String::from("ethereum");

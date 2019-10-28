@@ -3,7 +3,7 @@ use ethereum_support::{Address, Transaction};
 use serde::{Deserialize, Serialize};
 
 /// `network` is only kept for backward compatibility with client
-/// and must be removed with issue #TODO
+/// and must be removed with issue #1580
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]
 pub struct Ethereum {
     pub chain_id: ChainId,

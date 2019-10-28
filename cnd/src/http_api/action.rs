@@ -32,7 +32,7 @@ pub enum ActionExecutionParameters {
     None {},
 }
 
-/// `network` field here for backward compatibility, to be removed with #TODO
+/// `network` field here for backward compatibility, to be removed with #1580
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
