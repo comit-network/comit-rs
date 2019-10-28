@@ -6,7 +6,6 @@ edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
 
 [dependencies]
-base64 = "0.10"
 binary_macros = "0.6"
 bitcoin = "0.19.1"
 blockchain_contracts = "0.1"
