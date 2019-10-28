@@ -26,7 +26,7 @@
         "ethers": "^4.0.38",
         "glob": "^7.1.5",
         "mocha": "^6.2.2",
-        "multiaddr": "^7.1.0",
+        "multiaddr": "^7.2.0",
         "satoshi-bitcoin": "^1.0.4",
         "tempfile": "^3.0.0",
         "testcontainers": "^2.1.0",
