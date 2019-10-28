@@ -10,6 +10,7 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=2"
       - "status-success=ci/circleci: debug-build-test"
+      - "status-success=license/cla"
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
