@@ -241,12 +241,6 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
 ";
 
     #[test]
-    fn pem_library_works_as_expected() {
-        let pem = pem::parse(PEM).unwrap();
-        assert_eq!(pem.tag, "SEED");
-    }
-
-    #[test]
     fn seed_from_pem_works() {
         let want = base64::decode("syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=").unwrap();
         let pem = pem::parse(PEM).unwrap();
