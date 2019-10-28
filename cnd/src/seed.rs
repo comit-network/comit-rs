@@ -62,7 +62,7 @@ impl Seed {
         Seed::from_pem(pem)
     }
 
-    pub fn from_pem(pem: pem::Pem) -> Result<Seed, Error> {
+    fn from_pem(pem: pem::Pem) -> Result<Seed, Error> {
         if pem.contents.len() != SEED_LENGTH {
             Err(Error::IncorrectLength(pem.contents.len()))
         } else {
