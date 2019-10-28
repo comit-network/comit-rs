@@ -3,6 +3,7 @@
 [![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
+[![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/comit-network/community)
 
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
@@ -68,6 +69,8 @@ Alternatively, you can run the end-to-end tests and TypeScript related actions u
 ## Contributing
 
 Contributions are welcome, please visit [CONTRIBUTING](CONTRIBUTING.md) for more details.
+
+If you have any question please [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
 
 ## License
 
