@@ -78,10 +78,8 @@ export class Actor {
             betaAsset,
         ]);
 
-        // this.expectedBalanceChanges.set(alphaAssetKind, -alphaAsset.quantity);
         this.expectedBalanceChanges.set(betaAssetKind, betaAsset.quantity);
         to.expectedBalanceChanges.set(alphaAssetKind, alphaAsset.quantity);
-        // to.expectedBalanceChanges.set(betaAssetKind, -betaAsset.quantity);
 
         const comitClient: ComitClient = this.getComitClient();
 
