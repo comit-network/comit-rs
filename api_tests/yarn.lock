@@ -883,16 +883,16 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.4.0:
-  version "0.4.0"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.4.0.tgz#633025d305fc3db47bdfd09c70292d8c2b318666"
-  integrity sha512-slzktNVqrpiLU2fsbHYd5yVqHQ+9wDDQGIwklt3ciRchSGLc4LvBl3xu2/GiFSVqkpyHWbS0sYOkkXQu8KAb1w==
+comit-sdk@^0.4.1:
+  version "0.4.1"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.4.1.tgz#67ff27fc4532cb20ff016bdc626fc6576fbc0586"
+  integrity sha512-6ZNe+Yhhsz6lRK7457YNf6OhmZG25z33lj9AtSOLR6ZwW1QQSk4+GEphwEkQuvxsZdyQhfbGCowjlwvKSBZo4w==
   dependencies:
     axios "^0.19.0"
     bcoin "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001"
     bitcoin-core "^2.2.0"
     content-type "^1.0.4"
-    ethers "^4.0.37"
+    ethers "^4.0.38"
     urijs "^1.19.1"
 
 commander@^2.12.1:
@@ -1211,7 +1211,7 @@ esutils@^2.0.2:
   resolved "https://registry.yarnpkg.com/esutils/-/esutils-2.0.2.tgz#0abf4f1caa5bcb1f7a9d8acc6dea4faaa04bac9b"
   integrity sha1-Cr9PHKpbyx96nYrMbepPqqBLrJs=
 
-ethers@^4.0.37, ethers@^4.0.38:
+ethers@^4.0.38:
   version "4.0.38"
   resolved "https://registry.yarnpkg.com/ethers/-/ethers-4.0.38.tgz#3fabafb4f79c435205b143b66b4a1af035043e37"
   integrity sha512-l7l7RIfk2/rIFgRRVLFY3H06S9dhXXPUdMlYm6SCelB6oG+ABmoRig7xSVOLcHLayBfSwssjAAYLKxf1jWhbuQ==
