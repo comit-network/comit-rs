@@ -4,7 +4,6 @@ import { EthereumNodeConfig } from "./ethereum";
 import { LedgerConfig } from "./ledger_runner";
 
 export interface CndConfigFile {
-    comit: { secret_seed: string };
     http_api: { address: string; port: number };
     database?: { sqlite: string };
     web_gui?: { address: string; port: number };
@@ -28,7 +27,7 @@ export interface BtsieveConfigFile {
 export class E2ETestActorConfig {
     public readonly httpApiPort: number;
     public readonly comitPort: number;
-    public readonly seed: string;
+    public readonly seed: Uint8Array;
     public readonly webGuiPort?: number;
 
     constructor(
@@ -39,7 +38,7 @@ export class E2ETestActorConfig {
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
-        this.seed = seed;
+        this.seed = new Uint8Array(Buffer.from(seed, "hex"));
         this.webGuiPort = webGuiPort;
     }
 
@@ -48,9 +47,6 @@ export class E2ETestActorConfig {
     ): CndConfigFile {
         const dbPath = tempfile(".sqlite");
         return {
-            comit: {
-                secret_seed: this.seed,
-            },
             http_api: {
                 address: "0.0.0.0",
                 port: this.httpApiPort,

@@ -1,6 +1,7 @@
 import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
+import { PEMObject } from "pem-ts";
 import tempWrite from "temp-write";
 import { BtsieveConfigFile, CND_CONFIGS } from "./config";
 import { sleep } from "./util";
@@ -44,14 +45,21 @@ export class CndRunner {
                 "config.toml"
             );
 
-            const process = spawn(this.bin, ["--config", configFile], {
-                cwd: this.projectRoot,
-                stdio: [
-                    "ignore", // stdin
-                    fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stdout
-                    fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stderr
-                ],
-            });
+            const pemObject = new PEMObject("SEED", cndconfig.seed);
+            const seedFile = await tempWrite(pemObject.encoded, "seed.pem");
+
+            const process = spawn(
+                this.bin,
+                ["--config", configFile, "--seed-file", seedFile],
+                {
+                    cwd: this.projectRoot,
+                    stdio: [
+                        "ignore", // stdin
+                        fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stdout
+                        fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stderr
+                    ],
+                }
+            );
 
             process.on("exit", (code: number, signal: number) => {
                 console.log(

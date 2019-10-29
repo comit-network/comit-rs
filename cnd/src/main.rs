@@ -39,11 +39,16 @@ fn main() -> Result<(), failure::Error> {
     let config_file = options
         .config_file
         .map(config::File::read)
-        .unwrap_or_else(|| config::File::read_or_create_default(OsRng))?;
+        .unwrap_or_else(config::File::read_or_create_default)?;
     let settings = Settings::from_config_file_and_defaults(config_file);
 
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
+
+    let seed = match options.seed_file {
+        Some(file) => Seed::from_file(file)?,
+        None => Seed::from_default_file_or_generate(OsRng)?,
+    };
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
@@ -67,10 +72,10 @@ fn main() -> Result<(), failure::Error> {
         ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
-        seed: settings.comit.secret_seed,
+        seed,
     };
 
-    let local_key_pair = derive_key_pair(&settings.comit.secret_seed);
+    let local_key_pair = derive_key_pair(&seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
@@ -92,7 +97,7 @@ fn main() -> Result<(), failure::Error> {
         ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
-        seed: settings.comit.secret_seed,
+        seed,
         client: Arc::clone(&swarm),
     };
 
@@ -121,8 +126,8 @@ fn main() -> Result<(), failure::Error> {
     Ok(())
 }
 
-fn derive_key_pair(secret_seed: &Seed) -> identity::Keypair {
-    let bytes = secret_seed.sha256_with_seed(&[b"NODE_ID"]);
+fn derive_key_pair(seed: &Seed) -> identity::Keypair {
+    let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
 }
