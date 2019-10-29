@@ -150,7 +150,9 @@ export class Actor {
                 expectedBalanceChange
             );
 
-            const wallet = this.wallets[defaultLedgerForAsset(assetKind)];
+            const wallet = this.wallets[
+                defaultLedgerDescriptionForAsset(assetKind).name
+            ];
             const actualBalance = await wallet.getBalance();
             const expectedBalance =
                 this.startingBalances.get(assetKind) + expectedBalanceChange;
@@ -202,13 +204,13 @@ export class Actor {
                 continue;
             }
 
-            const ledger = defaultLedgerForAsset(asset.name);
+            const ledger = defaultLedgerDescriptionForAsset(asset.name).name;
 
             this.logger.debug("Minting %s on %s", asset.name, ledger);
             await this.wallets.getWalletForLedger(ledger).mint(asset);
 
             const balance = await this.wallets[
-                defaultLedgerForAsset(asset.name)
+                defaultLedgerDescriptionForAsset(asset.name).name
             ].getBalance();
 
             this.logger.debug("Starting %s balance: ", asset.name, balance);
@@ -247,17 +249,6 @@ function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
                 name: "ether",
                 quantity: parseEther("10").toString(),
             };
-        }
-    }
-}
-
-function defaultLedgerForAsset(asset: AssetKind): LedgerKind {
-    switch (asset) {
-        case "bitcoin": {
-            return "bitcoin";
-        }
-        case "ether": {
-            return "ethereum";
         }
     }
 }
