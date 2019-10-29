@@ -1,5 +1,5 @@
-import { Asset as AssetSdk, Ledger as LedgerSdk } from "comit-sdk";
 import { HarnessGlobal } from "../../lib/util";
+import { Asset } from "../asset";
 import { sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
@@ -9,19 +9,6 @@ declare var global: HarnessGlobal;
 interface AllWallets {
     bitcoin?: BitcoinWallet;
     ethereum?: EthereumWallet;
-}
-
-export type LedgerKind = keyof AllWallets;
-export type AssetKind = "bitcoin" | "ether" | "erc20";
-
-export interface Ledger extends LedgerSdk {
-    name: LedgerKind;
-    [k: string]: any;
-}
-
-export interface Asset extends AssetSdk {
-    name: AssetKind;
-    [k: string]: any;
 }
 
 export interface Wallet {

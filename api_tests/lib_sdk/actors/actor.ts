@@ -2,7 +2,9 @@ import { expect } from "chai";
 import { Cnd, ComitClient, Swap } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import { Logger } from "log4js";
-import { Asset, AssetKind, Ledger, LedgerKind, Wallets } from "../wallets";
+import { Asset, AssetKind } from "../asset";
+import { Ledger, LedgerKind } from "../ledger";
+import { Wallets } from "../wallets";
 import { Actors } from "./index";
 
 export class Actor {
@@ -221,15 +223,15 @@ export class Actor {
 
 function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
     switch (asset) {
-        case "bitcoin": {
+        case AssetKind.Bitcoin: {
             return {
-                name: "bitcoin",
+                name: LedgerKind.Bitcoin,
                 network: "regtest",
             };
         }
-        case "ether": {
+        case AssetKind.Ether: {
             return {
-                name: "ethereum",
+                name: LedgerKind.Ethereum,
                 chain_id: 17,
             };
         }
@@ -238,15 +240,15 @@ function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
 
 function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
     switch (asset) {
-        case "bitcoin": {
+        case AssetKind.Bitcoin: {
             return {
-                name: "bitcoin",
+                name: AssetKind.Bitcoin,
                 quantity: "100000000",
             };
         }
-        case "ether": {
+        case AssetKind.Ether: {
             return {
-                name: "ether",
+                name: AssetKind.Ether,
                 quantity: parseEther("10").toString(),
             };
         }

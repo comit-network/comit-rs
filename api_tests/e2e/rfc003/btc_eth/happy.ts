@@ -1,3 +1,4 @@
+import { AssetKind } from "../../../lib_sdk/asset";
 import { createActors } from "../../../lib_sdk/create_actors";
 
 setTimeout(function() {
@@ -8,7 +9,7 @@ setTimeout(function() {
                 "e2e-rfc003-btc-eth-happy.log"
             );
 
-            await alice.sendRequest("bitcoin", "ether");
+            await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
             await alice.fund();
             await bob.fund();
