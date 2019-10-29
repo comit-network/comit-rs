@@ -3,7 +3,6 @@ import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
 import { BigNumber, bigNumberify } from "ethers/utils";
 import { EthereumNodeConfig } from "../../lib/ethereum";
-// import { sleep } from "../utils";
 import { pollUntilMinted, Wallet } from "./index";
 
 export class EthereumWallet implements Wallet {
