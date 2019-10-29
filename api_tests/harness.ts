@@ -145,10 +145,12 @@ function validTestFile(path: string): boolean {
 function validTestPath(path: string): boolean {
     return (
         !/^.*lib\/.*$/.test(path) &&
+        !/^.*lib_sdk\/.*$/.test(path) &&
         !/^.*node_modules\/.*$/.test(path) &&
         !/^.*gen\/.*$/.test(path) &&
         !/^.*log\/.*$/.test(path) &&
-        !/^.*regtest\/.*$/.test(path)
+        !/^.*regtest\/.*$/.test(path) &&
+        !/^.*types\/.*$/.test(path)
     );
 }
 
