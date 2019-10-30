@@ -23,12 +23,12 @@
   resolved "https://registry.yarnpkg.com/@iarna/toml/-/toml-2.2.3.tgz#f060bf6eaafae4d56a7dac618980838b0696e2ab"
   integrity sha512-FmuxfCuolpLl0AnQ2NHSzoUKWEJDFl63qXjzdoWBVyFCXzMGm1spBzk7LeHNoVCiWCF7mRVms9e6jEV9+MoPbg==
 
-"@types/bitcoinjs-lib@^4.0.0":
-  version "4.0.1"
-  resolved "https://registry.yarnpkg.com/@types/bitcoinjs-lib/-/bitcoinjs-lib-4.0.1.tgz#9bfeb09c4051860c82c1b4e907498c5232c36917"
-  integrity sha512-w5BzfIwdHhEB1kM4pA9AGYbS1U+YfA3DUJ6CSUZgp2DySECA47FH9J1wngLjkQaJHnRfLXoSAZrlPTK8rKmwXw==
+"@types/bitcoinjs-lib@^5.0.0":
+  version "5.0.0"
+  resolved "https://registry.yarnpkg.com/@types/bitcoinjs-lib/-/bitcoinjs-lib-5.0.0.tgz#f2905d673d1c4b42a91d64d95f1c464f1a48cb56"
+  integrity sha512-9zXjgmH2E8qEZ9gQ9GH+I6Cze3bweQbyXtR/X4RD3SdR5I4jdRPvmBrKmjegV3HZG03KNricjEoq+lQUtIXCKQ==
   dependencies:
-    "@types/node" "*"
+    bitcoinjs-lib "*"
 
 "@types/chai-json-schema@^1.4.5":
   version "1.4.5"
@@ -357,7 +357,7 @@ bitcoin-ops@^1.3.0, bitcoin-ops@^1.4.0:
   resolved "https://registry.yarnpkg.com/bitcoin-ops/-/bitcoin-ops-1.4.1.tgz#e45de620398e22fd4ca6023de43974ff42240278"
   integrity sha512-pef6gxZFztEhaE9RY9HmWVmiIHqCb2OyS4HPKkpc6CIiiOa3Qmuoylxc5P2EkU3w+5eTSifI9SEZC88idAIGow==
 
-bitcoinjs-lib@^5.1.6:
+bitcoinjs-lib@*, bitcoinjs-lib@^5.1.6:
   version "5.1.6"
   resolved "https://registry.yarnpkg.com/bitcoinjs-lib/-/bitcoinjs-lib-5.1.6.tgz#0169890fd1e09e5eb335aadd62a61e1fbdf48b46"
   integrity sha512-NgvnA8XXUuzpuBnVs1plzZvVOYsuont4KPzaGcVIwjktYQbCk1hUkXnt4wujIOBscNsXuu+plVbPYvtMosZI/w==
