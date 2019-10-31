@@ -1,4 +1,5 @@
-import { expect } from "chai";
+import chai, { expect } from "chai";
+import chaiAsPromised from "chai-as-promised";
 import { Cnd, ComitClient, Swap } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import { Logger } from "log4js";
@@ -6,6 +7,8 @@ import { Asset, AssetKind } from "../asset";
 import { Ledger, LedgerKind } from "../ledger";
 import { Wallets } from "../wallets";
 import { Actors } from "./index";
+
+chai.use(chaiAsPromised);
 
 export class Actor {
     public static defaultActionConfig = {
@@ -138,8 +141,6 @@ export class Actor {
     }
 
     public async assertSwapped() {
-        await new Promise(r => setTimeout(r, 1000));
-
         this.logger.debug("Checking if swap @ %s is done", this.swap.self);
 
         for (const [
@@ -155,12 +156,13 @@ export class Actor {
             const wallet = this.wallets[
                 defaultLedgerDescriptionForAsset(assetKind).name
             ];
-            const actualBalance = await wallet.getBalance();
             const expectedBalance =
                 this.startingBalances.get(assetKind) + expectedBalanceChange;
             const maximumFee = wallet.MaximumFee;
 
-            expect(actualBalance).to.be.at.least(expectedBalance - maximumFee);
+            await expect(wallet.getBalance()).to.eventually.be.at.least(
+                expectedBalance - maximumFee
+            );
         }
     }
 
