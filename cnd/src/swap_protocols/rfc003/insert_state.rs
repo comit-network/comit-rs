@@ -25,6 +25,6 @@ pub trait InsertState: Send + Sync + 'static {
     fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         counterparty: PeerId,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<(), Error>;
 }

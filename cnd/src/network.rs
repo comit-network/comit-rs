@@ -373,9 +373,9 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::messages::RequestBody<AL, BL>,
-) -> rfc003::messages::Request<AL, BL, AA, BA> {
-    rfc003::messages::Request::<AL, BL, AA, BA> {
+    body: rfc003::RequestBody<AL, BL>,
+) -> rfc003::Request<AL, BL, AA, BA> {
+    rfc003::Request::<AL, BL, AA, BA> {
         id,
         alpha_asset,
         beta_asset,
