@@ -29,6 +29,7 @@ pub use self::{
     insert_state::InsertState,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
+    messages::*,
     save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
@@ -36,4 +37,5 @@ pub use self::{
 
 use self::messages::{AcceptResponseBody, DeclineResponseBody};
 
+/// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>;

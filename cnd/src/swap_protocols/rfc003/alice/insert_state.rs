@@ -15,7 +15,7 @@ impl<C: Client> InsertState for dependencies::alice::ProtocolDependencies<C> {
     fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         counterparty: PeerId,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<(), Error> {
         let id = swap_request.id;
         let seed = self.seed.swap_seed(id);

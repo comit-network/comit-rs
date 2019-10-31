@@ -416,7 +416,7 @@ where
 {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
     ) where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
@@ -434,7 +434,7 @@ where
     fn send_rfc003_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         peer_identity: DialInformation,
-        request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
+        request: swap_protocols::rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,

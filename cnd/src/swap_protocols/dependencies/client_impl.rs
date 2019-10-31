@@ -50,7 +50,7 @@ where
     >(
         &self,
         dial_information: DialInformation,
-        request: rfc003::messages::Request<AL, BL, AA, BA>,
+        request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
@@ -116,13 +116,8 @@ where
     }
 }
 
-fn build_swap_request<
-    AL: swap_protocols::rfc003::Ledger,
-    BL: swap_protocols::rfc003::Ledger,
-    AA: Asset,
-    BA: Asset,
->(
-    request: rfc003::messages::Request<AL, BL, AA, BA>,
+fn build_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    request: rfc003::Request<AL, BL, AA, BA>,
 ) -> Result<frame::OutboundRequest, serde_json::Error> {
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
     let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
@@ -138,10 +133,7 @@ fn build_swap_request<
         .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
         .with_header("beta_asset", request.beta_asset.into().to_header()?)
         .with_header("protocol", protocol.to_header()?)
-        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
-            AL,
-            BL,
-        > {
+        .with_body(serde_json::to_value(rfc003::RequestBody::<AL, BL> {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
             alpha_expiry,

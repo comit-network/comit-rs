@@ -21,7 +21,7 @@ pub trait BobSpawner: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
     ) where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
@@ -31,7 +31,7 @@ impl BobSpawner for dependencies::bob::ProtocolDependencies {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
     ) where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
