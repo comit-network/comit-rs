@@ -109,6 +109,7 @@ export class LedgerRunner {
                 network: "regtest",
                 host: container.getContainerIpAddress(),
                 rpcPort: container.getMappedPort(18443),
+                p2pPort: container.getMappedPort(18444),
                 username: "__cookie__",
                 password,
             };
@@ -157,13 +158,14 @@ async function startBitcoinContainer(): Promise<StartedTestContainer> {
             "-regtest",
             "-server",
             "-printtoconsole",
+            "-bind=0.0.0.0:18444",
             "-rpcbind=0.0.0.0:18443",
             "-rpcallowip=0.0.0.0/0",
             "-debug=1",
             "-acceptnonstdtxn=0",
             "-rest",
         ])
-        .withExposedPorts(18443)
+        .withExposedPorts(18443, 18444)
         .withWaitStrategy(Wait.forLogMessage("Flushed wallet.dat"))
         .start();
 }
