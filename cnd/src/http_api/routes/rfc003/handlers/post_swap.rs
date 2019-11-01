@@ -153,12 +153,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             alpha_ledger: self.alpha_ledger,
             beta_ledger: self.beta_ledger,
             hash_function: HashFunction::Sha256,
-            alpha_expiry: self
-                .alpha_expiry
-                .unwrap_or(Timestamp::now().plus(60 * 60 * 24)),
-            beta_expiry: self
-                .beta_expiry
-                .unwrap_or(Timestamp::now().plus(60 * 60 * 12)),
+            alpha_expiry: self.alpha_expiry.unwrap_or(default_alpha_expiry()),
+            beta_expiry: self.beta_expiry.unwrap_or(default_beta_expiry()),
             secret_hash: secret_source.secret().hash(),
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -192,6 +188,14 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
             beta_ledger_redeem_identity,
         }
     }
+}
+
+fn default_alpha_expiry() -> Timestamp {
+    Timestamp::now().plus(60 * 60 * 24)
+}
+
+fn default_beta_expiry() -> Timestamp {
+    Timestamp::now().plus(60 * 60 * 12)
 }
 
 #[cfg(test)]
