@@ -26,12 +26,10 @@ use libp2p_comit::{
 };
 use std::{
     collections::{HashMap, HashSet},
-    convert::Infallible,
     fmt::Display,
     io,
     sync::{Arc, Mutex},
 };
-use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -41,8 +39,6 @@ pub struct ComitNode<TSubstream, B> {
 
     #[behaviour(ignore)]
     bob: B,
-    #[behaviour(ignore)]
-    task_executor: TaskExecutor,
     #[behaviour(ignore)]
     response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
@@ -63,7 +59,7 @@ impl Display for DialInformation {
 }
 
 impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
-    pub fn new(bob: B, task_executor: TaskExecutor) -> Result<Self, io::Error> {
+    pub fn new(bob: B) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
@@ -79,7 +75,6 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
             bob,
-            task_executor,
             response_channels: HashMap::new(),
         })
     }
@@ -97,7 +92,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
         &mut self,
         counterparty: PeerId,
         mut request: ValidatedInboundRequest,
-    ) -> Result<SwapId, Box<dyn Future<Item = Response, Error = Infallible> + Send>> {
+    ) -> Result<SwapId, Response> {
         match request.request_type() {
             "SWAP" => {
                 let protocol: SwapProtocol = header!(request
@@ -213,8 +208,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     reason: Some(SwapDeclineReason::UnsupportedSwap),
                                 };
 
-                                Err(Box::new(futures::future::ok(
-                                    Response::empty()
+                                Err(Response::empty()
                                         .with_header(
                                             "decision",
                                             Decision::Declined
@@ -224,7 +218,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                         .with_body(serde_json::to_value(decline_body).expect(
                                             "decline body should always serialize into serde_json::Value",
                                         )),
-                                )))
+                                )
                             }
                         }
                     }
@@ -234,18 +228,16 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                         let decline_body = DeclineResponseBody {
                             reason: Some(SwapDeclineReason::UnsupportedProtocol),
                         };
-                        Err(Box::new(futures::future::ok(
-                            Response::empty()
-                                .with_header(
-                                    "decision",
-                                    Decision::Declined
-                                        .to_header()
-                                        .expect("Decision should not fail to serialize"),
-                                )
-                                .with_body(serde_json::to_value(decline_body).expect(
-                                    "decline body should always serialize into serde_json::Value",
-                                )),
-                        )))
+                        Err(Response::empty()
+                            .with_header(
+                                "decision",
+                                Decision::Declined
+                                    .to_header()
+                                    .expect("Decision should not fail to serialize"),
+                            )
+                            .with_body(serde_json::to_value(decline_body).expect(
+                                "decline body should always serialize into serde_json::Value",
+                            )))
                     }
                 }
             }
@@ -257,14 +249,12 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
             request_type => {
                 log::warn!("request type '{}' is unknown", request_type);
 
-                Err(Box::new(futures::future::ok(
-                    Response::empty().with_header(
-                        "decision",
-                        Decision::Declined
-                            .to_header()
-                            .expect("Decision should not fail to serialize"),
-                    ),
-                )))
+                Err(Response::empty().with_header(
+                    "decision",
+                    Decision::Declined
+                        .to_header()
+                        .expect("Decision should not fail to serialize"),
+                ))
             }
         }
     }
@@ -324,22 +314,9 @@ impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<Behav
                     Ok(id) => {
                         self.response_channels.insert(id, channel);
                     }
-                    Err(err_future) => {
-                        let future = err_future
-                            .and_then(|response| {
-                                channel.send(response).unwrap_or_else(|_| {
-                                    log::debug!(
-                                        "failed to send response through
-                        channel"
-                                    )
-                                });
-
-                                Ok(())
-                            })
-                            .map_err(|_| unreachable!("error is Infallible"));
-
-                        self.task_executor.spawn(future);
-                    }
+                    Err(response) => channel
+                        .send(response)
+                        .unwrap_or_else(|_| log::debug!("failed to send response through channel")),
                 }
             }
         }
