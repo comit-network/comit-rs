@@ -94,8 +94,8 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde_ledger")]
     beta_ledger: BL,
-    alpha_expiry: Timestamp,
-    beta_expiry: Timestamp,
+    alpha_expiry: Option<Timestamp>,
+    beta_expiry: Option<Timestamp>,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
     peer: DialInformation,
@@ -153,8 +153,12 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             alpha_ledger: self.alpha_ledger,
             beta_ledger: self.beta_ledger,
             hash_function: HashFunction::Sha256,
-            alpha_expiry: self.alpha_expiry,
-            beta_expiry: self.beta_expiry,
+            alpha_expiry: self
+                .alpha_expiry
+                .unwrap_or(Timestamp::now().plus(60 * 60 * 24)),
+            beta_expiry: self
+                .beta_expiry
+                .unwrap_or(Timestamp::now().plus(60 * 60 * 12)),
             secret_hash: secret_source.secret().hash(),
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -250,7 +254,11 @@ mod tests {
 
         let body = serde_json::from_str(body);
 
-        assert_that(&body).is_ok_containing(SwapRequestBody::default())
+        assert_that(&body).is_ok_containing(SwapRequestBody {
+            alpha_expiry: Some(Timestamp::from(2000000000)),
+            beta_expiry: Some(Timestamp::from(2000000000)),
+            ..SwapRequestBody::default()
+        })
     }
 
     #[test]
@@ -287,7 +295,11 @@ mod tests {
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
             },
-            ..SwapRequestBody::default()
+            ..SwapRequestBody {
+                alpha_expiry: Some(Timestamp::from(2000000000)),
+                beta_expiry: Some(Timestamp::from(2000000000)),
+                ..SwapRequestBody::default()
+            }
         })
     }
 
@@ -320,6 +332,8 @@ mod tests {
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
             beta_ledger: Ethereum::new(ChainId::new(3)),
+            alpha_expiry: Some(Timestamp::from(2000000000)),
+            beta_expiry: Some(Timestamp::from(2000000000)),
             ..SwapRequestBody::default()
         })
     }
