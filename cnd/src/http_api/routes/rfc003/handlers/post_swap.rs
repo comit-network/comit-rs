@@ -193,7 +193,8 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
+    use crate::{network::DialInformation, seed::Seed, swap_protocols::ledger::ethereum::ChainId};
+    use rand::rngs::OsRng;
     use spectral::prelude::*;
 
     impl Default
@@ -205,8 +206,8 @@ mod tests {
                 beta_asset: EtherQuantity::from_eth(10.0),
                 alpha_ledger: Bitcoin::default(),
                 beta_ledger: Ethereum::default(),
-                alpha_expiry: Timestamp::from(2_000_000_000),
-                beta_expiry: Timestamp::from(2_000_000_000),
+                alpha_expiry: None,
+                beta_expiry: None,
                 partial_identities: OnlyRedeem::<Ethereum> {
                     beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
                         .parse()
@@ -321,5 +322,17 @@ mod tests {
             beta_ledger: Ethereum::new(ChainId::new(3)),
             ..SwapRequestBody::default()
         })
+    }
+
+    #[test]
+    fn can_derive_default_expiries_for_swap_request_body_without_them() {
+        let swap_request_body = SwapRequestBody::default();
+        let swap_id = SwapId::default();
+        let random_seed = Seed::new_random(OsRng).unwrap();
+
+        let request = swap_request_body.to_request(swap_id, &random_seed);
+
+        assert_that(&request.alpha_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 24));
+        assert_that(&request.beta_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 12));
     }
 }
