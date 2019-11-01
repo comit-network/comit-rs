@@ -20,7 +20,7 @@ macro_rules! header {
                 reason: Some(SwapDeclineReason::MissingMandatoryHeader),
             };
 
-            return Err(Box::new(futures::future::ok(Response::empty().with_header(
+            return Err(Response::empty().with_header(
                 "decision",
                 Decision::Declined
                     .to_header()
@@ -28,7 +28,7 @@ macro_rules! header {
             )
             .with_body(serde_json::to_value(decline_body).expect(
                 "decline body should always serialize into serde_json::Value",
-            )))));
+            )));
         })
     };
 }
@@ -44,7 +44,7 @@ macro_rules! body {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Err(Box::new(futures::future::ok(Response::empty().with_header(
+                return Err(Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_header()
@@ -52,7 +52,7 @@ macro_rules! body {
                 )
                 .with_body(serde_json::to_value(decline_body).expect(
                     "decline body should always serialize into serde_json::Value",
-                )))));
+                )));
             }
         }
     };
@@ -70,7 +70,7 @@ macro_rules! header_internal {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Err(Box::new(futures::future::ok(Response::empty().with_header(
+                return Err(Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_header()
@@ -78,7 +78,7 @@ macro_rules! header_internal {
                 )
                 .with_body(serde_json::to_value(decline_body).expect(
                     "decline body should always serialize into serde_json::Value",
-                )))));
+                )));
 
             },
             None => $none,
