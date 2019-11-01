@@ -192,10 +192,35 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
     use spectral::prelude::*;
+
+    impl Default
+        for SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, EtherQuantity, OnlyRedeem<Ethereum>>
+    {
+        fn default() -> Self {
+            Self {
+                alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
+                beta_asset: EtherQuantity::from_eth(10.0),
+                alpha_ledger: Bitcoin::default(),
+                beta_ledger: Ethereum::default(),
+                alpha_expiry: Timestamp::from(2_000_000_000),
+                beta_expiry: Timestamp::from(2_000_000_000),
+                partial_identities: OnlyRedeem::<Ethereum> {
+                    beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                        .parse()
+                        .unwrap(),
+                },
+                peer: DialInformation {
+                    peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                        .parse()
+                        .unwrap(),
+                    address_hint: None,
+                },
+            }
+        }
+    }
 
     #[test]
     fn can_deserialize_swap_request_body() {
@@ -224,25 +249,7 @@ mod tests {
 
         let body = serde_json::from_str(body);
 
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
-            peer: DialInformation {
-                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                    .parse()
-                    .unwrap(),
-                address_hint: None,
-            },
-        })
+        assert_that(&body).is_ok_containing(SwapRequestBody::default())
     }
 
     #[test]
@@ -273,23 +280,13 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
             peer: DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
             },
+            ..SwapRequestBody::default()
         })
     }
 
@@ -321,23 +318,8 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::new(ChainId::new(3)),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
-            peer: DialInformation {
-                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                    .parse()
-                    .unwrap(),
-                address_hint: None,
-            },
+            ..SwapRequestBody::default()
         })
     }
 }
