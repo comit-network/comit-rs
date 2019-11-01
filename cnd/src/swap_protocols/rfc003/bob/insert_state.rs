@@ -1,13 +1,13 @@
 use crate::swap_protocols::{
     asset::Asset,
-    dependencies,
+    dependencies::bob::ProtocolDependencies,
     metadata_store::{Metadata, MetadataStore, Role},
     rfc003::{self, bob, insert_state::Error, state_store::StateStore, InsertState, Ledger},
 };
 use libp2p::PeerId;
 use std::sync::Arc;
 
-impl InsertState for dependencies::bob::ProtocolDependencies {
+impl InsertState for ProtocolDependencies {
     #[allow(clippy::type_complexity)]
     fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,

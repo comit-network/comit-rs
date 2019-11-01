@@ -2,9 +2,8 @@ use crate::{
     comit_client::Client,
     network::DialInformation,
     swap_protocols::{
-        self,
         asset::Asset,
-        dependencies::LedgerEventDependencies,
+        dependencies::{alice::ProtocolDependencies, LedgerEventDependencies},
         rfc003::{
             self,
             alice::{spawner::AliceSpawner, State},
@@ -33,7 +32,7 @@ pub trait InitiateSwapRequest: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: Client> InitiateSwapRequest for swap_protocols::alice::ProtocolDependencies<S> {
+impl<S: Client> InitiateSwapRequest for ProtocolDependencies<S> {
     fn initiate_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,

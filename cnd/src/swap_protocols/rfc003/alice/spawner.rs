@@ -1,9 +1,8 @@
 use crate::{
     comit_client::Client,
     swap_protocols::{
-        self,
         asset::Asset,
-        dependencies::LedgerEventDependencies,
+        dependencies::{alice::ProtocolDependencies, LedgerEventDependencies},
         rfc003::{
             self,
             alice::{self, State, SwapCommunication},
@@ -30,7 +29,7 @@ pub trait AliceSpawner: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<C: Client> AliceSpawner for swap_protocols::alice::ProtocolDependencies<C> {
+impl<C: Client> AliceSpawner for ProtocolDependencies<C> {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,

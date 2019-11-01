@@ -2,7 +2,7 @@ use crate::{
     comit_client::Client,
     swap_protocols::{
         asset::Asset,
-        dependencies,
+        dependencies::alice::ProtocolDependencies,
         metadata_store::{Metadata, MetadataStore, Role},
         rfc003::{self, alice, insert_state::Error, state_store::StateStore, InsertState, Ledger},
     },
@@ -10,7 +10,7 @@ use crate::{
 use libp2p::PeerId;
 use std::sync::Arc;
 
-impl<C: Client> InsertState for dependencies::alice::ProtocolDependencies<C> {
+impl<C: Client> InsertState for ProtocolDependencies<C> {
     #[allow(clippy::type_complexity)]
     fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
