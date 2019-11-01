@@ -5,8 +5,6 @@ use crate::{
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use std::sync::Arc;
 
-mod client_impl;
-
 pub mod alice {
     use super::*;
 
