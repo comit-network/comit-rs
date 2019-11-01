@@ -5,8 +5,8 @@ use crate::{
     swap_protocols::{
         self,
         rfc003::{
-            alice::{AliceSpawner, InitiateSwapRequest},
-            bob::BobSpawner,
+            alice::{AliceSpawn, InitiateSwapRequest},
+            bob::BobSpawn,
             state_store::StateStore,
         },
         MetadataStore, SwapId,
@@ -28,8 +28,8 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 pub fn create<
     D: MetadataStore
         + StateStore
-        + AliceSpawner
-        + BobSpawner
+        + AliceSpawn
+        + BobSpawn
         + Network
         + Clone
         + InitiateSwapRequest

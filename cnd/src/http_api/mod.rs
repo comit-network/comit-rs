@@ -21,40 +21,25 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    comit_client::{Client, RequestError},
     http_api::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
-    network::{DialInformation, Network},
+    network::DialInformation,
     swap_protocols::{
-        self,
-        asset::Asset,
         ledger::{ethereum, Bitcoin, Ethereum},
-        metadata_store::{self, InMemoryMetadataStore, MetadataStore},
-        rfc003::{
-            self,
-            alice::{AliceSpawner, InitiateSwapRequest},
-            bob::BobSpawner,
-            messages::{Request, ToRequest},
-            state_machine::SwapStates,
-            state_store::{self, InMemoryStateStore, StateStore},
-            ActorState, CreateLedgerEvents, Ledger,
-        },
-        LedgerEventDependencies, Metadata, SwapId, SwapProtocol,
+        SwapId, SwapProtocol,
     },
 };
 use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
 use ethereum_support::{Erc20Token, EtherQuantity};
-use futures::{sync::oneshot::Sender, Future};
 use libp2p::PeerId;
-use libp2p_comit::frame::Response;
 use serde::{
     de::{self, MapAccess},
     ser::SerializeStruct,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::{convert::TryFrom, sync::Arc};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug)]
 pub struct Http<I>(pub I);
@@ -299,168 +284,6 @@ impl<'de> Deserialize<'de> for DialInformation {
         }
 
         deserializer.deserialize_any(Visitor)
-    }
-}
-
-/// A struct for capturing dependencies that are needed within the HTTP API
-/// controllers.
-///
-/// This is a facade that implements all the required traits and forwards them
-/// to another implementation. This allows us to keep the number of arguments to
-/// HTTP API controllers small and still access all the functionality we need.
-#[derive(Debug)]
-pub struct Dependencies<A, B, S> {
-    pub metadata_store: Arc<InMemoryMetadataStore>,
-    pub state_store: Arc<InMemoryStateStore>,
-    pub alice_spawner: Arc<A>,
-    pub bob_spawner: Arc<B>,
-    pub swarm: Arc<S>,
-}
-
-impl<A, B, S> Clone for Dependencies<A, B, S> {
-    fn clone(&self) -> Self {
-        Self {
-            metadata_store: Arc::clone(&self.metadata_store),
-            state_store: Arc::clone(&self.state_store),
-            alice_spawner: Arc::clone(&self.alice_spawner),
-            bob_spawner: Arc::clone(&self.bob_spawner),
-            swarm: Arc::clone(&self.swarm),
-        }
-    }
-}
-
-impl<A, B, S> MetadataStore for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn get(&self, key: SwapId) -> Result<Option<Metadata>, metadata_store::Error> {
-        self.metadata_store.get(key)
-    }
-
-    fn insert(&self, metadata: Metadata) -> Result<(), metadata_store::Error> {
-        self.metadata_store.insert(metadata)
-    }
-
-    fn all(&self) -> Result<Vec<Metadata>, metadata_store::Error> {
-        self.metadata_store.all()
-    }
-}
-
-impl<A, B, S> StateStore for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn insert<AS: ActorState>(&self, key: SwapId, value: AS) {
-        self.state_store.insert(key, value)
-    }
-
-    fn get<AS: ActorState>(&self, key: &SwapId) -> Result<Option<AS>, state_store::Error> {
-        self.state_store.get(key)
-    }
-
-    fn update<AS: ActorState>(
-        &self,
-        key: &SwapId,
-        update: SwapStates<AS::AL, AS::BL, AS::AA, AS::BA>,
-    ) {
-        self.state_store.update::<AS>(key, update)
-    }
-}
-
-impl<A, B: BobSpawner, S> BobSpawner for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        swap_request: Request<AL, BL, AA, BA>,
-        response: rfc003::Response<AL, BL>,
-    ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.bob_spawner.spawn(swap_request, response)
-    }
-}
-
-impl<A: InitiateSwapRequest, B, S> InitiateSwapRequest for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn initiate_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        id: SwapId,
-        bob_dial_info: DialInformation,
-        swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
-    ) -> Result<(), rfc003::insert_state::Error>
-    where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.alice_spawner
-            .initiate_swap_request(id, bob_dial_info, swap_request)
-    }
-}
-
-impl<A: AliceSpawner, B, S> AliceSpawner for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-        response: rfc003::Response<AL, BL>,
-    ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.alice_spawner.spawn(swap_request, response)
-    }
-}
-
-impl<A, B, S: Client> Client for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn send_rfc003_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        peer_identity: DialInformation,
-        request: swap_protocols::rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
-    where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.swarm.send_rfc003_swap_request(peer_identity, request)
-    }
-}
-
-impl<A, B, S: Network> Network for Dependencies<A, B, S>
-where
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-{
-    fn comit_peers(
-        &self,
-    ) -> Box<dyn Iterator<Item = (PeerId, Vec<libp2p::Multiaddr>)> + Send + 'static> {
-        self.swarm.comit_peers()
-    }
-
-    fn listen_addresses(&self) -> Vec<libp2p::Multiaddr> {
-        self.swarm.listen_addresses()
-    }
-
-    fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        self.swarm.pending_request_for(swap)
     }
 }
 

@@ -15,7 +15,7 @@ use crate::{
         rfc003::{
             self,
             actions::{Action, ActionKind},
-            bob::BobSpawner,
+            bob::BobSpawn,
             messages::Decision,
             state_store::StateStore,
         },
@@ -27,7 +27,7 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<D: MetadataStore + StateStore + BobSpawner + Network>(
+pub fn handle_action<D: MetadataStore + StateStore + BobSpawn + Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -63,7 +63,7 @@ pub fn handle_action<D: MetadataStore + StateStore + BobSpawner + Network>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    BobSpawner::spawn(&dependencies, request, Ok(accept_body));
+                                    dependencies.bob_spawn(request, Ok(accept_body));
 
                                     Ok(ActionResponseBody::None)
                                 }
@@ -82,7 +82,7 @@ pub fn handle_action<D: MetadataStore + StateStore + BobSpawner + Network>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    BobSpawner::spawn(&dependencies, request, Err(decline_body));
+                                    dependencies.bob_spawn(request, Err(decline_body));
 
                                     Ok(ActionResponseBody::None)
                                 }

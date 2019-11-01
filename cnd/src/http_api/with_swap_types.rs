@@ -1,8 +1,8 @@
 macro_rules! _match_role {
     ($role:ident, $fn:tt) => {{
         use crate::swap_protocols::{
-            metadata_store::Role,
             rfc003::{alice, bob},
+            Role,
         };
         #[allow(clippy::redundant_closure_call)]
         match $role {

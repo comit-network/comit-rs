@@ -1,16 +1,10 @@
 use crate::{
     db,
-    swap_protocols::{asset, ledger, swap_id::SwapId},
+    swap_protocols::{asset, ledger, swap_id::SwapId, Role},
 };
 use libp2p::{self, PeerId};
 use std::{collections::HashMap, sync::Mutex};
 use strum_macros::{Display, EnumString};
-
-#[derive(Clone, Copy, Debug, Display, EnumString)]
-pub enum Role {
-    Alice,
-    Bob,
-}
 
 #[derive(Debug, Clone, Display, EnumString)]
 pub enum LedgerKind {

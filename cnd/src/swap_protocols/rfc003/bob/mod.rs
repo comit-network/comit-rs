@@ -1,8 +1,7 @@
 pub mod actions;
-mod insert_state;
 mod spawner;
 
-pub use self::{insert_state::*, spawner::*};
+pub use self::spawner::*;
 
 use crate::swap_protocols::{
     asset::Asset,

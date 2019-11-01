@@ -20,6 +20,7 @@ pub mod comit_api;
 pub mod comit_client;
 pub mod comit_i_routes;
 pub mod config;
+pub mod connector;
 pub mod db;
 pub mod http_api;
 pub mod logging;
