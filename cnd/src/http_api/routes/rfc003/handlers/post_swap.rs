@@ -94,8 +94,8 @@ pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, Partial
     alpha_ledger: AL,
     #[serde(with = "http_api::ledger::serde_ledger")]
     beta_ledger: BL,
-    alpha_expiry: Timestamp,
-    beta_expiry: Timestamp,
+    alpha_expiry: Option<Timestamp>,
+    beta_expiry: Option<Timestamp>,
     #[serde(flatten)]
     partial_identities: PartialIdentities,
     peer: DialInformation,
@@ -153,8 +153,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
             alpha_ledger: self.alpha_ledger,
             beta_ledger: self.beta_ledger,
             hash_function: HashFunction::Sha256,
-            alpha_expiry: self.alpha_expiry,
-            beta_expiry: self.beta_expiry,
+            alpha_expiry: self.alpha_expiry.unwrap_or_else(default_alpha_expiry),
+            beta_expiry: self.beta_expiry.unwrap_or_else(default_beta_expiry),
             secret_hash: secret_source.secret().hash(),
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -190,12 +190,46 @@ impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
     }
 }
 
+fn default_alpha_expiry() -> Timestamp {
+    Timestamp::now().plus(60 * 60 * 24)
+}
+
+fn default_beta_expiry() -> Timestamp {
+    Timestamp::now().plus(60 * 60 * 12)
+}
+
 #[cfg(test)]
 mod tests {
-
     use super::*;
-    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
+    use crate::{network::DialInformation, seed::Seed, swap_protocols::ledger::ethereum::ChainId};
+    use rand::rngs::OsRng;
     use spectral::prelude::*;
+
+    impl Default
+        for SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, EtherQuantity, OnlyRedeem<Ethereum>>
+    {
+        fn default() -> Self {
+            Self {
+                alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
+                beta_asset: EtherQuantity::from_eth(10.0),
+                alpha_ledger: Bitcoin::default(),
+                beta_ledger: Ethereum::default(),
+                alpha_expiry: None,
+                beta_expiry: None,
+                partial_identities: OnlyRedeem::<Ethereum> {
+                    beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                        .parse()
+                        .unwrap(),
+                },
+                peer: DialInformation {
+                    peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                        .parse()
+                        .unwrap(),
+                    address_hint: None,
+                },
+            }
+        }
+    }
 
     #[test]
     fn can_deserialize_swap_request_body() {
@@ -225,23 +259,9 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
-            peer: DialInformation {
-                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                    .parse()
-                    .unwrap(),
-                address_hint: None,
-            },
+            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+            beta_expiry: Some(Timestamp::from(2_000_000_000)),
+            ..SwapRequestBody::default()
         })
     }
 
@@ -273,23 +293,17 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
-            beta_ledger: Ethereum::default(),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
             peer: DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
             },
+            ..SwapRequestBody {
+                alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+                beta_expiry: Some(Timestamp::from(2_000_000_000)),
+                ..SwapRequestBody::default()
+            }
         })
     }
 
@@ -321,23 +335,22 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
-            alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::new(ChainId::new(3)),
-            alpha_expiry: Timestamp::from(2_000_000_000),
-            beta_expiry: Timestamp::from(2_000_000_000),
-            partial_identities: OnlyRedeem::<Ethereum> {
-                beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                    .parse()
-                    .unwrap(),
-            },
-            peer: DialInformation {
-                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                    .parse()
-                    .unwrap(),
-                address_hint: None,
-            },
+            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+            beta_expiry: Some(Timestamp::from(2_000_000_000)),
+            ..SwapRequestBody::default()
         })
+    }
+
+    #[test]
+    fn can_derive_default_expiries_for_swap_request_body_without_them() {
+        let swap_request_body = SwapRequestBody::default();
+        let swap_id = SwapId::default();
+        let random_seed = Seed::new_random(OsRng).unwrap();
+
+        let request = swap_request_body.to_request(swap_id, &random_seed);
+
+        assert_that(&request.alpha_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 24));
+        assert_that(&request.beta_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 12));
     }
 }
