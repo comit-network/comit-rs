@@ -77,7 +77,7 @@ where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
         let request = build_swap_request(request)
-            .expect("constructing a frame::OutoingRequest should never fail!");
+            .expect("constructing a frame::OutgoingRequest should never fail!");
 
         let response = {
             let mut swarm = self.lock().unwrap();
