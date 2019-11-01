@@ -259,8 +259,8 @@ mod tests {
         let body = serde_json::from_str(body);
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_expiry: Some(Timestamp::from(2000000000)),
-            beta_expiry: Some(Timestamp::from(2000000000)),
+            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+            beta_expiry: Some(Timestamp::from(2_000_000_000)),
             ..SwapRequestBody::default()
         })
     }
@@ -300,8 +300,8 @@ mod tests {
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
             },
             ..SwapRequestBody {
-                alpha_expiry: Some(Timestamp::from(2000000000)),
-                beta_expiry: Some(Timestamp::from(2000000000)),
+                alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+                beta_expiry: Some(Timestamp::from(2_000_000_000)),
                 ..SwapRequestBody::default()
             }
         })
@@ -336,8 +336,8 @@ mod tests {
 
         assert_that(&body).is_ok_containing(SwapRequestBody {
             beta_ledger: Ethereum::new(ChainId::new(3)),
-            alpha_expiry: Some(Timestamp::from(2000000000)),
-            beta_expiry: Some(Timestamp::from(2000000000)),
+            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
+            beta_expiry: Some(Timestamp::from(2_000_000_000)),
             ..SwapRequestBody::default()
         })
     }
