@@ -20,8 +20,8 @@ use serde::Deserialize;
 use std::{io, sync::Mutex};
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
-pub trait Client: Send + Sync + 'static {
-    fn send_rfc003_swap_request<
+pub trait SendRequest: Send + Sync + 'static {
+    fn send_request<
         AL: swap_protocols::rfc003::Ledger,
         BL: swap_protocols::rfc003::Ledger,
         AA: Asset,
@@ -55,12 +55,12 @@ pub struct Reason {
 impl<
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
-    > Client for Mutex<Swarm<TTransport, ComitNode<TSubstream>>>
+    > SendRequest for Mutex<Swarm<TTransport, ComitNode<TSubstream>>>
 where
     <TTransport as Transport>::Listener: Send,
     <TTransport as Transport>::Error: Send,
 {
-    fn send_rfc003_swap_request<
+    fn send_request<
         AL: swap_protocols::rfc003::Ledger,
         BL: swap_protocols::rfc003::Ledger,
         AA: Asset,

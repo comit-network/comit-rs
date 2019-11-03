@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
-    comit_client::Client,
     comit_i_routes,
     config::{self, Settings},
     connector::{Connector, Dependencies},
@@ -12,7 +11,7 @@ use cnd::{
     swap_protocols::{
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::{
-            alice::InitiateRequest,
+            alice::{InitiateRequest, SendRequest},
             bob::BobSpawn,
             state_store::{InMemoryStateStore, StateStore},
         },
@@ -124,7 +123,7 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 
 // TODO: rename 'D' and 'dependencies' to 'C' and 'connector'.
 fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + BobSpawn + Clone + InitiateRequest + Client,
+    D: MetadataStore + StateStore + Network + BobSpawn + Clone + InitiateRequest + SendRequest,
 >(
     settings: &Settings,
     peer_id: PeerId,

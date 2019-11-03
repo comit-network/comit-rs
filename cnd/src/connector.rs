@@ -1,5 +1,4 @@
 use crate::{
-    comit_client::{Client, RequestError},
     network::{DialInformation, Network},
     seed::Seed,
     swap_protocols::{
@@ -8,6 +7,7 @@ use crate::{
         metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
             self,
+            alice::{RequestError, SendRequest},
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, CreateLedgerEvents, Ledger,
@@ -92,11 +92,11 @@ where
     }
 }
 
-impl<S: Client> Client for Connector<S>
+impl<S: SendRequest> SendRequest for Connector<S>
 where
     S: Send + Sync + 'static,
 {
-    fn send_rfc003_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn send_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         peer_identity: DialInformation,
         request: swap_protocols::rfc003::Request<AL, BL, AA, BA>,
@@ -104,7 +104,7 @@ where
     where
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
-        self.swarm.send_rfc003_swap_request(peer_identity, request)
+        self.swarm.send_request(peer_identity, request)
     }
 }
 

@@ -1,5 +1,4 @@
 use crate::{
-    comit_client::Client,
     connector::Connector,
     swap_protocols::{
         asset::Asset,
@@ -30,7 +29,7 @@ pub trait AliceSpawn: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: Client> AliceSpawn for Connector<S>
+impl<S> AliceSpawn for Connector<S>
 where
     S: Send + Sync + 'static,
 {

@@ -13,7 +13,6 @@ pub mod state_store;
 
 pub mod actions;
 mod actor_state;
-mod error;
 pub mod insert_state;
 mod ledger;
 mod save_state;
@@ -25,7 +24,6 @@ pub mod create_ledger_events;
 pub use self::{
     actor_state::ActorState,
     create_ledger_events::CreateLedgerEvents,
-    error::Error,
     insert_state::InsertState,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
@@ -39,3 +37,12 @@ use self::messages::{AcceptResponseBody, DeclineResponseBody};
 
 /// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>;
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum Error {
+    SwapResponse(self::alice::RequestError),
+    Btsieve,
+    TimerError,
+    IncorrectFunding,
+    Internal(String),
+}

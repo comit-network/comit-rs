@@ -1,5 +1,4 @@
 use crate::{
-    comit_client::Client,
     connector::Connector,
     network::DialInformation,
     swap_protocols::{
@@ -7,7 +6,7 @@ use crate::{
         dependencies::LedgerEventDependencies,
         rfc003::{
             self,
-            alice::{spawner::AliceSpawn, State},
+            alice::{spawner::AliceSpawn, SendRequest, State},
             create_ledger_events::CreateLedgerEvents,
             messages::ToRequest,
             state_store::StateStore,
@@ -33,7 +32,7 @@ pub trait InitiateRequest: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: Client> InitiateRequest for Connector<S> {
+impl<S: SendRequest> InitiateRequest for Connector<S> {
     fn initiate_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
@@ -61,7 +60,7 @@ impl<S: Client> InitiateRequest for Connector<S> {
 
             async move {
                 let response = swarm
-                    .send_rfc003_swap_request(bob_dial_info.clone(), swap_request.clone())
+                    .send_request(bob_dial_info.clone(), swap_request.clone())
                     .compat()
                     .await
                     .map_err(|e| {
