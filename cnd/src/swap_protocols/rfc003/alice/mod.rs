@@ -1,8 +1,8 @@
 mod actions;
-mod initiate_swap_request;
+mod initiate_request;
 mod spawner;
 
-pub use self::{actions::*, initiate_swap_request::*, spawner::*};
+pub use self::{actions::*, initiate_request::*, spawner::*};
 
 use crate::swap_protocols::{
     asset::Asset,

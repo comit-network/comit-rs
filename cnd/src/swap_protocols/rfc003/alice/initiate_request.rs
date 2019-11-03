@@ -22,8 +22,8 @@ use futures_core::{
 };
 use std::sync::Arc;
 
-pub trait InitiateSwapRequest: Send + Sync + 'static {
-    fn initiate_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+pub trait InitiateRequest: Send + Sync + 'static {
+    fn initiate_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         bob_dial_info: DialInformation,
@@ -33,8 +33,8 @@ pub trait InitiateSwapRequest: Send + Sync + 'static {
         LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S: Client> InitiateSwapRequest for Connector<S> {
-    fn initiate_swap_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+impl<S: Client> InitiateRequest for Connector<S> {
+    fn initiate_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         id: SwapId,
         bob_dial_info: DialInformation,

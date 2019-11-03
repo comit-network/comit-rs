@@ -7,7 +7,7 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
-            alice::{AliceSpawn, InitiateSwapRequest},
+            alice::{AliceSpawn, InitiateRequest},
             messages::ToRequest,
             Ledger, SecretSource,
         },
@@ -19,7 +19,7 @@ use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<A: AliceSpawn + InitiateSwapRequest + Client>(
+pub fn handle_post_swap<A: AliceSpawn + InitiateRequest + Client>(
     alice: &A,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
@@ -27,19 +27,19 @@ pub fn handle_post_swap<A: AliceSpawn + InitiateSwapRequest + Client>(
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            alice.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            alice.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            alice.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            alice.initiate_swap_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            alice.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
