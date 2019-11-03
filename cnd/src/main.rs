@@ -12,7 +12,7 @@ use cnd::{
     swap_protocols::{
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::{
-            alice::{AliceSpawn, InitiateRequest},
+            alice::InitiateRequest,
             bob::BobSpawn,
             state_store::{InMemoryStateStore, StateStore},
         },
@@ -124,7 +124,7 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 
 // TODO: rename 'D' and 'dependencies' to 'C' and 'connector'.
 fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + BobSpawn + AliceSpawn + Clone + InitiateRequest + Client,
+    D: MetadataStore + StateStore + Network + BobSpawn + Clone + InitiateRequest + Client,
 >(
     settings: &Settings,
     peer_id: PeerId,

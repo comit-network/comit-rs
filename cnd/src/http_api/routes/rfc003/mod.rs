@@ -4,7 +4,6 @@ mod handlers;
 mod swap_state;
 
 use crate::{
-    comit_client::Client,
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -16,11 +15,7 @@ use crate::{
         },
     },
     swap_protocols::{
-        rfc003::{
-            actions::ActionKind,
-            alice::{AliceSpawn, InitiateRequest},
-            state_store::StateStore,
-        },
+        rfc003::{actions::ActionKind, alice::InitiateRequest, state_store::StateStore},
         MetadataStore, SwapId,
     },
 };
@@ -31,7 +26,7 @@ pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationStat
 use crate::{network::Network, swap_protocols::rfc003::bob::BobSpawn};
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: AliceSpawn + InitiateRequest + Client>(
+pub fn post_swap<D: InitiateRequest>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {

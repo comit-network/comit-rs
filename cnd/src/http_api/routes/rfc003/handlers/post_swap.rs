@@ -1,16 +1,10 @@
 use crate::{
-    comit_client::Client,
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::DialInformation,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{
-            self,
-            alice::{AliceSpawn, InitiateRequest},
-            messages::ToRequest,
-            Ledger, SecretSource,
-        },
+        rfc003::{self, alice::InitiateRequest, messages::ToRequest, Ledger, SecretSource},
         HashFunction, SwapId, Timestamp,
     },
 };
@@ -19,7 +13,7 @@ use ethereum_support::{Erc20Token, EtherQuantity};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<A: AliceSpawn + InitiateRequest + Client>(
+pub fn handle_post_swap<A: InitiateRequest>(
     alice: &A,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
