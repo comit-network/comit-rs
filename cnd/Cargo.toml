@@ -38,7 +38,7 @@ log = { version = "0.4", features = ["serde"] }
 maplit = "1"
 mime = "0.3"
 mime_guess = "2.0"
-pem = "0.6"
+pem = "0.7"
 rand = "0.7"
 reqwest = { version = "0.9", default-features = false }
 rlp = "0.4"
