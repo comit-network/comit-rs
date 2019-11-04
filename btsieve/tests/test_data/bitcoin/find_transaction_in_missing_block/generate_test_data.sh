@@ -9,7 +9,7 @@ source "../../lib.sh"
 # to generate different test data.
 
 # Clean up generated files from previous run
-rm -f "./block1.hex" "./block2.hex" "./block3.hex"
+rm -f "./block1.hex" "./block2_with_transaction.hex" "./block3.hex"
 
 docker_run
 
@@ -19,7 +19,7 @@ generate_block "./block1.hex"
 
 # Created transaction will be included in the next generated block
 create_transaction "./address" "./transaction.hex"
-generate_block "./block2.hex"
+generate_block "./block2_with_transaction.hex"
 
 generate_block "./block3.hex"
 

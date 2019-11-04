@@ -18,7 +18,9 @@ fn find_transaction_in_missing_block() {
         ],
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block2.hex"),
+            include_hex!(
+                "./test_data/bitcoin/find_transaction_in_missing_block/block2_with_transaction.hex"
+            ),
             include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block3.hex"),
         ],
     );
