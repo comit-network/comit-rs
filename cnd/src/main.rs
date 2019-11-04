@@ -121,7 +121,6 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-// TODO: rename 'D' and 'dependencies' to 'C' and 'connector'.
 fn spawn_warp_instance<
     D: MetadataStore + StateStore + Network + BobSpawn + Clone + InitiateRequest + SendRequest,
 >(
