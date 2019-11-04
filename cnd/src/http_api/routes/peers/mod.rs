@@ -1,4 +1,4 @@
-use crate::{http_api::Http, network::Network};
+use crate::{connector::Connect, http_api::Http, network::Network};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
@@ -15,8 +15,8 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<D: Network>(dependencies: D) -> Result<impl Reply, Rejection> {
-    let peers = Network::comit_peers(&dependencies)
+pub fn get_peers<C: Connect>(con: C) -> Result<impl Reply, Rejection> {
+    let peers = Network::comit_peers(&con)
         .map(|(peer, addresses)| Peer {
             id: Http(peer),
             endpoints: addresses,

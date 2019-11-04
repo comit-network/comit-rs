@@ -28,7 +28,7 @@ pub fn get_info<C: Connect>(id: PeerId, con: C) -> Result<impl Reply, Rejection>
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn get_swaps<C: Connect>(con: C) -> Result<impl Reply, Rejection> {
-    handle_get_swaps(&con)
+    handle_get_swaps(con)
         .map(|swaps| {
             Ok(warp::reply::with_header(
                 warp::reply::json(&swaps),
