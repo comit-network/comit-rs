@@ -26,7 +26,7 @@ pub trait Connect:
 
 /// Connector is used to connect incoming messages from the HTTP API with logic
 /// that triggers outgoing messages on the libp2p layer.
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct Connector<S> {
     pub deps: Arc<Dependencies>,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
@@ -45,7 +45,7 @@ impl<S> Clone for Connector<S> {
 
 /// Dependencies that are needed by both the libp2p network layer and the HTTP
 /// API layer.
-#[derive(Debug)]
+#[allow(missing_debug_implementations)]
 pub struct Dependencies {
     pub ledger_events: LedgerConnectors,
     pub metadata_store: Arc<InMemoryMetadataStore>,
