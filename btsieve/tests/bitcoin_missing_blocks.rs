@@ -1,9 +1,7 @@
 pub mod bitcoin_connector_mock;
+pub mod bitcoin_utils;
 
-use bitcoin::{
-    consensus::{deserialize, Decodable},
-    Address,
-};
+use bitcoin::Address;
 use bitcoin_connector_mock::BitcoinConnectorMock;
 use btsieve::{bitcoin::TransactionPattern, first_or_else::StreamExt, MatchingTransactions};
 use std::str::FromStr;
@@ -175,16 +173,4 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/transaction.hex"
     )
     );
-}
-
-#[macro_export]
-macro_rules! include_hex {
-    ($file:expr) => {
-        from_hex(include_str!($file))
-    };
-}
-
-fn from_hex<T: Decodable>(hex: &str) -> T {
-    let bytes = hex::decode(hex.trim()).unwrap();
-    deserialize(bytes.as_slice()).unwrap()
 }
