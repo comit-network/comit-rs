@@ -1,29 +1,26 @@
 use crate::{
-    network::{DialInformation, Network},
+    network::Network,
     seed::Seed,
     swap_protocols::{
-        self,
-        asset::Asset,
         metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
-            self,
-            alice::{InitiateRequest, RequestError, SendRequest, SpawnAlice},
+            alice::{InitiateRequest, SendRequest, SpawnAlice},
             bob::SpawnBob,
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
-            ActorState, CreateLedgerEvents, Ledger,
+            ActorState,
         },
         LedgerConnectors, Metadata, SwapId,
     },
 };
-use futures::{sync::oneshot::Sender, Future};
+use futures::sync::oneshot::Sender;
 use libp2p::PeerId;
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
 
 /// Collect all the connector trait bounds together under one trait.
 pub trait Connect:
-    Clone + MetadataStore + StateStore + Network + InitiateRequest + SendRequest + SpawnAlice + SpawnBob
+    Clone + MetadataStore + StateStore + Network + InitiateRequest + SpawnAlice + SpawnBob
 {
 }
 
@@ -35,7 +32,7 @@ pub struct Connector<S> {
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
 }
 
-impl<S> Connect for Connector<S> where S: SendRequest + Network {}
+impl<S> Connect for Connector<S> where S: Network + SendRequest {}
 
 impl<S> Clone for Connector<S> {
     fn clone(&self) -> Self {
@@ -98,22 +95,6 @@ where
 
     fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
         self.deps.state_store.update::<A>(key, update)
-    }
-}
-
-impl<S: SendRequest> SendRequest for Connector<S>
-where
-    S: Send + Sync + 'static,
-{
-    fn send_request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        peer_identity: DialInformation,
-        request: swap_protocols::rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.swarm.send_request(peer_identity, request)
     }
 }
 
