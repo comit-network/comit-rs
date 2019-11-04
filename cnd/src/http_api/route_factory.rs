@@ -5,7 +5,7 @@ use crate::{
         self,
         rfc003::{
             alice::{InitiateRequest, SendRequest},
-            bob::BobSpawn,
+            bob::SpawnBob,
             state_store::StateStore,
         },
         MetadataStore, SwapId,
@@ -25,7 +25,7 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 }
 
 pub fn create<
-    D: MetadataStore + StateStore + BobSpawn + Network + Clone + InitiateRequest + SendRequest,
+    D: MetadataStore + StateStore + SpawnBob + Network + Clone + InitiateRequest + SendRequest,
 >(
     origin_auth: String,
     peer_id: PeerId,

@@ -4,10 +4,11 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            alice::{self, State, SwapCommunication},
+            bob::{self, State, SwapCommunication},
+            create_ledger_events::CreateLedgerEvents,
             state_machine,
             state_store::StateStore,
-            CreateLedgerEvents, Ledger,
+            Ledger,
         },
         LedgerConnectors,
     },
@@ -19,9 +20,9 @@ use futures_core::{
 };
 use std::sync::Arc;
 
-pub trait AliceSpawn: Send + Sync + 'static {
+pub trait SpawnBob: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
-    fn alice_spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
@@ -29,12 +30,12 @@ pub trait AliceSpawn: Send + Sync + 'static {
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S> AliceSpawn for Connector<S>
+impl<S> SpawnBob for Connector<S>
 where
     S: Send + Sync + 'static,
 {
     #[allow(clippy::type_complexity)]
-    fn alice_spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
@@ -43,20 +44,23 @@ where
         S: Send + Sync + 'static,
     {
         let id = swap_request.id;
-        let swap_seed = self.deps.seed.swap_seed(id);
+        let seed = self.deps.seed.swap_seed(id);
 
         let (sender, receiver) = mpsc::unbounded();
 
         let swap_execution = {
             let ledger_events = self.deps.ledger_events.clone();
+            let state_store = Arc::clone(&self.deps.state_store);
 
             async move {
-                let alice_state = match response {
-                    Ok(accepted) => State::accepted(swap_request, accepted, swap_seed),
-                    Err(declined) => State::declined(swap_request, declined, swap_seed),
+                let bob_state = match response {
+                    Ok(accepted) => State::accepted(swap_request, accepted, seed),
+                    Err(declined) => State::declined(swap_request, declined, seed),
                 };
 
-                match alice_state {
+                state_store.insert(id, bob_state.clone());
+
+                match bob_state {
                     State {
                         swap_communication: SwapCommunication::Accepted { request, response },
                         ..
@@ -109,7 +113,7 @@ where
 
         let state_store = Arc::clone(&self.deps.state_store);
         tokio::spawn(receiver.for_each(move |update| {
-            state_store.update::<alice::State<AL, BL, AA, BA>>(&id, update);
+            state_store.update::<bob::State<AL, BL, AA, BA>>(&id, update);
             Ok(())
         }));
 

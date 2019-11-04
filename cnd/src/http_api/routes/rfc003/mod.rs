@@ -23,7 +23,7 @@ use hyper::header;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::{network::Network, swap_protocols::rfc003::bob::BobSpawn};
+use crate::{network::Network, swap_protocols::rfc003::bob::SpawnBob};
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<D: InitiateRequest>(
@@ -51,7 +51,7 @@ pub fn get_swap<D: MetadataStore + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + BobSpawn + Network>(
+pub fn action<D: MetadataStore + StateStore + SpawnBob + Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

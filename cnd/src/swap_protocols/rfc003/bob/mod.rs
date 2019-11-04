@@ -1,7 +1,7 @@
 pub mod actions;
-mod spawner;
+mod spawn_bob;
 
-pub use self::spawner::*;
+pub use self::spawn_bob::*;
 
 use crate::swap_protocols::{
     asset::Asset,

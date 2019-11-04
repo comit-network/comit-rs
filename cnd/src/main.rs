@@ -12,7 +12,7 @@ use cnd::{
         metadata_store::{InMemoryMetadataStore, MetadataStore},
         rfc003::{
             alice::{InitiateRequest, SendRequest},
-            bob::BobSpawn,
+            bob::SpawnBob,
             state_store::{InMemoryStateStore, StateStore},
         },
         LedgerConnectors,
@@ -122,7 +122,7 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 }
 
 fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + BobSpawn + Clone + InitiateRequest + SendRequest,
+    D: MetadataStore + StateStore + Network + SpawnBob + Clone + InitiateRequest + SendRequest,
 >(
     settings: &Settings,
     peer_id: PeerId,

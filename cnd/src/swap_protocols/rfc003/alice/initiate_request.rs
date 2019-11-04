@@ -5,7 +5,7 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            alice::{spawner::AliceSpawn, SendRequest, State},
+            alice::{SendRequest, SpawnAlice, State},
             create_ledger_events::CreateLedgerEvents,
             messages::ToRequest,
             state_store::StateStore,
@@ -75,7 +75,7 @@ impl<S: SendRequest> InitiateRequest for Connector<S> {
 
                 state_store.insert(id, alice_state.clone());
 
-                cloned_self.alice_spawn(swap_request, response);
+                cloned_self.spawn_alice(swap_request, response);
 
                 Ok(())
             }
