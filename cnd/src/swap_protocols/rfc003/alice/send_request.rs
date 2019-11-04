@@ -4,13 +4,12 @@ use crate::{
     swap_protocols::{
         self,
         asset::Asset,
-        dependencies::LedgerEventDependencies,
         rfc003::{
             self,
             create_ledger_events::CreateLedgerEvents,
             messages::{Decision, SwapDeclineReason},
         },
-        SwapProtocol,
+        LedgerConnectors, SwapProtocol,
     },
 };
 use futures::Future;
@@ -32,7 +31,7 @@ pub trait SendRequest: Send + Sync + 'static {
         request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
     ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -71,7 +70,7 @@ where
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
         let request = build_swap_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");

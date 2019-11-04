@@ -2,7 +2,6 @@ use crate::{
     connector::Connector,
     swap_protocols::{
         asset::Asset,
-        dependencies::LedgerEventDependencies,
         rfc003::{
             self,
             alice::{self, State, SwapCommunication},
@@ -10,6 +9,7 @@ use crate::{
             state_store::StateStore,
             CreateLedgerEvents, Ledger,
         },
+        LedgerConnectors,
     },
 };
 use futures::{sync::mpsc, Stream};
@@ -26,7 +26,7 @@ pub trait AliceSpawn: Send + Sync + 'static {
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
     ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
 impl<S> AliceSpawn for Connector<S>
@@ -39,7 +39,7 @@ where
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
     ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
         S: Send + Sync + 'static,
     {
         let id = swap_request.id;

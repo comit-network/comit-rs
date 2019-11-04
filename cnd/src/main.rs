@@ -15,7 +15,7 @@ use cnd::{
             bob::BobSpawn,
             state_store::{InMemoryStateStore, StateStore},
         },
-        LedgerEventDependencies,
+        LedgerConnectors,
     },
 };
 use futures::{stream, Future, Stream};
@@ -63,7 +63,7 @@ fn main() -> Result<(), failure::Error> {
     let (ethereum_connector, _event_loop_handle) =
         { Web3Connector::new(settings.clone().ethereum.node_url)? };
 
-    let ledger_events = LedgerEventDependencies {
+    let ledger_events = LedgerConnectors {
         bitcoin_connector,
         ethereum_connector,
     };

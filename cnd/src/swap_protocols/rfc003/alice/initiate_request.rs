@@ -3,7 +3,6 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         asset::Asset,
-        dependencies::LedgerEventDependencies,
         rfc003::{
             self,
             alice::{spawner::AliceSpawn, SendRequest, State},
@@ -12,7 +11,7 @@ use crate::{
             state_store::StateStore,
             InsertState, Ledger,
         },
-        Role, SwapId,
+        LedgerConnectors, Role, SwapId,
     },
 };
 use futures_core::{
@@ -29,7 +28,7 @@ pub trait InitiateRequest: Send + Sync + 'static {
         partial_swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), rfc003::insert_state::Error>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
 impl<S: SendRequest> InitiateRequest for Connector<S> {
@@ -40,7 +39,7 @@ impl<S: SendRequest> InitiateRequest for Connector<S> {
         partial_swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
     ) -> Result<(), rfc003::insert_state::Error>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
         let swap_seed = self.deps.seed.swap_seed(id);
         let swap_request = partial_swap_request.to_request(id, &swap_seed);

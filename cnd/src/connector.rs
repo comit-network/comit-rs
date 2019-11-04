@@ -12,7 +12,7 @@ use crate::{
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, CreateLedgerEvents, Ledger,
         },
-        LedgerEventDependencies, Metadata, SwapId,
+        LedgerConnectors, Metadata, SwapId,
     },
 };
 use futures::{sync::oneshot::Sender, Future};
@@ -41,7 +41,7 @@ impl<S> Clone for Connector<S> {
 /// API layer.
 #[derive(Debug)]
 pub struct Dependencies {
-    pub ledger_events: LedgerEventDependencies,
+    pub ledger_events: LedgerConnectors,
     pub metadata_store: Arc<InMemoryMetadataStore>,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: Seed,
@@ -102,7 +102,7 @@ where
         request: swap_protocols::rfc003::Request<AL, BL, AA, BA>,
     ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
     where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
         self.swarm.send_request(peer_identity, request)
     }

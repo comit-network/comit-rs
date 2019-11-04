@@ -1,6 +1,5 @@
 pub mod actions;
 pub mod asset;
-pub mod dependencies;
 pub mod ledger;
 pub mod metadata_store;
 pub mod rfc003;
@@ -8,8 +7,7 @@ mod swap_id;
 mod timestamp;
 
 pub use self::{
-    dependencies::LedgerEventDependencies,
-    ledger::{Ledger, LedgerKind},
+    ledger::{Ledger, LedgerConnectors, LedgerKind},
     metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore},
     swap_id::*,
     timestamp::Timestamp,
