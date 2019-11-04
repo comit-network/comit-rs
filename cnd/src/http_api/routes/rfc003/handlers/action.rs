@@ -1,4 +1,5 @@
 use crate::{
+    connector::Connect,
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -15,7 +16,6 @@ use crate::{
         rfc003::{
             self,
             actions::{Action, ActionKind},
-            bob::SpawnBob,
             messages::Decision,
             state_store::StateStore,
         },
@@ -27,21 +27,20 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<D: MetadataStore + StateStore + SpawnBob + Network>(
+pub fn handle_action<C: Connect>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: D,
+    con: C,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata = MetadataStore::get(&dependencies, id)?.ok_or_else(problem::swap_not_found)?;
+    let metadata = MetadataStore::get(&con, id)?.ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
         &metadata,
         (|| {
-            let state =
-                StateStore::get::<ROLE>(&dependencies, &id)?.ok_or_else(problem::state_store)?;
+            let state = StateStore::get::<ROLE>(&con, &id)?.ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
             state
@@ -54,7 +53,7 @@ pub fn handle_action<D: MetadataStore + StateStore + SpawnBob + Network>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&dependencies, id)
+                                    let channel = Network::pending_request_for(&con, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let accept_body = action.accept(body);
@@ -63,7 +62,7 @@ pub fn handle_action<D: MetadataStore + StateStore + SpawnBob + Network>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    dependencies.spawn_bob(request, Ok(accept_body));
+                                    con.spawn_bob(request, Ok(accept_body));
 
                                     Ok(ActionResponseBody::None)
                                 }
@@ -72,7 +71,7 @@ pub fn handle_action<D: MetadataStore + StateStore + SpawnBob + Network>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&dependencies, id)
+                                    let channel = Network::pending_request_for(&con, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let decline_body =
@@ -82,7 +81,7 @@ pub fn handle_action<D: MetadataStore + StateStore + SpawnBob + Network>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    dependencies.spawn_bob(request, Err(decline_body));
+                                    con.spawn_bob(request, Err(decline_body));
 
                                     Ok(ActionResponseBody::None)
                                 }

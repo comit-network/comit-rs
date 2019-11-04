@@ -7,7 +7,8 @@ use crate::{
         metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
             self,
-            alice::{RequestError, SendRequest},
+            alice::{InitiateRequest, RequestError, SendRequest, SpawnAlice},
+            bob::SpawnBob,
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, CreateLedgerEvents, Ledger,
@@ -20,6 +21,12 @@ use libp2p::PeerId;
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
 
+/// Collect all the connector trait bounds together under one trait.
+pub trait Connect:
+    Clone + MetadataStore + StateStore + Network + InitiateRequest + SendRequest + SpawnAlice + SpawnBob
+{
+}
+
 /// Connector is used to connect incoming messages from the HTTP API with logic
 /// that triggers outgoing messages on the libp2p layer.
 #[derive(Debug)]
@@ -27,6 +34,8 @@ pub struct Connector<S> {
     pub deps: Arc<Dependencies>,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
 }
+
+impl<S> Connect for Connector<S> where S: SendRequest + Network {}
 
 impl<S> Clone for Connector<S> {
     fn clone(&self) -> Self {

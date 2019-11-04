@@ -4,17 +4,12 @@ use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     comit_i_routes,
     config::{self, Settings},
-    connector::{Connector, Dependencies},
+    connector::{Connect, Connector, Dependencies},
     http_api::route_factory,
-    network::{self, Network},
+    network,
     seed::Seed,
     swap_protocols::{
-        metadata_store::{InMemoryMetadataStore, MetadataStore},
-        rfc003::{
-            alice::{InitiateRequest, SendRequest},
-            bob::SpawnBob,
-            state_store::{InMemoryStateStore, StateStore},
-        },
+        metadata_store::InMemoryMetadataStore, rfc003::state_store::InMemoryStateStore,
         LedgerConnectors,
     },
 };
@@ -121,15 +116,13 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + SpawnBob + Clone + InitiateRequest + SendRequest,
->(
+fn spawn_warp_instance<C: Connect>(
     settings: &Settings,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
-    dependencies: D,
+    con: C,
 ) {
-    let routes = route_factory::create(auth_origin(&settings), peer_id, dependencies);
+    let routes = route_factory::create(auth_origin(&settings), peer_id, con);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
