@@ -44,8 +44,6 @@ impl<S: SendRequest> InitiateRequest for Connector<S> {
         let swap_seed = self.deps.seed.swap_seed(id);
         let swap_request = partial_swap_request.to_request(id, &swap_seed);
 
-        log::debug!("inserting initial state for alice");
-
         self.deps.insert_state_into_stores(
             Role::Alice,
             bob_dial_info.peer_id.clone(),
@@ -75,7 +73,6 @@ impl<S: SendRequest> InitiateRequest for Connector<S> {
                     Err(decline) => State::declined(swap_request.clone(), decline, swap_seed),
                 };
 
-                log::debug!("inserting initial state for alice");
                 state_store.insert(id, alice_state.clone());
 
                 cloned_self.alice_spawn(swap_request, response);
