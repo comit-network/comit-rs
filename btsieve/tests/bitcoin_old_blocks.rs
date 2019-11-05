@@ -1,8 +1,7 @@
-pub mod bitcoin_connector_mock;
-pub mod bitcoin_utils;
+pub mod bitcoin_helper;
 
 use bitcoin::Address;
-use bitcoin_connector_mock::BitcoinConnectorMock;
+use bitcoin_helper::BitcoinConnectorMock;
 use btsieve::{bitcoin::TransactionPattern, first_or_else::StreamExt, MatchingTransactions};
 use std::str::FromStr;
 use tokio::prelude::Future;
