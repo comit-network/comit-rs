@@ -9,8 +9,10 @@ pull_request_rules:
   - name: instruct bors to merge PRs with passing tests and 2 approvals
     conditions:
       - "#approved-reviews-by>=2"
+      - "#changes-requested-reviews-by=0"
       - "status-success=ci/circleci: debug-build-test"
       - "status-success=license/cla"
+      - -conflict
       - label!=work-in-progress
       - label!=blocked
       - label!=no-mergify
