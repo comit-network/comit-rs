@@ -19,6 +19,7 @@ use serde::Deserialize;
 use std::{io, sync::Mutex};
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
 
+/// Sends an RFC003 swap request to the peer node.
 pub trait SendRequest: Send + Sync + 'static {
     fn send_request<
         AL: swap_protocols::rfc003::Ledger,

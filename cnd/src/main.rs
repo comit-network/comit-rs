@@ -3,13 +3,17 @@
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
-    connector::{Connect, Connector, Dependencies},
-    http_api::route_factory,
-    network,
-    seed::Seed,
+    dependencies::Dependencies,
+    http_api::{self, route_factory},
+    network::{self, Network, SendRequest},
+    seed::{Seed, SwapSeed},
     swap_protocols::{
-        metadata_store::InMemoryMetadataStore, rfc003::state_store::InMemoryStateStore,
-        LedgerConnectors,
+        rfc003::{
+            alice::SpawnAlice,
+            bob::SpawnBob,
+            state_store::{InMemoryStateStore, StateStore},
+        },
+        InMemoryMetadataStore, LedgerConnectors, MetadataStore,
     },
 };
 use futures::{stream, Future, Stream};
@@ -62,7 +66,7 @@ fn main() -> Result<(), failure::Error> {
         ethereum_connector,
     };
 
-    let deps = Dependencies {
+    let network_dependencies = Dependencies {
         ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
@@ -74,7 +78,7 @@ fn main() -> Result<(), failure::Error> {
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(deps.clone())?;
+    let behaviour = network::ComitNode::new(network_dependencies)?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -87,12 +91,22 @@ fn main() -> Result<(), failure::Error> {
 
     let swarm = Arc::new(Mutex::new(swarm));
 
-    let connector = Connector {
-        deps: Arc::new(deps.clone()),
+    let http_api_dependencies = http_api::Dependencies {
+        dependencies: Arc::new(Dependencies {
+            ledger_events: ledger_events.clone(),
+            metadata_store: Arc::clone(&metadata_store),
+            state_store: Arc::clone(&state_store),
+            seed,
+        }),
         swarm: Arc::clone(&swarm),
     };
 
-    spawn_warp_instance(&settings, local_peer_id, &mut runtime, connector);
+    spawn_warp_instance(
+        &settings,
+        local_peer_id,
+        &mut runtime,
+        http_api_dependencies,
+    );
 
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
@@ -113,13 +127,15 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn spawn_warp_instance<C: Connect>(
+fn spawn_warp_instance<
+    D: Clone + MetadataStore + StateStore + Network + SendRequest + SpawnAlice + SpawnBob + SwapSeed,
+>(
     settings: &Settings,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
-    con: C,
+    dependencies: D,
 ) {
-    let routes = route_factory::create(auth_origin(), peer_id, con);
+    let routes = route_factory::create(auth_origin(), peer_id, dependencies);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 

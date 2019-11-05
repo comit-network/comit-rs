@@ -2,9 +2,9 @@ mod handlers;
 
 use self::handlers::handle_get_swaps;
 use crate::{
-    connector::Connect,
     http_api::{routes::into_rejection, Http},
     network::Network,
+    swap_protocols::{rfc003::state_store::StateStore, MetadataStore},
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
@@ -17,8 +17,8 @@ pub struct InfoResource {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_info<C: Connect>(id: PeerId, con: C) -> Result<impl Reply, Rejection> {
-    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&con).to_vec();
+pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: Http(id),
@@ -27,8 +27,8 @@ pub fn get_info<C: Connect>(id: PeerId, con: C) -> Result<impl Reply, Rejection>
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<C: Connect>(con: C) -> Result<impl Reply, Rejection> {
-    handle_get_swaps(con)
+pub fn get_swaps<D: MetadataStore + StateStore>(dependencies: D) -> Result<impl Reply, Rejection> {
+    handle_get_swaps(dependencies)
         .map(|swaps| {
             Ok(warp::reply::with_header(
                 warp::reply::json(&swaps),

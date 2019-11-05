@@ -13,7 +13,6 @@ pub mod state_store;
 
 pub mod actions;
 mod actor_state;
-pub mod insert_state;
 mod ledger;
 mod save_state;
 mod secret;
@@ -24,7 +23,6 @@ pub mod create_ledger_events;
 pub use self::{
     actor_state::ActorState,
     create_ledger_events::CreateLedgerEvents,
-    insert_state::InsertState,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     messages::*,
@@ -40,7 +38,6 @@ pub type Response<AL, BL> = Result<AcceptResponseBody<AL, BL>, DeclineResponseBo
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {
-    SwapResponse(self::alice::RequestError),
     Btsieve,
     TimerError,
     IncorrectFunding,

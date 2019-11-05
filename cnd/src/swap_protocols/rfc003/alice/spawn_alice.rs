@@ -1,18 +1,17 @@
 use crate::{
-    connector::Connector,
+    dependencies::Dependencies,
     swap_protocols::{
         asset::Asset,
         rfc003::{
             self,
-            alice::{self, State, SwapCommunication},
-            state_machine,
-            state_store::StateStore,
+            alice::{State, SwapCommunication},
+            state_machine::{self, SwapStates},
             CreateLedgerEvents, Ledger,
         },
         LedgerConnectors,
     },
 };
-use futures::{sync::mpsc, Stream};
+use futures::sync::mpsc;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
@@ -25,30 +24,28 @@ pub trait SpawnAlice: Send + Sync + 'static {
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
-    ) where
+    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
+    where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S> SpawnAlice for Connector<S>
-where
-    S: Send + Sync + 'static,
-{
+impl SpawnAlice for Dependencies {
     #[allow(clippy::type_complexity)]
     fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
-    ) where
+    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
+    where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        S: Send + Sync + 'static,
     {
         let id = swap_request.id;
-        let swap_seed = self.deps.seed.swap_seed(id);
+        let swap_seed = self.seed.swap_seed(id);
 
         let (sender, receiver) = mpsc::unbounded();
 
         let swap_execution = {
-            let ledger_events = self.deps.ledger_events.clone();
+            let ledger_events = self.ledger_events.clone();
 
             async move {
                 let alice_state = match response {
@@ -107,12 +104,8 @@ where
             }
         };
 
-        let state_store = Arc::clone(&self.deps.state_store);
-        tokio::spawn(receiver.for_each(move |update| {
-            state_store.update::<alice::State<AL, BL, AA, BA>>(&id, update);
-            Ok(())
-        }));
-
         tokio::spawn(swap_execution.boxed().compat());
+
+        receiver
     }
 }

@@ -1,19 +1,19 @@
 use crate::{
-    connector::Connector,
+    dependencies::Dependencies,
     swap_protocols::{
         asset::Asset,
         rfc003::{
             self,
-            bob::{self, State, SwapCommunication},
+            bob::{State, SwapCommunication},
             create_ledger_events::CreateLedgerEvents,
-            state_machine,
+            state_machine::{self, SwapStates},
             state_store::StateStore,
             Ledger,
         },
         LedgerConnectors,
     },
 };
-use futures::{sync::mpsc, Stream};
+use futures::sync::mpsc;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
@@ -26,31 +26,29 @@ pub trait SpawnBob: Send + Sync + 'static {
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
-    ) where
+    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
+    where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<S> SpawnBob for Connector<S>
-where
-    S: Send + Sync + 'static,
-{
+impl SpawnBob for Dependencies {
     #[allow(clippy::type_complexity)]
     fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
-    ) where
+    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
+    where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        S: Send + Sync + 'static,
     {
         let id = swap_request.id;
-        let seed = self.deps.seed.swap_seed(id);
+        let seed = self.seed.swap_seed(id);
 
         let (sender, receiver) = mpsc::unbounded();
 
         let swap_execution = {
-            let ledger_events = self.deps.ledger_events.clone();
-            let state_store = Arc::clone(&self.deps.state_store);
+            let ledger_events = self.ledger_events.clone();
+            let state_store = Arc::clone(&self.state_store);
 
             async move {
                 let bob_state = match response {
@@ -111,12 +109,8 @@ where
             }
         };
 
-        let state_store = Arc::clone(&self.deps.state_store);
-        tokio::spawn(receiver.for_each(move |update| {
-            state_store.update::<bob::State<AL, BL, AA, BA>>(&id, update);
-            Ok(())
-        }));
-
         tokio::spawn(swap_execution.boxed().compat());
+
+        receiver
     }
 }

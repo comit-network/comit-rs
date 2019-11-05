@@ -1,12 +1,18 @@
+pub mod send_request;
+
+pub use send_request::*;
+
 use crate::{
-    connector::Dependencies,
+    dependencies::Dependencies,
     libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
         asset::{Asset, AssetKind},
+        metadata_store::{self, Metadata, MetadataStore},
         rfc003::{
-            self,
+            self, bob,
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
-            InsertState,
+            state_store::StateStore,
+            Ledger,
         },
         HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
     },
@@ -131,8 +137,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -152,8 +157,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -173,8 +177,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -194,8 +197,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -258,6 +260,33 @@ impl<TSubstream> ComitNode<TSubstream> {
                 ))
             }
         }
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+        &self,
+        counterparty: PeerId,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Result<(), metadata_store::Error> {
+        let id = swap_request.id;
+        let seed = self.deps.seed.swap_seed(id);
+
+        let metadata = Metadata::new(
+            id,
+            swap_request.alpha_ledger.into(),
+            swap_request.beta_ledger.into(),
+            swap_request.alpha_asset.into(),
+            swap_request.beta_asset.into(),
+            Role::Bob,
+            counterparty,
+        );
+        self.deps.metadata_store.insert(metadata)?;
+
+        let state_store = Arc::clone(&self.deps.state_store);
+        let state = bob::State::proposed(swap_request.clone(), seed);
+        state_store.insert(id, state);
+
+        Ok(())
     }
 }
 

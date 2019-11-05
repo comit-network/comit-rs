@@ -1,9 +1,7 @@
 mod actions;
-mod initiate_request;
-mod send_request;
 mod spawn_alice;
 
-pub use self::{actions::*, initiate_request::*, send_request::*, spawn_alice::*};
+pub use self::{actions::*, spawn_alice::*};
 
 use crate::swap_protocols::{
     asset::Asset,
