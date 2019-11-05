@@ -45,14 +45,17 @@ fn ethereum_transaction_pattern_e2e_test() {
     let target_address = accounts[0];
 
     let funding_transaction = connector
-        .matching_transactions(TransactionPattern {
-            from_address: None,
-            to_address: Some(target_address),
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: None,
-        })
+        .matching_transactions(
+            TransactionPattern {
+                from_address: None,
+                to_address: Some(target_address),
+                is_contract_creation: None,
+                transaction_data: None,
+                transaction_data_length: None,
+                events: None,
+            },
+            None,
+        )
         .take(1)
         .into_future()
         .map_err(|_| ());

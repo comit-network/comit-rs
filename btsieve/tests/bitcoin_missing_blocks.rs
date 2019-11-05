@@ -24,17 +24,22 @@ fn find_transaction_in_missing_block() {
     );
 
     let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(TransactionPattern {
-            to_address: Some(
-                Address::from_str(
-                    include_str!("./test_data/bitcoin/find_transaction_in_missing_block/address")
+        .matching_transactions(
+            TransactionPattern {
+                to_address: Some(
+                    Address::from_str(
+                        include_str!(
+                            "./test_data/bitcoin/find_transaction_in_missing_block/address"
+                        )
                         .trim(),
-                )
-                .unwrap(),
-            ),
-            from_outpoint: None,
-            unlock_script: None,
-        })
+                    )
+                    .unwrap(),
+                ),
+                from_outpoint: None,
+                unlock_script: None,
+            },
+            None,
+        )
         .first_or_else(|| panic!())
         .wait()
         .unwrap();
@@ -65,19 +70,22 @@ fn find_transaction_in_missing_block_with_big_gap() {
     );
 
     let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(TransactionPattern {
-            to_address: Some(
-                Address::from_str(
-                    include_str!(
+        .matching_transactions(
+            TransactionPattern {
+                to_address: Some(
+                    Address::from_str(
+                        include_str!(
                         "./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
                     )
-                    .trim(),
-                )
-                .unwrap(),
-            ),
-            from_outpoint: None,
-            unlock_script: None,
-        })
+                        .trim(),
+                    )
+                    .unwrap(),
+                ),
+                from_outpoint: None,
+                unlock_script: None,
+            },
+            None,
+        )
         .first_or_else(|| panic!())
         .wait()
         .unwrap();
@@ -106,19 +114,22 @@ fn find_transaction_if_blockchain_reorganisation() {
     );
 
     let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(TransactionPattern {
-            to_address: Some(
-                Address::from_str(
-                    include_str!(
+        .matching_transactions(
+            TransactionPattern {
+                to_address: Some(
+                    Address::from_str(
+                        include_str!(
                         "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
                     )
-                    .trim(),
-                )
-                .unwrap(),
-            ),
-            from_outpoint: None,
-            unlock_script: None,
-        })
+                        .trim(),
+                    )
+                    .unwrap(),
+                ),
+                from_outpoint: None,
+                unlock_script: None,
+            },
+            None,
+        )
         .first_or_else(|| panic!())
         .wait()
         .unwrap();
@@ -162,7 +173,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
             ),
             from_outpoint: None,
             unlock_script: None,
-        })
+        }, None)
         .first_or_else(|| panic!())
         .wait()
         .unwrap();

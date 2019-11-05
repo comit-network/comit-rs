@@ -9,6 +9,9 @@ use tokio::prelude::Future;
 
 #[test]
 fn find_transaction_in_old_block() {
+    let block1_with_transaction: bitcoin::Block = include_hex!(
+        "./test_data/bitcoin/find_transaction_in_old_block/block1_with_transaction.hex"
+    );
     let connector = BitcoinConnectorMock::new(
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_in_old_block/block3.hex"),
@@ -16,9 +19,7 @@ fn find_transaction_in_old_block() {
             include_hex!("./test_data/bitcoin/find_transaction_in_old_block/block5.hex"),
         ],
         vec![
-            include_hex!(
-                "./test_data/bitcoin/find_transaction_in_old_block/block1_with_transaction.hex"
-            ),
+            block1_with_transaction.clone(),
             include_hex!("./test_data/bitcoin/find_transaction_in_old_block/block2.hex"),
             include_hex!("./test_data/bitcoin/find_transaction_in_old_block/block3.hex"),
             include_hex!("./test_data/bitcoin/find_transaction_in_old_block/block4.hex"),
@@ -39,7 +40,7 @@ fn find_transaction_in_old_block() {
                 from_outpoint: None,
                 unlock_script: None,
             },
-            include_str!("./test_data/bitcoin/find_transaction_in_old_block/block3_timestamp"),
+            Some(block1_with_transaction.header.time),
         )
         .first_or_else(|| panic!())
         .wait()

@@ -19,6 +19,9 @@ generate_101_blocks
 create_transaction "./address" "./transaction.hex"
 generate_block "./block1_with_transaction.hex"
 
+# Produce a difference in the block timestamps
+sleep 2
+
 generate_block "./block2.hex"
 generate_block "./block3.hex"
 generate_block "./block4.hex"

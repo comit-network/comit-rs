@@ -41,11 +41,14 @@ fn bitcoin_transaction_pattern_e2e_test() {
     client.generate(101, None).unwrap();
 
     let funding_transaction = blocksource
-        .matching_transactions(TransactionPattern {
-            to_address: Some(target_address.clone()),
-            from_outpoint: None,
-            unlock_script: None,
-        })
+        .matching_transactions(
+            TransactionPattern {
+                to_address: Some(target_address.clone()),
+                from_outpoint: None,
+                unlock_script: None,
+            },
+            None,
+        )
         .take(1)
         .into_future()
         .map_err(|_| ());
