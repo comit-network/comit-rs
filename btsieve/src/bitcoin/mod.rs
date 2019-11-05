@@ -48,7 +48,7 @@ where
 async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
-    timestamp: Option<u32>,
+    reference_timestamp: Option<u32>,
 ) -> Result<bitcoin::Transaction, ()>
 where
     C: LatestBlock<Block = bitcoin::Block, Error = E>
@@ -56,8 +56,6 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
-    let reference_timestamp = timestamp.unwrap_or(u32::max_value());
-
     let mut oldest_block: Option<bitcoin::Block> = None;
 
     let mut prev_blockhashes: HashSet<sha256d::Hash> = HashSet::new();
@@ -99,7 +97,9 @@ where
         }
         missing_block_futures = new_missing_block_futures;
 
-        if let Some(block) = oldest_block.clone() {
+        if let (Some(block), Some(reference_timestamp)) =
+            (oldest_block.as_ref(), reference_timestamp)
+        {
             if block.header.time >= reference_timestamp {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
