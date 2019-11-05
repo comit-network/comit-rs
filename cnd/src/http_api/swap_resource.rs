@@ -57,10 +57,10 @@ pub enum SwapStatus {
     InternalFailure,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::messages::Request<AL, BL, AA, BA>>
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::Request<AL, BL, AA, BA>>
     for SwapParameters<AL, BL, AA, BA>
 {
-    fn from(request: rfc003::messages::Request<AL, BL, AA, BA>) -> Self {
+    fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
         Self {
             alpha_ledger: Http(request.alpha_ledger),
             alpha_asset: Http(request.alpha_asset),

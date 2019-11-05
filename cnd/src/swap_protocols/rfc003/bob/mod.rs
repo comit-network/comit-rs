@@ -1,9 +1,7 @@
 pub mod actions;
-mod communication_events;
-mod insert_state;
-mod spawner;
+mod spawn_bob;
 
-pub use self::{communication_events::*, insert_state::*, spawner::*};
+pub use self::spawn_bob::*;
 
 use crate::swap_protocols::{
     asset::Asset,
@@ -22,7 +20,7 @@ use std::sync::{Arc, Mutex};
 
 #[allow(type_alias_bounds)]
 pub type ResponseSender<AL: Ledger, BL: Ledger> =
-    Arc<Mutex<Option<oneshot::Sender<Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>>>>>;
+    Arc<Mutex<Option<oneshot::Sender<rfc003::Response<AL, BL>>>>>;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]

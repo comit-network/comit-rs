@@ -1,11 +1,7 @@
 use crate::{
+    connector::Connect,
     http_api,
-    network::Network,
-    swap_protocols::{
-        self,
-        rfc003::{alice::AliceSpawner, bob::BobSpawner, state_store::StateStore},
-        MetadataStore, SwapId,
-    },
+    swap_protocols::{self, SwapId},
 };
 use libp2p::PeerId;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -20,27 +16,27 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<D: MetadataStore + StateStore + AliceSpawner + BobSpawner + Network + Clone>(
+pub fn create<C: Connect>(
     origin_auth: String,
     peer_id: PeerId,
-    dependencies: D,
+    con: C,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
-    let dependencies = warp::any().map(move || dependencies.clone());
+    let con = warp::any().map(move || con.clone());
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post2())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and(warp::body::json())
         .and_then(http_api::routes::rfc003::post_swap);
 
     let rfc003_get_swap = rfc003
         .and(warp::get2())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(http_api::routes::rfc003::get_swap);
@@ -48,7 +44,7 @@ pub fn create<D: MetadataStore + StateStore + AliceSpawner + BobSpawner + Networ
     let get_swaps = swaps
         .and(warp::get2())
         .and(warp::path::end())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and_then(http_api::routes::index::get_swaps);
 
     let rfc003_action = warp::method()
@@ -59,20 +55,20 @@ pub fn create<D: MetadataStore + StateStore + AliceSpawner + BobSpawner + Networ
         >())
         .and(warp::path::end())
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::routes::rfc003::action);
 
     let get_peers = warp::get2()
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and_then(http_api::routes::peers::get_peers);
 
     let get_info = warp::get2()
         .and(warp::path::end())
         .and(peer_id.clone())
-        .and(dependencies.clone())
+        .and(con.clone())
         .and_then(http_api::routes::index::get_info);
 
     let preflight_cors_route = warp::options().map(warp::reply);

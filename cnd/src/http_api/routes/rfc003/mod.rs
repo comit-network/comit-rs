@@ -4,6 +4,7 @@ mod handlers;
 mod swap_state;
 
 use crate::{
+    connector::Connect,
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -14,23 +15,19 @@ use crate::{
             },
         },
     },
-    swap_protocols::{
-        rfc003::{actions::ActionKind, alice::AliceSpawner, state_store::StateStore},
-        MetadataStore, SwapId,
-    },
+    swap_protocols::{rfc003::actions::ActionKind, SwapId},
 };
 use hyper::header;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::{network::Network, swap_protocols::rfc003::bob::BobSpawner};
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: AliceSpawner>(
-    dependencies: D,
+pub fn post_swap<C: Connect>(
+    con: C,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
-    handle_post_swap(&dependencies, request_body_kind)
+    handle_post_swap(con, request_body_kind)
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -41,25 +38,22 @@ pub fn post_swap<D: AliceSpawner>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<D: MetadataStore + StateStore>(
-    dependencies: D,
-    id: SwapId,
-) -> Result<impl Reply, Rejection> {
-    handle_get_swap(&dependencies, id)
+pub fn get_swap<C: Connect>(con: C, id: SwapId) -> Result<impl Reply, Rejection> {
+    handle_get_swap(con, id)
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + BobSpawner + Network>(
+pub fn action<C: Connect>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    dependencies: D,
+    con: C,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_action(method, id, action_kind, body, query_params, dependencies)
+    handle_action(method, id, action_kind, body, query_params, con)
         .map(|body| warp::reply::json(&body))
         .map_err(into_rejection)
 }

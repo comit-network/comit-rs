@@ -25,33 +25,21 @@ use crate::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
     },
-    network::{DialInformation, Network},
+    network::DialInformation,
     swap_protocols::{
-        asset::Asset,
         ledger::{ethereum, Bitcoin, Ethereum},
-        metadata_store,
-        rfc003::{
-            alice::{self, AliceSpawner},
-            bob::BobSpawner,
-            messages::{AcceptResponseBody, DeclineResponseBody, Request, ToRequest},
-            state_machine::SwapStates,
-            state_store::{self, StateStore},
-            ActorState, CreateLedgerEvents, Ledger,
-        },
-        LedgerEventDependencies, Metadata, MetadataStore, SwapId, SwapProtocol,
+        SwapId, SwapProtocol,
     },
 };
 use bitcoin::{util::amount::Denomination, Amount as BitcoinAmount};
 use ethereum_support::{Erc20Token, EtherQuantity};
-use futures::sync::oneshot::Sender;
 use libp2p::PeerId;
-use libp2p_comit::frame::Response;
 use serde::{
     de::{self, MapAccess},
     ser::SerializeStruct,
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::{convert::TryFrom, sync::Arc};
+use std::convert::TryFrom;
 
 #[derive(Clone, Debug)]
 pub struct Http<I>(pub I);
@@ -296,138 +284,6 @@ impl<'de> Deserialize<'de> for DialInformation {
         }
 
         deserializer.deserialize_any(Visitor)
-    }
-}
-
-/// A struct for capturing dependencies that are needed within the HTTP API
-/// controllers.
-///
-/// This is a facade that implements all the required traits and forwards them
-/// to another implementation. This allows us to keep the number of arguments to
-/// HTTP API controllers small and still access all the functionality we need.
-#[derive(Debug)]
-pub struct Dependencies<M, S, A, B, N> {
-    pub metadata_store: Arc<M>,
-    pub state_store: Arc<S>,
-    pub alice_spawner: Arc<A>,
-    pub bob_spawner: Arc<B>,
-    pub network: Arc<N>,
-}
-
-impl<M, S, A, B, N> Clone for Dependencies<M, S, A, B, N> {
-    fn clone(&self) -> Self {
-        Self {
-            metadata_store: Arc::clone(&self.metadata_store),
-            state_store: Arc::clone(&self.state_store),
-            alice_spawner: Arc::clone(&self.alice_spawner),
-            bob_spawner: Arc::clone(&self.bob_spawner),
-            network: Arc::clone(&self.network),
-        }
-    }
-}
-
-impl<M: MetadataStore, S, A, B, N> MetadataStore for Dependencies<M, S, A, B, N>
-where
-    M: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    N: Send + Sync + 'static,
-{
-    fn get(&self, key: SwapId) -> Result<Option<Metadata>, metadata_store::Error> {
-        self.metadata_store.get(key)
-    }
-
-    fn insert(&self, metadata: Metadata) -> Result<(), metadata_store::Error> {
-        self.metadata_store.insert(metadata)
-    }
-
-    fn all(&self) -> Result<Vec<Metadata>, metadata_store::Error> {
-        self.metadata_store.all()
-    }
-}
-
-impl<M, S: StateStore, AS, B, N> StateStore for Dependencies<M, S, AS, B, N>
-where
-    M: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-    AS: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    N: Send + Sync + 'static,
-{
-    fn insert<A: ActorState>(&self, key: SwapId, value: A) {
-        self.state_store.insert(key, value)
-    }
-
-    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, state_store::Error> {
-        self.state_store.get(key)
-    }
-
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
-        self.state_store.update::<A>(key, update)
-    }
-}
-
-impl<M, S, A, B: BobSpawner, N> BobSpawner for Dependencies<M, S, A, B, N>
-where
-    M: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    N: Send + Sync + 'static,
-{
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        swap_request: Request<AL, BL, AA, BA>,
-        response: Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>,
-    ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.bob_spawner.spawn(swap_request, response)
-    }
-}
-
-impl<M, S, A: AliceSpawner, B, N> AliceSpawner for Dependencies<M, S, A, B, N>
-where
-    M: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    N: Send + Sync + 'static,
-{
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        id: SwapId,
-        bob_dial_info: DialInformation,
-        swap_request: Box<dyn ToRequest<AL, BL, AA, BA>>,
-    ) -> Result<(), alice::Error>
-    where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
-        self.alice_spawner.spawn(id, bob_dial_info, swap_request)
-    }
-}
-
-impl<M, S, A, B, N: Network> Network for Dependencies<M, S, A, B, N>
-where
-    M: Send + Sync + 'static,
-    S: Send + Sync + 'static,
-    A: Send + Sync + 'static,
-    B: Send + Sync + 'static,
-    N: Send + Sync + 'static,
-{
-    fn comit_peers(
-        &self,
-    ) -> Box<dyn Iterator<Item = (PeerId, Vec<libp2p::Multiaddr>)> + Send + 'static> {
-        self.network.comit_peers()
-    }
-
-    fn listen_addresses(&self) -> Vec<libp2p::Multiaddr> {
-        self.network.listen_addresses()
-    }
-
-    fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        self.network.pending_request_for(swap)
     }
 }
 

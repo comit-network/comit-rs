@@ -28,8 +28,8 @@ pub struct HtlcParams<L: Ledger, A: Asset> {
 
 impl<L: Ledger, A: Asset> HtlcParams<L, A> {
     pub fn new_alpha_params<BL: Ledger, BA: Asset>(
-        request: &rfc003::messages::Request<L, BL, A, BA>,
-        accept_response: &rfc003::messages::AcceptResponseBody<L, BL>,
+        request: &rfc003::Request<L, BL, A, BA>,
+        accept_response: &rfc003::AcceptResponseBody<L, BL>,
     ) -> Self {
         HtlcParams {
             asset: request.alpha_asset,
@@ -42,8 +42,8 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
     }
 
     pub fn new_beta_params<AL: Ledger, AA: Asset>(
-        request: &rfc003::messages::Request<AL, L, AA, A>,
-        accept_response: &rfc003::messages::AcceptResponseBody<AL, L>,
+        request: &rfc003::Request<AL, L, AA, A>,
+        accept_response: &rfc003::AcceptResponseBody<AL, L>,
     ) -> Self {
         HtlcParams {
             asset: request.beta_asset,

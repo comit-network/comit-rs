@@ -1,14 +1,16 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    dependencies::{self, LedgerEventDependencies},
-    metadata_store::MetadataStore,
-    rfc003::{
-        self,
-        bob::{self, State, SwapCommunication},
-        create_ledger_events::CreateLedgerEvents,
-        state_machine,
-        state_store::StateStore,
-        Ledger,
+use crate::{
+    connector::Connector,
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self,
+            bob::{self, State, SwapCommunication},
+            create_ledger_events::CreateLedgerEvents,
+            state_machine,
+            state_store::StateStore,
+            Ledger,
+        },
+        LedgerConnectors,
     },
 };
 use futures::{sync::mpsc, Stream};
@@ -18,39 +20,37 @@ use futures_core::{
 };
 use std::sync::Arc;
 
-pub trait BobSpawner: Send + Sync + 'static {
+pub trait SpawnBob: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
-        response: Result<
-            rfc003::messages::AcceptResponseBody<AL, BL>,
-            rfc003::messages::DeclineResponseBody,
-        >,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
+        response: rfc003::Response<AL, BL>,
     ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl<T: MetadataStore, S: StateStore> BobSpawner for dependencies::bob::ProtocolDependencies<T, S> {
+impl<S> SpawnBob for Connector<S>
+where
+    S: Send + Sync + 'static,
+{
     #[allow(clippy::type_complexity)]
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
-        response: Result<
-            rfc003::messages::AcceptResponseBody<AL, BL>,
-            rfc003::messages::DeclineResponseBody,
-        >,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
+        response: rfc003::Response<AL, BL>,
     ) where
-        LedgerEventDependencies: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+        S: Send + Sync + 'static,
     {
         let id = swap_request.id;
-        let seed = self.seed.swap_seed(id);
+        let seed = self.deps.seed.swap_seed(id);
 
         let (sender, receiver) = mpsc::unbounded();
 
         let swap_execution = {
-            let ledger_events = self.ledger_events.clone();
-            let state_store = Arc::clone(&self.state_store);
+            let ledger_events = self.deps.ledger_events.clone();
+            let state_store = Arc::clone(&self.deps.state_store);
 
             async move {
                 let bob_state = match response {
@@ -111,7 +111,7 @@ impl<T: MetadataStore, S: StateStore> BobSpawner for dependencies::bob::Protocol
             }
         };
 
-        let state_store = Arc::clone(&self.state_store);
+        let state_store = Arc::clone(&self.deps.state_store);
         tokio::spawn(receiver.for_each(move |update| {
             state_store.update::<bob::State<AL, BL, AA, BA>>(&id, update);
             Ok(())

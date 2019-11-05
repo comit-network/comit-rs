@@ -1,6 +1,5 @@
 pub mod actions;
 pub mod asset;
-mod dependencies;
 pub mod ledger;
 pub mod metadata_store;
 pub mod rfc003;
@@ -8,9 +7,8 @@ mod swap_id;
 mod timestamp;
 
 pub use self::{
-    dependencies::{alice, bob, LedgerEventDependencies},
-    ledger::{Ledger, LedgerKind},
-    metadata_store::{Metadata, MetadataStore, Role},
+    ledger::{Ledger, LedgerConnectors, LedgerKind},
+    metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore},
     swap_id::*,
     timestamp::Timestamp,
 };
@@ -26,4 +24,10 @@ pub enum HashFunction {
 pub enum SwapProtocol {
     Rfc003(HashFunction),
     Unknown(String),
+}
+
+#[derive(Clone, Copy, Debug, Display, EnumString)]
+pub enum Role {
+    Alice,
+    Bob,
 }

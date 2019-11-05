@@ -1,8 +1,11 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    dependencies,
-    metadata_store::{self, Metadata, MetadataStore, Role},
-    rfc003::{self, bob, state_store::StateStore, Ledger},
+use crate::{
+    connector::Dependencies,
+    swap_protocols::{
+        asset::Asset,
+        metadata_store::{self, Metadata, MetadataStore},
+        rfc003::{self, alice, bob, state_store::StateStore, Ledger},
+        Role,
+    },
 };
 use http_api_problem::HttpApiProblem;
 use libp2p::PeerId;
@@ -24,25 +27,24 @@ impl From<Error> for HttpApiProblem {
 
 pub trait InsertState: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
-    fn insert_state<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
+        role: Role,
         counterparty: PeerId,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<(), Error>;
 }
 
-impl<T: MetadataStore, S: StateStore> InsertState
-    for dependencies::bob::ProtocolDependencies<T, S>
-{
+impl InsertState for Dependencies {
     #[allow(clippy::type_complexity)]
-    fn insert_state<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn insert_state_into_stores<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
+        role: Role,
         counterparty: PeerId,
-        swap_request: rfc003::messages::Request<AL, BL, AA, BA>,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<(), Error> {
         let id = swap_request.id;
         let seed = self.seed.swap_seed(id);
-        let bob = bob::State::proposed(swap_request.clone(), seed);
 
         let metadata = Metadata::new(
             id,
@@ -50,7 +52,7 @@ impl<T: MetadataStore, S: StateStore> InsertState
             swap_request.beta_ledger.into(),
             swap_request.alpha_asset.into(),
             swap_request.beta_asset.into(),
-            Role::Bob,
+            role,
             counterparty,
         );
 
@@ -59,7 +61,16 @@ impl<T: MetadataStore, S: StateStore> InsertState
             .map_err(Error::Metadata)?;
 
         let state_store = Arc::clone(&self.state_store);
-        state_store.insert(id, bob);
+        match role {
+            Role::Alice => {
+                let state = alice::State::proposed(swap_request.clone(), seed);
+                state_store.insert(id, state);
+            }
+            Role::Bob => {
+                let state = bob::State::proposed(swap_request.clone(), seed);
+                state_store.insert(id, state);
+            }
+        };
 
         Ok(())
     }

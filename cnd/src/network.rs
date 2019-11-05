@@ -1,13 +1,14 @@
 use crate::{
+    connector::Dependencies,
     libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{
             self,
-            bob::{BobSpawner, InsertState},
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            InsertState,
         },
-        HashFunction, LedgerKind, SwapId, SwapProtocol,
+        HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
     },
 };
 use futures::{
@@ -33,12 +34,12 @@ use std::{
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
-pub struct ComitNode<TSubstream, B> {
+pub struct ComitNode<TSubstream> {
     comit: Comit<TSubstream>,
     mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
-    bob: B,
+    deps: Dependencies,
     #[behaviour(ignore)]
     response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
@@ -58,8 +59,8 @@ impl Display for DialInformation {
     }
 }
 
-impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
-    pub fn new(bob: B) -> Result<Self, io::Error> {
+impl<TSubstream> ComitNode<TSubstream> {
+    pub fn new(deps: Dependencies) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
@@ -74,7 +75,7 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
         Ok(Self {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
-            bob,
+            deps,
             response_channels: HashMap::new(),
         })
     }
@@ -130,8 +131,8 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.bob
-                                    .insert_state(counterparty, request)
+                                self.deps
+                                    .insert_state_into_stores(Role::Bob, counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -151,8 +152,8 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.bob
-                                    .insert_state(counterparty, request)
+                                self.deps
+                                    .insert_state_into_stores(Role::Bob, counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -172,8 +173,8 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.bob
-                                    .insert_state(counterparty, request)
+                                self.deps
+                                    .insert_state_into_stores(Role::Bob, counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -193,8 +194,8 @@ impl<TSubstream, B: InsertState> ComitNode<TSubstream, B> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.bob
-                                    .insert_state(counterparty, request)
+                                self.deps
+                                    .insert_state_into_stores(Role::Bob, counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -266,11 +267,8 @@ pub trait Network: Send + Sync + 'static {
     fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
 }
 
-impl<
-        TTransport: Transport + Send + 'static,
-        B: InsertState + BobSpawner + Send + 'static,
-        TMuxer: StreamMuxer + Send + Sync + 'static,
-    > Network for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>, B>>>
+impl<TTransport: Transport + Send + 'static, TMuxer: StreamMuxer + Send + Sync + 'static> Network
+    for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>>>>
 where
     <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
     <TMuxer as StreamMuxer>::Substream: Send + 'static,
@@ -302,9 +300,7 @@ where
     }
 }
 
-impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<BehaviourOutEvent>
-    for ComitNode<TSubstream, B>
-{
+impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<TSubstream> {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
@@ -323,9 +319,7 @@ impl<TSubstream, B: InsertState + BobSpawner> NetworkBehaviourEventProcess<Behav
     }
 }
 
-impl<TSubstream, B> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent>
-    for ComitNode<TSubstream, B>
-{
+impl<TSubstream> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode<TSubstream> {
     fn inject_event(&mut self, event: libp2p::mdns::MdnsEvent) {
         match event {
             MdnsEvent::Discovered(addresses) => {
@@ -349,9 +343,9 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::messages::RequestBody<AL, BL>,
-) -> rfc003::messages::Request<AL, BL, AA, BA> {
-    rfc003::messages::Request::<AL, BL, AA, BA> {
+    body: rfc003::RequestBody<AL, BL>,
+) -> rfc003::Request<AL, BL, AA, BA> {
+    rfc003::Request::<AL, BL, AA, BA> {
         id,
         alpha_asset,
         beta_asset,

@@ -1,8 +1,9 @@
 mod actions;
-mod communication_events;
-mod spawner;
+mod initiate_request;
+mod send_request;
+mod spawn_alice;
 
-pub use self::{actions::*, communication_events::*, spawner::*};
+pub use self::{actions::*, initiate_request::*, send_request::*, spawn_alice::*};
 
 use crate::swap_protocols::{
     asset::Asset,

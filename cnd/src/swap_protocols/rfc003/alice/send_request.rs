@@ -1,10 +1,4 @@
-// FIXME: Figure out how to handle connection dependencies properly.
-// I kept this separate here because Client really shouldn't be
-// implemented on ProtocolDependencies. How do we make a request
-// without passing in all the dependencies just in case we have to
-// open up a new connection and decide how to respond to requests?
 use crate::{
-    comit_client::{Client, RequestError},
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::{ComitNode, DialInformation},
     swap_protocols::{
@@ -12,42 +6,60 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            bob::{BobSpawner, InsertState},
-            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            create_ledger_events::CreateLedgerEvents,
+            messages::{Decision, SwapDeclineReason},
         },
-        SwapProtocol,
+        LedgerConnectors, SwapProtocol,
     },
 };
 use futures::Future;
 use libp2p::{Swarm, Transport};
 use libp2p_comit::frame;
 use serde::Deserialize;
-use std::sync::Mutex;
+use std::{io, sync::Mutex};
 use tokio::{io::AsyncRead, prelude::AsyncWrite};
+
+pub trait SendRequest: Send + Sync + 'static {
+    fn send_request<
+        AL: swap_protocols::rfc003::Ledger,
+        BL: swap_protocols::rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
+    >(
+        &self,
+        peer_identity: DialInformation,
+        request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
+    where
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum RequestError {
+    /// The other node had an internal error while processing the request
+    InternalError,
+    /// The other node produced an invalid response
+    InvalidResponse,
+    /// We had to establish a new connection to make the request but it failed
+    Connecting(io::ErrorKind),
+    /// We were unable to send the data on the existing connection
+    Connection,
+}
 
 #[derive(Debug, Deserialize)]
 pub struct Reason {
     pub value: SwapDeclineReason,
 }
 
-#[allow(type_alias_bounds)]
-type SwapResponse<AL: swap_protocols::rfc003::Ledger, BL: swap_protocols::rfc003::Ledger> = Box<
-    dyn Future<
-            Item = Result<rfc003::messages::AcceptResponseBody<AL, BL>, DeclineResponseBody>,
-            Error = RequestError,
-        > + Send,
->;
-
 impl<
-        B: InsertState + BobSpawner,
         TTransport: Transport + Send + 'static,
         TSubstream: AsyncRead + AsyncWrite + Send + 'static,
-    > Client for Mutex<Swarm<TTransport, ComitNode<TSubstream, B>>>
+    > SendRequest for Mutex<Swarm<TTransport, ComitNode<TSubstream>>>
 where
     <TTransport as Transport>::Listener: Send,
     <TTransport as Transport>::Error: Send,
 {
-    fn send_rfc003_swap_request<
+    fn send_request<
         AL: swap_protocols::rfc003::Ledger,
         BL: swap_protocols::rfc003::Ledger,
         AA: Asset,
@@ -55,8 +67,11 @@ where
     >(
         &self,
         dial_information: DialInformation,
-        request: rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> SwapResponse<AL, BL> {
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
+    where
+        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+    {
         let request = build_swap_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
 
@@ -118,13 +133,8 @@ where
     }
 }
 
-fn build_swap_request<
-    AL: swap_protocols::rfc003::Ledger,
-    BL: swap_protocols::rfc003::Ledger,
-    AA: Asset,
-    BA: Asset,
->(
-    request: rfc003::messages::Request<AL, BL, AA, BA>,
+fn build_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    request: rfc003::Request<AL, BL, AA, BA>,
 ) -> Result<frame::OutboundRequest, serde_json::Error> {
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
     let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
@@ -140,10 +150,7 @@ fn build_swap_request<
         .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
         .with_header("beta_asset", request.beta_asset.into().to_header()?)
         .with_header("protocol", protocol.to_header()?)
-        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
-            AL,
-            BL,
-        > {
+        .with_body(serde_json::to_value(rfc003::RequestBody::<AL, BL> {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
             alpha_expiry,

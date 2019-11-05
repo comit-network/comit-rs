@@ -4,18 +4,13 @@ use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     comit_i_routes,
     config::{self, Settings},
-    http_api::{self, route_factory},
-    network::{self, Network},
+    connector::{Connect, Connector, Dependencies},
+    http_api::route_factory,
+    network,
     seed::Seed,
     swap_protocols::{
-        self,
-        metadata_store::{InMemoryMetadataStore, MetadataStore},
-        rfc003::{
-            alice::AliceSpawner,
-            bob::BobSpawner,
-            state_store::{InMemoryStateStore, StateStore},
-        },
-        LedgerEventDependencies,
+        metadata_store::InMemoryMetadataStore, rfc003::state_store::InMemoryStateStore,
+        LedgerConnectors,
     },
 };
 use futures::{stream, Future, Stream};
@@ -63,12 +58,12 @@ fn main() -> Result<(), failure::Error> {
     let (ethereum_connector, _event_loop_handle) =
         { Web3Connector::new(settings.clone().ethereum.node_url)? };
 
-    let ledger_events = LedgerEventDependencies {
+    let ledger_events = LedgerConnectors {
         bitcoin_connector,
         ethereum_connector,
     };
 
-    let bob_protocol_dependencies = swap_protocols::bob::ProtocolDependencies {
+    let deps = Dependencies {
         ledger_events: ledger_events.clone(),
         metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
@@ -80,7 +75,7 @@ fn main() -> Result<(), failure::Error> {
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(bob_protocol_dependencies.clone())?;
+    let behaviour = network::ComitNode::new(deps.clone())?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -93,23 +88,12 @@ fn main() -> Result<(), failure::Error> {
 
     let swarm = Arc::new(Mutex::new(swarm));
 
-    let alice_protocol_dependencies = swap_protocols::alice::ProtocolDependencies {
-        ledger_events: ledger_events.clone(),
-        metadata_store: Arc::clone(&metadata_store),
-        state_store: Arc::clone(&state_store),
-        seed,
-        client: Arc::clone(&swarm),
+    let connector = Connector {
+        deps: Arc::new(deps.clone()),
+        swarm: Arc::clone(&swarm),
     };
 
-    let dependencies = http_api::Dependencies {
-        metadata_store: Arc::clone(&metadata_store),
-        state_store: Arc::clone(&state_store),
-        alice_spawner: Arc::new(alice_protocol_dependencies),
-        bob_spawner: Arc::new(bob_protocol_dependencies),
-        network: Arc::clone(&swarm),
-    };
-
-    spawn_warp_instance(&settings, local_peer_id, &mut runtime, dependencies);
+    spawn_warp_instance(&settings, local_peer_id, &mut runtime, connector);
 
     spawn_comit_i_instance(settings, &mut runtime);
 
@@ -132,15 +116,13 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn spawn_warp_instance<
-    D: MetadataStore + StateStore + Network + BobSpawner + AliceSpawner + Clone,
->(
+fn spawn_warp_instance<C: Connect>(
     settings: &Settings,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
-    dependencies: D,
+    con: C,
 ) {
-    let routes = route_factory::create(auth_origin(&settings), peer_id, dependencies);
+    let routes = route_factory::create(auth_origin(&settings), peer_id, con);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
