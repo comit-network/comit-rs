@@ -35,55 +35,19 @@ pub fn handle_post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Sp
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            let seed = dependencies.swap_seed(id);
-            let bob_dial_info = body.peer.clone();
-            let request = body.to_request(id, &seed);
-            initiate_request(
-                dependencies.clone(),
-                request.clone(),
-                bob_dial_info.clone(),
-                seed,
-            )?;
-            send_request_and_spawn_alice(dependencies, request, bob_dial_info.clone(), seed);
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            let seed = dependencies.swap_seed(id);
-            let bob_dial_info = body.peer.clone();
-            let request = body.to_request(id, &seed);
-            initiate_request(
-                dependencies.clone(),
-                request.clone(),
-                bob_dial_info.clone(),
-                seed,
-            )?;
-            send_request_and_spawn_alice(dependencies, request, bob_dial_info.clone(), seed);
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            let seed = dependencies.swap_seed(id);
-            let bob_dial_info = body.peer.clone();
-            let request = body.to_request(id, &seed);
-            initiate_request(
-                dependencies.clone(),
-                request.clone(),
-                bob_dial_info.clone(),
-                seed,
-            )?;
-            send_request_and_spawn_alice(dependencies, request, bob_dial_info.clone(), seed);
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            let seed = dependencies.swap_seed(id);
-            let bob_dial_info = body.peer.clone();
-            let request = body.to_request(id, &seed);
-            initiate_request(
-                dependencies.clone(),
-                request.clone(),
-                bob_dial_info.clone(),
-                seed,
-            )?;
-            send_request_and_spawn_alice(dependencies, request, bob_dial_info.clone(), seed);
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
@@ -110,36 +74,40 @@ pub fn handle_post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Sp
     }
 }
 
-fn initiate_request<D, AL, BL, AA, BA>(
+fn initiate_request<D, AL, BL, AA, BA, I>(
     dependencies: D,
-    swap_request: Request<AL, BL, AA, BA>,
-    bob_dial_info: DialInformation,
-    seed: Seed,
+    body: SwapRequestBody<AL, BL, AA, BA, I>,
+    id: SwapId,
 ) -> Result<(), metadata_store::Error>
 where
-    D: MetadataStore + StateStore,
+    LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+    D: MetadataStore + StateStore + SendRequest + Spawn + SwapSeed,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
+    I: ToIdentities<AL, BL>,
 {
+    let bob_dial_info = body.peer.clone();
     let counterparty = bob_dial_info.peer_id.clone();
-    let id = swap_request.id;
+    let seed = dependencies.swap_seed(id);
+    let request = body.to_request(id, &seed);
 
     let metadata = Metadata::new(
         id,
-        swap_request.alpha_ledger.into(),
-        swap_request.beta_ledger.into(),
-        swap_request.alpha_asset.into(),
-        swap_request.beta_asset.into(),
+        request.alpha_ledger.into(),
+        request.beta_ledger.into(),
+        request.alpha_asset.into(),
+        request.beta_asset.into(),
         Role::Alice,
         counterparty,
     );
-
     MetadataStore::insert(&dependencies, metadata)?;
 
-    let state = alice::State::proposed(swap_request.clone(), seed);
+    let state = alice::State::proposed(request.clone(), seed);
     StateStore::insert(&dependencies, id, state);
+
+    send_request_and_spawn_alice(dependencies, request, bob_dial_info, seed);
 
     Ok(())
 }
@@ -191,6 +159,7 @@ fn send_request_and_spawn_alice<D, AL, BL, AA, BA>(
 
     tokio::spawn(future.boxed().compat());
 }
+
 #[derive(Serialize, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,
