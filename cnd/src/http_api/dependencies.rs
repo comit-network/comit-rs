@@ -7,12 +7,10 @@ use crate::{
         metadata_store::{self, MetadataStore},
         rfc003::{
             self,
-            alice::SpawnAlice,
-            bob::SpawnBob,
             create_ledger_events::CreateLedgerEvents,
             state_machine::SwapStates,
             state_store::{self, StateStore},
-            ActorState, Ledger,
+            ActorState, Ledger, Spawn,
         },
         LedgerConnectors, Metadata, SwapId,
     },
@@ -115,12 +113,12 @@ where
     }
 }
 
-impl<S> SpawnAlice for Dependencies<S>
+impl<S> Spawn for Dependencies<S>
 where
     S: Send + Sync + 'static,
 {
     #[allow(clippy::type_complexity)]
-    fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
         response: rfc003::Response<AL, BL>,
@@ -129,25 +127,7 @@ where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
         S: Send + Sync + 'static,
     {
-        self.dependencies.spawn_alice(swap_request, response)
-    }
-}
-
-impl<S> SpawnBob for Dependencies<S>
-where
-    S: Send + Sync + 'static,
-{
-    #[allow(clippy::type_complexity)]
-    fn spawn_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-        response: rfc003::Response<AL, BL>,
-    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        S: Send + Sync + 'static,
-    {
-        self.dependencies.spawn_bob(swap_request, response)
+        self.dependencies.spawn(swap_request, response)
     }
 }
 

@@ -17,7 +17,7 @@ use crate::{
     network::{Network, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
-        rfc003::{actions::ActionKind, alice::SpawnAlice, bob::SpawnBob, state_store::StateStore},
+        rfc003::{actions::ActionKind, state_store::StateStore, Spawn},
         MetadataStore, SwapId,
     },
 };
@@ -27,7 +27,7 @@ use warp::{Rejection, Reply};
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: Clone + StateStore + MetadataStore + SendRequest + SpawnAlice + SwapSeed>(
+pub fn post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
@@ -52,7 +52,7 @@ pub fn get_swap<D: MetadataStore + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + Network + SpawnBob>(
+pub fn action<D: MetadataStore + StateStore + Network + Spawn>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

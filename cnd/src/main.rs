@@ -9,9 +9,8 @@ use cnd::{
     seed::{Seed, SwapSeed},
     swap_protocols::{
         rfc003::{
-            alice::SpawnAlice,
-            bob::SpawnBob,
             state_store::{InMemoryStateStore, StateStore},
+            Spawn,
         },
         InMemoryMetadataStore, LedgerConnectors, MetadataStore,
     },
@@ -128,7 +127,7 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 }
 
 fn spawn_warp_instance<
-    D: Clone + MetadataStore + StateStore + Network + SendRequest + SpawnAlice + SpawnBob + SwapSeed,
+    D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed,
 >(
     settings: &Settings,
     peer_id: PeerId,

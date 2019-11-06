@@ -3,10 +3,9 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         rfc003::{
-            self,
             alice::{State, SwapCommunication},
             state_machine::{self, SwapStates},
-            CreateLedgerEvents, Ledger,
+            CreateLedgerEvents, Ledger, Request, Response,
         },
         LedgerConnectors,
     },
@@ -18,23 +17,23 @@ use futures_core::{
 };
 use std::sync::Arc;
 
-pub trait SpawnAlice: Send + Sync + 'static {
+pub trait Spawn: Send + Sync + 'static {
     #[allow(clippy::type_complexity)]
-    fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-        response: rfc003::Response<AL, BL>,
+        swap_request: Request<AL, BL, AA, BA>,
+        response: Response<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl SpawnAlice for Dependencies {
+impl Spawn for Dependencies {
     #[allow(clippy::type_complexity)]
-    fn spawn_alice<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-        response: rfc003::Response<AL, BL>,
+        swap_request: Request<AL, BL, AA, BA>,
+        response: Response<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
@@ -48,12 +47,12 @@ impl SpawnAlice for Dependencies {
             let ledger_events = self.ledger_events.clone();
 
             async move {
-                let alice_state = match response {
+                let state = match response {
                     Ok(accepted) => State::accepted(swap_request, accepted, swap_seed),
                     Err(declined) => State::declined(swap_request, declined, swap_seed),
                 };
 
-                match alice_state {
+                match state {
                     State {
                         swap_communication: SwapCommunication::Accepted { request, response },
                         ..

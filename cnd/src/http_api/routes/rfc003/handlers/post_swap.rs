@@ -8,11 +8,11 @@ use crate::{
         metadata_store::{self, Metadata, MetadataStore},
         rfc003::{
             self,
-            alice::{self, SpawnAlice, State},
+            alice::{self, State},
             create_ledger_events::CreateLedgerEvents,
             messages::ToRequest,
             state_store::StateStore,
-            Ledger, Request, SecretSource,
+            Ledger, Request, SecretSource, Spawn,
         },
         HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
     },
@@ -27,9 +27,7 @@ use futures_core::{
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<
-    D: Clone + StateStore + MetadataStore + SendRequest + SpawnAlice + SwapSeed,
->(
+pub fn handle_post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
@@ -153,7 +151,7 @@ fn send_request_and_spawn_alice<D, AL, BL, AA, BA>(
     seed: Seed,
 ) where
     LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    D: MetadataStore + StateStore + SendRequest + SpawnAlice,
+    D: MetadataStore + StateStore + SendRequest + Spawn,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
@@ -180,7 +178,7 @@ fn send_request_and_spawn_alice<D, AL, BL, AA, BA>(
             };
             StateStore::insert(&dependencies, swap_request.id, alice_state.clone());
 
-            let receiver = SpawnAlice::spawn_alice(&dependencies, swap_request, response);
+            let receiver = Spawn::spawn(&dependencies, swap_request, response);
 
             tokio::spawn(receiver.for_each(move |update| {
                 StateStore::update::<alice::State<AL, BL, AA, BA>>(&dependencies, &id, update);

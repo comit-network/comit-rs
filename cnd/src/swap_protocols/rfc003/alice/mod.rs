@@ -1,7 +1,6 @@
 mod actions;
-mod spawn_alice;
 
-pub use self::{actions::*, spawn_alice::*};
+pub use self::actions::*;
 
 use crate::swap_protocols::{
     asset::Asset,

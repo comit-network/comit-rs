@@ -8,6 +8,7 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
+pub mod spawn;
 pub mod state_machine;
 pub mod state_store;
 
@@ -29,6 +30,7 @@ pub use self::{
     save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
+    spawn::*,
 };
 
 use self::messages::{AcceptResponseBody, DeclineResponseBody};

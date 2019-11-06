@@ -4,7 +4,7 @@ use crate::{
     seed::SwapSeed,
     swap_protocols::{
         self,
-        rfc003::{alice::SpawnAlice, bob::SpawnBob, state_store::StateStore},
+        rfc003::{state_store::StateStore, Spawn},
         MetadataStore, SwapId,
     },
 };
@@ -21,9 +21,7 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<
-    D: Clone + MetadataStore + StateStore + Network + SendRequest + SpawnAlice + SpawnBob + SwapSeed,
->(
+pub fn create<D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed>(
     origin_auth: String,
     peer_id: PeerId,
     dependencies: D,

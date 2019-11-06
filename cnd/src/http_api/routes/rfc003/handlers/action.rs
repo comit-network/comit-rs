@@ -15,9 +15,9 @@ use crate::{
         rfc003::{
             self,
             actions::{Action, ActionKind},
-            bob::SpawnBob,
             messages::Decision,
             state_store::StateStore,
+            Spawn,
         },
         MetadataStore, SwapId,
     },
@@ -28,7 +28,7 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<D: MetadataStore + StateStore + Network + SpawnBob>(
+pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -64,7 +64,8 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + SpawnBob>(
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let request = state.request();
-                                    let receiver = dependencies.spawn_bob(request, Ok(accept_body));
+                                    let receiver =
+                                        Spawn::spawn(&dependencies, request, Ok(accept_body));
 
                                     tokio::spawn(receiver.for_each(move |update| {
                                         StateStore::update::<bob::State<AL, BL, AA, BA>>(
@@ -93,7 +94,7 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + SpawnBob>(
 
                                     let request = state.request();
                                     let receiver =
-                                        dependencies.spawn_bob(request, Err(decline_body));
+                                        Spawn::spawn(&dependencies, request, Err(decline_body));
 
                                     tokio::spawn(receiver.for_each(move |update| {
                                         StateStore::update::<bob::State<AL, BL, AA, BA>>(
