@@ -14,7 +14,6 @@ pub struct Settings {
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
-    pub web_gui: Option<HttpSocket>,
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
@@ -34,7 +33,6 @@ impl Settings {
             network,
             http_api,
             database,
-            web_gui,
             logging,
             bitcoin,
             ethereum,
@@ -44,7 +42,6 @@ impl Settings {
             network,
             http_api,
             database,
-            web_gui,
             logging: {
                 let Logging {
                     level: default_level,

@@ -17,7 +17,6 @@ pub mod libp2p_comit_ext;
 
 pub mod bitcoin;
 pub mod comit_api;
-pub mod comit_i_routes;
 pub mod config;
 pub mod connector;
 pub mod db;
