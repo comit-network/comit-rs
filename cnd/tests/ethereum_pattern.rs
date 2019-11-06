@@ -1,3 +1,5 @@
+pub mod ethereum_helper;
+
 use cnd::{
     btsieve::ethereum::{Event, Topic, TransactionPattern},
     ethereum::{Block, Transaction, TransactionReceipt},
@@ -27,11 +29,4 @@ fn cannot_skip_block_containing_transaction_with_event() {
     };
 
     assert_that!(pattern.can_skip_block(&block)).is_false();
-}
-
-#[macro_export]
-macro_rules! include_json_test_data {
-    ($file:expr) => {
-        serde_json::from_str(include_str!($file)).expect("failed to deserialize test_data")
-    };
 }
