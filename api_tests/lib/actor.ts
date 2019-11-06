@@ -54,10 +54,6 @@ export class Actor {
         return `/ip4/127.0.0.1/tcp/${this.cndConfig.comitPort}`;
     }
 
-    public webGuiUrl() {
-        return `http://127.0.0.1:${this.cndConfig.webGuiPort}`;
-    }
-
     public async peerId(): Promise<string> {
         const response = await request(this.cndHttpApiUrl()).get("/");
 

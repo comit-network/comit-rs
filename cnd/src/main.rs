@@ -2,7 +2,6 @@
 #![forbid(unsafe_code)]
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
-    comit_i_routes,
     config::{self, Settings},
     connector::{Connect, Connector, Dependencies},
     http_api::route_factory,
@@ -95,8 +94,6 @@ fn main() -> Result<(), failure::Error> {
 
     spawn_warp_instance(&settings, local_peer_id, &mut runtime, connector);
 
-    spawn_comit_i_instance(settings, &mut runtime);
-
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
         .map_err(|e| {
@@ -122,7 +119,7 @@ fn spawn_warp_instance<C: Connect>(
     runtime: &mut tokio::runtime::Runtime,
     con: C,
 ) {
-    let routes = route_factory::create(auth_origin(&settings), peer_id, con);
+    let routes = route_factory::create(auth_origin(), peer_id, con);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -133,25 +130,8 @@ fn spawn_warp_instance<C: Connect>(
     runtime.spawn(server);
 }
 
-fn spawn_comit_i_instance(settings: Settings, runtime: &mut tokio::runtime::Runtime) {
-    if let Some(comit_i_settings) = &settings.web_gui {
-        let routes = comit_i_routes::create(settings.clone());
-
-        let listen_addr = SocketAddr::new(comit_i_settings.address, comit_i_settings.port);
-
-        log::info!("Starting comit-i HTTP server on {:?}", listen_addr);
-
-        let server = warp::serve(routes).bind(listen_addr);
-
-        runtime.spawn(server);
-    }
-}
-
-fn auth_origin(settings: &Settings) -> String {
-    let auth_origin = match &settings.web_gui {
-        Some(http_socket) => format!("http://localhost:{}", http_socket.port),
-        None => "http://localhost:3000".to_string(),
-    };
+fn auth_origin() -> String {
+    let auth_origin = "http://localhost:3000".to_string();
     log::trace!("Auth origin enabled on: {}", auth_origin);
     auth_origin
 }

@@ -6,7 +6,6 @@ import { LedgerConfig } from "./ledger_runner";
 export interface CndConfigFile {
     http_api: { address: string; port: number };
     database?: { sqlite: string };
-    web_gui?: { address: string; port: number };
     network: { listen: string[] };
 }
 
@@ -28,18 +27,11 @@ export class E2ETestActorConfig {
     public readonly httpApiPort: number;
     public readonly comitPort: number;
     public readonly seed: Uint8Array;
-    public readonly webGuiPort?: number;
 
-    constructor(
-        httpApiPort: number,
-        comitPort: number,
-        seed: string,
-        webGuiPort?: number
-    ) {
+    constructor(httpApiPort: number, comitPort: number, seed: string) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
         this.seed = new Uint8Array(Buffer.from(seed, "hex"));
-        this.webGuiPort = webGuiPort;
     }
 
     public generateCndConfigFile(
@@ -57,12 +49,6 @@ export class E2ETestActorConfig {
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],
             },
-            web_gui: this.webGuiPort
-                ? {
-                      address: "0.0.0.0",
-                      port: this.webGuiPort,
-                  }
-                : undefined,
             ...btsieveConfig,
         };
     }
@@ -87,8 +73,7 @@ export const CHARLIE_CONFIG = new E2ETestActorConfig(
 export const DAVID_CONFIG = new E2ETestActorConfig(
     8123,
     8001,
-    "f87165e305b0f7c4824d3806434f9d0909610a25641ab8773cf92a48c9d77670",
-    8080
+    "f87165e305b0f7c4824d3806434f9d0909610a25641ab8773cf92a48c9d77670"
 );
 
 export function createBtsieveConfig(

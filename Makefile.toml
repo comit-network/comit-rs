@@ -104,10 +104,6 @@ extend = "e2e-tests-flow"
 workspace = false
 extend = "dry-tests-flow"
 
-[tasks.webgui]
-workspace = false
-extend = "webgui-tests-flow"
-
 [tasks.api]
 workspace = false
 extend = "api-tests-flow"
@@ -178,24 +174,6 @@ description = "Runs tests that don't require any external services"
 workspace = false
 private = true
 script = ['cd api_tests; yarn run test ./dry/*']
-
-#########################
-# Web GUI api Test flow #
-[tasks.webgui-tests-flow]
-description = "Defines the web GUI tests flow."
-workspace = false
-dependencies = [
-    "build",
-    "pre-api-tests",
-    "webgui-tests"
-]
-
-[tasks.webgui-tests]
-description = "Runs tests to ensure that cnd serves comit-i"
-workspace = false
-private = true
-script = [
-"cd ./api_tests; yarn run test ./webgui/*"]
 
 #################
 # E2E Test flow #

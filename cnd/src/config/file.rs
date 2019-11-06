@@ -22,7 +22,6 @@ pub struct File {
     pub network: Network,
     pub http_api: HttpSocket,
     pub database: Option<Database>,
-    pub web_gui: Option<HttpSocket>,
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
@@ -43,10 +42,6 @@ impl File {
                 port: 8000,
             },
             database: None,
-            web_gui: Some(HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8080,
-            }),
             logging: None,
             bitcoin: None,
             ethereum: None,
