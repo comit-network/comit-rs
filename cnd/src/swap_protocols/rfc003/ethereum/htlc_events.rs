@@ -40,14 +40,17 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
     ) -> Box<DeployedFuture<Ethereum>> {
         let future = self
-            .matching_transactions(TransactionPattern {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: Some(true),
-                transaction_data: Some(htlc_params.bytecode()),
-                transaction_data_length: None,
-                events: None,
-            })
+            .matching_transactions(
+                TransactionPattern {
+                    from_address: None,
+                    to_address: None,
+                    is_contract_creation: Some(true),
+                    transaction_data: Some(htlc_params.bytecode()),
+                    transaction_data_length: None,
+                    events: None,
+                },
+                None,
+            )
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");
@@ -94,18 +97,21 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
     let refunded_future = {
         ethereum_connector
-            .matching_transactions(TransactionPattern {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-                events: Some(vec![Event {
-                    address: Some(htlc_deployment.location),
-                    data: None,
-                    topics: vec![Some(Topic(*REFUND_LOG_MSG))],
-                }]),
-            })
+            .matching_transactions(
+                TransactionPattern {
+                    from_address: None,
+                    to_address: None,
+                    is_contract_creation: None,
+                    transaction_data: None,
+                    transaction_data_length: None,
+                    events: Some(vec![Event {
+                        address: Some(htlc_deployment.location),
+                        data: None,
+                        topics: vec![Some(Topic(*REFUND_LOG_MSG))],
+                    }]),
+                },
+                None,
+            )
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");
@@ -128,7 +134,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 data: None,
                 topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
             }])
-        })
+        }, None)
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");
@@ -178,14 +184,17 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
         ) -> Box<DeployedFuture<Ethereum>> {
             let future = self
-                .matching_transactions(TransactionPattern {
-                    from_address: None,
-                    to_address: None,
-                    is_contract_creation: Some(true),
-                    transaction_data: Some(htlc_params.bytecode()),
-                    transaction_data_length: None,
-                    events: None,
-                })
+                .matching_transactions(
+                    TransactionPattern {
+                        from_address: None,
+                        to_address: None,
+                        is_contract_creation: Some(true),
+                        transaction_data: Some(htlc_params.bytecode()),
+                        transaction_data_length: None,
+                        events: None,
+                    },
+                    None,
+                )
                 .map_err(|_| rfc003::Error::Btsieve)
                 .first_or_else(|| {
                     log::warn!("stream of matching transactions ended before yielding a value");
@@ -207,22 +216,25 @@ mod erc20 {
             htlc_deployment: &Deployed<Ethereum>,
         ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
             let future = self
-                .matching_transactions(TransactionPattern {
-                    from_address: None,
-                    to_address: None,
-                    is_contract_creation: None,
-                    transaction_data: None,
-                    transaction_data_length: None,
-                    events: Some(vec![Event {
-                        address: Some(htlc_params.asset.token_contract),
-                        data: None,
-                        topics: vec![
-                            Some(Topic(*super::TRANSFER_LOG_MSG)),
-                            None,
-                            Some(Topic(htlc_deployment.location.into())),
-                        ],
-                    }]),
-                })
+                .matching_transactions(
+                    TransactionPattern {
+                        from_address: None,
+                        to_address: None,
+                        is_contract_creation: None,
+                        transaction_data: None,
+                        transaction_data_length: None,
+                        events: Some(vec![Event {
+                            address: Some(htlc_params.asset.token_contract),
+                            data: None,
+                            topics: vec![
+                                Some(Topic(*super::TRANSFER_LOG_MSG)),
+                                None,
+                                Some(Topic(htlc_deployment.location.into())),
+                            ],
+                        }]),
+                    },
+                    None,
+                )
                 .map_err(|_| rfc003::Error::Btsieve)
                 .first_or_else(|| {
                     log::warn!("stream of matching transactions ended before yielding a value");

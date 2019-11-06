@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-source "../lib.sh"
+source "../../lib.sh"
 
 # This script was used to conveniently generate the test data for the test
 # "find_transaction_if_blockchain_reorganisation_with_long_chain"

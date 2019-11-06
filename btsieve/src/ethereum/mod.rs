@@ -31,6 +31,7 @@ where
     fn matching_transactions(
         &self,
         pattern: TransactionPattern,
+        _timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
         let matching_transaction = Box::pin(matching_transaction(self.clone(), pattern)).compat();
         Box::new(stream::futures_unordered(vec![matching_transaction]))

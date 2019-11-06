@@ -50,7 +50,7 @@ generate_block() {
 
 create_transaction() {
     if [ $# -ne 2 ]; then
-        echo "Incorrect number of parameters on generate_block"
+        echo "Incorrect number of parameters on create_transaction"
         exit 2
     fi
 

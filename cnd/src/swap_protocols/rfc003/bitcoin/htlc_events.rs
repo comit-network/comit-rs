@@ -31,7 +31,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                 to_address: Some(htlc_params.compute_address()),
                 from_outpoint: None,
                 unlock_script: None,
-            })
+            }, None)
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");
@@ -81,11 +81,14 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         _htlc_funding: &Funded<Bitcoin, Amount>,
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
-            self.matching_transactions(TransactionPattern {
-                to_address: None,
-                from_outpoint: Some(htlc_deployment.location),
-                unlock_script: Some(vec![vec![]]),
-            })
+            self.matching_transactions(
+                TransactionPattern {
+                    to_address: None,
+                    from_outpoint: Some(htlc_deployment.location),
+                    unlock_script: Some(vec![vec![]]),
+                },
+                None,
+            )
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");
@@ -95,11 +98,14 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         };
 
         let redeemed_future = {
-            self.matching_transactions(TransactionPattern {
-                to_address: None,
-                from_outpoint: Some(htlc_deployment.location),
-                unlock_script: Some(vec![vec![1u8]]),
-            })
+            self.matching_transactions(
+                TransactionPattern {
+                    to_address: None,
+                    from_outpoint: Some(htlc_deployment.location),
+                    unlock_script: Some(vec![vec![1u8]]),
+                },
+                None,
+            )
             .map_err(|_| rfc003::Error::Btsieve)
             .first_or_else(|| {
                 log::warn!("stream of matching transactions ended before yielding a value");

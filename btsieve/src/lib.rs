@@ -16,6 +16,7 @@ pub trait MatchingTransactions<P>: Send + Sync + 'static {
     fn matching_transactions(
         &self,
         pattern: P,
+        timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send>;
 }
 

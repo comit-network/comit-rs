@@ -37,8 +37,10 @@ where
     fn matching_transactions(
         &self,
         pattern: TransactionPattern,
+        timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        let matching_transaction = Box::pin(matching_transaction(self.clone(), pattern)).compat();
+        let matching_transaction =
+            Box::pin(matching_transaction(self.clone(), pattern, timestamp)).compat();
         Box::new(stream::futures_unordered(vec![matching_transaction]))
     }
 }
@@ -46,6 +48,7 @@ where
 async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
+    reference_timestamp: Option<u32>,
 ) -> Result<bitcoin::Transaction, ()>
 where
     C: LatestBlock<Block = bitcoin::Block, Error = E>
@@ -53,6 +56,8 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
+    let mut oldest_block: Option<bitcoin::Block> = None;
+
     let mut prev_blockhashes: HashSet<sha256d::Hash> = HashSet::new();
     let mut missing_block_futures: Vec<_> = Vec::new();
 
@@ -92,6 +97,30 @@ where
         }
         missing_block_futures = new_missing_block_futures;
 
+        if let (Some(block), Some(reference_timestamp)) =
+            (oldest_block.as_ref(), reference_timestamp)
+        {
+            if block.header.time >= reference_timestamp {
+                match blockchain_connector
+                    .block_by_hash(block.header.prev_blockhash)
+                    .compat()
+                    .await
+                {
+                    Ok(block) => match check_block_against_pattern(&block, &pattern) {
+                        Some(transaction) => return Ok(transaction.clone()),
+                        None => {
+                            oldest_block.replace(block);
+                        }
+                    },
+                    Err(e) => log::warn!(
+                        "Could not get block with hash {}: {:?}",
+                        block.bitcoin_hash(),
+                        e
+                    ),
+                };
+            }
+        }
+
         let latest_block = match blockchain_connector.latest_block().compat().await {
             Ok(block) => block,
             Err(e) => {
@@ -99,6 +128,7 @@ where
                 continue;
             }
         };
+        oldest_block.get_or_insert(latest_block.clone());
 
         // If we can't insert then we have seen this block
         if !prev_blockhashes.insert(latest_block.bitcoin_hash()) {
