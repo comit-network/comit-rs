@@ -31,6 +31,12 @@ jobs:
       RUST_TEST_THREADS: "8"
     steps:
       - checkout
+      - run:
+          name: TODOs or FIXMEs are not allowed
+          command: |
+            sudo snap install ripgrep --classic
+            ! /snap/bin/rg todo --type rust --type ts --ignore-case || exit 1;
+            ! /snap/bin/rg fixme --type rust --type ts --ignore-case || exit 1;
       - restore_caches
       - install_rust
       - install_node_devlibs

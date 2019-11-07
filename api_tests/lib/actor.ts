@@ -31,7 +31,7 @@ export class Actor {
     private readonly sirenActionAutofillParams?: SirenActionAutofillParams;
 
     constructor(
-        name: "alice" | "bob" | "charlie" | "david",
+        name: "alice" | "bob" | "charlie",
         walletConfig?: WalletConfig,
         declineConfig?: DeclineConfig,
         sirenActionAutofillParams?: SirenActionAutofillParams
