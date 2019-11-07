@@ -19,7 +19,6 @@ pub mod bitcoin;
 pub mod comit_api;
 pub mod config;
 pub mod db;
-pub mod dependencies;
 pub mod http_api;
 pub mod logging;
 pub mod network;

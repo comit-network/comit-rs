@@ -1,16 +1,15 @@
 use crate::{
-    dependencies,
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         asset::Asset,
-        metadata_store::{self, MetadataStore},
+        metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
             self,
             create_ledger_events::CreateLedgerEvents,
             messages::AcceptResponseBody,
             state_machine::SwapStates,
-            state_store::{self, StateStore},
+            state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger, Spawn,
         },
         LedgerConnectors, Metadata, SwapId,
@@ -32,14 +31,20 @@ use std::sync::Arc;
 /// HTTP API controllers small and still access all the functionality we need.
 #[allow(missing_debug_implementations)]
 pub struct Dependencies<S> {
-    pub dependencies: Arc<dependencies::Dependencies>,
+    pub ledger_events: LedgerConnectors,
+    pub metadata_store: Arc<InMemoryMetadataStore>,
+    pub state_store: Arc<InMemoryStateStore>,
+    pub seed: Seed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
 }
 
 impl<S> Clone for Dependencies<S> {
     fn clone(&self) -> Self {
         Self {
-            dependencies: Arc::clone(&self.dependencies),
+            ledger_events: self.ledger_events.clone(),
+            metadata_store: Arc::clone(&self.metadata_store),
+            state_store: Arc::clone(&self.state_store),
+            seed: self.seed,
             swarm: Arc::clone(&self.swarm),
         }
     }
@@ -50,15 +55,15 @@ where
     S: Send + Sync + 'static,
 {
     fn get(&self, key: SwapId) -> Result<Option<Metadata>, metadata_store::Error> {
-        self.dependencies.metadata_store.get(key)
+        self.metadata_store.get(key)
     }
 
     fn insert(&self, metadata: Metadata) -> Result<(), metadata_store::Error> {
-        self.dependencies.metadata_store.insert(metadata)
+        self.metadata_store.insert(metadata)
     }
 
     fn all(&self) -> Result<Vec<Metadata>, metadata_store::Error> {
-        self.dependencies.metadata_store.all()
+        self.metadata_store.all()
     }
 }
 
@@ -67,15 +72,15 @@ where
     S: Send + Sync + 'static,
 {
     fn insert<A: ActorState>(&self, key: SwapId, value: A) {
-        self.dependencies.state_store.insert(key, value)
+        self.state_store.insert(key, value)
     }
 
     fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, state_store::Error> {
-        self.dependencies.state_store.get(key)
+        self.state_store.get(key)
     }
 
     fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
-        self.dependencies.state_store.update::<A>(key, update)
+        self.state_store.update::<A>(key, update)
     }
 }
 
@@ -128,7 +133,7 @@ where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
         S: Send + Sync + 'static,
     {
-        self.dependencies.spawn(swap_request, accept)
+        self.ledger_events.spawn(swap_request, accept)
     }
 }
 
@@ -137,6 +142,6 @@ where
     S: Send + Sync + 'static,
 {
     fn swap_seed(&self, id: SwapId) -> Seed {
-        self.dependencies.swap_seed(id)
+        self.seed.swap_seed(id)
     }
 }

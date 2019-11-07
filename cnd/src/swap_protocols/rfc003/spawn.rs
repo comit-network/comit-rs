@@ -1,14 +1,11 @@
-use crate::{
-    dependencies::Dependencies,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            messages::AcceptResponseBody,
-            state_machine::{self, SwapStates},
-            CreateLedgerEvents, Ledger, Request,
-        },
-        LedgerConnectors,
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{
+        messages::AcceptResponseBody,
+        state_machine::{self, SwapStates},
+        CreateLedgerEvents, Ledger, Request,
     },
+    LedgerConnectors,
 };
 use futures::{sync::mpsc, Future};
 use std::sync::Arc;
@@ -24,7 +21,7 @@ pub trait Spawn: Send + Sync + 'static {
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-impl Spawn for Dependencies {
+impl Spawn for LedgerConnectors {
     #[allow(clippy::type_complexity)]
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
@@ -39,8 +36,8 @@ impl Spawn for Dependencies {
         let (sender, receiver) = mpsc::unbounded();
 
         let context = state_machine::Context {
-            alpha_ledger_events: self.ledger_events.create_ledger_events(),
-            beta_ledger_events: self.ledger_events.create_ledger_events(),
+            alpha_ledger_events: self.create_ledger_events(),
+            beta_ledger_events: self.create_ledger_events(),
             state_repo: Arc::new(sender),
         };
 

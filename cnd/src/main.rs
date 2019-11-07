@@ -3,7 +3,6 @@
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
-    dependencies::Dependencies,
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -65,19 +64,17 @@ fn main() -> Result<(), failure::Error> {
         ethereum_connector,
     };
 
-    let network_dependencies = Dependencies {
-        ledger_events: ledger_events.clone(),
-        metadata_store: Arc::clone(&metadata_store),
-        state_store: Arc::clone(&state_store),
-        seed,
-    };
-
     let local_key_pair = derive_key_pair(&seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
     let transport = libp2p::build_development_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(network_dependencies)?;
+    let behaviour = network::ComitNode::new(
+        ledger_events.clone(),
+        Arc::clone(&metadata_store),
+        Arc::clone(&state_store),
+        seed,
+    )?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
@@ -91,12 +88,10 @@ fn main() -> Result<(), failure::Error> {
     let swarm = Arc::new(Mutex::new(swarm));
 
     let http_api_dependencies = http_api::Dependencies {
-        dependencies: Arc::new(Dependencies {
-            ledger_events: ledger_events.clone(),
-            metadata_store: Arc::clone(&metadata_store),
-            state_store: Arc::clone(&state_store),
-            seed,
-        }),
+        ledger_events: ledger_events.clone(),
+        metadata_store: Arc::clone(&metadata_store),
+        state_store: Arc::clone(&state_store),
+        seed,
         swarm: Arc::clone(&swarm),
     };
 
