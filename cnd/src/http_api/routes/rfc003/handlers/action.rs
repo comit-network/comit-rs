@@ -10,11 +10,13 @@ use crate::{
     },
     libp2p_comit_ext::ToHeader,
     network::Network,
+    seed::SwapSeed,
     swap_protocols::{
         actions::Actions,
         rfc003::{
             self,
             actions::{Action, ActionKind},
+            bob::State,
             messages::Decision,
             state_store::StateStore,
             Spawn,
@@ -28,7 +30,7 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn>(
+pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
@@ -63,12 +65,20 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn>(
                                     let response = rfc003_accept_response(accept_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
-                                    let request = state.request();
+                                    let swap_request = state.request();
+                                    let seed = dependencies.swap_seed(id);
+                                    let state = State::accepted(
+                                        swap_request.clone(),
+                                        accept_body.clone(),
+                                        seed,
+                                    );
+                                    StateStore::insert(&dependencies, id, state);
+
                                     let receiver =
-                                        Spawn::spawn(&dependencies, request, Ok(accept_body));
+                                        Spawn::spawn(&dependencies, swap_request, accept_body);
 
                                     tokio::spawn(receiver.for_each(move |update| {
-                                        StateStore::update::<bob::State<AL, BL, AA, BA>>(
+                                        StateStore::update::<State<AL, BL, AA, BA>>(
                                             &dependencies,
                                             &id,
                                             update,
@@ -92,18 +102,14 @@ pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn>(
                                     let response = rfc003_decline_response(decline_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
-                                    let request = state.request();
-                                    let receiver =
-                                        Spawn::spawn(&dependencies, request, Err(decline_body));
-
-                                    tokio::spawn(receiver.for_each(move |update| {
-                                        StateStore::update::<bob::State<AL, BL, AA, BA>>(
-                                            &dependencies,
-                                            &id,
-                                            update,
-                                        );
-                                        Ok(())
-                                    }));
+                                    let swap_request = state.request();
+                                    let seed = dependencies.swap_seed(id);
+                                    let state = State::declined(
+                                        swap_request.clone(),
+                                        decline_body.clone(),
+                                        seed,
+                                    );
+                                    StateStore::insert(&dependencies, id, state);
 
                                     Ok(ActionResponseBody::None)
                                 }

@@ -1,18 +1,14 @@
 use crate::{
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::{DialInformation, SendRequest},
-    seed::{Seed, SwapSeed},
+    seed::SwapSeed,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
         metadata_store::{self, Metadata, MetadataStore},
         rfc003::{
-            self,
-            alice::{self, State},
-            create_ledger_events::CreateLedgerEvents,
-            messages::ToRequest,
-            state_store::StateStore,
-            Ledger, Request, SecretSource, Spawn,
+            self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
+            state_store::StateStore, Ledger, SecretSource, Spawn,
         },
         HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
     },
@@ -91,40 +87,22 @@ where
     let bob_dial_info = body.peer.clone();
     let counterparty = bob_dial_info.peer_id.clone();
     let seed = dependencies.swap_seed(id);
-    let request = body.to_request(id, &seed);
+    let swap_request = body.to_request(id, &seed);
 
     let metadata = Metadata::new(
         id,
-        request.alpha_ledger.into(),
-        request.beta_ledger.into(),
-        request.alpha_asset.into(),
-        request.beta_asset.into(),
+        swap_request.alpha_ledger.into(),
+        swap_request.beta_ledger.into(),
+        swap_request.alpha_asset.into(),
+        swap_request.beta_asset.into(),
         Role::Alice,
         counterparty,
     );
     MetadataStore::insert(&dependencies, metadata)?;
 
-    let state = alice::State::proposed(request.clone(), seed);
+    let state = State::proposed(swap_request.clone(), seed);
     StateStore::insert(&dependencies, id, state);
 
-    send_request_and_spawn_alice(dependencies, request, bob_dial_info, seed);
-
-    Ok(())
-}
-
-fn send_request_and_spawn_alice<D, AL, BL, AA, BA>(
-    dependencies: D,
-    swap_request: Request<AL, BL, AA, BA>,
-    bob_dial_info: DialInformation,
-    seed: Seed,
-) where
-    LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    D: MetadataStore + StateStore + SendRequest + Spawn,
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-{
     let future = {
         async move {
             let response = dependencies
@@ -139,27 +117,29 @@ fn send_request_and_spawn_alice<D, AL, BL, AA, BA>(
                     );
                 })?;
 
-            let id = swap_request.id;
-            let alice_state = match response.clone() {
-                Ok(accept) => State::accepted(swap_request.clone(), accept, seed),
-                Err(decline) => State::declined(swap_request.clone(), decline, seed),
+            match response {
+                Ok(accept) => {
+                    let state = State::accepted(swap_request.clone(), accept.clone(), seed);
+                    StateStore::insert(&dependencies, id, state.clone());
+
+                    let receiver = Spawn::spawn(&dependencies, swap_request, accept);
+                    tokio::spawn(receiver.for_each(move |update| {
+                        StateStore::update::<State<AL, BL, AA, BA>>(&dependencies, &id, update);
+                        Ok(())
+                    }));
+                }
+                Err(decline) => {
+                    log::info!("Swap declined: {:?}", decline);
+                    let state = State::declined(swap_request.clone(), decline, seed);
+                    StateStore::insert(&dependencies, id, state.clone());
+                }
             };
-            StateStore::insert(&dependencies, swap_request.id, alice_state.clone());
-
-            let receiver = Spawn::spawn(&dependencies, swap_request, response);
-
-            tokio::spawn(receiver.for_each(move |update| {
-                StateStore::update::<alice::State<AL, BL, AA, BA>>(&dependencies, &id, update);
-                Ok(())
-            }));
-
             Ok(())
         }
     };
-
     tokio::spawn(future.boxed().compat());
+    Ok(())
 }
-
 #[derive(Serialize, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,

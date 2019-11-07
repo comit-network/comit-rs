@@ -52,7 +52,7 @@ pub fn get_swap<D: MetadataStore + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + Network + Spawn>(
+pub fn action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
