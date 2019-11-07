@@ -22,7 +22,6 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 }
 
 pub fn create<D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed>(
-    origin_auth: String,
     peer_id: PeerId,
     dependencies: D,
 ) -> BoxedFilter<(impl Reply,)> {
@@ -76,15 +75,7 @@ pub fn create<D: Clone + MetadataStore + StateStore + Network + SendRequest + Sp
         .and(dependencies.clone())
         .and_then(http_api::routes::index::get_info);
 
-    let preflight_cors_route = warp::options().map(warp::reply);
-
-    let cors = warp::cors()
-        .allow_origin(origin_auth.as_str())
-        .allow_methods(vec!["GET", "POST"])
-        .allow_headers(vec!["content-type"]);
-
-    preflight_cors_route
-        .or(rfc003_get_swap)
+    rfc003_get_swap
         .or(rfc003_post_swap)
         .or(rfc003_action)
         .or(get_swaps)
@@ -92,6 +83,5 @@ pub fn create<D: Clone + MetadataStore + StateStore + Network + SendRequest + Sp
         .or(get_info)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
-        .with(cors)
         .boxed()
 }

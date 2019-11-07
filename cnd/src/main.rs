@@ -129,7 +129,7 @@ fn spawn_warp_instance<
     runtime: &mut tokio::runtime::Runtime,
     dependencies: D,
 ) {
-    let routes = route_factory::create(auth_origin(), peer_id, dependencies);
+    let routes = route_factory::create(peer_id, dependencies);
 
     let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
 
@@ -138,10 +138,4 @@ fn spawn_warp_instance<
     let server = warp::serve(routes).bind(listen_addr);
 
     runtime.spawn(server);
-}
-
-fn auth_origin() -> String {
-    let auth_origin = "http://localhost:3000".to_string();
-    log::trace!("Auth origin enabled on: {}", auth_origin);
-    auth_origin
 }
