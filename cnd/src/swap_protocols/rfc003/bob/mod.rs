@@ -1,7 +1,4 @@
 pub mod actions;
-mod spawn_bob;
-
-pub use self::spawn_bob::*;
 
 use crate::swap_protocols::{
     asset::Asset,

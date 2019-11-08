@@ -116,6 +116,16 @@ impl Seed {
     }
 }
 
+pub trait SwapSeed {
+    fn swap_seed(&self, id: SwapId) -> Seed;
+}
+
+impl SwapSeed for Seed {
+    fn swap_seed(&self, id: SwapId) -> Seed {
+        self.swap_seed(id)
+    }
+}
+
 fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     if let Some(path) = file.parent() {
         if !path.exists() {

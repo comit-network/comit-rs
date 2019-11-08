@@ -9,11 +9,13 @@ pub mod asset;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
+mod dependencies;
 mod ethereum_network;
 mod problem;
 mod swap_resource;
 
 pub use self::{
+    dependencies::*,
     problem::*,
     swap_resource::{SwapParameters, SwapResource, SwapStatus},
 };

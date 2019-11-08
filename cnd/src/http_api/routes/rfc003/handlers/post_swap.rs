@@ -1,40 +1,49 @@
 use crate::{
-    connector::Connect,
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
-    network::DialInformation,
+    network::{DialInformation, SendRequest},
+    seed::SwapSeed,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        rfc003::{self, messages::ToRequest, Ledger, SecretSource},
-        HashFunction, SwapId, Timestamp,
+        metadata_store::{self, Metadata, MetadataStore},
+        rfc003::{
+            self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
+            state_store::StateStore, Ledger, SecretSource, Spawn,
+        },
+        HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
     },
 };
 use bitcoin::Amount as BitcoinAmount;
 use ethereum_support::{Erc20Token, EtherQuantity};
+use futures::Stream;
+use futures_core::{
+    compat::Future01CompatExt,
+    future::{FutureExt, TryFutureExt},
+};
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<C: Connect>(
-    con: C,
+pub fn handle_post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
+    dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
     let id = SwapId::default();
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            con.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            con.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            con.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            con.initiate_request(id, body.peer.clone(), Box::new(body.clone()))?;
+            initiate_request(dependencies, body, id)?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
@@ -61,6 +70,76 @@ pub fn handle_post_swap<C: Connect>(
     }
 }
 
+fn initiate_request<D, AL, BL, AA, BA, I>(
+    dependencies: D,
+    body: SwapRequestBody<AL, BL, AA, BA, I>,
+    id: SwapId,
+) -> Result<(), metadata_store::Error>
+where
+    LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
+    D: MetadataStore + StateStore + SendRequest + Spawn + SwapSeed,
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+    I: ToIdentities<AL, BL>,
+{
+    let bob_dial_info = body.peer.clone();
+    let counterparty = bob_dial_info.peer_id.clone();
+    let seed = dependencies.swap_seed(id);
+    let swap_request = body.to_request(id, &seed);
+
+    let metadata = Metadata::new(
+        id,
+        swap_request.alpha_ledger.into(),
+        swap_request.beta_ledger.into(),
+        swap_request.alpha_asset.into(),
+        swap_request.beta_asset.into(),
+        Role::Alice,
+        counterparty,
+    );
+    MetadataStore::insert(&dependencies, metadata)?;
+
+    let state = State::proposed(swap_request.clone(), seed);
+    StateStore::insert(&dependencies, id, state);
+
+    let future = {
+        async move {
+            let response = dependencies
+                .send_request(bob_dial_info.clone(), swap_request.clone())
+                .compat()
+                .await
+                .map_err(|e| {
+                    log::error!(
+                        "Failed to send swap request to {} because {:?}",
+                        bob_dial_info.clone(),
+                        e
+                    );
+                })?;
+
+            match response {
+                Ok(accept) => {
+                    let state = State::accepted(swap_request.clone(), accept.clone(), seed);
+                    StateStore::insert(&dependencies, id, state.clone());
+
+                    let receiver = Spawn::spawn(&dependencies, swap_request, accept);
+                    tokio::spawn(receiver.for_each(move |update| {
+                        StateStore::update::<State<AL, BL, AA, BA>>(&dependencies, &id, update);
+                        Ok(())
+                    }));
+                }
+                Err(decline) => {
+                    log::info!("Swap declined: {:?}", decline);
+                    let state = State::declined(swap_request.clone(), decline, seed);
+                    StateStore::insert(&dependencies, id, state.clone());
+                }
+            };
+            Ok(())
+        }
+    };
+    tokio::spawn(future.boxed().compat());
+    Ok(())
+}
 #[derive(Serialize, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,

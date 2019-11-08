@@ -1,14 +1,20 @@
+pub mod send_request;
+
+pub use send_request::*;
+
 use crate::{
-    connector::Dependencies,
     libp2p_comit_ext::{FromHeader, ToHeader},
+    seed::Seed,
     swap_protocols::{
         asset::{Asset, AssetKind},
+        metadata_store::{self, InMemoryMetadataStore, Metadata, MetadataStore},
         rfc003::{
-            self,
+            self, bob,
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
-            InsertState,
+            state_store::{InMemoryStateStore, StateStore},
+            Ledger,
         },
-        HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
+        HashFunction, LedgerConnectors, LedgerKind, Role, SwapId, SwapProtocol,
     },
 };
 use futures::{
@@ -39,7 +45,13 @@ pub struct ComitNode<TSubstream> {
     mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
-    deps: Dependencies,
+    pub ledger_events: LedgerConnectors,
+    #[behaviour(ignore)]
+    pub metadata_store: Arc<InMemoryMetadataStore>,
+    #[behaviour(ignore)]
+    pub state_store: Arc<InMemoryStateStore>,
+    #[behaviour(ignore)]
+    pub seed: Seed,
     #[behaviour(ignore)]
     response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
@@ -60,7 +72,12 @@ impl Display for DialInformation {
 }
 
 impl<TSubstream> ComitNode<TSubstream> {
-    pub fn new(deps: Dependencies) -> Result<Self, io::Error> {
+    pub fn new(
+        ledger_events: LedgerConnectors,
+        metadata_store: Arc<InMemoryMetadataStore>,
+        state_store: Arc<InMemoryStateStore>,
+        seed: Seed,
+    ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
         swap_headers.insert("alpha_ledger".into());
@@ -75,7 +92,10 @@ impl<TSubstream> ComitNode<TSubstream> {
         Ok(Self {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
-            deps,
+            ledger_events,
+            metadata_store,
+            state_store,
+            seed,
             response_channels: HashMap::new(),
         })
     }
@@ -131,8 +151,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -152,8 +171,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -173,8 +191,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -194,8 +211,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     hash_function,
                                     body!(request.take_body_as()),
                                 );
-                                self.deps
-                                    .insert_state_into_stores(Role::Bob, counterparty, request)
+                                self.insert_state_for_bob(counterparty, request)
                                     .expect("Could not write to metadatastore");
 
                                 Ok(swap_id)
@@ -258,6 +274,33 @@ impl<TSubstream> ComitNode<TSubstream> {
                 ))
             }
         }
+    }
+
+    #[allow(clippy::type_complexity)]
+    fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+        &self,
+        counterparty: PeerId,
+        swap_request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Result<(), metadata_store::Error> {
+        let id = swap_request.id;
+        let seed = self.seed.swap_seed(id);
+
+        let metadata = Metadata::new(
+            id,
+            swap_request.alpha_ledger.into(),
+            swap_request.beta_ledger.into(),
+            swap_request.alpha_asset.into(),
+            swap_request.beta_asset.into(),
+            Role::Bob,
+            counterparty,
+        );
+        self.metadata_store.insert(metadata)?;
+
+        let state_store = Arc::clone(&self.state_store);
+        let state = bob::State::proposed(swap_request.clone(), seed);
+        state_store.insert(id, state);
+
+        Ok(())
     }
 }
 

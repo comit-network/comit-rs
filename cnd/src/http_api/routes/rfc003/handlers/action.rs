@@ -1,5 +1,4 @@
 use crate::{
-    connector::Connect,
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -11,36 +10,41 @@ use crate::{
     },
     libp2p_comit_ext::ToHeader,
     network::Network,
+    seed::SwapSeed,
     swap_protocols::{
         actions::Actions,
         rfc003::{
             self,
             actions::{Action, ActionKind},
+            bob::State,
             messages::Decision,
             state_store::StateStore,
+            Spawn,
         },
         MetadataStore, SwapId,
     },
 };
+use futures::Stream;
 use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<C: Connect>(
+pub fn handle_action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    con: C,
+    dependencies: D,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata = MetadataStore::get(&con, id)?.ok_or_else(problem::swap_not_found)?;
+    let metadata = MetadataStore::get(&dependencies, id)?.ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
         &metadata,
         (|| {
-            let state = StateStore::get::<ROLE>(&con, &id)?.ok_or_else(problem::state_store)?;
+            let state =
+                StateStore::get::<ROLE>(&dependencies, &id)?.ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", id, state);
 
             state
@@ -53,7 +57,7 @@ pub fn handle_action<C: Connect>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&con, id)
+                                    let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let accept_body = action.accept(body);
@@ -61,8 +65,26 @@ pub fn handle_action<C: Connect>(
                                     let response = rfc003_accept_response(accept_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
-                                    let request = state.request();
-                                    con.spawn_bob(request, Ok(accept_body));
+                                    let swap_request = state.request();
+                                    let seed = dependencies.swap_seed(id);
+                                    let state = State::accepted(
+                                        swap_request.clone(),
+                                        accept_body.clone(),
+                                        seed,
+                                    );
+                                    StateStore::insert(&dependencies, id, state);
+
+                                    let receiver =
+                                        Spawn::spawn(&dependencies, swap_request, accept_body);
+
+                                    tokio::spawn(receiver.for_each(move |update| {
+                                        StateStore::update::<State<AL, BL, AA, BA>>(
+                                            &dependencies,
+                                            &id,
+                                            update,
+                                        );
+                                        Ok(())
+                                    }));
 
                                     Ok(ActionResponseBody::None)
                                 }
@@ -71,7 +93,7 @@ pub fn handle_action<C: Connect>(
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&con, id)
+                                    let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
                                     let decline_body =
@@ -80,8 +102,14 @@ pub fn handle_action<C: Connect>(
                                     let response = rfc003_decline_response(decline_body.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
-                                    let request = state.request();
-                                    con.spawn_bob(request, Err(decline_body));
+                                    let swap_request = state.request();
+                                    let seed = dependencies.swap_seed(id);
+                                    let state = State::declined(
+                                        swap_request.clone(),
+                                        decline_body.clone(),
+                                        seed,
+                                    );
+                                    StateStore::insert(&dependencies, id, state);
 
                                     Ok(ActionResponseBody::None)
                                 }
