@@ -2,7 +2,10 @@ mod models;
 mod schema;
 embed_migrations!("./migrations");
 
-use crate::db::models::{InsertableSwap, SqlText, Swap, SwapId};
+use crate::{
+    db::models::{InsertableSwap, SqlText, Swap},
+    swap_protocols::SwapId,
+};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     fs::File,
@@ -159,7 +162,10 @@ pub fn default_db_path() -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db::models::{self, AssetKind, InsertableSwap, LedgerKind, Role, SwapId};
+    use crate::{
+        db::models::{self, AssetKind, InsertableSwap, LedgerKind, Role},
+        swap_protocols::SwapId,
+    };
     use std::str::FromStr;
 
     fn instantiate_test_case_1() -> InsertableSwap {

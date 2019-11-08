@@ -1,13 +1,13 @@
-use crate::db::schema::swaps;
+use crate::{db::schema::swaps, swap_protocols::SwapId};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
     serialize::{self, Output, ToSql},
-    sql_types::Text,
+    sql_types::{Binary, Integer, Text},
     Insertable, Queryable, *,
 };
-use std::{fmt, ops::Deref, str::FromStr, string::ToString};
-use uuid::Uuid;
+use ethereum_support::U256;
+use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr, string::ToString};
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
 pub struct Swap {
@@ -48,22 +48,6 @@ impl InsertableSwap {
             beta_asset: SqlText(beta_asset),
             role: SqlText(role),
         }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SwapId(Uuid);
-
-impl FromStr for SwapId {
-    type Err = uuid::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::from_str(s).map(SwapId)
-    }
-}
-
-impl fmt::Display for SwapId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        write!(f, "{}", self.0.to_hyphenated())
     }
 }
 
