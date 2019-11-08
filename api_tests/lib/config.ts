@@ -69,12 +69,6 @@ export const CHARLIE_CONFIG = new E2ETestActorConfig(
     8021,
     "6b49ec1df23d124a16d6a12bd34476579e6e80cdcb97a5438cb76ac5c423c937"
 );
-// FIXME: David has the same seed as Alice
-export const DAVID_CONFIG = new E2ETestActorConfig(
-    8123,
-    8001,
-    "f87165e305b0f7c4824d3806434f9d0909610a25641ab8773cf92a48c9d77670"
-);
 
 export function createBtsieveConfig(
     ledgerConfig: LedgerConfig
@@ -115,5 +109,4 @@ export const CND_CONFIGS: {
     alice: ALICE_CONFIG,
     bob: BOB_CONFIG,
     charlie: CHARLIE_CONFIG,
-    david: DAVID_CONFIG,
 };

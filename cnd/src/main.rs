@@ -79,9 +79,6 @@ fn main() -> Result<(), failure::Error> {
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
 
     for addr in settings.network.listen.clone() {
-        // FIXME: Replace `expect` with `?`
-        // This can be solved by building our own Transport instead of using
-        // `build_development_transport`
         Swarm::listen_on(&mut swarm, addr).expect("Could not listen on specified address");
     }
 
