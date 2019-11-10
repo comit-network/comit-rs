@@ -39,9 +39,11 @@ export class CndRunner {
             }
 
             const configFile = await tempWrite(
-                stringify((cndconfig.generateCndConfigFile(
-                    btsieveConfig
-                ) as unknown) as JsonMap),
+                stringify(
+                    (cndconfig.generateCndConfigFile(
+                        btsieveConfig
+                    ) as unknown) as JsonMap
+                ),
                 "config.toml"
             );
 

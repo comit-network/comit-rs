@@ -30,7 +30,10 @@ export async function createActors(logFileName: string): Promise<Actors> {
     );
 
     const actors = new Actors(
-        new Map<string, Actor>([["alice", alice], ["bob", bob]])
+        new Map<string, Actor>([
+            ["alice", alice],
+            ["bob", bob],
+        ])
     );
 
     alice.actors = actors;
