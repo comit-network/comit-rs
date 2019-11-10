@@ -22,7 +22,7 @@ enum-display-derive = "0.1"
 ethereum_support = { path = "../internal/ethereum_support" }
 failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
-futures = { version = "0.1" }
+futures = { version = "0.3" }
 futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"], package = "futures-preview" }
 hex = "0.4"
 hex-serde = "0.1.0"

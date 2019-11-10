@@ -8,7 +8,7 @@ description = "Implementation of the COMIT messaging protocol"
 [dependencies]
 bytes = "0.4"
 derivative = "1.0.3"
-futures = "0.1"
+futures = "0.3"
 libp2p-core = "0.12"
 libp2p-swarm = "0.2"
 log = "0.4"
