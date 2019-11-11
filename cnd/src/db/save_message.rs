@@ -1,6 +1,7 @@
 use crate::{
     db::{
-        models::{DecimalU256, EthereumAddress, Satoshis, SqlText, U32},
+        custom_sql_types::{Text, U32},
+        new_types::{DecimalU256, EthereumAddress, Satoshis},
         schema::{self, *},
         Error, Sqlite,
     },
@@ -46,17 +47,17 @@ macro_rules! impl_save_message {
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_bitcoin_ether_request_messages"]
 struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
-    swap_id: SqlText<SwapId>,
-    bitcoin_network: SqlText<bitcoin::Network>,
+    swap_id: Text<SwapId>,
+    bitcoin_network: Text<bitcoin::Network>,
     ethereum_chain_id: U32,
-    bitcoin_amount: SqlText<Satoshis>,
-    ether_amount: SqlText<DecimalU256>,
-    hash_function: SqlText<HashFunction>,
-    bitcoin_refund_identity: SqlText<bitcoin::PublicKey>,
-    ethereum_redeem_identity: SqlText<EthereumAddress>,
+    bitcoin_amount: Text<Satoshis>,
+    ether_amount: Text<DecimalU256>,
+    hash_function: Text<HashFunction>,
+    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
-    secret_hash: SqlText<SecretHash>,
+    secret_hash: Text<SecretHash>,
 }
 
 impl_save_message! {
@@ -76,17 +77,17 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
-            swap_id: SqlText(id),
-            bitcoin_network: SqlText(alpha_ledger.network),
+            swap_id: Text(id),
+            bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: SqlText(Satoshis(alpha_asset.as_sat())),
-            ether_amount: SqlText(DecimalU256(beta_asset.wei())),
-            hash_function: SqlText(hash_function),
-            bitcoin_refund_identity: SqlText(alpha_ledger_refund_identity.into_inner()),
-            ethereum_redeem_identity: SqlText(EthereumAddress(beta_ledger_redeem_identity)),
+            bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
+            ether_amount: Text(DecimalU256(beta_asset.wei())),
+            hash_function: Text(hash_function),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
+            ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: SqlText(secret_hash)
+            secret_hash: Text(secret_hash)
         };
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages)
@@ -100,18 +101,18 @@ impl_save_message! {
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages"]
 struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
-    swap_id: SqlText<SwapId>,
-    bitcoin_network: SqlText<bitcoin::Network>,
+    swap_id: Text<SwapId>,
+    bitcoin_network: Text<bitcoin::Network>,
     ethereum_chain_id: U32,
-    bitcoin_amount: SqlText<Satoshis>,
-    erc20_amount: SqlText<DecimalU256>,
-    erc20_token_contract: SqlText<EthereumAddress>,
-    hash_function: SqlText<HashFunction>,
-    bitcoin_refund_identity: SqlText<bitcoin::PublicKey>,
-    ethereum_redeem_identity: SqlText<EthereumAddress>,
+    bitcoin_amount: Text<Satoshis>,
+    erc20_amount: Text<DecimalU256>,
+    erc20_token_contract: Text<EthereumAddress>,
+    hash_function: Text<HashFunction>,
+    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
-    secret_hash: SqlText<SecretHash>,
+    secret_hash: Text<SecretHash>,
 }
 
 impl_save_message! {
@@ -131,18 +132,18 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
-            swap_id: SqlText(id),
-            bitcoin_network: SqlText(alpha_ledger.network),
+            swap_id: Text(id),
+            bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: SqlText(Satoshis(alpha_asset.as_sat())),
-            erc20_amount: SqlText(DecimalU256(beta_asset.quantity.0)),
-            erc20_token_contract: SqlText(EthereumAddress(beta_asset.token_contract)),
-            hash_function: SqlText(hash_function),
-            bitcoin_refund_identity: SqlText(alpha_ledger_refund_identity.into_inner()),
-            ethereum_redeem_identity: SqlText(EthereumAddress(beta_ledger_redeem_identity)),
+            bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
+            erc20_amount: Text(DecimalU256(beta_asset.quantity.0)),
+            erc20_token_contract: Text(EthereumAddress(beta_asset.token_contract)),
+            hash_function: Text(hash_function),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
+            ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
-                    secret_hash: SqlText(secret_hash)
+                    secret_hash: Text(secret_hash)
 };
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages)
@@ -156,17 +157,17 @@ impl_save_message! {
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_ether_bitcoin_request_messages"]
 struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
-    swap_id: SqlText<SwapId>,
+    swap_id: Text<SwapId>,
     ethereum_chain_id: U32,
-    bitcoin_network: SqlText<bitcoin::Network>,
-    ether_amount: SqlText<DecimalU256>,
-    bitcoin_amount: SqlText<Satoshis>,
-    hash_function: SqlText<HashFunction>,
-    ethereum_refund_identity: SqlText<EthereumAddress>,
-    bitcoin_redeem_identity: SqlText<bitcoin::PublicKey>,
+    bitcoin_network: Text<bitcoin::Network>,
+    ether_amount: Text<DecimalU256>,
+    bitcoin_amount: Text<Satoshis>,
+    hash_function: Text<HashFunction>,
+    ethereum_refund_identity: Text<EthereumAddress>,
+    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
-    secret_hash: SqlText<SecretHash>,
+    secret_hash: Text<SecretHash>,
 }
 
 impl_save_message! {
@@ -186,17 +187,17 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
-            swap_id: SqlText(id),
+            swap_id: Text(id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: SqlText(beta_ledger.network),
-            ether_amount: SqlText(DecimalU256(alpha_asset.wei())),
-            bitcoin_amount: SqlText(Satoshis(beta_asset.as_sat())),
-            hash_function: SqlText(hash_function),
-            ethereum_refund_identity: SqlText(EthereumAddress(alpha_ledger_refund_identity)),
-            bitcoin_redeem_identity: SqlText(beta_ledger_redeem_identity.into_inner()),
+            bitcoin_network: Text(beta_ledger.network),
+            ether_amount: Text(DecimalU256(alpha_asset.wei())),
+            bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
+            hash_function: Text(hash_function),
+            ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_refund_identity)),
+            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-                    secret_hash: SqlText(secret_hash)
+                    secret_hash: Text(secret_hash)
 };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages)
@@ -210,18 +211,18 @@ impl_save_message! {
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages"]
 struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
-    swap_id: SqlText<SwapId>,
+    swap_id: Text<SwapId>,
     ethereum_chain_id: U32,
-    bitcoin_network: SqlText<bitcoin::Network>,
-    erc20_amount: SqlText<DecimalU256>,
-    erc20_token_contract: SqlText<EthereumAddress>,
-    bitcoin_amount: SqlText<Satoshis>,
-    hash_function: SqlText<HashFunction>,
-    ethereum_refund_identity: SqlText<EthereumAddress>,
-    bitcoin_redeem_identity: SqlText<bitcoin::PublicKey>,
+    bitcoin_network: Text<bitcoin::Network>,
+    erc20_amount: Text<DecimalU256>,
+    erc20_token_contract: Text<EthereumAddress>,
+    bitcoin_amount: Text<Satoshis>,
+    hash_function: Text<HashFunction>,
+    ethereum_refund_identity: Text<EthereumAddress>,
+    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
-    secret_hash: SqlText<SecretHash>,
+    secret_hash: Text<SecretHash>,
 }
 
 impl_save_message! {
@@ -241,18 +242,18 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
-            swap_id: SqlText(id),
+            swap_id: Text(id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: SqlText(beta_ledger.network),
-            erc20_amount: SqlText(DecimalU256(alpha_asset.quantity.0)),
-            erc20_token_contract: SqlText(EthereumAddress(alpha_asset.token_contract)),
-            bitcoin_amount: SqlText(Satoshis(beta_asset.as_sat())),
-            hash_function: SqlText(hash_function),
-            ethereum_refund_identity: SqlText(EthereumAddress(alpha_ledger_refund_identity)),
-            bitcoin_redeem_identity: SqlText(beta_ledger_redeem_identity.into_inner()),
+            bitcoin_network: Text(beta_ledger.network),
+            erc20_amount: Text(DecimalU256(alpha_asset.quantity.0)),
+            erc20_token_contract: Text(EthereumAddress(alpha_asset.token_contract)),
+            bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
+            hash_function: Text(hash_function),
+            ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_refund_identity)),
+            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-                    secret_hash: SqlText(secret_hash)
+                    secret_hash: Text(secret_hash)
 };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages)
@@ -266,9 +267,9 @@ impl_save_message! {
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_accept_messages"]
 struct InsertableEthereumBitcoinAcceptMessage {
-    swap_id: SqlText<SwapId>,
-    ethereum_redeem_identity: SqlText<EthereumAddress>,
-    bitcoin_refund_identity: SqlText<bitcoin::PublicKey>,
+    swap_id: Text<SwapId>,
+    ethereum_redeem_identity: Text<EthereumAddress>,
+    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
 impl_save_message! {
@@ -280,9 +281,9 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableEthereumBitcoinAcceptMessage {
-            swap_id: SqlText(id),
-            ethereum_redeem_identity: SqlText(EthereumAddress(beta_ledger_refund_identity)),
-            bitcoin_refund_identity: SqlText(alpha_ledger_redeem_identity.into_inner()),
+            swap_id: Text(id),
+            ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
+            bitcoin_refund_identity: Text(alpha_ledger_redeem_identity.into_inner()),
         };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_accept_messages::dsl::rfc003_ethereum_bitcoin_accept_messages)
@@ -296,9 +297,9 @@ impl_save_message! {
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_accept_messages"]
 struct InsertableBitcoinEthereumAcceptMessage {
-    swap_id: SqlText<SwapId>,
-    bitcoin_redeem_identity: SqlText<bitcoin::PublicKey>,
-    ethereum_refund_identity: SqlText<EthereumAddress>,
+    swap_id: Text<SwapId>,
+    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    ethereum_refund_identity: Text<EthereumAddress>,
 }
 
 impl_save_message! {
@@ -310,9 +311,9 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableBitcoinEthereumAcceptMessage {
-            swap_id: SqlText(id),
-            bitcoin_redeem_identity: SqlText(beta_ledger_refund_identity.into_inner()),
-            ethereum_refund_identity: SqlText(EthereumAddress(alpha_ledger_redeem_identity)),
+            swap_id: Text(id),
+            bitcoin_redeem_identity: Text(beta_ledger_refund_identity.into_inner()),
+            ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_redeem_identity)),
         };
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_accept_messages::dsl::rfc003_bitcoin_ethereum_accept_messages)
@@ -326,7 +327,7 @@ impl_save_message! {
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_decline_messages"]
 struct InsertableDeclineMessage {
-    swap_id: SqlText<SwapId>,
+    swap_id: Text<SwapId>,
     reason: Option<String>,
 }
 
@@ -337,7 +338,7 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableDeclineMessage {
-            swap_id: SqlText(id),
+            swap_id: Text(id),
             reason: None,
         };
 
