@@ -8,7 +8,7 @@ use crate::swap_protocols::{
         Ledger, LedgerState,
     },
 };
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
 where
@@ -33,7 +33,7 @@ where
         let (request, response) = match &self.swap_communication {
             SwapCommunication::Proposed { .. } => {
                 return vec![
-                    Action::Accept(Accept::new(Arc::clone(&self.secret_source))),
+                    Action::Accept(Accept::new()),
                     Action::Decline(Decline::new()),
                 ];
             }

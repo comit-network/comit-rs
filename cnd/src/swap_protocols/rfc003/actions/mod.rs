@@ -6,7 +6,7 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret},
 };
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
 #[derive(Debug, Clone, PartialEq, strum_macros::EnumDiscriminants)]
@@ -55,16 +55,12 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
-    #[derivative(Debug = "ignore")]
-    secret_source: Arc<dyn SecretSource>,
     phantom_data: PhantomData<(AL, BL)>,
 }
 
 impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
-    #[allow(clippy::type_complexity)]
-    pub fn new(secret_source: Arc<dyn SecretSource>) -> Self {
+    pub fn new() -> Self {
         Self {
-            secret_source,
             phantom_data: PhantomData,
         }
     }
