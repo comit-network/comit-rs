@@ -13,7 +13,7 @@ regex = "1.3"
 serde = { version = "1", features = ["derive"] }
 strum = "0.16"
 strum_macros = "0.16"
-tiny-keccak = "1.5"
+tiny-keccak = "2.0"
 
 # These versions need to be "in sync".
 # web3 0.8 gives us primitive-types 0.3.0
