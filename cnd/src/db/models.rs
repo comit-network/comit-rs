@@ -2,39 +2,38 @@ use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
     serialize::{self, Output, ToSql},
-    sql_types::{Integer, Text},
+    sql_types::{BigInt, Text},
 };
 use ethereum_support::{FromDecimalStr, U256};
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr, string::ToString};
 
-// Sqlite only supports signed integers, hence we need to wrap this to make it
-// type-safe to fetch it from the DB
+// Custom diesel new type for enforcing storage of a u32
 #[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Integer"]
-pub struct ChainId(pub u32);
+#[sql_type = "BigInt"]
+pub struct U32(pub u32);
 
-impl<DB> ToSql<Integer, DB> for ChainId
+impl<DB> ToSql<BigInt, DB> for U32
 where
     DB: Backend,
-    i32: ToSql<Integer, DB>,
+    i64: ToSql<BigInt, DB>,
 {
     fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        let number = i32::try_from(self.0)?;
+        let number = i64::try_from(self.0)?;
 
         number.to_sql(out)
     }
 }
 
-impl<DB> FromSql<Integer, DB> for ChainId
+impl<DB> FromSql<BigInt, DB> for U32
 where
     DB: Backend,
-    i32: FromSql<Integer, DB>,
+    i64: FromSql<BigInt, DB>,
 {
     fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let number = i32::from_sql(bytes)?;
+        let number = i64::from_sql(bytes)?;
         let id = u32::try_from(number)?;
 
-        Ok(ChainId(id))
+        Ok(U32(id))
     }
 }
 
@@ -129,7 +128,7 @@ where
 mod database_serialization_format_stability_tests {
 
     use super::*;
-    use crate::swap_protocols::{HashFunction, SwapId};
+    use crate::swap_protocols::{rfc003::SecretHash, HashFunction, SwapId};
 
     #[test]
     fn swap_id() {
@@ -169,6 +168,11 @@ mod database_serialization_format_stability_tests {
     #[test]
     fn ethereum_address() {
         test::<EthereumAddress>("68917b35bacf71dbadf37628b3b7f290f6d88877");
+    }
+
+    #[test]
+    fn secrethash() {
+        test::<SecretHash>("68917b35bacf71dbadf37628b3b7f290f6d88877d7b2269008d893ae7bd4f9ee");
     }
 
     fn test<T: fmt::Display + FromStr>(stored_value: &str)
