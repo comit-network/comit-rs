@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        models::{ChainId, EthereumAddress, Satoshis, SqlText},
+        models::{ChainId, DecimalU256, EthereumAddress, Satoshis, SqlText},
         schema::{self, *},
         Error, Sqlite,
     },
@@ -11,7 +11,6 @@ use crate::{
     },
 };
 use diesel::RunQueryDsl;
-use ethereum_support::U256;
 
 pub trait SaveMessage<M> {
     fn save_message(&self, message: M) -> Result<(), Error>;
@@ -51,7 +50,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     bitcoin_network: SqlText<bitcoin::Network>,
     ethereum_chain_id: ChainId,
     bitcoin_amount: SqlText<Satoshis>,
-    ether_amount: SqlText<U256>,
+    ether_amount: SqlText<DecimalU256>,
     hash_function: SqlText<HashFunction>,
     bitcoin_refund_identity: SqlText<bitcoin::PublicKey>,
     ethereum_redeem_identity: SqlText<EthereumAddress>,
@@ -67,7 +66,7 @@ impl_save_message! {
             bitcoin_network: SqlText(message.alpha_ledger.network),
             ethereum_chain_id: ChainId(message.beta_ledger.chain_id.into()),
             bitcoin_amount: SqlText(Satoshis(message.alpha_asset.as_sat())),
-            ether_amount: SqlText(message.beta_asset.wei()),
+            ether_amount: SqlText(DecimalU256(message.beta_asset.wei())),
             hash_function: SqlText(message.hash_function),
             bitcoin_refund_identity: SqlText(message.alpha_ledger_refund_identity.into_inner()),
             ethereum_redeem_identity: SqlText(EthereumAddress(message.beta_ledger_redeem_identity)),
@@ -85,7 +84,7 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     bitcoin_network: SqlText<bitcoin::Network>,
     ethereum_chain_id: ChainId,
     bitcoin_amount: SqlText<Satoshis>,
-    erc20_amount: SqlText<U256>,
+    erc20_amount: SqlText<DecimalU256>,
     erc20_token_contract: SqlText<EthereumAddress>,
     hash_function: SqlText<HashFunction>,
     bitcoin_refund_identity: SqlText<bitcoin::PublicKey>,
@@ -102,7 +101,7 @@ impl_save_message! {
             bitcoin_network: SqlText(message.alpha_ledger.network),
             ethereum_chain_id: ChainId(message.beta_ledger.chain_id.into()),
             bitcoin_amount: SqlText(Satoshis(message.alpha_asset.as_sat())),
-            erc20_amount: SqlText(message.beta_asset.quantity.0),
+            erc20_amount: SqlText(DecimalU256(message.beta_asset.quantity.0)),
             erc20_token_contract: SqlText(EthereumAddress(message.beta_asset.token_contract)),
             hash_function: SqlText(message.hash_function),
             bitcoin_refund_identity: SqlText(message.alpha_ledger_refund_identity.into_inner()),
@@ -120,7 +119,7 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     swap_id: SqlText<SwapId>,
     ethereum_chain_id: ChainId,
     bitcoin_network: SqlText<bitcoin::Network>,
-    ether_amount: SqlText<U256>,
+    ether_amount: SqlText<DecimalU256>,
     bitcoin_amount: SqlText<Satoshis>,
     hash_function: SqlText<HashFunction>,
     ethereum_refund_identity: SqlText<EthereumAddress>,
@@ -136,7 +135,7 @@ impl_save_message! {
             swap_id: SqlText(message.id),
             ethereum_chain_id: ChainId(message.alpha_ledger.chain_id.into()),
             bitcoin_network: SqlText(message.beta_ledger.network),
-            ether_amount: SqlText(message.alpha_asset.wei()),
+            ether_amount: SqlText(DecimalU256(message.alpha_asset.wei())),
             bitcoin_amount: SqlText(Satoshis(message.beta_asset.as_sat())),
             hash_function: SqlText(message.hash_function),
             ethereum_refund_identity: SqlText(EthereumAddress(message.alpha_ledger_refund_identity)),
@@ -154,7 +153,7 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     swap_id: SqlText<SwapId>,
     ethereum_chain_id: ChainId,
     bitcoin_network: SqlText<bitcoin::Network>,
-    erc20_amount: SqlText<U256>,
+    erc20_amount: SqlText<DecimalU256>,
     erc20_token_contract: SqlText<EthereumAddress>,
     bitcoin_amount: SqlText<Satoshis>,
     hash_function: SqlText<HashFunction>,
@@ -171,7 +170,7 @@ impl_save_message! {
             swap_id: SqlText(message.id),
             ethereum_chain_id: ChainId(message.alpha_ledger.chain_id.into()),
             bitcoin_network: SqlText(message.beta_ledger.network),
-            erc20_amount: SqlText(message.alpha_asset.quantity.0),
+            erc20_amount: SqlText(DecimalU256(message.alpha_asset.quantity.0)),
             erc20_token_contract: SqlText(EthereumAddress(message.alpha_asset.token_contract)),
             bitcoin_amount: SqlText(Satoshis(message.beta_asset.as_sat())),
             hash_function: SqlText(message.hash_function),

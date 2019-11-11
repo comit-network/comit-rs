@@ -3,10 +3,10 @@ use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
     serialize::{self, Output, ToSql},
-    sql_types::{Binary, Integer, Text},
+    sql_types::{Integer, Text},
     Insertable, Queryable, *,
 };
-use ethereum_support::U256;
+use ethereum_support::{FromDecimalStr, U256};
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr, string::ToString};
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
@@ -128,33 +128,25 @@ where
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
 pub struct Satoshis(pub u64);
 
-// Sqlite doesn't support very large numbers, hence we are storing wei as binary
-// data
-#[derive(Debug, Clone, Copy, PartialEq, FromSqlRow, AsExpression)]
-#[sql_type = "Binary"]
-pub struct Wei(pub U256);
+/// The `FromStr` implementation of U256 expects hex but we want to store
+/// decimal numbers in the database to aid human-readability.
+///
+/// This type wraps U256 to provide `FromStr` and `Display` implementations that
+/// use decimal numbers.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct DecimalU256(pub U256);
 
-impl<DB> ToSql<Binary, DB> for Wei
-where
-    DB: Backend,
-    Vec<u8>: ToSql<Binary, DB>,
-{
-    fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        let bytes: [u8; 32] = self.0.into();
+impl FromStr for DecimalU256 {
+    type Err = <ethereum_support::U256 as FromDecimalStr>::Err;
 
-        bytes.to_vec().to_sql(out)
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        U256::from_decimal_str(s).map(DecimalU256)
     }
 }
 
-impl<DB> FromSql<Binary, DB> for Wei
-where
-    DB: Backend,
-    Vec<u8>: FromSql<Binary, DB>,
-{
-    fn from_sql(bytes: Option<&DB::RawValue>) -> deserialize::Result<Self> {
-        let vec = Vec::<u8>::from_sql(bytes)?;
-
-        Ok(Wei(U256::from(vec.as_slice())))
+impl fmt::Display for DecimalU256 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
@@ -258,6 +250,11 @@ mod database_serialization_format_stability_tests {
         test::<bitcoin::Network>("bitcoin");
         test::<bitcoin::Network>("testnet");
         test::<bitcoin::Network>("regtest");
+    }
+
+    #[test]
+    fn decimal_u256() {
+        test::<DecimalU256>("1000000000000000");
     }
 
     #[test]
