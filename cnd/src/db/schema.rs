@@ -1,16 +1,4 @@
 table! {
-    swaps {
-        id -> Integer,
-        swap_id -> Text,
-        alpha_ledger -> Text,
-        beta_ledger -> Text,
-        alpha_asset -> Text,
-        beta_asset -> Text,
-        role -> Text,
-    }
-}
-
-table! {
    rfc003_bitcoin_ethereum_bitcoin_ether_request_messages {
        id -> Integer,
        swap_id -> Text,

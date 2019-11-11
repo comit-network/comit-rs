@@ -1,98 +1,11 @@
-use crate::{db::schema::swaps, swap_protocols::SwapId};
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
     serialize::{self, Output, ToSql},
     sql_types::{Integer, Text},
-    Insertable, Queryable, *,
 };
 use ethereum_support::{FromDecimalStr, U256};
 use std::{convert::TryFrom, fmt, ops::Deref, str::FromStr, string::ToString};
-
-#[derive(Queryable, Debug, Clone, PartialEq)]
-pub struct Swap {
-    id: i32,
-    pub swap_id: SqlText<SwapId>,
-    pub alpha_ledger: SqlText<LedgerKind>,
-    pub beta_ledger: SqlText<LedgerKind>,
-    pub alpha_asset: SqlText<AssetKind>,
-    pub beta_asset: SqlText<AssetKind>,
-    pub role: SqlText<Role>,
-}
-
-#[derive(Insertable, Debug, Copy, Clone)]
-#[table_name = "swaps"]
-pub struct InsertableSwap {
-    pub swap_id: SqlText<SwapId>,
-    pub alpha_ledger: SqlText<LedgerKind>,
-    pub beta_ledger: SqlText<LedgerKind>,
-    pub alpha_asset: SqlText<AssetKind>,
-    pub beta_asset: SqlText<AssetKind>,
-    pub role: SqlText<Role>,
-}
-
-impl InsertableSwap {
-    pub fn new(
-        swap_id: SwapId,
-        alpha_ledger: LedgerKind,
-        beta_ledger: LedgerKind,
-        alpha_asset: AssetKind,
-        beta_asset: AssetKind,
-        role: Role,
-    ) -> Self {
-        Self {
-            swap_id: SqlText(swap_id),
-            alpha_ledger: SqlText(alpha_ledger),
-            beta_ledger: SqlText(beta_ledger),
-            alpha_asset: SqlText(alpha_asset),
-            beta_asset: SqlText(beta_asset),
-            role: SqlText(role),
-        }
-    }
-}
-
-#[derive(
-    strum_macros::EnumString,
-    strum_macros::Display,
-    strum_macros::EnumIter,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-)]
-pub enum Role {
-    Alice,
-    Bob,
-}
-
-#[derive(
-    strum_macros::EnumString,
-    strum_macros::Display,
-    strum_macros::EnumIter,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-)]
-pub enum LedgerKind {
-    Bitcoin,
-    Ethereum,
-}
-
-#[derive(
-    strum_macros::EnumString,
-    strum_macros::Display,
-    strum_macros::EnumIter,
-    Debug,
-    Clone,
-    Copy,
-    PartialEq,
-)]
-pub enum AssetKind {
-    Bitcoin,
-    Ether,
-    Erc20,
-}
 
 // Sqlite only supports signed integers, hence we need to wrap this to make it
 // type-safe to fetch it from the DB
@@ -216,33 +129,11 @@ where
 mod database_serialization_format_stability_tests {
 
     use super::*;
-    use crate::swap_protocols::HashFunction;
+    use crate::swap_protocols::{HashFunction, SwapId};
 
     #[test]
     fn swap_id() {
         test::<SwapId>("7f3a105d-ecf2-4cc6-b35c-b4351ac28a34")
-    }
-
-    #[test]
-    fn ledger_kind() {
-        test::<LedgerKind>("Bitcoin");
-        test::<LedgerKind>("Ethereum");
-        assert_num_variants::<LedgerKind>(2)
-    }
-
-    #[test]
-    fn asset_kind() {
-        test::<AssetKind>("Bitcoin");
-        test::<AssetKind>("Ether");
-        test::<AssetKind>("Erc20");
-        assert_num_variants::<AssetKind>(3)
-    }
-
-    #[test]
-    fn role() {
-        test::<Role>("Alice");
-        test::<Role>("Bob");
-        assert_num_variants::<Role>(2)
     }
 
     #[test]
