@@ -68,11 +68,10 @@ pub fn handle_action<
                                         &SwapSeed::swap_seed(&dependencies, id),
                                     );
 
-                                    //                                    let _ =
-                                    // SaveMessage::save_message(
-                                    //                                        &dependencies,
-                                    //                                        accept_body.clone(),
-                                    //                                    );
+                                    let _ = SaveMessage::save_message(
+                                        &dependencies,
+                                        accept_message.clone(),
+                                    );
 
                                     let response = rfc003_accept_response(accept_message.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
@@ -113,11 +112,10 @@ pub fn handle_action<
                                         reason: to_swap_decline_reason(body.reason),
                                     };
 
-                                    //                                    let _ =
-                                    // SaveMessage::save_message(
-                                    //                                        &dependencies,
-                                    //                                        decline_body.clone(),
-                                    //                                    );
+                                    let _ = SaveMessage::save_message(
+                                        &dependencies,
+                                        decline_message.clone(),
+                                    );
 
                                     let response = rfc003_decline_response(decline_message.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;

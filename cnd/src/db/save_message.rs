@@ -6,7 +6,7 @@ use crate::{
     },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
-        rfc003::messages::{AcceptResponseBody, DeclineResponseBody, Request},
+        rfc003::{Accept, Decline, Request},
         HashFunction, SwapId,
     },
 };
@@ -22,9 +22,9 @@ pub trait SaveRfc003Messages:
     + SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>>
     + SaveMessage<Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>>
     + SaveMessage<Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>>
-    + SaveMessage<AcceptResponseBody<Bitcoin, Ethereum>>
-    + SaveMessage<AcceptResponseBody<Ethereum, Bitcoin>>
-    + SaveMessage<DeclineResponseBody>
+    + SaveMessage<Accept<Bitcoin, Ethereum>>
+    + SaveMessage<Accept<Ethereum, Bitcoin>>
+    + SaveMessage<Decline>
 {
 }
 
@@ -193,19 +193,18 @@ struct InsertableEthereumBitcoinAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(_connection: SqliteConnection, _message: AcceptResponseBody<Bitcoin, Ethereum>) -> Result<(), Error> {
-            unimplemented!("accept message doesn't contain the swap id");
-//        use schema::rfc003_ethereum_bitcoin_accept_messages::dsl::*;
-//
-//        diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages)
-//            .values(&InsertableEthereumBitcoinAcceptMessage {
-//            swap_id: SqlText(message.id),
-//            ethereum_redeem_identity: SqlText(EthereumAddress(message.alpha_ledger_redeem_identity)),
-//            bitcoin_refund_identity: SqlText(message.beta_ledger_refund_identity.into_inner()),
-//        })
-//            .execute(&connection)
-//            .map(|_| ())
-//            .map_err(Error::Diesel)
+    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> Result<(), Error> {
+        use schema::rfc003_ethereum_bitcoin_accept_messages::dsl::*;
+
+        diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages)
+            .values(&InsertableEthereumBitcoinAcceptMessage {
+            swap_id: SqlText(message.id),
+            ethereum_redeem_identity: SqlText(EthereumAddress(message.beta_ledger_refund_identity)),
+            bitcoin_refund_identity: SqlText(message.alpha_ledger_redeem_identity.into_inner()),
+        })
+            .execute(&connection)
+            .map(|_| ())
+            .map_err(Error::Diesel)
     }
 }
 
@@ -218,19 +217,18 @@ struct InsertableBitcoinEthereumAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(_connection: SqliteConnection, _message: AcceptResponseBody<Ethereum, Bitcoin>) -> Result<(), Error> {
-        unimplemented!("accept message doesn't contain the swap id");
-//        use schema::rfc003_bitcoin_ethereum_accept_messages::dsl::*;
-//
-//        diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages)
-//            .values(&InsertableBitcoinEthereumAcceptMessage {
-//            swap_id: SqlText(message.id),
-//            bitcoin_redeem_identity: SqlText(message.alpha_ledger_refund_identity.into_inner()),
-//            ethereum_refund_identity: SqlText(EthereumAddress(message.beta_ledger_redeem_identity)),
-//        })
-//            .execute(&connection)
-//            .map(|_| ())
-//            .map_err(Error::Diesel)
+    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> Result<(), Error> {
+        use schema::rfc003_bitcoin_ethereum_accept_messages::dsl::*;
+
+        diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages)
+            .values(&InsertableBitcoinEthereumAcceptMessage {
+            swap_id: SqlText(message.id),
+            bitcoin_redeem_identity: SqlText(message.beta_ledger_refund_identity.into_inner()),
+            ethereum_refund_identity: SqlText(EthereumAddress(message.alpha_ledger_redeem_identity)),
+        })
+            .execute(&connection)
+            .map(|_| ())
+            .map_err(Error::Diesel)
     }
 }
 
@@ -242,18 +240,17 @@ struct InsertableDeclineMessage {
 }
 
 impl_save_message! {
-    fn save_message(_connection: SqliteConnection, _message: DeclineResponseBody) -> Result<(), Error> {
-        unimplemented!("decline message doesn't contain the swap id");
-//        use schema::rfc003_decline_messages::dsl::*;
-//
-//        diesel::insert_into(rfc003_decline_messages)
-//            .values(&InsertableDeclineMessage {
-//            swap_id: SqlText(message.id),
-//            reason: None, // ups, I don't care
-//        })
-//            .execute(&connection)
-//            .map(|_| ())
-//            .map_err(Error::Diesel)
+    fn save_message(connection: SqliteConnection, message: Decline) -> Result<(), Error> {
+        use schema::rfc003_decline_messages::dsl::*;
+
+        diesel::insert_into(rfc003_decline_messages)
+            .values(&InsertableDeclineMessage {
+            swap_id: SqlText(message.id),
+            reason: None, // oops, I don't care
+        })
+            .execute(&connection)
+            .map(|_| ())
+            .map_err(Error::Diesel)
     }
 }
 
