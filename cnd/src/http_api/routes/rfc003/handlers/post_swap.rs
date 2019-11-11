@@ -131,9 +131,9 @@ where
 
             match response {
                 Ok(accept) => {
-                    let state = State::accepted(swap_request.clone(), accept.clone(), seed);
+                    let state = State::accepted(swap_request.clone(), accept, seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    SaveMessage::save_message(&dependencies, accept.clone())
+                    SaveMessage::save_message(&dependencies, accept)
                         .expect("failed to save message to db");
 
                     let receiver = Spawn::spawn(&dependencies, swap_request, accept);

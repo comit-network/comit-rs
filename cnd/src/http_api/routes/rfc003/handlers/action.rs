@@ -68,22 +68,16 @@ pub fn handle_action<
                                         &SwapSeed::swap_seed(&dependencies, id),
                                     );
 
-                                    SaveMessage::save_message(
-                                        &dependencies,
-                                        accept_message.clone(),
-                                    )
-                                    .map_err(problem::database)?;
+                                    SaveMessage::save_message(&dependencies, accept_message)
+                                        .map_err(problem::database)?;
 
-                                    let response = rfc003_accept_response(accept_message.clone());
+                                    let response = rfc003_accept_response(accept_message);
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let swap_request = state.request();
                                     let seed = dependencies.swap_seed(id);
-                                    let state = State::accepted(
-                                        swap_request.clone(),
-                                        accept_message.clone(),
-                                        seed,
-                                    );
+                                    let state =
+                                        State::accepted(swap_request.clone(), accept_message, seed);
                                     StateStore::insert(&dependencies, id, state);
 
                                     let receiver =
