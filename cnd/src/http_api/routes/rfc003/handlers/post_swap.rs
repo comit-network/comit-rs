@@ -1,14 +1,15 @@
 use crate::{
+    db::{SaveMessage, SaveRfc003Messages},
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
-        metadata_store::{self, Metadata, MetadataStore},
+        metadata_store::{Metadata, MetadataStore},
         rfc003::{
             self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
-            state_store::StateStore, Ledger, SecretSource, Spawn,
+            state_store::StateStore, Accept, Decline, Ledger, Request, SecretSource, Spawn,
         },
         HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
     },
@@ -23,7 +24,9 @@ use futures_core::{
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
+pub fn handle_post_swap<
+    D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<SwapCreated, HttpApiProblem> {
@@ -74,10 +77,17 @@ fn initiate_request<D, AL, BL, AA, BA, I>(
     dependencies: D,
     body: SwapRequestBody<AL, BL, AA, BA, I>,
     id: SwapId,
-) -> Result<(), metadata_store::Error>
+) -> Result<(), HttpApiProblem>
 where
     LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    D: MetadataStore + StateStore + SendRequest + Spawn + SwapSeed,
+    D: MetadataStore
+        + StateStore
+        + SendRequest
+        + Spawn
+        + SwapSeed
+        + SaveMessage<Request<AL, BL, AA, BA>>
+        + SaveMessage<Accept<AL, BL>>
+        + SaveMessage<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
@@ -88,6 +98,8 @@ where
     let counterparty = bob_dial_info.peer_id.clone();
     let seed = dependencies.swap_seed(id);
     let swap_request = body.to_request(id, &seed);
+
+    SaveMessage::save_message(&dependencies, swap_request.clone()).map_err(problem::database)?;
 
     let metadata = Metadata::new(
         id,
@@ -121,6 +133,8 @@ where
                 Ok(accept) => {
                     let state = State::accepted(swap_request.clone(), accept.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
+                    SaveMessage::save_message(&dependencies, accept.clone())
+                        .expect("failed to save message to db");
 
                     let receiver = Spawn::spawn(&dependencies, swap_request, accept);
                     tokio::spawn(receiver.for_each(move |update| {
@@ -130,8 +144,10 @@ where
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {:?}", decline);
-                    let state = State::declined(swap_request.clone(), decline, seed);
+                    let state = State::declined(swap_request.clone(), decline.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
+                    SaveMessage::save_message(&dependencies, decline.clone())
+                        .expect("failed to save message to db");
                 }
             };
             Ok(())

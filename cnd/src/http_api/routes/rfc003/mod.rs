@@ -28,7 +28,9 @@ pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationStat
 use crate::db::SaveRfc003Messages;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
+pub fn post_swap<
+    D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {

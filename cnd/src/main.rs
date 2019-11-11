@@ -69,12 +69,15 @@ fn main() -> Result<(), failure::Error> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
+    let database = Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone())).unwrap();
+
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
         ledger_events.clone(),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         seed,
+        database.clone(),
     )?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
@@ -91,7 +94,7 @@ fn main() -> Result<(), failure::Error> {
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
-        db: Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone())).unwrap(),
+        db: database,
     };
 
     spawn_warp_instance(
