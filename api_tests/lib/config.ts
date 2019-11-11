@@ -28,7 +28,12 @@ export class E2ETestActorConfig {
     public readonly comitPort: number;
     public readonly seed: Uint8Array;
 
-    constructor(httpApiPort: number, comitPort: number, seed: string) {
+    constructor(
+        httpApiPort: number,
+        comitPort: number,
+        seed: string,
+        private readonly name: string
+    ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
         this.seed = new Uint8Array(Buffer.from(seed, "hex"));
@@ -37,7 +42,7 @@ export class E2ETestActorConfig {
     public generateCndConfigFile(
         btsieveConfig: BtsieveConfigFile
     ): CndConfigFile {
-        const dbPath = tempfile(".sqlite");
+        const dbPath = tempfile(`.${this.name}.sqlite`);
         return {
             http_api: {
                 address: "0.0.0.0",
@@ -57,17 +62,20 @@ export class E2ETestActorConfig {
 export const ALICE_CONFIG = new E2ETestActorConfig(
     8000,
     9938,
-    "f87165e305b0f7c4824d3806434f9d0909610a25641ab8773cf92a48c9d77670"
+    "f87165e305b0f7c4824d3806434f9d0909610a25641ab8773cf92a48c9d77670",
+    "alice"
 );
 export const BOB_CONFIG = new E2ETestActorConfig(
     8010,
     9939,
-    "1a1707bb54e5fb4deddd19f07adcb4f1e022ca7879e3c8348da8d4fa496ae8e2"
+    "1a1707bb54e5fb4deddd19f07adcb4f1e022ca7879e3c8348da8d4fa496ae8e2",
+    "bob"
 );
 export const CHARLIE_CONFIG = new E2ETestActorConfig(
     8020,
     8021,
-    "6b49ec1df23d124a16d6a12bd34476579e6e80cdcb97a5438cb76ac5c423c937"
+    "6b49ec1df23d124a16d6a12bd34476579e6e80cdcb97a5438cb76ac5c423c937",
+    "charlie"
 );
 
 export function createBtsieveConfig(
