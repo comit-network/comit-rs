@@ -26,17 +26,15 @@ pub use self::{
     create_ledger_events::CreateLedgerEvents,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
-    messages::*,
     save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
     spawn::*,
 };
 
-use self::messages::{AcceptResponseBody, DeclineResponseBody};
-
+pub use self::messages::{Accept, Decline, Request};
 /// Swap request response as received from peer node acting as Bob.
-pub type Response<AL, BL> = Result<AcceptResponseBody<AL, BL>, DeclineResponseBody>;
+pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Error {

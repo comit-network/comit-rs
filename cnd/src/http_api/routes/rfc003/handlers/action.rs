@@ -18,7 +18,7 @@ use crate::{
             self,
             actions::{Action, ActionKind},
             bob::State,
-            messages::Decision,
+            messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
             Spawn,
         },
@@ -56,34 +56,38 @@ pub fn handle_action<
                 .select_action(action_kind, method)
                 .and_then({
                     |action| match action {
-                        Action::Accept(action) => serde_json::from_value::<AcceptBody>(body)
+                        Action::Accept(_) => serde_json::from_value::<AcceptBody>(body)
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
                                     let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
-                                    let accept_body = action.accept(body);
+                                    let accept_message = body.into_accept_message(
+                                        id,
+                                        &SwapSeed::swap_seed(&dependencies, id),
+                                    );
+
                                     //                                    let _ =
                                     // SaveMessage::save_message(
                                     //                                        &dependencies,
                                     //                                        accept_body.clone(),
                                     //                                    );
 
-                                    let response = rfc003_accept_response(accept_body.clone());
+                                    let response = rfc003_accept_response(accept_message.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let swap_request = state.request();
                                     let seed = dependencies.swap_seed(id);
                                     let state = State::accepted(
                                         swap_request.clone(),
-                                        accept_body.clone(),
+                                        accept_message.clone(),
                                         seed,
                                     );
                                     StateStore::insert(&dependencies, id, state);
 
                                     let receiver =
-                                        Spawn::spawn(&dependencies, swap_request, accept_body);
+                                        Spawn::spawn(&dependencies, swap_request, accept_message);
 
                                     tokio::spawn(receiver.for_each(move |update| {
                                         StateStore::update::<State<AL, BL, AA, BA>>(
@@ -97,29 +101,32 @@ pub fn handle_action<
                                     Ok(ActionResponseBody::None)
                                 }
                             }),
-                        Action::Decline(action) => serde_json::from_value::<DeclineBody>(body)
+                        Action::Decline(_) => serde_json::from_value::<DeclineBody>(body)
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
                                     let channel = Network::pending_request_for(&dependencies, id)
                                         .ok_or_else(problem::missing_channel)?;
 
-                                    let decline_body =
-                                        action.decline(to_swap_decline_reason(body.reason));
+                                    let decline_message = rfc003::Decline {
+                                        id,
+                                        reason: to_swap_decline_reason(body.reason),
+                                    };
+
                                     //                                    let _ =
                                     // SaveMessage::save_message(
                                     //                                        &dependencies,
                                     //                                        decline_body.clone(),
                                     //                                    );
 
-                                    let response = rfc003_decline_response(decline_body.clone());
+                                    let response = rfc003_decline_response(decline_message.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let swap_request = state.request();
                                     let seed = dependencies.swap_seed(id);
                                     let state = State::declined(
                                         swap_request.clone(),
-                                        decline_body.clone(),
+                                        decline_message.clone(),
                                         seed,
                                     );
                                     StateStore::insert(&dependencies, id, state);
@@ -163,7 +170,7 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
 }
 
 fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
-    body: rfc003::messages::AcceptResponseBody<AL, BL>,
+    message: rfc003::messages::Accept<AL, BL>,
 ) -> Response {
     Response::empty()
         .with_header(
@@ -173,12 +180,15 @@ fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
                 .expect("Decision should not fail to serialize"),
         )
         .with_body(
-            serde_json::to_value(body)
-                .expect("body should always serialize into serde_json::Value"),
+            serde_json::to_value(rfc003::messages::AcceptResponseBody::<AL, BL> {
+                beta_ledger_refund_identity: message.beta_ledger_refund_identity,
+                alpha_ledger_redeem_identity: message.alpha_ledger_redeem_identity,
+            })
+            .expect("body should always serialize into serde_json::Value"),
         )
 }
 
-fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Response {
+fn rfc003_decline_response(message: rfc003::messages::Decline) -> Response {
     Response::empty()
         .with_header(
             "decision",
@@ -187,8 +197,10 @@ fn rfc003_decline_response(body: rfc003::messages::DeclineResponseBody) -> Respo
                 .expect("Decision shouldn't fail to serialize"),
         )
         .with_body(
-            serde_json::to_value(body)
-                .expect("decline body should always serialize into serde_json::Value"),
+            serde_json::to_value(rfc003::messages::DeclineResponseBody {
+                reason: message.reason,
+            })
+            .expect("decline body should always serialize into serde_json::Value"),
         )
 }
 

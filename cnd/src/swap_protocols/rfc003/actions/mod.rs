@@ -4,14 +4,7 @@ pub mod ether;
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{
-        messages::{
-            AcceptResponseBody, DeclineResponseBody, IntoAcceptResponseBody, SwapDeclineReason,
-        },
-        secret_source::SecretSource,
-        state_machine::HtlcParams,
-        Ledger, Secret,
-    },
+    rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret},
 };
 use std::{marker::PhantomData, sync::Arc};
 
@@ -75,13 +68,6 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
             phantom_data: PhantomData,
         }
     }
-
-    pub fn accept<P: IntoAcceptResponseBody<AL, BL>>(
-        &self,
-        partial_response: P,
-    ) -> AcceptResponseBody<AL, BL> {
-        partial_response.into_accept_response_body(self.secret_source.as_ref())
-    }
 }
 
 #[derive(Clone, derivative::Derivative, Default)]
@@ -95,10 +81,6 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
         Self {
             phantom_data: PhantomData,
         }
-    }
-
-    pub fn decline(&self, reason: Option<SwapDeclineReason>) -> DeclineResponseBody {
-        DeclineResponseBody { reason }
     }
 }
 

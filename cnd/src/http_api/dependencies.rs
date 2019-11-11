@@ -8,7 +8,6 @@ use crate::{
         rfc003::{
             self,
             create_ledger_events::CreateLedgerEvents,
-            messages::AcceptResponseBody,
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger, Spawn,
@@ -130,7 +129,7 @@ where
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
-        accept: AcceptResponseBody<AL, BL>,
+        accept: rfc003::Accept<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,

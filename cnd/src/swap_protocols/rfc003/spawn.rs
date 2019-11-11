@@ -1,9 +1,8 @@
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        messages::AcceptResponseBody,
         state_machine::{self, SwapStates},
-        CreateLedgerEvents, Ledger, Request,
+        Accept, CreateLedgerEvents, Ledger, Request,
     },
     LedgerConnectors,
 };
@@ -15,7 +14,7 @@ pub trait Spawn: Send + Sync + 'static {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: Request<AL, BL, AA, BA>,
-        accept: AcceptResponseBody<AL, BL>,
+        accept: Accept<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
@@ -26,7 +25,7 @@ impl Spawn for LedgerConnectors {
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         request: Request<AL, BL, AA, BA>,
-        accept: AcceptResponseBody<AL, BL>,
+        accept: Accept<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
