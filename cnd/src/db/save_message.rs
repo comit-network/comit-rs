@@ -3,7 +3,7 @@ use crate::{
         custom_sql_types::{Text, U32},
         new_types::{DecimalU256, EthereumAddress, Satoshis},
         schema::{self, *},
-        Error, Sqlite,
+        Sqlite,
     },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
@@ -14,7 +14,7 @@ use crate::{
 use diesel::RunQueryDsl;
 
 pub trait SaveMessage<M> {
-    fn save_message(&self, message: M) -> Result<(), Error>;
+    fn save_message(&self, message: M) -> anyhow::Result<()>;
 }
 
 pub trait SaveRfc003Messages:
@@ -61,7 +61,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>) -> anyhow::Result<()> {
         let Request {
             id,
             alpha_ledger,
@@ -92,9 +92,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -116,7 +116,7 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>) -> anyhow::Result<()> {
         let Request {
             id,
             alpha_ledger,
@@ -148,9 +148,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -171,7 +171,7 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
             id,
             alpha_ledger,
@@ -202,9 +202,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -226,7 +226,7 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
             id,
             alpha_ledger,
@@ -258,9 +258,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -273,7 +273,7 @@ struct InsertableEthereumBitcoinAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
         let Accept {
             id,
             alpha_ledger_redeem_identity,
@@ -288,9 +288,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_accept_messages::dsl::rfc003_ethereum_bitcoin_accept_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -303,7 +303,7 @@ struct InsertableBitcoinEthereumAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
         let Accept {
             id,
             alpha_ledger_redeem_identity,
@@ -318,9 +318,9 @@ impl_save_message! {
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_accept_messages::dsl::rfc003_bitcoin_ethereum_accept_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 
@@ -332,7 +332,7 @@ struct InsertableDeclineMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Decline) -> Result<(), Error> {
+    fn save_message(connection: SqliteConnection, message: Decline) -> anyhow::Result<()> {
         let Decline {
             id, reason: _reason // we don't map reason to a DB type because will be gone soon (hopefully)
         } = message;
@@ -342,11 +342,11 @@ impl_save_message! {
             reason: None,
         };
 
-        diesel::insert_into(schema::rfc003_decline_messages::dsl::rfc003_decline_messages)
+        let _ = diesel::insert_into(schema::rfc003_decline_messages::dsl::rfc003_decline_messages)
             .values(&insertable)
-            .execute(&connection)
-            .map(|_| ())
-            .map_err(Error::Diesel)
+            .execute(&connection)?;
+
+        Ok(())
     }
 }
 

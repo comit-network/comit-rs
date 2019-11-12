@@ -1,5 +1,5 @@
 use crate::{
-    db::{self, SaveMessage, SaveRfc003Messages, Sqlite},
+    db::{SaveMessage, SaveRfc003Messages, Sqlite},
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
@@ -155,7 +155,7 @@ where
     S: Send + Sync + 'static,
     Sqlite: SaveMessage<M>,
 {
-    fn save_message(&self, message: M) -> Result<(), db::Error> {
+    fn save_message(&self, message: M) -> anyhow::Result<()> {
         self.db.save_message(message)
     }
 }

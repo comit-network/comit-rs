@@ -30,7 +30,7 @@ use structopt::StructOpt;
 mod cli;
 mod logging;
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
     let config_file = options
@@ -69,7 +69,7 @@ fn main() -> Result<(), failure::Error> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
-    let database = Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone())).unwrap();
+    let database = Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone()))?;
 
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(

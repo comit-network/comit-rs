@@ -99,7 +99,8 @@ where
     let seed = dependencies.swap_seed(id);
     let swap_request = body.to_request(id, &seed);
 
-    SaveMessage::save_message(&dependencies, swap_request.clone()).map_err(problem::database)?;
+    SaveMessage::save_message(&dependencies, swap_request.clone())
+        .map_err(problem::internal_error)?;
 
     let metadata = Metadata::new(
         id,

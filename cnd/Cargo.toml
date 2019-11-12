@@ -6,6 +6,7 @@ edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
 
 [dependencies]
+anyhow = "1"
 binary_macros = "0.6"
 bitcoin = "0.19.1"
 blockchain_contracts = "0.1"
@@ -21,7 +22,6 @@ directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
 ethereum_support = { path = "../internal/ethereum_support" }
-failure = "0.1"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
 futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"], package = "futures-preview" }

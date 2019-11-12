@@ -69,7 +69,7 @@ pub fn handle_action<
                                     );
 
                                     SaveMessage::save_message(&dependencies, accept_message)
-                                        .map_err(problem::database)?;
+                                        .map_err(problem::internal_error)?;
 
                                     let response = rfc003_accept_response(accept_message);
                                     channel.send(response).map_err(problem::send_over_channel)?;
@@ -111,7 +111,7 @@ pub fn handle_action<
                                         &dependencies,
                                         decline_message.clone(),
                                     )
-                                    .map_err(problem::database)?;
+                                    .map_err(problem::internal_error)?;
 
                                     let response = rfc003_decline_response(decline_message.clone());
                                     channel.send(response).map_err(problem::send_over_channel)?;

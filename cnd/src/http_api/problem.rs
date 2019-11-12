@@ -15,8 +15,8 @@ pub struct MissingQueryParameter {
     pub description: &'static str,
 }
 
-pub fn database(e: crate::db::Error) -> HttpApiProblem {
-    log::error!("database failure {:?}", e);
+pub fn internal_error(e: anyhow::Error) -> HttpApiProblem {
+    log::error!("internal error occured {:?}", e);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 

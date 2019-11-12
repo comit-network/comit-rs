@@ -1,7 +1,4 @@
-use crate::{
-    db,
-    swap_protocols::{asset, ledger, swap_id::SwapId, Role},
-};
+use crate::swap_protocols::{asset, ledger, swap_id::SwapId, Role};
 use libp2p::{self, PeerId};
 use std::{collections::HashMap, sync::Mutex};
 use strum_macros::{Display, EnumString};
@@ -80,13 +77,6 @@ impl Metadata {
 #[derive(Debug)]
 pub enum Error {
     DuplicateKey,
-    Sqlite(db::Error),
-}
-
-impl From<db::Error> for Error {
-    fn from(err: db::Error) -> Error {
-        Error::Sqlite(err)
-    }
 }
 
 pub trait MetadataStore: Send + Sync + 'static {
