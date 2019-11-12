@@ -2,6 +2,8 @@ mod custom_sql_types;
 mod new_types;
 mod save_message;
 mod schema;
+#[cfg(test)]
+mod serialization_format_stability_tests;
 embed_migrations!("./migrations");
 
 pub use self::save_message::{SaveMessage, SaveRfc003Messages};
@@ -86,91 +88,5 @@ mod tests {
         let db = Sqlite::new(Some(temp_file_path));
 
         assert_that(&db).is_ok();
-    }
-}
-
-/// A suite of tests that ensures the serialization format of the types we use
-/// to interact with the database. Changing the format needs to be a conscious
-/// activity that involves migration scripts to migrate old data. These tests
-/// make sure we don't change the format accidentally!
-#[cfg(test)]
-mod database_serialization_format_stability_tests {
-    use crate::{
-        db::new_types::{DecimalU256, EthereumAddress, Satoshis},
-        swap_protocols::{rfc003::SecretHash, HashFunction, SwapId},
-    };
-    use std::{fmt, str::FromStr};
-
-    #[test]
-    fn swap_id() {
-        test::<SwapId>("7f3a105d-ecf2-4cc6-b35c-b4351ac28a34")
-    }
-
-    #[test]
-    fn bitcoin_network() {
-        test::<bitcoin::Network>("bitcoin");
-        test::<bitcoin::Network>("testnet");
-        test::<bitcoin::Network>("regtest");
-    }
-
-    #[test]
-    fn decimal_u256() {
-        test::<DecimalU256>("1000000000000000");
-    }
-
-    #[test]
-    fn bitcoin_amount() {
-        test::<Satoshis>("100000000000");
-    }
-
-    #[test]
-    fn hash_function() {
-        test::<HashFunction>("SHA-256");
-        assert_num_variants::<HashFunction>(1)
-    }
-
-    #[test]
-    fn bitcoin_public_key() {
-        test::<bitcoin::PublicKey>(
-            "0216867374f539badfd90d7b2269008d893ae7bd4f9ee7c695c967d01d6953c401",
-        );
-    }
-
-    #[test]
-    fn ethereum_address() {
-        test::<EthereumAddress>("68917b35bacf71dbadf37628b3b7f290f6d88877");
-    }
-
-    #[test]
-    fn secrethash() {
-        test::<SecretHash>("68917b35bacf71dbadf37628b3b7f290f6d88877d7b2269008d893ae7bd4f9ee");
-    }
-
-    fn test<T: fmt::Display + FromStr>(stored_value: &str)
-    where
-        <T as FromStr>::Err: fmt::Debug,
-    {
-        // First, we verify that we can create T from the given value.
-        let read = T::from_str(stored_value).unwrap();
-
-        // Next we convert it to a string again.
-        let written = read.to_string();
-
-        // Then if we end up with the same value, our serialization is stable.
-        assert_eq!(written, stored_value)
-    }
-
-    fn assert_num_variants<E>(expected_number_of_variants: usize)
-    where
-        E: strum::IntoEnumIterator,
-        <E as strum::IntoEnumIterator>::Iterator: Iterator,
-    {
-        let number_of_variants = E::iter().count();
-
-        assert_eq!(
-            number_of_variants,
-            expected_number_of_variants,
-            "the number of variants for this enum seem to have changed, please add a serialization format test for the new variant and update the expected variant count"
-        )
     }
 }

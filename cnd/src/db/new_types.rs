@@ -1,6 +1,10 @@
 use ethereum_support::{FromDecimalStr, U256};
 use std::{fmt, str::FromStr};
 
+/// A new type for representing satoshis
+///
+/// Together with the `Text` sql type, this will store the number as a string to
+/// avoid precision loss.
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
 pub struct Satoshis(pub u64);
 
@@ -26,6 +30,10 @@ impl fmt::Display for DecimalU256 {
     }
 }
 
+/// A new type for ethereum addresses.
+///
+/// Together with the `Text` sql type, this will store an ethereum address in
+/// hex encoding.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct EthereumAddress(pub ethereum_support::Address);
 
