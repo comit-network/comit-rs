@@ -143,8 +143,8 @@ impl_save_message! {
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
-                    secret_hash: Text(secret_hash)
-};
+            secret_hash: Text(secret_hash)
+        };
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages)
             .values(&insertable)
@@ -197,8 +197,8 @@ impl_save_message! {
             bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-                    secret_hash: Text(secret_hash)
-};
+            secret_hash: Text(secret_hash)
+        };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages)
             .values(&insertable)
@@ -253,8 +253,8 @@ impl_save_message! {
             bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-                    secret_hash: Text(secret_hash)
-};
+            secret_hash: Text(secret_hash)
+        };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages)
             .values(&insertable)
