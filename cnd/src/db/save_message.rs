@@ -36,7 +36,7 @@ macro_rules! impl_save_message {
     ) => {
         impl SaveMessage<$message> for Sqlite {
             fn save_message(&self, $var: $message) -> $ret {
-                let $conn = self.connect().unwrap();
+                let $conn = self.connect()?;
 
                 $body
             }
