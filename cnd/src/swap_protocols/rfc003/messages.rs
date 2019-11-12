@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 /// does not implement Serialize.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    pub id: SwapId,
+    pub swap_id: SwapId,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
     pub alpha_asset: AA,
@@ -30,7 +30,7 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 /// does not implement Serialize.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
-    pub id: SwapId,
+    pub swap_id: SwapId,
     pub beta_ledger_refund_identity: BL::Identity,
     pub alpha_ledger_redeem_identity: AL::Identity,
 }
@@ -41,7 +41,7 @@ pub struct Accept<AL: Ledger, BL: Ledger> {
 /// does not implement Serialize.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Decline {
-    pub id: SwapId,
+    pub swap_id: SwapId,
     pub reason: Option<SwapDeclineReason>,
 }
 

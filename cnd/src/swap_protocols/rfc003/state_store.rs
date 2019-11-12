@@ -281,7 +281,7 @@ mod tests {
         let ethereum_address: Address = "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap();
 
         let request = Request {
-            id: SwapId::default(),
+            swap_id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: Amount::from_btc(1.0).unwrap(),
@@ -294,7 +294,7 @@ mod tests {
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),
         };
         let accept = Accept {
-            id: SwapId::default(),
+            swap_id: SwapId::default(),
             beta_ledger_refund_identity: ethereum_address,
             alpha_ledger_redeem_identity: bitcoin_pub_key,
         };

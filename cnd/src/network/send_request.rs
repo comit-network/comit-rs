@@ -73,7 +73,7 @@ where
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
-        let id = request.id;
+        let id = request.swap_id;
         let request = build_swap_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
 
@@ -111,7 +111,7 @@ where
                             >(response.body().clone())
                             {
                                 Ok(body) => Ok(Ok(rfc003::Accept {
-                                    id,
+                                    swap_id: id,
                                     beta_ledger_refund_identity: body.beta_ledger_refund_identity,
                                     alpha_ledger_redeem_identity: body.alpha_ledger_redeem_identity,
                                 })),
@@ -124,7 +124,7 @@ where
                                 response.body().clone(),
                             ) {
                                 Ok(body) => Ok(Err(rfc003::Decline {
-                                    id,
+                                    swap_id: id,
                                     reason: body.reason,
                                 })),
                                 Err(_e) => Err(RequestError::InvalidResponse),
@@ -159,7 +159,7 @@ fn build_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Ass
     let protocol = SwapProtocol::Rfc003(request.hash_function);
 
     Ok(frame::OutboundRequest::new("SWAP")
-        .with_header("id", request.id.to_header()?)
+        .with_header("id", request.swap_id.to_header()?)
         .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
         .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
         .with_header("alpha_asset", request.alpha_asset.into().to_header()?)

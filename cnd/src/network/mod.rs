@@ -290,7 +290,7 @@ impl<TSubstream> ComitNode<TSubstream> {
     where
         Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
     {
-        let id = swap_request.id;
+        let id = swap_request.swap_id;
         let seed = self.seed.swap_seed(id);
 
         let metadata = Metadata::new(
@@ -400,7 +400,7 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     body: rfc003::messages::RequestBody<AL, BL>,
 ) -> rfc003::Request<AL, BL, AA, BA> {
     rfc003::Request::<AL, BL, AA, BA> {
-        id,
+        swap_id: id,
         alpha_asset,
         beta_asset,
         alpha_ledger,

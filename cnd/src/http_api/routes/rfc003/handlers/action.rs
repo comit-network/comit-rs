@@ -35,20 +35,21 @@ pub fn handle_action<
     D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
 >(
     method: http::Method,
-    id: SwapId,
+    swap_id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
     dependencies: D,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata = MetadataStore::get(&dependencies, id)?.ok_or_else(problem::swap_not_found)?;
+    let metadata =
+        MetadataStore::get(&dependencies, swap_id)?.ok_or_else(problem::swap_not_found)?;
 
     with_swap_types!(
         &metadata,
         (|| {
-            let state =
-                StateStore::get::<ROLE>(&dependencies, &id)?.ok_or_else(problem::state_store)?;
-            log::trace!("Retrieved state for {}: {:?}", id, state);
+            let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?
+                .ok_or_else(problem::state_store)?;
+            log::trace!("Retrieved state for {}: {:?}", swap_id, state);
 
             state
                 .actions()
@@ -60,12 +61,13 @@ pub fn handle_action<
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&dependencies, id)
-                                        .ok_or_else(problem::missing_channel)?;
+                                    let channel =
+                                        Network::pending_request_for(&dependencies, swap_id)
+                                            .ok_or_else(problem::missing_channel)?;
 
                                     let accept_message = body.into_accept_message(
-                                        id,
-                                        &SwapSeed::swap_seed(&dependencies, id),
+                                        swap_id,
+                                        &SwapSeed::swap_seed(&dependencies, swap_id),
                                     );
 
                                     SaveMessage::save_message(&dependencies, accept_message)
@@ -75,10 +77,10 @@ pub fn handle_action<
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let swap_request = state.request();
-                                    let seed = dependencies.swap_seed(id);
+                                    let seed = dependencies.swap_seed(swap_id);
                                     let state =
                                         State::accepted(swap_request.clone(), accept_message, seed);
-                                    StateStore::insert(&dependencies, id, state);
+                                    StateStore::insert(&dependencies, swap_id, state);
 
                                     let receiver =
                                         Spawn::spawn(&dependencies, swap_request, accept_message);
@@ -86,7 +88,7 @@ pub fn handle_action<
                                     tokio::spawn(receiver.for_each(move |update| {
                                         StateStore::update::<State<AL, BL, AA, BA>>(
                                             &dependencies,
-                                            &id,
+                                            &swap_id,
                                             update,
                                         );
                                         Ok(())
@@ -99,11 +101,12 @@ pub fn handle_action<
                             .map_err(problem::deserialize)
                             .and_then({
                                 |body| {
-                                    let channel = Network::pending_request_for(&dependencies, id)
-                                        .ok_or_else(problem::missing_channel)?;
+                                    let channel =
+                                        Network::pending_request_for(&dependencies, swap_id)
+                                            .ok_or_else(problem::missing_channel)?;
 
                                     let decline_message = rfc003::Decline {
-                                        id,
+                                        swap_id,
                                         reason: to_swap_decline_reason(body.reason),
                                     };
 
@@ -117,13 +120,13 @@ pub fn handle_action<
                                     channel.send(response).map_err(problem::send_over_channel)?;
 
                                     let swap_request = state.request();
-                                    let seed = dependencies.swap_seed(id);
+                                    let seed = dependencies.swap_seed(swap_id);
                                     let state = State::declined(
                                         swap_request.clone(),
                                         decline_message.clone(),
                                         seed,
                                     );
-                                    StateStore::insert(&dependencies, id, state);
+                                    StateStore::insert(&dependencies, swap_id, state);
 
                                     Ok(ActionResponseBody::None)
                                 }

@@ -30,7 +30,7 @@ impl Spawn for LedgerConnectors {
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     {
-        let id = request.id;
+        let id = request.swap_id;
 
         let (sender, receiver) = mpsc::unbounded();
 

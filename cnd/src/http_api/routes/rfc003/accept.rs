@@ -40,7 +40,7 @@ impl IntoAcceptMessage<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
             &secret_source.secp256k1_refund(),
         );
         messages::Accept {
-            id,
+            swap_id: id,
             alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity,
         }
@@ -75,7 +75,7 @@ impl IntoAcceptMessage<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
             &secret_source.secp256k1_redeem(),
         );
         messages::Accept {
-            id,
+            swap_id: id,
             beta_ledger_refund_identity: self.beta_ledger_refund_identity,
             alpha_ledger_redeem_identity,
         }

@@ -63,7 +63,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>) -> anyhow::Result<()> {
         let Request {
-            id,
+            swap_id,
             alpha_ledger,
             alpha_asset,
             beta_ledger,
@@ -77,7 +77,7 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
@@ -118,7 +118,7 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>) -> anyhow::Result<()> {
         let Request {
-            id,
+            swap_id,
             alpha_ledger,
             alpha_asset,
             beta_ledger,
@@ -132,7 +132,7 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
@@ -173,7 +173,7 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
-            id,
+            swap_id,
             alpha_ledger,
             alpha_asset,
             beta_ledger,
@@ -187,7 +187,7 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             bitcoin_network: Text(beta_ledger.network),
             ether_amount: Text(DecimalU256(alpha_asset.wei())),
@@ -228,7 +228,7 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
-            id,
+            swap_id,
             alpha_ledger,
             alpha_asset,
             beta_ledger,
@@ -242,7 +242,7 @@ impl_save_message! {
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             bitcoin_network: Text(beta_ledger.network),
             erc20_amount: Text(DecimalU256(alpha_asset.quantity.0)),
@@ -275,13 +275,13 @@ struct InsertableEthereumBitcoinAcceptMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
         let Accept {
-            id,
+            swap_id,
             alpha_ledger_redeem_identity,
             beta_ledger_refund_identity
         } = message;
 
         let insertable = InsertableEthereumBitcoinAcceptMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
             bitcoin_refund_identity: Text(alpha_ledger_redeem_identity.into_inner()),
         };
@@ -305,13 +305,13 @@ struct InsertableBitcoinEthereumAcceptMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
         let Accept {
-            id,
+            swap_id,
             alpha_ledger_redeem_identity,
             beta_ledger_refund_identity
         } = message;
 
         let insertable = InsertableBitcoinEthereumAcceptMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             bitcoin_redeem_identity: Text(beta_ledger_refund_identity.into_inner()),
             ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_redeem_identity)),
         };
@@ -334,11 +334,11 @@ struct InsertableDeclineMessage {
 impl_save_message! {
     fn save_message(connection: SqliteConnection, message: Decline) -> anyhow::Result<()> {
         let Decline {
-            id, reason: _reason // we don't map reason to a DB type because will be gone soon (hopefully)
+            swap_id, reason: _reason // we don't map reason to a DB type because will be gone soon (hopefully)
         } = message;
 
         let insertable = InsertableDeclineMessage {
-            swap_id: Text(id),
+            swap_id: Text(swap_id),
             reason: None,
         };
 
