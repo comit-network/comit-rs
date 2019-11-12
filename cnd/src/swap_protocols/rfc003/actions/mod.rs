@@ -52,8 +52,7 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
     ) -> Self::RedeemActionOutput;
 }
 
-#[derive(Clone, derivative::Derivative)]
-#[derivative(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
     phantom_data: PhantomData<(AL, BL)>,
 }
@@ -66,8 +65,7 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
     }
 }
 
-#[derive(Clone, derivative::Derivative, Default)]
-#[derivative(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
     phantom_data: PhantomData<(AL, BL)>,
 }
