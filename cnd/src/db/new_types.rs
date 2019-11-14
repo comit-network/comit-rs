@@ -8,6 +8,12 @@ use std::{fmt, str::FromStr};
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
 pub struct Satoshis(pub u64);
 
+impl From<Satoshis> for u64 {
+    fn from(value: Satoshis) -> u64 {
+        value.0
+    }
+}
+
 /// The `FromStr` implementation of U256 expects hex but we want to store
 /// decimal numbers in the database to aid human-readability.
 ///
@@ -15,6 +21,12 @@ pub struct Satoshis(pub u64);
 /// use decimal numbers.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct DecimalU256(pub U256);
+
+impl From<DecimalU256> for U256 {
+    fn from(value: DecimalU256) -> U256 {
+        value.0
+    }
+}
 
 impl FromStr for DecimalU256 {
     type Err = <ethereum_support::U256 as FromDecimalStr>::Err;

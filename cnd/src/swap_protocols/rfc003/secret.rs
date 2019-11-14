@@ -11,6 +11,20 @@ pub enum FromErr {
     FromHex(hex::FromHexError),
 }
 
+impl std::error::Error for FromErr {}
+
+impl fmt::Display for FromErr {
+    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            FromErr::InvalidLength { expected, got } => fmt.write_str(&format!(
+                "Invalid length: expected: {} got: {}",
+                expected, got
+            )),
+            FromErr::FromHex(e) => fmt.write_str(&format!("From hex error: {}", e)),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SecretHash([u8; Self::LENGTH]);
 
