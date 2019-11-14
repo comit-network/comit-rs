@@ -5,24 +5,12 @@ use std::{
     str::FromStr,
 };
 
-#[derive(PartialEq, Debug)]
+#[derive(PartialEq, Debug, thiserror::Error)]
 pub enum FromErr {
+    #[error("invalid length, expected: {expected:?}, got: {got:?}")]
     InvalidLength { expected: usize, got: usize },
-    FromHex(hex::FromHexError),
-}
-
-impl std::error::Error for FromErr {}
-
-impl fmt::Display for FromErr {
-    fn fmt(&self, fmt: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            FromErr::InvalidLength { expected, got } => fmt.write_str(&format!(
-                "Invalid length: expected: {} got: {}",
-                expected, got
-            )),
-            FromErr::FromHex(e) => fmt.write_str(&format!("From hex error: {}", e)),
-        }
-    }
+    #[error("hex: ")]
+    FromHex(#[from] hex::FromHexError),
 }
 
 #[derive(Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -179,12 +167,6 @@ impl Secret {
 impl fmt::LowerHex for Secret {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         f.write_str(hex::encode(&self.0).as_str())
-    }
-}
-
-impl From<hex::FromHexError> for FromErr {
-    fn from(err: hex::FromHexError) -> Self {
-        FromErr::FromHex(err)
     }
 }
 

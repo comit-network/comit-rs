@@ -1,35 +1,14 @@
 use crate::Frame;
 use bytes::BytesMut;
-use std::{error::Error as StdError, fmt, io};
+use std::io;
 use tokio_codec::{Decoder, Encoder};
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum CodecError {
-    Json(serde_json::Error),
-    IO(io::Error),
-}
-
-impl StdError for CodecError {}
-
-impl fmt::Display for CodecError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            CodecError::Json(e) => write!(f, "failed to decode JSON {:?}", e),
-            CodecError::IO(e) => write!(f, "IO error {:?}", e),
-        }
-    }
-}
-
-impl From<io::Error> for CodecError {
-    fn from(e: io::Error) -> Self {
-        CodecError::IO(e)
-    }
-}
-
-impl From<serde_json::Error> for CodecError {
-    fn from(e: serde_json::Error) -> Self {
-        CodecError::Json(e)
-    }
+    #[error("serde JSON: ")]
+    Json(#[from] serde_json::Error),
+    #[error("io: ")]
+    IO(#[from] io::Error),
 }
 
 #[derive(Debug)]

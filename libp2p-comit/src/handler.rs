@@ -38,27 +38,29 @@ pub struct ComitHandler<TSubstream> {
     known_headers: HashMap<String, HashSet<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    MalformedJson(frame::CodecError),
+    #[error("malformed frame: ")]
+    MalformedJson(#[from] frame::CodecError),
+    #[error("dropped response: {0}")]
     DroppedResponseSender(Canceled),
+    #[error("unknown mandatory header: {0:?}")]
     UnknownMandatoryHeader(UnknownMandatoryHeaders),
+    #[error("unknown request type: {0}")]
     UnknownRequestType(String),
+    #[error("unknown frame type")]
     UnknownFrameType,
+    #[error("unexpected frame")]
     UnexpectedFrame(Frame),
-    MalformedFrame(serde_json::Error),
+    #[error("malformed frame")]
+    MalformedFrame(#[from] serde_json::Error),
+    #[error("unexpected EOF")]
     UnexpectedEOF,
 }
 
 impl From<Canceled> for Error {
     fn from(e: Canceled) -> Self {
         Error::DroppedResponseSender(e)
-    }
-}
-
-impl From<frame::CodecError> for Error {
-    fn from(e: frame::CodecError) -> Self {
-        Error::MalformedJson(e)
     }
 }
 
