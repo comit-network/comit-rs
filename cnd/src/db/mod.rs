@@ -8,18 +8,21 @@ mod serialization_format_stability_tests;
 embed_migrations!("./migrations");
 
 pub use self::save_message::{SaveMessage, SaveRfc003Messages};
-use anyhow::Context;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use std::{
-    fs::File,
-    path::{Path, PathBuf},
-};
+use std::path::Path;
 
 /// This module provides persistent storage by way of Sqlite.
 
 #[derive(Debug, Clone)]
 pub struct Sqlite {
-    db: PathBuf,
+    uri: String,
+}
+
+/// Defines the storage location of our SQLite database
+#[derive(Debug)]
+pub enum Location<'p> {
+    OnDisk(&'p Path),
+    InMemory,
 }
 
 impl Sqlite {
@@ -28,66 +31,115 @@ impl Sqlite {
     /// When this returns an Sqlite database exists at 'db', a
     /// successful connection to the database has been made, and
     /// the database migrations have been run.
-    pub fn new(db: Option<PathBuf>) -> anyhow::Result<Sqlite> {
-        let file = db
-            .or_else(default_db_path)
-            .context("failed to determine default path for database ")?;
-        let db = Sqlite { db: file };
+    pub fn new(location: Location<'_>) -> anyhow::Result<Self> {
+        let db = match location {
+            Location::OnDisk(path) => {
+                if path == Path::new(":memory:") {
+                    anyhow::bail!("use Location::InMemory if you want an in-memory database!")
+                }
 
-        db.create_database_if_needed()?;
+                ensure_folder_tree_exists(path)?;
+
+                Sqlite {
+                    uri: format!("file:{}", path.display()),
+                }
+            }
+            Location::InMemory => Sqlite {
+                uri: ":memory:".to_owned(),
+            },
+        };
+
         let connection = db.connect()?;
         embedded_migrations::run(&connection)?;
 
         Ok(db)
     }
 
-    fn create_database_if_needed(&self) -> anyhow::Result<()> {
-        let db = &self.db;
-
-        if db.exists() {
-            log::info!("Found Sqlite database: {}", db.display());
-        } else {
-            log::info!("Creating Sqlite database: {}", db.display());
-
-            if let Some(parent) = db.parent() {
-                std::fs::create_dir_all(parent)?;
-            }
-
-            File::create(db)?;
-        }
-
-        Ok(())
-    }
-
     fn connect(&self) -> anyhow::Result<SqliteConnection> {
-        let db = &self.db;
-        let database_url = db
-            .to_str()
-            .with_context(|| format!("{} is not a valid path", db.display()))?;
-        let connection = SqliteConnection::establish(&database_url)?;
-        Ok(connection)
+        Ok(SqliteConnection::establish(&self.uri)?)
     }
 }
 
-pub fn default_db_path() -> Option<PathBuf> {
-    crate::data_dir().map(|dir| Path::join(&dir, "cnd.sqlite"))
+fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
+    if let Some(parent) = path.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+
+    Ok(())
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use spectral::prelude::*;
+    use std::path::PathBuf;
 
-    #[test]
-    fn can_create_a_new_temp_db() {
+    fn temp_db() -> PathBuf {
         let temp_file = tempfile::Builder::new()
             .suffix(".sqlite")
             .tempfile()
             .unwrap();
-        let temp_file_path = temp_file.into_temp_path().to_path_buf();
 
-        let db = Sqlite::new(Some(temp_file_path));
+        temp_file.into_temp_path().to_path_buf()
+    }
+
+    #[test]
+    fn can_create_a_new_temp_db() {
+        let path = temp_db();
+
+        let db = Sqlite::new(Location::OnDisk(&path));
 
         assert_that(&db).is_ok();
+    }
+
+    #[test]
+    fn given_no_database_exists_calling_new_creates_it() {
+        let path = temp_db();
+        // validate assumptions: the db does not exist yet
+        assert_that(&path.as_path()).does_not_exist();
+
+        let db = Sqlite::new(Location::OnDisk(&path));
+
+        assert_that(&db).is_ok();
+        assert_that(&path.as_path()).exists();
+    }
+
+    #[test]
+    fn given_db_in_non_existing_directory_tree_calling_new_creates_it() {
+        let path = tempfile::tempdir()
+            .unwrap()
+            .into_path()
+            .join("some_folder")
+            .join("i_dont_exist")
+            .join("database.sqlite")
+            .to_path_buf();
+
+        // validate assumptions:
+        // 1. the db does not exist yet
+        // 2. the parent folder does not exist yet
+        assert_that(&path.as_path()).does_not_exist();
+        assert_that(&path.as_path().parent())
+            .is_some()
+            .does_not_exist();
+
+        let db = Sqlite::new(Location::OnDisk(&path));
+
+        assert_that(&db).is_ok();
+        assert_that(&path.as_path()).exists();
+    }
+
+    #[test]
+    fn given_special_memory_path_does_not_create_a_file() {
+        let result = Sqlite::new(Location::InMemory);
+
+        assert_that(&result).is_ok();
+        assert_that(&Path::new(":memory:")).does_not_exist();
+    }
+
+    #[test]
+    fn given_memory_as_a_path_fails() {
+        let result = Sqlite::new(Location::OnDisk(Path::new(":memory:")));
+
+        assert_that(&result).is_err();
     }
 }
