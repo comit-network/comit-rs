@@ -1,7 +1,9 @@
 use super::file::{Database, File, HttpSocket, Network};
 use crate::config::file::{Bitcoin, Ethereum};
+use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
+use std::path::Path;
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -13,7 +15,7 @@ use reqwest::Url;
 pub struct Settings {
     pub network: Network,
     pub http_api: HttpSocket,
-    pub database: Option<Database>,
+    pub database: Database,
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
@@ -28,7 +30,7 @@ pub struct Logging {
 }
 
 impl Settings {
-    pub fn from_config_file_and_defaults(config_file: File) -> Self {
+    pub fn from_config_file_and_defaults(config_file: File) -> anyhow::Result<Self> {
         let File {
             network,
             http_api,
@@ -38,10 +40,17 @@ impl Settings {
             ethereum,
         } = config_file;
 
-        Self {
+        Ok(Self {
             network,
             http_api,
-            database,
+            database: {
+                let default_database_path = crate::data_dir()
+                    .map(|dir| Path::join(&dir, "cnd.sqlite"))
+                    .context("unable to determine default database path")?;
+                database.unwrap_or_else(|| Database {
+                    sqlite: default_database_path,
+                })
+            },
             logging: {
                 let Logging {
                     level: default_level,
@@ -63,7 +72,7 @@ impl Settings {
                 node_url: Url::parse("http://localhost:8545")
                     .expect("static string to be a valid url"),
             }),
-        }
+        })
     }
 }
 
@@ -87,6 +96,7 @@ mod tests {
         let settings = Settings::from_config_file_and_defaults(config_file);
 
         assert_that(&settings)
+            .is_ok()
             .map(|settings| &settings.logging.structured)
             .is_false()
     }
@@ -104,6 +114,7 @@ mod tests {
         let settings = Settings::from_config_file_and_defaults(config_file);
 
         assert_that(&settings)
+            .is_ok()
             .map(|settings| &settings.logging.structured)
             .is_true()
     }
@@ -118,6 +129,7 @@ mod tests {
         let settings = Settings::from_config_file_and_defaults(config_file);
 
         assert_that(&settings)
+            .is_ok()
             .map(|settings| &settings.logging)
             .is_equal_to(Logging {
                 level: LevelFilter::Debug,
