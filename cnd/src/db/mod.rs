@@ -1,4 +1,5 @@
 mod custom_sql_types;
+mod load_swaps;
 mod new_types;
 mod save_message;
 mod schema;
