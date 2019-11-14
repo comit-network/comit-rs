@@ -1,0 +1,9 @@
+-- This file should undo anything in `up.sql`
+
+DROP TABLE rfc003_bitcoin_ethereum_bitcoin_ether_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_ether_bitcoin_request_messages;
+DROP TABLE rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages;
+DROP TABLE rfc003_ethereum_bitcoin_accept_messages;
+DROP TABLE rfc003_bitcoin_ethereum_accept_messages;
+DROP TABLE rfc003_decline_messages;

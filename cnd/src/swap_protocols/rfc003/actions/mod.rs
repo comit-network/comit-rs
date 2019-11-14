@@ -4,16 +4,9 @@ pub mod ether;
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{
-        messages::{
-            AcceptResponseBody, DeclineResponseBody, IntoAcceptResponseBody, SwapDeclineReason,
-        },
-        secret_source::SecretSource,
-        state_machine::HtlcParams,
-        Ledger, Secret,
-    },
+    rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret},
 };
-use std::{marker::PhantomData, sync::Arc};
+use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
 #[derive(Debug, Clone, PartialEq, strum_macros::EnumDiscriminants)]
@@ -59,33 +52,20 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
     ) -> Self::RedeemActionOutput;
 }
 
-#[derive(Clone, derivative::Derivative)]
-#[derivative(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Accept<AL: Ledger, BL: Ledger> {
-    #[derivative(Debug = "ignore")]
-    secret_source: Arc<dyn SecretSource>,
     phantom_data: PhantomData<(AL, BL)>,
 }
 
 impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
-    #[allow(clippy::type_complexity)]
-    pub fn new(secret_source: Arc<dyn SecretSource>) -> Self {
+    pub fn new() -> Self {
         Self {
-            secret_source,
             phantom_data: PhantomData,
         }
     }
-
-    pub fn accept<P: IntoAcceptResponseBody<AL, BL>>(
-        &self,
-        partial_response: P,
-    ) -> AcceptResponseBody<AL, BL> {
-        partial_response.into_accept_response_body(self.secret_source.as_ref())
-    }
 }
 
-#[derive(Clone, derivative::Derivative, Default)]
-#[derivative(Debug)]
+#[derive(Clone, Debug, Default)]
 pub struct Decline<AL: Ledger, BL: Ledger> {
     phantom_data: PhantomData<(AL, BL)>,
 }
@@ -95,10 +75,6 @@ impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
         Self {
             phantom_data: PhantomData,
         }
-    }
-
-    pub fn decline(&self, reason: Option<SwapDeclineReason>) -> DeclineResponseBody {
-        DeclineResponseBody { reason }
     }
 }
 

@@ -1,28 +1,16 @@
 table! {
-    swaps {
-        id -> Integer,
-        swap_id -> Text,
-        alpha_ledger -> Text,
-        beta_ledger -> Text,
-        alpha_asset -> Text,
-        beta_asset -> Text,
-        role -> Text,
-    }
-}
-
-table! {
    rfc003_bitcoin_ethereum_bitcoin_ether_request_messages {
        id -> Integer,
        swap_id -> Text,
        bitcoin_network -> Text,
-       ethereum_chain_id -> Integer,
+       ethereum_chain_id -> BigInt,
        bitcoin_amount -> Text,
        ether_amount -> Text,
        hash_function -> Text,
        bitcoin_refund_identity -> Text,
        ethereum_redeem_identity -> Text,
-       bitcoin_expiry -> Integer,
-       ethereum_expiry -> Integer,
+       bitcoin_expiry -> BigInt,
+       ethereum_expiry -> BigInt,
        secret_hash -> Text,
    }
 }
@@ -31,15 +19,15 @@ table! {
    rfc003_ethereum_bitcoin_ether_bitcoin_request_messages {
        id -> Integer,
        swap_id -> Text,
-       ethereum_chain_id -> Integer,
+       ethereum_chain_id -> BigInt,
        bitcoin_network -> Text,
        ether_amount -> Text,
        bitcoin_amount -> Text,
        hash_function -> Text,
        ethereum_refund_identity -> Text,
        bitcoin_redeem_identity -> Text,
-       ethereum_expiry -> Integer,
-       bitcoin_expiry -> Integer,
+       ethereum_expiry -> BigInt,
+       bitcoin_expiry -> BigInt,
        secret_hash -> Text,
    }
 }
@@ -49,15 +37,15 @@ table! {
        id -> Integer,
        swap_id -> Text,
        bitcoin_network -> Text,
-       ethereum_chain_id -> Integer,
+       ethereum_chain_id -> BigInt,
        bitcoin_amount -> Text,
        erc20_amount -> Text,
        erc20_token_contract -> Text,
        hash_function -> Text,
        bitcoin_refund_identity -> Text,
        ethereum_redeem_identity -> Text,
-       bitcoin_expiry -> Integer,
-       ethereum_expiry -> Integer,
+       bitcoin_expiry -> BigInt,
+       ethereum_expiry -> BigInt,
        secret_hash -> Text,
    }
 }
@@ -66,7 +54,7 @@ table! {
    rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages {
        id -> Integer,
        swap_id -> Text,
-       ethereum_chain_id -> Integer,
+       ethereum_chain_id -> BigInt,
        bitcoin_network -> Text,
        erc20_amount -> Text,
        erc20_token_contract -> Text,
@@ -74,8 +62,8 @@ table! {
        hash_function -> Text,
        ethereum_refund_identity -> Text,
        bitcoin_redeem_identity -> Text,
-       ethereum_expiry -> Integer,
-       bitcoin_expiry -> Integer,
+       ethereum_expiry -> BigInt,
+       bitcoin_expiry -> BigInt,
        secret_hash -> Text,
    }
 }

@@ -10,7 +10,7 @@ use crate::swap_protocols::{
     },
 };
 use ethereum_support::Erc20Token;
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, Erc20Token>
 where
@@ -32,7 +32,7 @@ where
         let (request, response) = match &self.swap_communication {
             SwapCommunication::Proposed { .. } => {
                 return vec![
-                    Action::Accept(Accept::new(Arc::clone(&self.secret_source))),
+                    Action::Accept(Accept::new()),
                     Action::Decline(Decline::new()),
                 ];
             }
@@ -101,7 +101,7 @@ where
         let (request, response) = match &self.swap_communication {
             SwapCommunication::Proposed { .. } => {
                 return vec![
-                    Action::Accept(Accept::new(Arc::clone(&self.secret_source))),
+                    Action::Accept(Accept::new()),
                     Action::Decline(Decline::new()),
                 ];
             }

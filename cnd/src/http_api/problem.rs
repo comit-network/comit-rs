@@ -15,6 +15,11 @@ pub struct MissingQueryParameter {
     pub description: &'static str,
 }
 
+pub fn internal_error(e: anyhow::Error) -> HttpApiProblem {
+    log::error!("internal error occured {:?}", e);
+    HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+}
+
 pub fn missing_channel() -> HttpApiProblem {
     log::error!("Channel for swap was not found in hash map");
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)

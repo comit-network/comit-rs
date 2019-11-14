@@ -4,9 +4,10 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             actions::Accept,
-            messages::{AcceptResponseBody, IntoAcceptResponseBody},
+            messages::{self, IntoAcceptMessage},
             Ledger, SecretSource,
         },
+        SwapId,
     },
 };
 use serde::Deserialize;
@@ -28,16 +29,18 @@ impl ListRequiredFields for Accept<Ethereum, Bitcoin> {
     }
 }
 
-impl IntoAcceptResponseBody<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
-    fn into_accept_response_body(
+impl IntoAcceptMessage<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
+    fn into_accept_message(
         self,
+        id: SwapId,
         secret_source: &dyn SecretSource,
-    ) -> AcceptResponseBody<Ethereum, Bitcoin> {
+    ) -> messages::Accept<Ethereum, Bitcoin> {
         let beta_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.secp256k1_refund(),
         );
-        AcceptResponseBody {
+        messages::Accept {
+            swap_id: id,
             alpha_ledger_redeem_identity: self.alpha_ledger_redeem_identity,
             beta_ledger_refund_identity,
         }
@@ -61,16 +64,18 @@ impl ListRequiredFields for Accept<Bitcoin, Ethereum> {
     }
 }
 
-impl IntoAcceptResponseBody<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
-    fn into_accept_response_body(
+impl IntoAcceptMessage<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
+    fn into_accept_message(
         self,
+        id: SwapId,
         secret_source: &dyn SecretSource,
-    ) -> AcceptResponseBody<Bitcoin, Ethereum> {
+    ) -> messages::Accept<Bitcoin, Ethereum> {
         let alpha_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.secp256k1_redeem(),
         );
-        AcceptResponseBody {
+        messages::Accept {
+            swap_id: id,
             beta_ledger_refund_identity: self.beta_ledger_refund_identity,
             alpha_ledger_redeem_identity,
         }

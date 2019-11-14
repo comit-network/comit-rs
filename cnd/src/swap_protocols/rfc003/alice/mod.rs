@@ -5,11 +5,7 @@ pub use self::actions::*;
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        self,
-        ledger::Ledger,
-        ledger_state::LedgerState,
-        messages::{AcceptResponseBody, DeclineResponseBody, Request},
-        secret_source::SecretSource,
+        self, ledger::Ledger, ledger_state::LedgerState, messages, secret_source::SecretSource,
         ActorState, Secret,
     },
 };
@@ -30,20 +26,23 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     Proposed {
-        request: Request<AL, BL, AA, BA>,
+        request: messages::Request<AL, BL, AA, BA>,
     },
     Accepted {
-        request: Request<AL, BL, AA, BA>,
-        response: AcceptResponseBody<AL, BL>,
+        request: messages::Request<AL, BL, AA, BA>,
+        response: messages::Accept<AL, BL>,
     },
     Declined {
-        request: Request<AL, BL, AA, BA>,
-        response: DeclineResponseBody,
+        request: messages::Request<AL, BL, AA, BA>,
+        response: messages::Decline,
     },
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
-    pub fn proposed(request: Request<AL, BL, AA, BA>, secret_source: impl SecretSource) -> Self {
+    pub fn proposed(
+        request: messages::Request<AL, BL, AA, BA>,
+        secret_source: impl SecretSource,
+    ) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
             alpha_ledger_state: LedgerState::NotDeployed,
@@ -54,8 +53,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     }
 
     pub fn accepted(
-        request: Request<AL, BL, AA, BA>,
-        response: AcceptResponseBody<AL, BL>,
+        request: messages::Request<AL, BL, AA, BA>,
+        response: messages::Accept<AL, BL>,
         secret_source: impl SecretSource,
     ) -> Self {
         Self {
@@ -68,8 +67,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     }
 
     pub fn declined(
-        request: Request<AL, BL, AA, BA>,
-        response: DeclineResponseBody,
+        request: messages::Request<AL, BL, AA, BA>,
+        response: messages::Decline,
         secret_source: impl SecretSource,
     ) -> Self {
         Self {
@@ -81,7 +80,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
         }
     }
 
-    pub fn request(&self) -> Request<AL, BL, AA, BA> {
+    pub fn request(&self) -> messages::Request<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request }

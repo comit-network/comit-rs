@@ -3,6 +3,7 @@ pub mod send_request;
 pub use send_request::*;
 
 use crate::{
+    db::{SaveMessage, Sqlite},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::Seed,
     swap_protocols::{
@@ -53,6 +54,8 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     pub seed: Seed,
     #[behaviour(ignore)]
+    pub database: Sqlite,
+    #[behaviour(ignore)]
     response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
 
@@ -77,6 +80,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         metadata_store: Arc<InMemoryMetadataStore>,
         state_store: Arc<InMemoryStateStore>,
         seed: Seed,
+        database: Sqlite,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -96,6 +100,7 @@ impl<TSubstream> ComitNode<TSubstream> {
             metadata_store,
             state_store,
             seed,
+            database,
             response_channels: HashMap::new(),
         })
     }
@@ -281,8 +286,11 @@ impl<TSubstream> ComitNode<TSubstream> {
         &self,
         counterparty: PeerId,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<(), metadata_store::Error> {
-        let id = swap_request.id;
+    ) -> Result<(), metadata_store::Error>
+    where
+        Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
+    {
+        let id = swap_request.swap_id;
         let seed = self.seed.swap_seed(id);
 
         let metadata = Metadata::new(
@@ -299,6 +307,9 @@ impl<TSubstream> ComitNode<TSubstream> {
         let state_store = Arc::clone(&self.state_store);
         let state = bob::State::proposed(swap_request.clone(), seed);
         state_store.insert(id, state);
+        self.database
+            .save_message(swap_request)
+            .expect("failed to save message in db");
 
         Ok(())
     }
@@ -386,10 +397,10 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::RequestBody<AL, BL>,
+    body: rfc003::messages::RequestBody<AL, BL>,
 ) -> rfc003::Request<AL, BL, AA, BA> {
     rfc003::Request::<AL, BL, AA, BA> {
-        id,
+        swap_id: id,
         alpha_asset,
         beta_asset,
         alpha_ledger,

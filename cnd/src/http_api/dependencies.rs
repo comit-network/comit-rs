@@ -1,4 +1,5 @@
 use crate::{
+    db::{SaveMessage, SaveRfc003Messages, Sqlite},
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
@@ -7,7 +8,6 @@ use crate::{
         rfc003::{
             self,
             create_ledger_events::CreateLedgerEvents,
-            messages::AcceptResponseBody,
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger, Spawn,
@@ -36,6 +36,7 @@ pub struct Dependencies<S> {
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: Seed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
+    pub db: Sqlite,
 }
 
 impl<S> Clone for Dependencies<S> {
@@ -46,6 +47,7 @@ impl<S> Clone for Dependencies<S> {
             state_store: Arc::clone(&self.state_store),
             seed: self.seed,
             swarm: Arc::clone(&self.swarm),
+            db: self.db.clone(),
         }
     }
 }
@@ -127,7 +129,7 @@ where
     fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
         &self,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
-        accept: AcceptResponseBody<AL, BL>,
+        accept: rfc003::Accept<AL, BL>,
     ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
     where
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
@@ -143,5 +145,17 @@ where
 {
     fn swap_seed(&self, id: SwapId) -> Seed {
         self.seed.swap_seed(id)
+    }
+}
+
+impl<S> SaveRfc003Messages for Dependencies<S> where S: Send + Sync + 'static {}
+
+impl<S, M> SaveMessage<M> for Dependencies<S>
+where
+    S: Send + Sync + 'static,
+    Sqlite: SaveMessage<M>,
+{
+    fn save_message(&self, message: M) -> anyhow::Result<()> {
+        self.db.save_message(message)
     }
 }

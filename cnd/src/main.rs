@@ -3,6 +3,7 @@
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
+    db::{SaveRfc003Messages, Sqlite},
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -29,7 +30,7 @@ use structopt::StructOpt;
 mod cli;
 mod logging;
 
-fn main() -> Result<(), failure::Error> {
+fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
     let config_file = options
@@ -68,12 +69,15 @@ fn main() -> Result<(), failure::Error> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
+    let database = Sqlite::new(settings.database.as_ref().map(|d| d.sqlite.clone()))?;
+
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
         ledger_events.clone(),
         Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         seed,
+        database.clone(),
     )?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
@@ -90,6 +94,7 @@ fn main() -> Result<(), failure::Error> {
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
+        db: database,
     };
 
     spawn_warp_instance(
@@ -119,7 +124,14 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 }
 
 fn spawn_warp_instance<
-    D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed,
+    D: Clone
+        + MetadataStore
+        + StateStore
+        + Network
+        + SendRequest
+        + Spawn
+        + SwapSeed
+        + SaveRfc003Messages,
 >(
     settings: &Settings,
     peer_id: PeerId,

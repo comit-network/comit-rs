@@ -25,9 +25,12 @@ use hyper::header;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
+use crate::db::SaveRfc003Messages;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed>(
+pub fn post_swap<
+    D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> Result<impl Reply, Rejection> {
@@ -52,7 +55,7 @@ pub fn get_swap<D: MetadataStore + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed>(
+pub fn action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

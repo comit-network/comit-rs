@@ -3,12 +3,8 @@ pub mod actions;
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        self,
-        ledger::Ledger,
-        ledger_state::LedgerState,
-        messages::{AcceptResponseBody, DeclineResponseBody, Request},
-        secret_source::SecretSource,
-        ActorState, Secret,
+        self, ledger::Ledger, ledger_state::LedgerState, messages::Request,
+        secret_source::SecretSource, Accept, ActorState, Decline, Secret,
     },
 };
 use derivative::Derivative;
@@ -39,11 +35,11 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
     Accepted {
         request: Request<AL, BL, AA, BA>,
-        response: AcceptResponseBody<AL, BL>,
+        response: Accept<AL, BL>,
     },
     Declined {
         request: Request<AL, BL, AA, BA>,
-        response: DeclineResponseBody,
+        response: Decline,
     },
 }
 
@@ -61,7 +57,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
-        response: AcceptResponseBody<AL, BL>,
+        response: Accept<AL, BL>,
         secret_source: impl SecretSource,
     ) -> Self {
         Self {
@@ -76,7 +72,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn declined(
         request: Request<AL, BL, AA, BA>,
-        response: DeclineResponseBody,
+        response: Decline,
         secret_source: impl SecretSource,
     ) -> Self {
         Self {

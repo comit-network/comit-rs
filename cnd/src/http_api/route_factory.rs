@@ -1,4 +1,5 @@
 use crate::{
+    db::SaveRfc003Messages,
     http_api,
     network::{Network, SendRequest},
     seed::SwapSeed,
@@ -21,7 +22,16 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<D: Clone + MetadataStore + StateStore + Network + SendRequest + Spawn + SwapSeed>(
+pub fn create<
+    D: Clone
+        + MetadataStore
+        + StateStore
+        + Network
+        + SendRequest
+        + Spawn
+        + SwapSeed
+        + SaveRfc003Messages,
+>(
     peer_id: PeerId,
     dependencies: D,
 ) -> BoxedFilter<(impl Reply,)> {

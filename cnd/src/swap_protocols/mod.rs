@@ -14,8 +14,21 @@ pub use self::{
 };
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, Hash, Copy)]
+#[derive(
+    Debug,
+    Serialize,
+    Deserialize,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Copy,
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+)]
 pub enum HashFunction {
+    #[strum(serialize = "SHA-256")]
     #[serde(rename = "SHA-256")]
     Sha256,
 }

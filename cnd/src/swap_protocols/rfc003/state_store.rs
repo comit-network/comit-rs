@@ -261,11 +261,7 @@ mod tests {
         seed::Seed,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
-            rfc003::{
-                alice,
-                messages::{AcceptResponseBody, Request},
-                Secret,
-            },
+            rfc003::{alice, messages::Request, Accept, Secret},
             HashFunction, Timestamp,
         },
     };
@@ -285,7 +281,7 @@ mod tests {
         let ethereum_address: Address = "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap();
 
         let request = Request {
-            id: SwapId::default(),
+            swap_id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: Amount::from_btc(1.0).unwrap(),
@@ -297,7 +293,8 @@ mod tests {
             beta_expiry: Timestamp::from(2_000_000_000),
             secret_hash: Secret::from(*b"hello world, you are beautiful!!").hash(),
         };
-        let accept_response_body = AcceptResponseBody {
+        let accept = Accept {
+            swap_id: SwapId::default(),
             beta_ledger_refund_identity: ethereum_address,
             alpha_ledger_redeem_identity: bitcoin_pub_key,
         };
@@ -305,7 +302,7 @@ mod tests {
         let id = SwapId::default();
         let seed = Seed::from(*b"hello world, you are beautiful!!");
         let secret_source = seed.swap_seed(id);
-        let state = alice::State::accepted(request, accept_response_body, secret_source);
+        let state = alice::State::accepted(request, accept, secret_source);
 
         state_store
             .insert::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(id, state.clone());
