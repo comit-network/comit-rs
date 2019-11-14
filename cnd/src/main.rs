@@ -138,9 +138,16 @@ fn spawn_warp_instance<
     runtime: &mut tokio::runtime::Runtime,
     dependencies: D,
 ) {
-    let routes = route_factory::create(peer_id, dependencies);
+    let routes = route_factory::create(
+        peer_id,
+        dependencies,
+        settings.http_api.cors.allowed_foreign_origins.clone(),
+    );
 
-    let listen_addr = SocketAddr::new(settings.http_api.address, settings.http_api.port);
+    let listen_addr = SocketAddr::new(
+        settings.http_api.socket.address,
+        settings.http_api.socket.port,
+    );
 
     log::info!("Starting HTTP server on {:?}", listen_addr);
 

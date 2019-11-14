@@ -20,7 +20,7 @@ use std::{
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct File {
     pub network: Network,
-    pub http_api: HttpSocket,
+    pub http_api: HttpApi,
     pub database: Option<Database>,
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
@@ -37,9 +37,12 @@ impl File {
             network: Network {
                 listen: vec![comit_listen],
             },
-            http_api: HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8000,
+            http_api: HttpApi {
+                socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                    port: 8000,
+                },
+                cors: None,
             },
             database: None,
             logging: None,
@@ -61,7 +64,26 @@ pub struct Network {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct HttpSocket {
+pub struct HttpApi {
+    pub socket: Socket,
+    pub cors: Option<Cors>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Cors {
+    pub allowed_foreign_origins: AllowedForeignOrigins,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum AllowedForeignOrigins {
+    All,
+    None,
+    List(Vec<String>),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Socket {
     pub address: IpAddr,
     pub port: u16,
 }
@@ -212,7 +234,7 @@ mod tests {
     }
 
     #[test]
-    fn bitcoin_serializes_correctly() {
+    fn bitcoin_deserializes_correctly() {
         let file_contents = vec![
             r#"
             network = "mainnet"
@@ -247,6 +269,44 @@ mod tests {
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn cors_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            allowed_foreign_origins = "all"
+            "#,
+            r#"
+             allowed_foreign_origins = "none"
+            "#,
+            r#"
+             allowed_foreign_origins = { list = ["http://localhost:8000", "https://192.168.1.55:3000"] }
+            "#,
+        ];
+
+        let expected = vec![
+            Cors {
+                allowed_foreign_origins: AllowedForeignOrigins::All,
+            },
+            Cors {
+                allowed_foreign_origins: AllowedForeignOrigins::None,
+            },
+            Cors {
+                allowed_foreign_origins: AllowedForeignOrigins::List(vec![
+                    String::from("http://localhost:8000"),
+                    String::from("https://192.168.1.55:3000"),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Cors>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);
