@@ -22,6 +22,7 @@ pub struct Sqlite {
 #[derive(Debug)]
 pub enum Location<'p> {
     OnDisk(&'p Path),
+    #[cfg(test)]
     InMemory,
 }
 
@@ -44,6 +45,7 @@ impl Sqlite {
                     uri: format!("file:{}", path.display()),
                 }
             }
+            #[cfg(test)]
             Location::InMemory => Sqlite {
                 uri: ":memory:".to_owned(),
             },
