@@ -108,26 +108,24 @@ mod tests {
 
     #[test]
     fn given_db_in_non_existing_directory_tree_calling_new_creates_it() {
-        let path = tempfile::tempdir()
-            .unwrap()
-            .into_path()
-            .join("some_folder")
-            .join("i_dont_exist")
-            .join("database.sqlite")
-            .to_path_buf();
+        let tempfile = tempfile::tempdir().unwrap();
+        let mut path = PathBuf::new();
+
+        path.push(tempfile);
+        path.push("some_folder");
+        path.push("i_dont_exist");
+        path.push("database.sqlite");
 
         // validate assumptions:
         // 1. the db does not exist yet
         // 2. the parent folder does not exist yet
-        assert_that(&path.as_path()).does_not_exist();
-        assert_that(&path.as_path().parent())
-            .is_some()
-            .does_not_exist();
+        assert_that(&path).does_not_exist();
+        assert_that(&path.parent()).is_some().does_not_exist();
 
         let db = Sqlite::new(Location::OnDisk(&path));
 
         assert_that(&db).is_ok();
-        assert_that(&path.as_path()).exists();
+        assert_that(&path).exists();
     }
 
     #[test]
