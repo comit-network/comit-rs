@@ -3,7 +3,7 @@ import { createActors } from "../../../lib_sdk/create_actors";
 
 setTimeout(function() {
     describe("happy path", function() {
-        this.timeout(30000);
+        this.timeout(60000);
         it("bitcoin ether", async function() {
             const { alice, bob } = await createActors(
                 "e2e-rfc003-btc-eth-happy.log"
