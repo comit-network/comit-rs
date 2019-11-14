@@ -15,7 +15,7 @@ chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
-derive_more = "0.15.0"
+derive_more = "0.99.1"
 diesel = { version = "1.4", features = ["sqlite"] }
 diesel_migrations = "1.4.0"
 directories = "2.0"
