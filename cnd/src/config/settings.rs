@@ -188,6 +188,7 @@ mod tests {
         let settings = Settings::from_config_file_and_defaults(config_file);
 
         assert_that(&settings)
+            .is_ok()
             .map(|settings| &settings.http_api.cors)
             .is_equal_to(Cors {
                 allowed_origins: AllowedOrigins::None,

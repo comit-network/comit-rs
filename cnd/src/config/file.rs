@@ -308,7 +308,7 @@ mod tests {
                 allowed_origins: AllowedOrigins::None(None::None),
             },
             Cors {
-                allowed_origins: AllowedOrigins::Option::Some(vec![
+                allowed_origins: AllowedOrigins::Some(vec![
                     String::from("http://localhost:8000"),
                     String::from("https://192.168.1.55:3000"),
                 ]),
