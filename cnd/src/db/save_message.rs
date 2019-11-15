@@ -5,7 +5,6 @@ use crate::{
         schema::{self, *},
         Sqlite,
     },
-    ethereum_support::{Erc20Token, EtherQuantity},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
@@ -13,6 +12,7 @@ use crate::{
     },
 };
 use diesel::RunQueryDsl;
+use ethereum_support::{Erc20Token, EtherQuantity};
 
 pub trait SaveMessage<M> {
     fn save_message(&self, message: M) -> anyhow::Result<()>;
@@ -274,7 +274,7 @@ struct InsertableEthereumBitcoinAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -283,8 +283,8 @@ impl_save_message! {
 
         let insertable = InsertableEthereumBitcoinAcceptMessage {
             swap_id: Text(swap_id),
-            ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
-            bitcoin_refund_identity: Text(alpha_ledger_redeem_identity.into_inner()),
+            ethereum_redeem_identity: Text(EthereumAddress(alpha_ledger_redeem_identity)),
+            bitcoin_refund_identity: Text(beta_ledger_refund_identity.into_inner()),
         };
 
         diesel::insert_into(schema::rfc003_ethereum_bitcoin_accept_messages::dsl::rfc003_ethereum_bitcoin_accept_messages)
@@ -304,7 +304,7 @@ struct InsertableBitcoinEthereumAcceptMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -313,8 +313,8 @@ impl_save_message! {
 
         let insertable = InsertableBitcoinEthereumAcceptMessage {
             swap_id: Text(swap_id),
-            bitcoin_redeem_identity: Text(beta_ledger_refund_identity.into_inner()),
-            ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_redeem_identity)),
+            bitcoin_redeem_identity: Text(alpha_ledger_redeem_identity.into_inner()),
+            ethereum_refund_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
         };
 
         diesel::insert_into(schema::rfc003_bitcoin_ethereum_accept_messages::dsl::rfc003_bitcoin_ethereum_accept_messages)
