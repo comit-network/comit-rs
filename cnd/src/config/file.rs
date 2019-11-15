@@ -20,7 +20,7 @@ use std::{
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct File {
     pub network: Network,
-    pub http_api: HttpSocket,
+    pub http_api: HttpApi,
     pub database: Option<Database>,
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
@@ -37,14 +37,17 @@ impl File {
             network: Network {
                 listen: vec![comit_listen],
             },
-            http_api: HttpSocket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8000,
+            http_api: HttpApi {
+                socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                    port: 8000,
+                },
+                cors: Option::None,
             },
-            database: None,
-            logging: None,
-            bitcoin: None,
-            ethereum: None,
+            database: Option::None,
+            logging: Option::None,
+            bitcoin: Option::None,
+            ethereum: Option::None,
         }
     }
 }
@@ -61,7 +64,38 @@ pub struct Network {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
-pub struct HttpSocket {
+pub struct HttpApi {
+    pub socket: Socket,
+    pub cors: Option<Cors>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Cors {
+    pub allowed_origins: AllowedOrigins,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+pub enum AllowedOrigins {
+    All(All),
+    None(None),
+    Some(Vec<String>),
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum All {
+    All,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum None {
+    None,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+pub struct Socket {
     pub address: IpAddr,
     pub port: u16,
 }
@@ -139,8 +173,8 @@ impl File {
 
     fn ensure_directory_exists(config_file: &Path) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
-            None => Ok(()),
-            Some(path) => {
+            Option::None => Ok(()),
+            Option::Some(path) => {
                 if !path.exists() {
                     println!(
                         "Config path does not exist, creating directories recursively: {:?}",
@@ -205,14 +239,14 @@ mod tests {
 
         assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
             logging: Logging {
-                level: Some(LevelFilter::Debug),
-                structured: None,
+                level: Option::Some(LevelFilter::Debug),
+                structured: Option::None,
             },
         });
     }
 
     #[test]
-    fn bitcoin_serializes_correctly() {
+    fn bitcoin_deserializes_correctly() {
         let file_contents = vec![
             r#"
             network = "mainnet"
@@ -252,6 +286,44 @@ mod tests {
         assert_eq!(actual, expected);
     }
 
+    #[test]
+    fn cors_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            allowed_origins = "all"
+            "#,
+            r#"
+             allowed_origins = "none"
+            "#,
+            r#"
+             allowed_origins = ["http://localhost:8000", "https://192.168.1.55:3000"]
+            "#,
+        ];
+
+        let expected = vec![
+            Cors {
+                allowed_origins: AllowedOrigins::All(All::All),
+            },
+            Cors {
+                allowed_origins: AllowedOrigins::None(None::None),
+            },
+            Cors {
+                allowed_origins: AllowedOrigins::Some(vec![
+                    String::from("http://localhost:8000"),
+                    String::from("https://192.168.1.55:3000"),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Cors>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
     fn temp_toml_file() -> NamedTempFile {
         tempfile::Builder::new().suffix(".toml").tempfile().unwrap()
     }
@@ -259,7 +331,7 @@ mod tests {
     #[test]
     fn complete_logging_section_is_optional() {
         let config_without_logging_section = File {
-            logging: None,
+            logging: Option::None,
             ..File::default()
         };
         let temp_file = temp_toml_file();

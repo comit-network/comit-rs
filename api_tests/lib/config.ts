@@ -4,9 +4,13 @@ import { EthereumNodeConfig } from "./ethereum";
 import { LedgerConfig } from "./ledger_runner";
 
 export interface CndConfigFile {
-    http_api: { address: string; port: number };
+    http_api: HttpApi;
     database?: { sqlite: string };
     network: { listen: string[] };
+}
+
+export interface HttpApi {
+    socket: { address: string; port: number };
 }
 
 interface BtsieveBitcoin {
@@ -45,8 +49,10 @@ export class E2ETestActorConfig {
         const dbPath = tempfile(`.${this.name}.sqlite`);
         return {
             http_api: {
-                address: "0.0.0.0",
-                port: this.httpApiPort,
+                socket: {
+                    address: "0.0.0.0",
+                    port: this.httpApiPort,
+                },
             },
             database: {
                 sqlite: dbPath,

@@ -5,4 +5,7 @@ mod serde_bitcoin_network;
 mod serde_duration;
 mod settings;
 
-pub use self::{file::File, settings::Settings};
+pub use self::{
+    file::File,
+    settings::{AllowedOrigins, Settings},
+};

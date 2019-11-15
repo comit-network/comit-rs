@@ -1,4 +1,5 @@
 use crate::{
+    config::AllowedOrigins,
     db::SaveRfc003Messages,
     http_api,
     network::{Network, SendRequest},
@@ -34,12 +35,26 @@ pub fn create<
 >(
     peer_id: PeerId,
     dependencies: D,
+    allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
     let dependencies = warp::any().map(move || dependencies.clone());
+
+    let cors = warp::cors()
+        .allow_methods(vec!["GET", "POST"])
+        .allow_header("content-type");
+    let cors = match allowed_origins {
+        AllowedOrigins::None => cors.allow_origins(Vec::<&str>::new()),
+        AllowedOrigins::All => cors.allow_any_origin(),
+        AllowedOrigins::Some(hosts) => {
+            cors.allow_origins::<Vec<&str>>(hosts.iter().map(|host| host.as_str()).collect())
+        }
+    };
+
+    let preflight_cors_route = warp::options().map(warp::reply);
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
@@ -85,7 +100,8 @@ pub fn create<
         .and(dependencies.clone())
         .and_then(http_api::routes::index::get_info);
 
-    rfc003_get_swap
+    preflight_cors_route
+        .or(rfc003_get_swap)
         .or(rfc003_post_swap)
         .or(rfc003_action)
         .or(get_swaps)
@@ -93,5 +109,6 @@ pub fn create<
         .or(get_info)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
+        .with(cors)
         .boxed()
 }
