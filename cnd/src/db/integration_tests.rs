@@ -19,7 +19,12 @@ macro_rules! db_roundtrip_test {
                 fn prop(swap_id: Quickcheck<SwapId>,
                     request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
                     accept: Quickcheck<Accept<$alpha_ledger, $beta_ledger>>) -> anyhow::Result<bool> {
-                let db_path = tempfile::NamedTempFile::new()?.into_temp_path();
+                let db_path = tempfile::Builder::new()
+                        .prefix(&swap_id.to_string())
+                        .suffix(".sqlite")
+                        .tempfile()?
+                        .into_temp_path();
+
                 let db = Sqlite::new(Location::OnDisk(&db_path))?;
 
                 let saved_request = Request {
