@@ -3,12 +3,11 @@ pub mod send_request;
 pub use send_request::*;
 
 use crate::{
-    db::{SaveMessage, Sqlite},
+    db::{Save, SaveMessage, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::Seed,
     swap_protocols::{
         asset::{Asset, AssetKind},
-        metadata_store::{self, InMemoryMetadataStore, Metadata, MetadataStore},
         rfc003::{
             self, bob,
             messages::{Decision, DeclineResponseBody, SwapDeclineReason},
@@ -48,8 +47,6 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     pub ledger_events: LedgerConnectors,
     #[behaviour(ignore)]
-    pub metadata_store: Arc<InMemoryMetadataStore>,
-    #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
     pub seed: Seed,
@@ -77,7 +74,6 @@ impl Display for DialInformation {
 impl<TSubstream> ComitNode<TSubstream> {
     pub fn new(
         ledger_events: LedgerConnectors,
-        metadata_store: Arc<InMemoryMetadataStore>,
         state_store: Arc<InMemoryStateStore>,
         seed: Seed,
         database: Sqlite,
@@ -97,7 +93,6 @@ impl<TSubstream> ComitNode<TSubstream> {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
             ledger_events,
-            metadata_store,
             state_store,
             seed,
             database,
@@ -157,7 +152,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not write to metadatastore");
+                                    .expect("Could not save state to database");
 
                                 Ok(swap_id)
                             }
@@ -177,7 +172,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not write to metadatastore");
+                                    .expect("Could not save state to database");
 
                                 Ok(swap_id)
                             }
@@ -197,7 +192,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not write to metadatastore");
+                                    .expect("Could not save state to database");
 
                                 Ok(swap_id)
                             }
@@ -217,7 +212,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not write to metadatastore");
+                                    .expect("Could not save state to database");
 
                                 Ok(swap_id)
                             }
@@ -286,30 +281,19 @@ impl<TSubstream> ComitNode<TSubstream> {
         &self,
         counterparty: PeerId,
         swap_request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<(), metadata_store::Error>
+    ) -> anyhow::Result<()>
     where
         Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
     {
         let id = swap_request.swap_id;
         let seed = self.seed.swap_seed(id);
 
-        let metadata = Metadata::new(
-            id,
-            swap_request.alpha_ledger.into(),
-            swap_request.beta_ledger.into(),
-            swap_request.alpha_asset.into(),
-            swap_request.beta_asset.into(),
-            Role::Bob,
-            counterparty,
-        );
-        self.metadata_store.insert(metadata)?;
+        self.database.save(Swap::new(id, Role::Bob, counterparty))?;
+        self.database.save_message(swap_request.clone())?;
 
         let state_store = Arc::clone(&self.state_store);
         let state = bob::State::proposed(swap_request.clone(), seed);
         state_store.insert(id, state);
-        self.database
-            .save_message(swap_request)
-            .expect("failed to save message in db");
 
         Ok(())
     }

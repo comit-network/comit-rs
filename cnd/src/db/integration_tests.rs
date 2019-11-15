@@ -1,10 +1,9 @@
 use crate::{
-    db::{load_swaps::LoadAcceptedSwap, SaveMessage, Sqlite},
+    db::{load_swaps::LoadAcceptedSwap, Retrieve, Save, SaveMessage, Sqlite, Swap},
     quickcheck::Quickcheck,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Request},
-        SwapId,
     },
 };
 use bitcoin::Amount as BitcoinAmount;
@@ -16,35 +15,51 @@ macro_rules! db_roundtrip_test {
             #[test]
             #[allow(non_snake_case)]
             fn [<roundtrip_test_ $alpha_ledger _ $beta_ledger _ $alpha_asset _ $beta_asset>]() {
-                fn prop(swap_id: Quickcheck<SwapId>,
-                    request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
-                    accept: Quickcheck<Accept<$alpha_ledger, $beta_ledger>>) -> anyhow::Result<bool> {
-                let db_path = tempfile::Builder::new()
-                        .prefix(&swap_id.to_string())
+                fn prop(swap: Quickcheck<Swap>,
+                        request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
+                        accept: Quickcheck<Accept<$alpha_ledger, $beta_ledger>>,
+                ) -> anyhow::Result<bool> {
+
+                    // This is here because PeerId does not implement Copy.
+                    let new_swap = Swap {
+                        swap_id: swap.swap_id,
+                        role: swap.role,
+                        counterparty: swap.counterparty.clone(),
+                    };
+
+                    let db_path = tempfile::Builder::new()
+                        .prefix(&new_swap.swap_id.to_string())
                         .suffix(".sqlite")
                         .tempfile()?
                         .into_temp_path();
 
-                let db = Sqlite::new(&db_path)?;
+                    let db = Sqlite::new(&db_path)?;
 
-                let saved_request = Request {
-                    swap_id: *swap_id,
-                    ..*request
-                };
-                let saved_accept = Accept {
-                    swap_id: *swap_id,
-                    ..*accept
-                };
+                    let saved_request = Request {
+                        swap_id: new_swap.swap_id,
+                        ..*request
+                    };
+                    let saved_accept = Accept {
+                        swap_id: new_swap.swap_id,
+                        ..*accept
+                    };
 
-                db.save_message(saved_request.clone())?;
-                db.save_message(saved_accept.clone())?;
+                    db.save(new_swap.clone())?;
 
-                let (loaded_request, loaded_accept) = db.load_accepted_swap(*swap_id)?;
+                    db.save_message(saved_request.clone())?;
+                    db.save_message(saved_accept.clone())?;
 
-                Ok(saved_request == loaded_request && saved_accept == loaded_accept)
-            }
+                    let loaded_swap = Retrieve::get(&db, &new_swap.swap_id)?;
+                    let (loaded_request, loaded_accept) = db.load_accepted_swap(new_swap.swap_id)?;
 
-            quickcheck::quickcheck(prop as fn(Quickcheck<SwapId>, Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>, Quickcheck<Accept<$alpha_ledger, $beta_ledger>>) -> anyhow::Result<bool>);
+                    Ok(saved_request == loaded_request && saved_accept == loaded_accept && loaded_swap == *swap)
+                }
+
+                quickcheck::quickcheck(prop as fn(
+                    Quickcheck<Swap>,
+                    Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
+                    Quickcheck<Accept<$alpha_ledger, $beta_ledger>>,
+                ) -> anyhow::Result<bool>);
             }
         }
     };

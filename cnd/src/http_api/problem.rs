@@ -1,7 +1,4 @@
-use crate::swap_protocols::{
-    metadata_store,
-    rfc003::{self, actions::ActionKind, state_store},
-};
+use crate::swap_protocols::rfc003::{self, actions::ActionKind, state_store};
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
@@ -31,7 +28,7 @@ pub fn send_over_channel(_e: Response) -> HttpApiProblem {
 }
 
 pub fn state_store() -> HttpApiProblem {
-    log::error!("State store didn't have state in it despite having the metadata");
+    log::error!("State store didn't have state in it despite swap being in database");
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
@@ -119,13 +116,6 @@ pub fn missing_query_parameters(
 
 impl From<state_store::Error> for HttpApiProblem {
     fn from(e: state_store::Error) -> Self {
-        log::error!("Storage layer failure: {:?}", e);
-        HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
-
-impl From<metadata_store::Error> for HttpApiProblem {
-    fn from(e: metadata_store::Error) -> Self {
         log::error!("Storage layer failure: {:?}", e);
         HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
     }

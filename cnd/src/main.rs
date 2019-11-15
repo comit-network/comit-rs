@@ -5,7 +5,7 @@ use anyhow::Context;
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
-    db::{SaveRfc003Messages, Sqlite},
+    db::{DetermineTypes, Retrieve, Save, SaveRfc003Messages, Sqlite},
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -14,7 +14,7 @@ use cnd::{
             state_store::{InMemoryStateStore, StateStore},
             Spawn,
         },
-        InMemoryMetadataStore, LedgerConnectors, MetadataStore,
+        LedgerConnectors,
     },
 };
 use futures::{stream, Future, Stream};
@@ -47,7 +47,6 @@ fn main() -> anyhow::Result<()> {
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
-    let metadata_store = Arc::new(InMemoryMetadataStore::default());
     let state_store = Arc::new(InMemoryStateStore::default());
 
     let bitcoin_connector = {
@@ -72,7 +71,6 @@ fn main() -> anyhow::Result<()> {
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
         ledger_events.clone(),
-        Arc::clone(&metadata_store),
         Arc::clone(&state_store),
         seed,
         database.clone(),
@@ -88,7 +86,6 @@ fn main() -> anyhow::Result<()> {
 
     let http_api_dependencies = http_api::Dependencies {
         ledger_events: ledger_events.clone(),
-        metadata_store: Arc::clone(&metadata_store),
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
@@ -123,12 +120,14 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 
 fn spawn_warp_instance<
     D: Clone
-        + MetadataStore
         + StateStore
         + Network
         + SendRequest
         + Spawn
         + SwapSeed
+        + DetermineTypes
+        + Save
+        + Retrieve
         + SaveRfc003Messages,
 >(
     settings: &Settings,

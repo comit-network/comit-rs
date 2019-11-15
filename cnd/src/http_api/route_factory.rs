@@ -1,13 +1,13 @@
 use crate::{
     config::AllowedOrigins,
-    db::SaveRfc003Messages,
+    db::{DetermineTypes, Retrieve, Save, SaveRfc003Messages},
     http_api,
     network::{Network, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
         self,
         rfc003::{state_store::StateStore, Spawn},
-        MetadataStore, SwapId,
+        SwapId,
     },
 };
 use libp2p::PeerId;
@@ -25,12 +25,14 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 
 pub fn create<
     D: Clone
-        + MetadataStore
         + StateStore
         + Network
         + SendRequest
         + Spawn
         + SwapSeed
+        + DetermineTypes
+        + Save
+        + Retrieve
         + SaveRfc003Messages,
 >(
     peer_id: PeerId,

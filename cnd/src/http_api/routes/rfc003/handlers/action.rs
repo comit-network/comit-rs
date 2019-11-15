@@ -1,5 +1,5 @@
 use crate::{
-    db::{SaveMessage, SaveRfc003Messages},
+    db::{DetermineTypes, SaveMessage, SaveRfc003Messages},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -22,7 +22,7 @@ use crate::{
             state_store::StateStore,
             Spawn,
         },
-        MetadataStore, SwapId,
+        SwapId,
     },
 };
 use futures::Stream;
@@ -32,7 +32,7 @@ use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
 pub fn handle_action<
-    D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
+    D: StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages + DetermineTypes,
 >(
     method: http::Method,
     swap_id: SwapId,
@@ -41,11 +41,12 @@ pub fn handle_action<
     query_params: ActionExecutionParameters,
     dependencies: D,
 ) -> Result<ActionResponseBody, HttpApiProblem> {
-    let metadata =
-        MetadataStore::get(&dependencies, swap_id)?.ok_or_else(problem::swap_not_found)?;
+    let types = dependencies
+        .determine_types(&swap_id)
+        .map_err(problem::internal_error)?;
 
     with_swap_types!(
-        &metadata,
+        types,
         (|| {
             let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?
                 .ok_or_else(problem::state_store)?;

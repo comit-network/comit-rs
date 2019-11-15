@@ -1,5 +1,6 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
+    db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
         problem,
@@ -11,7 +12,7 @@ use crate::{
         actions::Actions,
         asset::Asset,
         rfc003::{self, state_store::StateStore, Ledger},
-        HashFunction, Metadata, SwapId, SwapProtocol,
+        HashFunction, SwapId, SwapProtocol,
     },
 };
 use http::StatusCode;
@@ -77,12 +78,14 @@ pub enum IncludeState {
 
 pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
-    id: SwapId,
-    metadata: Metadata,
+    swap: Swap,
+    types: SwapTypes,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
+    let id = swap.swap_id;
+
     with_swap_types!(
-        &metadata,
+        types,
         (|| {
             let state = state_store
                 .get::<ROLE>(&id)?
@@ -103,12 +106,12 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             );
 
             let swap = SwapResource {
-                id: Http(metadata.swap_id),
+                id: Http(id),
                 status,
                 protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
                 parameters,
-                role: metadata.role.to_string(),
-                counterparty: Http(metadata.counterparty),
+                role: swap.role.to_string(),
+                counterparty: Http(swap.counterparty),
                 state: match include_state {
                     IncludeState::Yes => Some(SwapState::<AL, BL> {
                         communication,
