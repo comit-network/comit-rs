@@ -1,5 +1,6 @@
 use crate::web3::types::{Address, U256};
 use rlp::RlpStream;
+use tiny_keccak::{Hasher, Keccak};
 
 pub trait CalculateContractAddress {
     fn calculate_contract_address(&self, nonce: &U256) -> Address;
@@ -12,13 +13,22 @@ impl CalculateContractAddress for Address {
         let ethereum_address: &[u8] = self.as_ref();
 
         let raw_stream = stream.append(&ethereum_address).append(nonce).as_raw();
-
-        let value = tiny_keccak::keccak256(raw_stream);
+        let value = hash(raw_stream);
 
         let mut address = Address::default();
         address.assign_from_slice(&value[12..]);
         address
     }
+}
+
+fn hash(input: &[u8]) -> [u8; 32] {
+    let mut output = [0u8; 32];
+
+    let mut hasher = Keccak::v256();
+    hasher.update(input);
+    hasher.finalize(&mut output);
+
+    output
 }
 
 #[cfg(test)]
