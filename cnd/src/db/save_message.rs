@@ -166,8 +166,8 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
     bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
-    bitcoin_expiry: U32,
     ethereum_expiry: U32,
+    bitcoin_expiry: U32,
     secret_hash: Text<SecretHash>,
 }
 
@@ -221,8 +221,8 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
     bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
-    bitcoin_expiry: U32,
     ethereum_expiry: U32,
+    bitcoin_expiry: U32,
     secret_hash: Text<SecretHash>,
 }
 
