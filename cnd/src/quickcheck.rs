@@ -20,12 +20,30 @@ impl<I> Deref for Quickcheck<I> {
     }
 }
 
+macro_rules! impl_arbitrary_for_byte_array {
+    ([u8; $length:expr]) => {
+        impl Arbitrary for Quickcheck<[u8; $length]> {
+            fn arbitrary<G: Gen>(g: &mut G) -> Self {
+                let mut bytes = [0u8; $length];
+                g.fill_bytes(&mut bytes);
+
+                Quickcheck(bytes)
+            }
+        }
+    };
+}
+
+impl_arbitrary_for_byte_array!([u8; 16]);
+impl_arbitrary_for_byte_array!([u8; 20]);
+impl_arbitrary_for_byte_array!([u8; 32]);
+
 impl Arbitrary for Quickcheck<SwapId> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8; 16];
-        g.fill_bytes(&mut bytes);
+        let bytes = *Quickcheck::<[u8; 16]>::arbitrary(g);
+        let uuid = Uuid::from_bytes(bytes);
+        let swap_id = SwapId::from(uuid);
 
-        Quickcheck(SwapId::from(Uuid::from_bytes(bytes)))
+        Quickcheck(swap_id)
     }
 }
 
@@ -44,49 +62,57 @@ impl Arbitrary for Quickcheck<bitcoin::Network> {
 
 impl Arbitrary for Quickcheck<ChainId> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(ChainId::new(g.next_u32()))
+        let chain_id = ChainId::new(g.next_u32());
+
+        Quickcheck(chain_id)
     }
 }
 
 impl Arbitrary for Quickcheck<bitcoin::Amount> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(bitcoin::Amount::from_sat(g.next_u64()))
+        let amount = bitcoin::Amount::from_sat(g.next_u64());
+
+        Quickcheck(amount)
     }
 }
 
 impl Arbitrary for Quickcheck<ethereum_support::U256> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8; 32];
-        g.fill_bytes(&mut bytes);
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
+        let u256 = ethereum_support::U256::from(bytes);
 
-        Quickcheck(ethereum_support::U256::from(bytes))
+        Quickcheck(u256)
     }
 }
 
 impl Arbitrary for Quickcheck<ethereum_support::EtherQuantity> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(ethereum_support::EtherQuantity::from_wei(*Quickcheck::<
-            ethereum_support::U256,
-        >::arbitrary(
-            g
-        )))
+        let u256 = *Quickcheck::<ethereum_support::U256>::arbitrary(g);
+        let ether_quantity = ethereum_support::EtherQuantity::from_wei(u256);
+
+        Quickcheck(ether_quantity)
     }
 }
 
 impl Arbitrary for Quickcheck<ethereum_support::Erc20Quantity> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(ethereum_support::Erc20Quantity(*Quickcheck::<
-            ethereum_support::U256,
-        >::arbitrary(g)))
+        let u256 = *Quickcheck::<ethereum_support::U256>::arbitrary(g);
+        let erc20_quantity = ethereum_support::Erc20Quantity(u256);
+
+        Quickcheck(erc20_quantity)
     }
 }
 
 impl Arbitrary for Quickcheck<ethereum_support::Erc20Token> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(ethereum_support::Erc20Token {
-            token_contract: *Quickcheck::<ethereum_support::Address>::arbitrary(g),
-            quantity: *Quickcheck::<ethereum_support::Erc20Quantity>::arbitrary(g),
-        })
+        let token_contract = *Quickcheck::<ethereum_support::Address>::arbitrary(g);
+        let quantity = *Quickcheck::<ethereum_support::Erc20Quantity>::arbitrary(g);
+        let erc20_token = ethereum_support::Erc20Token {
+            token_contract,
+            quantity,
+        };
+
+        Quickcheck(erc20_token)
     }
 }
 
@@ -98,23 +124,18 @@ impl Arbitrary for Quickcheck<HashFunction> {
 
 impl Arbitrary for Quickcheck<crate::bitcoin::PublicKey> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8; 32];
-        g.fill_bytes(&mut bytes);
-
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
         let secret_key = bitcoin::secp256k1::SecretKey::from_slice(&bytes)
             .expect("all bytes are a valid secret key");
+        let public_key = crate::bitcoin::PublicKey::from_secret_key(&*crate::SECP, &secret_key);
 
-        Quickcheck(crate::bitcoin::PublicKey::from_secret_key(
-            &*crate::SECP,
-            &secret_key,
-        ))
+        Quickcheck(public_key)
     }
 }
 
 impl Arbitrary for Quickcheck<ethereum_support::Address> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8; 20];
-        g.fill_bytes(&mut bytes);
+        let bytes = *Quickcheck::<[u8; 20]>::arbitrary(g);
 
         Quickcheck(ethereum_support::Address::from(bytes))
     }
@@ -122,14 +143,15 @@ impl Arbitrary for Quickcheck<ethereum_support::Address> {
 
 impl Arbitrary for Quickcheck<Timestamp> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Timestamp::from(g.next_u32()))
+        let timestamp = Timestamp::from(g.next_u32());
+
+        Quickcheck(timestamp)
     }
 }
 
 impl Arbitrary for Quickcheck<SecretHash> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let mut bytes = [0u8; 32];
-        g.fill_bytes(&mut bytes);
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
 
         Quickcheck(SecretHash::from(bytes))
     }
