@@ -42,9 +42,7 @@ impl File {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                     port: 8000,
                 },
-                cors: Option::Some(Cors {
-                    allowed_origins: AllowedOrigins::None(None::None),
-                }),
+                cors: Option::None,
             },
             database: Option::None,
             logging: Option::None,
