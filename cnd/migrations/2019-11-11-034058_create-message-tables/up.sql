@@ -84,8 +84,15 @@ CREATE TABLE rfc003_bitcoin_ethereum_accept_messages
 
 CREATE TABLE rfc003_decline_messages
 (
-    id INTEGER     NOT NULL PRIMARY KEY,
-    swap_id UNIQUE NOT NULL,
+    id INTEGER     	NOT NULL PRIMARY KEY,
+    swap_id UNIQUE 	NOT NULL,
     reason
 );
 
+CREATE TABLE rfc003_swaps
+(
+    id INTEGER     	NOT NULL PRIMARY KEY,
+    swap_id UNIQUE 	NOT NULL,
+    role 		NOT NULL,
+    counterparty 	NOT NULL
+);

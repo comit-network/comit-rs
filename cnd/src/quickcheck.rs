@@ -1,8 +1,12 @@
-use crate::swap_protocols::{
-    ledger::{self, ethereum::ChainId},
-    rfc003::{Accept, Request, SecretHash},
-    HashFunction, SwapId, Timestamp,
+use crate::{
+    db::Swap,
+    swap_protocols::{
+        ledger::{self, ethereum::ChainId},
+        rfc003::{Accept, Request, SecretHash},
+        HashFunction, Role, SwapId, Timestamp,
+    },
 };
+use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
 use uuid::Uuid;
@@ -287,6 +291,34 @@ impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, ledger::Bitcoin>> {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
             alpha_ledger_redeem_identity: *Quickcheck::<ethereum_support::Address>::arbitrary(g),
             beta_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
+        })
+    }
+}
+
+impl Arbitrary for Quickcheck<Role> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let role = match g.next_u32() % 1 {
+            0 => Role::Alice,
+            1 => Role::Bob,
+            _ => unreachable!(),
+        };
+
+        Quickcheck(role)
+    }
+}
+
+impl Arbitrary for Quickcheck<PeerId> {
+    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
+        Quickcheck(PeerId::random())
+    }
+}
+
+impl Arbitrary for Quickcheck<Swap> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        Quickcheck(Swap {
+            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
+            role: *Quickcheck::<Role>::arbitrary(g),
+            counterparty: (*Quickcheck::<PeerId>::arbitrary(g)).clone(),
         })
     }
 }

@@ -8,6 +8,12 @@ use std::fmt;
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(pub U256);
 
+impl Erc20Quantity {
+    pub fn zero() -> Self {
+        Self(U256::zero())
+    }
+}
+
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0.to_bigint())
