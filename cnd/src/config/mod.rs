@@ -6,6 +6,6 @@ mod serde_duration;
 mod settings;
 
 pub use self::{
-    file::{AllowedForeignOrigins, File},
-    settings::Settings,
+    file::File,
+    settings::{AllowedOrigins, Settings},
 };

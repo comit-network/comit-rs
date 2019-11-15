@@ -1,5 +1,5 @@
 use crate::{
-    config::AllowedForeignOrigins,
+    config::AllowedOrigins,
     db::SaveRfc003Messages,
     http_api,
     network::{Network, SendRequest},
@@ -35,7 +35,7 @@ pub fn create<
 >(
     peer_id: PeerId,
     dependencies: D,
-    allowed_foreign_origins: AllowedForeignOrigins,
+    allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
@@ -46,10 +46,10 @@ pub fn create<
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
         .allow_header("content-type");
-    let cors = match allowed_foreign_origins {
-        AllowedForeignOrigins::None => cors.allow_origins(Vec::<&str>::new()),
-        AllowedForeignOrigins::All => cors.allow_any_origin(),
-        AllowedForeignOrigins::List(hosts) => {
+    let cors = match allowed_origins {
+        AllowedOrigins::None => cors.allow_origins(Vec::<&str>::new()),
+        AllowedOrigins::All => cors.allow_any_origin(),
+        AllowedOrigins::Some(hosts) => {
             cors.allow_origins::<Vec<&str>>(hosts.iter().map(|host| host.as_str()).collect())
         }
     };

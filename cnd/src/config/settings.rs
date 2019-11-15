@@ -1,4 +1,4 @@
-use super::file::{AllowedForeignOrigins, Cors, Database, File, Network, Socket};
+use super::file::{self, Database, File, Network, Socket};
 use crate::config::file::{Bitcoin, Ethereum};
 use anyhow::Context;
 use log::LevelFilter;
@@ -27,6 +27,18 @@ pub struct HttpApi {
     pub cors: Cors,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Cors {
+    pub allowed_origins: AllowedOrigins,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum AllowedOrigins {
+    All,
+    None,
+    Some(Vec<String>),
+}
+
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
@@ -50,9 +62,20 @@ impl Settings {
             network,
             http_api: HttpApi {
                 socket: http_api.socket,
-                cors: http_api.cors.unwrap_or(Cors {
-                    allowed_foreign_origins: AllowedForeignOrigins::None,
-                }),
+                cors: http_api
+                    .cors
+                    .map(|cors| {
+                        let allowed_origins = match cors.allowed_origins {
+                            file::AllowedOrigins::All(_) => AllowedOrigins::All,
+                            file::AllowedOrigins::None(_) => AllowedOrigins::None,
+                            file::AllowedOrigins::Some(origins) => AllowedOrigins::Some(origins),
+                        };
+
+                        Cors { allowed_origins }
+                    })
+                    .unwrap_or(Cors {
+                        allowed_origins: AllowedOrigins::None,
+                    }),
             },
             database: {
                 let default_database_path = crate::data_dir()
@@ -167,7 +190,7 @@ mod tests {
         assert_that(&settings)
             .map(|settings| &settings.http_api.cors)
             .is_equal_to(Cors {
-                allowed_foreign_origins: AllowedForeignOrigins::None,
+                allowed_origins: AllowedOrigins::None,
             })
     }
 }

@@ -42,12 +42,14 @@ impl File {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                     port: 8000,
                 },
-                cors: None,
+                cors: Some(Cors {
+                    allowed_origins: AllowedOrigins::None(None::None),
+                }),
             },
-            database: None,
-            logging: None,
-            bitcoin: None,
-            ethereum: None,
+            database: Option::None,
+            logging: Option::None,
+            bitcoin: Option::None,
+            ethereum: Option::None,
         }
     }
 }
@@ -71,15 +73,27 @@ pub struct HttpApi {
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 pub struct Cors {
-    pub allowed_foreign_origins: AllowedForeignOrigins,
+    pub allowed_origins: AllowedOrigins,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(untagged)]
+pub enum AllowedOrigins {
+    All(All),
+    None(None),
+    Some(Vec<String>),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
-pub enum AllowedForeignOrigins {
+pub enum All {
     All,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum None {
     None,
-    List(Vec<String>),
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq)]
@@ -161,7 +175,7 @@ impl File {
 
     fn ensure_directory_exists(config_file: &Path) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
-            None => Ok(()),
+            Option::None => Ok(()),
             Some(path) => {
                 if !path.exists() {
                     println!(
@@ -228,7 +242,7 @@ mod tests {
         assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
             logging: Logging {
                 level: Some(LevelFilter::Debug),
-                structured: None,
+                structured: Option::None,
             },
         });
     }
@@ -278,25 +292,25 @@ mod tests {
     fn cors_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            allowed_foreign_origins = "all"
+            allowed_origins = "all"
             "#,
             r#"
-             allowed_foreign_origins = "none"
+             allowed_origins = "none"
             "#,
             r#"
-             allowed_foreign_origins = { list = ["http://localhost:8000", "https://192.168.1.55:3000"] }
+             allowed_origins = ["http://localhost:8000", "https://192.168.1.55:3000"]
             "#,
         ];
 
         let expected = vec![
             Cors {
-                allowed_foreign_origins: AllowedForeignOrigins::All,
+                allowed_origins: AllowedOrigins::All(All::All),
             },
             Cors {
-                allowed_foreign_origins: AllowedForeignOrigins::None,
+                allowed_origins: AllowedOrigins::None(None::None),
             },
             Cors {
-                allowed_foreign_origins: AllowedForeignOrigins::List(vec![
+                allowed_origins: AllowedOrigins::Some(vec![
                     String::from("http://localhost:8000"),
                     String::from("https://192.168.1.55:3000"),
                 ]),
@@ -319,7 +333,7 @@ mod tests {
     #[test]
     fn complete_logging_section_is_optional() {
         let config_without_logging_section = File {
-            logging: None,
+            logging: Option::None,
             ..File::default()
         };
         let temp_file = temp_toml_file();

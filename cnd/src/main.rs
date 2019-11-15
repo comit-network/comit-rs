@@ -141,7 +141,7 @@ fn spawn_warp_instance<
     let routes = route_factory::create(
         peer_id,
         dependencies,
-        settings.http_api.cors.allowed_foreign_origins.clone(),
+        &settings.http_api.cors.allowed_origins,
     );
 
     let listen_addr = SocketAddr::new(
