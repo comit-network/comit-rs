@@ -42,7 +42,7 @@ impl File {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                     port: 8000,
                 },
-                cors: Some(Cors {
+                cors: Option::Some(Cors {
                     allowed_origins: AllowedOrigins::None(None::None),
                 }),
             },
@@ -176,7 +176,7 @@ impl File {
     fn ensure_directory_exists(config_file: &Path) -> Result<(), config_rs::ConfigError> {
         match config_file.parent() {
             Option::None => Ok(()),
-            Some(path) => {
+            Option::Some(path) => {
                 if !path.exists() {
                     println!(
                         "Config path does not exist, creating directories recursively: {:?}",
@@ -241,7 +241,7 @@ mod tests {
 
         assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
             logging: Logging {
-                level: Some(LevelFilter::Debug),
+                level: Option::Some(LevelFilter::Debug),
                 structured: Option::None,
             },
         });
@@ -310,7 +310,7 @@ mod tests {
                 allowed_origins: AllowedOrigins::None(None::None),
             },
             Cors {
-                allowed_origins: AllowedOrigins::Some(vec![
+                allowed_origins: AllowedOrigins::Option::Some(vec![
                     String::from("http://localhost:8000"),
                     String::from("https://192.168.1.55:3000"),
                 ]),
