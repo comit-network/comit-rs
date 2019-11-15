@@ -5,6 +5,7 @@ use crate::{
         schema::{self, *},
         Sqlite,
     },
+    ethereum_support::{Erc20Token, EtherQuantity},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
@@ -18,10 +19,10 @@ pub trait SaveMessage<M> {
 }
 
 pub trait SaveRfc003Messages:
-    SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>>
-    + SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>>
-    + SaveMessage<Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>>
-    + SaveMessage<Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>>
+    SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>>
+    + SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>>
+    + SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>>
+    + SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>>
     + SaveMessage<Accept<Bitcoin, Ethereum>>
     + SaveMessage<Accept<Ethereum, Bitcoin>>
     + SaveMessage<Decline>
@@ -61,7 +62,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>) -> anyhow::Result<()> {
         let Request {
             swap_id,
             alpha_ledger,
@@ -116,7 +117,7 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::Erc20Token>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>) -> anyhow::Result<()> {
         let Request {
             swap_id,
             alpha_ledger,
@@ -171,7 +172,7 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::EtherQuantity, bitcoin::Amount>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
             swap_id,
             alpha_ledger,
@@ -226,7 +227,7 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 }
 
 impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, ethereum_support::Erc20Token, bitcoin::Amount>) -> anyhow::Result<()> {
+    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>) -> anyhow::Result<()> {
         let Request {
             swap_id,
             alpha_ledger,
