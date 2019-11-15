@@ -7,9 +7,22 @@ mod save_message;
 mod schema;
 #[cfg(test)]
 mod serialization_format_stability_tests;
+mod swap;
+mod swap_types;
+#[macro_use]
+pub mod with_swap_types;
 embed_migrations!("./migrations");
 
-pub use self::save_message::{SaveMessage, SaveRfc003Messages};
+pub use self::{
+    save_message::{SaveMessage, SaveRfc003Messages},
+    swap::*,
+    swap_types::*,
+};
+
+use crate::{
+    db::custom_sql_types::Text,
+    swap_protocols::{Role, SwapId},
+};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::path::Path;
 
@@ -42,6 +55,22 @@ impl Sqlite {
     fn connect(&self) -> anyhow::Result<SqliteConnection> {
         Ok(SqliteConnection::establish(&self.uri)?)
     }
+
+    fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
+        use self::schema::rfc003_swaps as swaps;
+
+        let connection = self.connect()?;
+        let key = Text(key);
+
+        let record: QueryableSwap = swaps::table
+            .filter(swaps::swap_id.eq(key))
+            .select((swaps::swap_id, swaps::role))
+            .first(&connection)
+            .optional()?
+            .ok_or(Error::SwapNotFound)?;
+
+        Ok(*record.role)
+    }
 }
 
 fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
@@ -50,6 +79,18 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq)]
+struct QueryableSwap {
+    pub swap_id: Text<SwapId>,
+    pub role: Text<Role>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("swap not found")]
+    SwapNotFound,
 }
 
 #[cfg(test)]

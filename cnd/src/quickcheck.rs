@@ -1,8 +1,12 @@
-use crate::swap_protocols::{
-    ledger::{self, ethereum::ChainId},
-    rfc003::{Accept, Request, SecretHash},
-    HashFunction, SwapId, Timestamp,
+use crate::{
+    db::Swap,
+    swap_protocols::{
+        ledger::{self, ethereum::ChainId},
+        rfc003::{Accept, Request, SecretHash},
+        HashFunction, Role, SwapId, Timestamp,
+    },
 };
+use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
 use uuid::Uuid;
@@ -287,6 +291,42 @@ impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, ledger::Bitcoin>> {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
             alpha_ledger_redeem_identity: *Quickcheck::<ethereum_support::Address>::arbitrary(g),
             beta_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
+        })
+    }
+}
+
+impl Arbitrary for Quickcheck<Role> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let role = match g.next_u32() % 2 {
+            0 => Role::Alice,
+            1 => Role::Bob,
+            _ => unreachable!(),
+        };
+
+        Quickcheck(role)
+    }
+}
+
+impl Arbitrary for Quickcheck<PeerId> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
+        let secret_key = libp2p::identity::secp256k1::SecretKey::from_bytes(bytes)
+            .expect("any 32 bytes are a valid secret key");
+        let keypair = libp2p::identity::secp256k1::Keypair::from(secret_key);
+        let public_key = keypair.public().clone();
+        let public_key = libp2p::core::PublicKey::Secp256k1(public_key);
+        let peer_id = PeerId::from_public_key(public_key);
+
+        Quickcheck(peer_id)
+    }
+}
+
+impl Arbitrary for Quickcheck<Swap> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        Quickcheck(Swap {
+            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
+            role: *Quickcheck::<Role>::arbitrary(g),
+            counterparty: Quickcheck::<PeerId>::arbitrary(g).0,
         })
     }
 }

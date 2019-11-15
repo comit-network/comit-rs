@@ -93,3 +93,12 @@ table! {
        reason -> Nullable<Text>,
    }
 }
+
+table! {
+   rfc003_swaps {
+       id -> Integer,
+       swap_id -> Text,
+       role -> Text,
+       counterparty -> Text,
+   }
+}

@@ -4,6 +4,7 @@ mod handlers;
 mod swap_state;
 
 use crate::{
+    db::{DetermineTypes, Retrieve, Save},
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -18,7 +19,7 @@ use crate::{
     seed::SwapSeed,
     swap_protocols::{
         rfc003::{actions::ActionKind, state_store::StateStore, Spawn},
-        MetadataStore, SwapId,
+        SwapId,
     },
 };
 use hyper::header;
@@ -29,7 +30,7 @@ use crate::db::SaveRfc003Messages;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<
-    D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+    D: Clone + StateStore + Save + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
 >(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
@@ -45,7 +46,7 @@ pub fn post_swap<
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<D: MetadataStore + StateStore>(
+pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
     dependencies: D,
     id: SwapId,
 ) -> Result<impl Reply, Rejection> {
@@ -55,7 +56,9 @@ pub fn get_swap<D: MetadataStore + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages>(
+pub fn action<
+    D: DetermineTypes + Retrieve + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
