@@ -76,3 +76,9 @@ where
         Ok(U32(id))
     }
 }
+
+impl From<U32> for u32 {
+    fn from(value: U32) -> u32 {
+        value.0
+    }
+}

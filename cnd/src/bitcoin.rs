@@ -24,6 +24,10 @@ impl PublicKey {
         })
     }
 
+    pub fn from(key: bitcoin::util::key::PublicKey) -> Self {
+        Self(key)
+    }
+
     pub fn from_secret_key<C: secp256k1::Signing>(
         secp: &secp256k1::Secp256k1<C>,
         secret_key: &secp256k1::SecretKey,
