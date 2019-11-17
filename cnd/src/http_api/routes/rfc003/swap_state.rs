@@ -323,13 +323,14 @@ mod tests {
         )
     }
 
-    #[quickcheck_macros::quickcheck]
-    fn given_no_error_should_never_be_internal_failure(
-        swap_communication_state: SwapCommunicationState,
-        alpha_state: rfc003::HtlcState,
-        beta_state: rfc003::HtlcState,
-    ) -> bool {
-        SwapStatus::new(swap_communication_state, alpha_state, beta_state, &None)
-            != SwapStatus::InternalFailure
+    quickcheck::quickcheck! {
+        fn test(
+            swap_communication_state: SwapCommunicationState,
+            alpha_state: rfc003::HtlcState,
+            beta_state: rfc003::HtlcState
+        ) -> bool {
+            SwapStatus::new(swap_communication_state, alpha_state, beta_state, &None)
+                != SwapStatus::InternalFailure
+        }
     }
 }

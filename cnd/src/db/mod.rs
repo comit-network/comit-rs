@@ -1,4 +1,6 @@
 mod custom_sql_types;
+#[cfg(test)]
+mod integration_tests;
 mod load_swaps;
 mod new_types;
 mod save_message;
