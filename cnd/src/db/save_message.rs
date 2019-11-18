@@ -29,22 +29,6 @@ pub trait SaveRfc003Messages:
 {
 }
 
-macro_rules! impl_save_message {
-    (
-        fn save_message($conn:ident : SqliteConnection, $var:ident : $message:ty) ->
-        $ret:ty
-        $body:block
-    ) => {
-        impl SaveMessage<$message> for Sqlite {
-            fn save_message(&self, $var: $message) -> $ret {
-                let $conn = self.connect()?;
-
-                $body
-            }
-        }
-    };
-}
-
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_bitcoin_ether_request_messages"]
 struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
@@ -61,8 +45,13 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>) -> anyhow::Result<()> {
+impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for Sqlite {
+    fn save_message(
+        &self,
+        message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>,
+    ) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Request {
             swap_id,
             alpha_ledger,
@@ -74,7 +63,7 @@ impl_save_message! {
             beta_ledger_redeem_identity,
             alpha_expiry,
             beta_expiry,
-            secret_hash
+            secret_hash,
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
@@ -88,7 +77,7 @@ impl_save_message! {
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash)
+            secret_hash: Text(secret_hash),
         };
 
         diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
@@ -116,8 +105,13 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>) -> anyhow::Result<()> {
+impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sqlite {
+    fn save_message(
+        &self,
+        message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>,
+    ) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Request {
             swap_id,
             alpha_ledger,
@@ -129,7 +123,7 @@ impl_save_message! {
             beta_ledger_redeem_identity,
             alpha_expiry,
             beta_expiry,
-            secret_hash
+            secret_hash,
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
@@ -144,7 +138,7 @@ impl_save_message! {
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash)
+            secret_hash: Text(secret_hash),
         };
 
         diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
@@ -171,8 +165,13 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>) -> anyhow::Result<()> {
+impl SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for Sqlite {
+    fn save_message(
+        &self,
+        message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>,
+    ) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Request {
             swap_id,
             alpha_ledger,
@@ -184,7 +183,7 @@ impl_save_message! {
             beta_ledger_redeem_identity,
             alpha_expiry,
             beta_expiry,
-            secret_hash
+            secret_hash,
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
@@ -198,7 +197,7 @@ impl_save_message! {
             bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash)
+            secret_hash: Text(secret_hash),
         };
 
         diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
@@ -208,7 +207,6 @@ impl_save_message! {
         Ok(())
     }
 }
-
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages"]
 struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
@@ -226,8 +224,13 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>) -> anyhow::Result<()> {
+impl SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
+    fn save_message(
+        &self,
+        message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>,
+    ) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Request {
             swap_id,
             alpha_ledger,
@@ -239,7 +242,7 @@ impl_save_message! {
             beta_ledger_redeem_identity,
             alpha_expiry,
             beta_expiry,
-            secret_hash
+            secret_hash,
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
@@ -254,7 +257,7 @@ impl_save_message! {
             bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash)
+            secret_hash: Text(secret_hash),
         };
 
         diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
@@ -264,7 +267,6 @@ impl_save_message! {
         Ok(())
     }
 }
-
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_accept_messages"]
 struct InsertableEthereumBitcoinAcceptMessage {
@@ -273,12 +275,14 @@ struct InsertableEthereumBitcoinAcceptMessage {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
+impl SaveMessage<Accept<Ethereum, Bitcoin>> for Sqlite {
+    fn save_message(&self, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity
+            beta_ledger_refund_identity,
         } = message;
 
         let insertable = InsertableEthereumBitcoinAcceptMessage {
@@ -294,7 +298,6 @@ impl_save_message! {
         Ok(())
     }
 }
-
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_accept_messages"]
 struct InsertableBitcoinEthereumAcceptMessage {
@@ -303,12 +306,14 @@ struct InsertableBitcoinEthereumAcceptMessage {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
+impl SaveMessage<Accept<Bitcoin, Ethereum>> for Sqlite {
+    fn save_message(&self, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity
+            beta_ledger_refund_identity,
         } = message;
 
         let insertable = InsertableBitcoinEthereumAcceptMessage {
@@ -324,7 +329,6 @@ impl_save_message! {
         Ok(())
     }
 }
-
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_decline_messages"]
 struct InsertableDeclineMessage {
@@ -332,10 +336,14 @@ struct InsertableDeclineMessage {
     reason: Option<String>,
 }
 
-impl_save_message! {
-    fn save_message(connection: SqliteConnection, message: Decline) -> anyhow::Result<()> {
+impl SaveMessage<Decline> for Sqlite {
+    fn save_message(&self, message: Decline) -> anyhow::Result<()> {
+        let connection = self.connect()?;
+
         let Decline {
-            swap_id, reason: _reason // we don't map reason to a DB type because will be gone soon (hopefully)
+            swap_id,
+            reason: _reason, /* we don't map reason to a DB type because will be gone soon
+                              * (hopefully) */
         } = message;
 
         let insertable = InsertableDeclineMessage {
@@ -350,5 +358,4 @@ impl_save_message! {
         Ok(())
     }
 }
-
 impl SaveRfc003Messages for Sqlite {}
