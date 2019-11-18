@@ -19,6 +19,10 @@ setTimeout(async function() {
             );
 
             expect(res).to.have.status(404);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
         });
 
         it("Returns an empty list when calling GET /swaps when there are no swaps", async () => {
@@ -55,6 +59,10 @@ setTimeout(async function() {
                 });
 
             expect(res).to.have.status(400);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
             expect(res.body.title).to.equal("Swap not supported.");
         });
 
@@ -66,6 +74,10 @@ setTimeout(async function() {
                 });
 
             expect(res).to.have.status(400);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
             expect(res.body.title).to.equal("Bad Request");
         });
 
