@@ -14,6 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support Ethereum `chain_id` in the Swap Request (HTTP API).
 - Ability to set CORS allowed origins through the configuration file.
 
+### Fixed
+- Error responses now properly identify themselves as `application/problem+json`. They have been conforming to this format for a while already, we just never set the `Content-Type` header properly. From now on, applications can fully rely on the error format!
+
 ## [0.3.0] - 2019-10-02
 ### Changed
 - Embed btsieve as a library inside cnd: From now on, you'll only need to run cnd to use COMIT.
