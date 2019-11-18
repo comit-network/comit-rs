@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
-use std::{collections::BTreeMap, fmt};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct HttpAsset {
@@ -68,18 +68,16 @@ impl HttpAsset {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("wrong asset")]
     WrongAsset,
+    #[error("parameter not found")]
     ParameterNotFound,
-    Serde(serde_json::Error),
+    #[error("serde: ")]
+    Serde(#[from] serde_json::Error),
+    #[error("parsing")]
     Parsing,
-}
-
-impl fmt::Display for Error {
-    fn fmt<'a>(&self, f: &mut fmt::Formatter<'a>) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
-    }
 }
 
 macro_rules! _impl_from_http_quantity_asset {

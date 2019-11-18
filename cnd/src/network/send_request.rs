@@ -35,15 +35,15 @@ pub trait SendRequest: Send + Sync + 'static {
         LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Debug, thiserror::Error)]
 pub enum RequestError {
-    /// The other node had an internal error while processing the request
+    #[error("peer node had an internal error while processing the request")]
     InternalError,
-    /// The other node produced an invalid response
+    #[error("peer node produced an invalid response")]
     InvalidResponse,
-    /// We had to establish a new connection to make the request but it failed
+    #[error("failed to establish a new connection to make the request")]
     Connecting(io::ErrorKind),
-    /// We were unable to send the data on the existing connection
+    #[error("unable to send the data on the existing connection")]
     Connection,
 }
 

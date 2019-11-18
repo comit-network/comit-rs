@@ -74,8 +74,9 @@ impl Metadata {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("duplicate key")]
     DuplicateKey,
 }
 

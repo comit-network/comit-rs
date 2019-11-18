@@ -36,10 +36,14 @@ pub use self::messages::{Accept, Decline, Request};
 /// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum Error {
+    #[error("btsieve")]
     Btsieve,
+    #[error("timer error")]
     TimerError,
+    #[error("incorrect funding")]
     IncorrectFunding,
+    #[error("internal error: {0}")]
     Internal(String),
 }

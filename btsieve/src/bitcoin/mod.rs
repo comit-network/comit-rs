@@ -172,12 +172,16 @@ pub fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
         .and_then(decode_response)
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("unsupported network: {0}")]
     UnsupportedNetwork(String),
-    Reqwest(reqwest::Error),
-    Hex(hex::FromHexError),
-    Deserialization(bitcoin::consensus::encode::Error),
+    #[error("reqwest: ")]
+    Reqwest(#[from] reqwest::Error),
+    #[error("hex: ")]
+    Hex(#[from] hex::FromHexError),
+    #[error("deserialization: ")]
+    Deserialization(#[from] bitcoin::consensus::encode::Error),
 }
 
 pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> {

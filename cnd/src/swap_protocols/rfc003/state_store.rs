@@ -14,8 +14,9 @@ use crate::swap_protocols::{
 use either::Either;
 use std::{any::Any, collections::HashMap, sync::Mutex};
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("invalid type")]
     InvalidType,
 }
 

@@ -10,6 +10,7 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
+use thiserror;
 
 pub const SEED_LENGTH: usize = 32;
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
@@ -145,53 +146,18 @@ fn default_seed_path() -> Result<PathBuf, Error> {
         .ok_or(Error::NoDefaultPath)
 }
 
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
-    Io(io::Error),
-    PemParse(pem::PemError),
+    #[error("io: ")]
+    Io(#[from] io::Error),
+    #[error("PEM parse: ")]
+    PemParse(#[from] pem::PemError),
+    #[error("expected 32 bytes of base64 encode, got {0} bytes")]
     IncorrectLength(usize),
-    Rand(rand::Error),
+    #[error("RNG: ")]
+    Rand(#[from] rand::Error),
+    #[error("no default path")]
     NoDefaultPath,
-}
-
-impl std::error::Error for Error {}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "seed file error")
-    }
-}
-
-impl fmt::Debug for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "seed: ")?;
-        match self {
-            Error::Io(e) => write!(f, "io error: {:?}", e),
-            Error::PemParse(e) => write!(f, "pem format incorrect: {:?}", e),
-            Error::IncorrectLength(x) => {
-                write!(f, "expected 32 bytes of base64 encode, got {} bytes", x)
-            }
-            Error::Rand(e) => write!(f, "random number error: {:?}", e),
-            Error::NoDefaultPath => write!(f, "failed to generate default path"),
-        }
-    }
-}
-
-impl From<io::Error> for Error {
-    fn from(e: io::Error) -> Error {
-        Error::Io(e)
-    }
-}
-
-impl From<pem::PemError> for Error {
-    fn from(e: pem::PemError) -> Error {
-        Error::PemParse(e)
-    }
-}
-
-impl From<rand::Error> for Error {
-    fn from(e: rand::Error) -> Error {
-        Error::Rand(e)
-    }
 }
 
 impl From<[u8; 32]> for Seed {

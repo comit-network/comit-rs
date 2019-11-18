@@ -1,5 +1,5 @@
 use serde::{de::DeserializeOwned, Deserialize, Deserializer, Serialize};
-use std::{collections::HashMap, fmt};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 pub struct HttpLedger {
@@ -52,18 +52,16 @@ impl HttpLedger {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("wrong ledger")]
     WrongLedger,
+    #[error("parameter not found")]
     ParameterNotFound,
+    #[error("unknown network")]
     UnknownNetwork,
-    Serde(serde_json::Error),
-}
-
-impl fmt::Display for Error {
-    fn fmt<'a>(&self, f: &mut fmt::Formatter<'a>) -> Result<(), fmt::Error> {
-        write!(f, "{:?}", self)
-    }
+    #[error("serde: ")]
+    Serde(#[from] serde_json::Error),
 }
 
 macro_rules! _impl_from_http_ledger {
