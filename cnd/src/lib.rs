@@ -25,7 +25,6 @@ pub mod network;
 #[cfg(test)]
 pub mod quickcheck;
 pub mod seed;
-pub mod std_ext;
 pub mod swap_protocols;
 
 use directories::ProjectDirs;

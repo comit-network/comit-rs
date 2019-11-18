@@ -3,7 +3,10 @@ use crate::config::file::{Bitcoin, Ethereum};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
-use std::path::Path;
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    path::Path,
+};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -27,9 +30,29 @@ pub struct HttpApi {
     pub cors: Cors,
 }
 
+impl Default for HttpApi {
+    fn default() -> Self {
+        Self {
+            socket: Socket {
+                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                port: 8000,
+            },
+            cors: Cors::default(),
+        }
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
+}
+
+impl Default for Cors {
+    fn default() -> Self {
+        Self {
+            allowed_origins: AllowedOrigins::None,
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -59,24 +82,34 @@ impl Settings {
         } = config_file;
 
         Ok(Self {
-            network,
-            http_api: HttpApi {
-                socket: http_api.socket,
-                cors: http_api
-                    .cors
-                    .map(|cors| {
-                        let allowed_origins = match cors.allowed_origins {
-                            file::AllowedOrigins::All(_) => AllowedOrigins::All,
-                            file::AllowedOrigins::None(_) => AllowedOrigins::None,
-                            file::AllowedOrigins::Some(origins) => AllowedOrigins::Some(origins),
-                        };
+            network: network.unwrap_or_else(|| {
+                let default_socket = "/ip4/0.0.0.0/tcp/9939"
+                    .parse()
+                    .expect("cnd listen address could not be parsed");
 
-                        Cors { allowed_origins }
-                    })
-                    .unwrap_or(Cors {
-                        allowed_origins: AllowedOrigins::None,
-                    }),
-            },
+                Network {
+                    listen: vec![default_socket],
+                }
+            }),
+            http_api: http_api
+                .map(|file::HttpApi { socket, cors }| {
+                    let cors = cors
+                        .map(|cors| {
+                            let allowed_origins = match cors.allowed_origins {
+                                file::AllowedOrigins::All(_) => AllowedOrigins::All,
+                                file::AllowedOrigins::None(_) => AllowedOrigins::None,
+                                file::AllowedOrigins::Some(origins) => {
+                                    AllowedOrigins::Some(origins)
+                                }
+                            };
+
+                            Cors { allowed_origins }
+                        })
+                        .unwrap_or_default();
+
+                    HttpApi { socket, cors }
+                })
+                .unwrap_or_default(),
             database: {
                 let default_database_path = crate::data_dir()
                     .map(|dir| Path::join(&dir, "cnd.sqlite"))
@@ -175,13 +208,13 @@ mod tests {
     #[test]
     fn cors_section_defaults_to_no_allowed_foreign_origins() {
         let config_file = File {
-            http_api: file::HttpApi {
+            http_api: Some(file::HttpApi {
                 socket: Socket {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
                     port: 8000,
                 },
                 cors: None,
-            },
+            }),
             ..File::default()
         };
 
@@ -192,6 +225,46 @@ mod tests {
             .map(|settings| &settings.http_api.cors)
             .is_equal_to(Cors {
                 allowed_origins: AllowedOrigins::None,
+            })
+    }
+
+    #[test]
+    fn http_api_section_defaults() {
+        let config_file = File {
+            http_api: None,
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.http_api)
+            .is_equal_to(HttpApi {
+                socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                    port: 8000,
+                },
+                cors: Cors {
+                    allowed_origins: AllowedOrigins::None,
+                },
+            })
+    }
+
+    #[test]
+    fn network_section_defaults() {
+        let config_file = File {
+            network: None,
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.network)
+            .is_equal_to(Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             })
     }
 }

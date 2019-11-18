@@ -36,7 +36,7 @@ fn main() -> anyhow::Result<()> {
     let config_file = options
         .config_file
         .map(config::File::read)
-        .unwrap_or_else(config::File::read_or_create_default)?;
+        .unwrap_or_else(config::File::read_or_default)?;
     let settings = Settings::from_config_file_and_defaults(config_file)?;
 
     let base_log_level = settings.logging.level;
