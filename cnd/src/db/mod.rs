@@ -20,37 +20,17 @@ pub struct Sqlite {
     uri: String,
 }
 
-/// Defines the storage location of our SQLite database
-#[derive(Debug)]
-pub enum Location<'p> {
-    OnDisk(&'p Path),
-    #[cfg(test)]
-    InMemory,
-}
-
 impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
     /// When this returns an Sqlite database exists at 'db', a
     /// successful connection to the database has been made, and
     /// the database migrations have been run.
-    pub fn new(location: Location<'_>) -> anyhow::Result<Self> {
-        let db = match location {
-            Location::OnDisk(path) => {
-                if path == Path::new(":memory:") {
-                    anyhow::bail!("use Location::InMemory if you want an in-memory database!")
-                }
+    pub fn new(path: &Path) -> anyhow::Result<Self> {
+        ensure_folder_tree_exists(path)?;
 
-                ensure_folder_tree_exists(path)?;
-
-                Sqlite {
-                    uri: format!("file:{}", path.display()),
-                }
-            }
-            #[cfg(test)]
-            Location::InMemory => Sqlite {
-                uri: ":memory:".to_owned(),
-            },
+        let db = Sqlite {
+            uri: format!("file:{}", path.display()),
         };
 
         let connection = db.connect()?;
@@ -91,7 +71,7 @@ mod tests {
     fn can_create_a_new_temp_db() {
         let path = temp_db();
 
-        let db = Sqlite::new(Location::OnDisk(&path));
+        let db = Sqlite::new(&path);
 
         assert_that(&db).is_ok();
     }
@@ -102,7 +82,7 @@ mod tests {
         // validate assumptions: the db does not exist yet
         assert_that(&path.as_path()).does_not_exist();
 
-        let db = Sqlite::new(Location::OnDisk(&path));
+        let db = Sqlite::new(&path);
 
         assert_that(&db).is_ok();
         assert_that(&path.as_path()).exists();
@@ -124,24 +104,9 @@ mod tests {
         assert_that(&path).does_not_exist();
         assert_that(&path.parent()).is_some().does_not_exist();
 
-        let db = Sqlite::new(Location::OnDisk(&path));
+        let db = Sqlite::new(&path);
 
         assert_that(&db).is_ok();
         assert_that(&path).exists();
-    }
-
-    #[test]
-    fn given_special_memory_path_does_not_create_a_file() {
-        let result = Sqlite::new(Location::InMemory);
-
-        assert_that(&result).is_ok();
-        assert_that(&Path::new(":memory:")).does_not_exist();
-    }
-
-    #[test]
-    fn given_memory_as_a_path_fails() {
-        let result = Sqlite::new(Location::OnDisk(Path::new(":memory:")));
-
-        assert_that(&result).is_err();
     }
 }
