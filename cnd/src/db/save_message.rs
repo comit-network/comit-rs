@@ -2,7 +2,7 @@ use crate::{
     db::{
         custom_sql_types::{Text, U32},
         new_types::{DecimalU256, EthereumAddress, Satoshis},
-        schema::{self, *},
+        schema::*,
         Sqlite,
     },
     swap_protocols::{
@@ -91,7 +91,7 @@ impl_save_message! {
             secret_hash: Text(secret_hash)
         };
 
-        diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_ether_request_messages)
+        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -147,7 +147,7 @@ impl_save_message! {
             secret_hash: Text(secret_hash)
         };
 
-        diesel::insert_into(schema::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::dsl::rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages)
+        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -201,7 +201,7 @@ impl_save_message! {
             secret_hash: Text(secret_hash)
         };
 
-        diesel::insert_into(schema::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_ether_bitcoin_request_messages)
+        diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -257,7 +257,7 @@ impl_save_message! {
             secret_hash: Text(secret_hash)
         };
 
-        diesel::insert_into(schema::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::dsl::rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages)
+        diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -287,7 +287,7 @@ impl_save_message! {
             bitcoin_refund_identity: Text(beta_ledger_refund_identity.into_inner()),
         };
 
-        diesel::insert_into(schema::rfc003_ethereum_bitcoin_accept_messages::dsl::rfc003_ethereum_bitcoin_accept_messages)
+        diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -317,7 +317,7 @@ impl_save_message! {
             ethereum_refund_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
         };
 
-        diesel::insert_into(schema::rfc003_bitcoin_ethereum_accept_messages::dsl::rfc003_bitcoin_ethereum_accept_messages)
+        diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
@@ -343,7 +343,7 @@ impl_save_message! {
             reason: None,
         };
 
-        let _ = diesel::insert_into(schema::rfc003_decline_messages::dsl::rfc003_decline_messages)
+        let _ = diesel::insert_into(rfc003_decline_messages::table)
             .values(&insertable)
             .execute(&connection)?;
 
