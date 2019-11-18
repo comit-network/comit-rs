@@ -154,6 +154,7 @@ fn spawn_warp_instance<
     runtime.spawn(server);
 }
 
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 fn read_config(options: &Options) -> anyhow::Result<config::File> {
     // if the user specifies a config path, use it
     if let Some(path) = &options.config_file {
