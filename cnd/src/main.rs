@@ -3,7 +3,7 @@
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
-    db::{Location, SaveRfc003Messages, Sqlite},
+    db::{SaveRfc003Messages, Sqlite},
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -69,7 +69,7 @@ fn main() -> anyhow::Result<()> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
-    let database = Sqlite::new(Location::OnDisk(&settings.database.sqlite))?;
+    let database = Sqlite::new(&settings.database.sqlite)?;
 
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(

@@ -1,5 +1,5 @@
 use crate::{
-    db::{load_swaps::LoadAcceptedSwap, Location, SaveMessage, Sqlite},
+    db::{load_swaps::LoadAcceptedSwap, SaveMessage, Sqlite},
     quickcheck::Quickcheck,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
@@ -25,7 +25,7 @@ macro_rules! db_roundtrip_test {
                         .tempfile()?
                         .into_temp_path();
 
-                let db = Sqlite::new(Location::OnDisk(&db_path))?;
+                let db = Sqlite::new(&db_path)?;
 
                 let saved_request = Request {
                     swap_id: *swap_id,
