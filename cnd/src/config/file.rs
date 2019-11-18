@@ -112,36 +112,12 @@ pub struct Ethereum {
 }
 
 impl File {
-    pub fn read_or_default() -> Result<Self, config_rs::ConfigError> {
-        let path = Self::default_config_path()?;
-
-        let config = if path.exists() {
-            println!("Found configuration file, reading from {}", path.display());
-            Self::read(path)?
-        } else {
-            println!("No configuration file found, using defaults",);
-            Self::default()
-        };
-
-        Ok(config)
-    }
-
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
         let config_file = Path::new(&config_file);
 
         let mut config = config_rs::Config::new();
         config.merge(config_rs::File::from(config_file))?;
         config.try_into()
-    }
-
-    fn default_config_path() -> Result<PathBuf, config_rs::ConfigError> {
-        crate::config_dir()
-            .map(|dir| Path::join(&dir, "cnd.toml"))
-            .ok_or_else(|| {
-                config_rs::ConfigError::Message(
-                    "Could not generate default configuration path".to_string(),
-                )
-            })
     }
 }
 
