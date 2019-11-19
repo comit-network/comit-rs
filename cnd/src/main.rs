@@ -1,5 +1,7 @@
 #![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
 #![forbid(unsafe_code)]
+use crate::cli::Options;
+use anyhow::Context;
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
@@ -33,11 +35,7 @@ mod logging;
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
-    let config_file = options
-        .config_file
-        .map(config::File::read)
-        .unwrap_or_else(config::File::read_or_create_default)?;
-    let settings = Settings::from_config_file_and_defaults(config_file)?;
+    let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
 
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
@@ -154,4 +152,30 @@ fn spawn_warp_instance<
     let server = warp::serve(routes).bind(listen_addr);
 
     runtime.spawn(server);
+}
+
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+fn read_config(options: &Options) -> anyhow::Result<config::File> {
+    // if the user specifies a config path, use it
+    if let Some(path) = &options.config_file {
+        println!("Using config file {}", path.display());
+
+        return config::File::read(&path)
+            .with_context(|| format!("failed to read config file {}", path.display()));
+    }
+
+    // try to load default config
+    let default_path = cnd::default_config_path()?;
+
+    if !default_path.exists() {
+        return Ok(config::File::default());
+    }
+
+    println!(
+        "Using config file at default path: {}",
+        default_path.display()
+    );
+
+    config::File::read(&default_path)
+        .with_context(|| format!("failed to read config file {}", default_path.display()))
 }

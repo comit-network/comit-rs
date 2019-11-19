@@ -1,4 +1,4 @@
-use serde::{de, export::fmt, Deserializer, Serializer};
+use serde::{de, export::fmt, Deserializer};
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<bitcoin::Network, D::Error>
 where
@@ -27,17 +27,4 @@ where
     }
 
     deserializer.deserialize_str(Visitor)
-}
-
-// This is the API serde expects, can't do much about the trivial copy :(
-#[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn serialize<S: Serializer>(
-    value: &bitcoin::Network,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
-    serializer.serialize_str(match value {
-        bitcoin::Network::Bitcoin => "mainnet",
-        bitcoin::Network::Testnet => "testnet",
-        bitcoin::Network::Regtest => "regtest",
-    })
 }

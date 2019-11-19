@@ -25,11 +25,11 @@ pub mod network;
 #[cfg(test)]
 pub mod quickcheck;
 pub mod seed;
-pub mod std_ext;
 pub mod swap_protocols;
 
+use anyhow::Context;
 use directories::ProjectDirs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -41,6 +41,12 @@ lazy_static::lazy_static! {
 // OSX: /Users/<user>/Library/Preferences/comit/
 fn config_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+}
+
+pub fn default_config_path() -> anyhow::Result<PathBuf> {
+    crate::config_dir()
+        .map(|dir| Path::join(&dir, "cnd.toml"))
+        .context("Could not generate default configuration path")
 }
 
 // Linux: /home/<user>/.local/share/comit/

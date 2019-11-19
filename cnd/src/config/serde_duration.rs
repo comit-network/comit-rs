@@ -1,4 +1,4 @@
-use serde::{de, export::fmt, Deserializer, Serializer};
+use serde::{de, export::fmt, Deserializer};
 use std::time::Duration;
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<Duration, D::Error>
@@ -23,8 +23,4 @@ where
     }
 
     deserializer.deserialize_u64(Visitor)
-}
-
-pub fn serialize<S: Serializer>(value: &Duration, serializer: S) -> Result<S::Ok, S::Error> {
-    serializer.serialize_u64(value.as_secs())
 }

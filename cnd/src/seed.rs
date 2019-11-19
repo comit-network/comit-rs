@@ -1,4 +1,4 @@
-use crate::{std_ext::path::PrintablePath, swap_protocols::SwapId};
+use crate::swap_protocols::SwapId;
 use crypto::{digest::Digest, sha2::Sha256};
 use pem::{encode, Pem};
 use rand::Rng;
@@ -54,7 +54,7 @@ impl Seed {
         let file = Path::new(&seed_file);
         log::info!(
             "Found seed file, reading from {}",
-            PrintablePath(&file.to_path_buf())
+            &file.to_path_buf().display()
         );
 
         let contents = fs::read_to_string(file)?;
@@ -88,10 +88,7 @@ impl Seed {
         let random_seed = Seed::new_random(rand)?;
         random_seed.write_to(path.clone())?;
 
-        log::info!(
-            "No seed file found, creating default at {}",
-            PrintablePath(&path)
-        );
+        log::info!("No seed file found, creating default at {}", path.display());
 
         Ok(random_seed)
     }
@@ -132,7 +129,7 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
         if !path.exists() {
             log::info!(
                 "Seed file parent directory does not exist, creating recursively: {}",
-                PrintablePath(&file)
+                file.display()
             );
             fs::create_dir_all(path)?;
         }
