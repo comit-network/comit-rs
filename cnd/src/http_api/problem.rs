@@ -140,12 +140,20 @@ impl From<rfc003::state_machine::Error> for HttpApiProblem {
 }
 
 pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(err) = rejection.find_cause::<HttpApiProblem>() {
-        log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", err);
+    if let Some(problem) = rejection.find_cause::<HttpApiProblem>() {
+        log::debug!(target: "http-api", "HTTP request got rejected, returning HttpApiProblem response: {:?}", problem);
 
-        let code = err.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
-        let json = warp::reply::json(err);
-        return Ok(warp::reply::with_status(json, code));
+        let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
+
+        let reply = warp::reply::json(problem);
+        let reply = warp::reply::with_status(reply, code);
+        let reply = warp::reply::with_header(
+            reply,
+            http::header::CONTENT_TYPE,
+            http_api_problem::PROBLEM_JSON_MEDIA_TYPE,
+        );
+
+        return Ok(reply);
     }
 
     Err(rejection)

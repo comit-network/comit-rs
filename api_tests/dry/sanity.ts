@@ -18,17 +18,11 @@ setTimeout(async function() {
                 "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
-            res.should.have.status(404);
-        });
-
-        it("Returns a 404 for an action on a non-existent swap", async () => {
-            const res = await request(alice.cndHttpApiUrl())
-                .post(
-                    "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead/accept"
-                )
-                .send({});
-
-            res.should.have.status(404);
+            expect(res).to.have.status(404);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
         });
 
         it("Returns an empty list when calling GET /swaps when there are no swaps", async () => {
@@ -64,8 +58,12 @@ setTimeout(async function() {
                     peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
                 });
 
-            res.should.have.status(400);
-            res.body.title.should.equal("Swap not supported.");
+            expect(res).to.have.status(400);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
+            expect(res.body.title).to.equal("Swap not supported.");
         });
 
         it("[Alice] Returns 400 bad request for malformed requests", async () => {
@@ -75,26 +73,32 @@ setTimeout(async function() {
                     garbage: true,
                 });
 
-            res.should.have.status(400);
-            res.body.title.should.equal("Bad Request");
+            expect(res).to.have.status(400);
+            expect(res).to.have.header(
+                "content-type",
+                "application/problem+json"
+            );
+            expect(res.body.title).to.equal("Bad Request");
         });
 
         it("[Alice] Should have no peers before making a swap request", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
-            res.should.have.status(200);
-            res.body.peers.should.have.length(0);
+            expect(res).to.have.status(200);
+            expect(res.body.peers).to.have.length(0);
         });
 
         it("[Alice] Returns its peer ID when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
-            expect(res.status).to.equal(200);
+
+            expect(res).to.have.status(200);
             expect(res.body.id).to.be.a("string");
         });
 
         it("[Alice] Returns the addresses it listens on when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
-            expect(res.status).to.equal(200);
+
+            expect(res).to.have.status(200);
             expect(res.body.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface
             expect(res.body.listen_addresses.length).to.be.greaterThan(2);
