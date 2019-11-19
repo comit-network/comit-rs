@@ -8,17 +8,19 @@ use crate::{
 };
 use http_api_problem::HttpApiProblem;
 
-pub fn handle_get_swaps<D: DetermineTypes + Retrieve + StateStore>(
+pub async fn handle_get_swaps<D: DetermineTypes + Retrieve + StateStore>(
     dependencies: D,
 ) -> Result<siren::Entity, HttpApiProblem> {
     let mut entity = siren::Entity::default().with_class_member("swaps");
 
     for swap in Retrieve::all(&dependencies)
+        .await
         .map_err(problem::internal_error)?
         .into_iter()
     {
         let types = dependencies
             .determine_types(&swap.swap_id)
+            .await
             .map_err(problem::internal_error)?;
 
         let sub_entity = build_rfc003_siren_entity(&dependencies, swap, types, IncludeState::No)?;

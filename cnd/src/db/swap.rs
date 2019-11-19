@@ -7,18 +7,21 @@ use crate::{
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
     swap_protocols::{Role, SwapId},
 };
+use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
 
 /// Save swap to database.
+#[async_trait]
 pub trait Save: Send + Sync + 'static {
-    fn save(&self, swap: Swap) -> anyhow::Result<()>;
+    async fn save(&self, swap: Swap) -> anyhow::Result<()>;
 }
 
 /// Retrieve swaps from database.
+#[async_trait]
 pub trait Retrieve: Send + Sync + 'static {
-    fn get(&self, key: &SwapId) -> anyhow::Result<Swap>;
-    fn all(&self) -> anyhow::Result<Vec<Swap>>;
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap>;
+    async fn all(&self) -> anyhow::Result<Vec<Swap>>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -38,14 +41,17 @@ impl Swap {
     }
 }
 
+#[async_trait]
 impl Save for Sqlite {
-    fn save(&self, swap: Swap) -> anyhow::Result<()> {
+    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
         let insertable = InsertableSwap::from(swap);
-        let connection = self.connect()?;
 
-        diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
+                .values(&insertable)
+                .execute(&*connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -69,32 +75,34 @@ impl From<Swap> for InsertableSwap {
     }
 }
 
+#[async_trait]
 impl Retrieve for Sqlite {
-    fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
         use self::schema::rfc003_swaps::dsl::*;
 
-        let connection = self.connect()?;
-        let key = Text(key);
+        let record: QueryableSwap = self
+            .do_in_transaction(|connection| {
+                let key = Text(key);
 
-        let record: QueryableSwap = rfc003_swaps
-            .filter(swap_id.eq(key))
-            .first(&connection)
-            .optional()?
+                rfc003_swaps
+                    .filter(swap_id.eq(key))
+                    .first(&*connection)
+                    .optional()
+            })
+            .await?
             .ok_or(Error::SwapNotFound)?;
 
-        Ok(record.into())
+        Ok(Swap::from(record))
     }
 
-    fn all(&self) -> anyhow::Result<Vec<Swap>> {
+    async fn all(&self) -> anyhow::Result<Vec<Swap>> {
         use self::schema::rfc003_swaps::dsl::*;
 
-        let connection = self.connect()?;
+        let records: Vec<QueryableSwap> = self
+            .do_in_transaction(|connection| rfc003_swaps.load(&*connection))
+            .await?;
 
-        Ok(rfc003_swaps
-            .load(&connection)?
-            .into_iter()
-            .map(|q: QueryableSwap| q.into())
-            .collect())
+        Ok(records.into_iter().map(|q| q.into()).collect())
     }
 }
 

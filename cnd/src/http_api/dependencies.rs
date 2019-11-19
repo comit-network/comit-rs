@@ -16,6 +16,7 @@ use crate::{
         LedgerConnectors, SwapId,
     },
 };
+use async_trait::async_trait;
 use futures::{
     sync::{mpsc, oneshot::Sender},
     Future,
@@ -130,45 +131,51 @@ where
     }
 }
 
+#[async_trait]
 impl<S> Save for Dependencies<S>
 where
     S: Send + Sync + 'static,
 {
-    fn save(&self, swap: Swap) -> anyhow::Result<()> {
-        self.db.save(swap)
+    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
+        self.db.save(swap).await
     }
 }
 
+#[async_trait]
 impl<S> Retrieve for Dependencies<S>
 where
     S: Send + Sync + 'static,
 {
-    fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
-        self.db.get(key)
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
+        self.db.get(key).await
     }
 
-    fn all(&self) -> anyhow::Result<Vec<Swap>> {
-        self.db.all()
+    async fn all(&self) -> anyhow::Result<Vec<Swap>> {
+        self.db.all().await
     }
 }
 
+#[async_trait]
 impl<S> DetermineTypes for Dependencies<S>
 where
     S: Send + Sync + 'static,
 {
-    fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
-        self.db.determine_types(key)
+    async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
+        self.db.determine_types(key).await
     }
 }
 
+#[async_trait]
 impl<S> SaveRfc003Messages for Dependencies<S> where S: Send + Sync + 'static {}
 
+#[async_trait]
 impl<S, M> SaveMessage<M> for Dependencies<S>
 where
     S: Send + Sync + 'static,
+    M: Send + 'static,
     Sqlite: SaveMessage<M>,
 {
-    fn save_message(&self, message: M) -> anyhow::Result<()> {
-        self.db.save_message(message)
+    async fn save_message(&self, message: M) -> anyhow::Result<()> {
+        self.db.save_message(message).await
     }
 }

@@ -80,6 +80,7 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&state_store),
         seed,
         database.clone(),
+        runtime.executor(),
     )?;
 
     let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());

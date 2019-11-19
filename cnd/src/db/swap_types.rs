@@ -1,23 +1,29 @@
 use crate::{
-    db::{custom_sql_types::Text, schema, Error, Sqlite},
+    db::{custom_sql_types::Text, schema, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
     swap_protocols::{asset, ledger, Role, SwapId},
 };
+use async_trait::async_trait;
 use strum_macros::{Display, EnumString};
 
 /// Determine swap types for swaps currently stored in the database.
 ///
 /// SwapTypes exists solely so we can use the with_swap_types!() macro to get
 /// compile time types instead of generic types.
+#[async_trait]
 pub trait DetermineTypes: Send + Sync + 'static {
-    fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes>;
+    async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes>;
 }
 
+#[async_trait]
 impl DetermineTypes for Sqlite {
-    fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
-        let role = self.role(key)?;
+    async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
+        let role = self.role(key).await?;
 
-        if self.rfc003_bitcoin_ethereum_bitcoin_ether_request_messages_has_swap(key)? {
+        if self
+            .rfc003_bitcoin_ethereum_bitcoin_ether_request_messages_has_swap(key)
+            .await?
+        {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
@@ -27,17 +33,10 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if self.rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)? {
-            return Ok(SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin,
-                beta_ledger: LedgerKind::Ethereum,
-                alpha_asset: AssetKind::Bitcoin,
-                beta_asset: AssetKind::Erc20,
-                role,
-            });
-        }
-
-        if self.rfc003_ethereum_bitcoin_ether_bitcoin_request_messages_has_swap(key)? {
+        if self
+            .rfc003_ethereum_bitcoin_ether_bitcoin_request_messages_has_swap(key)
+            .await?
+        {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
                 beta_ledger: LedgerKind::Bitcoin,
@@ -47,7 +46,23 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if self.rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages_has_swap(key)? {
+        if self
+            .rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)
+            .await?
+        {
+            return Ok(SwapTypes {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Erc20,
+                role,
+            });
+        }
+
+        if self
+            .rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages_has_swap(key)
+            .await?
+        {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
                 beta_ledger: LedgerKind::Bitcoin,
@@ -64,20 +79,20 @@ impl DetermineTypes for Sqlite {
 macro_rules! impl_has_swap {
     ($table:ident) => {
         paste::item! {
-            fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<bool> {
+            async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<bool> {
                 use schema::$table as swaps;
 
-                let connection = self.connect()?;
-                let key = Text(key);
+                let record: Option<QueryableSwap> = self.do_in_transaction(|connection| {
+                    let key = Text(key);
+                    swaps::table
+                        .filter(swaps::swap_id.eq(key))
+                        .select((swaps::swap_id,)) // Select call needs argument to be a tuple.
+                        .first(&*connection)
+                        .optional()
+                })
+                .await?;
 
-                let record: Result<QueryableSwap, Error> = swaps::table
-                    .filter(swaps::swap_id.eq(key))
-                    .select((swaps::swap_id,)) // Select call needs argument to be a tuple.
-                    .first(&connection)
-                    .optional()?
-                    .ok_or(Error::SwapNotFound);
-
-                Ok(record.is_ok())
+                Ok(record.is_some())
             }
         }
     };
@@ -85,8 +100,8 @@ macro_rules! impl_has_swap {
 
 impl Sqlite {
     impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages);
-    impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages);
     impl_has_swap!(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages);
+    impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages);
     impl_has_swap!(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages);
 }
 
