@@ -51,7 +51,7 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     pub seed: Seed,
     #[behaviour(ignore)]
-    pub database: Sqlite,
+    pub db: Sqlite,
     #[behaviour(ignore)]
     response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
 }
@@ -76,7 +76,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         ledger_events: LedgerConnectors,
         state_store: Arc<InMemoryStateStore>,
         seed: Seed,
-        database: Sqlite,
+        db: Sqlite,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -95,7 +95,7 @@ impl<TSubstream> ComitNode<TSubstream> {
             ledger_events,
             state_store,
             seed,
-            database,
+            db,
             response_channels: HashMap::new(),
         })
     }
@@ -152,7 +152,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to database");
+                                    .expect("Could not save state to db");
 
                                 Ok(swap_id)
                             }
@@ -172,7 +172,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to database");
+                                    .expect("Could not save state to db");
 
                                 Ok(swap_id)
                             }
@@ -192,7 +192,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to database");
+                                    .expect("Could not save state to db");
 
                                 Ok(swap_id)
                             }
@@ -212,7 +212,7 @@ impl<TSubstream> ComitNode<TSubstream> {
                                     body!(request.take_body_as()),
                                 );
                                 self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to database");
+                                    .expect("Could not save state to db");
 
                                 Ok(swap_id)
                             }
@@ -288,8 +288,8 @@ impl<TSubstream> ComitNode<TSubstream> {
         let id = swap_request.swap_id;
         let seed = self.seed.swap_seed(id);
 
-        self.database.save(Swap::new(id, Role::Bob, counterparty))?;
-        self.database.save_message(swap_request.clone())?;
+        self.db.save(Swap::new(id, Role::Bob, counterparty))?;
+        self.db.save_message(swap_request.clone())?;
 
         let state_store = Arc::clone(&self.state_store);
         let state = bob::State::proposed(swap_request.clone(), seed);
