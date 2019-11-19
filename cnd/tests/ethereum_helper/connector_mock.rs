@@ -15,6 +15,7 @@ pub struct EthereumConnectorMock {
     receipts: HashMap<H256, TransactionReceipt>,
     latest_time_return_block: Instant,
     current_latest_block_index: usize,
+    task_executor: tokio::runtime::TaskExecutor,
 }
 
 impl EthereumConnectorMock {
@@ -22,6 +23,7 @@ impl EthereumConnectorMock {
         latest_blocks: impl IntoIterator<Item = Block<Transaction>>,
         all_blocks: impl IntoIterator<Item = Block<Transaction>>,
         receipts: Vec<(H256, TransactionReceipt)>,
+        task_executor: tokio::runtime::TaskExecutor,
     ) -> Self {
         EthereumConnectorMock {
             all_blocks: all_blocks
@@ -34,6 +36,7 @@ impl EthereumConnectorMock {
             latest_time_return_block: Instant::now(),
             current_latest_block_index: 0,
             receipts: receipts.into_iter().collect(),
+            task_executor,
         }
     }
 }
@@ -88,5 +91,14 @@ impl ReceiptByHash for EthereumConnectorMock {
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Receipt, Error = Self::Error> + Send + 'static> {
         Box::new(Ok(self.receipts.get(&transaction_hash).cloned()).into_future())
+    }
+}
+
+impl tokio::executor::Executor for EthereumConnectorMock {
+    fn spawn(
+        &mut self,
+        future: Box<dyn Future<Item = (), Error = ()> + Send>,
+    ) -> Result<(), tokio::executor::SpawnError> {
+        tokio::executor::Executor::spawn(&mut self.task_executor, future)
     }
 }

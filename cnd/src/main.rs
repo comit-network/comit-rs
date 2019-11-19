@@ -58,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let (ethereum_connector, _event_loop_handle) =
-        { Web3Connector::new(settings.clone().ethereum.node_url)? };
+        { Web3Connector::new(settings.clone().ethereum.node_url, runtime.executor())? };
 
     let ledger_events = LedgerConnectors {
         bitcoin_connector,

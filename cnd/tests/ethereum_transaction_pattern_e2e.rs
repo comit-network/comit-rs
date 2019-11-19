@@ -38,7 +38,8 @@ fn ethereum_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
         .unwrap();
 
-    let (connector, _event_loop) = Web3Connector::new(url).unwrap();
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+    let (connector, _event_loop) = Web3Connector::new(url, runtime.executor()).unwrap();
 
     let mut runtime = Runtime::new().unwrap();
 

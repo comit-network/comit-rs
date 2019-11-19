@@ -28,5 +28,5 @@ fn cannot_skip_block_containing_transaction_with_event() {
         }]),
     };
 
-    assert_that!(pattern.can_skip_block(&block)).is_false();
+    assert_that!(pattern.needs_receipts(&block)).is_false();
 }

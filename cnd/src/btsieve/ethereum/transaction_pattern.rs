@@ -17,7 +17,7 @@ pub struct TransactionPattern {
 impl TransactionPattern {
     /// Does matching based on patterns in self.  If all fields are None any
     /// transaction matches i.e., returns true.
-    pub fn matches(&self, transaction: &Transaction, receipt: &TransactionReceipt) -> bool {
+    pub fn matches(&self, transaction: &Transaction, receipt: Option<&TransactionReceipt>) -> bool {
         match self {
             Self {
                 from_address,
@@ -59,7 +59,7 @@ impl TransactionPattern {
                     }
                 }
 
-                if let Some(events) = events {
+                if let (Some(receipt), Some(events)) = (receipt, events) {
                     if !events_exist_in_receipt(events, receipt) {
                         return false;
                     }
@@ -71,7 +71,7 @@ impl TransactionPattern {
         }
     }
 
-    pub fn can_skip_block(&self, block: &Block<Transaction>) -> bool {
+    pub fn needs_receipts(&self, block: &Block<Transaction>) -> bool {
         match self.events {
             None => false,
             Some(ref events) if events.is_empty() && block.logs_bloom.is_empty() => false,
@@ -192,7 +192,7 @@ mod tests {
 
             let receipt = TransactionReceipt::default();
 
-            pattern.matches(&transaction, &receipt)
+            pattern.matches(&transaction, Some(&receipt))
         }
 
         quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
@@ -218,7 +218,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_false();
     }
 
@@ -243,7 +243,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_true();
     }
 
@@ -268,7 +268,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_false();
     }
 
@@ -292,7 +292,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, &receipt);
+        let result = pattern.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_false();
     }
 
@@ -333,13 +333,13 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern_data.matches(&transaction, &receipt);
+        let result = pattern_data.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_true();
 
-        let result = pattern_data_length.matches(&transaction, &receipt);
+        let result = pattern_data_length.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_true();
 
-        let result = refund_pattern.matches(&transaction, &receipt);
+        let result = refund_pattern.matches(&transaction, Some(&receipt));
         assert_that!(&result).is_false();
     }
 
@@ -429,7 +429,7 @@ mod tests {
             .with_topics(vec![Some(Topic(*REDEEM_LOG_MSG))]);
         let pattern = transaction_pattern_from_event(event);
 
-        assert_that!(pattern.can_skip_block(&block)).is_true();
+        assert_that!(pattern.needs_receipts(&block)).is_true();
     }
 
     #[test]
@@ -636,7 +636,7 @@ mod tests {
             ..TransactionPattern::default()
         };
 
-        assert_that!(pattern.can_skip_block(&block)).is_false();
+        assert_that!(pattern.needs_receipts(&block)).is_false();
     }
 
     #[test]
@@ -647,7 +647,7 @@ mod tests {
             ..TransactionPattern::default()
         };
 
-        assert_that!(pattern.can_skip_block(&block)).is_false();
+        assert_that!(pattern.needs_receipts(&block)).is_false();
     }
 
     #[test]

@@ -10,6 +10,8 @@ use tokio::prelude::Future;
 
 #[test]
 fn find_transaction_in_missing_block() {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+
     let transaction: Transaction = include_json_test_data!(
         "./test_data/ethereum/find_transaction_in_missing_block/transaction.json"
     );
@@ -36,7 +38,8 @@ fn find_transaction_in_missing_block() {
                 "./test_data/ethereum/find_transaction_in_missing_block/block3.json"
             ),
         ],
-        vec![(transaction.hash, receipt.clone())]
+        vec![(transaction.hash, receipt.clone())],
+        runtime.executor(),
     );
 
     let expected_transaction_and_receipt: TransactionAndReceipt = connector
