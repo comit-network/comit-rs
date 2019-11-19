@@ -24,7 +24,7 @@ use crate::{
     swap_protocols::{Role, SwapId},
 };
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use std::path::Path;
+use std::{path::Path, thread, time};
 
 /// This module provides persistent storage by way of Sqlite.
 
@@ -53,7 +53,21 @@ impl Sqlite {
     }
 
     fn connect(&self) -> anyhow::Result<SqliteConnection> {
-        Ok(SqliteConnection::establish(&self.uri)?)
+        let mut backoff = 10;
+
+        loop {
+            match SqliteConnection::establish(&self.uri) {
+                Ok(connection) => return Ok(connection),
+                Err(_) => {
+                    thread::sleep(time::Duration::from_millis(backoff));
+                    backoff *= 2;
+
+                    if backoff > 1000 {
+                        return Err(anyhow::Error::new(Error::ConnectionTimedOut));
+                    }
+                }
+            }
+        }
     }
 
     fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
@@ -91,6 +105,8 @@ struct QueryableSwap {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
+    #[error("connection timed out")]
+    ConnectionTimedOut,
 }
 
 #[cfg(test)]
