@@ -45,9 +45,6 @@ pub struct Logging {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
-    // toml::to_string does not leave a blank line after serializing this
-    // (probably because it ends in a square bracket like [Network]).  Implement
-    // custom serialize for this struct.
     pub listen: Vec<Multiaddr>,
 }
 
@@ -127,7 +124,6 @@ impl File {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Settings;
     use log::LevelFilter;
     use reqwest::Url;
     use spectral::prelude::*;

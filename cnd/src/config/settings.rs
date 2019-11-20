@@ -269,4 +269,36 @@ mod tests {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             })
     }
+
+    #[test]
+    fn serializes_correctly() {
+        let file = File::default();
+        let settings = Settings::from_config_file_and_defaults(file).unwrap();
+
+        let want = r#"[network]
+listen = ["/ip4/0.0.0.0/tcp/9939"]
+[http_api.socket]
+address = "0.0.0.0"
+port = 8000
+
+[http_api.cors]
+allowed_origins = "none"
+
+[database]
+sqlite = "/home/tobin/.local/share/comit/cnd.sqlite"
+
+[logging]
+level = "DEBUG"
+structured = false
+
+[bitcoin]
+network = "regtest"
+node_url = "http://localhost:18443/"
+
+[ethereum]
+node_url = "http://localhost:8545/"
+"#;
+        let got = toml::to_string(&settings).unwrap();
+        assert_that(&got).is_equal_to(String::from(want));
+    }
 }
