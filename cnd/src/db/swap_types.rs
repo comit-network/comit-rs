@@ -27,22 +27,22 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if self.rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)? {
-            return Ok(SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin,
-                beta_ledger: LedgerKind::Ethereum,
-                alpha_asset: AssetKind::Bitcoin,
-                beta_asset: AssetKind::Erc20,
-                role,
-            });
-        }
-
         if self.rfc003_ethereum_bitcoin_ether_bitcoin_request_messages_has_swap(key)? {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
                 beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Ether,
                 beta_asset: AssetKind::Bitcoin,
+                role,
+            });
+        }
+
+        if self.rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)? {
+            return Ok(SwapTypes {
+                alpha_ledger: LedgerKind::Bitcoin,
+                beta_ledger: LedgerKind::Ethereum,
+                alpha_asset: AssetKind::Bitcoin,
+                beta_asset: AssetKind::Erc20,
                 role,
             });
         }
@@ -85,8 +85,8 @@ macro_rules! impl_has_swap {
 
 impl Sqlite {
     impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages);
-    impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages);
     impl_has_swap!(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages);
+    impl_has_swap!(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages);
     impl_has_swap!(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages);
 }
 

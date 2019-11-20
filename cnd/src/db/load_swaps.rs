@@ -113,6 +113,93 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
+struct EthereumBitcoinEtherBitcoinAcceptedSwap {
+    // Request fields.
+    swap_id: Text<SwapId>,
+    ethereum_chain_id: U32,
+    bitcoin_network: Text<bitcoin::Network>,
+    ether_amount: Text<DecimalU256>,
+    bitcoin_amount: Text<Satoshis>,
+    hash_function: Text<HashFunction>,
+    ethereum_refund_identity: Text<EthereumAddress>,
+    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    ethereum_expiry: U32,
+    bitcoin_expiry: U32,
+    secret_hash: Text<SecretHash>,
+    // Accept fields.
+    ethereum_redeem_identity: Text<EthereumAddress>,
+    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+}
+
+impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sqlite {
+    fn load_accepted_swap(
+        &self,
+        key: SwapId,
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> {
+        use schema::{
+            rfc003_ethereum_bitcoin_accept_messages as accept_messages,
+            rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
+        };
+
+        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
+
+        let connection = self.connect()?;
+        let key = Text(key);
+
+        let record: EthereumBitcoinEtherBitcoinAcceptedSwap = request_messages::table
+            .inner_join(
+                accept_messages::table.on(request_messages::swap_id.eq(accept_messages::swap_id)),
+            )
+            .select((
+                request_messages::swap_id,
+                request_messages::ethereum_chain_id,
+                request_messages::bitcoin_network,
+                request_messages::ether_amount,
+                request_messages::bitcoin_amount,
+                request_messages::hash_function,
+                request_messages::ethereum_refund_identity,
+                request_messages::bitcoin_redeem_identity,
+                request_messages::ethereum_expiry,
+                request_messages::bitcoin_expiry,
+                request_messages::secret_hash,
+                accept_messages::ethereum_redeem_identity,
+                accept_messages::bitcoin_refund_identity,
+            ))
+            .filter(accept_messages::swap_id.eq(key))
+            .first(&connection)?;
+
+        Ok((
+            Request {
+                swap_id: *record.swap_id,
+                alpha_ledger: Ethereum {
+                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
+                },
+                beta_ledger: Bitcoin {
+                    network: *record.bitcoin_network,
+                },
+                alpha_asset: EtherQuantity::from_wei(U256::from(*record.ether_amount)),
+                beta_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
+                hash_function: *record.hash_function,
+                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
+                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_redeem_identity,
+                ),
+                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
+                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
+                secret_hash: *record.secret_hash,
+            },
+            Accept {
+                swap_id: *record.swap_id,
+                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
+                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_refund_identity,
+                ),
+            },
+        ))
+    }
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq)]
 struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     // Request fields.
     swap_id: Text<SwapId>,
@@ -199,93 +286,6 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite
                     *record.bitcoin_redeem_identity,
                 ),
                 beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-            },
-        ))
-    }
-}
-
-#[derive(Queryable, Debug, Clone, PartialEq)]
-struct EthereumBitcoinEtherBitcoinAcceptedSwap {
-    // Request fields.
-    swap_id: Text<SwapId>,
-    ethereum_chain_id: U32,
-    bitcoin_network: Text<bitcoin::Network>,
-    ether_amount: Text<DecimalU256>,
-    bitcoin_amount: Text<Satoshis>,
-    hash_function: Text<HashFunction>,
-    ethereum_refund_identity: Text<EthereumAddress>,
-    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
-    ethereum_expiry: U32,
-    bitcoin_expiry: U32,
-    secret_hash: Text<SecretHash>,
-    // Accept fields.
-    ethereum_redeem_identity: Text<EthereumAddress>,
-    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
-}
-
-impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sqlite {
-    fn load_accepted_swap(
-        &self,
-        key: SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> {
-        use schema::{
-            rfc003_ethereum_bitcoin_accept_messages as accept_messages,
-            rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
-        };
-
-        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
-
-        let connection = self.connect()?;
-        let key = Text(key);
-
-        let record: EthereumBitcoinEtherBitcoinAcceptedSwap = request_messages::table
-            .inner_join(
-                accept_messages::table.on(request_messages::swap_id.eq(accept_messages::swap_id)),
-            )
-            .select((
-                request_messages::swap_id,
-                request_messages::ethereum_chain_id,
-                request_messages::bitcoin_network,
-                request_messages::ether_amount,
-                request_messages::bitcoin_amount,
-                request_messages::hash_function,
-                request_messages::ethereum_refund_identity,
-                request_messages::bitcoin_redeem_identity,
-                request_messages::ethereum_expiry,
-                request_messages::bitcoin_expiry,
-                request_messages::secret_hash,
-                accept_messages::ethereum_redeem_identity,
-                accept_messages::bitcoin_refund_identity,
-            ))
-            .filter(accept_messages::swap_id.eq(key))
-            .first(&connection)?;
-
-        Ok((
-            Request {
-                swap_id: *record.swap_id,
-                alpha_ledger: Ethereum {
-                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
-                },
-                beta_ledger: Bitcoin {
-                    network: *record.bitcoin_network,
-                },
-                alpha_asset: EtherQuantity::from_wei(U256::from(*record.ether_amount)),
-                beta_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
-                hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_redeem_identity,
-                ),
-                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
-                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
-                secret_hash: *record.secret_hash,
-            },
-            Accept {
-                swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
-                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_refund_identity,
-                ),
             },
         ))
     }
