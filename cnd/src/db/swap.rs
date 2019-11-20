@@ -9,6 +9,7 @@ use crate::{
 };
 use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
+use std::{thread, time};
 
 /// Save swap to database.
 pub trait Save: Send + Sync + 'static {
@@ -80,13 +81,29 @@ impl Retrieve for Sqlite {
         let connection = self.connect()?;
         let key = Text(key);
 
-        let record: QueryableSwap = rfc003_swaps
-            .filter(swap_id.eq(key))
-            .first(&connection)
-            .optional()?
-            .ok_or(Error::SwapNotFound)?;
+        let mut backoff = 10;
 
-        Ok(record.into())
+        loop {
+            let res: Result<Option<QueryableSwap>, diesel::result::Error> = rfc003_swaps
+                .filter(swap_id.eq(key))
+                .first(&connection)
+                .optional();
+
+            match res {
+                Ok(Some(queryable)) => {
+                    return Ok(Swap::from(queryable));
+                }
+                Ok(None) => return Err(anyhow::Error::new(Error::SwapNotFound)),
+                Err(_) => {
+                    thread::sleep(time::Duration::from_millis(backoff));
+                    backoff *= 2;
+
+                    if backoff > 1000 {
+                        return Err(anyhow::Error::new(Error::GetTimedOut));
+                    }
+                }
+            }
+        }
     }
 
     fn all(&self) -> anyhow::Result<Vec<Swap>> {
