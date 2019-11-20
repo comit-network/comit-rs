@@ -98,11 +98,8 @@ where
     let seed = dependencies.swap_seed(id);
     let swap_request = body.to_request(id, &seed);
 
-    Save::save(
-        &dependencies,
-        Swap::new(id.clone(), Role::Alice, counterparty),
-    )
-    .map_err(problem::internal_error)?;
+    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty))
+        .map_err(problem::internal_error)?;
 
     SaveMessage::save_message(&dependencies, swap_request.clone())
         .map_err(problem::internal_error)?;
