@@ -1,4 +1,7 @@
-use crate::swap_protocols::rfc003::{self, actions::ActionKind, state_store};
+use crate::{
+    db,
+    swap_protocols::rfc003::{self, actions::ActionKind, state_store},
+};
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
@@ -10,6 +13,14 @@ pub struct MissingQueryParameter {
     pub name: &'static str,
     pub data_type: &'static str,
     pub description: &'static str,
+}
+
+pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
+    if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
+        return swap_not_found();
+    }
+
+    internal_error(e)
 }
 
 pub fn internal_error(e: anyhow::Error) -> HttpApiProblem {

@@ -12,11 +12,11 @@ pub fn handle_get_swap<D: Retrieve + StateStore + DetermineTypes>(
     dependencies: D,
     id: SwapId,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    let swap = Retrieve::get(&dependencies, &id).map_err(problem::internal_error)?;
+    let swap = Retrieve::get(&dependencies, &id).map_err(problem::from_anyhow)?;
 
     let types = dependencies
         .determine_types(&id)
-        .map_err(problem::internal_error)?;
+        .map_err(problem::from_anyhow)?;
 
     build_rfc003_siren_entity(&dependencies, swap, types, IncludeState::Yes)
 }
