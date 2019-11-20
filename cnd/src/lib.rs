@@ -22,6 +22,7 @@ pub mod bitcoin;
 pub mod comit_api;
 pub mod config;
 pub mod http_api;
+pub mod load_swaps;
 pub mod logging;
 pub mod network;
 #[cfg(test)]
