@@ -297,7 +297,7 @@ impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, ledger::Bitcoin>> {
 
 impl Arbitrary for Quickcheck<Role> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let role = match g.next_u32() % 1 {
+        let role = match g.next_u32() % 2 {
             0 => Role::Alice,
             1 => Role::Bob,
             _ => unreachable!(),
