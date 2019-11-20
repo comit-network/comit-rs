@@ -14,6 +14,7 @@ pub mod with_swap_types;
 embed_migrations!("./migrations");
 
 pub use self::{
+    load_swaps::*,
     save_message::{SaveMessage, SaveRfc003Messages},
     swap::*,
     swap_types::*,

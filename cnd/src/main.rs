@@ -7,6 +7,7 @@ use cnd::{
     config::{self, Settings},
     db::{DetermineTypes, Retrieve, Save, SaveRfc003Messages, Sqlite},
     http_api::{self, route_factory},
+    load_swaps,
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
@@ -18,6 +19,7 @@ use cnd::{
     },
 };
 use futures::{stream, Future, Stream};
+use futures_core::{FutureExt, TryFutureExt};
 use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
@@ -53,8 +55,6 @@ fn main() -> anyhow::Result<()> {
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
-    let state_store = Arc::new(InMemoryStateStore::default());
-
     let bitcoin_connector = {
         let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
         BitcoindConnector::new(node_url, network)?
@@ -68,11 +68,24 @@ fn main() -> anyhow::Result<()> {
         ethereum_connector,
     };
 
+    let state_store = Arc::new(InMemoryStateStore::default());
+
+    let database = Sqlite::new(&settings.database.sqlite)?;
+
     let local_key_pair = derive_key_pair(&seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
-    let database = Sqlite::new(&settings.database.sqlite)?;
+    runtime.block_on(
+        load_swaps::load_swaps_from_database(
+            ledger_events.clone(),
+            state_store.clone(),
+            seed,
+            database.clone(),
+        )
+        .boxed()
+        .compat(),
+    )?;
 
     let transport = libp2p::build_development_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
