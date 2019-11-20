@@ -38,7 +38,7 @@ fn main() -> anyhow::Result<()> {
     let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
 
     if options.dump_config {
-        println! {"{:?}", settings};
+        println!("{}", toml::to_string(&settings).unwrap());
         std::process::exit(0);
     }
 

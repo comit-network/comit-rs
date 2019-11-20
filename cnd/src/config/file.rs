@@ -14,7 +14,7 @@ use std::{
 /// Most importantly, optional elements of the configuration file are
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, Deserialize, PartialEq)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -45,6 +45,9 @@ pub struct Logging {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
+    // toml::to_string does not leave a blank line after serializing this
+    // (probably because it ends in a square bracket like [Network]).  Implement
+    // custom serialize for this struct.
     pub listen: Vec<Multiaddr>,
 }
 
@@ -124,6 +127,7 @@ impl File {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Settings;
     use log::LevelFilter;
     use reqwest::Url;
     use spectral::prelude::*;
@@ -231,7 +235,39 @@ mod tests {
     }
 
     #[test]
-    fn full_config_roundtrip_serialization() {
+    fn network_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939"]
+            "#,
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
+            "#,
+        ];
+
+        let expected = vec![
+            Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+            },
+            Network {
+                listen: (vec![
+                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
+                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Network>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn full_config_deserializes_correctly() {
         let contents = r#"
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -252,13 +288,13 @@ structured = false
 
 [bitcoin]
 network = "mainnet"
-node_url = "http://example.com"
+node_url = "http://example.com/"
 
 [ethereum]
-node_url = "http://example.com"
+node_url = "http://example.com/"
 "#;
 
-        let file = &File {
+        let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
@@ -287,10 +323,7 @@ node_url = "http://example.com"
             }),
         };
 
-        let config = toml::from_str::<File>(contents).unwrap();
-        assert_that(&config).is_equal_to(file);
-
-        let serialized = toml::to_string(&config).unwrap();
-        assert_that(&serialized).is_equal_to(String::from(contents));
+        let config = toml::from_str::<File>(contents);
+        assert_that(&config).is_ok().is_equal_to(file.clone());
     }
 }

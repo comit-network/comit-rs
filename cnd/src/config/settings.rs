@@ -3,6 +3,7 @@ use crate::config::file::{Bitcoin, Ethereum};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
+use serde::{Deserialize, Serialize};
 use std::{
     net::{IpAddr, Ipv4Addr},
     path::Path,
@@ -14,7 +15,7 @@ use std::{
 /// meaning in cnd. Contrary to that, many configuration values are optional in
 /// the config file but may be replaced by default values when the `Settings`
 /// are created from a given `Config`.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Settings {
     pub network: Network,
     pub http_api: HttpApi,
@@ -24,7 +25,7 @@ pub struct Settings {
     pub ethereum: Ethereum,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct HttpApi {
     pub socket: Socket,
     pub cors: Cors,
@@ -42,7 +43,7 @@ impl Default for HttpApi {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
@@ -55,14 +56,15 @@ impl Default for Cors {
     }
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum AllowedOrigins {
     All,
     None,
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
+#[derive(Clone, Debug, Deserialize, PartialEq, derivative::Derivative, Serialize)]
 #[derivative(Default)]
 pub struct Logging {
     #[derivative(Default(value = "LevelFilter::Debug"))]
