@@ -10,4 +10,8 @@ pub struct Options {
     /// Path to secret seed file.
     #[structopt(short = "s", long = "seed-file", parse(from_os_str))]
     pub seed_file: Option<PathBuf>,
+
+    /// Dump the current configuration and exit
+    #[structopt(short = "d", long = "dump-config")]
+    pub dump_config: bool,
 }

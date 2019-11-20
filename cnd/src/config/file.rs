@@ -1,7 +1,7 @@
 use config as config_rs;
 use libp2p::Multiaddr;
 use log::LevelFilter;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     ffi::OsStr,
     net::IpAddr,
@@ -14,7 +14,7 @@ use std::{
 /// Most importantly, optional elements of the configuration file are
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -37,29 +37,29 @@ impl File {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Logging {
     pub level: Option<LevelFilter>,
     pub structured: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct HttpApi {
     pub socket: Socket,
     pub cors: Option<Cors>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(untagged)]
 pub enum AllowedOrigins {
     All(All),
@@ -67,37 +67,37 @@ pub enum AllowedOrigins {
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum All {
     All,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 #[serde(rename_all = "lowercase")]
 pub enum None {
     None,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Socket {
     pub address: IpAddr,
     pub port: u16,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct PollParameters<T> {
     #[serde(with = "super::serde_duration")]
     pub poll_interval_secs: Duration,
     pub network: T,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Database {
     pub sqlite: PathBuf,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     #[serde(with = "super::serde_bitcoin_network")]
     pub network: bitcoin::Network,
@@ -105,7 +105,7 @@ pub struct Bitcoin {
     pub node_url: reqwest::Url,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
     #[serde(with = "url_serde")]
     pub node_url: reqwest::Url,
@@ -231,7 +231,7 @@ mod tests {
     }
 
     #[test]
-    fn full_config_deserializes_correctly() {
+    fn full_config_roundtrip_serialization() {
         let contents = r#"
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
@@ -258,9 +258,7 @@ node_url = "http://example.com"
 node_url = "http://example.com"
 "#;
 
-        let config = toml::from_str::<File>(contents);
-
-        assert_that(&config).is_ok().is_equal_to(&File {
+        let file = &File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
@@ -287,6 +285,12 @@ node_url = "http://example.com"
             ethereum: Some(Ethereum {
                 node_url: "http://example.com".parse().unwrap(),
             }),
-        })
+        };
+
+        let config = toml::from_str::<File>(contents).unwrap();
+        assert_that(&config).is_equal_to(file);
+
+        let serialized = toml::to_string(&config).unwrap();
+        assert_that(&serialized).is_equal_to(String::from(contents));
     }
 }

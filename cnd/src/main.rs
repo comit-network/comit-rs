@@ -37,6 +37,11 @@ fn main() -> anyhow::Result<()> {
 
     let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
 
+    if options.dump_config {
+        println! {"{:?}", settings};
+        std::process::exit(0);
+    }
+
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
