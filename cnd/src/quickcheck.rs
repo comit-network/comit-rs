@@ -308,8 +308,16 @@ impl Arbitrary for Quickcheck<Role> {
 }
 
 impl Arbitrary for Quickcheck<PeerId> {
-    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-        Quickcheck(PeerId::random())
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
+        let secret_key = libp2p::identity::secp256k1::SecretKey::from_bytes(bytes)
+            .expect("any 32 bytes are a valid secret key");
+        let keypair = libp2p::identity::secp256k1::Keypair::from(secret_key);
+        let public_key = keypair.public().clone();
+        let public_key = libp2p::core::PublicKey::Secp256k1(public_key);
+        let peer_id = PeerId::from_public_key(public_key);
+
+        Quickcheck(peer_id)
     }
 }
 
