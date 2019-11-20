@@ -326,7 +326,7 @@ impl Arbitrary for Quickcheck<Swap> {
         Quickcheck(Swap {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
             role: *Quickcheck::<Role>::arbitrary(g),
-            counterparty: (*Quickcheck::<PeerId>::arbitrary(g)).clone(),
+            counterparty: Quickcheck::<PeerId>::arbitrary(g).0,
         })
     }
 }
