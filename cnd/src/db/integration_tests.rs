@@ -20,39 +20,39 @@ macro_rules! db_roundtrip_test {
                         accept: Quickcheck<Accept<$alpha_ledger, $beta_ledger>>,
                 ) -> anyhow::Result<bool> {
 
-                    // This is here because PeerId does not implement Copy.
-                    let new_swap = Swap {
-                        swap_id: swap.swap_id,
-                        role: swap.role,
-                        counterparty: swap.counterparty.clone(),
-                    };
+                    // unpack the swap from the generic newtype
+                    let Swap { swap_id, role, counterparty } = swap.0;
 
                     let db_path = tempfile::Builder::new()
-                        .prefix(&new_swap.swap_id.to_string())
+                        .prefix(&swap_id.to_string())
                         .suffix(".sqlite")
                         .tempfile()?
                         .into_temp_path();
 
                     let db = Sqlite::new(&db_path)?;
 
+                    let saved_swap = Swap {
+                        swap_id,
+                        role,
+                        counterparty
+                    };
                     let saved_request = Request {
-                        swap_id: new_swap.swap_id,
+                        swap_id,
                         ..*request
                     };
                     let saved_accept = Accept {
-                        swap_id: new_swap.swap_id,
+                        swap_id,
                         ..*accept
                     };
 
-                    db.save(new_swap.clone())?;
-
+                    db.save(saved_swap.clone())?;
                     db.save_message(saved_request.clone())?;
                     db.save_message(saved_accept.clone())?;
 
-                    let loaded_swap = Retrieve::get(&db, &new_swap.swap_id)?;
-                    let (loaded_request, loaded_accept) = db.load_accepted_swap(new_swap.swap_id)?;
+                    let loaded_swap = Retrieve::get(&db, &swap_id)?;
+                    let (loaded_request, loaded_accept) = db.load_accepted_swap(swap_id)?;
 
-                    Ok(saved_request == loaded_request && saved_accept == loaded_accept && loaded_swap == *swap)
+                    Ok(saved_request == loaded_request && saved_accept == loaded_accept && loaded_swap == saved_swap)
                 }
 
                 quickcheck::quickcheck(prop as fn(
