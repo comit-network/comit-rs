@@ -28,7 +28,7 @@
         "commander": "^4.0.1",
         "ethers": "^4.0.39",
         "glob": "^7.1.6",
-        "log4js": "^6.0.0",
+        "log4js": "^6.1.0",
         "mocha": "^6.2.2",
         "multiaddr": "^7.2.1",
         "satoshi-bitcoin": "^1.0.4",
