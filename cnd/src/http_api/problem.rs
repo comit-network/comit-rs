@@ -13,7 +13,7 @@ pub struct MissingQueryParameter {
 }
 
 pub fn internal_error(e: anyhow::Error) -> HttpApiProblem {
-    log::error!("internal error occured {:?}", e);
+    log::error!("internal error occurred: {:?}", e);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
