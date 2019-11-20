@@ -107,6 +107,8 @@ pub enum Error {
     SwapNotFound,
     #[error("connection timed out")]
     ConnectionTimedOut,
+    #[error("get swap timed out")]
+    GetTimedOut,
 }
 
 #[cfg(test)]
