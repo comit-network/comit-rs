@@ -270,6 +270,7 @@ mod tests {
             })
     }
 
+    // Note toml library serializes Network without a trailing new
     #[test]
     fn serializes_correctly() {
         let file = File::default();
