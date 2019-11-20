@@ -29,13 +29,20 @@ where
     deserializer.deserialize_str(Visitor)
 }
 
-// All this curgo cult copied from serde_url
+// reference: serde_url crate.
 
-/// A wrapper to serialize `rust-url` types.
-///
-/// This is useful with functions such as `serde_json::to_string`.
-///
-/// Values of this type can only be passed to the `serde::Serialize` trait.
+/// Serialises `value` with a given serializer.
+// We need this in order to use
+// `#[serde(with = "super::serde_bitcoin_network")]`
+pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+    for<'a> Ser<'a, T>: Serialize,
+{
+    Ser::new(value).serialize(serializer)
+}
+
+// A wrapper so we can implement custom serialize of inner type.
 #[derive(Debug)]
 pub struct Ser<'a, T>(&'a T);
 
@@ -43,14 +50,13 @@ impl<'a, T> Ser<'a, T>
 where
     Ser<'a, T>: Serialize,
 {
-    /// Returns a new `Ser` wrapper.
     #[inline(always)]
     pub fn new(value: &'a T) -> Self {
         Ser(value)
     }
 }
 
-/// Serializes this URL into a `serde` stream.
+/// Does the actual serialization of the bitcoin Network into a `serde` stream.
 impl<'a> Serialize for Ser<'a, bitcoin::Network> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
@@ -68,16 +74,4 @@ impl<'a> Serialize for Ser<'a, bitcoin::Network> {
             }
         }
     }
-}
-
-/// Serialises `value` with a given serializer.
-///
-/// This is useful to serialize `rust-url` types used in structure fields or
-/// tuple members with `#[serde(serialize_with = "url_serde::serialize")]`.
-pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-    for<'a> Ser<'a, T>: Serialize,
-{
-    Ser::new(value).serialize(serializer)
 }
