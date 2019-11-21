@@ -162,7 +162,7 @@ async fn handle_request(
                             );
                             insert_state_for_bob(
                                 db.clone(),
-                                seed.clone(),
+                                seed,
                                 state_store.clone(),
                                 counterparty,
                                 request,
@@ -189,7 +189,7 @@ async fn handle_request(
                             );
                             insert_state_for_bob(
                                 db.clone(),
-                                seed.clone(),
+                                seed,
                                 state_store.clone(),
                                 counterparty,
                                 request,
@@ -216,7 +216,7 @@ async fn handle_request(
                             );
                             insert_state_for_bob(
                                 db.clone(),
-                                seed.clone(),
+                                seed,
                                 state_store.clone(),
                                 counterparty,
                                 request,
@@ -243,7 +243,7 @@ async fn handle_request(
                             );
                             insert_state_for_bob(
                                 db.clone(),
-                                seed.clone(),
+                                seed,
                                 state_store.clone(),
                                 counterparty,
                                 request,
@@ -388,7 +388,7 @@ impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<T
                 self.task_executor.spawn(
                     handle_request(
                         self.db.clone(),
-                        self.seed.clone(),
+                        self.seed,
                         self.state_store.clone(),
                         peer_id,
                         request,
