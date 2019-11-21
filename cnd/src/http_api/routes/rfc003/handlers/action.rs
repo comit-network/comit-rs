@@ -52,92 +52,77 @@ pub fn handle_action<
                 .ok_or_else(problem::state_store)?;
             log::trace!("Retrieved state for {}: {:?}", swap_id, state);
 
-            state
+            let action = state
                 .actions()
                 .into_iter()
-                .select_action(action_kind, method)
-                .and_then({
-                    |action| match action {
-                        Action::Accept(_) => serde_json::from_value::<AcceptBody>(body)
-                            .map_err(problem::deserialize)
-                            .and_then({
-                                |body| {
-                                    let channel =
-                                        Network::pending_request_for(&dependencies, swap_id)
-                                            .ok_or_else(problem::missing_channel)?;
+                .select_action(action_kind, method)?;
 
-                                    let accept_message = body.into_accept_message(
-                                        swap_id,
-                                        &SwapSeed::swap_seed(&dependencies, swap_id),
-                                    );
+            match action {
+                Action::Accept(_) => {
+                    let body =
+                        serde_json::from_value::<AcceptBody>(body).map_err(problem::deserialize)?;
 
-                                    SaveMessage::save_message(&dependencies, accept_message)
-                                        .map_err(problem::internal_error)?;
+                    let channel = Network::pending_request_for(&dependencies, swap_id)
+                        .ok_or_else(problem::missing_channel)?;
 
-                                    let response = rfc003_accept_response(accept_message);
-                                    channel.send(response).map_err(problem::send_over_channel)?;
+                    let accept_message = body
+                        .into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
 
-                                    let swap_request = state.request();
-                                    let seed = dependencies.swap_seed(swap_id);
-                                    let state =
-                                        State::accepted(swap_request.clone(), accept_message, seed);
-                                    StateStore::insert(&dependencies, swap_id, state);
+                    SaveMessage::save_message(&dependencies, accept_message)
+                        .map_err(problem::internal_error)?;
 
-                                    let receiver =
-                                        Spawn::spawn(&dependencies, swap_request, accept_message);
+                    let response = rfc003_accept_response(accept_message);
+                    channel.send(response).map_err(problem::send_over_channel)?;
 
-                                    tokio::spawn(receiver.for_each(move |update| {
-                                        StateStore::update::<State<AL, BL, AA, BA>>(
-                                            &dependencies,
-                                            &swap_id,
-                                            update,
-                                        );
-                                        Ok(())
-                                    }));
+                    let swap_request = state.request();
+                    let seed = dependencies.swap_seed(swap_id);
+                    let state = State::accepted(swap_request.clone(), accept_message, seed);
+                    StateStore::insert(&dependencies, swap_id, state);
 
-                                    Ok(ActionResponseBody::None)
-                                }
-                            }),
-                        Action::Decline(_) => serde_json::from_value::<DeclineBody>(body)
-                            .map_err(problem::deserialize)
-                            .and_then({
-                                |body| {
-                                    let channel =
-                                        Network::pending_request_for(&dependencies, swap_id)
-                                            .ok_or_else(problem::missing_channel)?;
+                    let receiver = Spawn::spawn(&dependencies, swap_request, accept_message);
 
-                                    let decline_message = rfc003::Decline {
-                                        swap_id,
-                                        reason: to_swap_decline_reason(body.reason),
-                                    };
+                    tokio::spawn(receiver.for_each(move |update| {
+                        StateStore::update::<State<AL, BL, AA, BA>>(
+                            &dependencies,
+                            &swap_id,
+                            update,
+                        );
+                        Ok(())
+                    }));
 
-                                    SaveMessage::save_message(
-                                        &dependencies,
-                                        decline_message.clone(),
-                                    )
-                                    .map_err(problem::internal_error)?;
+                    Ok(ActionResponseBody::None)
+                }
+                Action::Decline(_) => {
+                    let body = serde_json::from_value::<DeclineBody>(body)
+                        .map_err(problem::deserialize)?;
 
-                                    let response = rfc003_decline_response(decline_message.clone());
-                                    channel.send(response).map_err(problem::send_over_channel)?;
+                    let channel = Network::pending_request_for(&dependencies, swap_id)
+                        .ok_or_else(problem::missing_channel)?;
 
-                                    let swap_request = state.request();
-                                    let seed = dependencies.swap_seed(swap_id);
-                                    let state = State::declined(
-                                        swap_request.clone(),
-                                        decline_message.clone(),
-                                        seed,
-                                    );
-                                    StateStore::insert(&dependencies, swap_id, state);
+                    let decline_message = rfc003::Decline {
+                        swap_id,
+                        reason: to_swap_decline_reason(body.reason),
+                    };
 
-                                    Ok(ActionResponseBody::None)
-                                }
-                            }),
-                        Action::Deploy(action) => action.into_response_payload(query_params),
-                        Action::Fund(action) => action.into_response_payload(query_params),
-                        Action::Redeem(action) => action.into_response_payload(query_params),
-                        Action::Refund(action) => action.into_response_payload(query_params),
-                    }
-                })
+                    SaveMessage::save_message(&dependencies, decline_message.clone())
+                        .map_err(problem::internal_error)?;
+
+                    let response = rfc003_decline_response(decline_message.clone());
+                    channel.send(response).map_err(problem::send_over_channel)?;
+
+                    let swap_request = state.request();
+                    let seed = dependencies.swap_seed(swap_id);
+                    let state =
+                        State::declined(swap_request.clone(), decline_message.clone(), seed);
+                    StateStore::insert(&dependencies, swap_id, state);
+
+                    Ok(ActionResponseBody::None)
+                }
+                Action::Deploy(action) => action.into_response_payload(query_params),
+                Action::Fund(action) => action.into_response_payload(query_params),
+                Action::Redeem(action) => action.into_response_payload(query_params),
+                Action::Refund(action) => action.into_response_payload(query_params),
+            }
         })
     )
 }
