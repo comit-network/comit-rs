@@ -12,6 +12,7 @@ use crate::{
 };
 use bitcoin::Amount as BitcoinAmount;
 use ethereum_support::{Erc20Token, EtherQuantity};
+use std::path::Path;
 
 macro_rules! db_roundtrip_test {
     ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $expected_swap_types_fn:expr) => {
@@ -30,13 +31,7 @@ macro_rules! db_roundtrip_test {
                     // construct the expected swap types from the function we get passed in order to enrich it with the role
                     let expected_swap_types = ($expected_swap_types_fn)(role);
 
-                    let db_path = tempfile::Builder::new()
-                        .prefix(&swap_id.to_string())
-                        .suffix(".sqlite")
-                        .tempfile()?
-                        .into_temp_path();
-
-                    let db = Sqlite::new(&db_path)?;
+                    let db = Sqlite::new(&Path::new(":memory:"))?;
 
                     let saved_swap = Swap {
                         swap_id,
