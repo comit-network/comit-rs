@@ -1,5 +1,5 @@
 use crate::{
-    config::AllowedOrigins,
+    config::settings::AllowedOrigins,
     db::SaveRfc003Messages,
     http_api,
     network::{Network, SendRequest},
