@@ -52,13 +52,18 @@ macro_rules! db_roundtrip_test {
                         ..*accept
                     };
 
-                    db.save(saved_swap.clone())?;
-                    db.save_message(saved_request.clone())?;
-                    db.save_message(saved_accept.clone())?;
+                    let (loaded_swap, loaded_request, loaded_accept, loaded_swap_types) =
+                    async_std::task::block_on::<_, Result<_, anyhow::Error>>(async {
+                        db.save(saved_swap.clone()).await?;
+                        db.save_message(saved_request.clone()).await?;
+                        db.save_message(saved_accept.clone()).await?;
 
-                    let loaded_swap = Retrieve::get(&db, &swap_id)?;
-                    let (loaded_request, loaded_accept) = db.load_accepted_swap(swap_id)?;
-                    let loaded_swap_types = db.determine_types(&swap_id)?;
+                        let loaded_swap = Retrieve::get(&db, &swap_id).await?;
+                        let (loaded_request, loaded_accept) = db.load_accepted_swap(swap_id).await?;
+                        let loaded_swap_types = db.determine_types(&swap_id).await?;
+
+                        Ok((loaded_swap, loaded_request, loaded_accept, loaded_swap_types))
+                    })?;
 
                     Ok(
                         saved_request == loaded_request &&

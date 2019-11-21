@@ -23,63 +23,50 @@ use crate::{
     db::custom_sql_types::Text,
     swap_protocols::{Role, SwapId},
 };
+use async_std::sync::MutexGuard;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use std::{path::Path, thread, time};
+use std::{path::Path, sync::Arc};
 
 /// This module provides persistent storage by way of Sqlite.
 
-#[derive(Debug, Clone)]
+#[derive(Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct Sqlite {
-    uri: String,
+    #[derivative(Debug = "ignore")]
+    connection: Arc<async_std::sync::Mutex<SqliteConnection>>,
 }
 
 impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
-    /// When this returns an Sqlite database exists at 'db', a
+    /// When this returns an Sqlite database exists at 'path', a
     /// successful connection to the database has been made, and
     /// the database migrations have been run.
     pub fn new(path: &Path) -> anyhow::Result<Self> {
         ensure_folder_tree_exists(path)?;
 
-        let db = Sqlite {
-            uri: format!("file:{}", path.display()),
-        };
-
-        let connection = db.connect()?;
+        let connection = SqliteConnection::establish(&format!("file:{}", path.display()))?;
         embedded_migrations::run(&connection)?;
 
-        Ok(db)
+        Ok(Sqlite {
+            connection: Arc::new(async_std::sync::Mutex::new(connection)),
+        })
     }
 
-    fn connect(&self) -> anyhow::Result<SqliteConnection> {
-        let mut backoff = 10;
-
-        loop {
-            match SqliteConnection::establish(&self.uri) {
-                Ok(connection) => return Ok(connection),
-                Err(_) => {
-                    thread::sleep(time::Duration::from_millis(backoff));
-                    backoff *= 2;
-
-                    if backoff > 1000 {
-                        return Err(anyhow::Error::new(Error::ConnectionTimedOut));
-                    }
-                }
-            }
-        }
+    async fn connect(&self) -> MutexGuard<'_, SqliteConnection> {
+        self.connection.lock().await
     }
 
-    fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
+    async fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
         use self::schema::rfc003_swaps as swaps;
 
-        let connection = self.connect()?;
+        let connection = self.connect().await;
         let key = Text(key);
 
         let record: QueryableSwap = swaps::table
             .filter(swaps::swap_id.eq(key))
             .select((swaps::swap_id, swaps::role))
-            .first(&connection)
+            .first(&*connection)
             .optional()?
             .ok_or(Error::SwapNotFound)?;
 
@@ -105,8 +92,6 @@ struct QueryableSwap {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
-    #[error("connection timed out")]
-    ConnectionTimedOut,
     #[error("get swap timed out")]
     GetTimedOut,
 }

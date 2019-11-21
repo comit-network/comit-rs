@@ -31,7 +31,7 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value)]
-pub fn handle_action<
+pub async fn handle_action<
     D: StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages + DetermineTypes,
 >(
     method: http::Method,
@@ -43,6 +43,7 @@ pub fn handle_action<
 ) -> Result<ActionResponseBody, HttpApiProblem> {
     let types = dependencies
         .determine_types(&swap_id)
+        .await
         .map_err(problem::internal_error)?;
 
     with_swap_types!(types, {
@@ -67,6 +68,7 @@ pub fn handle_action<
                     body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
 
                 SaveMessage::save_message(&dependencies, accept_message)
+                    .await
                     .map_err(problem::internal_error)?;
 
                 let response = rfc003_accept_response(accept_message);
@@ -99,6 +101,7 @@ pub fn handle_action<
                 };
 
                 SaveMessage::save_message(&dependencies, decline_message.clone())
+                    .await
                     .map_err(problem::internal_error)?;
 
                 let response = rfc003_decline_response(decline_message.clone());
