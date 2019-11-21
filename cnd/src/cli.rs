@@ -11,7 +11,7 @@ pub struct Options {
     #[structopt(short = "s", long = "seed-file", parse(from_os_str))]
     pub seed_file: Option<PathBuf>,
 
-    /// Dump the current configuration and exit
-    #[structopt(short = "d", long = "dump-config")]
+    /// Dump the current configuration and exit.
+    #[structopt(long = "dump-config")]
     pub dump_config: bool,
 }
