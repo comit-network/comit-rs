@@ -92,8 +92,6 @@ struct QueryableSwap {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
-    #[error("get swap timed out")]
-    GetTimedOut,
 }
 
 #[cfg(test)]
