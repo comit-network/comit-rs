@@ -13,20 +13,6 @@ export interface HttpApi {
     socket: { address: string; port: number };
 }
 
-interface BtsieveBitcoin {
-    node_url: string;
-    network: string;
-}
-
-interface BtsieveEthereum {
-    node_url: string;
-}
-
-export interface BtsieveConfigFile {
-    bitcoin?: BtsieveBitcoin;
-    ethereum?: BtsieveEthereum;
-}
-
 export class E2ETestActorConfig {
     public readonly httpApiPort: number;
     public readonly comitPort: number;
@@ -43,9 +29,7 @@ export class E2ETestActorConfig {
         this.seed = new Uint8Array(Buffer.from(seed, "hex"));
     }
 
-    public generateCndConfigFile(
-        btsieveConfig: BtsieveConfigFile
-    ): CndConfigFile {
+    public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
         const dbPath = tempfile(`.${this.name}.sqlite`);
         return {
             http_api: {
@@ -60,9 +44,23 @@ export class E2ETestActorConfig {
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],
             },
-            ...btsieveConfig,
+            ...createLedgerConnectors(ledgerConfig),
         };
     }
+}
+
+interface LedgerConnectors {
+    bitcoin?: BitcoinConnector;
+    ethereum?: EthereumConnector;
+}
+
+interface EthereumConnector {
+    node_url: string;
+}
+
+interface BitcoinConnector {
+    node_url: string;
+    network: string;
 }
 
 export const ALICE_CONFIG = new E2ETestActorConfig(
@@ -84,34 +82,28 @@ export const CHARLIE_CONFIG = new E2ETestActorConfig(
     "charlie"
 );
 
-export function createBtsieveConfig(
-    ledgerConfig: LedgerConfig
-): BtsieveConfigFile {
-    const config: BtsieveConfigFile = {};
+function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
+    const config: LedgerConnectors = {};
 
     if (ledgerConfig.bitcoin) {
-        config.bitcoin = btsieveBitcoinConfig(ledgerConfig.bitcoin);
+        config.bitcoin = bitcoinConnector(ledgerConfig.bitcoin);
     }
 
     if (ledgerConfig.ethereum) {
-        config.ethereum = btsieveEthereumConfig(ledgerConfig.ethereum);
+        config.ethereum = ethereumConnector(ledgerConfig.ethereum);
     }
 
     return config;
 }
 
-export function btsieveBitcoinConfig(
-    nodeConfig: BitcoinNodeConfig
-): BtsieveBitcoin {
+function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     return {
         node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
         network: nodeConfig.network,
     };
 }
 
-export function btsieveEthereumConfig(
-    nodeConfig: EthereumNodeConfig
-): BtsieveEthereum {
+function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
     return {
         node_url: nodeConfig.rpc_url,
     };
