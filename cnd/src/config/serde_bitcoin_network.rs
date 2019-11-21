@@ -1,4 +1,4 @@
-use serde::{de, export::fmt, Deserializer, Serialize, Serializer};
+use serde::{de, export::fmt, Deserializer, Serializer};
 
 pub fn deserialize<'de, D>(deserializer: D) -> Result<bitcoin::Network, D::Error>
 where
@@ -29,49 +29,15 @@ where
     deserializer.deserialize_str(Visitor)
 }
 
-// reference: serde_url crate.
-
-/// Serialises `value` with a given serializer.
-// We need this in order to use
-// `#[serde(with = "super::serde_bitcoin_network")]`
-pub fn serialize<T, S>(value: &T, serializer: S) -> Result<S::Ok, S::Error>
-where
-    S: Serializer,
-    for<'a> Ser<'a, T>: Serialize,
-{
-    Ser::new(value).serialize(serializer)
-}
-
-// A wrapper so we can implement custom serialize of inner type.
-#[derive(Debug)]
-pub struct Ser<'a, T>(&'a T);
-
-impl<'a, T> Ser<'a, T>
-where
-    Ser<'a, T>: Serialize,
-{
-    #[inline(always)]
-    pub fn new(value: &'a T) -> Self {
-        Ser(value)
-    }
-}
-
-/// Does the actual serialization of the bitcoin Network into a `serde` stream.
-impl<'a> Serialize for Ser<'a, bitcoin::Network> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self {
-            Ser(bitcoin::network::constants::Network::Bitcoin) => {
-                serializer.serialize_str("mainnet")
-            }
-            Ser(bitcoin::network::constants::Network::Testnet) => {
-                serializer.serialize_str("testnet")
-            }
-            Ser(bitcoin::network::constants::Network::Regtest) => {
-                serializer.serialize_str("regtest")
-            }
-        }
-    }
+// This is the API serde expects, can't do much about the trivial copy :(
+#[allow(clippy::trivially_copy_pass_by_ref)]
+pub fn serialize<S: Serializer>(
+    value: &bitcoin::Network,
+    serializer: S,
+) -> Result<S::Ok, S::Error> {
+    serializer.serialize_str(match value {
+        bitcoin::Network::Bitcoin => "mainnet",
+        bitcoin::Network::Testnet => "testnet",
+        bitcoin::Network::Regtest => "regtest",
+    })
 }
