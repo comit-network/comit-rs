@@ -1,5 +1,5 @@
 macro_rules! _match_role {
-    ($role:ident, $fn:tt) => {{
+    ($role:ident, $fn:expr) => {{
         use crate::swap_protocols::{
             rfc003::{alice, bob},
             Role,
@@ -10,12 +10,12 @@ macro_rules! _match_role {
             Role::Alice => {
                 #[allow(dead_code)]
                 type ROLE = alice::State<AL, BL, AA, BA>;
-                $fn()
+                $fn
             }
             Role::Bob => {
                 #[allow(dead_code)]
                 type ROLE = bob::State<AL, BL, AA, BA>;
-                $fn()
+                $fn
             }
         }
     }};
@@ -23,7 +23,7 @@ macro_rules! _match_role {
 
 #[macro_export]
 macro_rules! with_swap_types {
-    ($swap_types:expr, $fn:tt) => {{
+    ($swap_types:expr, $fn:expr) => {{
         use crate::{
             db::{AssetKind, LedgerKind, SwapTypes},
             swap_protocols::ledger::{Bitcoin, Ethereum},
