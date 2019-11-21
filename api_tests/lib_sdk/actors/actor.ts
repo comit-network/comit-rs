@@ -183,12 +183,12 @@ export class Actor {
         await this.swap.redeem(Actor.defaultActionConfig);
     }
 
-    public async assertHasNoSwaps() {
-        this.logger.debug("Checking if we have 0 swaps");
+    public async assertHasNumSwaps(num: number) {
+        this.logger.debug("Checking if we have n swaps");
 
         const swaps = await this.cnd.getSwaps();
 
-        expect(swaps).to.have.length(0);
+        expect(swaps).to.have.length(num);
     }
 
     public async assertSwapped() {
