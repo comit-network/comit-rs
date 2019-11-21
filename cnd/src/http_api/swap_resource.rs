@@ -81,65 +81,60 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     metadata: Metadata,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    with_swap_types!(
-        &metadata,
-        (|| {
-            let state = state_store
-                .get::<ROLE>(&id)?
-                .ok_or_else(problem::state_store)?;
+    with_swap_types!(&metadata, {
+        let state = state_store
+            .get::<ROLE>(&id)?
+            .ok_or_else(problem::state_store)?;
 
-            let communication = SwapCommunication::from(state.swap_communication.clone());
-            let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
-            let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-            let parameters = SwapParameters::from(state.clone().request());
-            let actions = state.clone().actions();
+        let communication = SwapCommunication::from(state.swap_communication.clone());
+        let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
+        let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
+        let parameters = SwapParameters::from(state.clone().request());
+        let actions = state.clone().actions();
 
-            let error = state.error;
-            let status = SwapStatus::new(
-                communication.status,
-                alpha_ledger.status,
-                beta_ledger.status,
-                &error,
-            );
+        let error = state.error;
+        let status = SwapStatus::new(
+            communication.status,
+            alpha_ledger.status,
+            beta_ledger.status,
+            &error,
+        );
 
-            let swap = SwapResource {
-                id: Http(metadata.swap_id),
-                status,
-                protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
-                parameters,
-                role: metadata.role.to_string(),
-                counterparty: Http(metadata.counterparty),
-                state: match include_state {
-                    IncludeState::Yes => Some(SwapState::<AL, BL> {
-                        communication,
-                        alpha_ledger,
-                        beta_ledger,
-                    }),
-                    IncludeState::No => None,
-                },
-            };
+        let swap = SwapResource {
+            id: Http(metadata.swap_id),
+            status,
+            protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
+            parameters,
+            role: metadata.role.to_string(),
+            counterparty: Http(metadata.counterparty),
+            state: match include_state {
+                IncludeState::Yes => Some(SwapState::<AL, BL> {
+                    communication,
+                    alpha_ledger,
+                    beta_ledger,
+                }),
+                IncludeState::No => None,
+            },
+        };
 
-            let entity = siren::Entity::default()
-                .with_class_member("swap")
-                .with_properties(swap)
-                .map_err(|e| {
-                    log::error!("failed to set properties of entity: {:?}", e);
-                    HttpApiProblem::with_title_and_type_from_status(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                })?
-                .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
-                .with_link(siren::NavigationalLink::new(
-                    &["human-protocol-spec"],
-                    "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
-                ));
+        let entity = siren::Entity::default()
+            .with_class_member("swap")
+            .with_properties(swap)
+            .map_err(|e| {
+                log::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?
+            .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
+            .with_link(siren::NavigationalLink::new(
+                &["human-protocol-spec"],
+                "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
+            ));
 
-            let entity = actions.into_iter().fold(entity, |acc, action| {
-                let action = action.to_siren_action(&id);
-                acc.with_action(action)
-            });
+        let entity = actions.into_iter().fold(entity, |acc, action| {
+            let action = action.to_siren_action(&id);
+            acc.with_action(action)
+        });
 
-            Ok(entity)
-        })
-    )
+        Ok(entity)
+    })
 }
