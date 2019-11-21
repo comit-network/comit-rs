@@ -9,7 +9,8 @@ setTimeout(function() {
             await alice.sendRequest();
             await bob.accept();
 
-            await alice.restart();
+            const configFile = alice.cndInstance.getConfigFile();
+            await alice.restart(configFile);
 
             await alice.assertHasNumSwaps(1);
         });

@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import { E2ETestActorConfig } from "../../lib/config";
+import { CndConfigFile, E2ETestActorConfig } from "../../lib/config";
 import { LedgerConfig } from "../../lib/ledger_runner";
 import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
@@ -54,9 +54,9 @@ export class Actor {
 
     public actors: Actors;
     public wallets: Wallets;
+    public cnd: Cnd;
 
     private comitClient: ComitClient;
-    private readonly cnd: Cnd;
     private swap: Swap;
 
     private readonly startingBalances: Map<AssetKind, number>;
@@ -64,7 +64,7 @@ export class Actor {
 
     private constructor(
         private readonly logger: Logger,
-        private readonly cndInstance: CndInstance
+        public cndInstance: CndInstance
     ) {
         this.wallets = new Wallets({});
         const { address, port } = cndInstance.getConfigFile().http_api.socket;
@@ -217,9 +217,9 @@ export class Actor {
         }
     }
 
-    public async restart() {
+    public async restart(configFile: CndConfigFile) {
         this.cndInstance.stop();
-        await this.cndInstance.start();
+        await this.cndInstance.start(configFile);
     }
 
     private async additionalIdentities(

@@ -25,14 +25,18 @@ export class CndInstance {
         return this.configFile;
     }
 
-    public async start() {
+    public async start(withConfigFile?: CndConfigFile) {
         const bin = process.env.CND_BIN
             ? process.env.CND_BIN
             : this.projectRoot + "/target/debug/cnd";
 
-        this.configFile = this.actorConfig.generateCndConfigFile(
-            this.ledgerConfig
-        );
+        if (withConfigFile) {
+            this.configFile = withConfigFile;
+        } else {
+            this.configFile = this.actorConfig.generateCndConfigFile(
+                this.ledgerConfig
+            );
+        }
 
         const configFile = await tempWrite(
             stringify((this.configFile as unknown) as JsonMap),
