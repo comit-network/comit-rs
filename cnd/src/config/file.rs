@@ -1,7 +1,8 @@
 use crate::config::{Bitcoin, Database, Ethereum, Network, Socket};
+use config as config_rs;
 use log::LevelFilter;
 use serde::Deserialize;
-use std::time::Duration;
+use std::{ffi::OsStr, path::Path, time::Duration};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -28,6 +29,14 @@ impl File {
             bitcoin: Option::None,
             ethereum: Option::None,
         }
+    }
+
+    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
+        let config_file = Path::new(&config_file);
+
+        let mut config = config_rs::Config::new();
+        config.merge(config_rs::File::from(config_file))?;
+        config.try_into()
     }
 }
 
