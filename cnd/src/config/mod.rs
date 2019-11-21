@@ -45,6 +45,38 @@ mod tests {
     use reqwest::Url;
 
     #[test]
+    fn network_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939"]
+            "#,
+            r#"
+            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
+            "#,
+        ];
+
+        let expected = vec![
+            Network {
+                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
+            },
+            Network {
+                listen: (vec![
+                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
+                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
+                ]),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Network>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
     fn bitcoin_deserializes_correctly() {
         let file_contents = vec![
             r#"
@@ -80,38 +112,6 @@ mod tests {
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn network_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939"]
-            "#,
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
-            "#,
-        ];
-
-        let expected = vec![
-            Network {
-                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
-            },
-            Network {
-                listen: (vec![
-                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
-                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
-                ]),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Network>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);
