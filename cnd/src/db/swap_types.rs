@@ -105,12 +105,12 @@ impl Sqlite {
     impl_has_swap!(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages);
 }
 
-#[derive(Queryable, Debug, Clone, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Queryable)]
 struct QueryableSwap {
     swap_id: Text<SwapId>,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct SwapTypes {
     pub alpha_ledger: LedgerKind,
     pub beta_ledger: LedgerKind,
@@ -119,7 +119,7 @@ pub struct SwapTypes {
     pub role: Role,
 }
 
-#[derive(Debug, Clone, Display, EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
 pub enum LedgerKind {
     Bitcoin,
     Ethereum,
@@ -137,7 +137,7 @@ impl From<ledger::LedgerKind> for LedgerKind {
     }
 }
 
-#[derive(Clone, Debug, Display, EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
 pub enum AssetKind {
     Bitcoin,
     Ether,
