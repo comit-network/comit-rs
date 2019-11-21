@@ -88,9 +88,11 @@ pub struct PollParameters<T> {
 mod tests {
     use super::*;
     use log::LevelFilter;
-    use reqwest::Url;
     use spectral::prelude::*;
-    use std::net::Ipv4Addr;
+    use std::{
+        net::{IpAddr, Ipv4Addr},
+        path::PathBuf,
+    };
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -112,47 +114,6 @@ mod tests {
                 structured: Option::None,
             },
         });
-    }
-
-    #[test]
-    fn bitcoin_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            network = "mainnet"
-            node_url = "http://example.com"
-            "#,
-            r#"
-            network = "testnet"
-            node_url = "http://example.com"
-            "#,
-            r#"
-            network = "regtest"
-            node_url = "http://example.com"
-            "#,
-        ];
-
-        let expected = vec![
-            Bitcoin {
-                network: bitcoin::Network::Bitcoin,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-            Bitcoin {
-                network: bitcoin::Network::Testnet,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-            Bitcoin {
-                network: bitcoin::Network::Regtest,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -188,38 +149,6 @@ mod tests {
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Cors>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn network_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939"]
-            "#,
-            r#"
-            listen = ["/ip4/0.0.0.0/tcp/9939", "/ip4/127.0.0.1/tcp/9939"]
-            "#,
-        ];
-
-        let expected = vec![
-            Network {
-                listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
-            },
-            Network {
-                listen: (vec![
-                    "/ip4/0.0.0.0/tcp/9939".parse().unwrap(),
-                    "/ip4/127.0.0.1/tcp/9939".parse().unwrap(),
-                ]),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Network>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

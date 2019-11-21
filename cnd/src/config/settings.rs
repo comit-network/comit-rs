@@ -269,12 +269,12 @@ mod tests {
             })
     }
 
-    // Note toml library serializes Network without a trailing new
     #[test]
-    fn serializes_correctly() {
+    fn settings_serializes_correctly() {
         let file = File::default();
         let settings = Settings::from_config_file_and_defaults(file).unwrap();
 
+        // Note: toml library serializes Network without a trailing new line?
         let want = r#"[network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 [http_api.socket]
