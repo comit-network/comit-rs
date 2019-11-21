@@ -81,30 +81,30 @@ mod tests {
         let file_contents = vec![
             r#"
             network = "mainnet"
-            node_url = "http://example.com"
+            node_url = "http://example.com:8545"
             "#,
             r#"
             network = "testnet"
-            node_url = "http://example.com"
+            node_url = "http://example.com:8545"
             "#,
             r#"
             network = "regtest"
-            node_url = "http://example.com"
+            node_url = "http://example.com:8545"
             "#,
         ];
 
         let expected = vec![
             Bitcoin {
                 network: bitcoin::Network::Bitcoin,
-                node_url: Url::parse("http://example.com").unwrap(),
+                node_url: Url::parse("http://example.com:8545").unwrap(),
             },
             Bitcoin {
                 network: bitcoin::Network::Testnet,
-                node_url: Url::parse("http://example.com").unwrap(),
+                node_url: Url::parse("http://example.com:8545").unwrap(),
             },
             Bitcoin {
                 network: bitcoin::Network::Regtest,
-                node_url: Url::parse("http://example.com").unwrap(),
+                node_url: Url::parse("http://example.com:8545").unwrap(),
             },
         ];
 
