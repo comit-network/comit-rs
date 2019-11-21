@@ -47,13 +47,9 @@ impl Save for Sqlite {
         let insertable = InsertableSwap::from(swap);
         let connection = self.connect().await;
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
