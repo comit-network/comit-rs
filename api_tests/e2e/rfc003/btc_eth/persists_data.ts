@@ -1,3 +1,4 @@
+import { sleep } from "../../../lib/util";
 import { createActors } from "../../../lib_sdk/create_actors";
 
 setTimeout(function() {
@@ -9,8 +10,9 @@ setTimeout(function() {
             await alice.sendRequest();
             await bob.accept();
 
-            const configFile = alice.cndInstance.getConfigFile();
-            await alice.restart(configFile);
+            await sleep(1000); // Give accept message time to get to Alice before restarting.
+
+            await alice.restart();
 
             await alice.assertHasNumSwaps(1);
         });

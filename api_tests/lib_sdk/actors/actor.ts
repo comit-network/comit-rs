@@ -4,7 +4,7 @@ import { randomBytes } from "crypto";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import { CndConfigFile, E2ETestActorConfig } from "../../lib/config";
+import { E2ETestActorConfig } from "../../lib/config";
 import { LedgerConfig } from "../../lib/ledger_runner";
 import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
@@ -217,9 +217,12 @@ export class Actor {
         }
     }
 
-    public async restart(configFile: CndConfigFile) {
-        this.cndInstance.stop();
-        await this.cndInstance.start(configFile);
+    public async restart() {
+        const doNotClobberLog = true;
+        const configFile = this.cndInstance.stop();
+
+        this.logger.debug("Restarting cnd");
+        await this.cndInstance.start(configFile, doNotClobberLog);
     }
 
     private async additionalIdentities(
