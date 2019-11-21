@@ -1,13 +1,7 @@
-use config as config_rs;
-use libp2p::Multiaddr;
+use crate::config::{Bitcoin, Database, Ethereum, Network, Socket};
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{
-    ffi::OsStr,
-    net::IpAddr,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::time::Duration;
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -44,11 +38,6 @@ pub struct Logging {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Network {
-    pub listen: Vec<Multiaddr>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct HttpApi {
     pub socket: Socket,
     pub cors: Option<Cors>,
@@ -80,45 +69,10 @@ pub enum None {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Socket {
-    pub address: IpAddr,
-    pub port: u16,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct PollParameters<T> {
     #[serde(with = "super::serde_duration")]
     pub poll_interval_secs: Duration,
     pub network: T,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Database {
-    pub sqlite: PathBuf,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Bitcoin {
-    #[serde(with = "super::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
-    #[serde(with = "url_serde")]
-    pub node_url: reqwest::Url,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Ethereum {
-    #[serde(with = "url_serde")]
-    pub node_url: reqwest::Url,
-}
-
-impl File {
-    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
-        let config_file = Path::new(&config_file);
-
-        let mut config = config_rs::Config::new();
-        config.merge(config_rs::File::from(config_file))?;
-        config.try_into()
-    }
 }
 
 #[cfg(test)]

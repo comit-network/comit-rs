@@ -1,5 +1,4 @@
-use super::file::{self, Database, File, Network, Socket};
-use crate::config::file::{Bitcoin, Ethereum};
+use crate::config::{file, Bitcoin, Database, Ethereum, File, Network, Socket};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;

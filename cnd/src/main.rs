@@ -57,7 +57,7 @@ fn main() -> anyhow::Result<()> {
     let state_store = Arc::new(InMemoryStateStore::default());
 
     let bitcoin_connector = {
-        let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
+        let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
         BitcoindConnector::new(node_url, network)?
     };
 
