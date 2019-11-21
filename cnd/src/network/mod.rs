@@ -21,6 +21,7 @@ use futures::{
     future::Future,
     sync::oneshot::{self, Sender},
 };
+use futures_core::{FutureExt, TryFutureExt};
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
     mdns::{Mdns, MdnsEvent},
@@ -37,6 +38,7 @@ use std::{
     io,
     sync::{Arc, Mutex},
 };
+use tokio::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -53,7 +55,9 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     pub db: Sqlite,
     #[behaviour(ignore)]
-    response_channels: HashMap<SwapId, oneshot::Sender<Response>>,
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
+    #[behaviour(ignore)]
+    task_executor: TaskExecutor,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -77,6 +81,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         state_store: Arc<InMemoryStateStore>,
         seed: Seed,
         db: Sqlite,
+        task_executor: TaskExecutor,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -96,7 +101,8 @@ impl<TSubstream> ComitNode<TSubstream> {
             state_store,
             seed,
             db,
-            response_channels: HashMap::new(),
+            response_channels: Arc::new(Mutex::new(HashMap::new())),
+            task_executor,
         })
     }
 
@@ -108,195 +114,227 @@ impl<TSubstream> ComitNode<TSubstream> {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
+}
 
-    fn handle_request(
-        &mut self,
-        counterparty: PeerId,
-        mut request: ValidatedInboundRequest,
-    ) -> Result<SwapId, Response> {
-        match request.request_type() {
-            "SWAP" => {
-                let protocol: SwapProtocol = header!(request
-                    .take_header("protocol")
-                    .map(SwapProtocol::from_header));
-                match protocol {
-                    SwapProtocol::Rfc003(hash_function) => {
-                        let swap_id = header!(request.take_header("id").map(SwapId::from_header));
-                        let alpha_ledger = header!(request
-                            .take_header("alpha_ledger")
-                            .map(LedgerKind::from_header));
-                        let beta_ledger = header!(request
-                            .take_header("beta_ledger")
-                            .map(LedgerKind::from_header));
-                        let alpha_asset = header!(request
-                            .take_header("alpha_asset")
-                            .map(AssetKind::from_header));
-                        let beta_asset = header!(request
-                            .take_header("beta_asset")
-                            .map(AssetKind::from_header));
+async fn handle_request(
+    db: Sqlite,
+    seed: Seed,
+    state_store: Arc<InMemoryStateStore>,
+    counterparty: PeerId,
+    mut request: ValidatedInboundRequest,
+) -> Result<SwapId, Response> {
+    match request.request_type() {
+        "SWAP" => {
+            let protocol: SwapProtocol = header!(request
+                .take_header("protocol")
+                .map(SwapProtocol::from_header));
+            match protocol {
+                SwapProtocol::Rfc003(hash_function) => {
+                    let swap_id = header!(request.take_header("id").map(SwapId::from_header));
+                    let alpha_ledger = header!(request
+                        .take_header("alpha_ledger")
+                        .map(LedgerKind::from_header));
+                    let beta_ledger = header!(request
+                        .take_header("beta_ledger")
+                        .map(LedgerKind::from_header));
+                    let alpha_asset = header!(request
+                        .take_header("alpha_asset")
+                        .map(AssetKind::from_header));
+                    let beta_asset = header!(request
+                        .take_header("beta_asset")
+                        .map(AssetKind::from_header));
 
-                        match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
-                            (
-                                LedgerKind::Bitcoin(alpha_ledger),
-                                LedgerKind::Ethereum(beta_ledger),
-                                AssetKind::Bitcoin(alpha_asset),
-                                AssetKind::Ether(beta_asset),
-                            ) => {
-                                let request = rfc003_swap_request(
-                                    swap_id,
-                                    alpha_ledger,
-                                    beta_ledger,
-                                    alpha_asset,
-                                    beta_asset,
-                                    hash_function,
-                                    body!(request.take_body_as()),
-                                );
-                                self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to db");
+                    match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
+                        (
+                            LedgerKind::Bitcoin(alpha_ledger),
+                            LedgerKind::Ethereum(beta_ledger),
+                            AssetKind::Bitcoin(alpha_asset),
+                            AssetKind::Ether(beta_asset),
+                        ) => {
+                            let request = rfc003_swap_request(
+                                swap_id,
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                hash_function,
+                                body!(request.take_body_as()),
+                            );
+                            insert_state_for_bob(
+                                db.clone(),
+                                seed.clone(),
+                                state_store.clone(),
+                                counterparty,
+                                request,
+                            )
+                            .await
+                            .expect("Could not save state to db");
 
-                                Ok(swap_id)
-                            }
-                            (
-                                LedgerKind::Ethereum(alpha_ledger),
-                                LedgerKind::Bitcoin(beta_ledger),
-                                AssetKind::Ether(alpha_asset),
-                                AssetKind::Bitcoin(beta_asset),
-                            ) => {
-                                let request = rfc003_swap_request(
-                                    swap_id,
-                                    alpha_ledger,
-                                    beta_ledger,
-                                    alpha_asset,
-                                    beta_asset,
-                                    hash_function,
-                                    body!(request.take_body_as()),
-                                );
-                                self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to db");
+                            Ok(swap_id)
+                        }
+                        (
+                            LedgerKind::Ethereum(alpha_ledger),
+                            LedgerKind::Bitcoin(beta_ledger),
+                            AssetKind::Ether(alpha_asset),
+                            AssetKind::Bitcoin(beta_asset),
+                        ) => {
+                            let request = rfc003_swap_request(
+                                swap_id,
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                hash_function,
+                                body!(request.take_body_as()),
+                            );
+                            insert_state_for_bob(
+                                db.clone(),
+                                seed.clone(),
+                                state_store.clone(),
+                                counterparty,
+                                request,
+                            )
+                            .await
+                            .expect("Could not save state to db");
 
-                                Ok(swap_id)
-                            }
-                            (
-                                LedgerKind::Bitcoin(alpha_ledger),
-                                LedgerKind::Ethereum(beta_ledger),
-                                AssetKind::Bitcoin(alpha_asset),
-                                AssetKind::Erc20(beta_asset),
-                            ) => {
-                                let request = rfc003_swap_request(
-                                    swap_id,
-                                    alpha_ledger,
-                                    beta_ledger,
-                                    alpha_asset,
-                                    beta_asset,
-                                    hash_function,
-                                    body!(request.take_body_as()),
-                                );
-                                self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to db");
+                            Ok(swap_id)
+                        }
+                        (
+                            LedgerKind::Bitcoin(alpha_ledger),
+                            LedgerKind::Ethereum(beta_ledger),
+                            AssetKind::Bitcoin(alpha_asset),
+                            AssetKind::Erc20(beta_asset),
+                        ) => {
+                            let request = rfc003_swap_request(
+                                swap_id,
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                hash_function,
+                                body!(request.take_body_as()),
+                            );
+                            insert_state_for_bob(
+                                db.clone(),
+                                seed.clone(),
+                                state_store.clone(),
+                                counterparty,
+                                request,
+                            )
+                            .await
+                            .expect("Could not save state to db");
 
-                                Ok(swap_id)
-                            }
-                            (
-                                LedgerKind::Ethereum(alpha_ledger),
-                                LedgerKind::Bitcoin(beta_ledger),
-                                AssetKind::Erc20(alpha_asset),
-                                AssetKind::Bitcoin(beta_asset),
-                            ) => {
-                                let request = rfc003_swap_request(
-                                    swap_id,
-                                    alpha_ledger,
-                                    beta_ledger,
-                                    alpha_asset,
-                                    beta_asset,
-                                    hash_function,
-                                    body!(request.take_body_as()),
-                                );
-                                self.insert_state_for_bob(counterparty, request)
-                                    .expect("Could not save state to db");
+                            Ok(swap_id)
+                        }
+                        (
+                            LedgerKind::Ethereum(alpha_ledger),
+                            LedgerKind::Bitcoin(beta_ledger),
+                            AssetKind::Erc20(alpha_asset),
+                            AssetKind::Bitcoin(beta_asset),
+                        ) => {
+                            let request = rfc003_swap_request(
+                                swap_id,
+                                alpha_ledger,
+                                beta_ledger,
+                                alpha_asset,
+                                beta_asset,
+                                hash_function,
+                                body!(request.take_body_as()),
+                            );
+                            insert_state_for_bob(
+                                db.clone(),
+                                seed.clone(),
+                                state_store.clone(),
+                                counterparty,
+                                request,
+                            )
+                            .await
+                            .expect("Could not save state to db");
 
-                                Ok(swap_id)
-                            }
-                            (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
-                                log::warn!(
+                            Ok(swap_id)
+                        }
+                        (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
+                            log::warn!(
                                     "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
                                 );
 
-                                let decline_body = DeclineResponseBody {
-                                    reason: Some(SwapDeclineReason::UnsupportedSwap),
-                                };
+                            let decline_body = DeclineResponseBody {
+                                reason: Some(SwapDeclineReason::UnsupportedSwap),
+                            };
 
-                                Err(Response::empty()
-                                        .with_header(
-                                            "decision",
-                                            Decision::Declined
-                                                .to_header()
-                                                .expect("Decision should not fail to serialize"),
-                                        )
-                                        .with_body(serde_json::to_value(decline_body).expect(
-                                            "decline body should always serialize into serde_json::Value",
-                                        )),
+                            Err(Response::empty()
+                                .with_header(
+                                    "decision",
+                                    Decision::Declined
+                                        .to_header()
+                                        .expect("Decision should not fail to serialize"),
                                 )
-                            }
+                                .with_body(serde_json::to_value(decline_body).expect(
+                                    "decline body should always serialize into serde_json::Value",
+                                )))
                         }
                     }
-                    SwapProtocol::Unknown(protocol) => {
-                        log::warn!("the swap protocol {} is currently not supported", protocol);
+                }
+                SwapProtocol::Unknown(protocol) => {
+                    log::warn!("the swap protocol {} is currently not supported", protocol);
 
-                        let decline_body = DeclineResponseBody {
-                            reason: Some(SwapDeclineReason::UnsupportedProtocol),
-                        };
-                        Err(Response::empty()
-                            .with_header(
-                                "decision",
-                                Decision::Declined
-                                    .to_header()
-                                    .expect("Decision should not fail to serialize"),
-                            )
-                            .with_body(serde_json::to_value(decline_body).expect(
+                    let decline_body = DeclineResponseBody {
+                        reason: Some(SwapDeclineReason::UnsupportedProtocol),
+                    };
+                    Err(Response::empty()
+                        .with_header(
+                            "decision",
+                            Decision::Declined
+                                .to_header()
+                                .expect("Decision should not fail to serialize"),
+                        )
+                        .with_body(
+                            serde_json::to_value(decline_body).expect(
                                 "decline body should always serialize into serde_json::Value",
-                            )))
-                    }
+                            ),
+                        ))
                 }
             }
+        }
 
-            // This case is just catered for, because of rust. It can only happen
-            // if there is a typo in the request_type within the program. The request
-            // type is checked on the messaging layer and will be handled there if
-            // an unknown request_type is passed in.
-            request_type => {
-                log::warn!("request type '{}' is unknown", request_type);
+        // This case is just catered for, because of rust. It can only happen
+        // if there is a typo in the request_type within the program. The request
+        // type is checked on the messaging layer and will be handled there if
+        // an unknown request_type is passed in.
+        request_type => {
+            log::warn!("request type '{}' is unknown", request_type);
 
-                Err(Response::empty().with_header(
-                    "decision",
-                    Decision::Declined
-                        .to_header()
-                        .expect("Decision should not fail to serialize"),
-                ))
-            }
+            Err(Response::empty().with_header(
+                "decision",
+                Decision::Declined
+                    .to_header()
+                    .expect("Decision should not fail to serialize"),
+            ))
         }
     }
+}
 
-    #[allow(clippy::type_complexity)]
-    fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        counterparty: PeerId,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> anyhow::Result<()>
-    where
-        Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
-    {
-        let id = swap_request.swap_id;
-        let seed = self.seed.swap_seed(id);
+#[allow(clippy::type_complexity)]
+async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    db: Sqlite,
+    seed: Seed,
+    state_store: Arc<InMemoryStateStore>,
+    counterparty: PeerId,
+    swap_request: rfc003::Request<AL, BL, AA, BA>,
+) -> anyhow::Result<()>
+where
+    Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
+{
+    let id = swap_request.swap_id;
+    let seed = seed.swap_seed(id);
 
-        self.db.save(Swap::new(id, Role::Bob, counterparty))?;
-        self.db.save_message(swap_request.clone())?;
+    db.save(Swap::new(id, Role::Bob, counterparty)).await?;
+    db.save_message(swap_request.clone()).await?;
 
-        let state_store = Arc::clone(&self.state_store);
-        let state = bob::State::proposed(swap_request.clone(), seed);
-        state_store.insert(id, state);
+    let state = bob::State::proposed(swap_request.clone(), seed);
+    state_store.insert(id, state);
 
-        Ok(())
-    }
+    Ok(())
 }
 
 pub trait Network: Send + Sync + 'static {
@@ -305,11 +343,13 @@ pub trait Network: Send + Sync + 'static {
     fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
 }
 
-impl<TTransport: Transport + Send + 'static, TMuxer: StreamMuxer + Send + Sync + 'static> Network
-    for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>>>>
+impl<
+        TTransport: Transport + Send + Sync + 'static,
+        TMuxer: StreamMuxer + Send + Sync + 'static,
+    > Network for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>>>>
 where
     <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
-    <TMuxer as StreamMuxer>::Substream: Send + 'static,
+    <TMuxer as StreamMuxer>::Substream: Send + Sync + 'static,
     <TTransport as Transport>::Dial: Send,
     <TTransport as Transport>::Error: Send,
     <TTransport as Transport>::Listener: Send,
@@ -332,9 +372,10 @@ where
     }
 
     fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        let mut swarm = self.lock().unwrap();
+        let swarm = self.lock().unwrap();
+        let mut response_channels = swarm.response_channels.lock().unwrap();
 
-        swarm.response_channels.remove(&swap)
+        response_channels.remove(&swap)
     }
 }
 
@@ -344,14 +385,33 @@ impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<T
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
                 let PendingInboundRequest { request, channel } = request;
 
-                match self.handle_request(peer_id, request) {
-                    Ok(id) => {
-                        self.response_channels.insert(id, channel);
-                    }
-                    Err(response) => channel
-                        .send(response)
-                        .unwrap_or_else(|_| log::debug!("failed to send response through channel")),
-                }
+                self.task_executor.spawn(
+                    handle_request(
+                        self.db.clone(),
+                        self.seed.clone(),
+                        self.state_store.clone(),
+                        peer_id,
+                        request,
+                    )
+                    .boxed()
+                    .compat()
+                    .then({
+                        let response_channels = self.response_channels.clone();
+
+                        move |result| {
+                            match result {
+                                Ok(id) => {
+                                    let mut response_channels = response_channels.lock().unwrap();
+                                    response_channels.insert(id, channel);
+                                }
+                                Err(response) => channel.send(response).unwrap_or_else(|_| {
+                                    log::debug!("failed to send response through channel")
+                                }),
+                            }
+                            Ok(())
+                        }
+                    }),
+                );
             }
         }
     }

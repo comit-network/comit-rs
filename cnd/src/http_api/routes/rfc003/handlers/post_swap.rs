@@ -23,7 +23,7 @@ use futures_core::{
 use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
-pub fn handle_post_swap<
+pub async fn handle_post_swap<
     D: Clone + StateStore + Save + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
 >(
     dependencies: D,
@@ -33,19 +33,19 @@ pub fn handle_post_swap<
 
     match request_body_kind {
         SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            initiate_request(dependencies, body, id)?;
+            initiate_request(dependencies, body, id).await?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            initiate_request(dependencies, body, id)?;
+            initiate_request(dependencies, body, id).await?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            initiate_request(dependencies, body, id)?;
+            initiate_request(dependencies, body, id).await?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            initiate_request(dependencies, body, id)?;
+            initiate_request(dependencies, body, id).await?;
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
@@ -72,7 +72,7 @@ pub fn handle_post_swap<
     }
 }
 
-fn initiate_request<D, AL, BL, AA, BA, I>(
+async fn initiate_request<D, AL, BL, AA, BA, I>(
     dependencies: D,
     body: SwapRequestBody<AL, BL, AA, BA, I>,
     id: SwapId,
@@ -99,9 +99,11 @@ where
     let swap_request = body.to_request(id, &seed);
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty))
+        .await
         .map_err(problem::internal_error)?;
 
     SaveMessage::save_message(&dependencies, swap_request.clone())
+        .await
         .map_err(problem::internal_error)?;
 
     let state = State::proposed(swap_request.clone(), seed);
@@ -126,6 +128,7 @@ where
                     let state = State::accepted(swap_request.clone(), accept, seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     SaveMessage::save_message(&dependencies, accept)
+                        .await
                         .expect("failed to save message to db");
 
                     let receiver = Spawn::spawn(&dependencies, swap_request, accept);
@@ -139,6 +142,7 @@ where
                     let state = State::declined(swap_request.clone(), decline.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     SaveMessage::save_message(&dependencies, decline.clone())
+                        .await
                         .expect("failed to save message to db");
                 }
             };
