@@ -30,7 +30,7 @@ use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
-#[allow(clippy::unit_arg, clippy::let_unit_value)]
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 pub async fn handle_action<
     D: StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages + DetermineTypes,
 >(
