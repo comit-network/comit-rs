@@ -14,15 +14,13 @@ export interface HttpApi {
 }
 
 export class E2ETestActorConfig {
-    public readonly httpApiPort: number;
-    public readonly comitPort: number;
     public readonly seed: Uint8Array;
 
     constructor(
-        httpApiPort: number,
-        comitPort: number,
+        public readonly httpApiPort: number,
+        public readonly comitPort: number,
         seed: string,
-        private readonly name: string
+        public readonly name: string
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;

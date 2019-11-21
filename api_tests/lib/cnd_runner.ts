@@ -1,23 +1,15 @@
-import { JsonMap, stringify } from "@iarna/toml";
-import { ChildProcess, spawn } from "child_process";
-import * as fs from "fs";
-import { PEMObject } from "pem-ts";
-import tempWrite from "temp-write";
+import { CndInstance } from "../lib_sdk/cnd_instance";
 import { CND_CONFIGS } from "./config";
 import { LedgerConfig } from "./ledger_runner";
-import { sleep } from "./util";
 
 export class CndRunner {
-    private runningNodes: { [key: string]: ChildProcess };
-    private readonly projectRoot: string;
-    private readonly logDir: string;
-    private readonly bin: string;
+    private runningNodes: { [key: string]: CndInstance };
 
-    constructor(projectRoot: string, bin: string, logDir: string) {
+    constructor(
+        private readonly projectRoot: string,
+        private readonly logDir: string
+    ) {
         this.runningNodes = {};
-        this.logDir = logDir;
-        this.bin = bin;
-        this.projectRoot = projectRoot;
     }
 
     public async ensureCndsRunning(
@@ -39,35 +31,14 @@ export class CndRunner {
                 );
             }
 
-            const cndConfigFile = cndconfig.generateCndConfigFile(ledgerConfig);
-            const configFile = await tempWrite(
-                stringify((cndConfigFile as unknown) as JsonMap),
-                "config.toml"
+            const process = new CndInstance(
+                this.projectRoot,
+                this.logDir,
+                cndconfig,
+                ledgerConfig
             );
 
-            const pemObject = new PEMObject("SEED", cndconfig.seed);
-            const seedFile = await tempWrite(pemObject.encoded, "seed.pem");
-
-            const process = spawn(
-                this.bin,
-                ["--config", configFile, "--seed-file", seedFile],
-                {
-                    cwd: this.projectRoot,
-                    stdio: [
-                        "ignore", // stdin
-                        fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stdout
-                        fs.openSync(this.logDir + "/cnd-" + name + ".log", "w"), // stderr
-                    ],
-                }
-            );
-
-            process.on("exit", (code: number, signal: number) => {
-                console.log(
-                    `cnd ${name} exited with ${code || "signal " + signal}`
-                );
-            });
-
-            await sleep(500); // allow the nodes to start up
+            await process.start();
 
             return {
                 name,
@@ -88,7 +59,7 @@ export class CndRunner {
         if (names.length > 0) {
             console.log("Stopping cnds: " + names.join(", "));
             for (const process of Object.values(this.runningNodes)) {
-                process.kill();
+                process.stop();
             }
             this.runningNodes = {};
         }
