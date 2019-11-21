@@ -3,7 +3,8 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import { PEMObject } from "pem-ts";
 import tempWrite from "temp-write";
-import { BtsieveConfigFile, CND_CONFIGS } from "./config";
+import { CND_CONFIGS } from "./config";
+import { LedgerConfig } from "./ledger_runner";
 import { sleep } from "./util";
 
 export class CndRunner {
@@ -21,7 +22,7 @@ export class CndRunner {
 
     public async ensureCndsRunning(
         actors: string[],
-        btsieveConfig: BtsieveConfigFile
+        ledgerConfig: LedgerConfig
     ) {
         const actorsToBeStarted = actors.filter(
             actor => !Object.keys(this.runningNodes).includes(actor)
@@ -38,12 +39,9 @@ export class CndRunner {
                 );
             }
 
+            const cndConfigFile = cndconfig.generateCndConfigFile(ledgerConfig);
             const configFile = await tempWrite(
-                stringify(
-                    (cndconfig.generateCndConfigFile(
-                        btsieveConfig
-                    ) as unknown) as JsonMap
-                ),
+                stringify((cndConfigFile as unknown) as JsonMap),
                 "config.toml"
             );
 

@@ -9,7 +9,6 @@ import Mocha from "mocha";
 import path from "path";
 import rimraf from "rimraf";
 import { CndRunner } from "./lib/cnd_runner";
-import { createBtsieveConfig } from "./lib/config";
 import { LedgerRunner } from "./lib/ledger_runner";
 import { HarnessGlobal } from "./lib/util";
 
@@ -91,19 +90,7 @@ async function runTests(testFiles: string[]) {
 
         if (config.actors) {
             const ledgerConfigs = await ledgerRunner.getLedgerConfig();
-
-            const btsieveConfig = config.ledgers
-                ? createBtsieveConfig({
-                      bitcoin: config.ledgers.includes("bitcoin")
-                          ? ledgerConfigs.bitcoin
-                          : undefined,
-                      ethereum: config.ledgers.includes("ethereum")
-                          ? ledgerConfigs.ethereum
-                          : undefined,
-                  })
-                : {};
-
-            await nodeRunner.ensureCndsRunning(config.actors, btsieveConfig);
+            await nodeRunner.ensureCndsRunning(config.actors, ledgerConfigs);
         }
 
         global.ledgerConfigs = await ledgerRunner.getLedgerConfig();
