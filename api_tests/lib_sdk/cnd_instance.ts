@@ -25,14 +25,21 @@ export class CndInstance {
         return this.configFile;
     }
 
-    public async start() {
+    public async start(
+        withConfigFile?: CndConfigFile,
+        doNotClobberLog?: boolean
+    ) {
         const bin = process.env.CND_BIN
             ? process.env.CND_BIN
             : this.projectRoot + "/target/debug/cnd";
 
-        this.configFile = this.actorConfig.generateCndConfigFile(
-            this.ledgerConfig
-        );
+        if (withConfigFile) {
+            this.configFile = withConfigFile;
+        } else {
+            this.configFile = this.actorConfig.generateCndConfigFile(
+                this.ledgerConfig
+            );
+        }
 
         const configFile = await tempWrite(
             stringify((this.configFile as unknown) as JsonMap),
@@ -42,6 +49,7 @@ export class CndInstance {
         const pemObject = new PEMObject("SEED", this.actorConfig.seed);
         const seedFile = await tempWrite(pemObject.encoded, "seed.pem");
 
+        const output = await this.output(doNotClobberLog);
         this.process = spawn(
             bin,
             ["--config", configFile, "--seed-file", seedFile],
@@ -53,10 +61,8 @@ export class CndInstance {
                         this.logDir + "/cnd-" + this.actorConfig.name + ".log",
                         "w"
                     ), // stdout
-                    await openAsync(
-                        this.logDir + "/cnd-" + this.actorConfig.name + ".log",
-                        "w"
-                    ), // stderr
+                    output,
+                    // stderr
                 ],
             }
         );
@@ -73,6 +79,21 @@ export class CndInstance {
 
     public stop() {
         this.process.kill("SIGINT");
+        const configFile = this.configFile;
         this.configFile = null;
+        return configFile;
+    }
+
+    public async output(doNotClobberLog: boolean) {
+        if (doNotClobberLog) {
+            return await openAsync(
+                this.logDir + "/cnd-" + this.actorConfig.name + ".log",
+                "a"
+            );
+        }
+        return await openAsync(
+            this.logDir + "/cnd-" + this.actorConfig.name + ".log",
+            "w"
+        );
     }
 }

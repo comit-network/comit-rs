@@ -54,9 +54,9 @@ export class Actor {
 
     public actors: Actors;
     public wallets: Wallets;
+    public cnd: Cnd;
 
     private comitClient: ComitClient;
-    private readonly cnd: Cnd;
     private swap: Swap;
 
     private readonly startingBalances: Map<AssetKind, number>;
@@ -64,7 +64,7 @@ export class Actor {
 
     private constructor(
         private readonly logger: Logger,
-        private readonly cndInstance: CndInstance
+        public cndInstance: CndInstance
     ) {
         this.wallets = new Wallets({});
         const { address, port } = cndInstance.getConfigFile().http_api.socket;
@@ -183,12 +183,12 @@ export class Actor {
         await this.swap.redeem(Actor.defaultActionConfig);
     }
 
-    public async assertHasNoSwaps() {
-        this.logger.debug("Checking if we have 0 swaps");
+    public async assertHasNumSwaps(num: number) {
+        this.logger.debug("Checking if we have n swaps");
 
         const swaps = await this.cnd.getSwaps();
 
-        expect(swaps).to.have.length(0);
+        expect(swaps).to.have.length(num);
     }
 
     public async assertSwapped() {
@@ -218,8 +218,11 @@ export class Actor {
     }
 
     public async restart() {
-        this.cndInstance.stop();
-        await this.cndInstance.start();
+        const doNotClobberLog = true;
+        const configFile = this.cndInstance.stop();
+
+        this.logger.debug("Restarting cnd");
+        await this.cndInstance.start(configFile, doNotClobberLog);
     }
 
     private async additionalIdentities(
