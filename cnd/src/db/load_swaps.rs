@@ -14,13 +14,18 @@ use crate::{
         HashFunction, SwapId, Timestamp,
     },
 };
+use async_trait::async_trait;
 use diesel::{self, prelude::*, RunQueryDsl};
 use ethereum_support::{Erc20Quantity, Erc20Token, EtherQuantity, U256};
 
 pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>);
 
+#[async_trait]
 pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    fn load_accepted_swap(&self, swap_id: SwapId) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>>;
+    async fn load_accepted_swap(
+        &self,
+        swap_id: SwapId,
+    ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>>;
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
@@ -42,8 +47,9 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
+#[async_trait]
 impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sqlite {
-    fn load_accepted_swap(
+    async fn load_accepted_swap(
         &self,
         key: SwapId,
     ) -> anyhow::Result<
@@ -56,7 +62,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
 
         diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
 
-        let connection = self.connect()?;
+        let connection = self.connect().await;
         let key = Text(key);
 
         let record: BitcoinEthereumBitcoinEtherAcceptedSwap = request_messages::table
@@ -79,7 +85,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
                 accept_messages::ethereum_refund_identity,
             ))
             .filter(accept_messages::swap_id.eq(key))
-            .first(&connection)?;
+            .first(&*connection)?;
 
         Ok((
             Request {
@@ -131,8 +137,9 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
+#[async_trait]
 impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sqlite {
-    fn load_accepted_swap(
+    async fn load_accepted_swap(
         &self,
         key: SwapId,
     ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> {
@@ -143,7 +150,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sql
 
         diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
 
-        let connection = self.connect()?;
+        let connection = self.connect().await;
         let key = Text(key);
 
         let record: EthereumBitcoinEtherBitcoinAcceptedSwap = request_messages::table
@@ -166,7 +173,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sql
                 accept_messages::bitcoin_refund_identity,
             ))
             .filter(accept_messages::swap_id.eq(key))
-            .first(&connection)?;
+            .first(&*connection)?;
 
         Ok((
             Request {
@@ -219,8 +226,9 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
+#[async_trait]
 impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite {
-    fn load_accepted_swap(
+    async fn load_accepted_swap(
         &self,
         key: SwapId,
     ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> {
@@ -231,7 +239,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite
 
         diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
 
-        let connection = self.connect()?;
+        let connection = self.connect().await;
         let key = Text(key);
 
         let record: BitcoinEthereumBitcoinErc20AcceptedSwap = request_messages::table
@@ -255,7 +263,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite
                 accept_messages::ethereum_refund_identity,
             ))
             .filter(accept_messages::swap_id.eq(key))
-            .first(&connection)?;
+            .first(&*connection)?;
 
         Ok((
             Request {
@@ -311,8 +319,9 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
+#[async_trait]
 impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite {
-    fn load_accepted_swap(
+    async fn load_accepted_swap(
         &self,
         key: SwapId,
     ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> {
@@ -323,7 +332,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite
 
         diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
 
-        let connection = self.connect()?;
+        let connection = self.connect().await;
         let key = Text(key);
 
         let record: EthereumBitcoinErc20BitcoinAcceptedSwap = request_messages::table
@@ -347,7 +356,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite
                 accept_messages::bitcoin_refund_identity,
             ))
             .filter(accept_messages::swap_id.eq(key))
-            .first(&connection)?;
+            .first(&*connection)?;
 
         Ok((
             Request {
