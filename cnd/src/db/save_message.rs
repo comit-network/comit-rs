@@ -84,13 +84,9 @@ impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for
             secret_hash: Text(secret_hash),
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
@@ -150,13 +146,9 @@ impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sq
             secret_hash: Text(secret_hash),
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
@@ -214,13 +206,9 @@ impl SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for
             secret_hash: Text(secret_hash),
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
@@ -279,12 +267,9 @@ impl SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sq
             secret_hash: Text(secret_hash),
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
@@ -346,13 +331,9 @@ impl SaveMessage<Accept<Bitcoin, Ethereum>> for Sqlite {
             ethereum_refund_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
@@ -380,13 +361,9 @@ impl SaveMessage<Decline> for Sqlite {
             reason: None,
         };
 
-        connection.immediate_transaction::<_, diesel::result::Error, _>(|| {
-            diesel::insert_into(rfc003_decline_messages::table)
-                .values(&insertable)
-                .execute(&*connection)?;
-
-            Ok(())
-        })?;
+        diesel::insert_into(rfc003_decline_messages::table)
+            .values(&insertable)
+            .execute(&*connection)?;
 
         Ok(())
     }
