@@ -1,32 +1,37 @@
 import { configure } from "log4js";
-import { ALICE_CONFIG, BOB_CONFIG } from "../lib/config";
+import { HarnessGlobal } from "../lib/util";
 import { Actors } from "./actors";
 import { Actor } from "./actors/actor";
 
+declare var global: HarnessGlobal;
+
 export async function createActors(logFileName: string): Promise<Actors> {
-    const loggerFactory = (whoAmI: string) => {
-        return () =>
-            configure({
-                appenders: {
-                    file: {
-                        type: "file",
-                        filename: "log/tests/" + logFileName,
-                    },
+    const loggerFactory = (whoAmI: string) =>
+        configure({
+            appenders: {
+                file: {
+                    type: "file",
+                    filename: "log/tests/" + logFileName,
                 },
-                categories: {
-                    default: { appenders: ["file"], level: "debug" },
-                },
-            }).getLogger(whoAmI);
-    };
+            },
+            categories: {
+                default: { appenders: ["file"], level: "debug" },
+            },
+        }).getLogger(whoAmI);
 
-    const alice = new Actor(
-        loggerFactory("alice"),
-        `http://localhost:${ALICE_CONFIG.httpApiPort}`
+    const alice = await Actor.newInstance(
+        loggerFactory,
+        "alice",
+        global.ledgerConfigs,
+        global.projectRoot,
+        global.logRoot
     );
-
-    const bob = new Actor(
-        loggerFactory("bob"),
-        `http://localhost:${BOB_CONFIG.httpApiPort}`
+    const bob = await Actor.newInstance(
+        loggerFactory,
+        "bob",
+        global.ledgerConfigs,
+        global.projectRoot,
+        global.logRoot
     );
 
     const actors = new Actors(

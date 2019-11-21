@@ -30,4 +30,5 @@ export interface HarnessGlobal extends Global {
     ledgerConfigs: LedgerConfig;
     testRoot: string;
     projectRoot: string;
+    logRoot: string;
 }
