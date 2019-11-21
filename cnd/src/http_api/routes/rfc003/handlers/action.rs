@@ -45,86 +45,78 @@ pub fn handle_action<
         .determine_types(&swap_id)
         .map_err(problem::internal_error)?;
 
-    with_swap_types!(
-        types,
-        (|| {
-            let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?
-                .ok_or_else(problem::state_store)?;
-            log::trace!("Retrieved state for {}: {:?}", swap_id, state);
+    with_swap_types!(types, {
+        let state =
+            StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(problem::state_store)?;
+        log::trace!("Retrieved state for {}: {:?}", swap_id, state);
 
-            let action = state
-                .actions()
-                .into_iter()
-                .select_action(action_kind, method)?;
+        let action = state
+            .actions()
+            .into_iter()
+            .select_action(action_kind, method)?;
 
-            match action {
-                Action::Accept(_) => {
-                    let body =
-                        serde_json::from_value::<AcceptBody>(body).map_err(problem::deserialize)?;
+        match action {
+            Action::Accept(_) => {
+                let body =
+                    serde_json::from_value::<AcceptBody>(body).map_err(problem::deserialize)?;
 
-                    let channel = Network::pending_request_for(&dependencies, swap_id)
-                        .ok_or_else(problem::missing_channel)?;
+                let channel = Network::pending_request_for(&dependencies, swap_id)
+                    .ok_or_else(problem::missing_channel)?;
 
-                    let accept_message = body
-                        .into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
+                let accept_message =
+                    body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
 
-                    SaveMessage::save_message(&dependencies, accept_message)
-                        .map_err(problem::internal_error)?;
+                SaveMessage::save_message(&dependencies, accept_message)
+                    .map_err(problem::internal_error)?;
 
-                    let response = rfc003_accept_response(accept_message);
-                    channel.send(response).map_err(problem::send_over_channel)?;
+                let response = rfc003_accept_response(accept_message);
+                channel.send(response).map_err(problem::send_over_channel)?;
 
-                    let swap_request = state.request();
-                    let seed = dependencies.swap_seed(swap_id);
-                    let state = State::accepted(swap_request.clone(), accept_message, seed);
-                    StateStore::insert(&dependencies, swap_id, state);
+                let swap_request = state.request();
+                let seed = dependencies.swap_seed(swap_id);
+                let state = State::accepted(swap_request.clone(), accept_message, seed);
+                StateStore::insert(&dependencies, swap_id, state);
 
-                    let receiver = Spawn::spawn(&dependencies, swap_request, accept_message);
+                let receiver = Spawn::spawn(&dependencies, swap_request, accept_message);
 
-                    tokio::spawn(receiver.for_each(move |update| {
-                        StateStore::update::<State<AL, BL, AA, BA>>(
-                            &dependencies,
-                            &swap_id,
-                            update,
-                        );
-                        Ok(())
-                    }));
+                tokio::spawn(receiver.for_each(move |update| {
+                    StateStore::update::<State<AL, BL, AA, BA>>(&dependencies, &swap_id, update);
+                    Ok(())
+                }));
 
-                    Ok(ActionResponseBody::None)
-                }
-                Action::Decline(_) => {
-                    let body = serde_json::from_value::<DeclineBody>(body)
-                        .map_err(problem::deserialize)?;
-
-                    let channel = Network::pending_request_for(&dependencies, swap_id)
-                        .ok_or_else(problem::missing_channel)?;
-
-                    let decline_message = rfc003::Decline {
-                        swap_id,
-                        reason: to_swap_decline_reason(body.reason),
-                    };
-
-                    SaveMessage::save_message(&dependencies, decline_message.clone())
-                        .map_err(problem::internal_error)?;
-
-                    let response = rfc003_decline_response(decline_message.clone());
-                    channel.send(response).map_err(problem::send_over_channel)?;
-
-                    let swap_request = state.request();
-                    let seed = dependencies.swap_seed(swap_id);
-                    let state =
-                        State::declined(swap_request.clone(), decline_message.clone(), seed);
-                    StateStore::insert(&dependencies, swap_id, state);
-
-                    Ok(ActionResponseBody::None)
-                }
-                Action::Deploy(action) => action.into_response_payload(query_params),
-                Action::Fund(action) => action.into_response_payload(query_params),
-                Action::Redeem(action) => action.into_response_payload(query_params),
-                Action::Refund(action) => action.into_response_payload(query_params),
+                Ok(ActionResponseBody::None)
             }
-        })
-    )
+            Action::Decline(_) => {
+                let body =
+                    serde_json::from_value::<DeclineBody>(body).map_err(problem::deserialize)?;
+
+                let channel = Network::pending_request_for(&dependencies, swap_id)
+                    .ok_or_else(problem::missing_channel)?;
+
+                let decline_message = rfc003::Decline {
+                    swap_id,
+                    reason: to_swap_decline_reason(body.reason),
+                };
+
+                SaveMessage::save_message(&dependencies, decline_message.clone())
+                    .map_err(problem::internal_error)?;
+
+                let response = rfc003_decline_response(decline_message.clone());
+                channel.send(response).map_err(problem::send_over_channel)?;
+
+                let swap_request = state.request();
+                let seed = dependencies.swap_seed(swap_id);
+                let state = State::declined(swap_request.clone(), decline_message.clone(), seed);
+                StateStore::insert(&dependencies, swap_id, state);
+
+                Ok(ActionResponseBody::None)
+            }
+            Action::Deploy(action) => action.into_response_payload(query_params),
+            Action::Fund(action) => action.into_response_payload(query_params),
+            Action::Redeem(action) => action.into_response_payload(query_params),
+            Action::Refund(action) => action.into_response_payload(query_params),
+        }
+    })
 }
 
 trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
