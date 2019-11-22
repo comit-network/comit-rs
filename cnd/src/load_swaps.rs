@@ -41,26 +41,10 @@ pub async fn load_swaps_from_database(
                             let state =
                                 alice::State::accepted(request.clone(), accept.clone(), seed);
                             state_store.insert(swap_id, state);
-
-                            let receiver = ledger_events.spawn(request, accept);
-
-                            let cloned = state_store.clone();
-                            tokio::spawn(receiver.for_each(move |update| {
-                                cloned.update::<alice::State<AL, BL, AA, BA>>(&swap_id, update);
-                                Ok(())
-                            }));
                         }
                         Role::Bob => {
                             let state = bob::State::accepted(request.clone(), accept.clone(), seed);
                             state_store.insert(swap_id, state);
-
-                            let receiver = ledger_events.spawn(request, accept);
-
-                            let cloned = state_store.clone();
-                            tokio::spawn(receiver.for_each(move |update| {
-                                cloned.update::<bob::State<AL, BL, AA, BA>>(&swap_id, update);
-                                Ok(())
-                            }));
                         }
                     };
                 }
