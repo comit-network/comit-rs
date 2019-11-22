@@ -1,6 +1,6 @@
 use crate::{
     config::settings::AllowedOrigins,
-    db::{DetermineTypes, Retrieve, Save, SaveRfc003Messages},
+    db::{DetermineTypes, Retrieve, Saver},
     http_api,
     network::{Network, SendRequest},
     seed::SwapSeed,
@@ -31,9 +31,8 @@ pub fn create<
         + Spawn
         + SwapSeed
         + DetermineTypes
-        + Save
         + Retrieve
-        + SaveRfc003Messages,
+        + Saver,
 >(
     peer_id: PeerId,
     dependencies: D,

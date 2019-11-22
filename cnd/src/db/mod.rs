@@ -3,7 +3,7 @@ mod custom_sql_types;
 mod integration_tests;
 mod load_swaps;
 mod new_types;
-mod save_message;
+mod save;
 mod schema;
 #[cfg(test)]
 mod serialization_format_stability_tests;
@@ -14,8 +14,8 @@ pub mod with_swap_types;
 embed_migrations!("./migrations");
 
 pub use self::{
-    load_swaps::*,
-    save_message::{SaveMessage, SaveRfc003Messages},
+    load_swaps::{AcceptedSwap, LoadAcceptedSwap},
+    save::*,
     swap::*,
     swap_types::*,
 };

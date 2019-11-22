@@ -2,7 +2,7 @@ use crate::{
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, LedgerKind, Retrieve, Save, SaveMessage, Sqlite, Swap,
+        AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
     },
     quickcheck::Quickcheck,
     swap_protocols::{
@@ -50,8 +50,8 @@ macro_rules! db_roundtrip_test {
                     let (loaded_swap, loaded_request, loaded_accept, loaded_swap_types) =
                     async_std::task::block_on::<_, Result<_, anyhow::Error>>(async {
                         db.save(saved_swap.clone()).await?;
-                        db.save_message(saved_request.clone()).await?;
-                        db.save_message(saved_accept.clone()).await?;
+                        db.save(saved_request.clone()).await?;
+                        db.save(saved_accept.clone()).await?;
 
                         let loaded_swap = Retrieve::get(&db, &swap_id).await?;
                         let (loaded_request, loaded_accept) = db.load_accepted_swap(swap_id).await?;

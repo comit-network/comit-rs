@@ -1,7 +1,5 @@
 use crate::{
-    db::{
-        DetermineTypes, Retrieve, Save, SaveMessage, SaveRfc003Messages, Sqlite, Swap, SwapTypes,
-    },
+    db::{DetermineTypes, Retrieve, Save, Saver, Sqlite, Swap, SwapTypes},
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
@@ -132,16 +130,6 @@ where
 }
 
 #[async_trait]
-impl<S> Save for Dependencies<S>
-where
-    S: Send + Sync + 'static,
-{
-    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
-        self.db.save(swap).await
-    }
-}
-
-#[async_trait]
 impl<S> Retrieve for Dependencies<S>
 where
     S: Send + Sync + 'static,
@@ -166,16 +154,16 @@ where
 }
 
 #[async_trait]
-impl<S> SaveRfc003Messages for Dependencies<S> where S: Send + Sync + 'static {}
+impl<S> Saver for Dependencies<S> where S: Send + Sync + 'static {}
 
 #[async_trait]
-impl<S, M> SaveMessage<M> for Dependencies<S>
+impl<S, T> Save<T> for Dependencies<S>
 where
     S: Send + Sync + 'static,
-    M: Send + 'static,
-    Sqlite: SaveMessage<M>,
+    T: Send + 'static,
+    Sqlite: Save<T>,
 {
-    async fn save_message(&self, message: M) -> anyhow::Result<()> {
-        self.db.save_message(message).await
+    async fn save(&self, data: T) -> anyhow::Result<()> {
+        self.db.save(data).await
     }
 }

@@ -4,7 +4,7 @@ mod handlers;
 mod swap_state;
 
 use crate::{
-    db::{DetermineTypes, Retrieve, Save},
+    db::{DetermineTypes, Retrieve, Save, Swap},
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -28,12 +28,10 @@ use hyper::header;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::db::SaveRfc003Messages;
+use crate::db::Saver;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<
-    D: Clone + StateStore + Save + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
->(
+pub fn post_swap<D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver>(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
 ) -> impl Future<Item = impl Reply, Error = Rejection> {
@@ -62,9 +60,7 @@ pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<
-    D: DetermineTypes + Retrieve + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
->(
+pub fn action<D: DetermineTypes + Retrieve + StateStore + Network + Spawn + SwapSeed + Saver>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

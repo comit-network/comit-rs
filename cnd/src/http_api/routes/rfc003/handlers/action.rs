@@ -1,5 +1,5 @@
 use crate::{
-    db::{DetermineTypes, SaveMessage, SaveRfc003Messages},
+    db::{DetermineTypes, Save, Saver},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -31,9 +31,7 @@ use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-pub async fn handle_action<
-    D: StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages + DetermineTypes,
->(
+pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + DetermineTypes>(
     method: http::Method,
     swap_id: SwapId,
     action_kind: ActionKind,
@@ -67,7 +65,7 @@ pub async fn handle_action<
                 let accept_message =
                     body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
 
-                SaveMessage::save_message(&dependencies, accept_message)
+                Save::save(&dependencies, accept_message)
                     .await
                     .map_err(problem::internal_error)?;
 
@@ -100,7 +98,7 @@ pub async fn handle_action<
                     reason: to_swap_decline_reason(body.reason),
                 };
 
-                SaveMessage::save_message(&dependencies, decline_message.clone())
+                Save::save(&dependencies, decline_message.clone())
                     .await
                     .map_err(problem::internal_error)?;
 
