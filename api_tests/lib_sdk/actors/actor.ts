@@ -47,7 +47,10 @@ export class Actor {
         const logger = loggerFactory(name);
         logger.level = "debug";
 
-        logger.info("Created new actor with config %s", actorConfig);
+        logger.info(
+            "Created new actor with config %s",
+            JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
+        );
 
         return new Actor(logger, cndInstance);
     }
