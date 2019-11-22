@@ -1,6 +1,6 @@
 pub mod accept;
 pub mod decline;
-mod handlers;
+pub mod handlers;
 mod swap_state;
 
 use crate::{
@@ -28,7 +28,7 @@ use hyper::header;
 use warp::{Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::db::Saver;
+use crate::{db::Saver, http_api::problem};
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver>(
@@ -44,6 +44,7 @@ pub fn post_swap<D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + Swap
                 warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
             warp::reply::with_status(response, warp::http::StatusCode::CREATED)
         })
+        .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
@@ -56,6 +57,7 @@ pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
         .boxed()
         .compat()
         .map(|swap_resource| warp::reply::json(&swap_resource))
+        .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
@@ -72,5 +74,6 @@ pub fn action<D: DetermineTypes + Retrieve + StateStore + Network + Spawn + Swap
         .boxed()
         .compat()
         .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }

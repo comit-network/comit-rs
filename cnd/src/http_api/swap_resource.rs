@@ -3,7 +3,6 @@ use crate::{
     db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
-        problem,
         route_factory::swap_path,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http,
@@ -81,13 +80,13 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
-) -> Result<siren::Entity, HttpApiProblem> {
+) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
     with_swap_types!(types, {
         let state = state_store
             .get::<ROLE>(&id)?
-            .ok_or_else(problem::state_store)?;
+            .ok_or_else(|| anyhow::anyhow!("state store did not contain an entry for {}", id))?;
 
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());

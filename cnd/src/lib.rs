@@ -28,6 +28,8 @@ pub mod network;
 #[cfg(test)]
 pub mod quickcheck;
 pub mod seed;
+#[cfg(test)]
+pub mod spectral_ext;
 pub mod swap_protocols;
 
 use anyhow::Context;

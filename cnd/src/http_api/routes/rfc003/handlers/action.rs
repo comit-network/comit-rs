@@ -5,7 +5,6 @@ use crate::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
             ToSirenAction,
         },
-        problem,
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
@@ -25,8 +24,8 @@ use crate::{
         SwapId,
     },
 };
+use anyhow::Context;
 use futures::Stream;
-use http_api_problem::HttpApiProblem;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 
@@ -38,15 +37,13 @@ pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + 
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
     dependencies: D,
-) -> Result<ActionResponseBody, HttpApiProblem> {
-    let types = dependencies
-        .determine_types(&swap_id)
-        .await
-        .map_err(problem::internal_error)?;
+) -> anyhow::Result<ActionResponseBody> {
+    let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
-        let state =
-            StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(problem::state_store)?;
+        let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
+            anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
+        })?;
         log::trace!("Retrieved state for {}: {:?}", swap_id, state);
 
         let action = state
@@ -56,21 +53,26 @@ pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + 
 
         match action {
             Action::Accept(_) => {
-                let body =
-                    serde_json::from_value::<AcceptBody>(body).map_err(problem::deserialize)?;
+                let body = serde_json::from_value::<AcceptBody>(body)
+                    .context("failed to deserialize accept body")?;
 
-                let channel = Network::pending_request_for(&dependencies, swap_id)
-                    .ok_or_else(problem::missing_channel)?;
+                let channel =
+                    Network::pending_request_for(&dependencies, swap_id).with_context(|| {
+                        format!("unable to find response channel for swap {}", swap_id)
+                    })?;
 
                 let accept_message =
                     body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
 
-                Save::save(&dependencies, accept_message)
-                    .await
-                    .map_err(problem::internal_error)?;
+                Save::save(&dependencies, accept_message).await?;
 
                 let response = rfc003_accept_response(accept_message);
-                channel.send(response).map_err(problem::send_over_channel)?;
+                channel.send(response).map_err(|_| {
+                    anyhow::anyhow!(
+                        "failed to send response through channel for swap {}",
+                        swap_id
+                    )
+                })?;
 
                 let swap_request = state.request();
                 let seed = dependencies.swap_seed(swap_id);
@@ -87,23 +89,27 @@ pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + 
                 Ok(ActionResponseBody::None)
             }
             Action::Decline(_) => {
-                let body =
-                    serde_json::from_value::<DeclineBody>(body).map_err(problem::deserialize)?;
+                let body = serde_json::from_value::<DeclineBody>(body)?;
 
-                let channel = Network::pending_request_for(&dependencies, swap_id)
-                    .ok_or_else(problem::missing_channel)?;
+                let channel =
+                    Network::pending_request_for(&dependencies, swap_id).with_context(|| {
+                        format!("unable to find response channel for swap {}", swap_id)
+                    })?;
 
                 let decline_message = rfc003::Decline {
                     swap_id,
                     reason: to_swap_decline_reason(body.reason),
                 };
 
-                Save::save(&dependencies, decline_message.clone())
-                    .await
-                    .map_err(problem::internal_error)?;
+                Save::save(&dependencies, decline_message.clone()).await?;
 
                 let response = rfc003_decline_response(decline_message.clone());
-                channel.send(response).map_err(problem::send_over_channel)?;
+                channel.send(response).map_err(|_| {
+                    anyhow::anyhow!(
+                        "failed to send response through channel for swap {}",
+                        swap_id
+                    )
+                })?;
 
                 let swap_request = state.request();
                 let seed = dependencies.swap_seed(swap_id);
@@ -120,6 +126,19 @@ pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + 
     })
 }
 
+#[derive(Debug, thiserror::Error, PartialEq)]
+#[error("attempt to invoke {action_kind} action with http method {method}, which is an invalid combination")]
+pub struct InvalidActionInvocation {
+    action_kind: ActionKind,
+    method: http::Method,
+}
+
+#[derive(Debug, thiserror::Error, PartialEq)]
+#[error("action {action_kind} is invalid for this swap")]
+pub struct InvalidAction {
+    action_kind: ActionKind,
+}
+
 trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     Iterator<Item = Action<Accept, Decline, Deploy, Fund, Redeem, Refund>>
 {
@@ -127,21 +146,22 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
         mut self,
         action_kind: ActionKind,
         method: http::Method,
-    ) -> Result<Self::Item, HttpApiProblem>
+    ) -> anyhow::Result<Self::Item>
     where
         Self: Sized,
     {
-        self.find(|action| ActionKind::from(action) == action_kind)
-            .ok_or_else(|| problem::invalid_action(action_kind))
-            .and_then(|action| {
-                if http::Method::from(action_kind) != method {
-                    log::debug!(target: "http-api", "Attempt to invoke {} action with http method {}, which is an invalid combination.", action_kind, method);
-                    return Err(HttpApiProblem::new("Invalid action invocation")
-                        .set_status(http::StatusCode::METHOD_NOT_ALLOWED));
-                }
+        let action = self
+            .find(|action| ActionKind::from(action) == action_kind)
+            .ok_or_else(|| anyhow::Error::from(InvalidAction { action_kind }))?;
 
-                Ok(action)
-            })
+        if http::Method::from(action_kind) != method {
+            return Err(anyhow::Error::from(InvalidActionInvocation {
+                action_kind,
+                method,
+            }));
+        }
+
+        Ok(action)
     }
 }
 
@@ -189,8 +209,8 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use crate::spectral_ext::AnyhowResultAssertions;
     use spectral::prelude::*;
 
     fn actions() -> Vec<Action<(), (), (), (), (), ()>> {
@@ -206,9 +226,10 @@ mod tests {
             .select_action(ActionKind::Accept, http::Method::POST);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::CONFLICT));
+            .is_inner_err::<InvalidAction>()
+            .is_equal_to(&InvalidAction {
+                action_kind: ActionKind::Accept,
+            });
     }
 
     #[test]
@@ -242,9 +263,11 @@ mod tests {
             .select_action(ActionKind::Accept, http::Method::GET);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Accept,
+                method: http::Method::GET,
+            });
 
         let result = given_actions
             .clone()
@@ -252,9 +275,11 @@ mod tests {
             .select_action(ActionKind::Decline, http::Method::GET);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Decline,
+                method: http::Method::GET,
+            });
     }
 
     #[test]
@@ -273,9 +298,11 @@ mod tests {
             .select_action(ActionKind::Deploy, http::Method::POST);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Deploy,
+                method: http::Method::POST,
+            });
 
         let result = given_actions
             .clone()
@@ -283,9 +310,11 @@ mod tests {
             .select_action(ActionKind::Fund, http::Method::POST);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Fund,
+                method: http::Method::POST,
+            });
 
         let result = given_actions
             .clone()
@@ -293,9 +322,11 @@ mod tests {
             .select_action(ActionKind::Refund, http::Method::POST);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Refund,
+                method: http::Method::POST,
+            });
 
         let result = given_actions
             .clone()
@@ -303,9 +334,11 @@ mod tests {
             .select_action(ActionKind::Redeem, http::Method::POST);
 
         assert_that(&result)
-            .is_err()
-            .map(|p| &p.status)
-            .is_equal_to(Some(http::StatusCode::METHOD_NOT_ALLOWED));
+            .is_inner_err::<InvalidActionInvocation>()
+            .is_equal_to(&InvalidActionInvocation {
+                action_kind: ActionKind::Redeem,
+                method: http::Method::POST,
+            });
     }
 }
 
@@ -333,18 +366,15 @@ where
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         match self {
             Action::Deploy(payload) => payload.into_response_payload(query_params),
             Action::Fund(payload) => payload.into_response_payload(query_params),
             Action::Redeem(payload) => payload.into_response_payload(query_params),
             Action::Refund(payload) => payload.into_response_payload(query_params),
-            Action::Accept(_) | Action::Decline(_) => {
-                log::error!(target: "http-api", "IntoResponsePayload is not available for Accept/Decline");
-                Err(HttpApiProblem::with_title_and_type_from_status(
-                    http::StatusCode::INTERNAL_SERVER_ERROR,
-                ))
-            }
+            Action::Accept(_) | Action::Decline(_) => Err(anyhow::anyhow!(
+                "IntoResponsePayload is not available for Accept/Decline"
+            )),
         }
     }
 }
