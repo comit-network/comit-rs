@@ -25,6 +25,7 @@ use libp2p::{
 use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
+    process,
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
@@ -36,6 +37,11 @@ fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
     let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
+
+    if options.dump_config {
+        dump_config(settings)?;
+        process::exit(0);
+    }
 
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
@@ -51,7 +57,7 @@ fn main() -> anyhow::Result<()> {
     let state_store = Arc::new(InMemoryStateStore::default());
 
     let bitcoin_connector = {
-        let config::file::Bitcoin { node_url, network } = settings.clone().bitcoin;
+        let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
         BitcoindConnector::new(node_url, network)?
     };
 
@@ -178,4 +184,12 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
 
     config::File::read(&default_path)
         .with_context(|| format!("failed to read config file {}", default_path.display()))
+}
+
+#[allow(clippy::print_stdout)] // Don't use the logger so its easier to cut'n'paste
+fn dump_config(settings: Settings) -> anyhow::Result<()> {
+    let file = config::File::from(settings);
+    let serialized = toml::to_string(&file)?;
+    println!("{}", serialized);
+    Ok(())
 }

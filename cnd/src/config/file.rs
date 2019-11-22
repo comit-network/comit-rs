@@ -1,20 +1,14 @@
+use crate::config::{Bitcoin, Database, Ethereum, Network, Socket};
 use config as config_rs;
-use libp2p::Multiaddr;
 use log::LevelFilter;
-use serde::Deserialize;
-use std::{
-    ffi::OsStr,
-    net::IpAddr,
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::{ffi::OsStr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
 /// Most importantly, optional elements of the configuration file are
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -35,83 +29,7 @@ impl File {
             ethereum: Option::None,
         }
     }
-}
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Logging {
-    pub level: Option<LevelFilter>,
-    pub structured: Option<bool>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Network {
-    pub listen: Vec<Multiaddr>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct HttpApi {
-    pub socket: Socket,
-    pub cors: Option<Cors>,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Cors {
-    pub allowed_origins: AllowedOrigins,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(untagged)]
-pub enum AllowedOrigins {
-    All(All),
-    None(None),
-    Some(Vec<String>),
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum All {
-    All,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-#[serde(rename_all = "lowercase")]
-pub enum None {
-    None,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Socket {
-    pub address: IpAddr,
-    pub port: u16,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct PollParameters<T> {
-    #[serde(with = "super::serde_duration")]
-    pub poll_interval_secs: Duration,
-    pub network: T,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Database {
-    pub sqlite: PathBuf,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Bitcoin {
-    #[serde(with = "super::serde_bitcoin_network")]
-    pub network: bitcoin::Network,
-    #[serde(with = "url_serde")]
-    pub node_url: reqwest::Url,
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct Ethereum {
-    #[serde(with = "url_serde")]
-    pub node_url: reqwest::Url,
-}
-
-impl File {
     pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
         let config_file = Path::new(&config_file);
 
@@ -121,13 +39,53 @@ impl File {
     }
 }
 
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct Logging {
+    pub level: Option<LevelFilter>,
+    pub structured: Option<bool>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct HttpApi {
+    pub socket: Socket,
+    pub cors: Option<Cors>,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+pub struct Cors {
+    pub allowed_origins: AllowedOrigins,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(untagged)]
+pub enum AllowedOrigins {
+    All(All),
+    None(None),
+    Some(Vec<String>),
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum All {
+    All,
+}
+
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum None {
+    None,
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Settings;
     use log::LevelFilter;
-    use reqwest::Url;
     use spectral::prelude::*;
-    use std::net::Ipv4Addr;
+    use std::{
+        net::{IpAddr, Ipv4Addr},
+        path::PathBuf,
+    };
 
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
@@ -149,47 +107,6 @@ mod tests {
                 structured: Option::None,
             },
         });
-    }
-
-    #[test]
-    fn bitcoin_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            network = "mainnet"
-            node_url = "http://example.com"
-            "#,
-            r#"
-            network = "testnet"
-            node_url = "http://example.com"
-            "#,
-            r#"
-            network = "regtest"
-            node_url = "http://example.com"
-            "#,
-        ];
-
-        let expected = vec![
-            Bitcoin {
-                network: bitcoin::Network::Bitcoin,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-            Bitcoin {
-                network: bitcoin::Network::Testnet,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-            Bitcoin {
-                network: bitcoin::Network::Regtest,
-                node_url: Url::parse("http://example.com").unwrap(),
-            },
-        ];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
     }
 
     #[test]
@@ -252,15 +169,13 @@ structured = false
 
 [bitcoin]
 network = "mainnet"
-node_url = "http://example.com"
+node_url = "http://example.com/"
 
 [ethereum]
-node_url = "http://example.com"
+node_url = "http://example.com/"
 "#;
 
-        let config = toml::from_str::<File>(contents);
-
-        assert_that(&config).is_ok().is_equal_to(&File {
+        let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
@@ -287,6 +202,26 @@ node_url = "http://example.com"
             ethereum: Some(Ethereum {
                 node_url: "http://example.com".parse().unwrap(),
             }),
-        })
+        };
+
+        let config = toml::from_str::<File>(contents);
+        assert_that(&config).is_ok().is_equal_to(file.clone());
+    }
+
+    #[test]
+    fn config_with_defaults_roundtrip() {
+        // we start with the default config file
+        let default_file = File::default();
+
+        // convert to settings, this populates all empty fields with defaults
+        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+
+        // write settings back to file
+        let file_with_effective_settings = File::from(effective_settings);
+
+        let serialized = toml::to_string(&file_with_effective_settings).unwrap();
+        let file = toml::from_str::<File>(&serialized).unwrap();
+
+        assert_eq!(file, file_with_effective_settings)
     }
 }

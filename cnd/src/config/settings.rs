@@ -1,5 +1,4 @@
-use super::file::{self, Database, File, Network, Socket};
-use crate::config::file::{Bitcoin, Ethereum};
+use crate::config::{file, Bitcoin, Database, Ethereum, File, Network, Socket};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
@@ -22,6 +21,40 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+}
+
+impl From<Settings> for File {
+    fn from(settings: Settings) -> Self {
+        let Settings {
+            network,
+            http_api: HttpApi { socket, cors },
+            database,
+            logging: Logging { level, structured },
+            bitcoin,
+            ethereum,
+        } = settings;
+
+        File {
+            network: Some(network),
+            http_api: Some(file::HttpApi {
+                socket,
+                cors: Some(file::Cors {
+                    allowed_origins: match cors.allowed_origins {
+                        AllowedOrigins::All => file::AllowedOrigins::All(file::All::All),
+                        AllowedOrigins::None => file::AllowedOrigins::None(file::None::None),
+                        AllowedOrigins::Some(origins) => file::AllowedOrigins::Some(origins),
+                    },
+                }),
+            }),
+            database: Some(database),
+            logging: Some(file::Logging {
+                level: Some(level),
+                structured: Some(structured),
+            }),
+            bitcoin: Some(bitcoin),
+            ethereum: Some(ethereum),
+        }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]

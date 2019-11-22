@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Return Ethereum `chain_id` on the HTTP API.
 - Support Ethereum `chain_id` in the Swap Request (HTTP API).
 - Ability to set CORS allowed origins through the configuration file.
+- Added command line option `--dump-config` to print the running configuration to stdout.
 
 ### Fixed
 - Error responses now properly identify themselves as `application/problem+json`. They have been conforming to this format for a while already, we just never set the `Content-Type` header properly. From now on, applications can fully rely on the error format!
