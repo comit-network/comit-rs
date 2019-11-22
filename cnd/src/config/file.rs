@@ -1,15 +1,14 @@
 use crate::config::{Bitcoin, Database, Ethereum, Network, Socket};
 use config as config_rs;
 use log::LevelFilter;
-use serde::Deserialize;
-use std::{ffi::OsStr, path::Path, time::Duration};
+use std::{ffi::OsStr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
 /// Most importantly, optional elements of the configuration file are
 /// represented as `Option`s` here. This allows us to create a dedicated step
 /// for filling in default values for absent configuration options.
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
@@ -40,24 +39,24 @@ impl File {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Logging {
     pub level: Option<LevelFilter>,
     pub structured: Option<bool>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct HttpApi {
     pub socket: Socket,
     pub cors: Option<Cors>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(untagged)]
 pub enum AllowedOrigins {
     All(All),
@@ -65,28 +64,22 @@ pub enum AllowedOrigins {
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum All {
     All,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
+#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum None {
     None,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct PollParameters<T> {
-    #[serde(with = "super::serde_duration")]
-    pub poll_interval_secs: Duration,
-    pub network: T,
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::config::Settings;
     use log::LevelFilter;
     use spectral::prelude::*;
     use std::{
@@ -213,5 +206,22 @@ node_url = "http://example.com/"
 
         let config = toml::from_str::<File>(contents);
         assert_that(&config).is_ok().is_equal_to(file.clone());
+    }
+
+    #[test]
+    fn config_with_defaults_roundtrip() {
+        // we start with the default config file
+        let default_file = File::default();
+
+        // convert to settings, this populates all empty fields with defaults
+        let effective_settings = Settings::from_config_file_and_defaults(default_file).unwrap();
+
+        // write settings back to file
+        let file_with_effective_settings = File::from(effective_settings);
+
+        let serialized = toml::to_string(&file_with_effective_settings).unwrap();
+        let file = toml::from_str::<File>(&serialized).unwrap();
+
+        assert_eq!(file, file_with_effective_settings)
     }
 }

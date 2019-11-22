@@ -39,7 +39,7 @@ fn main() -> anyhow::Result<()> {
     let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
 
     if options.dump_config {
-        dump_config(&settings)?;
+        dump_config(settings)?;
         process::exit(0);
     }
 
@@ -187,7 +187,9 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
 }
 
 #[allow(clippy::print_stdout)] // Don't use the logger so its easier to cut'n'paste
-fn dump_config(settings: &Settings) -> anyhow::Result<()> {
-    println!("{}", toml::to_string(settings)?);
+fn dump_config(settings: Settings) -> anyhow::Result<()> {
+    let file = config::File::from(settings);
+    let serialized = toml::to_string(&file)?;
+    println!("{}", serialized);
     Ok(())
 }

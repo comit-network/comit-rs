@@ -2,7 +2,6 @@ use crate::config::{file, Bitcoin, Database, Ethereum, File, Network, Socket};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
-use serde::Serialize;
 use std::{
     net::{IpAddr, Ipv4Addr},
     path::Path,
@@ -14,7 +13,7 @@ use std::{
 /// meaning in cnd. Contrary to that, many configuration values are optional in
 /// the config file but may be replaced by default values when the `Settings`
 /// are created from a given `Config`.
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Settings {
     pub network: Network,
     pub http_api: HttpApi,
@@ -24,7 +23,41 @@ pub struct Settings {
     pub ethereum: Ethereum,
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+impl From<Settings> for File {
+    fn from(settings: Settings) -> Self {
+        let Settings {
+            network,
+            http_api: HttpApi { socket, cors },
+            database,
+            logging: Logging { level, structured },
+            bitcoin,
+            ethereum,
+        } = settings;
+
+        File {
+            network: Some(network),
+            http_api: Some(file::HttpApi {
+                socket,
+                cors: Some(file::Cors {
+                    allowed_origins: match cors.allowed_origins {
+                        AllowedOrigins::All => file::AllowedOrigins::All(file::All::All),
+                        AllowedOrigins::None => file::AllowedOrigins::None(file::None::None),
+                        AllowedOrigins::Some(origins) => file::AllowedOrigins::Some(origins),
+                    },
+                }),
+            }),
+            database: Some(database),
+            logging: Some(file::Logging {
+                level: Some(level),
+                structured: Some(structured),
+            }),
+            bitcoin: Some(bitcoin),
+            ethereum: Some(ethereum),
+        }
+    }
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub struct HttpApi {
     pub socket: Socket,
     pub cors: Cors,
@@ -42,7 +75,7 @@ impl Default for HttpApi {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Cors {
     pub allowed_origins: AllowedOrigins,
 }
@@ -55,15 +88,14 @@ impl Default for Cors {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Serialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Debug, PartialEq)]
 pub enum AllowedOrigins {
     All,
     None,
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, PartialEq, derivative::Derivative, Serialize)]
+#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
     #[derivative(Default(value = "LevelFilter::Debug"))]
@@ -267,38 +299,5 @@ mod tests {
             .is_equal_to(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             })
-    }
-
-    #[test]
-    fn settings_serializes_correctly() {
-        let file = File::default();
-        let settings = Settings::from_config_file_and_defaults(file).unwrap();
-
-        // Note: toml library serializes Network without a trailing new line?
-        let want = r#"[network]
-listen = ["/ip4/0.0.0.0/tcp/9939"]
-[http_api.socket]
-address = "0.0.0.0"
-port = 8000
-
-[http_api.cors]
-allowed_origins = "none"
-
-[database]
-sqlite = "/home/tobin/.local/share/comit/cnd.sqlite"
-
-[logging]
-level = "DEBUG"
-structured = false
-
-[bitcoin]
-network = "regtest"
-node_url = "http://localhost:18443/"
-
-[ethereum]
-node_url = "http://localhost:8545/"
-"#;
-        let got = toml::to_string(&settings).unwrap();
-        assert_that(&got).is_equal_to(String::from(want));
     }
 }

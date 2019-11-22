@@ -1,6 +1,5 @@
 pub mod file;
 mod serde_bitcoin_network;
-mod serde_duration;
 pub mod settings;
 
 use libp2p::Multiaddr;
