@@ -1,6 +1,11 @@
+import * as fs from "fs";
+import { promisify } from "util";
 import { CndInstance } from "../lib_sdk/cnd_instance";
 import { CND_CONFIGS } from "./config";
 import { LedgerConfig } from "./ledger_runner";
+
+const unlinkAsync = promisify(fs.unlink);
+const existsAsync = promisify(fs.exists);
 
 export class CndRunner {
     private runningNodes: { [key: string]: CndInstance };
@@ -37,6 +42,10 @@ export class CndRunner {
                 cndconfig,
                 ledgerConfig
             );
+
+            if (await existsAsync(cndconfig.dbPath)) {
+                await unlinkAsync(cndconfig.dbPath); // delete the old database for the new test
+            }
 
             await process.start();
 
