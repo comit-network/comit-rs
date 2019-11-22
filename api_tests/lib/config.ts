@@ -15,6 +15,7 @@ export interface HttpApi {
 
 export class E2ETestActorConfig {
     public readonly seed: Uint8Array;
+    private readonly dbPath: string;
 
     constructor(
         public readonly httpApiPort: number,
@@ -25,10 +26,10 @@ export class E2ETestActorConfig {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
         this.seed = new Uint8Array(Buffer.from(seed, "hex"));
+        this.dbPath = tempfile(`.${this.name}.sqlite`);
     }
 
     public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
-        const dbPath = tempfile(`.${this.name}.sqlite`);
         return {
             http_api: {
                 socket: {
@@ -37,7 +38,7 @@ export class E2ETestActorConfig {
                 },
             },
             database: {
-                sqlite: dbPath,
+                sqlite: this.dbPath,
             },
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],
