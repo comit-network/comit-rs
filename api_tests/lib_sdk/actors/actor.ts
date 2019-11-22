@@ -1,14 +1,17 @@
-import chai, { expect } from "chai";
-import chaiAsPromised from "chai-as-promised";
+import { expect } from "chai";
 import { Cnd, ComitClient, Swap } from "comit-sdk";
+import { randomBytes } from "crypto";
 import { parseEther } from "ethers/utils";
+import getPort from "get-port";
 import { Logger } from "log4js";
+import { E2ETestActorConfig } from "../../lib/config";
+import { LedgerConfig } from "../../lib/ledger_runner";
+import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
+import { CndInstance } from "../cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { Wallets } from "../wallets";
 import { Actors } from "./index";
-
-chai.use(chaiAsPromised);
 
 export class Actor {
     public static defaultActionConfig = {
@@ -16,32 +19,72 @@ export class Actor {
         tryInterval: 100,
     };
 
+    public static async newInstance(
+        loggerFactory: (name: string) => Logger,
+        name: string,
+        ledgerConfig: LedgerConfig,
+        projectRoot: string,
+        logRoot: string
+    ) {
+        const seed = randomBytes(32).toString("hex");
+
+        const actorConfig = new E2ETestActorConfig(
+            await getPort(),
+            await getPort(),
+            seed,
+            name
+        );
+
+        const cndInstance = new CndInstance(
+            projectRoot,
+            logRoot,
+            actorConfig,
+            ledgerConfig
+        );
+
+        await cndInstance.start();
+
+        const logger = loggerFactory(name);
+        logger.level = "debug";
+
+        logger.info("Created new actor with config %s", actorConfig);
+
+        return new Actor(logger, cndInstance);
+    }
+
     public actors: Actors;
     public wallets: Wallets;
 
     private comitClient: ComitClient;
     private readonly cnd: Cnd;
     private swap: Swap;
+
     private readonly startingBalances: Map<AssetKind, number>;
     private readonly expectedBalanceChanges: Map<AssetKind, number>;
-    private readonly logger: Logger;
 
-    constructor(loggerFactory: () => Logger, cndEndpoint: string) {
-        this.logger = loggerFactory();
-        this.logger.level = "debug";
-
+    private constructor(
+        private readonly logger: Logger,
+        private readonly cndInstance: CndInstance
+    ) {
         this.wallets = new Wallets({});
-        this.cnd = new Cnd(cndEndpoint);
+        const { address, port } = cndInstance.getConfigFile().http_api.socket;
+        this.cnd = new Cnd(`http://${address}:${port}`);
 
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();
-        this.logger.info("Created new actor at %s", cndEndpoint);
     }
 
     public async sendRequest(
-        alphaAssetKind: AssetKind,
-        betaAssetKind: AssetKind
+        maybeAlphaAssetKind?: AssetKind,
+        maybeBetaAssetKind?: AssetKind
     ) {
+        const alphaAssetKind = maybeAlphaAssetKind
+            ? maybeAlphaAssetKind
+            : this.defaultAlphaAssetKind();
+        const betaAssetKind = maybeBetaAssetKind
+            ? maybeBetaAssetKind
+            : this.defaultBetaAssetKind();
+
         // By default, we will send the swap request to bob
         const to = this.actors.bob;
 
@@ -119,7 +162,7 @@ export class Actor {
             throw new Error("Cannot accept inexistent swap");
         }
 
-        this.swap.accept(Actor.defaultActionConfig);
+        await this.swap.accept(Actor.defaultActionConfig);
     }
 
     public async fund() {
@@ -138,6 +181,14 @@ export class Actor {
 
         this.logger.debug("Redeeming as part of swap @ %s", this.swap.self);
         await this.swap.redeem(Actor.defaultActionConfig);
+    }
+
+    public async assertHasNoSwaps() {
+        this.logger.debug("Checking if we have 0 swaps");
+
+        const swaps = await this.cnd.getSwaps();
+
+        expect(swaps).to.have.length(0);
     }
 
     public async assertSwapped() {
@@ -164,6 +215,11 @@ export class Actor {
                 expectedBalance - maximumFee
             );
         }
+    }
+
+    public async restart() {
+        this.cndInstance.stop();
+        await this.cndInstance.start();
     }
 
     private async additionalIdentities(
@@ -220,6 +276,26 @@ export class Actor {
             this.logger.debug("Starting %s balance: ", asset.name, balance);
             this.startingBalances.set(asset.name, balance);
         }
+    }
+
+    private defaultAlphaAssetKind() {
+        const defaultAlphaAssetKind = AssetKind.Bitcoin;
+        this.logger.info(
+            "AssetKind for alpha ledger not specified, defaulting to %s",
+            defaultAlphaAssetKind
+        );
+
+        return defaultAlphaAssetKind;
+    }
+
+    private defaultBetaAssetKind() {
+        const defaultBetaAssetKind = AssetKind.Ether;
+        this.logger.info(
+            "AssetKind for beta ledger not specified, defaulting to %s",
+            defaultBetaAssetKind
+        );
+
+        return defaultBetaAssetKind;
     }
 }
 

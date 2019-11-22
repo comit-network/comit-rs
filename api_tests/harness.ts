@@ -9,7 +9,6 @@ import Mocha from "mocha";
 import path from "path";
 import rimraf from "rimraf";
 import { CndRunner } from "./lib/cnd_runner";
-import { createBtsieveConfig } from "./lib/config";
 import { LedgerRunner } from "./lib/ledger_runner";
 import { HarnessGlobal } from "./lib/util";
 
@@ -21,17 +20,18 @@ commander
 // Setting global variables //
 // ************************ //
 
-declare const global: HarnessGlobal;
-
 const projectRoot: string = execSync("git rev-parse --show-toplevel", {
     encoding: "utf8",
 }).trim();
-global.projectRoot = projectRoot;
-
 const testRoot = projectRoot + "/api_tests";
-global.testRoot = testRoot;
-
 const logDir = projectRoot + "/api_tests/log";
+
+declare const global: HarnessGlobal;
+
+global.projectRoot = projectRoot;
+global.testRoot = testRoot;
+global.logRoot = logDir;
+global.ledgerConfigs = {};
 
 rimraf.sync(logDir);
 fs.mkdirSync(logDir);
@@ -48,11 +48,7 @@ export interface E2ETestConfig {
 async function runTests(testFiles: string[]) {
     const ledgerRunner = new LedgerRunner(logDir);
 
-    const cndPath = process.env.CND_BIN
-        ? process.env.CND_BIN
-        : projectRoot + "/target/debug/cnd";
-
-    const nodeRunner = new CndRunner(projectRoot, cndPath, logDir);
+    const nodeRunner = new CndRunner(projectRoot, logDir);
 
     async function cleanupAll() {
         try {
@@ -87,26 +83,15 @@ async function runTests(testFiles: string[]) {
 
         if (config.ledgers) {
             await ledgerRunner.ensureLedgersRunning(config.ledgers);
+            global.ledgerConfigs = await ledgerRunner.getLedgerConfig();
         }
 
         if (config.actors) {
-            const ledgerConfigs = await ledgerRunner.getLedgerConfig();
-
-            const btsieveConfig = config.ledgers
-                ? createBtsieveConfig({
-                      bitcoin: config.ledgers.includes("bitcoin")
-                          ? ledgerConfigs.bitcoin
-                          : undefined,
-                      ethereum: config.ledgers.includes("ethereum")
-                          ? ledgerConfigs.ethereum
-                          : undefined,
-                  })
-                : {};
-
-            await nodeRunner.ensureCndsRunning(config.actors, btsieveConfig);
+            await nodeRunner.ensureCndsRunning(
+                config.actors,
+                global.ledgerConfigs
+            );
         }
-
-        global.ledgerConfigs = await ledgerRunner.getLedgerConfig();
 
         const runTests = new Promise(res => {
             new Mocha({ bail: true, ui: "bdd", delay: true })
