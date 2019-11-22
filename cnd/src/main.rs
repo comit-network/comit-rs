@@ -5,7 +5,7 @@ use anyhow::Context;
 use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
     config::{self, Settings},
-    db::{DetermineTypes, Retrieve, Save, SaveRfc003Messages, Sqlite},
+    db::{DetermineTypes, Retrieve, Saver, Sqlite},
     http_api::{self, route_factory},
     network::{self, Network, SendRequest},
     seed::{Seed, SwapSeed},
@@ -127,9 +127,8 @@ fn spawn_warp_instance<
         + Spawn
         + SwapSeed
         + DetermineTypes
-        + Save
         + Retrieve
-        + SaveRfc003Messages,
+        + Saver,
 >(
     settings: &Settings,
     peer_id: PeerId,

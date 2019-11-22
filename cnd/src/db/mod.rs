@@ -3,7 +3,7 @@ mod custom_sql_types;
 mod integration_tests;
 mod load_swaps;
 mod new_types;
-mod save_message;
+mod save;
 mod schema;
 #[cfg(test)]
 mod serialization_format_stability_tests;
@@ -13,11 +13,7 @@ mod swap_types;
 pub mod with_swap_types;
 embed_migrations!("./migrations");
 
-pub use self::{
-    save_message::{SaveMessage, SaveRfc003Messages},
-    swap::*,
-    swap_types::*,
-};
+pub use self::{save::*, swap::*, swap_types::*};
 
 use crate::{
     db::custom_sql_types::Text,
