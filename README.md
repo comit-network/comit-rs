@@ -36,6 +36,7 @@ All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh`
 4. startup cnd: `cnd` (or `./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
 
 Keep in mind that in order to do a swap locally you will need to start two instances of cnd.
+Please see `cnd --help` for help with command line options.
 
 ## Setup testing/dev environment
 
