@@ -7,8 +7,9 @@ use crate::{
             bitcoin::{SendToAddress, SpendOutput},
             ethereum,
         },
-        ledger, SwapId, Timestamp,
+        ledger, SwapId,
     },
+    timestamp::Timestamp,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;

@@ -12,8 +12,9 @@ use crate::{
             messages::{Accept, Request},
             Ledger, SecretHash,
         },
-        HashFunction, SwapId, Timestamp,
+        HashFunction, SwapId,
     },
+    timestamp::Timestamp,
 };
 use async_trait::async_trait;
 use diesel::{self, prelude::*, RunQueryDsl};

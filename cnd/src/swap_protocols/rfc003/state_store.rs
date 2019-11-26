@@ -264,8 +264,9 @@ mod tests {
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
             rfc003::{alice, messages::Request, Accept, Secret},
-            HashFunction, Timestamp,
+            HashFunction,
         },
+        timestamp::Timestamp,
     };
     use bitcoin::Amount;
     use spectral::prelude::*;
