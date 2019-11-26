@@ -58,7 +58,7 @@ where
 
                                 join(
                                     block_queue.send(block.clone()),
-                                    find_parent_queue.send(block),
+                                    find_parent_queue.send((blockhash, block.parent_hash)),
                                 )
                                 .await;
                             }
@@ -92,7 +92,7 @@ where
                                 Ok(Some(block)) => {
                                     join(
                                         block_queue.send(block.clone()),
-                                        find_parent_queue.send(block),
+                                        find_parent_queue.send((blockhash, block.parent_hash)),
                                     )
                                     .await;
                                 }
@@ -123,21 +123,14 @@ where
 
                 loop {
                     match next_find_parent.recv().await {
-                        Some(Block {
-                            hash: Some(hash),
-                            parent_hash,
-                            ..
-                        }) => {
-                            prev_blockhashes.insert(hash);
+                        Some((blockhash, parent_blockhash)) => {
+                            prev_blockhashes.insert(blockhash);
 
-                            if !prev_blockhashes.contains(&parent_hash)
+                            if !prev_blockhashes.contains(&parent_blockhash)
                                 && prev_blockhashes.len() > 1
                             {
-                                fetch_block_by_hash_queue.send(parent_hash).await
+                                fetch_block_by_hash_queue.send(parent_blockhash).await
                             }
-                        }
-                        Some(_) => {
-                            log::warn!("Ignoring block without blockhash");
                         }
                         None => panic!("Does this panic?"),
                     }
