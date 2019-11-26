@@ -30,7 +30,7 @@ pub async fn load_swaps_from_database(
 
         with_swap_types!(types, {
             let accepted: Result<AcceptedSwap<AL, BL, AA, BA>, anyhow::Error> =
-                db.load_accepted_swap(swap_id.clone()).await;
+                db.load_accepted_swap(&swap_id).await;
 
             match accepted {
                 Ok((request, accept)) => {

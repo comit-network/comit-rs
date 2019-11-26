@@ -24,7 +24,7 @@ pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>
 pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     async fn load_accepted_swap(
         &self,
-        swap_id: SwapId,
+        swap_id: &SwapId,
     ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>>;
 }
 
@@ -51,7 +51,7 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
 impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sqlite {
     async fn load_accepted_swap(
         &self,
-        key: SwapId,
+        key: &SwapId,
     ) -> anyhow::Result<
         AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, crate::ethereum::EtherQuantity>,
     > {
@@ -145,7 +145,7 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
 impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sqlite {
     async fn load_accepted_swap(
         &self,
-        key: SwapId,
+        key: &SwapId,
     ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
@@ -238,7 +238,7 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
 impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite {
     async fn load_accepted_swap(
         &self,
-        key: SwapId,
+        key: &SwapId,
     ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
@@ -335,7 +335,7 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
 impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite {
     async fn load_accepted_swap(
         &self,
-        key: SwapId,
+        key: &SwapId,
     ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
