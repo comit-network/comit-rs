@@ -1,14 +1,12 @@
 pub mod actions;
 pub mod asset;
 pub mod ledger;
-pub mod metadata_store;
 pub mod rfc003;
 mod swap_id;
 mod timestamp;
 
 pub use self::{
     ledger::{Ledger, LedgerConnectors, LedgerKind},
-    metadata_store::{InMemoryMetadataStore, Metadata, MetadataStore},
     swap_id::*,
     timestamp::Timestamp,
 };
@@ -39,7 +37,7 @@ pub enum SwapProtocol {
     Unknown(String),
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumString)]
+#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
 pub enum Role {
     Alice,
     Bob,

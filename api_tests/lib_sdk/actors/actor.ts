@@ -10,6 +10,7 @@ import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
 import { CndInstance } from "../cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
+import { sleep } from "../utils";
 import { Wallets } from "../wallets";
 import { Actors } from "./index";
 
@@ -47,7 +48,10 @@ export class Actor {
         const logger = loggerFactory(name);
         logger.level = "debug";
 
-        logger.info("Created new actor with config %s", actorConfig);
+        logger.info(
+            "Created new actor with config %s",
+            JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
+        );
 
         return new Actor(logger, cndInstance);
     }
@@ -183,12 +187,24 @@ export class Actor {
         await this.swap.redeem(Actor.defaultActionConfig);
     }
 
-    public async assertHasNoSwaps() {
-        this.logger.debug("Checking if we have 0 swaps");
+    public async currentSwapIsAccepted() {
+        let swapEntity;
 
-        const swaps = await this.cnd.getSwaps();
+        do {
+            swapEntity = await this.swap.getEntity();
 
-        expect(swaps).to.have.length(0);
+            await sleep(200);
+        } while (
+            swapEntity.properties.state.communication.status !== "ACCEPTED"
+        );
+    }
+
+    public async assertHasCurrentSwap() {
+        this.logger.debug("Checking if we can fetch the current swap");
+
+        const response = await this.cnd.fetch(this.swap.self);
+
+        return response;
     }
 
     public async assertSwapped() {

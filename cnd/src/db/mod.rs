@@ -7,40 +7,82 @@ mod save_message;
 mod schema;
 #[cfg(test)]
 mod serialization_format_stability_tests;
+mod swap;
+mod swap_types;
+#[macro_use]
+pub mod with_swap_types;
 embed_migrations!("./migrations");
 
-pub use self::save_message::{SaveMessage, SaveRfc003Messages};
+pub use self::{
+    load_swaps::*,
+    save_message::{SaveMessage, SaveRfc003Messages},
+    swap::*,
+    swap_types::*,
+};
+
+use crate::{
+    db::custom_sql_types::Text,
+    swap_protocols::{Role, SwapId},
+};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use std::path::Path;
+use std::{path::Path, sync::Arc};
 
 /// This module provides persistent storage by way of Sqlite.
 
-#[derive(Debug, Clone)]
+#[derive(Clone, derivative::Derivative)]
+#[derivative(Debug)]
 pub struct Sqlite {
-    uri: String,
+    #[derivative(Debug = "ignore")]
+    connection: Arc<async_std::sync::Mutex<SqliteConnection>>,
 }
 
 impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
-    /// When this returns an Sqlite database exists at 'db', a
+    /// When this returns an Sqlite database exists at 'path', a
     /// successful connection to the database has been made, and
     /// the database migrations have been run.
     pub fn new(path: &Path) -> anyhow::Result<Self> {
         ensure_folder_tree_exists(path)?;
 
-        let db = Sqlite {
-            uri: format!("file:{}", path.display()),
-        };
-
-        let connection = db.connect()?;
+        let connection = SqliteConnection::establish(&format!("file:{}", path.display()))?;
         embedded_migrations::run(&connection)?;
 
-        Ok(db)
+        Ok(Sqlite {
+            connection: Arc::new(async_std::sync::Mutex::new(connection)),
+        })
     }
 
-    fn connect(&self) -> anyhow::Result<SqliteConnection> {
-        Ok(SqliteConnection::establish(&self.uri)?)
+    async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
+    where
+        F: Fn(&SqliteConnection) -> Result<T, E>,
+        E: From<diesel::result::Error>,
+    {
+        let guard = self.connection.lock().await;
+        let connection = &*guard;
+
+        let result = connection.transaction(|| f(&connection))?;
+
+        Ok(result)
+    }
+
+    async fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
+        use self::schema::rfc003_swaps as swaps;
+
+        let record: QueryableSwap = self
+            .do_in_transaction(|connection| {
+                let key = Text(key);
+
+                swaps::table
+                    .filter(swaps::swap_id.eq(key))
+                    .select((swaps::swap_id, swaps::role))
+                    .first(connection)
+                    .optional()
+            })
+            .await?
+            .ok_or(Error::SwapNotFound)?;
+
+        Ok(*record.role)
     }
 }
 
@@ -50,6 +92,18 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+#[derive(Queryable, Debug, Clone, PartialEq)]
+struct QueryableSwap {
+    pub swap_id: Text<SwapId>,
+    pub role: Text<Role>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("swap not found")]
+    SwapNotFound,
 }
 
 #[cfg(test)]

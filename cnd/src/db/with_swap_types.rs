@@ -1,20 +1,21 @@
 macro_rules! _match_role {
-    ($role:ident, $fn:tt) => {{
+    ($role:ident, $fn:expr) => {{
         use crate::swap_protocols::{
             rfc003::{alice, bob},
             Role,
         };
+
         #[allow(clippy::redundant_closure_call)]
         match $role {
             Role::Alice => {
                 #[allow(dead_code)]
                 type ROLE = alice::State<AL, BL, AA, BA>;
-                $fn()
+                $fn
             }
             Role::Bob => {
                 #[allow(dead_code)]
                 type ROLE = bob::State<AL, BL, AA, BA>;
-                $fn()
+                $fn
             }
         }
     }};
@@ -22,22 +23,22 @@ macro_rules! _match_role {
 
 #[macro_export]
 macro_rules! with_swap_types {
-    ($metadata:expr, $fn:tt) => {{
-        use crate::swap_protocols::{
-            ledger::{Bitcoin, Ethereum},
-            metadata_store::{AssetKind, LedgerKind, Metadata},
+    ($swap_types:expr, $fn:expr) => {{
+        use crate::{
+            db::{AssetKind, LedgerKind, SwapTypes},
+            swap_protocols::ledger::{Bitcoin, Ethereum},
         };
         use bitcoin::Amount;
         use ethereum_support::{Erc20Token, EtherQuantity};
-        let metadata = $metadata;
+        let swap_types: SwapTypes = $swap_types;
+        let role = swap_types.role;
 
-        match metadata {
-            Metadata {
+        match swap_types {
+            SwapTypes {
                 alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Ether,
-                role,
                 ..
             } => {
                 #[allow(dead_code)]
@@ -53,12 +54,11 @@ macro_rules! with_swap_types {
 
                 _match_role!(role, $fn)
             }
-            Metadata {
+            SwapTypes {
                 alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Erc20,
-                role,
                 ..
             } => {
                 #[allow(dead_code)]
@@ -74,12 +74,11 @@ macro_rules! with_swap_types {
 
                 _match_role!(role, $fn)
             }
-            Metadata {
+            SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
                 beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Ether,
                 beta_asset: AssetKind::Bitcoin,
-                role,
                 ..
             } => {
                 #[allow(dead_code)]
@@ -95,12 +94,11 @@ macro_rules! with_swap_types {
 
                 _match_role!(role, $fn)
             }
-            Metadata {
+            SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
                 beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Erc20,
                 beta_asset: AssetKind::Bitcoin,
-                role,
                 ..
             } => {
                 #[allow(dead_code)]

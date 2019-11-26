@@ -1,5 +1,3 @@
-#[macro_use]
-pub mod with_swap_types;
 pub mod route_factory;
 pub mod routes;
 #[macro_use]

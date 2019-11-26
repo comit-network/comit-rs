@@ -7,3 +7,4 @@ DROP TABLE rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages;
 DROP TABLE rfc003_ethereum_bitcoin_accept_messages;
 DROP TABLE rfc003_bitcoin_ethereum_accept_messages;
 DROP TABLE rfc003_decline_messages;
+DROP TABLE rfc003_swaps;

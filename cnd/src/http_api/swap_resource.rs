@@ -1,5 +1,6 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
+    db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
         problem,
@@ -11,7 +12,7 @@ use crate::{
         actions::Actions,
         asset::Asset,
         rfc003::{self, state_store::StateStore, Ledger},
-        HashFunction, Metadata, SwapId, SwapProtocol,
+        HashFunction, SwapId, SwapProtocol,
     },
 };
 use http::StatusCode;
@@ -77,69 +78,66 @@ pub enum IncludeState {
 
 pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
-    id: SwapId,
-    metadata: Metadata,
+    swap: Swap,
+    types: SwapTypes,
     include_state: IncludeState,
 ) -> Result<siren::Entity, HttpApiProblem> {
-    with_swap_types!(
-        &metadata,
-        (|| {
-            let state = state_store
-                .get::<ROLE>(&id)?
-                .ok_or_else(problem::state_store)?;
+    let id = swap.swap_id;
 
-            let communication = SwapCommunication::from(state.swap_communication.clone());
-            let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
-            let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-            let parameters = SwapParameters::from(state.clone().request());
-            let actions = state.clone().actions();
+    with_swap_types!(types, {
+        let state = state_store
+            .get::<ROLE>(&id)?
+            .ok_or_else(problem::state_store)?;
 
-            let error = state.error;
-            let status = SwapStatus::new(
-                communication.status,
-                alpha_ledger.status,
-                beta_ledger.status,
-                &error,
-            );
+        let communication = SwapCommunication::from(state.swap_communication.clone());
+        let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
+        let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
+        let parameters = SwapParameters::from(state.clone().request());
+        let actions = state.clone().actions();
 
-            let swap = SwapResource {
-                id: Http(metadata.swap_id),
-                status,
-                protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
-                parameters,
-                role: metadata.role.to_string(),
-                counterparty: Http(metadata.counterparty),
-                state: match include_state {
-                    IncludeState::Yes => Some(SwapState::<AL, BL> {
-                        communication,
-                        alpha_ledger,
-                        beta_ledger,
-                    }),
-                    IncludeState::No => None,
-                },
-            };
+        let error = state.error;
+        let status = SwapStatus::new(
+            communication.status,
+            alpha_ledger.status,
+            beta_ledger.status,
+            &error,
+        );
 
-            let entity = siren::Entity::default()
-                .with_class_member("swap")
-                .with_properties(swap)
-                .map_err(|e| {
-                    log::error!("failed to set properties of entity: {:?}", e);
-                    HttpApiProblem::with_title_and_type_from_status(
-                        StatusCode::INTERNAL_SERVER_ERROR,
-                    )
-                })?
-                .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
-                .with_link(siren::NavigationalLink::new(
-                    &["human-protocol-spec"],
-                    "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
-                ));
+        let swap = SwapResource {
+            id: Http(id),
+            status,
+            protocol: Http(SwapProtocol::Rfc003(HashFunction::Sha256)),
+            parameters,
+            role: swap.role.to_string(),
+            counterparty: Http(swap.counterparty),
+            state: match include_state {
+                IncludeState::Yes => Some(SwapState::<AL, BL> {
+                    communication,
+                    alpha_ledger,
+                    beta_ledger,
+                }),
+                IncludeState::No => None,
+            },
+        };
 
-            let entity = actions.into_iter().fold(entity, |acc, action| {
-                let action = action.to_siren_action(&id);
-                acc.with_action(action)
-            });
+        let entity = siren::Entity::default()
+            .with_class_member("swap")
+            .with_properties(swap)
+            .map_err(|e| {
+                log::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?
+            .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
+            .with_link(siren::NavigationalLink::new(
+                &["human-protocol-spec"],
+                "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
+            ));
 
-            Ok(entity)
-        })
-    )
+        let entity = actions.into_iter().fold(entity, |acc, action| {
+            let action = action.to_siren_action(&id);
+            acc.with_action(action)
+        });
+
+        Ok(entity)
+    })
 }

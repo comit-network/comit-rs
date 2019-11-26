@@ -1,6 +1,6 @@
-use crate::swap_protocols::{
-    metadata_store,
-    rfc003::{self, actions::ActionKind, state_store},
+use crate::{
+    db,
+    swap_protocols::rfc003::{self, actions::ActionKind, state_store},
 };
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -15,8 +15,16 @@ pub struct MissingQueryParameter {
     pub description: &'static str,
 }
 
+pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
+    if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
+        return swap_not_found();
+    }
+
+    internal_error(e)
+}
+
 pub fn internal_error(e: anyhow::Error) -> HttpApiProblem {
-    log::error!("internal error occured {:?}", e);
+    log::error!("internal error occurred: {:?}", e);
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
@@ -31,7 +39,7 @@ pub fn send_over_channel(_e: Response) -> HttpApiProblem {
 }
 
 pub fn state_store() -> HttpApiProblem {
-    log::error!("State store didn't have state in it despite having the metadata");
+    log::error!("State store didn't have state in it despite swap being in database");
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
@@ -119,13 +127,6 @@ pub fn missing_query_parameters(
 
 impl From<state_store::Error> for HttpApiProblem {
     fn from(e: state_store::Error) -> Self {
-        log::error!("Storage layer failure: {:?}", e);
-        HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-    }
-}
-
-impl From<metadata_store::Error> for HttpApiProblem {
-    fn from(e: metadata_store::Error) -> Self {
         log::error!("Storage layer failure: {:?}", e);
         HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
     }

@@ -1,10 +1,11 @@
 use crate::{
-    db::{SaveMessage, SaveRfc003Messages, Sqlite},
+    db::{
+        DetermineTypes, Retrieve, Save, SaveMessage, SaveRfc003Messages, Sqlite, Swap, SwapTypes,
+    },
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         asset::Asset,
-        metadata_store::{self, InMemoryMetadataStore, MetadataStore},
         rfc003::{
             self,
             create_ledger_events::CreateLedgerEvents,
@@ -12,9 +13,10 @@ use crate::{
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger, Spawn,
         },
-        LedgerConnectors, Metadata, SwapId,
+        LedgerConnectors, SwapId,
     },
 };
+use async_trait::async_trait;
 use futures::{
     sync::{mpsc, oneshot::Sender},
     Future,
@@ -32,7 +34,6 @@ use std::sync::Arc;
 #[allow(missing_debug_implementations)]
 pub struct Dependencies<S> {
     pub ledger_events: LedgerConnectors,
-    pub metadata_store: Arc<InMemoryMetadataStore>,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: Seed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
@@ -43,29 +44,11 @@ impl<S> Clone for Dependencies<S> {
     fn clone(&self) -> Self {
         Self {
             ledger_events: self.ledger_events.clone(),
-            metadata_store: Arc::clone(&self.metadata_store),
             state_store: Arc::clone(&self.state_store),
             seed: self.seed,
             swarm: Arc::clone(&self.swarm),
             db: self.db.clone(),
         }
-    }
-}
-
-impl<S> MetadataStore for Dependencies<S>
-where
-    S: Send + Sync + 'static,
-{
-    fn get(&self, key: SwapId) -> Result<Option<Metadata>, metadata_store::Error> {
-        self.metadata_store.get(key)
-    }
-
-    fn insert(&self, metadata: Metadata) -> Result<(), metadata_store::Error> {
-        self.metadata_store.insert(metadata)
-    }
-
-    fn all(&self) -> Result<Vec<Metadata>, metadata_store::Error> {
-        self.metadata_store.all()
     }
 }
 
@@ -148,14 +131,51 @@ where
     }
 }
 
+#[async_trait]
+impl<S> Save for Dependencies<S>
+where
+    S: Send + Sync + 'static,
+{
+    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
+        self.db.save(swap).await
+    }
+}
+
+#[async_trait]
+impl<S> Retrieve for Dependencies<S>
+where
+    S: Send + Sync + 'static,
+{
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
+        self.db.get(key).await
+    }
+
+    async fn all(&self) -> anyhow::Result<Vec<Swap>> {
+        self.db.all().await
+    }
+}
+
+#[async_trait]
+impl<S> DetermineTypes for Dependencies<S>
+where
+    S: Send + Sync + 'static,
+{
+    async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
+        self.db.determine_types(key).await
+    }
+}
+
+#[async_trait]
 impl<S> SaveRfc003Messages for Dependencies<S> where S: Send + Sync + 'static {}
 
+#[async_trait]
 impl<S, M> SaveMessage<M> for Dependencies<S>
 where
     S: Send + Sync + 'static,
+    M: Send + 'static,
     Sqlite: SaveMessage<M>,
 {
-    fn save_message(&self, message: M) -> anyhow::Result<()> {
-        self.db.save_message(message)
+    async fn save_message(&self, message: M) -> anyhow::Result<()> {
+        self.db.save_message(message).await
     }
 }

@@ -4,6 +4,7 @@ mod handlers;
 mod swap_state;
 
 use crate::{
+    db::{DetermineTypes, Retrieve, Save},
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -18,9 +19,11 @@ use crate::{
     seed::SwapSeed,
     swap_protocols::{
         rfc003::{actions::ActionKind, state_store::StateStore, Spawn},
-        MetadataStore, SwapId,
+        SwapId,
     },
 };
+use futures::Future;
+use futures_core::future::{FutureExt, TryFutureExt};
 use hyper::header;
 use warp::{Rejection, Reply};
 
@@ -29,12 +32,14 @@ use crate::db::SaveRfc003Messages;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<
-    D: Clone + StateStore + MetadataStore + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+    D: Clone + StateStore + Save + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
 >(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
-) -> Result<impl Reply, Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_post_swap(dependencies, request_body_kind)
+        .boxed()
+        .compat()
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -45,25 +50,31 @@ pub fn post_swap<
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<D: MetadataStore + StateStore>(
+pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
     dependencies: D,
     id: SwapId,
-) -> Result<impl Reply, Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_get_swap(dependencies, id)
+        .boxed()
+        .compat()
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: MetadataStore + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages>(
+pub fn action<
+    D: DetermineTypes + Retrieve + StateStore + Network + Spawn + SwapSeed + SaveRfc003Messages,
+>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
     dependencies: D,
     body: serde_json::Value,
-) -> Result<impl Reply, Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_action(method, id, action_kind, body, query_params, dependencies)
+        .boxed()
+        .compat()
         .map(|body| warp::reply::json(&body))
         .map_err(into_rejection)
 }

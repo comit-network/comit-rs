@@ -11,13 +11,16 @@ use crate::{
         HashFunction, SwapId,
     },
 };
+use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use ethereum_support::{Erc20Token, EtherQuantity};
 
+#[async_trait]
 pub trait SaveMessage<M> {
-    fn save_message(&self, message: M) -> anyhow::Result<()>;
+    async fn save_message(&self, message: M) -> anyhow::Result<()>;
 }
 
+#[async_trait]
 pub trait SaveRfc003Messages:
     SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>>
     + SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>>
@@ -45,13 +48,12 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[async_trait]
 impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for Sqlite {
-    fn save_message(
+    async fn save_message(
         &self,
         message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>,
     ) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
         let Request {
             swap_id,
             alpha_ledger,
@@ -80,9 +82,12 @@ impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for
             secret_hash: Text(secret_hash),
         };
 
-        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
+                .values(&insertable)
+                .execute(connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -105,13 +110,12 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[async_trait]
 impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sqlite {
-    fn save_message(
+    async fn save_message(
         &self,
         message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>,
     ) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
         let Request {
             swap_id,
             alpha_ledger,
@@ -141,9 +145,12 @@ impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sq
             secret_hash: Text(secret_hash),
         };
 
-        diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
+                .values(&insertable)
+                .execute(connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -165,13 +172,12 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[async_trait]
 impl SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for Sqlite {
-    fn save_message(
+    async fn save_message(
         &self,
         message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
         let Request {
             swap_id,
             alpha_ledger,
@@ -200,9 +206,12 @@ impl SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for
             secret_hash: Text(secret_hash),
         };
 
-        diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
+                .values(&insertable)
+                .execute(connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -224,13 +233,12 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[async_trait]
 impl SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
-    fn save_message(
+    async fn save_message(
         &self,
         message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
         let Request {
             swap_id,
             alpha_ledger,
@@ -260,9 +268,12 @@ impl SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sq
             secret_hash: Text(secret_hash),
         };
 
-        diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
+                .values(&insertable)
+                .execute(connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -275,10 +286,9 @@ struct InsertableEthereumBitcoinAcceptMessage {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
+#[async_trait]
 impl SaveMessage<Accept<Ethereum, Bitcoin>> for Sqlite {
-    fn save_message(&self, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
+    async fn save_message(&self, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -291,9 +301,12 @@ impl SaveMessage<Accept<Ethereum, Bitcoin>> for Sqlite {
             bitcoin_refund_identity: Text(beta_ledger_refund_identity.into_inner()),
         };
 
-        diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages::table)
+                .values(&insertable)
+                .execute(&*connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -306,10 +319,9 @@ struct InsertableBitcoinEthereumAcceptMessage {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
+#[async_trait]
 impl SaveMessage<Accept<Bitcoin, Ethereum>> for Sqlite {
-    fn save_message(&self, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
+    async fn save_message(&self, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -322,9 +334,12 @@ impl SaveMessage<Accept<Bitcoin, Ethereum>> for Sqlite {
             ethereum_refund_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
         };
 
-        diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
+                .values(&insertable)
+                .execute(&*connection)
+        })
+        .await?;
 
         Ok(())
     }
@@ -336,10 +351,9 @@ struct InsertableDeclineMessage {
     reason: Option<String>,
 }
 
+#[async_trait]
 impl SaveMessage<Decline> for Sqlite {
-    fn save_message(&self, message: Decline) -> anyhow::Result<()> {
-        let connection = self.connect()?;
-
+    async fn save_message(&self, message: Decline) -> anyhow::Result<()> {
         let Decline {
             swap_id,
             reason: _reason, /* we don't map reason to a DB type because will be gone soon
@@ -351,11 +365,16 @@ impl SaveMessage<Decline> for Sqlite {
             reason: None,
         };
 
-        let _ = diesel::insert_into(rfc003_decline_messages::table)
-            .values(&insertable)
-            .execute(&connection)?;
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(rfc003_decline_messages::table)
+                .values(&insertable)
+                .execute(&*connection)
+        })
+        .await?;
 
         Ok(())
     }
 }
+
+#[async_trait]
 impl SaveRfc003Messages for Sqlite {}
