@@ -32,13 +32,13 @@ where
         pattern: TransactionPattern,
         timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
-        let (check_missing_queue, next_check_missing) = async_std::sync::channel(1);
         let (block_queue, next_block) = async_std::sync::channel(1);
+        let (find_parent_queue, next_find_parent) = async_std::sync::channel(1);
 
         spawn(self.clone(), {
             let mut connector = self.clone();
             let block_queue = block_queue.clone();
-            let check_missing_queue = check_missing_queue.clone();
+            let find_parent_queue = find_parent_queue.clone();
 
             async move {
                 let mut sent_blockhashes: HashSet<H256> = HashSet::new();
@@ -58,7 +58,7 @@ where
 
                                 join(
                                     block_queue.send(block.clone()),
-                                    check_missing_queue.send(block),
+                                    find_parent_queue.send(block),
                                 )
                                 .await;
                             }
@@ -77,23 +77,24 @@ where
             }
         });
 
-        let (blockhash_queue, next_blockhash) = async_std::sync::channel(5);
+        let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
         spawn(self.clone(), {
             let connector = self.clone();
             let block_queue = block_queue.clone();
-            let blockhash_queue = blockhash_queue.clone();
+            let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
             async move {
                 loop {
-                    match next_blockhash.recv().await {
+                    match next_hash.recv().await {
                         Some(blockhash) => {
                             match connector.block_by_hash(blockhash).compat().await {
                                 Ok(Some(block)) => {
-                                    join!(
+                                    join(
                                         block_queue.send(block.clone()),
-                                        check_missing_queue.send(block)
-                                    );
+                                        find_parent_queue.send(block),
+                                    )
+                                    .await;
                                 }
                                 Ok(None) => {
                                     log::warn!("Block with hash {} does not exist", blockhash);
@@ -105,7 +106,7 @@ where
                                         e
                                     );
 
-                                    blockhash_queue.send(blockhash).await
+                                    fetch_block_by_hash_queue.send(blockhash).await
                                 }
                             };
                         }
@@ -118,10 +119,10 @@ where
         spawn(self.clone(), {
             async move {
                 let mut prev_blockhashes: HashSet<H256> = HashSet::new();
-                let blockhash_queue = blockhash_queue.clone();
+                let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
                 loop {
-                    match next_check_missing.recv().await {
+                    match next_find_parent.recv().await {
                         Some(Block {
                             hash: Some(hash),
                             parent_hash,
@@ -132,7 +133,7 @@ where
                             if !prev_blockhashes.contains(&parent_hash)
                                 && prev_blockhashes.len() > 1
                             {
-                                blockhash_queue.send(parent_hash).await
+                                fetch_block_by_hash_queue.send(parent_hash).await
                             }
                         }
                         Some(_) => {
