@@ -185,37 +185,33 @@ where
                                             })
                                             .await;
                                     }
-                                } else {
-                                    if pattern.matches(&transaction, None) {
-                                        let result = connector
-                                            .receipt_by_hash(transaction.hash)
-                                            .compat()
-                                            .await;
+                                } else if pattern.matches(&transaction, None) {
+                                    let result =
+                                        connector.receipt_by_hash(transaction.hash).compat().await;
 
-                                        let receipt = match result {
-                                            Ok(Some(receipt)) => receipt,
-                                            Ok(None) => {
-                                                log::warn!("Could not get transaction receipt for matching transaction");
-                                                continue;
-                                            }
-                                            Err(e) => {
-                                                log::warn!(
+                                    let receipt = match result {
+                                        Ok(Some(receipt)) => receipt,
+                                        Ok(None) => {
+                                            log::warn!("Could not get transaction receipt for matching transaction");
+                                            continue;
+                                        }
+                                        Err(e) => {
+                                            log::warn!(
                                                             "Could not retrieve transaction receipt for matching transaction {}: {:?}",
                                                             transaction.hash,
                                                             e
                                                 );
-                                                // TODO: Try again if it fails?
-                                                continue;
-                                            }
-                                        };
+                                            // TODO: Try again if it fails?
+                                            continue;
+                                        }
+                                    };
 
-                                        matching_transaction_queue
-                                            .send(TransactionAndReceipt {
-                                                transaction,
-                                                receipt,
-                                            })
-                                            .await;
-                                    }
+                                    matching_transaction_queue
+                                        .send(TransactionAndReceipt {
+                                            transaction,
+                                            receipt,
+                                        })
+                                        .await;
                                 }
                             }
                         }
