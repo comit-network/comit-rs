@@ -185,6 +185,7 @@ where
 
                                     let receipt = match result {
                                         Ok(Some(receipt)) => receipt,
+                                        // TODO: Try again if it fails?
                                         Ok(None) => {
                                             log::warn!("Could not get transaction receipt for matching transaction");
                                             continue;
@@ -195,7 +196,6 @@ where
                                                             transaction.hash,
                                                             e
                                                 );
-                                            // TODO: Try again if it fails?
                                             continue;
                                         }
                                     };
