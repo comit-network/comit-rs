@@ -6,7 +6,7 @@ edition = "2018"
 description = "Implementation of the COMIT messaging protocol"
 
 [dependencies]
-bytes = "0.4"
+bytes = "0.5"
 derivative = "1.0.3"
 futures = "0.1"
 libp2p-core = "0.12"
