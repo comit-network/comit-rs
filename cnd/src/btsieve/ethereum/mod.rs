@@ -110,7 +110,7 @@ where
                                 }
                             };
                         }
-                        None => panic!("Does this panic?"),
+                        None => unreachable!("sender cannot be dropped"),
                     }
                 }
             }
@@ -132,7 +132,7 @@ where
                                 fetch_block_by_hash_queue.send(parent_blockhash).await
                             }
                         }
-                        None => panic!("Does this panic?"),
+                        None => unreachable!("senders cannot be dropped"),
                     }
                 }
             }
@@ -209,7 +209,7 @@ where
                                 }
                             }
                         }
-                        None => panic!("Does this panic?"),
+                        None => unreachable!("senders cannot be dropped"),
                     }
                 }
             }
@@ -219,7 +219,7 @@ where
             matching_transaction
                 .recv()
                 .await
-                .unwrap_or_else(|| panic!("You were so close..."))
+                .expect("sender cannot be dropped")
         };
 
         Box::new(stream::futures_unordered(vec![matching_transaction
