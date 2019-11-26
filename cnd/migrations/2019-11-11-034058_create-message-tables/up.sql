@@ -71,7 +71,8 @@ CREATE TABLE rfc003_ethereum_bitcoin_accept_messages
     id INTEGER               NOT NULL PRIMARY KEY,
     swap_id UNIQUE           NOT NULL,
     bitcoin_refund_identity  NOT NULL,
-    ethereum_redeem_identity NOT NULL
+    ethereum_redeem_identity NOT NULL,
+    at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE rfc003_bitcoin_ethereum_accept_messages
@@ -79,7 +80,8 @@ CREATE TABLE rfc003_bitcoin_ethereum_accept_messages
     id INTEGER               NOT NULL PRIMARY KEY,
     swap_id UNIQUE           NOT NULL,
     bitcoin_redeem_identity  NOT NULL,
-    ethereum_refund_identity NOT NULL
+    ethereum_refund_identity NOT NULL,
+    at DATETIME DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE rfc003_decline_messages

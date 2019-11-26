@@ -33,7 +33,7 @@ pub async fn load_swaps_from_database(
                 db.load_accepted_swap(&swap_id).await;
 
             match accepted {
-                Ok((request, accept)) => {
+                Ok((request, accept, _at)) => {
                     match types.role {
                         Role::Alice => {
                             let state = alice::State::accepted(request.clone(), accept, seed);

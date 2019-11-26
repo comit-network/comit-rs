@@ -86,7 +86,7 @@ impl Sqlite {
     async fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
         use self::schema::rfc003_swaps as swaps;
 
-        let record: QueryableSwap = self
+        let record: QueryableSwapRole = self
             .do_in_transaction(|connection| {
                 let key = Text(key);
 
@@ -118,7 +118,7 @@ fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {
 }
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
-struct QueryableSwap {
+struct QueryableSwapRole {
     pub swap_id: Text<SwapId>,
     pub role: Text<Role>,
 }

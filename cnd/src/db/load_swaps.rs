@@ -17,9 +17,10 @@ use crate::{
     timestamp::Timestamp,
 };
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
 
-pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>);
+pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>, NaiveDateTime);
 
 #[async_trait]
 pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
@@ -46,6 +47,8 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     // Accept fields.
     bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
     ethereum_refund_identity: Text<EthereumAddress>,
+
+    at: NaiveDateTime,
 }
 
 #[async_trait]
@@ -86,6 +89,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
                         request_messages::secret_hash,
                         accept_messages::bitcoin_redeem_identity,
                         accept_messages::ethereum_refund_identity,
+                        accept_messages::at,
                     ))
                     .filter(accept_messages::swap_id.eq(key))
                     .first(connection)
@@ -119,6 +123,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
                 ),
                 beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
             },
+            record.at,
         ))
     }
 }
@@ -140,6 +145,8 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     // Accept fields.
     ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+
+    at: NaiveDateTime,
 }
 
 #[async_trait]
@@ -178,6 +185,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sql
                         request_messages::secret_hash,
                         accept_messages::ethereum_redeem_identity,
                         accept_messages::bitcoin_refund_identity,
+                        accept_messages::at,
                     ))
                     .filter(accept_messages::swap_id.eq(key))
                     .first(connection)
@@ -211,6 +219,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount> for Sql
                     *record.bitcoin_refund_identity,
                 ),
             },
+            record.at,
         ))
     }
 }
@@ -233,6 +242,8 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     // Accept fields.
     bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
     ethereum_refund_identity: Text<EthereumAddress>,
+
+    at: NaiveDateTime,
 }
 
 #[async_trait]
@@ -272,6 +283,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite
                         request_messages::secret_hash,
                         accept_messages::bitcoin_redeem_identity,
                         accept_messages::ethereum_refund_identity,
+                        accept_messages::at,
                     ))
                     .filter(accept_messages::swap_id.eq(key))
                     .first(connection)
@@ -308,6 +320,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token> for Sqlite
                 ),
                 beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
             },
+            record.at,
         ))
     }
 }
@@ -330,6 +343,8 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     // Accept fields.
     ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+
+    at: NaiveDateTime,
 }
 
 #[async_trait]
@@ -369,6 +384,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite
                         request_messages::secret_hash,
                         accept_messages::ethereum_redeem_identity,
                         accept_messages::bitcoin_refund_identity,
+                        accept_messages::at,
                     ))
                     .filter(accept_messages::swap_id.eq(key))
                     .first(connection)
@@ -405,6 +421,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount> for Sqlite
                     *record.bitcoin_refund_identity,
                 ),
             },
+            record.at,
         ))
     }
 }
