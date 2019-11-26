@@ -11,10 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - **Breaking (HTTP+COMIT API):** Change the identity for the Bitcoin Ledger from a public key hash to a public key. This change impacts the HTTP and the COMIT API of cnd.
 - **Breaking (COMIT API):**  Replace Ethereum `network` with Ethereum `chain_id`
-- cnd no longer automatically generates a config file but instead, simply defaults to what it would have written to the file on first startup.
+- cnd no longer automatically generates a config file, but instead simply defaults to what it would have written to the file on first startup.
 - Make expiries optional when sending a swap request, with defaults:
   - 24 hours later for alpha ledger.
   - 12 hours later for beta ledger.
+- **Breaking (Config file format):** Expand `http_api` section in config file to contain both the socket and CORS settings.
 
 ### Added
 - Return Ethereum `chain_id` on the HTTP API.
