@@ -461,7 +461,7 @@ dependencies = [
 
 [[package]]
 name = "cnd"
-version = "0.3.0"
+version = "0.4.0"
 dependencies = [
  "anyhow 1.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",

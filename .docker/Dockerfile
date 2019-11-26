@@ -1,4 +1,4 @@
-FROM rust:1.37-buster as builder
+FROM rust:1.39-buster as builder
 
 WORKDIR /src
 # Only copy the actual source code over, avoids rebuilds if other stuff changes in the repository

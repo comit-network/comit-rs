@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+## [0.4.0] - 2019-11-26
+
 ### Changed
 - **Breaking (HTTP+COMIT API):** Change the identity for the Bitcoin Ledger from a public key hash to a public key. This change impacts the HTTP and the COMIT API of cnd.
 - **Breaking (COMIT API):**  Replace Ethereum `network` with Ethereum `chain_id`
@@ -45,7 +48,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move config files to standard location based on platform (OSX, Windows, Linux).
 - Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.3.0...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.4.0...HEAD
+[0.4.0]: https://github.com/comit-network/comit-rs/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/comit-network/comit-rs/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/comit-network/comit-rs/compare/0.2.0...0.2.1
 [0.2.0]: https://github.com/comit-network/comit-rs/compare/b2dd02a7f93dc82f5cc9fd4b6eaaf54de1459ff6...40116c3e8a9f57a213661917b8cc057e1db60755
