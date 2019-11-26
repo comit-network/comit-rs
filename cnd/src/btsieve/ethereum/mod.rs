@@ -38,6 +38,7 @@ where
         spawn(self.clone(), {
             let mut connector = self.clone();
             let block_queue = block_queue.clone();
+            let check_missing_queue = check_missing_queue.clone();
 
             async move {
                 let mut sent_blockhashes: HashSet<H256> = HashSet::new();
@@ -88,7 +89,12 @@ where
                     match next_blockhash.recv().await {
                         Some(blockhash) => {
                             match connector.block_by_hash(blockhash).compat().await {
-                                Ok(Some(block)) => block_queue.send(block).await,
+                                Ok(Some(block)) => {
+                                    join!(
+                                        block_queue.send(block.clone()),
+                                        check_missing_queue.send(block)
+                                    );
+                                }
                                 Ok(None) => {
                                     log::warn!("Block with hash {} does not exist", blockhash);
                                 }
