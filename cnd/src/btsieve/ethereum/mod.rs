@@ -33,7 +33,7 @@ where
         timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
         let (block_queue, next_block) = async_std::sync::channel(1);
-        let (find_parent_queue, next_find_parent) = async_std::sync::channel(1);
+        let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
 
         spawn(self.clone(), {
             let mut connector = self.clone();
