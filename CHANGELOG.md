@@ -6,6 +6,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Added persistent storage to cnd, now we save swaps to an Sqlite database when they are requested and accepted.
+
 ## [0.4.0] - 2019-11-26
 
 ### Changed
@@ -21,7 +24,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Support Ethereum `chain_id` in the Swap Request (HTTP API).
 - Ability to set CORS allowed origins through the configuration file.
 - Added command line option `--dump-config` to print the running configuration to stdout.
-- Added persistent storage to cnd, now we save swaps to an Sqlite database when they are requested and accepted.
 
 ### Fixed
 - Error responses now properly identify themselves as `application/problem+json`. They have been conforming to this format for a while already, we just never set the `Content-Type` header properly. From now on, applications can fully rely on the error format!
