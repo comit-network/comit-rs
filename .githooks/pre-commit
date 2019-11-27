@@ -6,7 +6,7 @@ dry=0                           # Set to 1 to enable dry run.
 
 function check_rs() {
     if (( dry == 0 )); then
-        cargo make check-rs-format
+        make check_rust_format
     else
         echo "check_rs ran"
     fi
@@ -14,7 +14,7 @@ function check_rs() {
 
 function check_ts() {
     if (( dry == 0 )); then
-        cargo make check-ts
+        make check_ts_format
     else
         echo "check_ts ran"
     fi
@@ -22,7 +22,7 @@ function check_ts() {
 
 function check_cargo_toml() {
     if (( dry == 0 )); then
-        cargo make check-cargo-toml-format
+        make check_toml_format
     else
         echo "check_cargo_toml ran"
     fi

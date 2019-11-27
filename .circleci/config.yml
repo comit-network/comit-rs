@@ -42,8 +42,8 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
-          name: Debug build and test using cargo make
-          command: cargo make ci
+          name: Debug build and test
+          command: make ci
       - store_artifacts:
           path: api_tests/log
       - save_caches
@@ -61,11 +61,10 @@ jobs:
       - install_node_devlibs
       - print_current_versions
       - run:
-          name: Release build and test using cargo make
+          name: Release build and test
           command: |
-            export CARGO_MAKE_CARGO_BUILD_TEST_FLAGS="--all --release"
             export CND_BIN=~/comit/target/release/cnd
-            cargo make ci
+            make ci BUILD_ARGS='--release'
       - store_artifacts:
           path: api_tests/log
       - run:
@@ -137,8 +136,6 @@ commands:
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
-            export CARGO_MAKE_VERSION="0.22.1"
-            which cargo-make && test "$(cargo make --version)" = "cargo-make ${CARGO_MAKE_VERSION}" || cargo install cargo-make --force --version ${CARGO_MAKE_VERSION}
   print_current_versions:
     steps:
       - run:
