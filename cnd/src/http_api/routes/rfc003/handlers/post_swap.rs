@@ -1,5 +1,5 @@
 use crate::{
-    db::{Save, SaveMessage, SaveRfc003Messages, Swap},
+    db::{Save, Saver, Swap},
     http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
@@ -8,7 +8,7 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
-            state_store::StateStore, Accept, Decline, Ledger, Request, SecretSource, Spawn,
+            state_store::StateStore, Accept, Ledger, Request, SecretSource, Spawn,
         },
         HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
     },
@@ -24,7 +24,7 @@ use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
 pub async fn handle_post_swap<
-    D: Clone + StateStore + Save + SendRequest + Spawn + SwapSeed + SaveRfc003Messages,
+    D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver,
 >(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
@@ -83,10 +83,9 @@ where
         + SendRequest
         + Spawn
         + SwapSeed
-        + Save
-        + SaveMessage<Request<AL, BL, AA, BA>>
-        + SaveMessage<Accept<AL, BL>>
-        + SaveMessage<Decline>,
+        + Saver
+        + Save<Request<AL, BL, AA, BA>>
+        + Save<Accept<AL, BL>>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
@@ -102,7 +101,7 @@ where
         .await
         .map_err(problem::internal_error)?;
 
-    SaveMessage::save_message(&dependencies, swap_request.clone())
+    Save::save(&dependencies, swap_request.clone())
         .await
         .map_err(problem::internal_error)?;
 
@@ -127,7 +126,7 @@ where
                 Ok(accept) => {
                     let state = State::accepted(swap_request.clone(), accept, seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    SaveMessage::save_message(&dependencies, accept)
+                    Save::save(&dependencies, accept)
                         .await
                         .expect("failed to save message to db");
 
@@ -141,7 +140,7 @@ where
                     log::info!("Swap declined: {:?}", decline);
                     let state = State::declined(swap_request.clone(), decline.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    SaveMessage::save_message(&dependencies, decline.clone())
+                    Save::save(&dependencies, decline.clone())
                         .await
                         .expect("failed to save message to db");
                 }

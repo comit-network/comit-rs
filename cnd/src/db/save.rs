@@ -2,34 +2,73 @@ use crate::{
     db::{
         custom_sql_types::{Text, U32},
         new_types::{DecimalU256, EthereumAddress, Satoshis},
-        schema::*,
-        Sqlite,
+        schema::{self, *},
+        Sqlite, Swap,
     },
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
-        HashFunction, SwapId,
+        HashFunction, Role, SwapId,
     },
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use ethereum_support::{Erc20Token, EtherQuantity};
+use libp2p::{self, PeerId};
 
+/// Save swap to database.
 #[async_trait]
-pub trait SaveMessage<M> {
-    async fn save_message(&self, message: M) -> anyhow::Result<()>;
+pub trait Save<T>: Send + Sync + 'static {
+    async fn save(&self, swap: T) -> anyhow::Result<()>;
 }
 
 #[async_trait]
-pub trait SaveRfc003Messages:
-    SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>>
-    + SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>>
-    + SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>>
-    + SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>>
-    + SaveMessage<Accept<Bitcoin, Ethereum>>
-    + SaveMessage<Accept<Ethereum, Bitcoin>>
-    + SaveMessage<Decline>
+pub trait Saver:
+    Save<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>>
+    + Save<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>>
+    + Save<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>>
+    + Save<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>>
+    + Save<Accept<Bitcoin, Ethereum>>
+    + Save<Accept<Ethereum, Bitcoin>>
+    + Save<Decline>
+    + Save<Swap>
 {
+}
+
+impl Saver for Sqlite {}
+
+#[async_trait]
+impl Save<Swap> for Sqlite {
+    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
+        let insertable = InsertableSwap::from(swap);
+
+        self.do_in_transaction(|connection| {
+            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
+                .values(&insertable)
+                .execute(&*connection)
+        })
+        .await?;
+
+        Ok(())
+    }
+}
+
+#[derive(Insertable, Debug, Clone)]
+#[table_name = "rfc003_swaps"]
+struct InsertableSwap {
+    pub swap_id: Text<SwapId>,
+    pub role: Text<Role>,
+    pub counterparty: Text<PeerId>,
+}
+
+impl From<Swap> for InsertableSwap {
+    fn from(swap: Swap) -> Self {
+        InsertableSwap {
+            swap_id: Text(swap.swap_id),
+            role: Text(swap.role),
+            counterparty: Text(swap.counterparty),
+        }
+    }
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -49,8 +88,8 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for Sqlite {
-    async fn save_message(
+impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for Sqlite {
+    async fn save(
         &self,
         message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>,
     ) -> anyhow::Result<()> {
@@ -111,8 +150,8 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sqlite {
-    async fn save_message(
+impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sqlite {
+    async fn save(
         &self,
         message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>,
     ) -> anyhow::Result<()> {
@@ -173,8 +212,8 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for Sqlite {
-    async fn save_message(
+impl Save<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for Sqlite {
+    async fn save(
         &self,
         message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
@@ -234,8 +273,8 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
-    async fn save_message(
+impl Save<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
+    async fn save(
         &self,
         message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
@@ -287,8 +326,8 @@ struct InsertableEthereumBitcoinAcceptMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Accept<Ethereum, Bitcoin>> for Sqlite {
-    async fn save_message(&self, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
+impl Save<Accept<Ethereum, Bitcoin>> for Sqlite {
+    async fn save(&self, message: Accept<Ethereum, Bitcoin>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -320,8 +359,8 @@ struct InsertableBitcoinEthereumAcceptMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Accept<Bitcoin, Ethereum>> for Sqlite {
-    async fn save_message(&self, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
+impl Save<Accept<Bitcoin, Ethereum>> for Sqlite {
+    async fn save(&self, message: Accept<Bitcoin, Ethereum>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -352,8 +391,8 @@ struct InsertableDeclineMessage {
 }
 
 #[async_trait]
-impl SaveMessage<Decline> for Sqlite {
-    async fn save_message(&self, message: Decline) -> anyhow::Result<()> {
+impl Save<Decline> for Sqlite {
+    async fn save(&self, message: Decline) -> anyhow::Result<()> {
         let Decline {
             swap_id,
             reason: _reason, /* we don't map reason to a DB type because will be gone soon
@@ -375,6 +414,3 @@ impl SaveMessage<Decline> for Sqlite {
         Ok(())
     }
 }
-
-#[async_trait]
-impl SaveRfc003Messages for Sqlite {}

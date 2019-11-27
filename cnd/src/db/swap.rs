@@ -1,21 +1,11 @@
 use crate::{
-    db::{
-        custom_sql_types::Text,
-        schema::{self, *},
-        Error, Sqlite,
-    },
+    db::{custom_sql_types::Text, schema, Error, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
     swap_protocols::{Role, SwapId},
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
-
-/// Save swap to database.
-#[async_trait]
-pub trait Save: Send + Sync + 'static {
-    async fn save(&self, swap: Swap) -> anyhow::Result<()>;
-}
 
 /// Retrieve swaps from database.
 #[async_trait]
@@ -37,40 +27,6 @@ impl Swap {
             swap_id,
             role,
             counterparty,
-        }
-    }
-}
-
-#[async_trait]
-impl Save for Sqlite {
-    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
-        let insertable = InsertableSwap::from(swap);
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
-                .values(&insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[derive(Insertable, Debug, Clone)]
-#[table_name = "rfc003_swaps"]
-struct InsertableSwap {
-    pub swap_id: Text<SwapId>,
-    pub role: Text<Role>,
-    pub counterparty: Text<PeerId>,
-}
-
-impl From<Swap> for InsertableSwap {
-    fn from(swap: Swap) -> Self {
-        InsertableSwap {
-            swap_id: Text(swap.swap_id),
-            role: Text(swap.role),
-            counterparty: Text(swap.counterparty),
         }
     }
 }

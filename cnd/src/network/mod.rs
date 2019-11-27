@@ -3,14 +3,14 @@ pub mod send_request;
 pub use send_request::*;
 
 use crate::{
-    db::{Save, SaveMessage, Sqlite, Swap},
+    db::{Save, Saver, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::Seed,
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{
             self, bob,
-            messages::{Decision, DeclineResponseBody, SwapDeclineReason},
+            messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
             Ledger,
         },
@@ -312,21 +312,21 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-    db: Sqlite,
+async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
+    db: DB,
     seed: Seed,
     state_store: Arc<InMemoryStateStore>,
     counterparty: PeerId,
-    swap_request: rfc003::Request<AL, BL, AA, BA>,
+    swap_request: Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    Sqlite: SaveMessage<rfc003::Request<AL, BL, AA, BA>>,
+    DB: Save<Request<AL, BL, AA, BA>> + Saver,
 {
     let id = swap_request.swap_id;
     let seed = seed.swap_seed(id);
 
-    db.save(Swap::new(id, Role::Bob, counterparty)).await?;
-    db.save_message(swap_request.clone()).await?;
+    Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
+    Save::save(&db, swap_request.clone()).await?;
 
     let state = bob::State::proposed(swap_request.clone(), seed);
     state_store.insert(id, state);
