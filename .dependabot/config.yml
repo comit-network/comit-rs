@@ -24,6 +24,9 @@ update_configs:
       # this needs updating based on the libp2p version
       - match:
           dependency_name: "multistream-select"
+      # this needs updating based on the tokio_codec version
+      - match:
+          dependency_name: "bytes"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "daily"
