@@ -1,6 +1,3 @@
-target/
-.circleci/
-.dependabot/
-.githooks/
-api_tests/
-.docker/Dockerfile
+# The only thing we are interested in the Dockerfile is the release binary, hence we can ignore everything else to speed up the build process
+*
+!target/release/cnd
