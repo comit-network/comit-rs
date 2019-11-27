@@ -1,3 +1,4 @@
+import { BigNumber, BigNumberish } from "ethers/utils";
 import { HarnessGlobal } from "../../lib/util";
 import { Asset } from "../asset";
 import { sleep } from "../utils";
@@ -14,7 +15,7 @@ interface AllWallets {
 export interface Wallet {
     MaximumFee: number;
     mint(asset: Asset): Promise<void>;
-    getBalance(): Promise<number>;
+    getBalance(): Promise<BigNumberish>;
 }
 
 export class Wallets {
@@ -58,11 +59,10 @@ export class Wallets {
 
 export async function pollUntilMinted(
     wallet: Wallet,
-    minimumBalance: string
+    minimumBalance: BigNumberish
 ): Promise<void> {
     const currentBalance = await wallet.getBalance();
-
-    if (currentBalance.toString() >= minimumBalance) {
+    if (new BigNumber(currentBalance).gte(minimumBalance)) {
         return;
     } else {
         await sleep(500);

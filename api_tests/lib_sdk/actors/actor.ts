@@ -1,7 +1,7 @@
 import { expect } from "chai";
 import { Cnd, ComitClient, Swap } from "comit-sdk";
 import { randomBytes } from "crypto";
-import { parseEther } from "ethers/utils";
+import { BigNumber, BigNumberish, parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
@@ -63,8 +63,8 @@ export class Actor {
     private readonly cnd: Cnd;
     private swap: Swap;
 
-    private readonly startingBalances: Map<AssetKind, number>;
-    private readonly expectedBalanceChanges: Map<AssetKind, number>;
+    private readonly startingBalances: Map<AssetKind, BigNumberish>;
+    private readonly expectedBalanceChanges: Map<AssetKind, BigNumberish>;
 
     private constructor(
         private readonly logger: Logger,
@@ -123,10 +123,10 @@ export class Actor {
 
         await this.setStartingBalance([
             alphaAsset,
-            { name: betaAsset.name, quantity: 0 },
+            { name: betaAsset.name, quantity: "0" },
         ]);
         await to.setStartingBalance([
-            { name: alphaAsset.name, quantity: 0 },
+            { name: alphaAsset.name, quantity: "0" },
             betaAsset,
         ]);
 
@@ -223,13 +223,14 @@ export class Actor {
             const wallet = this.wallets[
                 defaultLedgerDescriptionForAsset(assetKind).name
             ];
-            const expectedBalance =
-                this.startingBalances.get(assetKind) + expectedBalanceChange;
+            const expectedBalance = new BigNumber(
+                this.startingBalances.get(assetKind)
+            ).add(expectedBalanceChange);
             const maximumFee = wallet.MaximumFee;
 
-            await expect(wallet.getBalance()).to.eventually.be.at.least(
-                expectedBalance - maximumFee
-            );
+            const actualBalance = new BigNumber(await wallet.getBalance());
+            await expect(actualBalance.gte(expectedBalance.sub(maximumFee))).to
+                .be.true;
         }
     }
 
@@ -275,7 +276,7 @@ export class Actor {
 
     private async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
-            if (asset.quantity === 0) {
+            if (parseFloat(asset.quantity) === 0) {
                 this.startingBalances.set(asset.name, 0);
                 continue;
             }
