@@ -142,8 +142,6 @@ export class Actor {
             beta_ledger: betaLedger,
             alpha_asset: alphaAsset,
             beta_asset: betaAsset,
-            alpha_expiry: defaultExpiryTimes().alpha_expiry,
-            beta_expiry: defaultExpiryTimes().beta_expiry,
             peer: {
                 peer_id: await to.cnd.getPeerId(),
                 address_hint: await to.cnd
@@ -151,6 +149,7 @@ export class Actor {
                     .then(addresses => addresses[0]),
             },
             ...(await this.additionalIdentities(alphaAssetKind, betaAssetKind)),
+            ...defaultExpiryTimes(),
         };
 
         this.swap = await comitClient.sendSwap(payload);
@@ -178,6 +177,39 @@ export class Actor {
 
         this.logger.debug("Funding as part of swap @ %s", this.swap.self);
         await this.swap.fund(Actor.defaultActionConfig);
+
+        const entity = await this.swap.fetchDetails();
+        switch (entity.properties.role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaFunded();
+                await this.actors.bob.assertAlphaFunded();
+                break;
+            case "Bob":
+                await this.actors.alice.assertBetaFunded();
+                await this.actors.bob.assertBetaFunded();
+                break;
+        }
+    }
+
+    public async refund() {
+        if (!this.swap) {
+            throw new Error("Cannot refund inexistent swap");
+        }
+
+        this.logger.debug("Refunding as part of swap @ %s", this.swap.self);
+        await this.swap.refund(Actor.defaultActionConfig);
+
+        const entity = await this.swap.fetchDetails();
+        switch (entity.properties.role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaRefunded();
+                await this.actors.bob.assertAlphaRefunded();
+                break;
+            case "Bob":
+                await this.actors.alice.assertBetaRefunded();
+                await this.actors.bob.assertBetaRefunded();
+                break;
+        }
     }
 
     public async redeem() {
@@ -187,6 +219,18 @@ export class Actor {
 
         this.logger.debug("Redeeming as part of swap @ %s", this.swap.self);
         await this.swap.redeem(Actor.defaultActionConfig);
+
+        const entity = await this.swap.fetchDetails();
+        switch (entity.properties.role) {
+            case "Alice":
+                await this.actors.alice.assertBetaRedeemed();
+                await this.actors.bob.assertBetaRedeemed();
+                break;
+            case "Bob":
+                await this.actors.alice.assertAlphaRedeemed();
+                await this.actors.bob.assertAlphaRedeemed();
+                break;
+        }
     }
 
     public async currentSwapIsAccepted() {
@@ -199,14 +243,6 @@ export class Actor {
         } while (
             swapEntity.properties.state.communication.status !== "ACCEPTED"
         );
-    }
-
-    public async assertHasCurrentSwap() {
-        this.logger.debug("Checking if we can fetch the current swap");
-
-        const response = await this.cnd.fetch(this.swap.self);
-
-        return response;
     }
 
     public async assertSwapped() {
@@ -245,6 +281,53 @@ export class Actor {
         }
     }
 
+    public async assertRefunded() {
+        this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
+
+        for (const [assetKind] of this.startingBalances.entries()) {
+            const wallet = this.wallets[
+                defaultLedgerDescriptionForAsset(assetKind).name
+            ];
+            const maximumFee = wallet.MaximumFee;
+
+            this.logger.debug(
+                "Checking that %s balance changed by max %d (MaximumFee)",
+                assetKind,
+                maximumFee
+            );
+            const expectedBalance = new BigNumber(
+                this.startingBalances.get(assetKind)
+            );
+            const currentWalletBalance = await wallet.getBalance();
+            const balanceInclFees = expectedBalance.minus(maximumFee);
+            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+        }
+    }
+
+    public async assertAlphaFunded() {
+        await this.assertLedgerState("alpha_ledger", "FUNDED");
+    }
+
+    public async assertBetaFunded() {
+        await this.assertLedgerState("beta_ledger", "FUNDED");
+    }
+
+    public async assertAlphaRedeemed() {
+        await this.assertLedgerState("alpha_ledger", "REDEEMED");
+    }
+
+    public async assertBetaRedeemed() {
+        await this.assertLedgerState("beta_ledger", "REDEEMED");
+    }
+
+    public async assertAlphaRefunded() {
+        await this.assertLedgerState("alpha_ledger", "REFUNDED");
+    }
+
+    public async assertBetaRefunded() {
+        await this.assertLedgerState("beta_ledger", "REFUNDED");
+    }
+
     public async restart() {
         this.cndInstance.stop();
         await this.cndInstance.start();
@@ -252,6 +335,39 @@ export class Actor {
 
     public stop() {
         this.cndInstance.stop();
+    }
+
+    private async assertLedgerState(
+        ledger: string,
+        status:
+            | "NOT_DEPLOYED"
+            | "DEPLOYED"
+            | "FUNDED"
+            | "REDEEMED"
+            | "REFUNDED"
+            | "INCORRECTLY_FUNDED"
+    ) {
+        this.logger.debug(
+            "Waiting for cnd to see %s in state %s for swap @ %s",
+            ledger,
+            status,
+            this.swap.self
+        );
+
+        let swapEntity;
+
+        do {
+            swapEntity = await this.swap.fetchDetails();
+
+            await sleep(200);
+        } while (swapEntity.properties.state[ledger].status !== status);
+
+        this.logger.debug(
+            "cnd saw %s in state %s for swap @ %s",
+            ledger,
+            status,
+            this.swap.self
+        );
     }
 
     private async additionalIdentities(
@@ -305,7 +421,11 @@ export class Actor {
                 defaultLedgerDescriptionForAsset(asset.name).name
             ].getBalance();
 
-            this.logger.debug("Starting %s balance: ", asset.name, balance);
+            this.logger.debug(
+                "Starting %s balance: ",
+                asset.name,
+                balance.toString()
+            );
             this.startingBalances.set(asset.name, balance);
         }
     }
@@ -366,8 +486,8 @@ function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
 }
 
 function defaultExpiryTimes() {
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 8;
+    const betaExpiry = Math.round(Date.now() / 1000) + 3;
 
     return {
         alpha_expiry: alphaExpiry,

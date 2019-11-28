@@ -27,9 +27,13 @@ setTimeout(function() {
         it("bitcoin ether", async function() {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
+
             await alice.fund();
+
             await bob.fund();
+
             await alice.redeem();
+
             await bob.redeem();
 
             await alice.assertSwapped();

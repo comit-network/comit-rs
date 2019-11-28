@@ -8,7 +8,7 @@ setTimeout(function() {
 
     beforeEach(async function() {
         this.timeout(20000);
-        const actors = await createActors("e2e-rfc003-eth-btc-happy.log");
+        const actors = await createActors("e2e-rfc003-eth-btc-refund.log");
         alice = actors.alice;
         bob = actors.bob;
     });
@@ -22,19 +22,19 @@ setTimeout(function() {
         }
     });
 
-    describe("happy path", function() {
+    describe("Bob refunds and then Alice refunds", function() {
         this.timeout(60000);
         it("ether bitcoin", async function() {
-            await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
+            await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
             await alice.fund();
             await bob.fund();
-            await alice.redeem();
-            await bob.redeem();
+            await bob.refund();
+            await alice.refund();
 
-            await alice.assertSwapped();
-            await bob.assertSwapped();
+            await bob.assertRefunded();
+            await alice.assertRefunded();
         });
     });
     run();

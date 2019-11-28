@@ -121,11 +121,8 @@ export class LedgerRunner {
         const instance = this.runningLedgers.ethereum as ParityInstance;
 
         if (instance) {
-            const host = "localhost";
-            const port = instance.rpcPort;
-
             return {
-                rpc_url: `http://${host}:${port}`,
+                rpc_url: `http://localhost:${instance.rpcPort}`,
             };
         } else {
             return Promise.reject("ethereum not yet started");
