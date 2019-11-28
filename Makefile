@@ -15,10 +15,10 @@ init_git_hooks: $(GIT_HOOKS)
 	git config core.hooksPath $(GIT_HOOKS_PATH)
 
 install_rust:
-	$(RUSTUP) install $(TOOLCHAIN)
+	$(RUSTUP) toolchain list | grep -q $(TOOLCHAIN) || $(RUSTUP) install $(TOOLCHAIN)
 
 install_rust_nightly:
-	$(RUSTUP) install $(NIGHTLY_TOOLCHAIN)
+	$(RUSTUP) toolchain list | grep -q $(NIGHTLY_TOOLCHAIN) || $(RUSTUP) install $(NIGHTLY_TOOLCHAIN)
 
 ## Dev environment
 
