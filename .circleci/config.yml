@@ -93,8 +93,9 @@ jobs:
       - install_rust
       - install_node_devlibs
       - print_current_versions
+      - setup_remote_docker
       - run:
-          name: "Package & Publish Release on GitHub"
+          name: "Package & Publish Release on GitHub and Docker Hub"
           command: |
             set -v
             VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
@@ -107,6 +108,12 @@ jobs:
             go get github.com/tcnksm/ghr
             ls ~/package/
             ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
+
+            echo $DOCKER_HUB_TOKEN | docker login -u thomaseizinger --password-stdin
+
+            docker build . -t comitnetwork/cnd:${VERSION} -t comitnetwork/cnd:latest
+            docker push comitnetwork/cnd:${VERSION}
+            docker push comitnetwork/cnd:latest
 
 commands:
   install_node_devlibs:
