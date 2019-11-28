@@ -15,7 +15,7 @@ import { Actors } from "./index";
 
 export class Actor {
     public static defaultActionConfig = {
-        maxTimeoutSecs: 5,
+        maxTimeoutSecs: 10,
         tryIntervalSecs: 1,
     };
 
@@ -131,13 +131,14 @@ export class Actor {
 
         const comitClient: ComitClient = this.getComitClient();
 
+        const defaultExpiries = defaultExpiryTimes();
         const payload = {
             alpha_ledger: alphaLedger,
             beta_ledger: betaLedger,
             alpha_asset: alphaAsset,
             beta_asset: betaAsset,
-            alpha_expiry: defaultExpiryTimes().alpha_expiry,
-            beta_expiry: defaultExpiryTimes().beta_expiry,
+            alpha_expiry: defaultExpiries.alpha_expiry,
+            beta_expiry: defaultExpiries.beta_expiry,
             peer: {
                 peer_id: await to.cnd.getPeerId(),
                 address_hint: await to.cnd
@@ -159,7 +160,7 @@ export class Actor {
 
     public async accept() {
         if (!this.swap) {
-            throw new Error("Cannot accept inexistent swap");
+            throw new Error("Cannot accept non existing swap");
         }
 
         await this.swap.accept(Actor.defaultActionConfig);
@@ -167,16 +168,25 @@ export class Actor {
 
     public async fund() {
         if (!this.swap) {
-            throw new Error("Cannot fund inexistent swap");
+            throw new Error("Cannot fund non existing swap");
         }
 
         this.logger.debug("Funding as part of swap @ %s", this.swap.self);
         await this.swap.fund(Actor.defaultActionConfig);
     }
 
+    public async refund() {
+        if (!this.swap) {
+            throw new Error("Cannot refund non existing swap");
+        }
+
+        this.logger.debug("Refunding as part of swap @ %s", this.swap.self);
+        await this.swap.refund(Actor.defaultActionConfig);
+    }
+
     public async redeem() {
         if (!this.swap) {
-            throw new Error("Cannot redeem inexistent swap");
+            throw new Error("Cannot redeem non existing swap");
         }
 
         this.logger.debug("Redeeming as part of swap @ %s", this.swap.self);
@@ -231,6 +241,30 @@ export class Actor {
                         )
                     )
             ).to.eventually.be.true;
+        }
+    }
+
+    public async assertRefunded() {
+        this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
+
+        for (const [assetKind] of this.expectedBalanceChanges.entries()) {
+            const wallet = this.wallets[
+                defaultLedgerDescriptionForAsset(assetKind).name
+            ];
+            const maximumFee = wallet.MaximumFee;
+
+            this.logger.debug(
+                "Checking that %s balance changed by max %d (MaximumFee)",
+                assetKind,
+                maximumFee
+            );
+            const expectedBalance = new BigNumber(
+                this.startingBalances.get(assetKind)
+            );
+
+            const actualBalance = new BigNumber(await wallet.getBalance());
+            await expect(actualBalance.gte(expectedBalance.sub(maximumFee))).to
+                .be.true;
         }
     }
 
@@ -351,8 +385,8 @@ function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
 }
 
 function defaultExpiryTimes() {
-    const alphaExpiry = new Date("2080-06-11T23:00:00Z").getTime() / 1000;
-    const betaExpiry = new Date("2080-06-11T13:00:00Z").getTime() / 1000;
+    const alphaExpiry = Math.round(Date.now() / 1000) + 5;
+    const betaExpiry = Math.round(Date.now() / 1000);
 
     return {
         alpha_expiry: alphaExpiry,
