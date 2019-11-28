@@ -1,16 +1,13 @@
 mod transaction_pattern;
 mod web3_connector;
 
-#[cfg(test)]
-mod quickcheck_impls;
-
 pub use self::{
     transaction_pattern::{Event, Topic, TransactionPattern},
     web3_connector::Web3Connector,
 };
-use crate::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash};
+use crate::btsieve::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash};
 use ethereum_support::TransactionAndReceipt;
-use futures::{compat::Future01CompatExt, TryFutureExt};
+use futures_core::{compat::Future01CompatExt, TryFutureExt};
 use std::ops::Add;
 use tokio::{
     prelude::{stream, Stream},

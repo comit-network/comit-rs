@@ -1,4 +1,4 @@
-use crate::{BlockByHash, LatestBlock, ReceiptByHash};
+use crate::btsieve::{BlockByHash, LatestBlock, ReceiptByHash};
 use ethereum_support::{
     web3::{
         self,
@@ -12,7 +12,7 @@ use ethereum_support::{
 use reqwest::Url;
 use std::sync::Arc;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Web3Connector {
     web3: Arc<Web3<Http>>,
 }

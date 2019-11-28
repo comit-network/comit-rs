@@ -3,21 +3,18 @@ mod blockchain_info_connector;
 mod transaction_ext;
 mod transaction_pattern;
 
-#[cfg(test)]
-mod quickcheck_impls;
-
 pub use self::{
     bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
     transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 
-use crate::{BlockByHash, LatestBlock, MatchingTransactions};
+use crate::btsieve::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     hashes::sha256d,
     BitcoinHash,
 };
-use futures::{compat::Future01CompatExt, TryFutureExt};
+use futures_core::{compat::Future01CompatExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
 use std::{collections::HashSet, fmt::Debug, ops::Add};
 use tokio::{

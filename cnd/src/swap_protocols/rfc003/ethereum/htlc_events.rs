@@ -1,20 +1,22 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    ledger::Ethereum,
-    rfc003::{
-        self,
-        events::{
-            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-            RedeemedOrRefundedFuture, Refunded,
-        },
-        state_machine::HtlcParams,
-        Secret,
+use crate::{
+    btsieve::{
+        ethereum::{Event, Topic, TransactionPattern, Web3Connector},
+        MatchingTransactions,
     },
-};
-use btsieve::{
-    ethereum::{Event, Topic, TransactionPattern, Web3Connector},
     first_or_else::StreamExt,
-    MatchingTransactions,
+    swap_protocols::{
+        asset::Asset,
+        ledger::Ethereum,
+        rfc003::{
+            self,
+            events::{
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+                RedeemedOrRefundedFuture, Refunded,
+            },
+            state_machine::HtlcParams,
+            Secret,
+        },
+    },
 };
 use ethereum_support::{
     web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,

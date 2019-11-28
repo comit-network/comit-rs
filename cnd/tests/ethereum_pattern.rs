@@ -1,4 +1,4 @@
-use btsieve::ethereum::{Event, Topic, TransactionPattern};
+use cnd::btsieve::ethereum::{Event, Topic, TransactionPattern};
 use ethereum_support::{Block, Transaction, TransactionReceipt};
 use spectral::prelude::*;
 

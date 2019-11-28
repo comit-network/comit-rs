@@ -6,6 +6,8 @@ use crate::{
         HashFunction, Role, SwapId, Timestamp,
     },
 };
+use bitcoin::hashes::{sha256d, Hash};
+use ethereum_support::Bytes;
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
@@ -13,7 +15,7 @@ use uuid::Uuid;
 
 /// Generic newtype that allows us to implement quickcheck::Arbitrary on foreign
 /// types
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Copy)]
 pub struct Quickcheck<I>(pub I);
 
 impl<I> Deref for Quickcheck<I> {
@@ -89,6 +91,17 @@ impl Arbitrary for Quickcheck<ethereum_support::U256> {
     }
 }
 
+impl Arbitrary for Quickcheck<sha256d::Hash> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
+
+        match sha256d::Hash::from_slice(&bytes) {
+            Ok(block_id) => Quickcheck(block_id),
+            Err(bitcoin::hashes::Error::InvalidLength(..)) => panic!("we always generate 32 bytes"),
+        }
+    }
+}
+
 impl Arbitrary for Quickcheck<ethereum_support::EtherQuantity> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let u256 = *Quickcheck::<ethereum_support::U256>::arbitrary(g);
@@ -142,6 +155,41 @@ impl Arbitrary for Quickcheck<ethereum_support::Address> {
         let bytes = *Quickcheck::<[u8; 20]>::arbitrary(g);
 
         Quickcheck(ethereum_support::Address::from(bytes))
+    }
+}
+
+impl Arbitrary for Quickcheck<ethereum_support::U128> {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        let bytes = *Quickcheck::<[u8; 16]>::arbitrary(g);
+
+        Quickcheck(ethereum_support::U128::from(&bytes))
+    }
+}
+
+impl Arbitrary for Quickcheck<ethereum_support::H256> {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
+
+        Quickcheck(ethereum_support::H256::from(&bytes))
+    }
+}
+
+impl Arbitrary for Quickcheck<ethereum_support::Transaction> {
+    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
+        Quickcheck(ethereum_support::Transaction {
+            hash: *Quickcheck::<ethereum_support::H256>::arbitrary(g),
+            nonce: *Quickcheck::<ethereum_support::U256>::arbitrary(g),
+            block_hash: Option::<Quickcheck<ethereum_support::H256>>::arbitrary(g).map(|i| i.0),
+            block_number: Option::<Quickcheck<ethereum_support::U256>>::arbitrary(g).map(|i| i.0),
+            transaction_index: Option::<Quickcheck<ethereum_support::U128>>::arbitrary(g)
+                .map(|i| i.0),
+            from: *Quickcheck::<ethereum_support::H160>::arbitrary(g),
+            to: Option::<Quickcheck<ethereum_support::H160>>::arbitrary(g).map(|i| i.0),
+            value: *Quickcheck::<ethereum_support::U256>::arbitrary(g),
+            gas_price: *Quickcheck::<ethereum_support::U256>::arbitrary(g),
+            gas: *Quickcheck::<ethereum_support::U256>::arbitrary(g),
+            input: Bytes(Arbitrary::arbitrary(g)),
+        })
     }
 }
 

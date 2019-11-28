@@ -12,7 +12,6 @@ async-trait = "0.1"
 binary_macros = "0.6"
 bitcoin = "0.19.1"
 blockchain_contracts = "0.1"
-btsieve = { version = "0.1.0", path = "../btsieve" }
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
@@ -23,6 +22,7 @@ diesel_migrations = "1.4.0"
 directories = "2.0"
 either = "1.5"
 enum-display-derive = "0.1"
+ethbloom = "0.6.4"
 ethereum_support = { path = "../internal/ethereum_support" }
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
@@ -54,6 +54,7 @@ state_machine_future = { version = "0.2" }
 structopt = "0.3"
 strum = "0.16"
 strum_macros = "0.16"
+testcontainers = "0.8"
 thiserror = "1"
 tokio = "0.1"
 toml = "0.5"

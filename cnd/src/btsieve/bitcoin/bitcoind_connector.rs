@@ -1,4 +1,6 @@
-use crate::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock};
+use crate::btsieve::{
+    bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
+};
 use bitcoin::{hashes::sha256d, Network};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
@@ -9,7 +11,7 @@ struct ChainInfo {
     bestblockhash: sha256d::Hash,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
@@ -33,7 +35,7 @@ impl BitcoindConnector {
 }
 
 impl LatestBlock for BitcoindConnector {
-    type Error = crate::bitcoin::Error;
+    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
@@ -66,7 +68,7 @@ impl LatestBlock for BitcoindConnector {
 }
 
 impl BlockByHash for BitcoindConnector {
-    type Error = crate::bitcoin::Error;
+    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 

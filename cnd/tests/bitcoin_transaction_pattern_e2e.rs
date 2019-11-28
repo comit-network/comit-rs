@@ -1,6 +1,6 @@
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
-use btsieve::{
+use cnd::btsieve::{
     bitcoin::{BitcoindConnector, TransactionPattern},
     MatchingTransactions,
 };

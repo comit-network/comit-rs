@@ -1,4 +1,4 @@
-use crate::bitcoin::transaction_ext::TransactionExt;
+use crate::btsieve::bitcoin::transaction_ext::TransactionExt;
 use ::bitcoin::{Address, OutPoint, Transaction};
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]

@@ -2,8 +2,8 @@
 #![forbid(unsafe_code)]
 use crate::cli::Options;
 use anyhow::Context;
-use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use cnd::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{self, Settings},
     db::{DetermineTypes, Retrieve, Saver, Sqlite},
     http_api::{self, route_factory},

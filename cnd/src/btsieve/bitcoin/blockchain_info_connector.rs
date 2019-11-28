@@ -1,4 +1,6 @@
-use crate::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock};
+use crate::btsieve::{
+    bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
+};
 use bitcoin::{hashes::sha256d, Network};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
@@ -9,13 +11,13 @@ struct BlockchainInfoLatestBlock {
     hash: sha256d::Hash,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct BlockchainInfoConnector {
     client: Client,
 }
 
 impl BlockchainInfoConnector {
-    pub fn new(network: Network) -> Result<Self, crate::bitcoin::Error> {
+    pub fn new(network: Network) -> Result<Self, crate::btsieve::bitcoin::Error> {
         // Currently configured for Mainnet only because blockchain.info does not
         // support hex-encoded block retrieval for testnet.
 
@@ -24,7 +26,7 @@ impl BlockchainInfoConnector {
                 "Network {} not supported for bitcoin http blocksource",
                 network
             );
-            return Err(crate::bitcoin::Error::UnsupportedNetwork(format!(
+            return Err(crate::btsieve::bitcoin::Error::UnsupportedNetwork(format!(
                 "Network {} currently not supported for bitcoin http plocksource",
                 network
             )));
@@ -48,7 +50,7 @@ impl BlockchainInfoConnector {
 }
 
 impl LatestBlock for BlockchainInfoConnector {
-    type Error = crate::bitcoin::Error;
+    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
@@ -60,11 +62,11 @@ impl LatestBlock for BlockchainInfoConnector {
             .client
             .get(latest_block_url)
             .send()
-            .map_err(crate::bitcoin::Error::Reqwest)
+            .map_err(crate::btsieve::bitcoin::Error::Reqwest)
             .and_then(move |mut response| {
                 response
                     .json::<BlockchainInfoLatestBlock>()
-                    .map_err(crate::bitcoin::Error::Reqwest)
+                    .map_err(crate::btsieve::bitcoin::Error::Reqwest)
             });
 
         let cloned_self = self.clone();
@@ -77,7 +79,7 @@ impl LatestBlock for BlockchainInfoConnector {
 }
 
 impl BlockByHash for BlockchainInfoConnector {
-    type Error = crate::bitcoin::Error;
+    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 

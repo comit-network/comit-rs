@@ -14,13 +14,14 @@ extern crate diesel_migrations;
 
 #[macro_use]
 pub mod libp2p_comit_ext;
-
 #[macro_use]
 pub mod db;
 
 pub mod bitcoin;
+pub mod btsieve;
 pub mod comit_api;
 pub mod config;
+pub mod first_or_else;
 pub mod http_api;
 pub mod load_swaps;
 pub mod logging;
