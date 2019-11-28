@@ -52,13 +52,10 @@ impl Seed {
     /// Construct a seed from base64 data read in from pem file.
     pub fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
         let file = Path::new(&seed_file);
-        log::info!(
-            "Found seed file, reading from {}",
-            &file.to_path_buf().display()
-        );
-
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
+
+        log::info!("Read in seed from file: {}", &file.to_path_buf().display());
 
         Seed::from_pem(pem)
     }
