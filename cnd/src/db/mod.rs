@@ -48,6 +48,8 @@ impl Sqlite {
         let connection = SqliteConnection::establish(&format!("file:{}", path.display()))?;
         embedded_migrations::run(&connection)?;
 
+        log::info!("SQLite database file: {}", path.display());
+
         Ok(Sqlite {
             connection: Arc::new(async_std::sync::Mutex::new(connection)),
         })
