@@ -1,12 +1,14 @@
 pub mod htlc_events;
 
-use crate::swap_protocols::{
-    actions::ethereum::DeployContract,
-    ledger::Ethereum,
-    rfc003::{state_machine::HtlcParams, Ledger},
+use crate::{
+    ethereum::{Address, Bytes, Erc20Token, EtherQuantity},
+    swap_protocols::{
+        actions::ethereum::DeployContract,
+        ledger::Ethereum,
+        rfc003::{state_machine::HtlcParams, Ledger},
+    },
 };
 use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
-use ethereum_support::{web3::types::Address, Bytes, Erc20Token, EtherQuantity};
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 

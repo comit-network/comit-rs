@@ -1,4 +1,4 @@
-use ethereum_support::{FromDecimalStr, U256};
+use crate::ethereum::{FromDecimalStr, U256};
 use std::{fmt, str::FromStr};
 
 /// A new type for representing satoshis
@@ -29,7 +29,7 @@ impl From<DecimalU256> for U256 {
 }
 
 impl FromStr for DecimalU256 {
-    type Err = <ethereum_support::U256 as FromDecimalStr>::Err;
+    type Err = <crate::ethereum::U256 as FromDecimalStr>::Err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         U256::from_decimal_str(s).map(DecimalU256)
@@ -47,10 +47,10 @@ impl fmt::Display for DecimalU256 {
 /// Together with the `Text` sql type, this will store an ethereum address in
 /// hex encoding.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EthereumAddress(pub ethereum_support::Address);
+pub struct EthereumAddress(pub crate::ethereum::Address);
 
 impl FromStr for EthereumAddress {
-    type Err = <ethereum_support::Address as FromStr>::Err;
+    type Err = <crate::ethereum::Address as FromStr>::Err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse().map(EthereumAddress)

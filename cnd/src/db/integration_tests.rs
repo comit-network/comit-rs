@@ -4,6 +4,7 @@ use crate::{
         swap_types::{DetermineTypes, SwapTypes},
         AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
     },
+    ethereum::{Erc20Token, EtherQuantity},
     quickcheck::Quickcheck,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
@@ -11,7 +12,6 @@ use crate::{
     },
 };
 use bitcoin::Amount as BitcoinAmount;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use std::path::Path;
 
 macro_rules! db_roundtrip_test {

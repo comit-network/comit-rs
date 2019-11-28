@@ -1,4 +1,5 @@
 use crate::{
+    ethereum::Erc20Token,
     libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
         asset::AssetKind,
@@ -8,7 +9,6 @@ use crate::{
     },
 };
 use bitcoin::util::amount::Denomination;
-use ethereum_support::Erc20Token;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
 use std::fmt;
@@ -146,9 +146,11 @@ impl FromHeader for Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::swap_protocols::{ledger::ethereum, HashFunction};
+    use crate::{
+        ethereum::{Address, Erc20Quantity, U256},
+        swap_protocols::{ledger::ethereum, HashFunction},
+    };
     use bitcoin::Amount;
-    use ethereum_support::{Address, Erc20Quantity, U256};
     use spectral::prelude::*;
 
     #[test]

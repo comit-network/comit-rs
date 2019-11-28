@@ -1,15 +1,17 @@
-use crate::swap_protocols::{
-    actions::{ethereum, Actions},
-    asset::Asset,
-    ledger::Ethereum,
-    rfc003::{
-        actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-        alice::{self, SwapCommunication},
-        state_machine::HtlcParams,
-        Ledger, LedgerState,
+use crate::{
+    ethereum::Erc20Token,
+    swap_protocols::{
+        actions::{ethereum, Actions},
+        asset::Asset,
+        ledger::Ethereum,
+        rfc003::{
+            actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+            alice::{self, SwapCommunication},
+            state_machine::HtlcParams,
+            Ledger, LedgerState,
+        },
     },
 };
-use ethereum_support::Erc20Token;
 use std::convert::Infallible;
 
 impl<BL, BA> Actions for alice::State<Ethereum, BL, Erc20Token, BA>

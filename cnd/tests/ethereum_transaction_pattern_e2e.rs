@@ -1,13 +1,15 @@
-use cnd::btsieve::{
-    ethereum::{TransactionPattern, Web3Connector},
-    MatchingTransactions,
-};
-use ethereum_support::{
-    web3::{
-        transports::{EventLoopHandle, Http},
-        Web3,
+use cnd::{
+    btsieve::{
+        ethereum::{TransactionPattern, Web3Connector},
+        MatchingTransactions,
     },
-    TransactionRequest, U256,
+    ethereum::{
+        web3::{
+            transports::{EventLoopHandle, Http},
+            Web3,
+        },
+        TransactionRequest, U256,
+    },
 };
 use reqwest::Url;
 use std::time::{Duration, Instant};

@@ -1,4 +1,4 @@
-use crate::web3::types::U256;
+use crate::ethereum::U256;
 use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
 use num::{

@@ -52,17 +52,17 @@ pub enum ActionResponseBody {
         min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
-        data: ethereum_support::Bytes,
-        amount: ethereum_support::EtherQuantity,
-        gas_limit: ethereum_support::U256,
+        data: crate::ethereum::Bytes,
+        amount: crate::ethereum::EtherQuantity,
+        gas_limit: crate::ethereum::U256,
         network: ethereum_network::Network,
         chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
-        contract_address: ethereum_support::Address,
+        contract_address: crate::ethereum::Address,
         #[serde(skip_serializing_if = "Option::is_none")]
-        data: Option<ethereum_support::Bytes>,
-        gas_limit: ethereum_support::U256,
+        data: Option<crate::ethereum::Bytes>,
+        gas_limit: crate::ethereum::U256,
         chain_id: ledger::ethereum::ChainId,
         network: ethereum_network::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -314,9 +314,11 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::swap_protocols::ledger::ethereum::ChainId;
+    use crate::{
+        ethereum::{Address as EthereumAddress, U256},
+        swap_protocols::ledger::ethereum::ChainId,
+    };
     use bitcoin::Address as BitcoinAddress;
-    use ethereum_support::{Address as EthereumAddress, U256};
     use std::str::FromStr;
 
     #[test]

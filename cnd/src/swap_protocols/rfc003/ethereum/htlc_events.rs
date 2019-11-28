@@ -3,6 +3,10 @@ use crate::{
         ethereum::{Event, Topic, TransactionPattern, Web3Connector},
         MatchingTransactions,
     },
+    ethereum::{
+        Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
+        TransactionAndReceipt, H256,
+    },
     first_or_else::StreamExt,
     swap_protocols::{
         asset::Asset,
@@ -17,10 +21,6 @@ use crate::{
             Secret,
         },
     },
-};
-use ethereum_support::{
-    web3::types::Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
-    TransactionAndReceipt, H256,
 };
 use futures::{
     future::{self, Either},
@@ -178,7 +178,7 @@ fn htlc_redeemed_or_refunded<A: Asset>(
 
 mod erc20 {
     use super::*;
-    use ethereum_support::{Erc20Quantity, U256};
+    use crate::ethereum::{Erc20Quantity, U256};
 
     impl HtlcEvents<Ethereum, Erc20Token> for Web3Connector {
         fn htlc_deployed(

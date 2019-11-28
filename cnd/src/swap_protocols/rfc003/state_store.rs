@@ -259,6 +259,7 @@ impl StateStore for InMemoryStateStore {
 mod tests {
     use super::*;
     use crate::{
+        ethereum::{Address, EtherQuantity},
         seed::Seed,
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
@@ -267,7 +268,6 @@ mod tests {
         },
     };
     use bitcoin::Amount;
-    use ethereum_support::{Address, EtherQuantity};
     use spectral::prelude::*;
 
     #[test]

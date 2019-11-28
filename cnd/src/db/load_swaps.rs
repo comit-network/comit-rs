@@ -4,6 +4,7 @@ use crate::{
         new_types::{DecimalU256, EthereumAddress, Satoshis},
         schema, Sqlite,
     },
+    ethereum::{Erc20Quantity, Erc20Token, EtherQuantity, U256},
     swap_protocols::{
         asset::Asset,
         ledger::{ethereum::ChainId, Bitcoin, Ethereum},
@@ -16,7 +17,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use diesel::{self, prelude::*, RunQueryDsl};
-use ethereum_support::{Erc20Quantity, Erc20Token, EtherQuantity, U256};
 
 pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>);
 
@@ -53,7 +53,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity> for Sql
         &self,
         key: SwapId,
     ) -> anyhow::Result<
-        AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, ethereum_support::EtherQuantity>,
+        AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, crate::ethereum::EtherQuantity>,
     > {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,

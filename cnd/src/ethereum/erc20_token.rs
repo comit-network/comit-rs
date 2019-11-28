@@ -1,4 +1,4 @@
-use crate::{erc20_quantity::Erc20Quantity, web3::types::Address};
+use crate::ethereum::{erc20_quantity::Erc20Quantity, Address};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]

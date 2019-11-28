@@ -1,5 +1,7 @@
-use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use ethereum_support::{Address, Transaction};
+use crate::{
+    ethereum::{Address, Transaction},
+    swap_protocols::ledger::{Ledger, LedgerKind},
+};
 use serde::{Deserialize, Serialize};
 
 /// `network` is only kept for backward compatibility with client

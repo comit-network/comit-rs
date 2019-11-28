@@ -1,15 +1,17 @@
-use crate::swap_protocols::{
-    actions::ethereum::{CallContract, DeployContract},
-    ledger::Ethereum,
-    rfc003::{
-        actions::{FundAction, RedeemAction, RefundAction},
-        secret_source::SecretSource,
-        state_machine::HtlcParams,
-        Secret,
+use crate::{
+    ethereum::{Address as EthereumAddress, Bytes, EtherQuantity, Transaction},
+    swap_protocols::{
+        actions::ethereum::{CallContract, DeployContract},
+        ledger::Ethereum,
+        rfc003::{
+            actions::{FundAction, RedeemAction, RefundAction},
+            secret_source::SecretSource,
+            state_machine::HtlcParams,
+            Secret,
+        },
     },
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
-use ethereum_support::{Address as EthereumAddress, Bytes, EtherQuantity, Transaction};
 
 impl FundAction<Ethereum, EtherQuantity> for (Ethereum, EtherQuantity) {
     type FundActionOutput = DeployContract;

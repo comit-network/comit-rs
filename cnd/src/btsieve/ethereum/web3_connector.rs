@@ -1,14 +1,15 @@
-use crate::btsieve::{BlockByHash, LatestBlock, ReceiptByHash};
-use ethereum_support::{
-    web3::{
-        self,
-        futures::Future,
-        transports::{EventLoopHandle, Http},
-        types::BlockId,
-        Web3,
+use crate::{
+    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
+    ethereum::{
+        web3::{
+            self,
+            transports::{EventLoopHandle, Http},
+            Web3,
+        },
+        BlockId, BlockNumber,
     },
-    BlockNumber,
 };
+use futures::Future;
 use reqwest::Url;
 use std::sync::Arc;
 
@@ -30,9 +31,9 @@ impl Web3Connector {
 }
 
 impl LatestBlock for Web3Connector {
-    type Error = web3::Error;
-    type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
-    type BlockHash = ethereum_support::H256;
+    type Error = crate::ethereum::web3::Error;
+    type Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>;
+    type BlockHash = crate::ethereum::H256;
 
     fn latest_block(
         &mut self,
@@ -46,9 +47,9 @@ impl LatestBlock for Web3Connector {
 }
 
 impl BlockByHash for Web3Connector {
-    type Error = web3::Error;
-    type Block = Option<ethereum_support::Block<ethereum_support::Transaction>>;
-    type BlockHash = ethereum_support::H256;
+    type Error = crate::ethereum::web3::Error;
+    type Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>;
+    type BlockHash = crate::ethereum::H256;
 
     fn block_by_hash(
         &self,
@@ -60,9 +61,9 @@ impl BlockByHash for Web3Connector {
 }
 
 impl ReceiptByHash for Web3Connector {
-    type Receipt = Option<ethereum_support::TransactionReceipt>;
-    type TransactionHash = ethereum_support::H256;
-    type Error = web3::Error;
+    type Receipt = Option<crate::ethereum::TransactionReceipt>;
+    type TransactionHash = crate::ethereum::H256;
+    type Error = crate::ethereum::web3::Error;
 
     fn receipt_by_hash(
         &self,
