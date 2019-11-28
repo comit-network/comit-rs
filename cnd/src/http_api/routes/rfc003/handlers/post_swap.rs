@@ -1,67 +1,185 @@
 use crate::{
     db::{Save, Saver, Swap},
-    ethereum::{Erc20Token, EtherQuantity},
-    http_api::{self, asset::HttpAsset, ledger::HttpLedger},
+    ethereum,
+    http_api::{HttpAsset, HttpLedger},
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
         asset::Asset,
-        ledger::{Bitcoin, Ethereum},
+        ledger,
         rfc003::{
-            self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
-            state_store::StateStore, Accept, Ledger, Request, SecretSource, Spawn,
+            self, alice::State, create_ledger_events::CreateLedgerEvents, state_store::StateStore,
+            Accept, Ledger, Request, SecretHash, SecretSource, Spawn,
         },
         HashFunction, LedgerConnectors, Role, SwapId,
     },
     timestamp::Timestamp,
 };
-use bitcoin::Amount as BitcoinAmount;
 use futures::Stream;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
 use serde::{Deserialize, Serialize};
+use std::str::FromStr;
 
 pub async fn handle_post_swap<
     D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver,
 >(
     dependencies: D,
-    request_body_kind: SwapRequestBodyKind,
+    body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
+    let seed = dependencies.swap_seed(id);
+    let secret_hash = seed.secret().hash();
 
-    match request_body_kind {
-        SwapRequestBodyKind::BitcoinEthereumBitcoinErc20Token(body) => {
-            initiate_request(dependencies, body, id).await?;
-            Ok(SwapCreated { id })
+    let body = serde_json::from_value(body)?;
+
+    match body {
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Bitcoin(alpha_ledger),
+            beta_ledger: HttpLedger::Ethereum(beta_ledger),
+            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
+            beta_asset: HttpAsset::Ether(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request(dependencies, id, peer, request).await?;
         }
-        SwapRequestBodyKind::BitcoinEthereumBitcoinAmountEtherQuantity(body) => {
-            initiate_request(dependencies, body, id).await?;
-            Ok(SwapCreated { id })
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
+            beta_ledger: HttpLedger::Bitcoin(beta_ledger),
+            alpha_asset: HttpAsset::Ether(alpha_asset),
+            beta_asset: HttpAsset::Bitcoin(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request(dependencies, id, peer, request).await?;
         }
-        SwapRequestBodyKind::EthereumBitcoinEtherQuantityBitcoinAmount(body) => {
-            initiate_request(dependencies, body, id).await?;
-            Ok(SwapCreated { id })
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Bitcoin(alpha_ledger),
+            beta_ledger: HttpLedger::Ethereum(beta_ledger),
+            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
+            beta_asset: HttpAsset::Erc20(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request(dependencies, id, peer, request).await?;
         }
-        SwapRequestBodyKind::EthereumBitcoinErc20TokenBitcoinAmount(body) => {
-            initiate_request(dependencies, body, id).await?;
-            Ok(SwapCreated { id })
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
+            beta_ledger: HttpLedger::Bitcoin(beta_ledger),
+            alpha_asset: HttpAsset::Erc20(alpha_asset),
+            beta_asset: HttpAsset::Bitcoin(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request(dependencies, id, peer, request).await?;
         }
-        SwapRequestBodyKind::UnsupportedCombination(body) => {
-            Err(anyhow::Error::from(UnsupportedSwap {
+        _ => {
+            return Err(anyhow::Error::from(UnsupportedSwap {
                 alpha_ledger: body.alpha_ledger,
                 beta_ledger: body.beta_ledger,
                 alpha_asset: body.alpha_asset,
                 beta_asset: body.beta_asset,
             }))
         }
-        SwapRequestBodyKind::MalformedRequest(body) => {
-            Err(anyhow::Error::from(MalformedRequest { body }))
-        }
+    }
+
+    Ok(SwapCreated { id })
+}
+
+#[allow(clippy::too_many_arguments)]
+fn new_request<AL, BL, AA, BA>(
+    id: SwapId,
+    alpha_ledger: AL,
+    beta_ledger: BL,
+    alpha_asset: AA,
+    beta_asset: BA,
+    alpha_expiry: Option<Timestamp>,
+    beta_expiry: Option<Timestamp>,
+    identities: Identities<AL, BL>,
+    secret_hash: SecretHash,
+) -> rfc003::Request<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
+    rfc003::Request {
+        swap_id: id,
+        alpha_ledger,
+        beta_ledger,
+        alpha_asset,
+        beta_asset,
+        hash_function: HashFunction::Sha256,
+        alpha_ledger_refund_identity: identities.alpha_ledger_refund_identity,
+        beta_ledger_redeem_identity: identities.beta_ledger_redeem_identity,
+        alpha_expiry: alpha_expiry.unwrap_or_else(default_alpha_expiry),
+        beta_expiry: beta_expiry.unwrap_or_else(default_beta_expiry),
+        secret_hash,
     }
 }
 
+/// An error type for describing that a particular combination of assets and
+/// ledgers is not supported.
 #[derive(Debug, thiserror::Error)]
 #[error("swapping {alpha_asset:?} for {beta_asset:?} from {alpha_ledger:?} to {beta_ledger:?} is not supported")]
 pub struct UnsupportedSwap {
@@ -71,16 +189,11 @@ pub struct UnsupportedSwap {
     beta_ledger: HttpLedger,
 }
 
-#[derive(Debug, thiserror::Error)]
-#[error("request body {body} was malformed")]
-pub struct MalformedRequest {
-    body: serde_json::Value,
-}
-
-async fn initiate_request<D, AL, BL, AA, BA, I>(
+async fn initiate_request<D, AL, BL, AA, BA>(
     dependencies: D,
-    body: SwapRequestBody<AL, BL, AA, BA, I>,
     id: SwapId,
+    peer: DialInformation,
+    swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
     LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
@@ -95,12 +208,9 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    I: ToIdentities<AL, BL>,
 {
-    let bob_dial_info = body.peer.clone();
-    let counterparty = bob_dial_info.peer_id.clone();
+    let counterparty = peer.peer_id.clone();
     let seed = dependencies.swap_seed(id);
-    let swap_request = body.to_request(id, &seed);
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
@@ -111,13 +221,13 @@ where
     let future = {
         async move {
             let response = dependencies
-                .send_request(bob_dial_info.clone(), swap_request.clone())
+                .send_request(peer.clone(), swap_request.clone())
                 .compat()
                 .await
                 .map_err(|e| {
                     log::error!(
                         "Failed to send swap request to {} because {:?}",
-                        bob_dial_info.clone(),
+                        peer.clone(),
                         e
                     );
                 })?;
@@ -151,135 +261,151 @@ where
     tokio::spawn(future.boxed().compat());
     Ok(())
 }
+
 #[derive(Serialize, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-#[serde(untagged)]
-pub enum SwapRequestBodyKind {
-    BitcoinEthereumBitcoinErc20Token(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, Erc20Token, OnlyRedeem<Ethereum>>,
-    ),
-    BitcoinEthereumBitcoinAmountEtherQuantity(
-        SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, EtherQuantity, OnlyRedeem<Ethereum>>,
-    ),
-    EthereumBitcoinErc20TokenBitcoinAmount(
-        SwapRequestBody<Ethereum, Bitcoin, Erc20Token, BitcoinAmount, OnlyRefund<Ethereum>>,
-    ),
-    EthereumBitcoinEtherQuantityBitcoinAmount(
-        SwapRequestBody<Ethereum, Bitcoin, EtherQuantity, BitcoinAmount, OnlyRefund<Ethereum>>,
-    ),
-    // It is important that these two come last because untagged enums are tried in order
-    UnsupportedCombination(Box<UnsupportedSwapRequestBody>),
-    MalformedRequest(serde_json::Value),
-}
-
+/// A struct describing the expected HTTP body for creating a new swap request.
+///
+/// To achieve the deserialization we need for this usecase, we make use of a
+/// lot of serde features. Check the documentation of the types used in this
+/// struct for more details.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
-pub struct SwapRequestBody<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, PartialIdentities> {
-    #[serde(with = "http_api::asset::serde_asset")]
-    alpha_asset: AA,
-    #[serde(with = "http_api::asset::serde_asset")]
-    beta_asset: BA,
-    #[serde(with = "http_api::ledger::serde_ledger")]
-    alpha_ledger: AL,
-    #[serde(with = "http_api::ledger::serde_ledger")]
-    beta_ledger: BL,
-    alpha_expiry: Option<Timestamp>,
-    beta_expiry: Option<Timestamp>,
-    #[serde(flatten)]
-    partial_identities: PartialIdentities,
-    peer: DialInformation,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct OnlyRedeem<L: Ledger> {
-    pub beta_ledger_redeem_identity: L::Identity,
-}
-
-#[derive(Deserialize, Clone, Debug, PartialEq)]
-pub struct OnlyRefund<L: Ledger> {
-    pub alpha_ledger_refund_identity: L::Identity,
-}
-
-#[derive(Debug, Clone)]
-pub struct Identities<AL: Ledger, BL: Ledger> {
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
-}
-
-pub trait ToIdentities<AL: Ledger, BL: Ledger> {
-    fn to_identities(&self, secret_source: &dyn SecretSource) -> Identities<AL, BL>;
-}
-
-#[derive(Clone, Debug, Deserialize, PartialEq)]
-pub struct UnsupportedSwapRequestBody {
+struct SwapRequestBody {
     alpha_asset: HttpAsset,
     beta_asset: HttpAsset,
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
-    alpha_ledger_refund_identity: Option<String>,
-    beta_ledger_redeem_identity: Option<String>,
-    alpha_expiry: Timestamp,
-    beta_expiry: Timestamp,
+    alpha_expiry: Option<Timestamp>,
+    beta_expiry: Option<Timestamp>,
+    #[serde(flatten)]
+    identities: HttpIdentities,
     peer: DialInformation,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, I: ToIdentities<AL, BL>>
-    ToRequest<AL, BL, AA, BA> for SwapRequestBody<AL, BL, AA, BA, I>
-{
-    fn to_request(
-        &self,
-        id: SwapId,
-        secret_source: &dyn SecretSource,
-    ) -> rfc003::Request<AL, BL, AA, BA> {
-        let Identities {
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-        } = self.partial_identities.to_identities(secret_source);
-        rfc003::Request {
-            swap_id: id,
-            alpha_asset: self.alpha_asset,
-            beta_asset: self.beta_asset,
-            alpha_ledger: self.alpha_ledger,
-            beta_ledger: self.beta_ledger,
-            hash_function: HashFunction::Sha256,
-            alpha_expiry: self.alpha_expiry.unwrap_or_else(default_alpha_expiry),
-            beta_expiry: self.beta_expiry.unwrap_or_else(default_beta_expiry),
-            secret_hash: secret_source.secret().hash(),
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-        }
-    }
+/// The identities a user may have to provide for a given swap.
+///
+/// To make the implementation easier, this is hardcoded to Ethereum addresses
+/// for now because those are always provided upfront.
+#[derive(Clone, Debug, Deserialize, PartialEq)]
+struct HttpIdentities {
+    alpha_ledger_refund_identity: Option<ethereum::Address>,
+    beta_ledger_redeem_identity: Option<ethereum::Address>,
 }
 
-impl ToIdentities<Bitcoin, Ethereum> for OnlyRedeem<Ethereum> {
-    fn to_identities(&self, secret_source: &dyn SecretSource) -> Identities<Bitcoin, Ethereum> {
+#[derive(Debug, Clone)]
+struct Identities<AL: Ledger, BL: Ledger> {
+    pub alpha_ledger_refund_identity: AL::Identity,
+    pub beta_ledger_redeem_identity: BL::Identity,
+}
+
+trait IntoIdentities<AL: Ledger, BL: Ledger> {
+    fn into_identities(
+        self,
+        secret_source: &dyn SecretSource,
+    ) -> anyhow::Result<Identities<AL, BL>>;
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{kind} identity was not expected")]
+pub struct UnexpectedIdentity {
+    kind: IdentityKind,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{kind} identity was missing")]
+pub struct MissingIdentity {
+    kind: IdentityKind,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("{kind} was not a valid ethereum address")]
+pub struct InvalidEthereumAddress {
+    kind: IdentityKind,
+    source: <ethereum::Address as FromStr>::Err,
+}
+
+#[derive(strum_macros::Display, Debug)]
+#[strum(serialize_all = "snake_case")]
+pub enum IdentityKind {
+    AlphaLedgerRefundIdentity,
+    BetaLedgerRedeemIdentity,
+}
+
+impl IntoIdentities<ledger::Bitcoin, ledger::Ethereum> for HttpIdentities {
+    fn into_identities(
+        self,
+        secret_source: &dyn SecretSource,
+    ) -> anyhow::Result<Identities<ledger::Bitcoin, ledger::Ethereum>> {
+        let HttpIdentities {
+            alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity,
+        } = self;
+
+        let beta_ledger_redeem_identity =
+            match (alpha_ledger_refund_identity, beta_ledger_redeem_identity) {
+                (None, Some(beta_ledger_redeem_identity)) => beta_ledger_redeem_identity,
+                (_, None) => {
+                    return Err(anyhow::Error::from(MissingIdentity {
+                        kind: IdentityKind::BetaLedgerRedeemIdentity,
+                    }))
+                }
+                (Some(_), _) => {
+                    return Err(anyhow::Error::from(UnexpectedIdentity {
+                        kind: IdentityKind::AlphaLedgerRefundIdentity,
+                    }))
+                }
+            };
+
         let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.secp256k1_refund(),
         );
 
-        Identities {
+        Ok(Identities {
             alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity: self.beta_ledger_redeem_identity,
-        }
+            beta_ledger_redeem_identity,
+        })
     }
 }
 
-impl ToIdentities<Ethereum, Bitcoin> for OnlyRefund<Ethereum> {
-    fn to_identities(&self, secret_source: &dyn SecretSource) -> Identities<Ethereum, Bitcoin> {
+impl IntoIdentities<ledger::Ethereum, ledger::Bitcoin> for HttpIdentities {
+    fn into_identities(
+        self,
+        secret_source: &dyn SecretSource,
+    ) -> anyhow::Result<Identities<ledger::Ethereum, ledger::Bitcoin>> {
+        let HttpIdentities {
+            alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity,
+        } = self;
+
+        let alpha_ledger_refund_identity =
+            match (alpha_ledger_refund_identity, beta_ledger_redeem_identity) {
+                (Some(alpha_ledger_refund_identity), None) => alpha_ledger_refund_identity,
+                (_, Some(_)) => {
+                    return Err(anyhow::Error::from(UnexpectedIdentity {
+                        kind: IdentityKind::BetaLedgerRedeemIdentity,
+                    }))
+                }
+                (None, _) => {
+                    return Err(anyhow::Error::from(MissingIdentity {
+                        kind: IdentityKind::AlphaLedgerRefundIdentity,
+                    }))
+                }
+            };
+
         let beta_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.secp256k1_redeem(),
         );
 
-        Identities {
-            alpha_ledger_refund_identity: self.alpha_ledger_refund_identity,
+        Ok(Identities {
+            alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
-        }
+        })
     }
 }
 
@@ -294,35 +420,8 @@ fn default_beta_expiry() -> Timestamp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{network::DialInformation, seed::Seed, swap_protocols::ledger::ethereum::ChainId};
-    use rand::rngs::OsRng;
+    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
     use spectral::prelude::*;
-
-    impl Default
-        for SwapRequestBody<Bitcoin, Ethereum, BitcoinAmount, EtherQuantity, OnlyRedeem<Ethereum>>
-    {
-        fn default() -> Self {
-            Self {
-                alpha_asset: BitcoinAmount::from_btc(1.0).unwrap(),
-                beta_asset: EtherQuantity::from_eth(10.0),
-                alpha_ledger: Bitcoin::default(),
-                beta_ledger: Ethereum::default(),
-                alpha_expiry: None,
-                beta_expiry: None,
-                partial_identities: OnlyRedeem::<Ethereum> {
-                    beta_ledger_redeem_identity: "00a329c0648769a73afac7f9381e08fb43dbea72"
-                        .parse()
-                        .unwrap(),
-                },
-                peer: DialInformation {
-                    peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                        .parse()
-                        .unwrap(),
-                    address_hint: None,
-                },
-            }
-        }
-    }
 
     #[test]
     fn can_deserialize_swap_request_body() {
@@ -349,13 +448,9 @@ mod tests {
                 "peer": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
             }"#;
 
-        let body = serde_json::from_str(body);
+        let body = serde_json::from_str::<SwapRequestBody>(body);
 
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
-            beta_expiry: Some(Timestamp::from(2_000_000_000)),
-            ..SwapRequestBody::default()
-        })
+        assert_that(&body).is_ok();
     }
 
     #[test]
@@ -383,21 +478,17 @@ mod tests {
                 "peer": { "peer_id": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi", "address_hint": "/ip4/8.9.0.1/tcp/9999" }
             }"#;
 
-        let body = serde_json::from_str(body);
+        let body = serde_json::from_str::<SwapRequestBody>(body);
 
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            peer: DialInformation {
+        assert_that(&body)
+            .is_ok()
+            .map(|b| &b.peer)
+            .is_equal_to(&DialInformation {
                 peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
                     .parse()
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
-            },
-            ..SwapRequestBody {
-                alpha_expiry: Some(Timestamp::from(2_000_000_000)),
-                beta_expiry: Some(Timestamp::from(2_000_000_000)),
-                ..SwapRequestBody::default()
-            }
-        })
+            });
     }
 
     #[test]
@@ -425,25 +516,13 @@ mod tests {
                 "peer": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
             }"#;
 
-        let body = serde_json::from_str(body);
+        let body = serde_json::from_str::<SwapRequestBody>(body);
 
-        assert_that(&body).is_ok_containing(SwapRequestBody {
-            beta_ledger: Ethereum::new(ChainId::new(3)),
-            alpha_expiry: Some(Timestamp::from(2_000_000_000)),
-            beta_expiry: Some(Timestamp::from(2_000_000_000)),
-            ..SwapRequestBody::default()
-        })
-    }
-
-    #[test]
-    fn can_derive_default_expiries_for_swap_request_body_without_them() {
-        let swap_request_body = SwapRequestBody::default();
-        let swap_id = SwapId::default();
-        let random_seed = Seed::new_random(OsRng).unwrap();
-
-        let request = swap_request_body.to_request(swap_id, &random_seed);
-
-        assert_that(&request.alpha_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 24));
-        assert_that(&request.beta_expiry).is_equal_to(Timestamp::now().plus(60 * 60 * 12));
+        assert_that(&body)
+            .is_ok()
+            .map(|b| &b.beta_ledger)
+            .is_equal_to(&HttpLedger::Ethereum(ledger::Ethereum {
+                chain_id: ChainId::new(3),
+            }));
     }
 }

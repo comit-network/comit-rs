@@ -10,9 +10,7 @@ use crate::{
         route_factory::swap_path,
         routes::{
             into_rejection,
-            rfc003::handlers::{
-                handle_action, handle_get_swap, handle_post_swap, SwapRequestBodyKind,
-            },
+            rfc003::handlers::{handle_action, handle_get_swap, handle_post_swap},
         },
     },
     network::{Network, SendRequest},
@@ -33,9 +31,9 @@ use crate::{db::Saver, http_api::problem};
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver>(
     dependencies: D,
-    request_body_kind: SwapRequestBodyKind,
+    body: serde_json::Value,
 ) -> impl Future<Item = impl Reply, Error = Rejection> {
-    handle_post_swap(dependencies, request_body_kind)
+    handle_post_swap(dependencies, body)
         .boxed()
         .compat()
         .map(|swap_created| {

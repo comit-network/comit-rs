@@ -63,7 +63,7 @@ setTimeout(async function() {
                 "content-type",
                 "application/problem+json"
             );
-            expect(res.body.title).to.equal("Swap not supported.");
+            expect(res.body.title).to.equal("Invalid body.");
         });
 
         it("[Alice] Returns 400 bad request for malformed requests", async () => {
@@ -78,7 +78,7 @@ setTimeout(async function() {
                 "content-type",
                 "application/problem+json"
             );
-            expect(res.body.title).to.equal("Bad Request");
+            expect(res.body.title).to.equal("Invalid body.");
         });
 
         it("[Alice] Should have no peers before making a swap request", async () => {

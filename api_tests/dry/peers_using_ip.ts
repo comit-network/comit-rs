@@ -54,9 +54,8 @@ import { sleep } from "../lib/util";
                     },
                 });
 
-            expect(res.error).to.be.false;
-            expect(res.status).to.equal(201);
-            expect(res.header.location).to.be.a("string");
+            expect(res).to.have.status(201);
+            expect(res).to.have.header("location");
         });
 
         it("[Alice] Should not see any peers because the address did not resolve to the given PeerID", async () => {

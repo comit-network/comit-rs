@@ -22,36 +22,38 @@ pub enum Network {
     Regtest,
     #[strum(serialize = "ropsten")]
     Ropsten,
-    #[strum(serialize = "unknown")]
-    Unknown,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("chain with id {0} is unknown")]
+pub struct UnknownChainId(String);
+
 impl Network {
-    pub fn from_network_id(s: String) -> Self {
-        match s.as_str() {
+    pub fn from_network_id(s: &str) -> Result<Self, UnknownChainId> {
+        Ok(match s {
             "1" => Network::Mainnet,
             "3" => Network::Ropsten,
             "17" => Network::Regtest,
-            _ => Network::Unknown,
-        }
+            _ => return Err(UnknownChainId(s.to_string())),
+        })
     }
 }
 
-impl From<ChainId> for Network {
-    fn from(chain: ChainId) -> Self {
-        Network::from_network_id(u32::from(chain).to_string())
+impl TryFrom<ChainId> for Network {
+    type Error = UnknownChainId;
+
+    fn try_from(value: ChainId) -> Result<Self, Self::Error> {
+        let value = u32::from(value).to_string();
+        Network::from_network_id(value.as_str())
     }
 }
 
-impl TryFrom<Network> for ChainId {
-    type Error = ();
-
-    fn try_from(network: Network) -> Result<Self, ()> {
+impl From<Network> for ChainId {
+    fn from(network: Network) -> Self {
         match network {
-            Network::Mainnet => Ok(ChainId::mainnet()),
-            Network::Regtest => Ok(ChainId::regtest()),
-            Network::Ropsten => Ok(ChainId::ropsten()),
-            Network::Unknown => Err(()),
+            Network::Mainnet => ChainId::mainnet(),
+            Network::Regtest => ChainId::regtest(),
+            Network::Ropsten => ChainId::ropsten(),
         }
     }
 }
@@ -59,6 +61,7 @@ impl TryFrom<Network> for ChainId {
 #[cfg(test)]
 mod test {
     use super::*;
+    use spectral::prelude::*;
     use std::fmt::Display;
 
     #[test]
@@ -74,22 +77,10 @@ mod test {
 
     #[test]
     fn from_version() {
-        assert_eq!(
-            Network::from_network_id(String::from("1")),
-            Network::Mainnet
-        );
-        assert_eq!(
-            Network::from_network_id(String::from("3")),
-            Network::Ropsten
-        );
-        assert_eq!(
-            Network::from_network_id(String::from("17")),
-            Network::Regtest
-        );
-        assert_eq!(
-            Network::from_network_id(String::from("-1")),
-            Network::Unknown
-        );
+        assert_that(&Network::from_network_id("1")).is_ok_containing(Network::Mainnet);
+        assert_that(&Network::from_network_id("3")).is_ok_containing(Network::Ropsten);
+        assert_that(&Network::from_network_id("17")).is_ok_containing(Network::Regtest);
+        assert_that(&Network::from_network_id("-1")).is_err();
     }
 
     fn assert_display<T: Display>(_t: T) {}

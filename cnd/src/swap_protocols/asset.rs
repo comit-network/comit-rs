@@ -1,7 +1,4 @@
-use crate::{
-    ethereum::{Erc20Token, EtherQuantity},
-    http_api::asset::FromHttpAsset,
-};
+use crate::ethereum::{Erc20Token, EtherQuantity};
 use bitcoin::Amount;
 use derivative::Derivative;
 use std::{
@@ -20,7 +17,6 @@ pub trait Asset:
     + PartialEq
     + Eq
     + Hash
-    + FromHttpAsset
     + Into<AssetKind>
     + Ord
 {

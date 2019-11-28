@@ -3,27 +3,13 @@ pub mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 
-use crate::{
-    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
-    http_api::ledger::FromHttpLedger,
-};
+use crate::btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
 
 pub trait Ledger:
-    Clone
-    + Copy
-    + Debug
-    + Send
-    + Sync
-    + 'static
-    + Default
-    + PartialEq
-    + Eq
-    + Hash
-    + FromHttpLedger
-    + Into<LedgerKind>
+    Clone + Copy + Debug + Send + Sync + 'static + Default + PartialEq + Eq + Hash + Into<LedgerKind>
 {
     type Identity: Clone
         + Copy
