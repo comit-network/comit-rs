@@ -3,7 +3,7 @@ mod handlers;
 use self::handlers::handle_get_swaps;
 use crate::{
     db::{DetermineTypes, Retrieve},
-    http_api::{routes::into_rejection, Http},
+    http_api::{problem, routes::into_rejection, Http},
     network::Network,
     swap_protocols::rfc003::state_store::StateStore,
 };
@@ -43,5 +43,6 @@ pub fn get_swaps<D: DetermineTypes + Retrieve + StateStore>(
                 "application/vnd.siren+json",
             ))
         })
+        .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }

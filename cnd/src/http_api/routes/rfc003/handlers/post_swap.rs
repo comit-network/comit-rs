@@ -1,6 +1,6 @@
 use crate::{
     db::{Save, Saver, Swap},
-    http_api::{self, asset::HttpAsset, ledger::HttpLedger, problem},
+    http_api::{self, asset::HttpAsset, ledger::HttpLedger},
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
@@ -20,7 +20,6 @@ use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
-use http_api_problem::{HttpApiProblem, StatusCode as HttpStatusCode};
 use serde::{Deserialize, Serialize};
 
 pub async fn handle_post_swap<
@@ -28,7 +27,7 @@ pub async fn handle_post_swap<
 >(
     dependencies: D,
     request_body_kind: SwapRequestBodyKind,
-) -> Result<SwapCreated, HttpApiProblem> {
+) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
 
     match request_body_kind {
@@ -49,34 +48,39 @@ pub async fn handle_post_swap<
             Ok(SwapCreated { id })
         }
         SwapRequestBodyKind::UnsupportedCombination(body) => {
-            log::error!(
-                "Swapping {:?} for {:?} from {:?} to {:?} is not supported",
-                body.alpha_asset,
-                body.beta_asset,
-                body.alpha_ledger,
-                body.beta_ledger
-            );
-            Err(problem::unsupported())
+            Err(anyhow::Error::from(UnsupportedSwap {
+                alpha_ledger: body.alpha_ledger,
+                beta_ledger: body.beta_ledger,
+                alpha_asset: body.alpha_asset,
+                beta_asset: body.beta_asset,
+            }))
         }
         SwapRequestBodyKind::MalformedRequest(body) => {
-            log::error!(
-                "Malformed request body: {}",
-                serde_json::to_string(&body)
-                    .expect("failed to serialize serde_json::Value as string ?!")
-            );
-            Err(
-                HttpApiProblem::with_title_and_type_from_status(HttpStatusCode::BAD_REQUEST)
-                    .set_detail("The request body was malformed."),
-            )
+            Err(anyhow::Error::from(MalformedRequest { body }))
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("swapping {alpha_asset:?} for {beta_asset:?} from {alpha_ledger:?} to {beta_ledger:?} is not supported")]
+pub struct UnsupportedSwap {
+    alpha_asset: HttpAsset,
+    beta_asset: HttpAsset,
+    alpha_ledger: HttpLedger,
+    beta_ledger: HttpLedger,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("request body {body} was malformed")]
+pub struct MalformedRequest {
+    body: serde_json::Value,
 }
 
 async fn initiate_request<D, AL, BL, AA, BA, I>(
     dependencies: D,
     body: SwapRequestBody<AL, BL, AA, BA, I>,
     id: SwapId,
-) -> Result<(), HttpApiProblem>
+) -> anyhow::Result<()>
 where
     LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     D: StateStore
@@ -97,13 +101,8 @@ where
     let seed = dependencies.swap_seed(id);
     let swap_request = body.to_request(id, &seed);
 
-    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty))
-        .await
-        .map_err(problem::internal_error)?;
-
-    Save::save(&dependencies, swap_request.clone())
-        .await
-        .map_err(problem::internal_error)?;
+    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
+    Save::save(&dependencies, swap_request.clone()).await?;
 
     let state = State::proposed(swap_request.clone(), seed);
     StateStore::insert(&dependencies, id, state);

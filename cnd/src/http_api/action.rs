@@ -1,5 +1,7 @@
 use crate::{
-    http_api::{ethereum_network, problem, Http},
+    http_api::{
+        ethereum_network, problem, Http, MissingQueryParameters, UnexpectedQueryParameters,
+    },
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -8,6 +10,7 @@ use crate::{
         ledger, SwapId, Timestamp,
     },
 };
+use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
 use http::StatusCode;
 use http_api_problem::HttpApiProblem;
@@ -94,20 +97,20 @@ pub trait IntoResponsePayload {
     fn into_response_payload(
         self,
         parameters: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem>;
+    ) -> anyhow::Result<ActionResponseBody>;
 }
 
 impl IntoResponsePayload for SendToAddress {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         match query_params {
             ActionExecutionParameters::None {} => Ok(self.into()),
-            _ => Err(problem::unexpected_query_parameters(
-                "bitcoin::SendToAddress",
-                vec!["address".into(), "fee_per_wu".into()],
-            )),
+            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
+                action: "bitcoin::SendToAddress",
+                parameters: &["address", "fee_per_wu"],
+            })),
         }
     }
 }
@@ -137,13 +140,13 @@ impl IntoResponsePayload for SpendOutput {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         match query_params {
             ActionExecutionParameters::BitcoinAddressAndFee {
                 address,
                 fee_per_wu,
             } => {
-                let fee_per_wu = fee_per_wu.parse::<usize>().map_err(|_| {
+                let fee_per_wu = fee_per_wu.parse::<usize>().with_context(|| {
                     HttpApiProblem::new("Invalid query parameter.")
                         .set_status(StatusCode::BAD_REQUEST)
                         .set_detail("Query parameter fee-per-byte is not a valid unsigned integer.")
@@ -178,22 +181,22 @@ impl IntoResponsePayload for SpendOutput {
                     network,
                 ))
             }
-            _ => Err(problem::missing_query_parameters(
-                "bitcoin::SpendOutput",
-                vec![
-                    &problem::MissingQueryParameter {
+            _ => Err(anyhow::Error::from(MissingQueryParameters {
+                action: "bitcoin::SpendOutput",
+                parameters: &[
+                    problem::MissingQueryParameter {
                         name: "address",
                         data_type: "string",
                         description: "The bitcoin address to where the funds should be sent.",
                     },
-                    &problem::MissingQueryParameter {
+                    problem::MissingQueryParameter {
                         name: "fee_per_wu",
                         data_type: "uint",
                         description:
                         "The fee per weight unit you want to pay for the transaction in satoshis.",
                     },
-                ],
-            )),
+                ]
+            }))
         }
     }
 }
@@ -229,7 +232,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         let ethereum::DeployContract {
             data,
             amount,
@@ -244,10 +247,10 @@ impl IntoResponsePayload for ethereum::DeployContract {
                 chain_id,
                 network: chain_id.into(),
             }),
-            _ => Err(problem::unexpected_query_parameters(
-                "ethereum::ContractDeploy",
-                vec!["address".into(), "fee_per_wu".into()],
-            )),
+            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
+                action: "ethereum::ContractDeploy",
+                parameters: &["address", "fee_per_wu"],
+            })),
         }
     }
 }
@@ -262,7 +265,7 @@ impl IntoResponsePayload for ethereum::CallContract {
     fn into_response_payload(
         self,
         query_params: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         let ethereum::CallContract {
             to,
             data,
@@ -279,10 +282,10 @@ impl IntoResponsePayload for ethereum::CallContract {
                 network: chain_id.into(),
                 min_block_timestamp,
             }),
-            _ => Err(problem::unexpected_query_parameters(
-                "ethereum::SendTransaction",
-                vec!["address".into(), "fee_per_wu".into()],
-            )),
+            _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
+                action: "ethereum::SendTransaction",
+                parameters: &["address", "fee_per_wu"],
+            })),
         }
     }
 }
@@ -303,7 +306,7 @@ impl IntoResponsePayload for Infallible {
     fn into_response_payload(
         self,
         _: ActionExecutionParameters,
-    ) -> Result<ActionResponseBody, HttpApiProblem> {
+    ) -> anyhow::Result<ActionResponseBody> {
         unreachable!("how did you manage to construct Infallible?")
     }
 }
