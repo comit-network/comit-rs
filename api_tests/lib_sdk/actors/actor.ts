@@ -16,8 +16,8 @@ import { Actors } from "./index";
 
 export class Actor {
     public static defaultActionConfig = {
-        timeout: 5000,
-        tryInterval: 100,
+        maxTimeoutSecs: 5,
+        tryIntervalSecs: 1,
     };
 
     public static async newInstance(
@@ -191,7 +191,7 @@ export class Actor {
         let swapEntity;
 
         do {
-            swapEntity = await this.swap.getEntity();
+            swapEntity = await this.swap.fetchDetails();
 
             await sleep(200);
         } while (
