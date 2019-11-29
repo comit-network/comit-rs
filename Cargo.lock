@@ -1633,6 +1633,7 @@ dependencies = [
  "bytes 0.4.12 (registry+https://github.com/rust-lang/crates.io-index)",
  "derivative 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.29 (registry+https://github.com/rust-lang/crates.io-index)",
+ "libp2p 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libp2p-core 0.13.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "libp2p-swarm 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",

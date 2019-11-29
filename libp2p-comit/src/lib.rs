@@ -9,6 +9,7 @@ mod protocol;
 mod substream;
 #[cfg(test)]
 pub mod test_harness;
+mod transport;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
@@ -17,6 +18,7 @@ pub use self::{
     behaviour::{BehaviourOutEvent, Comit},
     handler::{ComitHandler, PendingInboundRequest, PendingOutboundRequest},
     protocol::{ComitProtocolConfig, Frames},
+    transport::build_comit_transport,
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
 use libp2p_swarm::ProtocolsHandlerEvent;

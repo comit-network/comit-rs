@@ -24,6 +24,7 @@ use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
+use libp2p_comit;
 use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
@@ -84,7 +85,7 @@ fn main() -> anyhow::Result<()> {
         .compat(),
     )?;
 
-    let transport = libp2p::build_development_transport(local_key_pair);
+    let transport = libp2p_comit::build_comit_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
         ledger_events.clone(),
         Arc::clone(&state_store),
