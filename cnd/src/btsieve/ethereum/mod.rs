@@ -7,7 +7,7 @@ pub use self::{
 };
 use crate::{
     btsieve::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash},
-    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt, H256},
+    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
 use std::{collections::HashSet, fmt::Debug, ops::Add};
@@ -30,15 +30,19 @@ where
     fn matching_transactions(
         &self,
         pattern: TransactionPattern,
-        timestamp: Option<u32>,
+        reference_timestamp: Option<u32>,
     ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
         let (block_queue, next_block) = async_std::sync::channel(1);
         let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
+        let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
+
+        let reference_timestamp = reference_timestamp.map(|timestamp| U256::from(timestamp));
 
         spawn(self.clone(), {
             let mut connector = self.clone();
             let block_queue = block_queue.clone();
             let find_parent_queue = find_parent_queue.clone();
+            let look_in_the_past_queue = look_in_the_past_queue.clone();
 
             async move {
                 let mut sent_blockhashes: HashSet<H256> = HashSet::new();
@@ -61,6 +65,10 @@ where
                                     find_parent_queue.send((blockhash, block.parent_hash)),
                                 )
                                 .await;
+
+                                if sent_blockhashes.len() == 1 {
+                                    look_in_the_past_queue.send(block.parent_hash).await
+                                };
                             }
                         }
                         Ok(Some(_)) => {
@@ -117,9 +125,10 @@ where
         });
 
         spawn(self.clone(), {
+            let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
+
             async move {
                 let mut prev_blockhashes: HashSet<H256> = HashSet::new();
-                let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
                 loop {
                     match next_find_parent.recv().await {
@@ -130,6 +139,53 @@ where
                                 && prev_blockhashes.len() > 1
                             {
                                 fetch_block_by_hash_queue.send(parent_blockhash).await
+                            }
+                        }
+                        None => unreachable!("senders cannot be dropped"),
+                    }
+                }
+            }
+        });
+
+        spawn(self.clone(), {
+            let connector = self.clone();
+            let block_queue = block_queue.clone();
+            let look_in_the_past_queue = look_in_the_past_queue.clone();
+
+            async move {
+                loop {
+                    match next_look_in_the_past.recv().await {
+                        Some(parent_blockhash) => {
+                            match connector.block_by_hash(parent_blockhash).compat().await {
+                                Ok(Some(block)) => {
+                                    if reference_timestamp
+                                        .map(|reference_timestamp| {
+                                            reference_timestamp <= block.timestamp
+                                        })
+                                        .unwrap_or(false)
+                                    {
+                                        join(
+                                            block_queue.send(block.clone()),
+                                            look_in_the_past_queue.send(block.parent_hash),
+                                        )
+                                        .await;
+                                    }
+                                }
+                                Ok(None) => {
+                                    log::warn!(
+                                        "Block with hash {} does not exist",
+                                        parent_blockhash
+                                    );
+                                }
+                                Err(e) => {
+                                    log::warn!(
+                                        "Could not get block with hash {}: {:?}",
+                                        parent_blockhash,
+                                        e
+                                    );
+
+                                    look_in_the_past_queue.send(parent_blockhash).await
+                                }
                             }
                         }
                         None => unreachable!("senders cannot be dropped"),

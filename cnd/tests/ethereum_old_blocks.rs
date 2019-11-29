@@ -1,8 +1,11 @@
 pub mod ethereum_helper;
 
-use btsieve::{ethereum::TransactionPattern, first_or_else::StreamExt, MatchingTransactions};
+use cnd::{
+    btsieve::{ethereum::TransactionPattern, MatchingTransactions},
+    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
+    first_or_else::StreamExt,
+};
 use ethereum_helper::EthereumConnectorMock;
-use ethereum_support::{Block, Transaction, TransactionAndReceipt, TransactionReceipt};
 use tokio::prelude::Future;
 
 #[test]
