@@ -25,7 +25,11 @@ use crate::{
     swap_protocols::{Role, SwapId},
 };
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
-use std::{path::Path, sync::Arc};
+use std::{
+    ffi::OsStr,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 /// This module provides persistent storage by way of Sqlite.
 
@@ -39,16 +43,27 @@ pub struct Sqlite {
 impl Sqlite {
     /// Return a handle that can be used to access the database.
     ///
-    /// When this returns an Sqlite database exists at 'path', a
-    /// successful connection to the database has been made, and
-    /// the database migrations have been run.
-    pub fn new(path: &Path) -> anyhow::Result<Self> {
-        ensure_folder_tree_exists(path)?;
+    /// When this returns, an Sqlite database file 'cnd.sql' exists in 'dir', a
+    /// successful connection to the database has been made, and the database
+    /// migrations have been run.
+    pub fn new_in_dir<D: AsRef<OsStr>>(dir: D) -> anyhow::Result<Self> {
+        let dir = Path::new(&dir);
+        let path = db_path_from_dir(dir);
+        Sqlite::new(&path)
+    }
 
-        let connection = SqliteConnection::establish(&format!("file:{}", path.display()))?;
+    /// Return a handle that can be used to access the database.
+    ///
+    /// Reads or creates an SQLite database file at 'file'.  When this returns
+    /// an Sqlite database exists, a successful connection to the database has
+    /// been made, and the database migrations have been run.
+    pub fn new(file: &Path) -> anyhow::Result<Self> {
+        ensure_folder_tree_exists(file)?;
+
+        let connection = SqliteConnection::establish(&format!("file:{}", file.display()))?;
         embedded_migrations::run(&connection)?;
 
-        log::info!("SQLite database file: {}", path.display());
+        log::info!("SQLite database file: {}", file.display());
 
         Ok(Sqlite {
             connection: Arc::new(async_std::sync::Mutex::new(connection)),
@@ -86,6 +101,12 @@ impl Sqlite {
 
         Ok(*record.role)
     }
+}
+
+// Construct an absolute path to the database file using 'dir' as the base.
+fn db_path_from_dir(dir: &Path) -> PathBuf {
+    let path = dir.to_path_buf();
+    path.join("cnd.sqlite")
 }
 
 fn ensure_folder_tree_exists(path: &Path) -> anyhow::Result<()> {

@@ -49,8 +49,35 @@ impl Seed {
         Ok(Seed(arr))
     }
 
-    /// Construct a seed from base64 data read in from pem file.
-    pub fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
+    /// Read the seed from the default location if it exists, otherwise
+    /// generate a random seed and write it to the default location.
+    pub fn from_default_dir_or_generate<R: Rng>(rand: R) -> Result<Seed, Error> {
+        let path = default_seed_path()?;
+        Seed::from_dir_or_generate(&path, rand)
+    }
+
+    /// Read the seed from the directory if it exists, otherwise
+    /// generate a random seed and write it to that location.
+    pub fn from_dir_or_generate<D: AsRef<OsStr>, R: Rng>(
+        data_dir: D,
+        rand: R,
+    ) -> Result<Seed, Error> {
+        let dir = Path::new(&data_dir);
+        let path = seed_path_from_dir(dir);
+
+        if path.exists() {
+            return Self::from_file(&path);
+        }
+
+        let random_seed = Seed::new_random(rand)?;
+        random_seed.write_to(path.clone())?;
+
+        log::info!("No seed file found, creating at: {}", path.display());
+
+        Ok(random_seed)
+    }
+
+    fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
         let file = Path::new(&seed_file);
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
@@ -71,23 +98,6 @@ impl Seed {
 
             Ok(Seed::from(array))
         }
-    }
-
-    /// Read the seed from the default location if it exists, otherwise
-    /// generate a random seed and write it to the default location.
-    pub fn from_default_file_or_generate<R: Rng>(rand: R) -> Result<Seed, Error> {
-        let path = default_seed_path()?;
-
-        if path.exists() {
-            return Self::from_file(&path);
-        }
-
-        let random_seed = Seed::new_random(rand)?;
-        random_seed.write_to(path.clone())?;
-
-        log::info!("No seed file found, creating default at {}", path.display());
-
-        Ok(random_seed)
     }
 
     fn write_to(&self, seed_file: PathBuf) -> Result<(), Error> {
@@ -135,9 +145,13 @@ fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
 }
 
 fn default_seed_path() -> Result<PathBuf, Error> {
-    crate::data_dir()
-        .map(|dir| Path::join(&dir, "seed.pem"))
-        .ok_or(Error::NoDefaultPath)
+    let default_path = crate::data_dir().ok_or(Error::NoDefaultPath)?;
+    Ok(seed_path_from_dir(&default_path))
+}
+
+fn seed_path_from_dir(dir: &Path) -> PathBuf {
+    let path = dir.to_path_buf();
+    path.join("seed.pem")
 }
 
 #[derive(Debug, thiserror::Error)]

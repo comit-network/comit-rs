@@ -1,4 +1,4 @@
-use crate::config::{Bitcoin, Database, Ethereum, Network, Socket};
+use crate::config::{Bitcoin, Data, Ethereum, Network, Socket};
 use config as config_rs;
 use log::LevelFilter;
 use std::{ffi::OsStr, path::Path};
@@ -12,7 +12,7 @@ use std::{ffi::OsStr, path::Path};
 pub struct File {
     pub network: Option<Network>,
     pub http_api: Option<HttpApi>,
-    pub database: Option<Database>,
+    pub data: Option<Data>,
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
@@ -23,7 +23,7 @@ impl File {
         File {
             network: Option::None,
             http_api: Option::None,
-            database: Option::None,
+            data: Option::None,
             logging: Option::None,
             bitcoin: Option::None,
             ethereum: Option::None,
@@ -160,8 +160,8 @@ port = 8000
 [http_api.cors]
 allowed_origins = "all"
 
-[database]
-sqlite = "/tmp/foobar.sqlite"
+[data]
+dir = "/tmp/comit/"
 
 [logging]
 level = "DEBUG"
@@ -188,8 +188,8 @@ node_url = "http://example.com/"
                     allowed_origins: AllowedOrigins::All(All::All),
                 }),
             }),
-            database: Some(Database {
-                sqlite: PathBuf::from("/tmp/foobar.sqlite"),
+            data: Some(Data {
+                dir: PathBuf::from("/tmp/comit/"),
             }),
             logging: Some(Logging {
                 level: Some(LevelFilter::Debug),

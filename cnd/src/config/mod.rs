@@ -9,8 +9,8 @@ use std::{net::IpAddr, path::PathBuf};
 pub use self::{file::File, settings::Settings};
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Database {
-    pub sqlite: PathBuf,
+pub struct Data {
+    pub dir: PathBuf,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]

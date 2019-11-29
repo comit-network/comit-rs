@@ -48,10 +48,7 @@ fn main() -> anyhow::Result<()> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    let seed = match options.seed_file {
-        Some(file) => Seed::from_file(file)?,
-        None => Seed::from_default_file_or_generate(OsRng)?,
-    };
+    let seed = Seed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
@@ -70,7 +67,7 @@ fn main() -> anyhow::Result<()> {
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
-    let database = Sqlite::new(&settings.database.sqlite)?;
+    let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
     let local_key_pair = derive_key_pair(&seed);
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
