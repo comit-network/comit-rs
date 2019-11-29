@@ -82,7 +82,7 @@ impl Seed {
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
 
-        log::info!("Read in seed from file: {}", &file.to_path_buf().display());
+        log::info!("Read in seed from file: {}", file.display());
 
         Seed::from_pem(pem)
     }
