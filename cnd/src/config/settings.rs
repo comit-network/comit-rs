@@ -142,7 +142,7 @@ impl Settings {
                 .unwrap_or_default(),
             data: {
                 let default_data_dir =
-                    crate::data_dir().context("unable to determine default database path")?;
+                    crate::data_dir().context("unable to determine default data path")?;
                 data.unwrap_or_else(|| Data {
                     dir: default_data_dir,
                 })
