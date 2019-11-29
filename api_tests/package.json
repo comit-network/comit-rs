@@ -67,5 +67,8 @@
     "prettier": {
         "trailingComma": "es5",
         "tabWidth": 4
+    },
+    "devDependencies": {
+        "@types/tmp": "^0.1.0"
     }
 }
