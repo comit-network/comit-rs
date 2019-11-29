@@ -1,11 +1,11 @@
-import tempfile from "tempfile";
+import * as tmp from "tmp";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
 import { LedgerConfig } from "./ledger_runner";
 
 export interface CndConfigFile {
     http_api: HttpApi;
-    database?: { sqlite: string };
+    data?: { dir: string };
     network: { listen: string[] };
 }
 
@@ -15,7 +15,7 @@ export interface HttpApi {
 
 export class E2ETestActorConfig {
     public readonly seed: Uint8Array;
-    public readonly dbPath: string;
+    public readonly data: string;
 
     constructor(
         public readonly httpApiPort: number,
@@ -26,7 +26,11 @@ export class E2ETestActorConfig {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
         this.seed = new Uint8Array(Buffer.from(seed, "hex"));
-        this.dbPath = tempfile(`.${this.name}.sqlite`);
+
+        const tmpobj = tmp.dirSync();
+        tmpobj.removeCallback(); // Manual cleanup
+
+        this.data = tmpobj.name;
     }
 
     public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
@@ -37,8 +41,8 @@ export class E2ETestActorConfig {
                     port: this.httpApiPort,
                 },
             },
-            database: {
-                sqlite: this.dbPath,
+            data: {
+                dir: this.data,
             },
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],
