@@ -63,7 +63,7 @@ async fn accepted_at_for_bitcoin_ethereum() -> anyhow::Result<NaiveDateTime> {
     db.save(request).await?;
 
     let accept: Accept<Bitcoin, Ethereum> = Accept {
-        swap_id: swap_id.clone(),
+        swap_id,
         beta_ledger_refund_identity: ethereum_address(), // This is non-sense but fine for this test
         alpha_ledger_redeem_identity: bitcoin_address(), // same address for refund/redeem.
     };
@@ -89,11 +89,11 @@ async fn accepted_at_for_ethereum_bitcoin() -> anyhow::Result<NaiveDateTime> {
         .into_temp_path();
     let db = Sqlite::new(&db_path).expect("db");
 
-    let swap = swap(swap_id.clone(), role);
+    let swap = swap(swap_id, role);
     db.save(swap).await?;
 
     let request = Request {
-        swap_id: swap_id.clone(),
+        swap_id,
         alpha_ledger: Ethereum::default(),
         beta_ledger: Bitcoin::default(),
         alpha_asset: EtherQuantity::zero(),
@@ -108,7 +108,7 @@ async fn accepted_at_for_ethereum_bitcoin() -> anyhow::Result<NaiveDateTime> {
     db.save(request).await?;
 
     let accept: Accept<Ethereum, Bitcoin> = Accept {
-        swap_id: swap_id.clone(),
+        swap_id,
         beta_ledger_refund_identity: bitcoin_address(), // This is non-sense but fine for this test
         alpha_ledger_redeem_identity: ethereum_address(), // same address for refund/redeem.
     };
