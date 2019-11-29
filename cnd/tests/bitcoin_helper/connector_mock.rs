@@ -1,5 +1,5 @@
 use bitcoin::{hashes::sha256d, util::hash::BitcoinHash};
-use btsieve::{BlockByHash, LatestBlock};
+use cnd::btsieve::{BlockByHash, LatestBlock};
 use std::{
     collections::HashMap,
     time::{Duration, Instant},

@@ -5,6 +5,7 @@ use crate::{
         schema::{self, *},
         Sqlite, Swap,
     },
+    ethereum::{Erc20Token, EtherQuantity},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
@@ -13,7 +14,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::{self, PeerId};
 
 /// Save swap to database.

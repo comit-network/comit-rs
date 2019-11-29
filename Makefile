@@ -49,6 +49,8 @@ all: format build clippy test doc e2e_scripts
 format: install_rustfmt install_tomlfmt yarn_install
 	$(CARGO_NIGHTLY) fmt
 	$(CARGO) tomlfmt -p Cargo.toml
+	$(CARGO) tomlfmt -p cnd/Cargo.toml
+	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
 	(cd ./api_tests; yarn run fix)
 
 ci: check_format doc clippy test build e2e

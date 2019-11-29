@@ -2,7 +2,10 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use btsieve::{bitcoin::TransactionPattern, first_or_else::StreamExt, MatchingTransactions};
+use cnd::{
+    btsieve::{bitcoin::TransactionPattern, MatchingTransactions},
+    first_or_else::StreamExt,
+};
 use std::str::FromStr;
 use tokio::prelude::Future;
 
@@ -27,10 +30,8 @@ fn find_transaction_in_missing_block() {
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
-                        include_str!(
-                            "./test_data/bitcoin/find_transaction_in_missing_block/address"
-                        )
-                        .trim(),
+                        include_str!("test_data/bitcoin/find_transaction_in_missing_block/address")
+                            .trim(),
                     )
                     .unwrap(),
                 ),
@@ -74,7 +75,7 @@ fn find_transaction_in_missing_block_with_big_gap() {
                 to_address: Some(
                     Address::from_str(
                         include_str!(
-                        "./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
+                            "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
                     )
                         .trim(),
                     )
@@ -118,7 +119,7 @@ fn find_transaction_if_blockchain_reorganisation() {
                 to_address: Some(
                     Address::from_str(
                         include_str!(
-                        "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
+                            "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
                     )
                         .trim(),
                     )
@@ -164,7 +165,7 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
             to_address: Some(
                 Address::from_str(
                     include_str!(
-                        "./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+                        "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
                     ).trim()
                     ,
                 )

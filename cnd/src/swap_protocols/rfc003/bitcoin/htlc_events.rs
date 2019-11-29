@@ -1,21 +1,23 @@
-use crate::swap_protocols::{
-    ledger::Bitcoin,
-    rfc003::{
-        self,
-        bitcoin::extract_secret::extract_secret,
-        events::{
-            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-            RedeemedOrRefundedFuture, Refunded,
+use crate::{
+    btsieve::{
+        bitcoin::{BitcoindConnector, TransactionExt, TransactionPattern},
+        MatchingTransactions,
+    },
+    first_or_else::StreamExt,
+    swap_protocols::{
+        ledger::Bitcoin,
+        rfc003::{
+            self,
+            bitcoin::extract_secret::extract_secret,
+            events::{
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+                RedeemedOrRefundedFuture, Refunded,
+            },
+            state_machine::HtlcParams,
         },
-        state_machine::HtlcParams,
     },
 };
 use bitcoin::{Amount, OutPoint};
-use btsieve::{
-    bitcoin::{BitcoindConnector, TransactionExt, TransactionPattern},
-    first_or_else::StreamExt,
-    MatchingTransactions,
-};
 use futures::{
     future::{self, Either},
     Future, Stream,

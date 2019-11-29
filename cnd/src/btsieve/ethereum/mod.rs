@@ -1,16 +1,15 @@
 mod transaction_pattern;
 mod web3_connector;
 
-#[cfg(test)]
-mod quickcheck_impls;
-
 pub use self::{
     transaction_pattern::{Event, Topic, TransactionPattern},
     web3_connector::Web3Connector,
 };
-use crate::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash};
-use ethereum_support::TransactionAndReceipt;
-use futures::{compat::Future01CompatExt, TryFutureExt};
+use crate::{
+    btsieve::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash},
+    ethereum::TransactionAndReceipt,
+};
+use futures_core::{compat::Future01CompatExt, TryFutureExt};
 use std::ops::Add;
 use tokio::{
     prelude::{stream, Stream},
@@ -19,11 +18,11 @@ use tokio::{
 
 impl<C> MatchingTransactions<TransactionPattern> for C
 where
-    C: LatestBlock<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
-        + BlockByHash<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
+    C: LatestBlock<Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>>
+        + BlockByHash<Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>>
         + ReceiptByHash<
-            Receipt = Option<ethereum_support::TransactionReceipt>,
-            TransactionHash = ethereum_support::H256,
+            Receipt = Option<crate::ethereum::TransactionReceipt>,
+            TransactionHash = crate::ethereum::H256,
         > + Clone,
 {
     type Transaction = TransactionAndReceipt;
@@ -43,11 +42,11 @@ async fn matching_transaction<C>(
     pattern: TransactionPattern,
 ) -> Result<TransactionAndReceipt, ()>
 where
-    C: LatestBlock<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
-        + BlockByHash<Block = Option<ethereum_support::Block<ethereum_support::Transaction>>>
+    C: LatestBlock<Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>>
+        + BlockByHash<Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>>
         + ReceiptByHash<
-            Receipt = Option<ethereum_support::TransactionReceipt>,
-            TransactionHash = ethereum_support::H256,
+            Receipt = Option<crate::ethereum::TransactionReceipt>,
+            TransactionHash = crate::ethereum::H256,
         > + Clone,
 {
     loop {

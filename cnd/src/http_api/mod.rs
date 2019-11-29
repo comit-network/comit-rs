@@ -21,6 +21,7 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
+    ethereum::{Erc20Token, EtherQuantity},
     http_api::{
         asset::{FromHttpAsset, HttpAsset},
         ledger::{FromHttpLedger, HttpLedger},
@@ -32,7 +33,6 @@ use crate::{
     },
 };
 use bitcoin::util::amount::Denomination;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use libp2p::PeerId;
 use serde::{
     de::{self, MapAccess},
@@ -125,7 +125,7 @@ impl FromHttpAsset for Erc20Token {
     }
 }
 
-impl Serialize for Http<ethereum_support::Transaction> {
+impl Serialize for Http<crate::ethereum::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -145,7 +145,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
 }
 
 impl_serialize_type_with_fields!(bitcoin::OutPoint { "txid" => txid, "vout" => vout });
-impl_serialize_http!(ethereum_support::H160);
+impl_serialize_http!(crate::ethereum::H160);
 impl_serialize_http!(SwapId);
 
 impl Serialize for Http<SwapProtocol> {
@@ -290,6 +290,7 @@ impl<'de> Deserialize<'de> for DialInformation {
 #[cfg(test)]
 mod tests {
     use crate::{
+        ethereum::{Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256},
         http_api::Http,
         swap_protocols::{
             ledger::{ethereum, Bitcoin, Ethereum},
@@ -300,7 +301,6 @@ mod tests {
         hashes::{hex::FromHex, sha256d},
         OutPoint, Script, TxIn,
     };
-    use ethereum_support::{self, Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256};
     use libp2p::PeerId;
     use std::str::FromStr;
 
@@ -412,9 +412,9 @@ mod tests {
             }],
             output: vec![],
         };
-        let ethereum_tx = ethereum_support::Transaction {
+        let ethereum_tx = crate::ethereum::Transaction {
             hash: H256::repeat_byte(1),
-            ..ethereum_support::Transaction::default()
+            ..crate::ethereum::Transaction::default()
         };
 
         let bitcoin_tx = Http(bitcoin_tx);

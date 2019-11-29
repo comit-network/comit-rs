@@ -26,10 +26,10 @@ macro_rules! with_swap_types {
     ($swap_types:expr, $fn:expr) => {{
         use crate::{
             db::{AssetKind, LedgerKind, SwapTypes},
+            ethereum::{Erc20Token, EtherQuantity},
             swap_protocols::ledger::{Bitcoin, Ethereum},
         };
         use bitcoin::Amount;
-        use ethereum_support::{Erc20Token, EtherQuantity};
         let swap_types: SwapTypes = $swap_types;
         let role = swap_types.role;
 

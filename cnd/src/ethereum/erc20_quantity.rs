@@ -1,4 +1,4 @@
-use crate::{
+use crate::ethereum::{
     u256_ext::{FromDecimalStr, ToBigInt},
     U256,
 };

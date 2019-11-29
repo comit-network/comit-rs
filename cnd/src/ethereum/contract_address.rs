@@ -1,4 +1,4 @@
-use crate::web3::types::{Address, U256};
+use crate::ethereum::{Address, U256};
 use rlp::RlpStream;
 use tiny_keccak::{Hasher, Keccak};
 
@@ -35,7 +35,7 @@ fn hash(input: &[u8]) -> [u8; 32] {
 mod tests {
 
     use super::*;
-    use crate::web3::types::Address;
+    use crate::ethereum::Address;
     use std::str::FromStr;
 
     #[test]

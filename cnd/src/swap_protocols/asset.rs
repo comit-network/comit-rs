@@ -1,7 +1,9 @@
-use crate::http_api::asset::FromHttpAsset;
+use crate::{
+    ethereum::{Erc20Token, EtherQuantity},
+    http_api::asset::FromHttpAsset,
+};
 use bitcoin::Amount;
 use derivative::Derivative;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use std::{
     fmt::{Debug, Display},
     hash::Hash,

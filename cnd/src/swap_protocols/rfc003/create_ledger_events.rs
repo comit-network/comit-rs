@@ -1,14 +1,16 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    ledger::{Bitcoin, Ethereum},
-    rfc003::{
-        events::{LedgerEventFutures, LedgerEvents},
-        Ledger,
+use crate::{
+    ethereum::{Erc20Token, EtherQuantity},
+    swap_protocols::{
+        asset::Asset,
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{
+            events::{LedgerEventFutures, LedgerEvents},
+            Ledger,
+        },
+        LedgerConnectors,
     },
-    LedgerConnectors,
 };
 use bitcoin::Amount;
-use ethereum_support::{Erc20Token, EtherQuantity};
 
 pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
     fn create_ledger_events(&self) -> Box<dyn LedgerEvents<L, A>>;

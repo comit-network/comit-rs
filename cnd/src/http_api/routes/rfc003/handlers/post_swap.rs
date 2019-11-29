@@ -1,5 +1,6 @@
 use crate::{
     db::{Save, Saver, Swap},
+    ethereum::{Erc20Token, EtherQuantity},
     http_api::{self, asset::HttpAsset, ledger::HttpLedger},
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
@@ -14,7 +15,6 @@ use crate::{
     },
 };
 use bitcoin::Amount as BitcoinAmount;
-use ethereum_support::{Erc20Token, EtherQuantity};
 use futures::Stream;
 use futures_core::{
     compat::Future01CompatExt,

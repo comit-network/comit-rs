@@ -2,7 +2,10 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use btsieve::{bitcoin::TransactionPattern, first_or_else::StreamExt, MatchingTransactions};
+use cnd::{
+    btsieve::{bitcoin::TransactionPattern, MatchingTransactions},
+    first_or_else::StreamExt,
+};
 use std::str::FromStr;
 use tokio::prelude::Future;
 
@@ -31,7 +34,7 @@ fn find_transaction_in_old_block() {
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
-                        include_str!("./test_data/bitcoin/find_transaction_in_old_block/address")
+                        include_str!("test_data/bitcoin/find_transaction_in_old_block/address")
                             .trim(),
                     )
                     .unwrap(),

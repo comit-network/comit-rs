@@ -1,8 +1,5 @@
+use crate::ethereum::{Address, Block, Bytes, Transaction, TransactionReceipt, H256};
 use ethbloom::Input;
-use ethereum_support::{
-    web3::types::{TransactionReceipt, H256},
-    Address, Block, Bytes, Transaction,
-};
 
 #[derive(Clone, Default, Debug, Eq, PartialEq)]
 /// If the field is set to Some(foo) then only transactions matching foo are
@@ -165,9 +162,11 @@ pub struct Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::quickcheck::Quickcheck;
-    use ethereum_support::web3::types::{
-        Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
+    use crate::{
+        ethereum::{
+            Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
+        },
+        quickcheck::Quickcheck,
     };
     use spectral::prelude::*;
     use std::str::FromStr;

@@ -3,8 +3,10 @@ pub mod ethereum;
 
 pub use self::{bitcoin::Bitcoin, ethereum::Ethereum};
 
-use crate::http_api::ledger::FromHttpLedger;
-use btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector};
+use crate::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    http_api::ledger::FromHttpLedger,
+};
 use derivative::Derivative;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
