@@ -1,11 +1,8 @@
-use crate::config::{file, Bitcoin, Database, Ethereum, File, Network, Socket};
+use crate::config::{file, Bitcoin, Data, Ethereum, File, Network, Socket};
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
-use std::{
-    net::{IpAddr, Ipv4Addr},
-    path::Path,
-};
+use std::net::{IpAddr, Ipv4Addr};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -17,7 +14,7 @@ use std::{
 pub struct Settings {
     pub network: Network,
     pub http_api: HttpApi,
-    pub database: Database,
+    pub data: Data,
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
@@ -28,7 +25,7 @@ impl From<Settings> for File {
         let Settings {
             network,
             http_api: HttpApi { socket, cors },
-            database,
+            data,
             logging: Logging { level, structured },
             bitcoin,
             ethereum,
@@ -46,7 +43,7 @@ impl From<Settings> for File {
                     },
                 }),
             }),
-            database: Some(database),
+            data: Some(data),
             logging: Some(file::Logging {
                 level: Some(level),
                 structured: Some(structured),
@@ -108,7 +105,7 @@ impl Settings {
         let File {
             network,
             http_api,
-            database,
+            data,
             logging,
             bitcoin,
             ethereum,
@@ -143,14 +140,14 @@ impl Settings {
                     HttpApi { socket, cors }
                 })
                 .unwrap_or_default(),
-            database: {
-                let default_database_path = crate::data_dir()
-                    .map(|dir| Path::join(&dir, "cnd.sqlite"))
-                    .context("unable to determine default database path")?;
-                database.unwrap_or_else(|| Database {
-                    sqlite: default_database_path,
+            data: {
+                let default_data_dir =
+                    crate::data_dir().context("unable to determine default data path")?;
+                data.unwrap_or_else(|| Data {
+                    dir: default_data_dir,
                 })
             },
+
             logging: {
                 let Logging {
                     level: default_level,

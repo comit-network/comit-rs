@@ -1,7 +1,6 @@
 import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { PEMObject } from "pem-ts";
 import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../lib/config";
@@ -39,27 +38,20 @@ export class CndInstance {
             "config.toml"
         );
 
-        const pemObject = new PEMObject("SEED", this.actorConfig.seed);
-        const seedFile = await tempWrite(pemObject.encoded, "seed.pem");
-
-        this.process = spawn(
-            bin,
-            ["--config", configFile, "--seed-file", seedFile],
-            {
-                cwd: this.projectRoot,
-                stdio: [
-                    "ignore", // stdin
-                    await openAsync(
-                        this.logDir + "/cnd-" + this.actorConfig.name + ".log",
-                        "w"
-                    ), // stdout
-                    await openAsync(
-                        this.logDir + "/cnd-" + this.actorConfig.name + ".log",
-                        "w"
-                    ), // stderr
-                ],
-            }
-        );
+        this.process = spawn(bin, ["--config", configFile], {
+            cwd: this.projectRoot,
+            stdio: [
+                "ignore", // stdin
+                await openAsync(
+                    this.logDir + "/cnd-" + this.actorConfig.name + ".log",
+                    "w"
+                ), // stdout
+                await openAsync(
+                    this.logDir + "/cnd-" + this.actorConfig.name + ".log",
+                    "w"
+                ), // stderr
+            ],
+        });
 
         this.process.on("exit", (code: number, signal: number) => {
             console.log(

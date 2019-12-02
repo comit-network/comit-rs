@@ -59,6 +59,6 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
 // Linux: /home/<user>/.local/share/comit/
 // Windows: C:\Users\<user>\AppData\Roaming\comit\
 // OSX: /Users/<user>/Library/Application Support/comit/
-fn data_dir() -> Option<PathBuf> {
+pub fn data_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
