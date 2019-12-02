@@ -3,6 +3,7 @@ use chrono::NaiveDateTime;
 use cnd::{
     bitcoin::PublicKey,
     db::{AcceptedSwap, LoadAcceptedSwap, Save, Sqlite, Swap},
+    ethereum::{Address, EtherQuantity},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Request, Secret, SecretHash},
@@ -10,7 +11,6 @@ use cnd::{
     },
     timestamp::Timestamp,
 };
-use ethereum_support::{Address, EtherQuantity};
 use futures_core::{FutureExt, TryFutureExt};
 use libp2p::PeerId;
 use std::str::FromStr;
