@@ -6,6 +6,7 @@
     "scripts": {
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
+        "pretest": "cargo build --bin cnd",
         "test": "ts-node ./harness.ts",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
