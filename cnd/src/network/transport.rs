@@ -1,7 +1,7 @@
 use libp2p::{
+    core::{muxing, upgrade},
     dns, identity, mplex, secio, tcp, yamux, Multiaddr, PeerId, Transport, TransportError,
 };
-use libp2p_core::{muxing, upgrade};
 use std::{error, io, time::Duration};
 
 /// Builds a `Transport` that supports the most commonly-used protocols that
