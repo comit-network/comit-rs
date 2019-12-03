@@ -5,7 +5,7 @@ use crate::{
 };
 use futures::{Future, Stream};
 use libp2p_swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
-use multistream_select::Negotiated;
+use multistream_select::{Negotiated, Version};
 use std::collections::{HashMap, HashSet};
 use tokio::{
     codec::{Decoder, Encoder, Framed},
@@ -41,7 +41,7 @@ pub fn setup_substream<CD: Encoder + Decoder, CL: Encoder + Decoder>(
     let dialer = TcpStream::connect(&listener_addr)
         .from_err()
         .and_then(move |connection| {
-            multistream_select::dialer_select_proto(connection, vec![b"/proto1"])
+            multistream_select::dialer_select_proto(connection, vec![b"/proto1"], Version::V1)
         })
         .and_then(|(_proto, substream)| substream.complete())
         .map(move |substream| codec_dialer.framed(substream));
