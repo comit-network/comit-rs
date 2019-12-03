@@ -54,6 +54,7 @@ macro_rules! db_roundtrip_test {
                         db.save(saved_accept.clone()).await?;
 
                         let loaded_swap = Retrieve::get(&db, &swap_id).await?;
+                        // If the assignment of `_at` works then we have a valid NaiveDateTime.
                         let (loaded_request, loaded_accept, _at) = db.load_accepted_swap(&swap_id).await?;
                         let loaded_swap_types = db.determine_types(&swap_id).await?;
 
