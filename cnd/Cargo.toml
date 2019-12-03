@@ -36,6 +36,7 @@ hyper = "0.12"
 lazy_static = "1"
 libp2p = { version = "0.13" }
 libp2p-comit = { path = "../libp2p-comit" }
+libp2p-core = "0.13"
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
 maplit = "1"

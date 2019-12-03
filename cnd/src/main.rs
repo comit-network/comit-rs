@@ -8,7 +8,7 @@ use cnd::{
     db::{DetermineTypes, Retrieve, Saver, Sqlite},
     http_api::{self, route_factory},
     load_swaps,
-    network::{self, Network, SendRequest},
+    network::{self, transport, Network, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         rfc003::{
@@ -24,7 +24,6 @@ use libp2p::{
     identity::{self, ed25519},
     PeerId, Swarm,
 };
-use libp2p_comit;
 use rand::rngs::OsRng;
 use std::{
     net::SocketAddr,
@@ -85,7 +84,7 @@ fn main() -> anyhow::Result<()> {
         .compat(),
     )?;
 
-    let transport = libp2p_comit::build_comit_transport(local_key_pair);
+    let transport = transport::build_comit_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
         ledger_events.clone(),
         Arc::clone(&state_store),
