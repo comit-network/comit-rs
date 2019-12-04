@@ -74,6 +74,7 @@ table! {
        swap_id -> Text,
        ethereum_redeem_identity -> Text,
        bitcoin_refund_identity -> Text,
+       at -> Timestamp,
    }
 }
 
@@ -83,6 +84,7 @@ table! {
        swap_id -> Text,
        bitcoin_redeem_identity -> Text,
        ethereum_refund_identity -> Text,
+       at -> Timestamp,
    }
 }
 

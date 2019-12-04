@@ -4,8 +4,9 @@ use crate::{
     swap_protocols::{
         ledger::{self, ethereum::ChainId},
         rfc003::{Accept, Request, SecretHash},
-        HashFunction, Role, SwapId, Timestamp,
+        HashFunction, Role, SwapId,
     },
+    timestamp::Timestamp,
 };
 use bitcoin::hashes::{sha256d, Hash};
 use libp2p::PeerId;

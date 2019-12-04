@@ -4,8 +4,8 @@ use crate::{
     swap_protocols::{
         asset::Asset,
         rfc003::{self, alice, bob, Ledger, SecretHash},
-        Timestamp,
     },
+    timestamp::Timestamp,
 };
 use serde::Serialize;
 

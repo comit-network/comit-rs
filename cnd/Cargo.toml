@@ -19,7 +19,7 @@ config = { version = "0.9", features = ["toml"] }
 debug_stub_derive = "0.3"
 derivative = "1"
 derive_more = "0.99.2"
-diesel = { version = "1.4", features = ["sqlite"] }
+diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 directories = "2.0"
 either = "1.5"

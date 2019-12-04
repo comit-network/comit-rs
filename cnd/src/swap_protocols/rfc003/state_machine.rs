@@ -1,15 +1,18 @@
 // The state_machine_future derive generates quite complex code...
 #![allow(clippy::too_many_arguments)]
 
-use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        self,
-        events::{self, Deployed, Funded, Redeemed, Refunded},
-        ledger::Ledger,
-        SaveState, SecretHash,
+use crate::{
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            self,
+            events::{self, Deployed, Funded, Redeemed, Refunded},
+            ledger::Ledger,
+            SaveState, SecretHash,
+        },
+        HashFunction,
     },
-    HashFunction, Timestamp,
+    timestamp::Timestamp,
 };
 use either::Either;
 use futures::{future, try_ready, Async, Future};

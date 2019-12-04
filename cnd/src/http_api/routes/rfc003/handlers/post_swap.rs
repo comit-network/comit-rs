@@ -11,8 +11,9 @@ use crate::{
             self, alice::State, create_ledger_events::CreateLedgerEvents, messages::ToRequest,
             state_store::StateStore, Accept, Ledger, Request, SecretSource, Spawn,
         },
-        HashFunction, LedgerConnectors, Role, SwapId, Timestamp,
+        HashFunction, LedgerConnectors, Role, SwapId,
     },
+    timestamp::Timestamp,
 };
 use bitcoin::Amount as BitcoinAmount;
 use futures::Stream;

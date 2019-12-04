@@ -317,6 +317,7 @@ impl Save<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
         Ok(())
     }
 }
+
 #[derive(Insertable, Debug, Copy, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_accept_messages"]
 struct InsertableEthereumBitcoinAcceptMessage {

@@ -3,12 +3,10 @@ pub mod asset;
 pub mod ledger;
 pub mod rfc003;
 mod swap_id;
-mod timestamp;
 
 pub use self::{
     ledger::{Ledger, LedgerConnectors, LedgerKind},
     swap_id::*,
-    timestamp::Timestamp,
 };
 use serde::{Deserialize, Serialize};
 

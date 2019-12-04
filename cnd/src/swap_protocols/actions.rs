@@ -41,7 +41,8 @@ pub mod bitcoin {
 pub mod ethereum {
     use crate::{
         ethereum::{Address, Bytes, EtherQuantity, U256},
-        swap_protocols::{ledger::ethereum::ChainId, Timestamp},
+        swap_protocols::ledger::ethereum::ChainId,
+        timestamp::Timestamp,
     };
 
     #[derive(Debug, Clone, PartialEq)]

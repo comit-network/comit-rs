@@ -4,8 +4,8 @@ use crate::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::{ethereum::ChainId, Ethereum},
         rfc003::{state_machine::HtlcParams, Secret},
-        Timestamp,
     },
+    timestamp::Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 

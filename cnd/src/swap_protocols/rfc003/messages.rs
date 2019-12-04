@@ -1,7 +1,10 @@
-use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{Ledger, SecretHash, SecretSource},
-    HashFunction, SwapId, Timestamp,
+use crate::{
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{Ledger, SecretHash, SecretSource},
+        HashFunction, SwapId,
+    },
+    timestamp::Timestamp,
 };
 use serde::{Deserialize, Serialize};
 

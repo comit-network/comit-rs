@@ -33,6 +33,7 @@ pub mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 pub mod swap_protocols;
+pub mod timestamp;
 
 use anyhow::Context;
 use directories::ProjectDirs;
