@@ -19,7 +19,7 @@ mod erc20_token;
 mod ether_quantity;
 mod u256_ext;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct TransactionAndReceipt {
     pub transaction: Transaction,
     pub receipt: TransactionReceipt,
