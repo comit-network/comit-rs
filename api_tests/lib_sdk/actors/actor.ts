@@ -208,8 +208,6 @@ export class Actor {
     }
 
     public async assertSwapped() {
-        this.logger.debug("Checking if swap @ %s is done", this.swap.self);
-
         for (const [
             assetKind,
             expectedBalanceChange,
