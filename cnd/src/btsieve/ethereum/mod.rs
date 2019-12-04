@@ -36,7 +36,7 @@ where
         let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
         let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
 
-        let reference_timestamp = reference_timestamp.map(|timestamp| U256::from(timestamp));
+        let reference_timestamp = reference_timestamp.map(U256::from);
 
         spawn(self.clone(), {
             let mut connector = self.clone();
@@ -158,12 +158,12 @@ where
                         Some(parent_blockhash) => {
                             match connector.block_by_hash(parent_blockhash).compat().await {
                                 Ok(Some(block)) => {
-                                    if reference_timestamp
+                                    let younger_than_reference_timestamp = reference_timestamp
                                         .map(|reference_timestamp| {
                                             reference_timestamp <= block.timestamp
                                         })
-                                        .unwrap_or(false)
-                                    {
+                                        .unwrap_or(false);
+                                    if younger_than_reference_timestamp {
                                         join(
                                             block_queue.send(block.clone()),
                                             look_in_the_past_queue.send(block.parent_hash),
