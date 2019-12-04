@@ -145,7 +145,7 @@ dependencies = [
 
 [[package]]
 name = "async-trait"
-version = "0.1.19"
+version = "0.1.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "proc-macro2 1.0.6 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -480,7 +480,7 @@ version = "0.4.0"
 dependencies = [
  "anyhow 1.0.23 (registry+https://github.com/rust-lang/crates.io-index)",
  "async-std 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "async-trait 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)",
  "base64 0.11.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "bigdecimal 0.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "binary_macros 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -4344,7 +4344,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum async-macros 2.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "644a5a8de80f2085a1e7e57cd1544a2a7438f6e003c0790999bd43b92a77cdb2"
 "checksum async-std 1.2.0 (registry+https://github.com/rust-lang/crates.io-index)" = "513ee3c49800679a319912340f5601afda9e72848d7dea3a48bab489e8c1a46f"
 "checksum async-task 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de6bd58f7b9cc49032559422595c81cbfcf04db2f2133592f70af19e258a1ced"
-"checksum async-trait 0.1.19 (registry+https://github.com/rust-lang/crates.io-index)" = "3495c8ae99b96d8a84050dee9d7b9d6425f9bfe84c2e3f800c2c2859457f8590"
+"checksum async-trait 0.1.21 (registry+https://github.com/rust-lang/crates.io-index)" = "8b6dd385bb33043b833ba049048d57bdbb4d654a121ed68c71871ca51ff67070"
 "checksum atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1803c647a3ec87095e7ae7acfca019e98de5ec9a7d01343f611cf3152ed71a90"
 "checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
 "checksum backtrace 0.3.38 (registry+https://github.com/rust-lang/crates.io-index)" = "690a62be8920ccf773ee00ef0968649b0e724cda8bd5b12286302b4ae955fdf5"
