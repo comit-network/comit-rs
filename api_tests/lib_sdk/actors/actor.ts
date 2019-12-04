@@ -228,9 +228,15 @@ export class Actor {
             ).add(expectedBalanceChange);
             const maximumFee = wallet.MaximumFee;
 
-            const actualBalance = new BigNumber(await wallet.getBalance());
-            await expect(actualBalance.gte(expectedBalance.sub(maximumFee))).to
-                .be.true;
+            await expect(
+                wallet
+                    .getBalance()
+                    .then(balance =>
+                        new BigNumber(balance).gte(
+                            expectedBalance.sub(maximumFee)
+                        )
+                    )
+            ).to.eventually.be.true;
         }
     }
 
