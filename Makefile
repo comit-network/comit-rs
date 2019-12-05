@@ -88,5 +88,5 @@ check_toml_format: install_tomlfmt
 check_ts_format: yarn_install
 	(cd ./api_tests; yarn run check)
 
-e2e: build yarn_install
+e2e: yarn_install
 	(cd ./api_tests; yarn test)

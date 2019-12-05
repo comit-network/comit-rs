@@ -49,7 +49,7 @@ Please see `cnd --help` for help with command line options.
 - `make test` is just a wrapper around `cargo test --all`
 - `make e2e` will run all the end-to-end tests
 
-To run individual end-to-end tests, use `yarn` inside the `api_tests` folder (careful! It does not recompile Rust for you):
+To run individual end-to-end tests, use `yarn` inside the `api_tests` folder:
 - `yarn run test`: run all tests
 - `yarn run test <directory>`: run all tests in the directory
 - `yarn run test <path to test file>`: run all tests in this test file, supports shell glob on the path

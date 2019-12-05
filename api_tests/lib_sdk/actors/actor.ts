@@ -1,6 +1,5 @@
 import { expect } from "chai";
 import { Cnd, ComitClient, Swap } from "comit-sdk";
-import { randomBytes } from "crypto";
 import { BigNumber, BigNumberish, parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
@@ -27,12 +26,9 @@ export class Actor {
         projectRoot: string,
         logRoot: string
     ) {
-        const seed = randomBytes(32).toString("hex");
-
         const actorConfig = new E2ETestActorConfig(
             await getPort(),
             await getPort(),
-            seed,
             name
         );
 
