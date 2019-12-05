@@ -12,6 +12,7 @@ use crate::{
     network::Network,
     seed::SwapSeed,
     swap_protocols::{
+        self,
         actions::Actions,
         rfc003::{
             self,
@@ -19,19 +20,27 @@ use crate::{
             bob::State,
             messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
-            Spawn,
         },
-        SwapId,
+        LedgerEventsCreator, SwapId,
     },
 };
 use anyhow::Context;
-use futures::Stream;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
+use tokio::executor::Executor;
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + DetermineTypes>(
+pub async fn handle_action<
+    D: StateStore
+        + Network
+        + SwapSeed
+        + Saver
+        + DetermineTypes
+        + LedgerEventsCreator
+        + Executor
+        + Clone,
+>(
     method: http::Method,
     swap_id: SwapId,
     action_kind: ActionKind,
@@ -76,16 +85,12 @@ pub async fn handle_action<D: StateStore + Network + Spawn + SwapSeed + Saver + 
                 })?;
 
                 let swap_request = state.request();
-                let seed = dependencies.swap_seed(swap_id);
-                let state = State::accepted(swap_request.clone(), accept_message, seed);
-                StateStore::insert(&dependencies, swap_id, state);
-
-                let receiver = Spawn::spawn(&dependencies, swap_request, accept_message);
-
-                tokio::spawn(receiver.for_each(move |update| {
-                    StateStore::update::<State<AL, BL, AA, BA>>(&dependencies, &swap_id, update);
-                    Ok(())
-                }));
+                swap_protocols::init_accepted_swap(
+                    &dependencies,
+                    swap_request,
+                    accept_message,
+                    types.role,
+                )?;
 
                 Ok(ActionResponseBody::None)
             }

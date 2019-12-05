@@ -16,8 +16,8 @@ use crate::{
     network::{Network, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
-        rfc003::{actions::ActionKind, state_store::StateStore, Spawn},
-        SwapId,
+        rfc003::{actions::ActionKind, state_store::StateStore},
+        LedgerEventsCreator, SwapId,
     },
 };
 use futures::Future;
@@ -27,9 +27,19 @@ use warp::{http, Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 use crate::{db::Saver, http_api::problem};
+use tokio::executor::Executor;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver>(
+pub fn post_swap<
+    D: Clone
+        + StateStore
+        + Executor
+        + Save<Swap>
+        + SendRequest
+        + SwapSeed
+        + Saver
+        + LedgerEventsCreator,
+>(
     dependencies: D,
     body: serde_json::Value,
 ) -> impl Future<Item = impl Reply, Error = Rejection> {
@@ -60,7 +70,17 @@ pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<D: DetermineTypes + Retrieve + StateStore + Network + Spawn + SwapSeed + Saver>(
+pub fn action<
+    D: DetermineTypes
+        + Retrieve
+        + StateStore
+        + Executor
+        + Clone
+        + Network
+        + SwapSeed
+        + Saver
+        + LedgerEventsCreator,
+>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,

@@ -4,6 +4,7 @@ pub mod transport;
 pub use send_request::*;
 
 use crate::{
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     db::{Save, Saver, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::Seed,
@@ -15,7 +16,7 @@ use crate::{
             state_store::{InMemoryStateStore, StateStore},
             Ledger,
         },
-        HashFunction, LedgerConnectors, LedgerKind, Role, SwapId, SwapProtocol,
+        HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
     },
 };
 use futures::{
@@ -48,7 +49,9 @@ pub struct ComitNode<TSubstream> {
     mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
-    pub ledger_events: LedgerConnectors,
+    pub bitcoin_connector: BitcoindConnector,
+    #[behaviour(ignore)]
+    pub ethereum_connector: Web3Connector,
     #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
@@ -78,7 +81,8 @@ impl Display for DialInformation {
 
 impl<TSubstream> ComitNode<TSubstream> {
     pub fn new(
-        ledger_events: LedgerConnectors,
+        bitcoin_connector: BitcoindConnector,
+        ethereum_connector: Web3Connector,
         state_store: Arc<InMemoryStateStore>,
         seed: Seed,
         db: Sqlite,
@@ -98,7 +102,8 @@ impl<TSubstream> ComitNode<TSubstream> {
         Ok(Self {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
-            ledger_events,
+            bitcoin_connector,
+            ethereum_connector,
             state_store,
             seed,
             db,

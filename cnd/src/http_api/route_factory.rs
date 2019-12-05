@@ -4,13 +4,10 @@ use crate::{
     http_api,
     network::{Network, SendRequest},
     seed::SwapSeed,
-    swap_protocols::{
-        self,
-        rfc003::{state_store::StateStore, Spawn},
-        SwapId,
-    },
+    swap_protocols::{self, rfc003::state_store::StateStore, LedgerEventsCreator, SwapId},
 };
 use libp2p::PeerId;
+use tokio::executor::Executor;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
@@ -26,12 +23,13 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 pub fn create<
     D: Clone
         + StateStore
+        + Executor
         + Network
         + SendRequest
-        + Spawn
         + SwapSeed
         + DetermineTypes
         + Retrieve
+        + LedgerEventsCreator
         + Saver,
 >(
     peer_id: PeerId,

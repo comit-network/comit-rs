@@ -8,7 +8,6 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
-pub mod spawn;
 pub mod state_machine;
 pub mod state_store;
 
@@ -19,17 +18,13 @@ mod save_state;
 mod secret;
 mod secret_source;
 
-pub mod create_ledger_events;
-
 pub use self::{
     actor_state::ActorState,
-    create_ledger_events::CreateLedgerEvents,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
-    spawn::*,
 };
 
 pub use self::messages::{Accept, Decline, Request};

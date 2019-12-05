@@ -6,10 +6,9 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            create_ledger_events::CreateLedgerEvents,
             messages::{Decision, SwapDeclineReason},
         },
-        LedgerConnectors, SwapProtocol,
+        SwapProtocol,
     },
 };
 use futures::Future;
@@ -30,9 +29,7 @@ pub trait SendRequest: Send + Sync + 'static {
         &self,
         peer_identity: DialInformation,
         request: swap_protocols::rfc003::messages::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>;
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>;
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -69,10 +66,7 @@ where
         &self,
         dial_information: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
         let id = request.swap_id;
         let request = build_swap_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
