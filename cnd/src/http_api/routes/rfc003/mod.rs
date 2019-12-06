@@ -25,7 +25,7 @@ use crate::{
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
 use hyper::header;
-use warp::{Rejection, Reply};
+use warp::{http, Rejection, Reply};
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
 use crate::{db::Saver, http_api::problem};

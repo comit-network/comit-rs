@@ -14,10 +14,10 @@ use crate::{
         HashFunction, SwapId, SwapProtocol,
     },
 };
-use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use libp2p::PeerId;
 use serde::Serialize;
+use warp::http::StatusCode;
 
 #[derive(Debug, Serialize)]
 #[serde(

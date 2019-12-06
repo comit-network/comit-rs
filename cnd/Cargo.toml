@@ -30,7 +30,6 @@ futures = { version = "0.1" }
 futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"], package = "futures-preview" }
 hex = "0.4"
 hex-serde = "0.1.0"
-http = "0.1"
 http-api-problem = "0.13"
 hyper = "0.12"
 lazy_static = "1"

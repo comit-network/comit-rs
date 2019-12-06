@@ -5,9 +5,11 @@ use crate::{
         InvalidAction, InvalidActionInvocation,
     },
 };
-use http::StatusCode;
 use http_api_problem::HttpApiProblem;
-use warp::{Rejection, Reply};
+use warp::{
+    http::{self, StatusCode},
+    Rejection, Reply,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[error("Missing GET parameters for a {} action type. Expected: {:?}", action, parameters.iter().map(|parameter| parameter.name).collect::<Vec<&str>>())]

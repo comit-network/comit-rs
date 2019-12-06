@@ -13,10 +13,10 @@ use crate::{
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
-use http::StatusCode;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
+use warp::http::StatusCode;
 
 pub trait ToSirenAction {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action;
