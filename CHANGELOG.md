@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2019-12-06
+
 ### Added
 - Added persistent storage to cnd, now we save swaps to an Sqlite database when they are requested and accepted.
 
@@ -52,7 +54,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move config files to standard location based on platform (OSX, Windows, Linux).
 - Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.4.0...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.5.0...HEAD
+[0.5.0]: https://github.com/comit-network/comit-rs/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/comit-network/comit-rs/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/comit-network/comit-rs/compare/0.2.1...0.3.0
 [0.2.1]: https://github.com/comit-network/comit-rs/compare/0.2.0...0.2.1
