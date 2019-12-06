@@ -33,7 +33,7 @@ setTimeout(async function() {
             expect(body.entities).to.have.lengthOf(0);
         });
 
-        it("[Alice] Returns 400 Swap not supported for an unsupported combination of parameters", async () => {
+        it("[Alice] Returns 400 invalid body for an unsupported combination of parameters", async () => {
             const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
@@ -66,7 +66,7 @@ setTimeout(async function() {
             expect(res.body.title).to.equal("Invalid body.");
         });
 
-        it("[Alice] Returns 400 bad request for malformed requests", async () => {
+        it("[Alice] Returns 400 invalid body for malformed requests", async () => {
             const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
