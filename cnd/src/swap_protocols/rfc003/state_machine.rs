@@ -6,16 +6,16 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            events::{self, Deployed, Funded, Redeemed, Refunded},
+            events::{self, Deployed, Funded, LedgerEvents, Redeemed, Refunded},
             ledger::Ledger,
-            SaveState, SecretHash,
+            Accept, Request, SaveState, SecretHash,
         },
         HashFunction,
     },
     timestamp::Timestamp,
 };
 use either::Either;
-use futures::{future, try_ready, Async, Future};
+use futures::{future, sync::mpsc, try_ready, Async, Future, Stream};
 use state_machine_future::{RentToOwn, StateMachineFuture};
 use std::{cmp::Ordering::*, fmt, sync::Arc};
 
@@ -76,6 +76,23 @@ pub struct OngoingSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
+    pub fn new(request: Request<AL, BL, AA, BA>, accept: Accept<AL, BL>) -> Self {
+        OngoingSwap {
+            alpha_ledger: request.alpha_ledger,
+            beta_ledger: request.beta_ledger,
+            alpha_asset: request.alpha_asset,
+            beta_asset: request.beta_asset,
+            hash_function: request.hash_function,
+            alpha_ledger_redeem_identity: accept.alpha_ledger_redeem_identity,
+            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: request.beta_ledger_redeem_identity,
+            beta_ledger_refund_identity: accept.beta_ledger_refund_identity,
+            alpha_expiry: request.alpha_expiry,
+            beta_expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
+
     pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
         HtlcParams {
             asset: self.alpha_asset,
@@ -252,6 +269,37 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 
     #[state_machine_future(error)]
     Error(rfc003::Error),
+}
+
+pub fn create_swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
+    beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+    request: Request<AL, BL, AA, BA>,
+    accept: Accept<AL, BL>,
+) -> (
+    impl Future<Item = (), Error = ()> + Send + 'static,
+    impl Stream<Item = SwapStates<AL, BL, AA, BA>, Error = ()> + Send + 'static,
+) {
+    let id = request.swap_id;
+
+    let (sender, receiver) = mpsc::unbounded();
+
+    let context = Context {
+        alpha_ledger_events,
+        beta_ledger_events,
+        state_repo: Arc::new(sender),
+    };
+
+    let swap_execution = Swap::start_in(
+        Start {
+            swap: OngoingSwap::new(request, accept),
+        },
+        context,
+    )
+    .map(move |outcome| log::info!("Swap {} finished with {:?}", id, outcome))
+    .map_err(move |e| log::error!("Swap {} failed with {:?}", id, e));
+
+    (swap_execution, receiver)
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> PollSwap<AL, BL, AA, BA>

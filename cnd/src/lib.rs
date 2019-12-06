@@ -35,6 +35,10 @@ pub mod spectral_ext;
 pub mod swap_protocols;
 pub mod timestamp;
 
+use crate::swap_protocols::{
+    asset::Asset,
+    rfc003::{events::LedgerEvents, Ledger},
+};
 use anyhow::Context;
 use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
@@ -62,4 +66,8 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
 // OSX: /Users/<user>/Library/Application Support/comit/
 pub fn data_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
+
+pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
+    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<L, A>>;
 }

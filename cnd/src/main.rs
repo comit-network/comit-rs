@@ -6,16 +6,13 @@ use cnd::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{self, Settings},
     db::{DetermineTypes, Retrieve, Saver, Sqlite},
-    http_api::{self, route_factory},
+    http_api::route_factory,
     load_swaps,
     network::{self, transport, Network, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
-        rfc003::{
-            state_store::{InMemoryStateStore, StateStore},
-            Spawn,
-        },
-        LedgerConnectors,
+        rfc003::state_store::{InMemoryStateStore, StateStore},
+        Facade, LedgerEventsCreator,
     },
 };
 use futures::{stream, Future, Stream};
@@ -31,6 +28,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
+use tokio::executor::Executor;
 
 mod cli;
 mod logging;
@@ -60,11 +58,6 @@ fn main() -> anyhow::Result<()> {
     let (ethereum_connector, _event_loop_handle) =
         { Web3Connector::new(settings.clone().ethereum.node_url, runtime.executor())? };
 
-    let ledger_events = LedgerConnectors {
-        bitcoin_connector,
-        ethereum_connector,
-    };
-
     let state_store = Arc::new(InMemoryStateStore::default());
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
@@ -73,20 +66,10 @@ fn main() -> anyhow::Result<()> {
     let local_peer_id = PeerId::from(local_key_pair.clone().public());
     log::info!("Starting with peer_id: {}", local_peer_id);
 
-    runtime.block_on(
-        load_swaps::load_swaps_from_database(
-            ledger_events.clone(),
-            state_store.clone(),
-            seed,
-            database.clone(),
-        )
-        .boxed()
-        .compat(),
-    )?;
-
     let transport = transport::build_comit_transport(local_key_pair);
     let behaviour = network::ComitNode::new(
-        ledger_events.clone(),
+        bitcoin_connector.clone(),
+        ethereum_connector.clone(),
         Arc::clone(&state_store),
         seed,
         database.clone(),
@@ -101,20 +84,23 @@ fn main() -> anyhow::Result<()> {
 
     let swarm = Arc::new(Mutex::new(swarm));
 
-    let http_api_dependencies = http_api::Dependencies {
-        ledger_events: ledger_events.clone(),
+    let deps = Facade {
+        bitcoin_connector,
+        ethereum_connector,
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
-        db: database,
+        db: database.clone(),
+        task_executor: runtime.executor(),
     };
 
-    spawn_warp_instance(
-        &settings,
-        local_peer_id,
-        &mut runtime,
-        http_api_dependencies,
-    );
+    runtime.block_on(
+        load_swaps::load_swaps_from_database(deps.clone())
+            .boxed()
+            .compat(),
+    )?;
+
+    spawn_warp_instance(&settings, local_peer_id, &mut runtime, deps);
 
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
@@ -138,12 +124,13 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 fn spawn_warp_instance<
     D: Clone
         + StateStore
+        + Executor
         + Network
         + SendRequest
-        + Spawn
         + SwapSeed
         + DetermineTypes
         + Retrieve
+        + LedgerEventsCreator
         + Saver,
 >(
     settings: &Settings,

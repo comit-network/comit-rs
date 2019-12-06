@@ -1,56 +1,63 @@
 use crate::{
-    db::{DetermineTypes, Retrieve, Save, Saver, Sqlite, Swap, SwapTypes},
+    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    db::{
+        AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Saver, Sqlite, Swap,
+        SwapTypes,
+    },
+    ethereum::{Erc20Token, EtherQuantity},
     network::{DialInformation, Network, RequestError, SendRequest},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         asset::Asset,
+        ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
-            create_ledger_events::CreateLedgerEvents,
+            events::{HtlcEvents, LedgerEventFutures, LedgerEvents},
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
-            ActorState, Ledger, Spawn,
+            ActorState, Ledger,
         },
-        LedgerConnectors, SwapId,
+        SwapId,
     },
+    CreateLedgerEvents,
 };
 use async_trait::async_trait;
-use futures::{
-    sync::{mpsc, oneshot::Sender},
-    Future,
-};
+use bitcoin::Amount;
+use futures::{sync::oneshot::Sender, Future};
 use libp2p::PeerId;
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
+use tokio::{executor, runtime::TaskExecutor};
 
-/// A struct for capturing dependencies that are needed within the HTTP API
-/// controllers.
-///
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
 #[allow(missing_debug_implementations)]
-pub struct Dependencies<S> {
-    pub ledger_events: LedgerConnectors,
+pub struct Facade<S> {
+    pub bitcoin_connector: BitcoindConnector,
+    pub ethereum_connector: Web3Connector,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: Seed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
     pub db: Sqlite,
+    pub task_executor: TaskExecutor,
 }
 
-impl<S> Clone for Dependencies<S> {
+impl<S> Clone for Facade<S> {
     fn clone(&self) -> Self {
         Self {
-            ledger_events: self.ledger_events.clone(),
+            bitcoin_connector: self.bitcoin_connector.clone(),
+            ethereum_connector: self.ethereum_connector.clone(),
             state_store: Arc::clone(&self.state_store),
             seed: self.seed,
             swarm: Arc::clone(&self.swarm),
             db: self.db.clone(),
+            task_executor: self.task_executor.clone(),
         }
     }
 }
 
-impl<S> StateStore for Dependencies<S>
+impl<S> StateStore for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -67,7 +74,7 @@ where
     }
 }
 
-impl<S: Network> Network for Dependencies<S>
+impl<S: Network> Network for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -86,7 +93,7 @@ where
     }
 }
 
-impl<S: SendRequest> SendRequest for Dependencies<S>
+impl<S: SendRequest> SendRequest for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -94,33 +101,12 @@ where
         &self,
         dial_info: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-    {
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
         self.swarm.send_request(dial_info, request)
     }
 }
 
-impl<S> Spawn for Dependencies<S>
-where
-    S: Send + Sync + 'static,
-{
-    #[allow(clippy::type_complexity)]
-    fn spawn<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-        &self,
-        swap_request: rfc003::Request<AL, BL, AA, BA>,
-        accept: rfc003::Accept<AL, BL>,
-    ) -> mpsc::UnboundedReceiver<SwapStates<AL, BL, AA, BA>>
-    where
-        LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
-        S: Send + Sync + 'static,
-    {
-        self.ledger_events.spawn(swap_request, accept)
-    }
-}
-
-impl<S> SwapSeed for Dependencies<S>
+impl<S> SwapSeed for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -130,7 +116,7 @@ where
 }
 
 #[async_trait]
-impl<S> Retrieve for Dependencies<S>
+impl<S> Retrieve for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -144,7 +130,25 @@ where
 }
 
 #[async_trait]
-impl<S> DetermineTypes for Dependencies<S>
+impl<S, AL, BL, AA, BA> LoadAcceptedSwap<AL, BL, AA, BA> for Facade<S>
+where
+    S: Send + Sync + 'static,
+    AL: Ledger + Send + 'static,
+    BL: Ledger + Send + 'static,
+    AA: Asset + Send + 'static,
+    BA: Asset + Send + 'static,
+    Sqlite: LoadAcceptedSwap<AL, BL, AA, BA>,
+{
+    async fn load_accepted_swap(
+        &self,
+        swap_id: &SwapId,
+    ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>> {
+        self.db.load_accepted_swap(swap_id).await
+    }
+}
+
+#[async_trait]
+impl<S> DetermineTypes for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -154,10 +158,10 @@ where
 }
 
 #[async_trait]
-impl<S> Saver for Dependencies<S> where S: Send + Sync + 'static {}
+impl<S> Saver for Facade<S> where S: Send + Sync + 'static {}
 
 #[async_trait]
-impl<S, T> Save<T> for Dependencies<S>
+impl<S, T> Save<T> for Facade<S>
 where
     S: Send + Sync + 'static,
     T: Send + 'static,
@@ -165,5 +169,50 @@ where
 {
     async fn save(&self, data: T) -> anyhow::Result<()> {
         self.db.save(data).await
+    }
+}
+
+pub trait LedgerEventsCreator:
+    CreateLedgerEvents<Bitcoin, Amount>
+    + CreateLedgerEvents<Ethereum, EtherQuantity>
+    + CreateLedgerEvents<Ethereum, Erc20Token>
+{
+}
+
+impl<S> LedgerEventsCreator for Facade<S> where S: Send + Sync + 'static {}
+
+impl<S> CreateLedgerEvents<Bitcoin, Amount> for Facade<S>
+where
+    S: Send + Sync + 'static,
+{
+    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, Amount>> {
+        Box::new(LedgerEventFutures::new(Box::new(
+            self.bitcoin_connector.clone(),
+        )))
+    }
+}
+
+impl<S, A> CreateLedgerEvents<Ethereum, A> for Facade<S>
+where
+    S: Send + Sync + 'static,
+    A: Asset + Send + Sync + 'static,
+    Web3Connector: HtlcEvents<Ethereum, A>,
+{
+    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, A>> {
+        Box::new(LedgerEventFutures::new(Box::new(
+            self.ethereum_connector.clone(),
+        )))
+    }
+}
+
+impl<S> executor::Executor for Facade<S>
+where
+    S: Send + Sync + 'static,
+{
+    fn spawn(
+        &mut self,
+        future: Box<dyn Future<Item = (), Error = ()> + Send>,
+    ) -> Result<(), executor::SpawnError> {
+        executor::Executor::spawn(&mut self.task_executor, future)
     }
 }

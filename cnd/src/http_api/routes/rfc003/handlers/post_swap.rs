@@ -5,26 +5,38 @@ use crate::{
     network::{DialInformation, SendRequest},
     seed::SwapSeed,
     swap_protocols::{
+        self,
         asset::Asset,
         ledger,
         rfc003::{
-            self, alice::State, create_ledger_events::CreateLedgerEvents, state_store::StateStore,
-            Accept, Ledger, Request, SecretHash, SecretSource, Spawn,
+            self, alice::State, state_store::StateStore, Accept, Decline, Ledger, Request,
+            SecretHash, SecretSource,
         },
-        HashFunction, LedgerConnectors, Role, SwapId,
+        HashFunction, LedgerEventsCreator, Role, SwapId,
     },
     timestamp::Timestamp,
+    CreateLedgerEvents,
 };
-use futures::Stream;
+use anyhow::Context;
+use futures::Future;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use tokio::executor::Executor;
 
 pub async fn handle_post_swap<
-    D: Clone + StateStore + Save<Swap> + SendRequest + Spawn + SwapSeed + Saver,
+    D: Clone
+        + Executor
+        + StateStore
+        + Save<Swap>
+        + SendRequest
+        + SwapSeed
+        + Saver
+        + Clone
+        + LedgerEventsCreator,
 >(
     dependencies: D,
     body: serde_json::Value,
@@ -196,14 +208,18 @@ async fn initiate_request<D, AL, BL, AA, BA>(
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    LedgerConnectors: CreateLedgerEvents<AL, AA> + CreateLedgerEvents<BL, BA>,
     D: StateStore
+        + Executor
         + SendRequest
-        + Spawn
         + SwapSeed
-        + Saver
         + Save<Request<AL, BL, AA, BA>>
-        + Save<Accept<AL, BL>>,
+        + Save<Accept<AL, BL>>
+        + Save<Swap>
+        + Save<Decline>
+        + LedgerEventsCreator
+        + CreateLedgerEvents<AL, AA>
+        + CreateLedgerEvents<BL, BA>
+        + Clone,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
@@ -224,41 +240,32 @@ where
                 .send_request(peer.clone(), swap_request.clone())
                 .compat()
                 .await
-                .map_err(|e| {
-                    log::error!(
-                        "Failed to send swap request to {} because {:?}",
-                        peer.clone(),
-                        e
-                    );
-                })?;
+                .with_context(|| format!("Failed to send swap request to {}", peer.clone()))?;
 
             match response {
                 Ok(accept) => {
-                    let state = State::accepted(swap_request.clone(), accept, seed);
-                    StateStore::insert(&dependencies, id, state.clone());
-                    Save::save(&dependencies, accept)
-                        .await
-                        .expect("failed to save message to db");
+                    Save::save(&dependencies, accept).await?;
 
-                    let receiver = Spawn::spawn(&dependencies, swap_request, accept);
-                    tokio::spawn(receiver.for_each(move |update| {
-                        StateStore::update::<State<AL, BL, AA, BA>>(&dependencies, &id, update);
-                        Ok(())
-                    }));
+                    swap_protocols::init_accepted_swap(
+                        &dependencies,
+                        swap_request,
+                        accept,
+                        Role::Alice,
+                    )?;
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {:?}", decline);
                     let state = State::declined(swap_request.clone(), decline.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    Save::save(&dependencies, decline.clone())
-                        .await
-                        .expect("failed to save message to db");
+                    Save::save(&dependencies, decline.clone()).await?;
                 }
             };
             Ok(())
         }
     };
-    tokio::spawn(future.boxed().compat());
+    tokio::spawn(future.boxed().compat().map_err(|e: anyhow::Error| {
+        log::error!("{:?}", e);
+    }));
     Ok(())
 }
 
