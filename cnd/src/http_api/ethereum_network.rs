@@ -29,7 +29,7 @@ pub enum Network {
 pub struct UnknownChainId(String);
 
 impl Network {
-    pub fn from_network_id(s: &str) -> Result<Self, UnknownChainId> {
+    pub fn from_chain_id(s: &str) -> Result<Self, UnknownChainId> {
         Ok(match s {
             "1" => Network::Mainnet,
             "3" => Network::Ropsten,
@@ -44,7 +44,7 @@ impl TryFrom<ChainId> for Network {
 
     fn try_from(value: ChainId) -> Result<Self, Self::Error> {
         let value = u32::from(value).to_string();
-        Network::from_network_id(value.as_str())
+        Network::from_chain_id(value.as_str())
     }
 }
 
@@ -77,10 +77,10 @@ mod test {
 
     #[test]
     fn from_version() {
-        assert_that(&Network::from_network_id("1")).is_ok_containing(Network::Mainnet);
-        assert_that(&Network::from_network_id("3")).is_ok_containing(Network::Ropsten);
-        assert_that(&Network::from_network_id("17")).is_ok_containing(Network::Regtest);
-        assert_that(&Network::from_network_id("-1")).is_err();
+        assert_that(&Network::from_chain_id("1")).is_ok_containing(Network::Mainnet);
+        assert_that(&Network::from_chain_id("3")).is_ok_containing(Network::Ropsten);
+        assert_that(&Network::from_chain_id("17")).is_ok_containing(Network::Regtest);
+        assert_that(&Network::from_chain_id("-1")).is_err();
     }
 
     fn assert_display<T: Display>(_t: T) {}
