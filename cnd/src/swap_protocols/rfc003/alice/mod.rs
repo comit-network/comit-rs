@@ -6,7 +6,7 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         self, ledger::Ledger, ledger_state::LedgerState, messages, secret_source::SecretSource,
-        ActorState, Secret,
+        ActorState, Secret, SwapCommunication,
     },
 };
 use derivative::Derivative;
@@ -21,21 +21,6 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     pub secret_source: Arc<dyn SecretSource>,
     pub error: Option<rfc003::Error>,
-}
-
-#[derive(Clone, Debug, Eq, PartialEq)]
-pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    Proposed {
-        request: messages::Request<AL, BL, AA, BA>,
-    },
-    Accepted {
-        request: messages::Request<AL, BL, AA, BA>,
-        response: messages::Accept<AL, BL>,
-    },
-    Declined {
-        request: messages::Request<AL, BL, AA, BA>,
-        response: messages::Decline,
-    },
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {

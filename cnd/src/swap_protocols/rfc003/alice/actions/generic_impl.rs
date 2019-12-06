@@ -3,9 +3,9 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-        alice::{self, SwapCommunication},
+        alice,
         state_machine::HtlcParams,
-        Ledger, LedgerState,
+        Ledger, LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
