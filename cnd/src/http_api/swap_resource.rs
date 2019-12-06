@@ -1,16 +1,18 @@
 #![allow(clippy::type_repetition_in_bounds)]
+
 use crate::{
     db::{Swap, SwapTypes},
+    ethereum,
     http_api::{
         action::ToSirenAction,
         route_factory::swap_path,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
-        Http,
+        Http, HttpAsset, HttpLedger,
     },
     swap_protocols::{
         actions::Actions,
-        asset::Asset,
-        rfc003::{self, state_store::StateStore, Ledger},
+        ledger,
+        rfc003::{self, state_store::StateStore},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -20,32 +22,23 @@ use serde::Serialize;
 use warp::http::StatusCode;
 
 #[derive(Debug, Serialize)]
-#[serde(
-    bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize,\
-             Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
-             Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
-             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize,"
-)]
-pub struct SwapResource<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, S: Serialize> {
+pub struct SwapResource<S> {
     pub id: Http<SwapId>,
     pub role: String,
     pub counterparty: Http<PeerId>,
     pub protocol: Http<SwapProtocol>,
     pub status: SwapStatus,
-    pub parameters: SwapParameters<AL, BL, AA, BA>,
+    pub parameters: SwapParameters,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub state: Option<S>,
 }
 
 #[derive(Debug, Serialize)]
-#[serde(
-    bound = "Http<AL>: Serialize, Http<BL>: Serialize, Http<AA>: Serialize, Http<BA>: Serialize"
-)]
-pub struct SwapParameters<AL, BL, AA, BA> {
-    alpha_ledger: Http<AL>,
-    beta_ledger: Http<BL>,
-    alpha_asset: Http<AA>,
-    beta_asset: Http<BA>,
+pub struct SwapParameters {
+    alpha_ledger: HttpLedger,
+    beta_ledger: HttpLedger,
+    alpha_asset: HttpAsset,
+    beta_asset: HttpAsset,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -57,18 +50,49 @@ pub enum SwapStatus {
     InternalFailure,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::Request<AL, BL, AA, BA>>
-    for SwapParameters<AL, BL, AA, BA>
-{
-    fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
-        Self {
-            alpha_ledger: Http(request.alpha_ledger),
-            alpha_asset: Http(request.alpha_asset),
-            beta_ledger: Http(request.beta_ledger),
-            beta_asset: Http(request.beta_asset),
+macro_rules! impl_from_request_for_swap_parameters {
+    ($alpha_ledger:ty, $beta_ledger:ty, $alpha_asset:ty, $beta_asset:ty) => {
+        impl From<rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>
+            for SwapParameters
+        {
+            fn from(
+                request: rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>,
+            ) -> Self {
+                Self {
+                    alpha_ledger: HttpLedger::from(request.alpha_ledger),
+                    alpha_asset: HttpAsset::from(request.alpha_asset),
+                    beta_ledger: HttpLedger::from(request.beta_ledger),
+                    beta_asset: HttpAsset::from(request.beta_asset),
+                }
+            }
         }
-    }
+    };
 }
+
+impl_from_request_for_swap_parameters!(
+    ledger::Bitcoin,
+    ledger::Ethereum,
+    bitcoin::Amount,
+    ethereum::EtherQuantity
+);
+impl_from_request_for_swap_parameters!(
+    ledger::Ethereum,
+    ledger::Bitcoin,
+    ethereum::EtherQuantity,
+    bitcoin::Amount
+);
+impl_from_request_for_swap_parameters!(
+    ledger::Bitcoin,
+    ledger::Ethereum,
+    bitcoin::Amount,
+    ethereum::Erc20Token
+);
+impl_from_request_for_swap_parameters!(
+    ledger::Ethereum,
+    ledger::Bitcoin,
+    ethereum::Erc20Token,
+    bitcoin::Amount
+);
 
 pub enum IncludeState {
     Yes,

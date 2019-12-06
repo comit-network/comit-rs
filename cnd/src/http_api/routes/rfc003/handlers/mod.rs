@@ -5,5 +5,5 @@ pub mod post_swap;
 pub use self::{
     action::{handle_action, InvalidAction, InvalidActionInvocation},
     get_swap::handle_get_swap,
-    post_swap::{handle_post_swap, SwapRequestBodyKind},
+    post_swap::handle_post_swap,
 };

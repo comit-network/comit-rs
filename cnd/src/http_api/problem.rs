@@ -1,8 +1,7 @@
 use crate::{
     db,
     http_api::routes::rfc003::handlers::{
-        post_swap::{MalformedRequest, UnsupportedSwap},
-        InvalidAction, InvalidActionInvocation,
+        post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -75,7 +74,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
 
         return HttpApiProblem::new("Invalid body.")
             .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("Failed to deserialize given body.");
+            .set_detail(format!("{:?}", e));
     }
 
     if e.is::<InvalidActionInvocation>() {
@@ -101,14 +100,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
             .set_detail("The requested combination of ledgers and assets is not supported.");
     }
 
-    if e.is::<MalformedRequest>() {
-        log::warn!("{:?}", e);
-
-        return HttpApiProblem::with_title_and_type_from_status(StatusCode::BAD_REQUEST)
-            .set_detail("The request body was malformed.");
-    }
-
-    log::error!("internal error occurred: {:?}", e);
+    log::error!("internal error occurred: {:#}", e);
 
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }

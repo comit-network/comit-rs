@@ -15,7 +15,7 @@ use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
-use std::convert::Infallible;
+use std::convert::{Infallible, TryInto};
 use warp::http::StatusCode;
 
 pub trait ToSirenAction {
@@ -246,7 +246,7 @@ impl IntoResponsePayload for ethereum::DeployContract {
                 amount,
                 gas_limit,
                 chain_id,
-                network: chain_id.into(),
+                network: chain_id.try_into()?,
             }),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
                 action: "ethereum::ContractDeploy",
@@ -280,7 +280,7 @@ impl IntoResponsePayload for ethereum::CallContract {
                 data,
                 gas_limit,
                 chain_id,
-                network: chain_id.into(),
+                network: chain_id.try_into()?,
                 min_block_timestamp,
             }),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
@@ -353,7 +353,7 @@ mod test {
             data: None,
             gas_limit: U256::from(1),
             chain_id,
-            network: chain_id.into(),
+            network: chain_id.try_into().unwrap(),
             min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
