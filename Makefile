@@ -37,7 +37,7 @@ yarn_install:
 ## User install
 
 install:
-	$(CARGO) install --force --path .
+	$(CARGO) install --force --path cnd
 
 clean:
 	$(CARGO) clean
