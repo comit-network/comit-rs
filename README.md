@@ -24,27 +24,28 @@ There is an [ongoing effort](https://github.com/comit-network/comit-rs/issues/62
 - `libp2p-comit`: implementation of the comit messaging protocol on top of libp2p
 
 
-## Setup build environment
+## Setup
 
 All you need is ~love~ rust: `curl https://sh.rustup.rs -sSf | sh` 
 
-## Build & Run
+### Build & Run
 
-1. `make install`
-2. startup bitcoin node with `-regtest` and `-rest`
-3. startup ethereum node with JSON-RPC interface exposed at `localhost:8545`
-4. startup cnd: `cnd` (or `./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
+1. Start a Bitcoin node with `-regtest` and `-rest` (you're on your own for this)
+1. Start an Ethereum node with JSON-RPC interface exposed at `localhost:8545` (you're on your own for this one too, life sucks)
+1. Clone this repo
+1. `$ make install`
+1. Start cnd: `$ cnd` (or `$ ./target/release/cnd` if you do not have the `~/.cargo/bin` folder in your `$PATH`)
 
 Keep in mind that in order to do a swap locally you will need to start two instances of cnd.
-Please see `cnd --help` for help with command line options.
+Please see `$ cnd --help` for help with command line options.
 
-## Setup testing/dev environment
+### Setup testing/dev environment
 
 1. Install `docker`
 2. Install `node` (check the version required in api_tests/package.json) & `yarn`
 3. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy
    
-## Testing
+### Testing
 
 - `make test` is just a wrapper around `cargo test --all`
 - `make e2e` will run all the end-to-end tests
