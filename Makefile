@@ -3,36 +3,51 @@ RUSTUP = rustup
 TOOLCHAIN = $(shell cat rust-toolchain)
 CARGO = $(RUSTUP) run --install $(TOOLCHAIN) cargo --color always
 
-NIGHTLY_TOOLCHAIN = "nightly-2019-07-31"
+NIGHTLY_TOOLCHAIN = nightly-2019-07-31
 CARGO_NIGHTLY = $(RUSTUP) run --install $(NIGHTLY_TOOLCHAIN) cargo --color always
 
 GIT_HOOKS_PATH = ".githooks"
 GIT_HOOKS = $(wildcard $(GIT_HOOKS_PATH)/*)
 
+INSTALLED_TOOLCHAINS = $(shell $(RUSTUP) toolchain list)
+INSTALLED_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain $(TOOLCHAIN))
+INSTALLED_NIGHTLY_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain $(NIGHTLY_TOOLCHAIN))
+AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
+
+# All our targets go into .PHONY because none of them actually create files
+.PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
+
 default: init_git_hooks build format
 
-init_git_hooks: $(GIT_HOOKS)
+init_git_hooks:
 	git config core.hooksPath $(GIT_HOOKS_PATH)
-
-install_rust:
-	$(RUSTUP) toolchain list | grep -q $(TOOLCHAIN) || $(RUSTUP) install $(TOOLCHAIN)
-
-install_rust_nightly:
-	$(RUSTUP) toolchain list | grep -q $(NIGHTLY_TOOLCHAIN) || $(RUSTUP) install $(NIGHTLY_TOOLCHAIN)
 
 ## Dev environment
 
+install_rust:
+ifeq (,$(findstring $(TOOLCHAIN),$(INSTALLED_TOOLCHAINS)))
+	$(RUSTUP) install $(TOOLCHAIN)
+endif
+
+install_rust_nightly:
+ifeq (,$(findstring $(NIGHTLY_TOOLCHAIN),$(INSTALLED_TOOLCHAINS)))
+	$(RUSTUP) install $(NIGHTLY_TOOLCHAIN)
+endif
+
 install_clippy: install_rust
-	$(RUSTUP) component list --installed --toolchain $(TOOLCHAIN) | grep -q clippy || $(RUSTUP) component add clippy --toolchain $(TOOLCHAIN)
+ifeq (,$(findstring clippy,$(INSTALLED_COMPONENTS)))
+	$(RUSTUP) component add clippy --toolchain $(TOOLCHAIN)
+endif
 
 install_rustfmt: install_rust_nightly
-	$(RUSTUP) component list --installed --toolchain $(NIGHTLY_TOOLCHAIN) | grep -q rustfmt || $(RUSTUP) component add rustfmt --toolchain $(NIGHTLY_TOOLCHAIN)
+ifeq (,$(findstring rustfmt,$(INSTALLED_NIGHTLY_COMPONENTS)))
+	$(RUSTUP) component add rustfmt --toolchain $(NIGHTLY_TOOLCHAIN)
+endif
 
 install_tomlfmt: install_rust
-	$(CARGO) --list | grep -q tomlfmt || $(CARGO) install cargo-tomlfmt
-
-yarn_install:
-	(cd ./api_tests; yarn install)
+ifeq (,$(findstring tomlfmt,$(AVAILABLE_CARGO_COMMANDS)))
+	$(CARGO) install cargo-tomlfmt
+endif
 
 ## User install
 
@@ -45,13 +60,6 @@ clean:
 ## Development tasks
 
 all: format build clippy test doc e2e_scripts
-
-format: install_rustfmt install_tomlfmt yarn_install
-	$(CARGO_NIGHTLY) fmt
-	$(CARGO) tomlfmt -p Cargo.toml
-	$(CARGO) tomlfmt -p cnd/Cargo.toml
-	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
-	(cd ./api_tests; yarn run fix)
 
 ci: check_format doc clippy test build e2e
 
@@ -77,16 +85,42 @@ test:
 doc:
 	$(CARGO) doc
 
+e2e: build
+	(cd ./api_tests; yarn install; yarn test)
+
 check_format: check_rust_format check_toml_format check_ts_format
 
+STAGED_FILES = $(shell git diff --staged --name-only)
+STAGED_RUST_FILES = $(filter %.rs,$(STAGED_FILES))
+STAGED_TOML_FILES = $(filter %.toml,$(STAGED_FILES))
+STAGED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(STAGED_FILES))
+
+format: install_rustfmt install_tomlfmt
+ifneq (,$(STAGED_RUST_FILES))
+	$(CARGO_NIGHTLY) fmt
+endif
+ifneq (,$(STAGED_TOML_FILES))
+	$(CARGO) tomlfmt -p Cargo.toml
+	$(CARGO) tomlfmt -p cnd/Cargo.toml
+	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
+endif
+ifneq (,$(STAGED_TYPESCRIPT_FILES))
+	(cd ./api_tests; yarn install; yarn run fix)
+endif
+
 check_rust_format: install_rustfmt
+ifneq (,$(STAGED_RUST_FILES))
 	$(CARGO_NIGHTLY) fmt -- --check
+endif
 
 check_toml_format: install_tomlfmt
+ifneq (,$(STAGED_TOML_FILES))
 	$(CARGO) tomlfmt -d -p Cargo.toml
+	$(CARGO) tomlfmt -d -p cnd/Cargo.toml
+	$(CARGO) tomlfmt -d -p libp2p-comit/Cargo.toml
+endif
 
-check_ts_format: yarn_install
-	(cd ./api_tests; yarn run check)
-
-e2e: yarn_install
-	(cd ./api_tests; yarn test)
+check_ts_format:
+ifneq (,$(STAGED_TYPESCRIPT_FILES))
+	(cd ./api_tests; yarn install; yarn run check)
+endif

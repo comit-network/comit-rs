@@ -1,35 +1,4 @@
 #!/usr/bin/env bash
 
-set -e                          # grep failure does not trigger exit.
+make check_format
 
-dry=0                           # Set to 1 to enable dry run.
-
-function check_rs() {
-    if (( dry == 0 )); then
-        make check_rust_format
-    else
-        echo "check_rs ran"
-    fi
-}
-
-function check_ts() {
-    if (( dry == 0 )); then
-        make check_ts_format
-    else
-        echo "check_ts ran"
-    fi
-}
-
-function check_cargo_toml() {
-    if (( dry == 0 )); then
-        make check_toml_format
-    else
-        echo "check_cargo_toml ran"
-    fi
-}
-
-git status --untracked-files=no --short | grep -E '.rs$' > /dev/null 2>&1 && check_rs
-git status --untracked-files=no --short | grep -E '.ts$|.json$|.yml$' > /dev/null 2>&1 && check_ts
-git status --untracked-files=no --short | grep -E '.toml$' > /dev/null 2>&1 && check_cargo_toml
-
-exit 0
