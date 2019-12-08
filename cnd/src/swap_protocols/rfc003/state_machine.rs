@@ -6,7 +6,7 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            events::{self, Deployed, Funded, HtlcEvents, LedgerEventFutures, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcEvents, LedgerEventFutures, Redeemed, Refunded},
             ledger::Ledger,
             Accept, Request, SaveState, SecretHash,
         },
@@ -170,8 +170,8 @@ pub type FutureSwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> =
 
 #[allow(missing_debug_implementations)]
 pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    pub alpha_ledger_events: Box<dyn events::LedgerEvents<AL, AA>>,
-    pub beta_ledger_events: Box<dyn events::LedgerEvents<BL, BA>>,
+    pub alpha_ledger_events: LedgerEventFutures<AL, AA>,
+    pub beta_ledger_events: LedgerEventFutures<BL, BA>,
     pub state_repo: Arc<dyn SaveState<AL, BL, AA, BA>>,
 }
 
@@ -280,8 +280,8 @@ pub fn create_swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
     impl Future<Item = (), Error = ()> + Send + 'static,
     impl Stream<Item = SwapStates<AL, BL, AA, BA>, Error = ()> + Send + 'static,
 ) {
-    let alpha_ledger_events = Box::new(LedgerEventFutures::new(alpha_htlc_events));
-    let beta_ledger_events = Box::new(LedgerEventFutures::new(beta_htlc_events));
+    let alpha_ledger_events = LedgerEventFutures::new(alpha_htlc_events);
+    let beta_ledger_events = LedgerEventFutures::new(beta_htlc_events);
     let id = request.swap_id;
 
     let (sender, receiver) = mpsc::unbounded();

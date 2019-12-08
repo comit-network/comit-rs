@@ -51,23 +51,6 @@ pub type DeployedFuture<L: Ledger> = Future<Deployed<L>>;
 pub type FundedFuture<L: Ledger, A: Asset> = Future<Funded<L, A>>;
 pub type RedeemedOrRefundedFuture<L: Ledger> = Future<Either<Redeemed<L>, Refunded<L>>>;
 
-pub trait LedgerEvents<L: Ledger, A: Asset>: Send {
-    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut DeployedFuture<L>;
-
-    fn htlc_funded(
-        &mut self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
-    ) -> &mut FundedFuture<L, A>;
-
-    fn htlc_redeemed_or_refunded(
-        &mut self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
-        htlc_funding: &Funded<L, A>,
-    ) -> &mut RedeemedOrRefundedFuture<L>;
-}
-
 pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {
     fn htlc_deployed(&self, htlc_params: HtlcParams<L, A>) -> Box<DeployedFuture<L>>;
     fn htlc_funded(

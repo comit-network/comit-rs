@@ -2,8 +2,7 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         events::{
-            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, LedgerEvents,
-            RedeemedOrRefundedFuture,
+            Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, RedeemedOrRefundedFuture,
         },
         state_machine::HtlcParams,
         Ledger,
@@ -32,16 +31,14 @@ impl<L: Ledger, A: Asset> LedgerEventFutures<L, A> {
             htlc_redeemed_or_refunded: None,
         }
     }
-}
 
-impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
-    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut DeployedFuture<L> {
+    pub fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut DeployedFuture<L> {
         let htlc_events = &self.htlc_events;
         self.htlc_deployed
             .get_or_insert_with(move || htlc_events.htlc_deployed(htlc_params))
     }
 
-    fn htlc_funded(
+    pub fn htlc_funded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
         htlc_location: &Deployed<L>,
@@ -51,7 +48,7 @@ impl<L: Ledger, A: Asset> LedgerEvents<L, A> for LedgerEventFutures<L, A> {
             .get_or_insert_with(move || htlc_events.htlc_funded(htlc_params, htlc_location))
     }
 
-    fn htlc_redeemed_or_refunded(
+    pub fn htlc_redeemed_or_refunded(
         &mut self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
