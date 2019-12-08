@@ -280,15 +280,13 @@ pub fn create_swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
     impl Future<Item = (), Error = ()> + Send + 'static,
     impl Stream<Item = SwapStates<AL, BL, AA, BA>, Error = ()> + Send + 'static,
 ) {
-    let alpha_ledger_events = LedgerEventFutures::new(alpha_htlc_events);
-    let beta_ledger_events = LedgerEventFutures::new(beta_htlc_events);
     let id = request.swap_id;
 
     let (sender, receiver) = mpsc::unbounded();
 
     let context = Context {
-        alpha_ledger_events,
-        beta_ledger_events,
+        alpha_ledger_events: LedgerEventFutures::new(alpha_htlc_events),
+        beta_ledger_events: LedgerEventFutures::new(beta_htlc_events),
         state_repo: Arc::new(sender),
     };
 
