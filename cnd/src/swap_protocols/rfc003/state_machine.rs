@@ -6,7 +6,7 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            events::{self, Deployed, Funded, LedgerEvents, Redeemed, Refunded},
+            events::{self, Deployed, Funded, HtlcEvents, LedgerEventFutures, Redeemed, Refunded},
             ledger::Ledger,
             Accept, Request, SaveState, SecretHash,
         },
@@ -272,14 +272,16 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 }
 
 pub fn create_swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-    alpha_ledger_events: Box<dyn LedgerEvents<AL, AA>>,
-    beta_ledger_events: Box<dyn LedgerEvents<BL, BA>>,
+    alpha_htlc_events: Box<dyn HtlcEvents<AL, AA>>,
+    beta_htlc_events: Box<dyn HtlcEvents<BL, BA>>,
     request: Request<AL, BL, AA, BA>,
     accept: Accept<AL, BL>,
 ) -> (
     impl Future<Item = (), Error = ()> + Send + 'static,
     impl Stream<Item = SwapStates<AL, BL, AA, BA>, Error = ()> + Send + 'static,
 ) {
+    let alpha_ledger_events = Box::new(LedgerEventFutures::new(alpha_htlc_events));
+    let beta_ledger_events = Box::new(LedgerEventFutures::new(beta_htlc_events));
     let id = request.swap_id;
 
     let (sender, receiver) = mpsc::unbounded();

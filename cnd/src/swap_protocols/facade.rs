@@ -12,7 +12,7 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
-            events::{HtlcEvents, LedgerEventFutures, LedgerEvents},
+            events::HtlcEvents,
             state_machine::SwapStates,
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger,
@@ -181,10 +181,8 @@ impl<S> CreateLedgerEvents<Bitcoin, Amount> for Facade<S>
 where
     S: Send + Sync + 'static,
 {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, Amount>> {
-        Box::new(LedgerEventFutures::new(Box::new(
-            self.bitcoin_connector.clone(),
-        )))
+    fn create_ledger_events(&self) -> Box<dyn HtlcEvents<Bitcoin, Amount>> {
+        Box::new(self.bitcoin_connector.clone())
     }
 }
 
@@ -194,10 +192,8 @@ where
     A: Asset + Send + Sync + 'static,
     Web3Connector: HtlcEvents<Ethereum, A>,
 {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, A>> {
-        Box::new(LedgerEventFutures::new(Box::new(
-            self.ethereum_connector.clone(),
-        )))
+    fn create_ledger_events(&self) -> Box<dyn HtlcEvents<Ethereum, A>> {
+        Box::new(self.ethereum_connector.clone())
     }
 }
 
