@@ -18,11 +18,8 @@ This is a reference implementation for the COMIT protocol.
 
 This repository is a cargo workspace:
 
-- Crates at the top level are where the main work happens. Consult the respective `Cargo.toml` for a description of what they do.  
-- Crates inside the [internal](./internal) folder are considered to be private to this repository. They are used for sharing code between other crates in this repository.
-There is an [ongoing effort](https://github.com/comit-network/comit-rs/issues/626) to get rid of these crates because path dependencies block us from releasing any of the other crates to crates.io.
+- `cnd`: implementation of the comit-network daemon
 - `libp2p-comit`: implementation of the comit messaging protocol on top of libp2p
-
 
 ## Setup build environment
 
