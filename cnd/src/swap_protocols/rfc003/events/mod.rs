@@ -2,10 +2,6 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
-mod ledger_event_futures;
-
-pub use self::ledger_event_futures::*;
-
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{self, ledger::Ledger, state_machine::HtlcParams, Secret},

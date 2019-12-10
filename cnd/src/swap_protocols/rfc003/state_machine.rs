@@ -6,7 +6,10 @@ use crate::{
         asset::Asset,
         rfc003::{
             self,
-            events::{Deployed, Funded, HtlcEvents, LedgerEventFutures, Redeemed, Refunded},
+            events::{
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
+                RedeemedOrRefundedFuture, Refunded,
+            },
             ledger::Ledger,
             Accept, Request, SaveState, SecretHash,
         },
@@ -170,9 +173,61 @@ pub type FutureSwapOutcome<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> =
 
 #[allow(missing_debug_implementations)]
 pub struct Context<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    pub alpha_ledger_events: LedgerEventFutures<AL, AA>,
-    pub beta_ledger_events: LedgerEventFutures<BL, BA>,
+    pub alpha_ledger_events: HtlcEventFutures<AL, AA>,
+    pub beta_ledger_events: HtlcEventFutures<BL, BA>,
     pub state_repo: Arc<dyn SaveState<AL, BL, AA, BA>>,
+}
+
+// This is an adaptor struct that exists because our current state
+// machine implementation requires that we return &mut Futures. This
+// is not the actual API we want to implement so we have HtlcEvents
+// where the methods return plain Futures and we save them here so we
+// don't duplicate them at runtime.
+#[allow(missing_debug_implementations)]
+pub struct HtlcEventFutures<L: Ledger, A: Asset> {
+    htlc_events: Box<dyn HtlcEvents<L, A>>,
+    htlc_deployed: Option<Box<DeployedFuture<L>>>,
+    htlc_funded: Option<Box<FundedFuture<L, A>>>,
+    htlc_redeemed_or_refunded: Option<Box<RedeemedOrRefundedFuture<L>>>,
+}
+
+impl<L: Ledger, A: Asset> HtlcEventFutures<L, A> {
+    fn new(htlc_events: Box<dyn HtlcEvents<L, A>>) -> Self {
+        Self {
+            htlc_events,
+            htlc_deployed: None,
+            htlc_funded: None,
+            htlc_redeemed_or_refunded: None,
+        }
+    }
+
+    fn htlc_deployed(&mut self, htlc_params: HtlcParams<L, A>) -> &mut DeployedFuture<L> {
+        let htlc_events = &self.htlc_events;
+        self.htlc_deployed
+            .get_or_insert_with(move || htlc_events.htlc_deployed(htlc_params))
+    }
+
+    fn htlc_funded(
+        &mut self,
+        htlc_params: HtlcParams<L, A>,
+        htlc_location: &Deployed<L>,
+    ) -> &mut FundedFuture<L, A> {
+        let htlc_events = &self.htlc_events;
+        self.htlc_funded
+            .get_or_insert_with(move || htlc_events.htlc_funded(htlc_params, htlc_location))
+    }
+
+    fn htlc_redeemed_or_refunded(
+        &mut self,
+        htlc_params: HtlcParams<L, A>,
+        htlc_deployment: &Deployed<L>,
+        htlc_funding: &Funded<L, A>,
+    ) -> &mut RedeemedOrRefundedFuture<L> {
+        let htlc_events = &self.htlc_events;
+        self.htlc_redeemed_or_refunded.get_or_insert_with(move || {
+            htlc_events.htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
+        })
+    }
 }
 
 #[derive(StateMachineFuture)]
@@ -271,22 +326,24 @@ pub enum Swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     Error(rfc003::Error),
 }
 
-pub fn create_swap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
-    alpha_htlc_events: Box<dyn HtlcEvents<AL, AA>>,
-    beta_htlc_events: Box<dyn HtlcEvents<BL, BA>>,
+pub fn create_swap<T, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    events: T,
     request: Request<AL, BL, AA, BA>,
     accept: Accept<AL, BL>,
 ) -> (
     impl Future<Item = (), Error = ()> + Send + 'static,
     impl Stream<Item = SwapStates<AL, BL, AA, BA>, Error = ()> + Send + 'static,
-) {
+)
+where
+    T: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + Clone,
+{
     let id = request.swap_id;
 
     let (sender, receiver) = mpsc::unbounded();
 
     let context = Context {
-        alpha_ledger_events: LedgerEventFutures::new(alpha_htlc_events),
-        beta_ledger_events: LedgerEventFutures::new(beta_htlc_events),
+        alpha_ledger_events: HtlcEventFutures::new(Box::new(events.clone())),
+        beta_ledger_events: HtlcEventFutures::new(Box::new(events)),
         state_repo: Arc::new(sender),
     };
 

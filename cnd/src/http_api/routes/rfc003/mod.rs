@@ -5,6 +5,7 @@ mod swap_state;
 
 use crate::{
     db::{DetermineTypes, Retrieve, Save, Swap},
+    ethereum::{Erc20Token, EtherQuantity},
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -16,10 +17,12 @@ use crate::{
     network::Network,
     seed::SwapSeed,
     swap_protocols::{
-        rfc003::{actions::ActionKind, state_store::StateStore},
-        LedgerEventsCreator, SwapId,
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{actions::ActionKind, events::HtlcEvents, state_store::StateStore},
+        SwapId,
     },
 };
+use bitcoin::Amount;
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
 use warp::{
@@ -33,7 +36,16 @@ use tokio::executor::Executor;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<
-    D: Clone + Network + StateStore + Executor + Save<Swap> + SwapSeed + Saver + LedgerEventsCreator,
+    D: Clone
+        + Network
+        + StateStore
+        + Executor
+        + Save<Swap>
+        + SwapSeed
+        + Saver
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>,
 >(
     dependencies: D,
     body: serde_json::Value,
@@ -74,7 +86,9 @@ pub fn action<
         + Network
         + SwapSeed
         + Saver
-        + LedgerEventsCreator,
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>,
 >(
     method: http::Method,
     id: SwapId,

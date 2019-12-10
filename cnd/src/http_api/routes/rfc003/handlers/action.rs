@@ -1,5 +1,6 @@
 use crate::{
     db::{DetermineTypes, Save, Saver},
+    ethereum::{Erc20Token, EtherQuantity},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -14,17 +15,20 @@ use crate::{
     swap_protocols::{
         self,
         actions::Actions,
+        ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
             actions::{Action, ActionKind},
             bob::State,
+            events::HtlcEvents,
             messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
         },
-        LedgerEventsCreator, SwapId,
+        SwapId,
     },
 };
 use anyhow::Context;
+use bitcoin::Amount;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
 use tokio::executor::Executor;
@@ -37,7 +41,9 @@ pub async fn handle_action<
         + SwapSeed
         + Saver
         + DetermineTypes
-        + LedgerEventsCreator
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>
         + Executor
         + Clone,
 >(
