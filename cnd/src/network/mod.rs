@@ -359,7 +359,7 @@ where
 ///
 /// Ideally, this trait would not be necessary and we would instead have one
 /// trait per function. Unfortunately, an instance of `Swarm` is very hard to
-/// "name" (see the complex traits bound below). To avoid this kind of code 4
+/// name (see the complex traits bound below). To avoid this kind of code 4
 /// times, we bundle all these methods up into one trait.
 pub trait Network: Send + Sync + 'static {
     fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
