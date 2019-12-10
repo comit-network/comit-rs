@@ -1,7 +1,4 @@
-pub mod send_request;
 pub mod transport;
-
-pub use send_request::*;
 
 use crate::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
@@ -31,7 +28,7 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
 use libp2p_comit::{
-    frame::{OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{self, OutboundRequest, Response, ValidatedInboundRequest},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use std::{
@@ -77,6 +74,23 @@ impl Display for DialInformation {
             Some(address_hint) => write!(f, "{}@{}", self.peer_id, address_hint),
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RequestError {
+    #[error("peer node had an internal error while processing the request")]
+    InternalError,
+    #[error("peer node produced an invalid response")]
+    InvalidResponse,
+    #[error("failed to establish a new connection to make the request")]
+    Connecting(io::ErrorKind),
+    #[error("unable to send the data on the existing connection")]
+    Connection,
+}
+
+#[derive(Debug, serde::Deserialize)]
+pub struct Reason {
+    pub value: SwapDeclineReason,
 }
 
 impl<TSubstream> ComitNode<TSubstream> {
@@ -340,10 +354,22 @@ where
     Ok(())
 }
 
+/// Defines all the operations the Comit Node can perform in regards to the
+/// Comit network.
+///
+/// Ideally, this trait would not be necessary and we would instead have one
+/// trait per function. Unfortunately, an instance of `Swarm` is very hard to
+/// "name" (see the complex traits bound below). To avoid this kind of code 4
+/// times, we bundle all these methods up into one trait.
 pub trait Network: Send + Sync + 'static {
     fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
     fn listen_addresses(&self) -> Vec<Multiaddr>;
     fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
+    fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+        &self,
+        peer_identity: DialInformation,
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>;
 }
 
 impl<
@@ -379,6 +405,85 @@ where
         let mut response_channels = swarm.response_channels.lock().unwrap();
 
         response_channels.remove(&swap)
+    }
+
+    fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+        &self,
+        dial_information: DialInformation,
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
+        let id = request.swap_id;
+        let request = build_outbound_request(request)
+            .expect("constructing a frame::OutoingRequest should never fail!");
+
+        let response = {
+            let mut swarm = self.lock().unwrap();
+            log::debug!(
+                "Making swap request to {}: {:?}",
+                dial_information.clone(),
+                request
+            );
+
+            swarm.send_request(dial_information.clone(), request)
+        };
+
+        let response =
+            response.then(move |result| match result {
+                Ok(mut response) => {
+                    let decision = response
+                        .take_header("decision")
+                        .map(Decision::from_header)
+                        .map_or(Ok(None), |x| x.map(Some))
+                        .map_err(|e| {
+                            log::error!(
+                                "Could not deserialize header in response {:?}: {}",
+                                response,
+                                e,
+                            );
+                            RequestError::InvalidResponse
+                        })?;
+
+                    match decision {
+                        Some(Decision::Accepted) => {
+                            match serde_json::from_value::<
+                                rfc003::messages::AcceptResponseBody<AL, BL>,
+                            >(response.body().clone())
+                            {
+                                Ok(body) => Ok(Ok(rfc003::Accept {
+                                    swap_id: id,
+                                    beta_ledger_refund_identity: body.beta_ledger_refund_identity,
+                                    alpha_ledger_redeem_identity: body.alpha_ledger_redeem_identity,
+                                })),
+                                Err(_e) => Err(RequestError::InvalidResponse),
+                            }
+                        }
+
+                        Some(Decision::Declined) => {
+                            match serde_json::from_value::<rfc003::messages::DeclineResponseBody>(
+                                response.body().clone(),
+                            ) {
+                                Ok(body) => Ok(Err(rfc003::Decline {
+                                    swap_id: id,
+                                    reason: body.reason,
+                                })),
+                                Err(_e) => Err(RequestError::InvalidResponse),
+                            }
+                        }
+
+                        None => Err(RequestError::InvalidResponse),
+                    }
+                }
+                Err(e) => {
+                    log::error!(
+                        "Unable to request over connection {:?}:{:?}",
+                        dial_information.clone(),
+                        e
+                    );
+                    Err(RequestError::Connection)
+                }
+            });
+
+        Box::new(response)
     }
 }
 
@@ -459,4 +564,33 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
         beta_expiry: body.beta_expiry,
         secret_hash: body.secret_hash,
     }
+}
+
+fn build_outbound_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    request: rfc003::Request<AL, BL, AA, BA>,
+) -> Result<frame::OutboundRequest, serde_json::Error> {
+    let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
+    let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
+    let alpha_expiry = request.alpha_expiry;
+    let beta_expiry = request.beta_expiry;
+    let secret_hash = request.secret_hash;
+    let protocol = SwapProtocol::Rfc003(request.hash_function);
+
+    Ok(frame::OutboundRequest::new("SWAP")
+        .with_header("id", request.swap_id.to_header()?)
+        .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
+        .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
+        .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
+        .with_header("beta_asset", request.beta_asset.into().to_header()?)
+        .with_header("protocol", protocol.to_header()?)
+        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
+            AL,
+            BL,
+        > {
+            alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity,
+            alpha_expiry,
+            beta_expiry,
+            secret_hash,
+        })?))
 }

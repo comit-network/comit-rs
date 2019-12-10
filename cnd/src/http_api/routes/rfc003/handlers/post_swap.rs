@@ -2,7 +2,7 @@ use crate::{
     db::{Save, Saver, Swap},
     ethereum,
     http_api::{HttpAsset, HttpLedger},
-    network::{DialInformation, SendRequest},
+    network::{DialInformation, Network},
     seed::SwapSeed,
     swap_protocols::{
         self,
@@ -32,9 +32,9 @@ pub async fn handle_post_swap<
         + Executor
         + StateStore
         + Save<Swap>
-        + SendRequest
         + SwapSeed
         + Saver
+        + Network
         + Clone
         + LedgerEventsCreator,
 >(
@@ -210,12 +210,12 @@ async fn initiate_request<D, AL, BL, AA, BA>(
 where
     D: StateStore
         + Executor
-        + SendRequest
         + SwapSeed
         + Save<Request<AL, BL, AA, BA>>
         + Save<Accept<AL, BL>>
         + Save<Swap>
         + Save<Decline>
+        + Network
         + LedgerEventsCreator
         + CreateLedgerEvents<AL, AA>
         + CreateLedgerEvents<BL, BA>

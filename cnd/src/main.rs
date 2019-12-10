@@ -8,7 +8,7 @@ use cnd::{
     db::{DetermineTypes, Retrieve, Saver, Sqlite},
     http_api::route_factory,
     load_swaps,
-    network::{self, transport, Network, SendRequest},
+    network::{self, transport, Network},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         rfc003::state_store::{InMemoryStateStore, StateStore},
@@ -126,7 +126,6 @@ fn spawn_warp_instance<
         + StateStore
         + Executor
         + Network
-        + SendRequest
         + SwapSeed
         + DetermineTypes
         + Retrieve

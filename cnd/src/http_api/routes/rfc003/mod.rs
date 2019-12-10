@@ -13,7 +13,7 @@ use crate::{
             rfc003::handlers::{handle_action, handle_get_swap, handle_post_swap},
         },
     },
-    network::{Network, SendRequest},
+    network::Network,
     seed::SwapSeed,
     swap_protocols::{
         rfc003::{actions::ActionKind, state_store::StateStore},
@@ -31,14 +31,7 @@ use tokio::executor::Executor;
 
 #[allow(clippy::needless_pass_by_value)]
 pub fn post_swap<
-    D: Clone
-        + StateStore
-        + Executor
-        + Save<Swap>
-        + SendRequest
-        + SwapSeed
-        + Saver
-        + LedgerEventsCreator,
+    D: Clone + Network + StateStore + Executor + Save<Swap> + SwapSeed + Saver + LedgerEventsCreator,
 >(
     dependencies: D,
     body: serde_json::Value,
