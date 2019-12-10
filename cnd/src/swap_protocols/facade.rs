@@ -5,7 +5,7 @@ use crate::{
         SwapTypes,
     },
     ethereum::{Erc20Token, EtherQuantity},
-    network::{DialInformation, Network, RequestError, SendRequest},
+    network::{DialInformation, Network, RequestError},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         asset::Asset,
@@ -91,18 +91,14 @@ where
     fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
         self.swarm.pending_request_for(swap)
     }
-}
 
-impl<S: SendRequest> SendRequest for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
     fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
         &self,
-        dial_info: DialInformation,
+        peer_identity: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
-        self.swarm.send_request(dial_info, request)
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send + 'static>
+    {
+        self.swarm.send_request(peer_identity, request)
     }
 }
 
