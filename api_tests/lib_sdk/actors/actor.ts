@@ -204,6 +204,16 @@ export class Actor {
     }
 
     public async assertSwapped() {
+        this.logger.debug("Checking if cnd reports status 'SWAPPED'");
+
+        while (true) {
+            await sleep(200);
+            const entity = await this.swap.fetchDetails();
+            if (entity.properties.status === "SWAPPED") {
+                break;
+            }
+        }
+
         for (const [
             assetKind,
             expectedBalanceChange,
@@ -222,15 +232,10 @@ export class Actor {
             ).add(expectedBalanceChange);
             const maximumFee = wallet.MaximumFee;
 
-            await expect(
-                wallet
-                    .getBalance()
-                    .then(balance =>
-                        new BigNumber(balance).gte(
-                            expectedBalance.sub(maximumFee)
-                        )
-                    )
-            ).to.eventually.be.true;
+            const balanceInclFees = expectedBalance.sub(maximumFee);
+            const currentWalletBalance = await wallet.getBalance();
+
+            expect(currentWalletBalance).to.be.gte.BN(balanceInclFees);
         }
     }
 

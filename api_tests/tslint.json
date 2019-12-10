@@ -13,6 +13,7 @@
         "no-shadowed-variable": false,
         "object-literal-sort-keys": false,
         "no-reference": false,
+        "no-namespace": false,
         "only-arrow-functions": false,
         "file-name-casing": [true, "snake-case"]
     },
