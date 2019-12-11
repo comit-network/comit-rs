@@ -43,7 +43,7 @@
         "chai-json-schema": "^1.5.0",
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
-        "comit-sdk": "^0.7.2",
+        "comit-sdk": "^0.8.0",
         "commander": "^4.0.1",
         "ethers": "^4.0.40",
         "get-port": "^5.0.0",
