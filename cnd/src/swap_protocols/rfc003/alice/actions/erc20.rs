@@ -5,6 +5,7 @@ use crate::{
         asset::Asset,
         ledger::Ethereum,
         rfc003::{
+            self,
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             alice::{self, SwapCommunication},
             state_machine::HtlcParams,
@@ -52,11 +53,17 @@ where
                 request.alpha_asset.token_contract,
                 *htlc_location,
             ))],
-            Funded { htlc_location, .. } => vec![Action::Refund(erc20::refund_action(
-                request.alpha_ledger.chain_id,
-                request.alpha_expiry,
-                *htlc_location,
-            ))],
+            Funded { htlc_location, .. } => {
+                if rfc003::alpha_expiry_has_passed(request) {
+                    vec![Action::Refund(erc20::refund_action(
+                        request.alpha_ledger.chain_id,
+                        request.alpha_expiry,
+                        *htlc_location,
+                    ))]
+                } else {
+                    vec![]
+                }
+            }
             _ => vec![],
         };
 
@@ -109,12 +116,18 @@ where
                 htlc_location,
                 fund_transaction,
                 ..
-            } => vec![Action::Refund(<(AL, AA)>::refund_action(
-                HtlcParams::new_alpha_params(request, response),
-                htlc_location.clone(),
-                &*self.secret_source,
-                fund_transaction,
-            ))],
+            } => {
+                if rfc003::alpha_expiry_has_passed(request) {
+                    vec![Action::Refund(<(AL, AA)>::refund_action(
+                        HtlcParams::new_alpha_params(request, response),
+                        htlc_location.clone(),
+                        &*self.secret_source,
+                        fund_transaction,
+                    ))]
+                } else {
+                    vec![]
+                }
+            }
             _ => vec![],
         };
 

@@ -28,6 +28,9 @@ pub use self::{
 };
 
 pub use self::messages::{Accept, Decline, Request};
+
+use crate::{swap_protocols::asset::Asset, timestamp::Timestamp};
+
 /// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
 
@@ -41,4 +44,16 @@ pub enum Error {
     IncorrectFunding,
     #[error("internal error: {0}")]
     Internal(String),
+}
+
+pub fn alpha_expiry_has_passed<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    request: &Request<AL, BL, AA, BA>,
+) -> bool {
+    request.alpha_expiry < Timestamp::now()
+}
+
+pub fn beta_expiry_has_passed<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+    request: &Request<AL, BL, AA, BA>,
+) -> bool {
+    request.beta_expiry < Timestamp::now()
 }

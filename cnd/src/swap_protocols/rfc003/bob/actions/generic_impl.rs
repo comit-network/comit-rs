@@ -2,6 +2,7 @@ use crate::swap_protocols::{
     actions::Actions,
     asset::Asset,
     rfc003::{
+        self,
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         bob::{self, SwapCommunication},
         state_machine::HtlcParams,
@@ -69,14 +70,15 @@ where
             ..
         } = beta_state
         {
-            actions.push(Action::Refund(<(BL, BA)>::refund_action(
-                HtlcParams::new_beta_params(request, response),
-                htlc_location.clone(),
-                &*self.secret_source,
-                fund_transaction,
-            )))
+            if rfc003::beta_expiry_has_passed(request) {
+                actions.push(Action::Refund(<(BL, BA)>::refund_action(
+                    HtlcParams::new_beta_params(request, response),
+                    htlc_location.clone(),
+                    &*self.secret_source,
+                    fund_transaction,
+                )))
+            }
         }
-
         actions
     }
 }

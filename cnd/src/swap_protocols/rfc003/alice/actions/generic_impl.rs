@@ -2,6 +2,7 @@ use crate::swap_protocols::{
     actions::Actions,
     asset::Asset,
     rfc003::{
+        self,
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         alice::{self, SwapCommunication},
         state_machine::HtlcParams,
@@ -59,12 +60,18 @@ where
                 htlc_location,
                 fund_transaction,
                 ..
-            } => vec![Action::Refund(<(AL, AA)>::refund_action(
-                HtlcParams::new_alpha_params(request, response),
-                htlc_location.clone(),
-                &*self.secret_source,
-                fund_transaction,
-            ))],
+            } => {
+                if rfc003::alpha_expiry_has_passed(request) {
+                    vec![Action::Refund(<(AL, AA)>::refund_action(
+                        HtlcParams::new_alpha_params(request, response),
+                        htlc_location.clone(),
+                        &*self.secret_source,
+                        fund_transaction,
+                    ))]
+                } else {
+                    vec![]
+                }
+            }
             _ => vec![],
         };
 

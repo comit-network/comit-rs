@@ -5,6 +5,7 @@ use crate::{
         asset::Asset,
         ledger::Ethereum,
         rfc003::{
+            self,
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             bob::{self, SwapCommunication},
             state_machine::HtlcParams,
@@ -73,11 +74,13 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(Action::Refund(erc20::refund_action(
-                request.beta_ledger.chain_id,
-                request.beta_expiry,
-                *htlc_location,
-            )));
+            if rfc003::beta_expiry_has_passed(request) {
+                actions.push(Action::Refund(erc20::refund_action(
+                    request.beta_ledger.chain_id,
+                    request.beta_expiry,
+                    *htlc_location,
+                )));
+            }
         }
         actions
     }
@@ -134,12 +137,14 @@ where
             ..
         } = beta_state
         {
-            actions.push(Action::Refund(<(BL, BA)>::refund_action(
-                HtlcParams::new_beta_params(request, response),
-                htlc_location.clone(),
-                &*self.secret_source,
-                fund_transaction,
-            )))
+            if rfc003::beta_expiry_has_passed(request) {
+                actions.push(Action::Refund(<(BL, BA)>::refund_action(
+                    HtlcParams::new_beta_params(request, response),
+                    htlc_location.clone(),
+                    &*self.secret_source,
+                    fund_transaction,
+                )))
+            }
         }
         actions
     }

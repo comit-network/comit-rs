@@ -97,16 +97,6 @@ declare var global: HarnessGlobal;
                 },
             },
         },
-        {
-            actor: bob,
-            action: {
-                kind: ActionKind.Refund,
-                test: response => {
-                    expect(response).to.have.status(400);
-                    expect(response.body.title).to.equal("Fee is too high.");
-                },
-            },
-        },
     ];
 
     describe("RFC003: Ether for Bitcoin - Redeem/Refund Bitcoin with high fee", () => {
