@@ -31,7 +31,7 @@ futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "as
 hex = "0.4"
 hex-serde = "0.1.0"
 http-api-problem = "0.13"
-hyper = "0.12"
+hyper = "0.13"
 lazy_static = "1"
 libp2p = { version = "0.13" }
 libp2p-core = { version = "0.13" }
