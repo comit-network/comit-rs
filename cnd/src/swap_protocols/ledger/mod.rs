@@ -36,5 +36,4 @@ pub trait Ledger:
 pub enum LedgerKind {
     Bitcoin(Bitcoin),
     Ethereum(Ethereum),
-    Unknown(String),
 }

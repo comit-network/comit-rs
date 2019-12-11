@@ -130,9 +130,6 @@ impl From<ledger::LedgerKind> for LedgerKind {
         match ledger {
             ledger::LedgerKind::Bitcoin(_) => LedgerKind::Bitcoin,
             ledger::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
-            // In order to remove this ledger::LedgerKind::Unknown should be removed.
-            // Doing so requires handling unknown ledger during deserialization.
-            _ => unreachable!(),
         }
     }
 }
@@ -150,9 +147,6 @@ impl From<asset::AssetKind> for AssetKind {
             asset::AssetKind::Bitcoin(_) => AssetKind::Bitcoin,
             asset::AssetKind::Ether(_) => AssetKind::Ether,
             asset::AssetKind::Erc20(_) => AssetKind::Erc20,
-            // In order to remove this ledger::AssetKind::Unknown should be removed.
-            // Doing so requires handling unknown asset during deserialization.
-            _ => unreachable!(),
         }
     }
 }
