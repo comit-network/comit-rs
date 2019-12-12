@@ -1,6 +1,6 @@
 use fern::{Dispatch, FormatCallback};
 use log::{LevelFilter, Record};
-use std::{fmt::Arguments, io::stdout};
+use std::{fmt::Arguments, io::stderr};
 
 pub fn initialize(
     base_log_level: LevelFilter,
@@ -9,7 +9,7 @@ pub fn initialize(
     #![allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
     println!("Initializing logging with base level {}", base_log_level);
 
-    let (max_level, log) = create_logger(base_log_level, structured, stdout());
+    let (max_level, log) = create_logger(base_log_level, structured, stderr());
 
     log::set_boxed_logger(log)?;
     log::set_max_level(max_level);
