@@ -11,7 +11,6 @@ use crate::{
 use bitcoin::util::amount::Denomination;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
-use std::fmt;
 
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
