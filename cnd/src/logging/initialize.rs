@@ -7,7 +7,7 @@ pub fn initialize(
     structured: bool,
 ) -> Result<(), log::SetLoggerError> {
     #![allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
-    println!("Initializing logging with base level {}", base_log_level);
+    eprintln!("Initializing logging with base level {}", base_log_level);
 
     let (max_level, log) = create_logger(base_log_level, structured, stderr());
 
