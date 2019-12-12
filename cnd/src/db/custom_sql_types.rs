@@ -58,7 +58,7 @@ where
     i64: ToSql<sql_types::BigInt, DB>,
 {
     fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
-        let number = i64::try_from(self.0)?;
+        let number = i64::try_from(self.0).expect("every u32 fits into a i64");
 
         number.to_sql(out)
     }
