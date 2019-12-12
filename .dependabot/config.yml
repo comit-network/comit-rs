@@ -27,6 +27,9 @@ update_configs:
       # this needs updating based on the tokio_codec version
       - match:
           dependency_name: "bytes"
+      # until all our code is async/await ready, we cannot update tokio through dependabot
+      - match:
+          dependency_name: "tokio"
   - package_manager: "javascript"
     directory: "/api_tests"
     update_schedule: "daily"
