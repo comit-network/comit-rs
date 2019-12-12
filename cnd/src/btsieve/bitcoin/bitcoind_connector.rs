@@ -4,11 +4,12 @@ use crate::btsieve::{
 use bitcoin::{hashes::sha256d, Block, Network};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
+use sha256d::Hash;
 use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct ChainInfo {
-    bestblockhash: sha256d::Hash,
+    bestblockhash: Hash,
 }
 
 #[derive(Clone, Debug)]
@@ -27,7 +28,7 @@ impl BitcoindConnector {
         })
     }
 
-    fn raw_block_by_hash_url(&self, block_hash: &sha256d::Hash) -> Url {
+    fn raw_block_by_hash_url(&self, block_hash: &Hash) -> Url {
         self.raw_block_by_hash_url
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
@@ -37,7 +38,7 @@ impl BitcoindConnector {
 impl LatestBlock for BitcoindConnector {
     type Error = crate::btsieve::bitcoin::Error;
     type Block = Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = Hash;
 
     fn latest_block(
         &mut self,
@@ -70,7 +71,7 @@ impl LatestBlock for BitcoindConnector {
 impl BlockByHash for BitcoindConnector {
     type Error = crate::btsieve::bitcoin::Error;
     type Block = Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = Hash;
 
     fn block_by_hash(
         &self,
@@ -113,7 +114,7 @@ mod tests {
     // functions and they never panic, hence it is fine to use them in production
     #[test]
     fn build_sub_url_should_never_fail() {
-        fn prop(hash: Quickcheck<sha256d::Hash>) -> bool {
+        fn prop(hash: Quickcheck<Hash>) -> bool {
             for base_url in base_urls() {
                 let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
@@ -123,7 +124,7 @@ mod tests {
             true // not panicing is good enough for this test
         }
 
-        quickcheck::quickcheck(prop as fn(Quickcheck<sha256d::Hash>) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<Hash>) -> bool)
     }
 
     #[test]

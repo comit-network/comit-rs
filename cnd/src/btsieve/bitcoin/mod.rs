@@ -8,6 +8,7 @@ pub use self::{
     transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 use bitcoin::Block;
+use sha256d::Hash;
 
 use crate::btsieve::{BlockByHash, LatestBlock, MatchingTransactions};
 use bitcoin::{
@@ -26,7 +27,7 @@ use tokio::{
 impl<C, E> MatchingTransactions<TransactionPattern> for C
 where
     C: LatestBlock<Block = Block, Error = E>
-        + BlockByHash<Block = Block, BlockHash = sha256d::Hash, Error = E>
+        + BlockByHash<Block = Block, BlockHash = Hash, Error = E>
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -50,13 +51,13 @@ async fn matching_transaction<C, E>(
 ) -> Result<bitcoin::Transaction, ()>
 where
     C: LatestBlock<Block = Block, Error = E>
-        + BlockByHash<Block = Block, BlockHash = sha256d::Hash, Error = E>
+        + BlockByHash<Block = Block, BlockHash = Hash, Error = E>
         + Clone,
     E: Debug + Send + 'static,
 {
     let mut oldest_block: Option<Block> = None;
 
-    let mut prev_blockhashes: HashSet<sha256d::Hash> = HashSet::new();
+    let mut prev_blockhashes: HashSet<Hash> = HashSet::new();
     let mut missing_block_futures: Vec<_> = Vec::new();
 
     loop {
