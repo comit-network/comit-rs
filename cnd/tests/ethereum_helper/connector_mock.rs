@@ -74,7 +74,7 @@ impl BlockByHash for EthereumConnectorMock {
     type BlockHash = H256;
 
     fn block_by_hash(
-        &self,
+        &mut self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         Box::new(Ok(self.all_blocks.get(&block_hash).cloned()).into_future())

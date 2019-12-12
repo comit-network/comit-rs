@@ -66,7 +66,7 @@ impl BlockByHash for BitcoinConnectorMock {
     type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
-        &self,
+        &mut self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         Box::new(

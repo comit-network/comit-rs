@@ -2,8 +2,10 @@ use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
 use bitcoin::{hashes::sha256d, Network};
+use futures_core::{compat::Future01CompatExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
+use std::collections::HashMap;
 use tokio::prelude::Future;
 
 #[derive(Deserialize)]
@@ -14,6 +16,7 @@ struct BlockchainInfoLatestBlock {
 #[derive(Clone, Debug)]
 pub struct BlockchainInfoConnector {
     client: Client,
+    block_cache: HashMap<sha256d::Hash, bitcoin::Block>,
 }
 
 impl BlockchainInfoConnector {
@@ -32,8 +35,11 @@ impl BlockchainInfoConnector {
             )));
         }
 
+        let block_cache: HashMap<sha256d::Hash, bitcoin::Block> = HashMap::new();
+
         Ok(Self {
             client: Client::new(),
+            block_cache,
         })
     }
 
@@ -69,7 +75,7 @@ impl LatestBlock for BlockchainInfoConnector {
                     .map_err(crate::btsieve::bitcoin::Error::Reqwest)
             });
 
-        let cloned_self = self.clone();
+        let mut cloned_self = self.clone();
 
         Box::new(
             latest_block_without_tx
@@ -84,18 +90,33 @@ impl BlockByHash for BlockchainInfoConnector {
     type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
-        &self,
+        &mut self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(
-            Self::block_by_hash_url(&block_hash),
-            self.client.clone(),
-        );
-
-        Box::new(block.inspect(|block| {
-            log::trace!("Fetched block from blockchain.info: {:?}", block);
-        }))
+        Box::new(Box::pin(block_by_hash(self.clone(), block_hash)).compat())
     }
+}
+
+async fn block_by_hash(
+    mut connector: BlockchainInfoConnector,
+    block_hash: sha256d::Hash,
+) -> Result<bitcoin::Block, crate::btsieve::bitcoin::Error> {
+    if let Some(block) = connector.block_cache.get(&block_hash) {
+        log::trace!("Found block in cache: {:?}", block);
+        return Ok(block.clone());
+    }
+
+    let block = bitcoin_http_request_for_hex_encoded_object::<bitcoin::Block>(
+        BlockchainInfoConnector::block_by_hash_url(&block_hash),
+        connector.client.clone(),
+    )
+    .compat()
+    .await?;
+
+    log::trace!("Fetched block from blockchain.info: {:?}", block);
+
+    connector.block_cache.insert(block_hash, block.clone());
+    Ok(block)
 }
 
 #[cfg(test)]

@@ -88,7 +88,7 @@ where
         let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
         spawn(self.clone(), {
-            let connector = self.clone();
+            let mut connector = self.clone();
             let block_queue = block_queue.clone();
             let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
@@ -148,7 +148,7 @@ where
         });
 
         spawn(self.clone(), {
-            let connector = self.clone();
+            let mut connector = self.clone();
             let block_queue = block_queue.clone();
             let look_in_the_past_queue = look_in_the_past_queue.clone();
 

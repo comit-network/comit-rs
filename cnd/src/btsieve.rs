@@ -32,7 +32,7 @@ pub trait BlockByHash: Send + Sync + 'static {
     type BlockHash;
 
     fn block_by_hash(
-        &self,
+        &mut self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
 }
