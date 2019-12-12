@@ -1,7 +1,7 @@
 use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
-use bitcoin::{hashes::sha256d, Network};
+use bitcoin::{hashes::sha256d, Block, Network};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
 use tokio::prelude::Future;
@@ -51,7 +51,7 @@ impl BlockchainInfoConnector {
 
 impl LatestBlock for BlockchainInfoConnector {
     type Error = crate::btsieve::bitcoin::Error;
-    type Block = bitcoin::Block;
+    type Block = Block;
     type BlockHash = sha256d::Hash;
 
     fn latest_block(
@@ -80,7 +80,7 @@ impl LatestBlock for BlockchainInfoConnector {
 
 impl BlockByHash for BlockchainInfoConnector {
     type Error = crate::btsieve::bitcoin::Error;
-    type Block = bitcoin::Block;
+    type Block = Block;
     type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
