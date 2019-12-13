@@ -123,6 +123,26 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
                 swapPropertiesJsonSchema
             );
         });
+
+        it("[Alice] Response for GET /swaps/rfc003/{} contains a link to the protocol spec", async () => {
+            const swapsEntity = await alice
+                .pollCndUntil("/swaps", body => body.entities.length > 0)
+                .then(
+                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+
+            const protocolLink = swapsEntity.links.find((link: Link) =>
+                link.rel.includes("describedBy")
+            );
+
+            expect(protocolLink).to.be.deep.equal({
+                rel: ["describedBy"],
+                class: ["protocol-spec"],
+                type: "text/html",
+                href:
+                    "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.adoc",
+            });
+        });
     });
 
     run();
