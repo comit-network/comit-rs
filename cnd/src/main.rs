@@ -5,15 +5,12 @@ use anyhow::Context;
 use cnd::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::{self, Settings},
-    db::{DetermineTypes, Retrieve, Saver, Sqlite},
+    db::Sqlite,
     http_api::route_factory,
     load_swaps,
     network::{self, transport, Network},
-    seed::{Seed, SwapSeed},
-    swap_protocols::{
-        rfc003::state_store::{InMemoryStateStore, StateStore},
-        Facade, LedgerEventsCreator,
-    },
+    seed::Seed,
+    swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
 use futures::{stream, Future, Stream};
 use futures_core::{FutureExt, TryFutureExt};
@@ -28,7 +25,6 @@ use std::{
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
-use tokio::executor::Executor;
 
 mod cli;
 mod logging;
@@ -121,21 +117,11 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
     identity::Keypair::Ed25519(key.into())
 }
 
-fn spawn_warp_instance<
-    D: Clone
-        + StateStore
-        + Executor
-        + Network
-        + SwapSeed
-        + DetermineTypes
-        + Retrieve
-        + LedgerEventsCreator
-        + Saver,
->(
+fn spawn_warp_instance<S: Network>(
     settings: &Settings,
     peer_id: PeerId,
     runtime: &mut tokio::runtime::Runtime,
-    dependencies: D,
+    dependencies: Facade<S>,
 ) {
     let routes = route_factory::create(
         peer_id,

@@ -1,23 +1,23 @@
 use crate::{
     db::{Save, Saver, Swap},
-    ethereum,
+    ethereum::{self, Erc20Token, EtherQuantity},
     http_api::{HttpAsset, HttpLedger},
     network::{DialInformation, Network},
     seed::SwapSeed,
     swap_protocols::{
         self,
         asset::Asset,
-        ledger,
+        ledger::{self, Bitcoin, Ethereum},
         rfc003::{
-            self, alice::State, state_store::StateStore, Accept, Decline, Ledger, Request,
-            SecretHash, SecretSource,
+            self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
+            Ledger, Request, SecretHash, SecretSource,
         },
-        HashFunction, LedgerEventsCreator, Role, SwapId,
+        HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
-    CreateLedgerEvents,
 };
 use anyhow::Context;
+use bitcoin::Amount;
 use futures::Future;
 use futures_core::{
     compat::Future01CompatExt,
@@ -36,7 +36,9 @@ pub async fn handle_post_swap<
         + Saver
         + Network
         + Clone
-        + LedgerEventsCreator,
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>,
 >(
     dependencies: D,
     body: serde_json::Value,
@@ -216,9 +218,8 @@ where
         + Save<Swap>
         + Save<Decline>
         + Network
-        + LedgerEventsCreator
-        + CreateLedgerEvents<AL, AA>
-        + CreateLedgerEvents<BL, BA>
+        + HtlcEvents<AL, AA>
+        + HtlcEvents<BL, BA>
         + Clone,
     AL: Ledger,
     BL: Ledger,

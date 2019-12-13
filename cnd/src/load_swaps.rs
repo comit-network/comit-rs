@@ -6,10 +6,10 @@ use crate::{
     swap_protocols::{
         self,
         ledger::{Bitcoin, Ethereum},
-        rfc003::state_store::StateStore,
-        LedgerEventsCreator,
+        rfc003::{events::HtlcEvents, state_store::StateStore},
     },
 };
+use bitcoin::Amount;
 use tokio::executor::Executor;
 
 #[allow(clippy::cognitive_complexity)]
@@ -19,9 +19,11 @@ where
         + Executor
         + Clone
         + SwapSeed
-        + LedgerEventsCreator
         + Retrieve
         + DetermineTypes
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>
         + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>
         + LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>
         + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>
