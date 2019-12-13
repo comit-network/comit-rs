@@ -122,13 +122,13 @@ fn main() -> anyhow::Result<()> {
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
 fn version() {
-    const NAME: &'static str = "COMIT network daemon";
-    const VERSION: &'static str = env!("CARGO_PKG_VERSION");
-    const COMMIT: &'static str = env!("GIT_HASH");
-    const LENGTH: usize = 12; // Abbreviate the hash, 12 digits is plenty.
-    let short = &COMMIT[..LENGTH];
+    let name: &'static str = "COMIT network daemon";
+    let version: &'static str = env!("CARGO_PKG_VERSION");
+    let commit: &'static str = env!("GIT_HASH");
+    let length: usize = 12; // Abbreviate the hash, 12 digits is plenty.
+    let short = &commit[..length];
 
-    println!("{} {} ({})", NAME, VERSION, short);
+    println!("{} {} ({})", name, version, short);
 }
 
 fn derive_key_pair(seed: &Seed) -> identity::Keypair {
