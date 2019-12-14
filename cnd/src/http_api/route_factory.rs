@@ -1,11 +1,18 @@
 use crate::{
     config::settings::AllowedOrigins,
     db::{DetermineTypes, Retrieve, Saver},
+    ethereum::{Erc20Token, EtherQuantity},
     http_api,
-    network::{Network, SendRequest},
+    network::Network,
     seed::SwapSeed,
-    swap_protocols::{self, rfc003::state_store::StateStore, LedgerEventsCreator, SwapId},
+    swap_protocols::{
+        self,
+        ledger::{Bitcoin, Ethereum},
+        rfc003::{events::HtlcEvents, state_store::StateStore},
+        SwapId,
+    },
 };
+use bitcoin::Amount;
 use libp2p::PeerId;
 use tokio::executor::Executor;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -25,11 +32,12 @@ pub fn create<
         + StateStore
         + Executor
         + Network
-        + SendRequest
         + SwapSeed
         + DetermineTypes
         + Retrieve
-        + LedgerEventsCreator
+        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Ethereum, EtherQuantity>
+        + HtlcEvents<Ethereum, Erc20Token>
         + Saver,
 >(
     peer_id: PeerId,

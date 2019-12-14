@@ -51,10 +51,10 @@
   dependencies:
     "@types/chai" "*"
 
-"@types/chai@*", "@types/chai@4", "@types/chai@^4.2.6":
-  version "4.2.6"
-  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.6.tgz#a55625d151d9c7c7a0a95920632131d66480bce9"
-  integrity sha512-HF8faEUA4JurIm+68VaA2KedtZf5LYdXpQEAbIAN79DwWQbO82BNTksZgCH3UMqbZHXex9C6TrBfg7OUInRISQ==
+"@types/chai@*", "@types/chai@4", "@types/chai@^4.2.7":
+  version "4.2.7"
+  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.7.tgz#1c8c25cbf6e59ffa7d6b9652c78e547d9a41692d"
+  integrity sha512-luq8meHGYwvky0O7u0eQZdA7B4Wd9owUCqvbw2m3XCrCU8mplYOujMBbvyS547AxJkC+pGnd0Cm15eNxEUNU8g==
 
 "@types/cookiejar@*":
   version "2.1.1"
@@ -589,6 +589,11 @@ bmutex@~0.1.6:
   integrity sha512-nXWOXtQHbfPaMl6jyEF/rmRMrcemj2qn+OCAI/uZYurjfx7Dg3baoXdPzHOL0U8Cfvn8CWxKcnM/rgxL7DR4zw==
   dependencies:
     bsert "~0.0.10"
+
+bn-chai@^1.0.1:
+  version "1.0.1"
+  resolved "https://registry.yarnpkg.com/bn-chai/-/bn-chai-1.0.1.tgz#5d6e9654162602a527b08a1546e60cfb44213725"
+  integrity sha512-7rJXt21DwYiLLpvzLaACixBBoUGkRV1iuFD3wElEhw8Ji9IiY/QsJRtvW+c7ChRgEOyLQkGaSGFUUqBKm21SNA==
 
 bn.js@^4.11.8, bn.js@^4.4.0:
   version "4.11.8"
@@ -2934,10 +2939,10 @@ tempfile@*:
     temp-dir "^2.0.0"
     uuid "^3.3.2"
 
-testcontainers@^2.1.0:
-  version "2.1.0"
-  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.1.0.tgz#126885d3afdcddd4ed8b241960fa67f0275f6ad3"
-  integrity sha512-c/q4XTxZ8wozovbadnyHwnvCMuGuCmi0nNEMkkC5AC1xCC62FP0JKgDiovZsOwOCXkG/DbK13uxd5awZifPRHw==
+testcontainers@^2.2.0:
+  version "2.2.0"
+  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.2.0.tgz#d7461260d935824320c025d3259d925197d6fa5f"
+  integrity sha512-SFj2LVj+MWA7YNQ2YS+istdW2P+NSZLHeVFH6Lsp4h8ZQy+fH+lEk7JXcNLt8j54M6zUDXzmQLTSCRpuCZ9v7Q==
   dependencies:
     byline "^5.0.0"
     debug "^4.1.1"

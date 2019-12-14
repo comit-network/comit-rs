@@ -4,22 +4,23 @@ use crate::{
         AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Saver, Sqlite, Swap,
         SwapTypes,
     },
-    ethereum::{Erc20Token, EtherQuantity},
-    network::{DialInformation, Network, RequestError, SendRequest},
+    network::{DialInformation, Network, RequestError},
     seed::{Seed, SwapSeed},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
-            events::{HtlcEvents, LedgerEventFutures, LedgerEvents},
-            state_machine::SwapStates,
+            events::{
+                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents,
+                RedeemedOrRefundedFuture,
+            },
+            state_machine::{HtlcParams, SwapStates},
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger,
         },
         SwapId,
     },
-    CreateLedgerEvents,
 };
 use async_trait::async_trait;
 use bitcoin::Amount;
@@ -91,18 +92,14 @@ where
     fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
         self.swarm.pending_request_for(swap)
     }
-}
 
-impl<S: SendRequest> SendRequest for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
     fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
         &self,
-        dial_info: DialInformation,
+        peer_identity: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
-        self.swarm.send_request(dial_info, request)
+    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send + 'static>
+    {
+        self.swarm.send_request(peer_identity, request)
     }
 }
 
@@ -172,36 +169,67 @@ where
     }
 }
 
-pub trait LedgerEventsCreator:
-    CreateLedgerEvents<Bitcoin, Amount>
-    + CreateLedgerEvents<Ethereum, EtherQuantity>
-    + CreateLedgerEvents<Ethereum, Erc20Token>
-{
-}
-
-impl<S> LedgerEventsCreator for Facade<S> where S: Send + Sync + 'static {}
-
-impl<S> CreateLedgerEvents<Bitcoin, Amount> for Facade<S>
+impl<S> HtlcEvents<Bitcoin, Amount> for Facade<S>
 where
     S: Send + Sync + 'static,
 {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Bitcoin, Amount>> {
-        Box::new(LedgerEventFutures::new(Box::new(
-            self.bitcoin_connector.clone(),
-        )))
+    fn htlc_deployed(
+        &self,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
+    ) -> Box<DeployedFuture<Bitcoin>> {
+        self.bitcoin_connector.htlc_deployed(htlc_params)
+    }
+
+    fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_deployment: &Deployed<Bitcoin>,
+    ) -> Box<FundedFuture<Bitcoin, Amount>> {
+        self.bitcoin_connector
+            .htlc_funded(htlc_params, htlc_deployment)
+    }
+
+    fn htlc_redeemed_or_refunded(
+        &self,
+        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_deployment: &Deployed<Bitcoin>,
+        htlc_funding: &Funded<Bitcoin, Amount>,
+    ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
+        self.bitcoin_connector
+            .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
     }
 }
 
-impl<S, A> CreateLedgerEvents<Ethereum, A> for Facade<S>
+impl<A, S> HtlcEvents<Ethereum, A> for Facade<S>
 where
     S: Send + Sync + 'static,
     A: Asset + Send + Sync + 'static,
     Web3Connector: HtlcEvents<Ethereum, A>,
 {
-    fn create_ledger_events(&self) -> Box<dyn LedgerEvents<Ethereum, A>> {
-        Box::new(LedgerEventFutures::new(Box::new(
-            self.ethereum_connector.clone(),
-        )))
+    fn htlc_deployed(&self, htlc_params: HtlcParams<Ethereum, A>) -> Box<DeployedFuture<Ethereum>> {
+        self.ethereum_connector.htlc_deployed(htlc_params)
+    }
+
+    fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_deployment: &Deployed<Ethereum>,
+    ) -> Box<FundedFuture<Ethereum, A>> {
+        self.ethereum_connector
+            .htlc_funded(htlc_params, htlc_deployment)
+    }
+
+    fn htlc_redeemed_or_refunded(
+        &self,
+        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_deployment: &Deployed<Ethereum>,
+        htlc_funding: &Funded<Ethereum, A>,
+    ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
+        self.ethereum_connector.htlc_redeemed_or_refunded(
+            htlc_params,
+            htlc_deployment,
+            htlc_funding,
+        )
     }
 }
 
