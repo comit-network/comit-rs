@@ -292,25 +292,6 @@ async fn handle_request(
                         }
                     }
                 }
-                SwapProtocol::Unknown(protocol) => {
-                    log::warn!("the swap protocol {} is currently not supported", protocol);
-
-                    let decline_body = DeclineResponseBody {
-                        reason: Some(SwapDeclineReason::UnsupportedProtocol),
-                    };
-                    Err(Response::empty()
-                        .with_header(
-                            "decision",
-                            Decision::Declined
-                                .to_header()
-                                .expect("Decision should not fail to serialize"),
-                        )
-                        .with_body(
-                            serde_json::to_value(decline_body).expect(
-                                "decline body should always serialize into serde_json::Value",
-                            ),
-                        ))
-                }
             }
         }
 

@@ -36,7 +36,6 @@ pub enum HashFunction {
 #[derive(Debug)]
 pub enum SwapProtocol {
     Rfc003(HashFunction),
-    Unknown(String),
 }
 
 #[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]

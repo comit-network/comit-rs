@@ -108,7 +108,6 @@ impl Serialize for Http<SwapProtocol> {
         match &self.0 {
             // Currently we do not expose the hash_function protocol parameter via REST.
             SwapProtocol::Rfc003(_hash_function) => serializer.serialize_str("rfc003"),
-            SwapProtocol::Unknown(name) => serializer.serialize_str(name.as_str()),
         }
     }
 }
