@@ -145,7 +145,7 @@ fn spawn_warp_instance<S: Network>(
 fn read_config(options: &Options) -> anyhow::Result<config::File> {
     // if the user specifies a config path, use it
     if let Some(path) = &options.config_file {
-        println!("Using config file {}", path.display());
+        eprintln!("Using config file {}", path.display());
 
         return config::File::read(&path)
             .with_context(|| format!("failed to read config file {}", path.display()));
@@ -158,7 +158,7 @@ fn read_config(options: &Options) -> anyhow::Result<config::File> {
         return Ok(config::File::default());
     }
 
-    println!(
+    eprintln!(
         "Using config file at default path: {}",
         default_path.display()
     );
