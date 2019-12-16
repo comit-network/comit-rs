@@ -34,7 +34,6 @@ pub enum AssetKind {
     Bitcoin(Amount),
     Ether(EtherQuantity),
     Erc20(Erc20Token),
-    Unknown(String),
 }
 
 impl From<Amount> for AssetKind {

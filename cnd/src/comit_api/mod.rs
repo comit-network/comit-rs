@@ -11,11 +11,6 @@ use crate::{
 use bitcoin::util::amount::Denomination;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
-use std::fmt;
-
-fn fail_serialize_unknown<D: fmt::Debug>(unknown: D) -> serde_json::Error {
-    ::serde::de::Error::custom(format!("serialization of {:?} is undefined.", unknown))
-}
 
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
@@ -33,7 +28,12 @@ impl FromHeader for LedgerKind {
                 },
             )),
             "ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
-            other => LedgerKind::Unknown(other.to_string()),
+            unknown => {
+                return Err(serde_json::Error::custom(format!(
+                    "unknown ledger: {}",
+                    unknown
+                )))
+            }
         })
     }
 }
@@ -52,7 +52,6 @@ impl ToHeader for LedgerKind {
             LedgerKind::Ethereum(ethereum) => {
                 Header::with_str_value("ethereum").with_parameter("network", ethereum.chain_id)?
             }
-            unknown @ LedgerKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
 }
@@ -73,7 +72,12 @@ impl FromHeader for SwapProtocol {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
             "comit-rfc-003" => SwapProtocol::Rfc003(header.take_parameter("hash_function")?),
-            other => SwapProtocol::Unknown(other.to_string()),
+            unknown => {
+                return Err(serde_json::Error::custom(format!(
+                    "unknown swap protocol: {}",
+                    unknown
+                )))
+            }
         })
     }
 }
@@ -83,7 +87,6 @@ impl ToHeader for SwapProtocol {
         Ok(match self {
             SwapProtocol::Rfc003(hash_function) => Header::with_str_value("comit-rfc-003")
                 .with_parameter("hash_function", hash_function)?,
-            unknown @ SwapProtocol::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
 }
@@ -103,7 +106,12 @@ impl FromHeader for AssetKind {
                 header.take_parameter("address")?,
                 header.take_parameter("quantity")?,
             )),
-            other => AssetKind::Unknown(other.to_string()),
+            unknown => {
+                return Err(serde_json::Error::custom(format!(
+                    "unknown asset: {}",
+                    unknown
+                )))
+            }
         })
     }
 }
@@ -119,7 +127,6 @@ impl ToHeader for AssetKind {
             AssetKind::Erc20(erc20) => Header::with_str_value("erc20")
                 .with_parameter("address", erc20.token_contract)?
                 .with_parameter("quantity", erc20.quantity)?,
-            unknown @ AssetKind::Unknown(_) => return Err(fail_serialize_unknown(unknown)),
         })
     }
 }
@@ -151,7 +158,6 @@ mod tests {
         swap_protocols::{ledger::ethereum, HashFunction},
     };
     use bitcoin::Amount;
-    use spectral::prelude::*;
 
     #[test]
     fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
@@ -169,15 +175,6 @@ mod tests {
         );
 
         Ok(())
-    }
-
-    #[test]
-    fn serializing_unknown_ledgerkind_doesnt_panic() {
-        let ledger_kind = LedgerKind::Unknown("USD".to_string());
-
-        let header = ledger_kind.to_header();
-
-        assert_that(&header).is_err();
     }
 
     #[test]
