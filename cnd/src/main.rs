@@ -32,6 +32,11 @@ mod logging;
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
+    if options.version {
+        version();
+        process::exit(0);
+    }
+
     let settings = read_config(&options).and_then(Settings::from_config_file_and_defaults)?;
 
     if options.dump_config {
@@ -109,6 +114,17 @@ fn main() -> anyhow::Result<()> {
     // Block the current thread.
     ::std::thread::park();
     Ok(())
+}
+
+#[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
+fn version() {
+    let name: &'static str = "COMIT network daemon";
+    let version: &'static str = env!("CARGO_PKG_VERSION");
+    let commit: &'static str = env!("GIT_HASH");
+    let length: usize = 12; // Abbreviate the hash, 12 digits is plenty.
+    let short = &commit[..length];
+
+    println!("{} {} ({})", name, version, short);
 }
 
 fn derive_key_pair(seed: &Seed) -> identity::Keypair {
