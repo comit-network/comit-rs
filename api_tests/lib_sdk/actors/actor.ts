@@ -244,6 +244,10 @@ export class Actor {
         await this.cndInstance.start();
     }
 
+    public stop() {
+        this.cndInstance.stop();
+    }
+
     private async additionalIdentities(
         alphaAsset: AssetKind,
         betaAsset: AssetKind
