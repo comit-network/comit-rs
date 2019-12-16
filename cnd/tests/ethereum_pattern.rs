@@ -129,7 +129,7 @@ fn matches_transaction_data() {
 
 #[test]
 fn matches_transaction_data_length() {
-    let invalid_transaction_data_length = 999999;
+    let invalid_transaction_data_length = 999_999;
 
     let pattern = TransactionPattern {
         transaction_data_length: Some(invalid_transaction_data_length),
