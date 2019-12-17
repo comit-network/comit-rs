@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 - Write all diagnostics and log messages to stderr.
+- Cache blocks as we fetch them from blockchain connectors.
+
 
 ## [0.5.0] - 2019-12-06
 

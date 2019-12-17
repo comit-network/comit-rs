@@ -1,10 +1,13 @@
 use crate::btsieve::{
-    bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
+    bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, BlockCache, LatestBlock,
 };
-use bitcoin::{hashes::sha256d, Block, Network};
+use async_std::sync::Mutex;
+use async_trait::async_trait;
+use bitcoin::{hashes::sha256d::Hash, Block, Network};
+use futures_core::{compat::Future01CompatExt, TryFutureExt};
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
-use sha256d::Hash;
+use std::{collections::HashMap, sync::Arc};
 use tokio::prelude::Future;
 
 #[derive(Deserialize)]
@@ -17,6 +20,7 @@ pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
     client: Client,
+    block_cache: BitcoindBlockCache,
 }
 
 impl BitcoindConnector {
@@ -25,6 +29,7 @@ impl BitcoindConnector {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
             client: Client::new(),
+            block_cache: BitcoindBlockCache::new(),
         })
     }
 
@@ -32,6 +37,36 @@ impl BitcoindConnector {
         self.raw_block_by_hash_url
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
+    }
+}
+
+#[derive(Clone, Debug)]
+pub struct BitcoindBlockCache {
+    map: Arc<Mutex<HashMap<Hash, Block>>>,
+}
+
+impl BitcoindBlockCache {
+    fn new() -> Self {
+        let map: HashMap<Hash, Block> = HashMap::new();
+        Self {
+            map: Arc::new(Mutex::new(map)),
+        }
+    }
+}
+
+#[async_trait]
+impl BlockCache for BitcoindBlockCache {
+    type Block = Block;
+    type BlockHash = Hash;
+
+    async fn get(&self, block_hash: &Hash) -> anyhow::Result<Option<Block>> {
+        let cache = self.map.lock().await;
+        Ok(cache.get(block_hash).map(|block| block.clone()))
+    }
+
+    async fn insert(&mut self, block_hash: Hash, block: Block) -> anyhow::Result<Option<Block>> {
+        let mut cache = self.map.lock().await;
+        Ok(cache.insert(block_hash, block))
     }
 }
 
@@ -77,15 +112,37 @@ impl BlockByHash for BitcoindConnector {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let url = self.raw_block_by_hash_url(&block_hash);
-
-        let block =
-            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone());
-
-        Box::new(block.inspect(|block| {
-            log::trace!("Fetched block from bitcoind: {:?}", block);
-        }))
+        Box::new(Box::pin(block_by_hash(self.clone(), block_hash)).compat())
     }
+}
+
+async fn block_by_hash(
+    connector: BitcoindConnector,
+    block_hash: Hash,
+) -> Result<bitcoin::Block, crate::btsieve::bitcoin::Error> {
+    let mut cache = connector.block_cache.clone();
+
+    let block = cache.get(&block_hash).await;
+    if block.is_ok() {
+        if let Some(block) = block.unwrap() {
+            log::trace!("Found block in cache: {:?}", block);
+            return Ok(block.clone());
+        }
+    }
+
+    let url = connector.raw_block_by_hash_url(&block_hash);
+
+    let block = bitcoin_http_request_for_hex_encoded_object::<bitcoin::Block>(
+        url,
+        connector.client.clone(),
+    )
+    .compat()
+    .await?;
+
+    log::trace!("Fetched block from bitcoind: {:?}", block);
+
+    let _ = cache.insert(block_hash, block.clone());
+    Ok(block)
 }
 
 #[cfg(test)]

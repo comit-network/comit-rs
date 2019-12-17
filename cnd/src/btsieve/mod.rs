@@ -4,6 +4,7 @@
 pub mod bitcoin;
 pub mod ethereum;
 
+use async_trait::async_trait;
 use tokio::prelude::{Future, Stream};
 
 pub trait MatchingTransactions<P>: Send + Sync + 'static {
@@ -35,6 +36,19 @@ pub trait BlockByHash: Send + Sync + 'static {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static>;
+}
+
+#[async_trait]
+pub trait BlockCache: Send + Sync + 'static {
+    type Block;
+    type BlockHash;
+
+    async fn get(&self, block_hash: &Self::BlockHash) -> anyhow::Result<Option<Self::Block>>;
+    async fn insert(
+        &mut self,
+        block_hash: Self::BlockHash,
+        block: Self::Block,
+    ) -> anyhow::Result<Option<Self::Block>>;
 }
 
 pub trait ReceiptByHash: Send + Sync + 'static {
