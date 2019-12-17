@@ -69,7 +69,6 @@ let bitcoinRpcClient: BitcoinRpcClient;
 let bitcoinConfig: BitcoinNodeConfig;
 
 export function init(btcConfig: BitcoinNodeConfig) {
-    console.log("Initiating bitcoin");
     createBitcoinRpcClient(btcConfig);
 }
 

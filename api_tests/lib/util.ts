@@ -1,4 +1,4 @@
-import { LedgerConfig } from "./ledger_runner";
+import { LedgerConfig } from "./host_ledger_runner";
 
 let testRngCounter = 0;
 

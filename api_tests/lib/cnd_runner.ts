@@ -3,7 +3,7 @@ import * as path from "path";
 import { promisify } from "util";
 import { CndInstance } from "../lib_sdk/cnd_instance";
 import { CND_CONFIGS } from "./config";
-import { LedgerConfig } from "./ledger_runner";
+import { LedgerConfig } from "./host_ledger_runner";
 
 const unlinkAsync = promisify(fs.unlink);
 const existsAsync = promisify(fs.exists);

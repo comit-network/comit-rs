@@ -9,7 +9,7 @@ import Mocha from "mocha";
 import path from "path";
 import rimraf from "rimraf";
 import { CndRunner } from "./lib/cnd_runner";
-import { LedgerRunner } from "./lib/ledger_runner";
+import { LedgerRunner } from "./lib/host_ledger_runner";
 import { HarnessGlobal } from "./lib/util";
 
 commander
@@ -46,7 +46,7 @@ export interface E2ETestConfig {
 }
 
 async function runTests(testFiles: string[]) {
-    const ledgerRunner = new LedgerRunner(logDir);
+    const ledgerRunner = new LedgerRunner(projectRoot, logDir);
 
     const nodeRunner = new CndRunner(projectRoot, logDir);
 

@@ -1,4 +1,5 @@
 RUSTUP = rustup
+ECHO = echo
 
 TOOLCHAIN = $(shell cat rust-toolchain)
 CARGO = $(RUSTUP) run --install $(TOOLCHAIN) cargo --color always
@@ -51,11 +52,18 @@ endif
 
 ## User install
 
+BLOCKCHAIN_ARTIFACTS = ./blockchain_nodes/bitcoin/ ./blockchain_nodes/parity/parity
+
+download_bc_nodes:
+	@./blockchain_nodes/ensure_bitcoind.sh
+	@./blockchain_nodes/ensure_parity.sh
+
 install:
 	$(CARGO) install --force --path cnd
 
 clean:
 	$(CARGO) clean
+	rm -rf $(BLOCKCHAIN_ARTIFACTS)
 
 ## Development tasks
 
@@ -85,7 +93,7 @@ test:
 doc:
 	$(CARGO) doc
 
-e2e: build
+e2e: download_bc_nodes build
 	(cd ./api_tests; yarn install; yarn test)
 
 check_format: check_rust_format check_toml_format check_ts_format
