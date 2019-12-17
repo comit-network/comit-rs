@@ -46,7 +46,7 @@ fn pattern_matches_block(pattern: TransactionPattern) -> bool {
 // `matches()` method is a filter which returns `true` if things match 
 // and `false` otherwise.
 // specifically do _not_ match.  In order to _really_ test that the we
-// succesfully match we first do a negative test then do an identical positive
+// successfully match we first do a negative test then do an identical positive
 // test.
 
 #[test]
