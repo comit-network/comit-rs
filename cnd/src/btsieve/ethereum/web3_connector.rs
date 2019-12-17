@@ -110,12 +110,9 @@ async fn block_by_hash(
 ) -> Result<Block, crate::ethereum::web3::Error> {
     let mut cache = connector.block_cache.clone();
 
-    let block = cache.get(&block_hash).await;
-    if block.is_ok() {
-        if let Some(block) = block.unwrap() {
-            log::trace!("Found block in cache: {:?}", block);
-            return Ok(block.clone());
-        }
+    if let Ok(Some(block)) = cache.get(&block_hash).await {
+        log::trace!("Found block in cache: {:?}", block);
+        return Ok(block.clone());
     }
 
     let web = connector.web3.clone();
