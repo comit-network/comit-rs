@@ -13,8 +13,9 @@ use async_std::sync::Mutex;
 use async_trait::async_trait;
 use futures::Future;
 use futures_core::{compat::Future01CompatExt, TryFutureExt};
+use lru_cache::LruCache;
 use reqwest::Url;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 type Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>;
 type Hash = crate::ethereum::H256;
@@ -30,13 +31,14 @@ impl Web3Connector {
     pub fn new(
         node_url: Url,
         task_executor: tokio::runtime::TaskExecutor,
+        cache_capacity: usize,
     ) -> Result<(Self, EventLoopHandle), web3::Error> {
         let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
         Ok((
             Self {
                 web3: Arc::new(Web3::new(http_transport)),
                 task_executor,
-                block_cache: Web3BlockCache::new(),
+                block_cache: Web3BlockCache::new(cache_capacity),
             },
             event_loop_handle,
         ))
@@ -45,12 +47,12 @@ impl Web3Connector {
 
 #[derive(Clone, Debug)]
 pub struct Web3BlockCache {
-    map: Arc<Mutex<HashMap<Hash, Block>>>,
+    map: Arc<Mutex<LruCache<Hash, Block>>>,
 }
 
 impl Web3BlockCache {
-    fn new() -> Self {
-        let map: HashMap<Hash, Block> = HashMap::new();
+    fn new(capacity: usize) -> Self {
+        let map: LruCache<Hash, Block> = LruCache::new(capacity);
         Self {
             map: Arc::new(Mutex::new(map)),
         }
@@ -63,8 +65,8 @@ impl BlockCache for Web3BlockCache {
     type BlockHash = Hash;
 
     async fn get(&self, block_hash: &Hash) -> anyhow::Result<Option<Block>> {
-        let cache = self.map.lock().await;
-        Ok(cache.get(block_hash).map(|block| block.clone()))
+        let mut cache = self.map.lock().await;
+        Ok(cache.get_mut(block_hash).map(|block| block.clone()))
     }
 
     async fn insert(&mut self, block_hash: Hash, block: Block) -> anyhow::Result<Option<Block>> {

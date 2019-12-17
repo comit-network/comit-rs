@@ -5,9 +5,10 @@ use async_std::sync::Mutex;
 use async_trait::async_trait;
 use bitcoin::{hashes::sha256d::Hash, Block, Network};
 use futures_core::{compat::Future01CompatExt, TryFutureExt};
+use lru_cache::LruCache;
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 use tokio::prelude::Future;
 
 #[derive(Deserialize)]
@@ -24,12 +25,16 @@ pub struct BitcoindConnector {
 }
 
 impl BitcoindConnector {
-    pub fn new(base_url: Url, _network: Network) -> Result<Self, reqwest::UrlError> {
+    pub fn new(
+        base_url: Url,
+        _network: Network,
+        cache_capacity: usize,
+    ) -> Result<Self, reqwest::UrlError> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
             client: Client::new(),
-            block_cache: BitcoindBlockCache::new(),
+            block_cache: BitcoindBlockCache::new(cache_capacity),
         })
     }
 
@@ -42,12 +47,12 @@ impl BitcoindConnector {
 
 #[derive(Clone, Debug)]
 pub struct BitcoindBlockCache {
-    map: Arc<Mutex<HashMap<Hash, Block>>>,
+    map: Arc<Mutex<LruCache<Hash, Block>>>,
 }
 
 impl BitcoindBlockCache {
-    fn new() -> Self {
-        let map: HashMap<Hash, Block> = HashMap::new();
+    fn new(capacity: usize) -> Self {
+        let map: LruCache<Hash, Block> = LruCache::new(capacity);
         Self {
             map: Arc::new(Mutex::new(map)),
         }
@@ -60,8 +65,8 @@ impl BlockCache for BitcoindBlockCache {
     type BlockHash = Hash;
 
     async fn get(&self, block_hash: &Hash) -> anyhow::Result<Option<Block>> {
-        let cache = self.map.lock().await;
-        Ok(cache.get(block_hash).map(|block| block.clone()))
+        let mut cache = self.map.lock().await;
+        Ok(cache.get_mut(block_hash).map(|block| block.clone()))
     }
 
     async fn insert(&mut self, block_hash: Hash, block: Block) -> anyhow::Result<Option<Block>> {

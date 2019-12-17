@@ -29,6 +29,9 @@ use structopt::StructOpt;
 mod cli;
 mod logging;
 
+const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 10;
+const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 100;
+
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
 
@@ -53,11 +56,16 @@ fn main() -> anyhow::Result<()> {
 
     let bitcoin_connector = {
         let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
-        BitcoindConnector::new(node_url, network)?
+        BitcoindConnector::new(node_url, network, BITCOIN_BLOCK_CACHE_CAPACITY)?
     };
 
-    let (ethereum_connector, _event_loop_handle) =
-        { Web3Connector::new(settings.clone().ethereum.node_url, runtime.executor())? };
+    let (ethereum_connector, _event_loop_handle) = {
+        Web3Connector::new(
+            settings.clone().ethereum.node_url,
+            runtime.executor(),
+            ETHEREUM_BLOCK_CACHE_CAPACITY,
+        )?
+    };
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
