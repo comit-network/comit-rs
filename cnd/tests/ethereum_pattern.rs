@@ -43,11 +43,9 @@ fn pattern_matches_block(pattern: TransactionPattern) -> bool {
     false
 }
 
-// `matches()` method is a filter which returns `true` if things match 
-// and `false` otherwise.
-// In order to _really_ test that the we
-// successfully match we first do a negative test then do an identical positive
-// test.
+// `matches()` method is a filter which returns `true` if things match and
+// `false` otherwise.  In order to _really_ test that the we successfully match
+// we first do a negative test then do an identical positive test.
 
 #[test]
 fn matches_transaction_from_address() {
