@@ -66,7 +66,7 @@ impl BlockCache for Web3BlockCache {
 
     async fn get(&self, block_hash: &Hash) -> anyhow::Result<Option<Block>> {
         let mut cache = self.map.lock().await;
-        Ok(cache.get_mut(block_hash).map(|block| block.clone()))
+        Ok(cache.get_mut(block_hash).cloned())
     }
 
     async fn insert(&mut self, block_hash: Hash, block: Block) -> anyhow::Result<Option<Block>> {
