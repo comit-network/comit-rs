@@ -166,7 +166,7 @@ async function startBitcoinContainer(): Promise<StartedTestContainer> {
             "-bind=0.0.0.0:18444",
             "-rpcbind=0.0.0.0:18443",
             "-rpcallowip=0.0.0.0/0",
-            "-debug=1",
+            "-nodebug",
             "-acceptnonstdtxn=0",
             "-rest",
         ])
