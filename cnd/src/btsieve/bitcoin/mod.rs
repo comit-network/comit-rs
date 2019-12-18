@@ -16,7 +16,7 @@ use bitcoin::{
 };
 use futures_core::compat::Future01CompatExt;
 use reqwest::{r#async::Client, Url};
-use std::{collections::HashSet, fmt::Debug, ops::Add};
+use std::{collections::HashSet, fmt::Display, ops::Add};
 use tokio::{prelude::future::Future, timer::Delay};
 
 pub async fn matching_transaction<C, E>(
@@ -28,14 +28,14 @@ where
     C: LatestBlock<Block = bitcoin::Block, Error = E>
         + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash, Error = E>
         + Clone,
-    E: Debug + Send + 'static,
+    E: Display + Send + 'static,
 {
     // Verify that we can successfully connect to the blockchain connector and check
     // if the transaction is in the latest block.
     let latest_block = match blockchain_connector.latest_block().compat().await {
         Ok(block) => block,
         Err(e) => {
-            log::error!("Failed to connect to the blockchain_connector: {:?}", e,);
+            log::error!("Failed to connect to the blockchain_connector: {}", e);
             return Err(());
         }
     };
@@ -64,7 +64,7 @@ where
         Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
             .compat()
             .await
-            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
+            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {}", e));
 
         let mut new_missing_block_futures = Vec::new();
         for (block_future, blockhash) in missing_block_futures.into_iter() {
@@ -85,7 +85,7 @@ where
                     };
                 }
                 Err(e) => {
-                    log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
+                    log::warn!("Could not get block with hash {}: {}", blockhash, e);
 
                     let future = blockchain_connector.block_by_hash(blockhash).compat();
                     new_missing_block_futures.push((future, blockhash));
@@ -112,7 +112,7 @@ where
                         }
                     },
                     Err(e) => log::warn!(
-                        "Could not get block with hash {}: {:?}",
+                        "Could not get block with hash {}: {}",
                         block.bitcoin_hash(),
                         e
                     ),

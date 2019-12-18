@@ -246,7 +246,7 @@ impl StateStore for InMemoryStateStore {
                 actor_state.set_secret(alpha_redeemed.secret);
             }
             SS::Error(ErrorState(e)) => {
-                log::error!("Internal failure: {:?}", e);
+                log::error!("Internal failure: {}", e);
                 return;
             }
         }

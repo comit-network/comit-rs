@@ -70,7 +70,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<serde_json::Error>() {
-        log::error!("deserialization error: {:?}", e);
+        log::error!("deserialization error: {}", e);
 
         return HttpApiProblem::new("Invalid body.")
             .set_status(StatusCode::BAD_REQUEST)
@@ -78,14 +78,14 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<InvalidActionInvocation>() {
-        log::warn!("{:?}", e);
+        log::warn!("{}", e);
 
         return HttpApiProblem::new("Invalid action invocation")
             .set_status(http::StatusCode::METHOD_NOT_ALLOWED);
     }
 
     if e.is::<InvalidAction>() {
-        log::warn!("{:?}", e);
+        log::warn!("{}", e);
 
         return HttpApiProblem::new("Invalid action.")
             .set_status(StatusCode::CONFLICT)
@@ -93,7 +93,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<UnsupportedSwap>() {
-        log::warn!("{:?}", e);
+        log::warn!("{}", e);
 
         return HttpApiProblem::new("Swap not supported.")
             .set_status(StatusCode::BAD_REQUEST)

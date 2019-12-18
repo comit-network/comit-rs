@@ -106,7 +106,7 @@ fn main() -> anyhow::Result<()> {
     let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
         .for_each(|_| Ok(()))
         .map_err(|e| {
-            log::error!("failed with {:?}", e);
+            log::error!("failed with {}", e);
         });
 
     runtime.spawn(swarm_worker);
@@ -150,7 +150,7 @@ fn spawn_warp_instance<S: Network>(
         settings.http_api.socket.port,
     );
 
-    log::info!("Starting HTTP server on {:?}", listen_addr);
+    log::info!("Starting HTTP server on {}", listen_addr);
 
     let server = warp::serve(routes).bind(listen_addr);
 

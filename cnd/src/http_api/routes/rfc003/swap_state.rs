@@ -177,7 +177,7 @@ impl SwapStatus {
         use crate::swap_protocols::rfc003::HtlcState::*;
 
         if let Some(e) = error {
-            log::debug!(target: "http-api", "derived SwapStatus is InternalFailure because: {:?}", e);
+            log::debug!(target: "http-api", "derived SwapStatus is InternalFailure because: {}", e);
             return SwapStatus::InternalFailure;
         }
 

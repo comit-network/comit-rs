@@ -265,7 +265,7 @@ where
         }
     };
     tokio::spawn(future.boxed().compat().map_err(|e: anyhow::Error| {
-        log::error!("{:?}", e);
+        log::error!("{}", e);
     }));
     Ok(())
 }

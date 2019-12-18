@@ -10,7 +10,7 @@ use crate::{
     ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
-use std::{collections::HashSet, fmt::Debug, ops::Add};
+use std::{collections::HashSet, fmt::Display, ops::Add};
 use tokio::timer::Delay;
 
 pub async fn matching_transaction<C, E>(
@@ -24,7 +24,7 @@ where
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = H256, Error = E>
         + tokio::executor::Executor
         + Clone,
-    E: Debug + Send + 'static,
+    E: Display + Send + 'static,
 {
     let (block_queue, next_block) = async_std::sync::channel(1);
     let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
@@ -72,7 +72,7 @@ where
                         log::warn!("Could not get latest block");
                     }
                     Err(e) => {
-                        log::warn!("Could not get latest block: {:?}", e);
+                        log::warn!("Could not get latest block: {}", e);
                     }
                 };
             }
@@ -102,7 +102,7 @@ where
                                 log::warn!("Block with hash {} does not exist", blockhash);
                             }
                             Err(e) => {
-                                log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
+                                log::warn!("Could not get block with hash {}: {}", blockhash, e);
 
                                 fetch_block_by_hash_queue.send(blockhash).await
                             }
@@ -162,7 +162,7 @@ where
                             }
                             Err(e) => {
                                 log::warn!(
-                                    "Could not get block with hash {}: {:?}",
+                                    "Could not get block with hash {}: {}",
                                     parent_blockhash,
                                     e
                                 );
@@ -201,7 +201,7 @@ where
                                     }
                                     Err(e) => {
                                         log::warn!(
-                                            "Could not retrieve transaction receipt for {}: {:?}",
+                                            "Could not retrieve transaction receipt for {}: {}",
                                             transaction.hash,
                                             e
                                         );
@@ -229,7 +229,7 @@ where
                                     }
                                     Err(e) => {
                                         log::warn!(
-                                                            "Could not retrieve transaction receipt for matching transaction {}: {:?}",
+                                                            "Could not retrieve transaction receipt for matching transaction {}: {}",
                                                             transaction.hash,
                                                             e
                                                 );

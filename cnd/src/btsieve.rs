@@ -4,6 +4,7 @@
 pub mod bitcoin;
 pub mod ethereum;
 
+use std::fmt::Display;
 use tokio::prelude::{Future, Stream};
 
 pub trait MatchingTransactions<P>: Send + Sync + 'static {
@@ -17,7 +18,7 @@ pub trait MatchingTransactions<P>: Send + Sync + 'static {
 }
 
 pub trait LatestBlock: Send + Sync + 'static {
-    type Error: std::fmt::Debug;
+    type Error: Display;
     type Block;
     type BlockHash;
 
@@ -27,7 +28,7 @@ pub trait LatestBlock: Send + Sync + 'static {
 }
 
 pub trait BlockByHash: Send + Sync + 'static {
-    type Error: std::fmt::Debug;
+    type Error: Display;
     type Block;
     type BlockHash;
 
@@ -40,7 +41,7 @@ pub trait BlockByHash: Send + Sync + 'static {
 pub trait ReceiptByHash: Send + Sync + 'static {
     type Receipt;
     type TransactionHash;
-    type Error: std::fmt::Debug;
+    type Error: Display;
 
     fn receipt_by_hash(
         &self,
