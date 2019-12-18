@@ -4,7 +4,7 @@ import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../lib/config";
-import { LedgerConfig } from "../lib/local_ledger_runner";
+import { LedgerConfig } from "../lib/ledger_runner";
 import { sleep } from "../lib/util";
 import { HarnessGlobal } from "../lib/util";
 

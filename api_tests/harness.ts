@@ -10,7 +10,7 @@ import path from "path";
 import readline from "readline-promise";
 import rimraf from "rimraf";
 import { CndRunner } from "./lib/cnd_runner";
-import { LedgerRunner } from "./lib/local_ledger_runner";
+import { LedgerRunner } from "./lib/ledger_runner";
 import { HarnessGlobal } from "./lib/util";
 
 const rlp = readline.createInterface({

@@ -1,6 +1,6 @@
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
-import { LedgerConfig } from "./local_ledger_runner";
+import { LedgerConfig } from "./ledger_runner";
 
 export interface WalletConfig {
     ledgerConfig: LedgerConfig;

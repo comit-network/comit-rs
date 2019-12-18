@@ -1,4 +1,3 @@
-import * as fs from "fs";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
@@ -11,7 +10,7 @@ export interface LedgerConfig {
 }
 
 export class LedgerRunner {
-    public readonly runningLedgers: { [key: string]: any }; // TODO come up with own type
+    public readonly runningLedgers: { [key: string]: any };
     private readonly blockTimers: { [key: string]: NodeJS.Timeout };
 
     constructor(
@@ -94,17 +93,14 @@ export class LedgerRunner {
         const container = this.runningLedgers.bitcoin;
 
         if (container) {
-            const result = fs.readFileSync(
-                `${this.projectRoot}/blockchain_nodes/bitcoin-0.17.0/datadir/regtest/.cookie`,
-                "utf8"
-            );
-            const [, password] = result.split(":");
+            const { username, password } = container.getUsernamePassword();
+
             return {
                 network: "regtest",
                 host: "localhost",
                 rpcPort: 18443,
                 p2pPort: 18444,
-                username: "__cookie__",
+                username,
                 password,
             };
         } else {

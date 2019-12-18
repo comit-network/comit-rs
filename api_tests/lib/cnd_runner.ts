@@ -3,7 +3,7 @@ import * as path from "path";
 import { promisify } from "util";
 import { CndInstance } from "../lib_sdk/cnd_instance";
 import { CND_CONFIGS } from "./config";
-import { LedgerConfig } from "./local_ledger_runner";
+import { LedgerConfig } from "./ledger_runner";
 import { HarnessGlobal } from "./util";
 
 declare var global: HarnessGlobal;

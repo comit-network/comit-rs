@@ -4,7 +4,7 @@ import { BigNumber, BigNumberish, parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
-import { LedgerConfig } from "../../lib/local_ledger_runner";
+import { LedgerConfig } from "../../lib/ledger_runner";
 import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
 import { CndInstance } from "../cnd_instance";
