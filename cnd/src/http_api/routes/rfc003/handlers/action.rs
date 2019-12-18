@@ -30,7 +30,7 @@ use crate::{
 use anyhow::Context;
 use bitcoin::Amount;
 use libp2p_comit::frame::Response;
-use std::fmt::Debug;
+use std::{fmt::Debug, string::ToString};
 use tokio::executor::Executor;
 use warp::http;
 
@@ -418,6 +418,7 @@ where
             Action::Refund(_) => Refund::list_required_fields(),
         };
 
+        // FIXME: self.to_string() should work because we derive Display using strum???
         log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
 
         siren::Action {

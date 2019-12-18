@@ -34,6 +34,8 @@ pub mod spectral_ext;
 pub mod swap_protocols;
 pub mod timestamp;
 
+pub use logging::Scribe;
+
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{events::HtlcEvents, Ledger},

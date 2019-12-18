@@ -151,11 +151,11 @@ fn htlc_redeemed_or_refunded<A: Asset>(
                 .into_iter()
                 .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
                 .ok_or_else(|| {
-                    rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
+                    rfc003::Error::Internal(format!("transaction receipt {} did not contain a REDEEM log", transaction.hash))
                 }).and_then(|log| {
                     let log_data = log.data.0.as_ref();
                     let secret = Secret::from_vec(log_data)
-                        .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {:?}: {:?}", transaction.hash, e)))?;
+                        .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {}: {}", transaction.hash, e)))?;
                     Ok(Redeemed {
                         transaction,
                         secret,

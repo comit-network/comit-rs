@@ -5,6 +5,7 @@ use crate::{
         HashFunction, SwapId,
     },
     timestamp::Timestamp,
+    Scribe,
 };
 use serde::{Deserialize, Serialize};
 
@@ -46,6 +47,12 @@ pub struct Accept<AL: Ledger, BL: Ledger> {
 pub struct Decline {
     pub swap_id: SwapId,
     pub reason: Option<SwapDeclineReason>,
+}
+
+impl Scribe for Decline {
+    fn scribe(&self) -> String {
+        format!("Declining swap: {}", self.swap_id.scribe())
+    }
 }
 
 /// Body of the rfc003 request message

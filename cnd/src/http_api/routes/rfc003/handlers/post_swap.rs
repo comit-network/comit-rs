@@ -15,6 +15,7 @@ use crate::{
         HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
+    Scribe,
 };
 use anyhow::Context;
 use bitcoin::Amount;
@@ -255,7 +256,7 @@ where
                     )?;
                 }
                 Err(decline) => {
-                    log::info!("Swap declined: {:?}", decline);
+                    log::info!("Swap declined: {}", decline.scribe());
                     let state = State::declined(swap_request.clone(), decline.clone(), seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     Save::save(&dependencies, decline.clone()).await?;

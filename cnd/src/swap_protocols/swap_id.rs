@@ -1,3 +1,4 @@
+use crate::Scribe;
 use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 use uuid::Uuid;
@@ -33,5 +34,12 @@ impl From<SwapId> for Uuid {
 impl fmt::Display for SwapId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
+    }
+}
+
+impl Scribe for SwapId {
+    fn scribe(&self) -> String {
+        let s = format!("{}", self);
+        s[..8].to_string() // Arbitrary number of human readable digits.
     }
 }

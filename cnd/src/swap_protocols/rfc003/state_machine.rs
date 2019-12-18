@@ -16,6 +16,7 @@ use crate::{
         HashFunction,
     },
     timestamp::Timestamp,
+    Scribe,
 };
 use either::Either;
 use futures::{future, sync::mpsc, try_ready, Async, Future, Stream};
@@ -353,7 +354,7 @@ where
         },
         context,
     )
-    .map(move |outcome| log::info!("Swap {} finished with {:?}", id, outcome))
+    .map(move |outcome| log::info!("Swap {} finished with {}", id, outcome.scribe()))
     .map_err(move |e| log::error!("Swap {} failed with {}", id, e));
 
     (swap_execution, receiver)
@@ -821,3 +822,6 @@ impl_display!(AlphaRefundedBetaFunded);
 impl_display!(AlphaFundedBetaRedeemed);
 impl_display!(AlphaRedeemedBetaFunded);
 impl_display!(Final);
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for OngoingSwap<AL, BL, AA, BA> {}
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for SwapOutcome<AL, BL, AA, BA> {}

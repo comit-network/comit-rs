@@ -14,6 +14,7 @@ use crate::{
             state_machine::HtlcParams,
         },
     },
+    Scribe,
 };
 use bitcoin::{Amount, OutPoint};
 use futures::{
@@ -119,8 +120,8 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                         let secret =
                             extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
                                 log::error!(
-                                    "Redeem transaction didn't have secret it in: {:?}",
-                                    tx
+                                    "Redeem transaction didn't have secret it in: {}",
+                                    tx.scribe()
                                 );
                                 rfc003::Error::Internal(
                                     "Redeem transaction didn't have the secret in it".into(),
