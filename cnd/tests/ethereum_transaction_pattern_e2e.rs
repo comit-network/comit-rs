@@ -20,6 +20,8 @@ use tokio::{
     timer::Delay,
 };
 
+const CAPACITY: usize = 100;
+
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum transaction pattern matching.
 ///
@@ -39,7 +41,7 @@ fn ethereum_transaction_pattern_e2e_test() {
         .unwrap();
 
     let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (connector, _event_loop) = Web3Connector::new(url, runtime.executor()).unwrap();
+    let (connector, _event_loop) = Web3Connector::new(url, runtime.executor(), CAPACITY).unwrap();
 
     let mut runtime = Runtime::new().unwrap();
 

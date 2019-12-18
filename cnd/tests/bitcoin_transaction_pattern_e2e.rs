@@ -17,6 +17,8 @@ use tokio::{
     timer::Delay,
 };
 
+const CAPACITY: usize = 100;
+
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for bitcoin transaction pattern matching.
 ///
@@ -33,7 +35,7 @@ fn bitcoin_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
         .unwrap();
 
-    let blocksource = Arc::new(BitcoindConnector::new(url, Network::Regtest).unwrap());
+    let blocksource = Arc::new(BitcoindConnector::new(url, Network::Regtest, CAPACITY).unwrap());
 
     let target_address = client.get_new_address(None, None).unwrap();
 

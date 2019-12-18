@@ -153,6 +153,8 @@ mod tests {
     use super::*;
     use crate::quickcheck::Quickcheck;
 
+    const CAPACITY: usize = 100;
+
     fn base_urls() -> Vec<Url> {
         vec![
             "http://localhost:8080".parse().unwrap(),
@@ -163,7 +165,7 @@ mod tests {
     #[test]
     fn constructor_does_not_fail_for_base_urls() {
         for base_url in base_urls() {
-            let result = BitcoindConnector::new(base_url, Network::Regtest);
+            let result = BitcoindConnector::new(base_url, Network::Regtest, CAPACITY);
 
             assert!(result.is_ok());
         }
@@ -175,7 +177,8 @@ mod tests {
     fn build_sub_url_should_never_fail() {
         fn prop(hash: Quickcheck<Hash>) -> bool {
             for base_url in base_urls() {
-                let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+                let blocksource =
+                    BitcoindConnector::new(base_url, Network::Regtest, CAPACITY).unwrap();
 
                 blocksource.raw_block_by_hash_url(&hash);
             }
@@ -189,7 +192,7 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+            let blocksource = BitcoindConnector::new(base_url, Network::Regtest, CAPACITY).unwrap();
 
             let chaininfo_url = blocksource.chaininfo_url.clone();
             assert_eq!(
