@@ -151,11 +151,14 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             })?
             .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
-            .with_link(siren::NavigationalLink::new(
-                &["human-protocol-spec"],
-                "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.md",
-            ));
-
+            .with_link(
+                siren::NavigationalLink::new(
+                    &["describedBy"],
+                    "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.adoc",
+                )
+                .with_type("text/html")
+                .with_class_member("protocol-spec"),
+            );
         let entity = actions.into_iter().fold(entity, |acc, action| {
             let action = action.to_siren_action(&id);
             acc.with_action(action)
