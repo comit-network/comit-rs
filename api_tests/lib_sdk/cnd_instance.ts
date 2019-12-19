@@ -6,6 +6,9 @@ import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../lib/config";
 import { LedgerConfig } from "../lib/ledger_runner";
 import { sleep } from "../lib/util";
+import { HarnessGlobal } from "../lib/util";
+
+declare var global: HarnessGlobal;
 
 const openAsync = promisify(fs.open);
 
@@ -54,10 +57,12 @@ export class CndInstance {
         });
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(
-                `cnd ${this.actorConfig.name} exited with ${code ||
-                    "signal " + signal}`
-            );
+            if (global.verbose) {
+                console.log(
+                    `cnd ${this.actorConfig.name} exited with ${code ||
+                        "signal " + signal}`
+                );
+            }
         });
 
         await sleep(1000); // allow the nodes to start up

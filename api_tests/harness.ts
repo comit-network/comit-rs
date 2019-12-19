@@ -14,6 +14,7 @@ import { HarnessGlobal } from "./lib/util";
 
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
+    .option("--verbose", "Verbose output")
     .parse(process.argv);
 
 // ************************ //
@@ -32,6 +33,10 @@ global.projectRoot = projectRoot;
 global.testRoot = testRoot;
 global.logRoot = logDir;
 global.ledgerConfigs = {};
+global.verbose = false;
+if (commander.verbose) {
+    global.verbose = true;
+}
 
 rimraf.sync(logDir);
 fs.mkdirSync(logDir);
@@ -60,7 +65,9 @@ async function runTests(testFiles: string[]) {
     }
 
     process.on("SIGINT", async () => {
-        console.log("SIGINT RECEIVED");
+        if (global.verbose) {
+            console.log("SIGINT RECEIVED");
+        }
 
         await cleanupAll();
 

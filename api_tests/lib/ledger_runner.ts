@@ -3,6 +3,9 @@ import { GenericContainer, StartedTestContainer, Wait } from "testcontainers";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { EthereumNodeConfig } from "./ethereum";
+import { HarnessGlobal } from "./util";
+
+declare var global: HarnessGlobal;
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
@@ -22,8 +25,9 @@ export class LedgerRunner {
         const toBeStarted = ledgers.filter(name => !this.runningLedgers[name]);
 
         const promises = toBeStarted.map(async ledger => {
-            console.log(`Starting ledger ${ledger}`);
-
+            if (global.verbose) {
+                console.log(`Starting ledger ${ledger}`);
+            }
             switch (ledger) {
                 case "bitcoin": {
                     return {
@@ -78,8 +82,9 @@ export class LedgerRunner {
         const ledgers = Object.entries(this.runningLedgers);
 
         const promises = ledgers.map(async ([ledger, container]) => {
-            console.log(`Stopping ledger ${ledger}`);
-
+            if (global.verbose) {
+                console.log(`Stopping ledger ${ledger}`);
+            }
             clearInterval(this.blockTimers[ledger]);
             await container.stop();
             delete this.runningLedgers[ledger];

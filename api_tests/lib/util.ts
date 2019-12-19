@@ -31,4 +31,5 @@ export interface HarnessGlobal extends Global {
     testRoot: string;
     projectRoot: string;
     logRoot: string;
+    verbose: boolean;
 }
