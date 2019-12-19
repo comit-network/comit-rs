@@ -216,8 +216,6 @@ fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
 ) -> Option<Poll<ComitHandlerEvent, frame::CodecError>> {
-    log::debug!("polling {} substreams", substreams.len());
-
     // We remove each element from `substreams` one by one and add them back.
     for n in (0..substreams.len()).rev() {
         let substream_state = substreams.swap_remove(n);
