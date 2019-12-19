@@ -42,7 +42,7 @@ impl EthereumConnectorMock {
 }
 
 impl LatestBlock for EthereumConnectorMock {
-    type Error = ();
+    type Error = String;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
@@ -50,7 +50,7 @@ impl LatestBlock for EthereumConnectorMock {
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(()).into_future());
+            return Box::new(Err("empty".to_string()).into_future());
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -69,7 +69,7 @@ impl LatestBlock for EthereumConnectorMock {
 }
 
 impl BlockByHash for EthereumConnectorMock {
-    type Error = ();
+    type Error = String;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
@@ -82,7 +82,7 @@ impl BlockByHash for EthereumConnectorMock {
 }
 
 impl ReceiptByHash for EthereumConnectorMock {
-    type Error = ();
+    type Error = String;
     type Receipt = Option<TransactionReceipt>;
     type TransactionHash = H256;
 
