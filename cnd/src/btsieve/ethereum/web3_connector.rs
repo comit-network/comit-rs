@@ -45,19 +45,7 @@ impl Web3Connector {
     }
 }
 
-#[derive(Clone, Debug)]
-pub struct Web3BlockCache {
-    map: Arc<Mutex<LruCache<Hash, Block>>>,
-}
-
-impl Web3BlockCache {
-    fn new(capacity: usize) -> Self {
-        let map: LruCache<Hash, Block> = LruCache::new(capacity);
-        Self {
-            map: Arc::new(Mutex::new(map)),
-        }
-    }
-}
+block_cache!(Web3BlockCache);
 
 #[async_trait]
 impl BlockCache for Web3BlockCache {

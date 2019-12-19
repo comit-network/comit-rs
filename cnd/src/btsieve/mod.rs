@@ -1,6 +1,9 @@
 #![warn(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
+#[macro_use]
+mod block_cache;
+
 pub mod bitcoin;
 pub mod ethereum;
 
