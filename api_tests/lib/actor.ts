@@ -74,7 +74,7 @@ export class Actor {
         if (predicate(response.body)) {
             return response.body;
         } else {
-            await sleep(500);
+            await sleep(200);
 
             return this.pollCndUntil(location, predicate);
         }
@@ -195,7 +195,7 @@ export class Actor {
                         let escapeSequence = "";
 
                         while (diff > 0) {
-                            await sleep(1000);
+                            await sleep(200);
 
                             currentMedianBlockTime = await fetchMedianTime();
                             diff =
@@ -252,7 +252,7 @@ export class Actor {
                             min_block_timestamp
                         );
                     }
-                    await sleep(delay * 1000);
+                    await sleep(delay * 200);
                 }
 
                 return this.wallet

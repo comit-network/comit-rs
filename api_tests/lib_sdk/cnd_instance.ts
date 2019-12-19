@@ -65,7 +65,7 @@ export class CndInstance {
             }
         });
 
-        await sleep(1000); // allow the nodes to start up
+        await sleep(200); // allow the nodes to start up
     }
 
     public stop() {

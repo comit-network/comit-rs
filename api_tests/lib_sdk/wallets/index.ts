@@ -65,7 +65,7 @@ export async function pollUntilMinted(
     if (new BigNumber(currentBalance).gte(minimumBalance)) {
         return;
     } else {
-        await sleep(500);
+        await sleep(200);
 
         return pollUntilMinted(wallet, minimumBalance);
     }
