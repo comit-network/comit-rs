@@ -21,7 +21,11 @@ use crate::{
 use either::Either;
 use futures::{future, sync::mpsc, try_ready, Async, Future, Stream};
 use state_machine_future::{RentToOwn, StateMachineFuture};
-use std::{cmp::Ordering::*, fmt, sync::Arc};
+use std::{
+    cmp::Ordering::*,
+    fmt::{self, Debug},
+    sync::Arc,
+};
 
 #[derive(Clone, Debug)]
 pub struct HtlcParams<L: Ledger, A: Asset> {
@@ -824,4 +828,23 @@ impl_display!(AlphaRedeemedBetaFunded);
 impl_display!(Final);
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for OngoingSwap<AL, BL, AA, BA> {}
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for SwapOutcome<AL, BL, AA, BA> {}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for SwapOutcome<AL, BL, AA, BA> {
+    fn scribe(&self) -> String
+    where
+        Self: Debug,
+    {
+        match self {
+            SwapOutcome::AlphaRefunded { .. } => "AlphaRefunded".to_string(),
+            SwapOutcome::AlphaRedeemed { .. } => "AlphaRedeemed".to_string(),
+            SwapOutcome::BothRefunded { .. } => "BothRefunded".to_string(),
+            SwapOutcome::BothRedeemed { .. } => "BothRedeemed".to_string(),
+            SwapOutcome::AlphaRedeemedBetaRefunded { .. } => {
+                "AlphaRedeemedBetaRefunded".to_string()
+            }
+            SwapOutcome::AlphaRefundedBetaRedeemed { .. } => {
+                "AlphaRefundedBetaRedeemed".to_string()
+            }
+        }
+    }
+}
