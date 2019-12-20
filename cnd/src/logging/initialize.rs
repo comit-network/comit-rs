@@ -44,9 +44,6 @@ fn create_logger<T: Into<fern::Output>>(
         .level_for("warp", LevelFilter::Info)
         .level_for("web3", LevelFilter::Info)
         .level_for("yamux", LevelFilter::Info)
-        // Our libraries
-        .level_for("sub-libp2p", LevelFilter::Debug) // the libp2p subsystem in our application
-        .level_for("http-api", LevelFilter::Debug) // the http-api of our application
         .chain(target)
         .into_log()
 }

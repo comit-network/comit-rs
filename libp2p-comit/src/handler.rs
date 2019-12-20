@@ -225,12 +225,12 @@ fn poll_substreams<S: Display + Advance>(
         let Advanced { new_state, event } = substream_state.advance(known_headers);
 
         if let Some(new_state) = new_state {
-            log::trace!(target: "sub-libp2p", "{} to {}", log_message, new_state);
+            log::trace!("{} to {}", log_message, new_state);
             substreams.push(new_state);
         }
 
         if let Some(event) = event {
-            log::trace!(target: "sub-libp2p", "emitting {:?}", event);
+            log::trace!("emitting {:?}", event);
             return Some(Ok(Async::Ready(event)));
         }
     }
