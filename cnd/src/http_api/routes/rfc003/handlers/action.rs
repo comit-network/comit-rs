@@ -26,6 +26,7 @@ use crate::{
         },
         SwapId,
     },
+    Scribe,
 };
 use anyhow::Context;
 use bitcoin::Amount;
@@ -418,8 +419,7 @@ where
             Action::Refund(_) => Refund::list_required_fields(),
         };
 
-        // FIXME: self.to_string() should work because we derive Display using strum???
-        log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
+        log::debug!(target: "http-api", "Creating siren::Action from {} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self.scribe(), method, media_type, name, fields);
 
         siren::Action {
             href: new_action_link(id, &name),
@@ -429,6 +429,24 @@ where
             fields,
             class: vec![],
             title: None,
+        }
+    }
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> Scribe
+    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
+{
+    fn scribe(&self) -> String
+    where
+        Self: Debug,
+    {
+        match self {
+            Action::Accept { .. } => "Accept".to_string(),
+            Action::Decline { .. } => "Decline".to_string(),
+            Action::Deploy { .. } => "Deploy".to_string(),
+            Action::Fund { .. } => "Fund".to_string(),
+            Action::Redeem { .. } => "Redeem".to_string(),
+            Action::Refund { .. } => "Refund".to_string(),
         }
     }
 }
