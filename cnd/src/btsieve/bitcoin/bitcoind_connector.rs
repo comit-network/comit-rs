@@ -47,11 +47,9 @@ impl LatestBlock for BitcoindConnector {
             .client
             .get(self.chaininfo_url.clone())
             .send()
-            .map_err(|e| Self::Error::Reqwest(e))
+            .map_err(Self::Error::Reqwest)
             .and_then(move |mut response| {
-                response
-                    .json::<ChainInfo>()
-                    .map_err(|e| Self::Error::Reqwest(e))
+                response.json::<ChainInfo>().map_err(Self::Error::Reqwest)
             })
             .map(move |blockchain_info| blockchain_info.bestblockhash);
 
