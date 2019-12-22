@@ -49,7 +49,7 @@ siren = { version = "0.1", package = "siren-types" }
 state_machine_future = { version = "0.2" }
 structopt = "0.3"
 strum = "0.16"
-strum_macros = "0.16"
+strum_macros = "0.17"
 testcontainers = "0.8"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
