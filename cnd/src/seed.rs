@@ -134,10 +134,6 @@ impl SwapSeed for Seed {
 fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     if let Some(path) = file.parent() {
         if !path.exists() {
-            log::info!(
-                "Seed file parent directory does not exist, creating recursively: {}",
-                file.display()
-            );
             fs::create_dir_all(path)?;
         }
     }
