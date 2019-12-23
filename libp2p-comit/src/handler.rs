@@ -230,7 +230,6 @@ fn poll_substreams<S: Display + Advance>(
         }
 
         if let Some(event) = event {
-            log::trace!("emitting {:?}", event);
             return Some(Ok(Async::Ready(event)));
         }
     }
