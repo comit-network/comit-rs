@@ -343,6 +343,7 @@ where
     T: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + Clone,
 {
     let id = request.swap_id;
+    log::trace!("creating swap: {}", id);
 
     let (sender, receiver) = mpsc::unbounded();
 

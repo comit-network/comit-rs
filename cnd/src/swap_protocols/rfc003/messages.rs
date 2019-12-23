@@ -28,6 +28,15 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub secret_hash: SecretHash,
 }
 
+impl<AL, BL, AA, BA> Scribe for Request<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
+}
+
 /// High-level message that represents accepting a Swap request
 ///
 /// This does _not_ represent the actual network message, that is why it also

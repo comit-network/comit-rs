@@ -83,6 +83,8 @@ pub async fn handle_action<
 
                 Save::save(&dependencies, accept_message).await?;
 
+                log::trace!("accepting swap: {}", swap_id);
+
                 let response = rfc003_accept_response(accept_message);
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(

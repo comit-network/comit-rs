@@ -178,7 +178,7 @@ where
     AA: Asset,
     BA: Asset,
 {
-    rfc003::Request {
+    let request = rfc003::Request {
         swap_id: id,
         alpha_ledger,
         beta_ledger,
@@ -190,7 +190,9 @@ where
         alpha_expiry: alpha_expiry.unwrap_or_else(default_alpha_expiry),
         beta_expiry: beta_expiry.unwrap_or_else(default_beta_expiry),
         secret_hash,
-    }
+    };
+    log::trace!("New request: {}", request.scribe());
+    request
 }
 
 /// An error type for describing that a particular combination of assets and
