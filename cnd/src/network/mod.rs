@@ -399,10 +399,10 @@ where
 
         let response = {
             let mut swarm = self.lock().unwrap();
-            log::debug!(
-                "Making swap request to {}: {:?}",
+            log::trace!(
+                "Making swap request to {}: swap_id: {}",
                 dial_information.clone(),
-                request
+                id,
             );
 
             swarm.send_request(dial_information.clone(), request)
