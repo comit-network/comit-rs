@@ -61,7 +61,6 @@ pub async fn handle_action<
         let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
             anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
         })?;
-        log::trace!("Retrieved state for swap_id: {}", swap_id);
 
         let action = state
             .actions()
@@ -83,7 +82,7 @@ pub async fn handle_action<
 
                 Save::save(&dependencies, accept_message).await?;
 
-                log::trace!("accepting swap: {}", swap_id);
+                log::trace!("action->accept swap: {}", swap_id);
 
                 let response = rfc003_accept_response(accept_message);
                 channel.send(response).map_err(|_| {
@@ -118,6 +117,8 @@ pub async fn handle_action<
 
                 Save::save(&dependencies, decline_message.clone()).await?;
 
+                log::trace!("action->decline swap: {}", swap_id);
+
                 let response = rfc003_decline_response(decline_message.clone());
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(
@@ -133,10 +134,22 @@ pub async fn handle_action<
 
                 Ok(ActionResponseBody::None)
             }
-            Action::Deploy(action) => action.into_response_payload(query_params),
-            Action::Fund(action) => action.into_response_payload(query_params),
-            Action::Redeem(action) => action.into_response_payload(query_params),
-            Action::Refund(action) => action.into_response_payload(query_params),
+            Action::Deploy(action) => {
+                log::trace!("action->deploy");
+                action.into_response_payload(query_params)
+            }
+            Action::Fund(action) => {
+                log::trace!("action->fund");
+                action.into_response_payload(query_params)
+            }
+            Action::Redeem(action) => {
+                log::trace!("action->redeem");
+                action.into_response_payload(query_params)
+            }
+            Action::Refund(action) => {
+                log::trace!("action->refund");
+                action.into_response_payload(query_params)
+            }
         }
     })
 }
