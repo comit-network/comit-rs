@@ -48,7 +48,7 @@ serde_json = "1"
 siren = { version = "0.1", package = "siren-types" }
 state_machine_future = { version = "0.2" }
 structopt = "0.3"
-strum = "0.16"
+strum = "0.17"
 strum_macros = "0.17"
 testcontainers = "0.8"
 thiserror = "1"
