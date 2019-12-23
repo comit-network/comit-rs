@@ -61,7 +61,7 @@ pub async fn handle_action<
         let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
             anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
         })?;
-        log::trace!("Retrieved state for {}: {:?}", swap_id, state);
+        log::trace!("Retrieved state for swap_id: {}", swap_id);
 
         let action = state
             .actions()
