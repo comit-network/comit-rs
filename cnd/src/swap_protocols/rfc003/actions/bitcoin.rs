@@ -4,8 +4,7 @@ use crate::swap_protocols::{
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
         create_swap::HtlcParams,
-        secret_source::SecretSource,
-        Secret,
+        DeriveIdentities, Secret,
     },
 };
 use bitcoin::{Amount, OutPoint, Transaction};
@@ -31,7 +30,7 @@ impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     fn refund_action(
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_location: OutPoint,
-        secret_source: &dyn SecretSource,
+        secret_source: &dyn DeriveIdentities,
         fund_transaction: &Transaction,
     ) -> Self::RefundActionOutput {
         let htlc = BitcoinHtlc::from(htlc_params);
@@ -40,7 +39,7 @@ impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
             output: PrimedInput::new(
                 htlc_location,
                 Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
-                htlc.unlock_after_timeout(&*crate::SECP, secret_source.secp256k1_refund()),
+                htlc.unlock_after_timeout(&*crate::SECP, secret_source.derive_refund_identity()),
             ),
             network: htlc_params.ledger.network,
         }
@@ -53,7 +52,7 @@ impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     fn redeem_action(
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_location: OutPoint,
-        secret_source: &dyn SecretSource,
+        secret_source: &dyn DeriveIdentities,
         secret: Secret,
     ) -> Self::RedeemActionOutput {
         let htlc = BitcoinHtlc::from(htlc_params);
@@ -64,7 +63,7 @@ impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
                 htlc_params.asset,
                 htlc.unlock_with_secret(
                     &*crate::SECP,
-                    secret_source.secp256k1_redeem(),
+                    secret_source.derive_redeem_identity(),
                     secret.into_raw_secret(),
                 ),
             ),

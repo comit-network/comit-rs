@@ -3,8 +3,8 @@ pub mod actions;
 use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
-        self, ledger::Ledger, ledger_state::LedgerState, messages::Request,
-        secret_source::SecretSource, Accept, ActorState, Decline, SwapCommunication,
+        self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
+        Decline, DeriveIdentities, SwapCommunication,
     },
 };
 use derivative::Derivative;
@@ -22,11 +22,14 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub alpha_ledger_state: LedgerState<AL, AA>,
     pub beta_ledger_state: LedgerState<BL, BA>,
     #[derivative(Debug = "ignore")]
-    pub secret_source: Arc<dyn SecretSource>,
+    pub secret_source: Arc<dyn DeriveIdentities>,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
-    pub fn proposed(request: Request<AL, BL, AA, BA>, secret_source: impl SecretSource) -> Self {
+    pub fn proposed(
+        request: Request<AL, BL, AA, BA>,
+        secret_source: impl DeriveIdentities,
+    ) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
             alpha_ledger_state: LedgerState::NotDeployed,
@@ -38,7 +41,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
         response: Accept<AL, BL>,
-        secret_source: impl SecretSource,
+        secret_source: impl DeriveIdentities,
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Accepted { request, response },
@@ -51,7 +54,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     pub fn declined(
         request: Request<AL, BL, AA, BA>,
         response: Decline,
-        secret_source: impl SecretSource,
+        secret_source: impl DeriveIdentities,
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Declined { request, response },
