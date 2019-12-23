@@ -73,7 +73,7 @@ impl BlockByHash for BitcoinConnectorMock {
             self.all_blocks
                 .get(&block_hash)
                 .cloned()
-                .ok_or("none".to_string())
+                .ok_or_else(|| "none".to_string())
                 .into_future(),
         )
     }
