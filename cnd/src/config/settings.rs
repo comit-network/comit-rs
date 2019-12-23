@@ -95,7 +95,7 @@ pub enum AllowedOrigins {
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
-    #[derivative(Default(value = "LevelFilter::Debug"))]
+    #[derivative(Default(value = "LevelFilter::Trace"))]
     pub level: LevelFilter,
     pub structured: bool,
 }
@@ -230,7 +230,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.logging)
             .is_equal_to(Logging {
-                level: LevelFilter::Debug,
+                level: LevelFilter::Trace,
                 structured: false,
             })
     }
