@@ -61,7 +61,9 @@ impl BlockByHash for Web3Connector {
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let web = self.web3.clone();
-        Box::new(web.eth().block_with_txs(BlockId::Hash(block_hash)))
+        let block = web.eth().block_with_txs(BlockId::Hash(block_hash));
+        log::trace!("Fetched block from web3: {}", block_hash);
+        Box::new(block)
     }
 }
 
