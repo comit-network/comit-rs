@@ -32,6 +32,7 @@ fn create_logger<T: Into<fern::Output>>(
         .format(formatter)
         .level(base_log_level)
         // Upstream libraries
+        .level_for("http", LevelFilter::Warn) // Logging requests to the cnd HTTP API is too verbose.
         .level_for("hyper", LevelFilter::Info)
         .level_for("libp2p", LevelFilter::Info)
         .level_for("libp2p_dns", LevelFilter::Info)

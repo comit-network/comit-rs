@@ -419,8 +419,6 @@ where
             Action::Refund(_) => Refund::list_required_fields(),
         };
 
-        log::debug!("Creating siren::Action from {} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self.scribe(), method, media_type, name, fields);
-
         siren::Action {
             href: new_action_link(id, &name),
             name,
