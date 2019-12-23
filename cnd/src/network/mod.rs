@@ -23,7 +23,7 @@ use futures::{
 use futures_core::{FutureExt, TryFutureExt};
 use libp2p::{
     core::muxing::{StreamMuxer, SubstreamRef},
-    mdns::{Mdns, MdnsEvent},
+    mdns::Mdns,
     swarm::NetworkBehaviourEventProcess,
     Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
 };
@@ -507,20 +507,7 @@ impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<T
 }
 
 impl<TSubstream> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode<TSubstream> {
-    fn inject_event(&mut self, event: libp2p::mdns::MdnsEvent) {
-        match event {
-            MdnsEvent::Discovered(addresses) => {
-                for (peer, address) in addresses {
-                    log::trace!("discovered {} at {}", peer, address)
-                }
-            }
-            MdnsEvent::Expired(addresses) => {
-                for (peer, address) in addresses {
-                    log::trace!("address {} of peer {} expired", address, peer)
-                }
-            }
-        }
-    }
+    fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
 fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
