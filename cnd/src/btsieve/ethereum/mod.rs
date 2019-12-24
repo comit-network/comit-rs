@@ -7,7 +7,7 @@ pub use self::{
 };
 use crate::{
     btsieve::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash},
-    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
+    ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
 use std::{collections::HashSet, fmt::Debug, ops::Add};
@@ -16,11 +16,14 @@ use tokio::{
     timer::Delay,
 };
 
+type Hash = H256;
+type Block = Option<crate::ethereum::Block<Transaction>>;
+
 impl<C, E> MatchingTransactions<TransactionPattern> for C
 where
-    C: LatestBlock<Block = Option<Block<Transaction>>, Error = E>
-        + BlockByHash<Block = Option<Block<Transaction>>, BlockHash = H256, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = H256, Error = E>
+    C: LatestBlock<Block = Block, Error = E>
+        + BlockByHash<Block = Block, BlockHash = Hash, Error = E>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
         + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
@@ -45,7 +48,7 @@ where
             let look_in_the_past_queue = look_in_the_past_queue.clone();
 
             async move {
-                let mut sent_blockhashes: HashSet<H256> = HashSet::new();
+                let mut sent_blockhashes: HashSet<Hash> = HashSet::new();
 
                 loop {
                     Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
@@ -128,7 +131,7 @@ where
             let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
             async move {
-                let mut prev_blockhashes: HashSet<H256> = HashSet::new();
+                let mut prev_blockhashes: HashSet<Hash> = HashSet::new();
 
                 loop {
                     match next_find_parent.recv().await {
