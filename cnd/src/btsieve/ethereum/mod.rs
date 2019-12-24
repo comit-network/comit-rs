@@ -181,17 +181,22 @@ async fn process_blocks_by_hash<C, E>(
     E: Debug + Send + 'static,
 {
     let (fetch_block_by_hash_queue, next_hash) = next_block_channel;
+    let mut sent_blockhashes: HashSet<H256> = HashSet::new();
 
     loop {
         match next_hash.recv().await {
             Some(blockhash) => {
                 match connector.block_by_hash(blockhash).compat().await {
                     Ok(Some(block)) => {
-                        join(
-                            block_queue.send(block.clone()),
-                            find_parent_queue.send((blockhash, block.parent_hash)),
-                        )
-                        .await;
+                        if !sent_blockhashes.contains(&blockhash) {
+                            sent_blockhashes.insert(blockhash);
+
+                            join(
+                                block_queue.send(block.clone()),
+                                find_parent_queue.send((blockhash, block.parent_hash)),
+                            )
+                            .await;
+                        }
                     }
                     Ok(None) => {
                         log::warn!("Block with hash {} does not exist", blockhash);
