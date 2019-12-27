@@ -101,7 +101,7 @@ setTimeout(async function() {
             expect(res).to.have.status(200);
             expect(res.body.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface
-            expect(res.body.listen_addresses.length).to.be.greaterThan(2);
+            expect(res.body.listen_addresses.length).to.be.greaterThan(1);
         });
     });
 
