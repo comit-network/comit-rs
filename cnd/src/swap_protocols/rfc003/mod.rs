@@ -28,6 +28,9 @@ pub use self::{
 };
 
 pub use self::messages::{Accept, Decline, Request};
+
+use crate::swap_protocols::asset::Asset;
+
 /// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
 
@@ -41,4 +44,19 @@ pub enum Error {
     IncorrectFunding,
     #[error("internal error: {0}")]
     Internal(String),
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+    Proposed {
+        request: Request<AL, BL, AA, BA>,
+    },
+    Accepted {
+        request: Request<AL, BL, AA, BA>,
+        response: Accept<AL, BL>,
+    },
+    Declined {
+        request: Request<AL, BL, AA, BA>,
+        response: Decline,
+    },
 }

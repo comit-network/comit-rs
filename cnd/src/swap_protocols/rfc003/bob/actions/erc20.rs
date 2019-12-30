@@ -6,9 +6,9 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-            bob::{self, SwapCommunication},
+            bob,
             state_machine::HtlcParams,
-            Ledger, LedgerState,
+            Ledger, LedgerState, SwapCommunication,
         },
     },
 };
