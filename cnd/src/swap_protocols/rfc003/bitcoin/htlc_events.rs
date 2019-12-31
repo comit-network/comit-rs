@@ -39,25 +39,21 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                 log::warn!("stream of matching transactions ended before yielding a value");
                 rfc003::Error::Btsieve
             })
-            .and_then({
-                let htlc_params = htlc_params.clone();
+            .and_then(move |tx| {
+                let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
+                    .ok_or_else(|| {
+                        rfc003::Error::Internal(
+                            "Query returned Bitcoin transaction that didn't match the requested address".into(),
+                        )
+                    })?;
 
-                move |tx| {
-                    let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
-                        .ok_or_else(|| {
-                            rfc003::Error::Internal(
-                                "Query returned Bitcoin transaction that didn't match the requested address".into(),
-                            )
-                        })?;
-
-                    Ok(Deployed {
-                        location: OutPoint {
-                            txid: tx.txid(),
-                            vout,
-                        },
-                        transaction: tx,
-                    })
-                }
+                Ok(Deployed {
+                    location: OutPoint {
+                        txid: tx.txid(),
+                        vout,
+                    },
+                    transaction: tx,
+                })
             });
 
         Box::new(future)
@@ -113,23 +109,18 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                 log::warn!("stream of matching transactions ended before yielding a value");
                 rfc003::Error::Btsieve
             })
-            .and_then({
-                let htlc_params = htlc_params.clone();
+            .and_then(move |tx| {
+                let secret = extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
+                    log::error!("Redeem transaction didn't have secret it in: {:?}", tx);
+                    rfc003::Error::Internal(
+                        "Redeem transaction didn't have the secret in it".into(),
+                    )
+                })?;
 
-                move |tx| {
-                    let secret =
-                        extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
-                            log::error!("Redeem transaction didn't have secret it in: {:?}", tx);
-                            rfc003::Error::Internal(
-                                "Redeem transaction didn't have the secret in it".into(),
-                            )
-                        })?;
-
-                    Ok(Redeemed {
-                        transaction: tx,
-                        secret,
-                    })
-                }
+                Ok(Redeemed {
+                    transaction: tx,
+                    secret,
+                })
             })
         };
 

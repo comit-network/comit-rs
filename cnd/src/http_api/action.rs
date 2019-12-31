@@ -380,7 +380,7 @@ mod test {
                 network: bitcoin::Network::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.clone(),
+                to,
                 amount,
                 network: bitcoin::Network::Regtest,
             }),
@@ -389,7 +389,7 @@ mod test {
         let expected = &[
             r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"mainnet"}}"#,
             r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"testnet"}}"#,
-            r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"regtest"}}"#
+            r#"{"type":"bitcoin-send-amount-to-address","payload":{"to":"2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9","amount":"100000000","network":"regtest"}}"#,
         ];
 
         let actual = input

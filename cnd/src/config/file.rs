@@ -205,7 +205,7 @@ node_url = "http://example.com/"
         };
 
         let config = toml::from_str::<File>(contents);
-        assert_that(&config).is_ok().is_equal_to(file.clone());
+        assert_that(&config).is_ok().is_equal_to(file);
     }
 
     #[test]

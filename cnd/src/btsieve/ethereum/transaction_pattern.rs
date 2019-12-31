@@ -420,7 +420,7 @@ mod tests {
         };
         let block = Block {
             logs_bloom: H2048::zero(),
-            transactions: vec![tx.clone()],
+            transactions: vec![tx],
             ..Block::default()
         };
 

@@ -31,11 +31,11 @@ where
     match role {
         Role::Alice => {
             let state = alice::State::accepted(request.clone(), accept, seed);
-            StateStore::insert(dependencies, id, state.clone());
+            StateStore::insert(dependencies, id, state);
         }
         Role::Bob => {
             let state = bob::State::accepted(request.clone(), accept, seed);
-            StateStore::insert(dependencies, id, state.clone());
+            StateStore::insert(dependencies, id, state);
         }
     };
 
