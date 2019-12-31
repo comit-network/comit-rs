@@ -3,7 +3,8 @@ use crate::btsieve::{
 };
 use bitcoin::{hashes::sha256d, BitcoinHash, Network};
 use futures::Future;
-use reqwest::{r#async::Client, Url};
+use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
+use reqwest::{Client, Url};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -19,7 +20,7 @@ pub struct BitcoindConnector {
 }
 
 impl BitcoindConnector {
-    pub fn new(base_url: Url, _network: Network) -> Result<Self, reqwest::UrlError> {
+    pub fn new(base_url: Url, _network: Network) -> anyhow::Result<Self> {
         Ok(Self {
             chaininfo_url: base_url.join("rest/chaininfo.json")?,
             raw_block_by_hash_url: base_url.join("rest/block/")?,
@@ -42,28 +43,27 @@ impl LatestBlock for BitcoindConnector {
     fn latest_block(
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let latest_block_hash = self
-            .client
-            .get(self.chaininfo_url.clone())
-            .send()
-            .map_err(|e| {
-                log::error!("Error when sending request to bitcoind");
-                Self::Error::Reqwest(e)
-            })
-            .and_then(move |mut response| {
-                response.json::<ChainInfo>().map_err(|e| {
-                    log::error!("Error when deserialising the response from bitcoind");
-                    Self::Error::Reqwest(e)
-                })
-            })
-            .map(move |blockchain_info| blockchain_info.bestblockhash);
+        let chaininfo_url = self.chaininfo_url.clone();
+        let this = self.clone();
 
-        let cloned_self = self.clone();
+        let latest_block = async move {
+            let chain_info = this
+                .client
+                .get(chaininfo_url)
+                .send()
+                .await?
+                .json::<ChainInfo>()
+                .await?;
 
-        Box::new(
-            latest_block_hash
-                .and_then(move |latest_block_hash| cloned_self.block_by_hash(latest_block_hash)),
-        )
+            let block = this
+                .block_by_hash(chain_info.bestblockhash)
+                .compat()
+                .await?;
+
+            Ok(block)
+        };
+
+        Box::new(latest_block.boxed().compat())
     }
 }
 
@@ -79,7 +79,9 @@ impl BlockByHash for BitcoindConnector {
         let url = self.raw_block_by_hash_url(&block_hash);
 
         let block =
-            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone());
+            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone())
+                .boxed()
+                .compat();
 
         Box::new(block.inspect(|block| {
             log::debug!(

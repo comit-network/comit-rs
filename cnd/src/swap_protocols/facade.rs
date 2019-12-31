@@ -27,6 +27,7 @@ use libp2p::PeerId;
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
 use tokio_compat::runtime::TaskExecutor;
+use tokio_executor01::Executor;
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
@@ -237,7 +238,7 @@ where
     }
 }
 
-impl<S> tokio_executor01::Executor for Facade<S>
+impl<S> Executor for Facade<S>
 where
     S: Send + Sync + 'static,
 {
@@ -245,6 +246,6 @@ where
         &mut self,
         future: Box<dyn Future<Item = (), Error = ()> + Send>,
     ) -> Result<(), tokio_executor01::SpawnError> {
-        tokio_executor01::Executor::spawn(&mut self.task_executor, future)
+        Executor::spawn(&mut self.task_executor, future)
     }
 }
