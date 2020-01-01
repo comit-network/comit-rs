@@ -607,11 +607,6 @@ bmutex@~0.1.6:
   dependencies:
     bsert "~0.0.10"
 
-bn-chai@^1.0.1:
-  version "1.0.1"
-  resolved "https://registry.yarnpkg.com/bn-chai/-/bn-chai-1.0.1.tgz#5d6e9654162602a527b08a1546e60cfb44213725"
-  integrity sha512-7rJXt21DwYiLLpvzLaACixBBoUGkRV1iuFD3wElEhw8Ji9IiY/QsJRtvW+c7ChRgEOyLQkGaSGFUUqBKm21SNA==
-
 bn.js@^4.11.8, bn.js@^4.4.0:
   version "4.11.8"
   resolved "https://registry.yarnpkg.com/bn.js/-/bn.js-4.11.8.tgz#2cde09eb5ee341f484746bb0309b3253b1b1442f"
@@ -835,6 +830,11 @@ chai-as-promised@^7.1.1:
   dependencies:
     check-error "^1.0.2"
 
+chai-bignumber@^3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/chai-bignumber/-/chai-bignumber-3.0.0.tgz#e90cf1f468355bbb11a9acd051222586cd2648a9"
+  integrity sha512-SubOtaSI2AILWTWe2j0c6i2yFT/f9J6UBjeVGDuwDiPLkF/U5+/eTWUE3sbCZ1KgcPF6UJsDVYbIxaYA097MQA==
+
 chai-each@^0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/chai-each/-/chai-each-0.0.1.tgz#d195674e02c2ab3210a2b11f4d7f3ca0d7f46712"
@@ -980,13 +980,14 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.7.2:
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.7.2.tgz#121f3fb7409fea4b695259f9c522fd4828b579a6"
-  integrity sha512-9lUkYLvt9wP/B9gmfVbPS+71lUMLCqoWEh5AVe1KfDYRC3rv+Bt5V+/tso90zgeyD4LecbVoab0g737uycOB1Q==
+comit-sdk@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.9.0.tgz#1a8ffceec4a925af99ee4b41fb9fa0943fb5c69c"
+  integrity sha512-Hu0R9lS4aWAZpFm/ScY1LznXnz2cGW0qBPRjDjh0GjEgJu9dTbPdNhxFpqgX5rBppNQyPeM1MNLs8uwbyUgpGg==
   dependencies:
     axios "^0.19.0"
     bcoin "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001"
+    bignumber.js "^9.0.0"
     bitcoin-core "^2.2.0"
     content-type "^1.0.4"
     ethers "^4.0.38"

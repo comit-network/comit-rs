@@ -1,4 +1,4 @@
-import { BigNumber, BigNumberish } from "ethers/utils";
+import { BigNumber } from "comit-sdk";
 import { HarnessGlobal } from "../../lib/util";
 import { Asset } from "../asset";
 import { sleep } from "../utils";
@@ -15,7 +15,7 @@ interface AllWallets {
 export interface Wallet {
     MaximumFee: number;
     mint(asset: Asset): Promise<void>;
-    getBalance(): Promise<BigNumberish>;
+    getBalance(): Promise<BigNumber>;
 }
 
 export class Wallets {
@@ -59,10 +59,10 @@ export class Wallets {
 
 export async function pollUntilMinted(
     wallet: Wallet,
-    minimumBalance: BigNumberish
+    minimumBalance: BigNumber
 ): Promise<void> {
     const currentBalance = await wallet.getBalance();
-    if (new BigNumber(currentBalance).gte(minimumBalance)) {
+    if (currentBalance.gte(minimumBalance)) {
         return;
     } else {
         await sleep(500);
