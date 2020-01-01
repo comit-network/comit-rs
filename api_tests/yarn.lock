@@ -941,13 +941,14 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.7.2:
-  version "0.7.2"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.7.2.tgz#121f3fb7409fea4b695259f9c522fd4828b579a6"
-  integrity sha512-9lUkYLvt9wP/B9gmfVbPS+71lUMLCqoWEh5AVe1KfDYRC3rv+Bt5V+/tso90zgeyD4LecbVoab0g737uycOB1Q==
+comit-sdk@^0.9.0:
+  version "0.9.0"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.9.0.tgz#1a8ffceec4a925af99ee4b41fb9fa0943fb5c69c"
+  integrity sha512-Hu0R9lS4aWAZpFm/ScY1LznXnz2cGW0qBPRjDjh0GjEgJu9dTbPdNhxFpqgX5rBppNQyPeM1MNLs8uwbyUgpGg==
   dependencies:
     axios "^0.19.0"
     bcoin "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001"
+    bignumber.js "^9.0.0"
     bitcoin-core "^2.2.0"
     content-type "^1.0.4"
     ethers "^4.0.38"
