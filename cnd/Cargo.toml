@@ -24,7 +24,7 @@ either = "1.5"
 ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
-futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"], package = "futures-preview" }
+futures-core = { version = "0.3", features = ["alloc", "compat", "async-await"], package = "futures" }
 genawaiter = { version = "0.2" }
 hex = "0.4"
 hex-serde = "0.1.0"
@@ -53,7 +53,9 @@ strum_macros = "0.17"
 testcontainers = "0.8"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-tokio = "0.1"
+tokio = { version = "0.2", features = ["rt-core", "time", "macros"] }
+tokio-compat = "0.1"
+tokio-executor01 = { version = "0.1", package = "tokio-executor" }
 toml = "0.5"
 url_serde = "0.2.0"
 uuid = { version = "0.8", features = ["serde", "v4"] }

@@ -14,10 +14,10 @@ use bitcoin::{
     hashes::sha256d,
     BitcoinHash,
 };
+use futures::future::Future;
 use futures_core::compat::Future01CompatExt;
 use reqwest::{r#async::Client, Url};
-use std::{collections::HashSet, fmt::Debug, ops::Add};
-use tokio::{prelude::future::Future, timer::Delay};
+use std::{collections::HashSet, fmt::Debug};
 
 pub async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
@@ -61,10 +61,8 @@ where
     loop {
         // Delay so that we don't overload the CPU in the event that
         // latest_block() and block_by_hash() resolve quickly.
-        Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-            .compat()
-            .await
-            .unwrap_or_else(|e| log::warn!("Failed to wait for delay: {:?}", e));
+
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
 
         let mut new_missing_block_futures = Vec::new();
         for (block_future, blockhash) in missing_block_futures.into_iter() {

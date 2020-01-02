@@ -2,9 +2,9 @@ use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
 use bitcoin::{hashes::sha256d, Network};
+use futures::Future;
 use reqwest::{r#async::Client, Url};
 use serde::Deserialize;
-use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
@@ -87,10 +87,9 @@ impl BlockByHash for BlockchainInfoConnector {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(
-            Self::block_by_hash_url(&block_hash),
-            self.client.clone(),
-        );
+        let url = Self::block_by_hash_url(&block_hash);
+        let block =
+            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone());
 
         Box::new(block.inspect(|block| {
             log::trace!("Fetched block from blockchain.info: {:?}", block);
