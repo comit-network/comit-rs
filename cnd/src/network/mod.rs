@@ -457,7 +457,7 @@ where
                 Err(e) => {
                     log::error!(
                         "Unable to request over connection {:?}:{:?}",
-                        dial_information.clone(),
+                        dial_information,
                         e
                     );
                     Err(RequestError::Connection)
