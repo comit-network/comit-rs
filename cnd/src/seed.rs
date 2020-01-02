@@ -114,7 +114,7 @@ impl Seed {
 
         let pem_string = encode(&pem);
 
-        let mut file = File::create(path.clone())?;
+        let mut file = File::create(path)?;
         file.write_all(pem_string.as_bytes())?;
 
         Ok(())

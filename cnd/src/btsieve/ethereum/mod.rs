@@ -115,8 +115,6 @@ where
     });
 
     spawn(blockchain_connector.clone(), {
-        let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
-
         async move {
             let mut prev_blockhashes: HashSet<H256> = HashSet::new();
 
@@ -139,8 +137,6 @@ where
 
     spawn(blockchain_connector.clone(), {
         let connector = blockchain_connector.clone();
-        let block_queue = block_queue.clone();
-        let look_in_the_past_queue = look_in_the_past_queue.clone();
 
         async move {
             loop {
@@ -185,7 +181,6 @@ where
 
     spawn(blockchain_connector.clone(), {
         let connector = blockchain_connector.clone();
-        let matching_transaction_queue = matching_transaction_queue.clone();
 
         async move {
             loop {

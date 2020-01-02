@@ -193,7 +193,7 @@ where
                     ConnectionState::Connected { mut addresses } => {
                         addresses.insert(address);
                         self.connections
-                            .insert(peer_id.clone(), ConnectionState::Connected { addresses });
+                            .insert(peer_id, ConnectionState::Connected { addresses });
                     }
                     ConnectionState::Connecting {
                         pending_events,

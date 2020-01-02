@@ -125,7 +125,7 @@ pub async fn handle_action<
 
                 let swap_request = state.request();
                 let seed = dependencies.swap_seed(swap_id);
-                let state = State::declined(swap_request.clone(), decline_message.clone(), seed);
+                let state = State::declined(swap_request, decline_message.clone(), seed);
                 StateStore::insert(&dependencies, swap_id, state);
 
                 Ok(ActionResponseBody::None)
@@ -257,7 +257,6 @@ mod tests {
         assert_that(&result).is_ok_containing(Action::Accept(()));
 
         let result = given_actions
-            .clone()
             .into_iter()
             .select_action(ActionKind::Decline, http::Method::POST);
 
@@ -282,7 +281,6 @@ mod tests {
             });
 
         let result = given_actions
-            .clone()
             .into_iter()
             .select_action(ActionKind::Decline, http::Method::GET);
 
@@ -341,7 +339,6 @@ mod tests {
             });
 
         let result = given_actions
-            .clone()
             .into_iter()
             .select_action(ActionKind::Redeem, http::Method::POST);
 

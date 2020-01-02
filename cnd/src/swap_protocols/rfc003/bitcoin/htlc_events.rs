@@ -47,7 +47,6 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
             .compat()
             .map_err(|_| rfc003::Error::Btsieve)
             .and_then({
-                let htlc_params = htlc_params.clone();
                 move |tx| {
                     let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
                         .ok_or_else(|| {
@@ -116,8 +115,6 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                 .compat()
                 .map_err(|_| rfc003::Error::Btsieve)
                 .and_then({
-                    let htlc_params = htlc_params.clone();
-
                     move |tx| {
                         let secret =
                             extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
