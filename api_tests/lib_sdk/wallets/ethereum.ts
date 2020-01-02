@@ -1,7 +1,6 @@
-import { EthereumWallet as EthereumWalletSdk } from "comit-sdk";
+import { BigNumber, EthereumWallet as EthereumWalletSdk } from "comit-sdk";
 import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
-import { BigNumber, bigNumberify, BigNumberish } from "ethers/utils";
 import { EthereumNodeConfig } from "../../lib/ethereum";
 import { pollUntilMinted, Wallet } from "./index";
 
@@ -30,16 +29,16 @@ export class EthereumWallet implements Wallet {
 
         const startingBalance = await this.getBalance();
 
-        const minimumExpectedBalance = bigNumberify(asset.quantity);
-        this.parity.sendTransaction({
+        const minimumExpectedBalance = new BigNumber(asset.quantity);
+        await this.parity.sendTransaction({
             to: this.account(),
-            value: minimumExpectedBalance.mul(2), // make sure we have at least twice as much
+            value: minimumExpectedBalance.times(2).toString(), // make sure we have at least twice as much
             gasLimit: 21000,
         });
 
         await pollUntilMinted(
             this,
-            new BigNumber(startingBalance).add(minimumExpectedBalance)
+            new BigNumber(startingBalance).minus(minimumExpectedBalance)
         );
     }
 
@@ -47,7 +46,8 @@ export class EthereumWallet implements Wallet {
         return this.inner.getAccount();
     }
 
-    public async getBalance(): Promise<BigNumberish> {
-        return this.inner.getBalance();
+    public async getBalance(): Promise<BigNumber> {
+        const balance = await this.inner.getBalance().toString();
+        return new BigNumber(balance);
     }
 }

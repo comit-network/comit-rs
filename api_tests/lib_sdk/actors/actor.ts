@@ -1,6 +1,6 @@
 import { expect } from "chai";
-import { Cnd, ComitClient, Swap } from "comit-sdk";
-import { BigNumber, BigNumberish, parseEther } from "ethers/utils";
+import { BigNumber, Cnd, ComitClient, Swap } from "comit-sdk";
+import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
@@ -59,8 +59,8 @@ export class Actor {
     private readonly cnd: Cnd;
     private swap: Swap;
 
-    private readonly startingBalances: Map<AssetKind, BigNumberish>;
-    private readonly expectedBalanceChanges: Map<AssetKind, BigNumberish>;
+    private readonly startingBalances: Map<AssetKind, BigNumber>;
+    private readonly expectedBalanceChanges: Map<AssetKind, BigNumber>;
 
     private constructor(
         private readonly logger: Logger,
@@ -126,8 +126,14 @@ export class Actor {
             betaAsset,
         ]);
 
-        this.expectedBalanceChanges.set(betaAssetKind, betaAsset.quantity);
-        to.expectedBalanceChanges.set(alphaAssetKind, alphaAsset.quantity);
+        this.expectedBalanceChanges.set(
+            betaAssetKind,
+            new BigNumber(betaAsset.quantity)
+        );
+        to.expectedBalanceChanges.set(
+            alphaAssetKind,
+            new BigNumber(alphaAsset.quantity)
+        );
 
         const comitClient: ComitClient = this.getComitClient();
 
@@ -229,10 +235,10 @@ export class Actor {
             ];
             const expectedBalance = new BigNumber(
                 this.startingBalances.get(assetKind)
-            ).add(expectedBalanceChange);
+            ).plus(expectedBalanceChange);
             const maximumFee = wallet.MaximumFee;
 
-            const balanceInclFees = expectedBalance.sub(maximumFee);
+            const balanceInclFees = expectedBalance.minus(maximumFee);
             const currentWalletBalance = await wallet.getBalance();
 
             expect(currentWalletBalance).to.be.gte.BN(balanceInclFees);
@@ -286,7 +292,7 @@ export class Actor {
     private async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
             if (parseFloat(asset.quantity) === 0) {
-                this.startingBalances.set(asset.name, 0);
+                this.startingBalances.set(asset.name, new BigNumber(0));
                 continue;
             }
 
