@@ -56,7 +56,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
         .compat()
         .map_err(|_| rfc003::Error::Btsieve)
         .map(|txr| Deployed {
-            location: calcualte_contract_address_from_deployment_transaction(&txr.transaction),
+            location: calculate_contract_address_from_deployment_transaction(&txr.transaction),
             transaction: txr.transaction,
         });
 
@@ -84,7 +84,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
     }
 }
 
-fn calcualte_contract_address_from_deployment_transaction(tx: &Transaction) -> Address {
+fn calculate_contract_address_from_deployment_transaction(tx: &Transaction) -> Address {
     tx.from.calculate_contract_address(&tx.nonce)
 }
 
@@ -205,7 +205,7 @@ mod erc20 {
                     .compat()
                     .map_err(|_| rfc003::Error::Btsieve)
                     .map(|txr| Deployed {
-                        location: calcualte_contract_address_from_deployment_transaction(
+                        location: calculate_contract_address_from_deployment_transaction(
                             &txr.transaction,
                         ),
                         transaction: txr.transaction,
