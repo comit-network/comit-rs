@@ -53,5 +53,5 @@ export class EthereumWallet implements Wallet {
 }
 
 function toEthersBigNumber(value: BigNumber): ethers.utils.BigNumber {
-    return new ethers.utils.BigNumber(value.toString(16));
+    return new ethers.utils.BigNumber("0x" + value.toString(16));
 }
