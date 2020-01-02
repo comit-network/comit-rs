@@ -32,7 +32,7 @@ export class EthereumWallet implements Wallet {
         const minimumExpectedBalance = new BigNumber(asset.quantity);
         await this.parity.sendTransaction({
             to: this.account(),
-            value: minimumExpectedBalance.times(2).toString(), // make sure we have at least twice as much
+            value: toEthersBigNumber(minimumExpectedBalance.times(2)), // make sure we have at least twice as much
             gasLimit: 21000,
         });
 
@@ -50,4 +50,8 @@ export class EthereumWallet implements Wallet {
         const balance = await this.inner.getBalance().toString();
         return new BigNumber(balance);
     }
+}
+
+function toEthersBigNumber(value: BigNumber): ethers.utils.BigNumber {
+    return new ethers.utils.BigNumber(value.toString(16));
 }
