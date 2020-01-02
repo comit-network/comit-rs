@@ -7,14 +7,26 @@ import * as fs from "fs";
 import glob from "glob";
 import Mocha from "mocha";
 import path from "path";
+import readline from "readline-promise";
 import rimraf from "rimraf";
 import { CndRunner } from "./lib/cnd_runner";
 import { LedgerRunner } from "./lib/ledger_runner";
 import { HarnessGlobal } from "./lib/util";
 
+const rlp = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+    terminal: true,
+});
+
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
     .option("--verbose", "Verbose output")
+    .option(
+        "--wait-on-failure",
+        "Wait for user interaction before exiting the test suite in case a test failed",
+        false
+    )
     .parse(process.argv);
 
 // ************************ //
@@ -115,7 +127,14 @@ async function runTests(testFiles: string[]) {
                 });
             }
 
+            if (commander.waitOnFailure) {
+                await rlp.questionAsync(
+                    "A test failed, press any key to cleanup the environment."
+                );
+            }
+
             await cleanupAll();
+
             process.exit(1);
         }
 
