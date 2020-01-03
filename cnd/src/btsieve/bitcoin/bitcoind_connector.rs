@@ -115,9 +115,9 @@ mod tests {
     fn build_sub_url_should_never_fail() {
         fn prop(hash: Quickcheck<sha256d::Hash>) -> bool {
             for base_url in base_urls() {
-                let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+                let connector = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
-                blocksource.raw_block_by_hash_url(&hash);
+                connector.raw_block_by_hash_url(&hash);
             }
 
             true // not panicing is good enough for this test
@@ -129,9 +129,9 @@ mod tests {
     #[test]
     fn given_different_base_urls_correct_sub_urls_are_built() {
         for base_url in base_urls() {
-            let blocksource = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
+            let connector = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
-            let chaininfo_url = blocksource.chaininfo_url.clone();
+            let chaininfo_url = connector.chaininfo_url.clone();
             assert_eq!(
                 chaininfo_url,
                 Url::parse("http://localhost:8080/rest/chaininfo.json").unwrap()
@@ -140,7 +140,7 @@ mod tests {
             let block_id = "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02"
                 .parse()
                 .unwrap();
-            let raw_block_by_hash_url = blocksource.raw_block_by_hash_url(&block_id);
+            let raw_block_by_hash_url = connector.raw_block_by_hash_url(&block_id);
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
         }
     }
