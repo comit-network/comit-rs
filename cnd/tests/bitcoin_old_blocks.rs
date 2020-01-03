@@ -2,10 +2,8 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use cnd::{
-    btsieve::{bitcoin::TransactionPattern, MatchingTransactions},
-    first_or_else::StreamExt,
-};
+use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
+use futures_core::{FutureExt, TryFutureExt};
 use std::str::FromStr;
 use tokio::prelude::Future;
 
@@ -29,8 +27,9 @@ fn find_transaction_in_old_block() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(
+    let expected_transaction: bitcoin::Transaction = async {
+        matching_transaction(
+            connector,
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
@@ -44,7 +43,10 @@ fn find_transaction_in_old_block() {
             },
             Some(block1_with_transaction.header.time),
         )
-        .first_or_else(|| panic!())
+        .await
+    }
+        .boxed()
+        .compat()
         .wait()
         .unwrap();
 

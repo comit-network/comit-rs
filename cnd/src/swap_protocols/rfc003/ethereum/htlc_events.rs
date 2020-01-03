@@ -120,7 +120,6 @@ fn htlc_redeemed_or_refunded<A: Asset>(
     };
 
     let redeemed_future = {
-        let connector = connector.clone();
         let pattern = TransactionPattern {
             from_address: None,
             to_address: None,
