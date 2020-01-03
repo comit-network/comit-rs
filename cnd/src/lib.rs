@@ -22,7 +22,6 @@ pub mod btsieve;
 pub mod comit_api;
 pub mod config;
 pub mod ethereum;
-pub mod first_or_else;
 pub mod http_api;
 pub mod load_swaps;
 pub mod logging;

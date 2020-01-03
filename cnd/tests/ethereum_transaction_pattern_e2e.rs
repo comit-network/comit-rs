@@ -1,8 +1,5 @@
 use cnd::{
-    btsieve::{
-        ethereum::{TransactionPattern, Web3Connector},
-        MatchingTransactions,
-    },
+    btsieve::ethereum::{matching_transaction, TransactionPattern, Web3Connector},
     ethereum::{
         web3::{
             transports::{EventLoopHandle, Http},
@@ -11,14 +8,11 @@ use cnd::{
         TransactionRequest, U256,
     },
 };
+use futures_core::{FutureExt, TryFutureExt};
 use reqwest::Url;
 use std::time::{Duration, Instant};
 use testcontainers::*;
-use tokio::{
-    prelude::{Future, FutureExt, Stream},
-    runtime::Runtime,
-    timer::Delay,
-};
+use tokio::{prelude::Future, runtime::Runtime, timer::Delay, util::FutureExt as TokioFutureExt};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum transaction pattern matching.
@@ -47,21 +41,22 @@ fn ethereum_transaction_pattern_e2e_test() {
 
     let target_address = accounts[0];
 
-    let funding_transaction = connector
-        .matching_transactions(
-            TransactionPattern {
-                from_address: None,
-                to_address: Some(target_address),
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-                events: None,
-            },
-            None,
-        )
-        .take(1)
-        .into_future()
-        .map_err(|_| ());
+    let funding_transaction = {
+        let pattern = TransactionPattern {
+            from_address: None,
+            to_address: Some(target_address),
+            is_contract_creation: None,
+            transaction_data: None,
+            transaction_data_length: None,
+            events: None,
+        };
+
+        async { matching_transaction(connector, pattern, None).await }
+            .unit_error()
+            .boxed()
+            .compat()
+            .map_err(|_| ())
+    };
 
     let now_in_two_seconds = Instant::now() + Duration::from_secs(2);
 
@@ -91,13 +86,9 @@ fn ethereum_transaction_pattern_e2e_test() {
 
     let future_with_timeout = future.timeout(Duration::from_secs(5));
 
-    let (actual_transaction, (funding_transaction, _)) =
-        runtime.block_on(future_with_timeout).unwrap();
+    let (actual_transaction, funding_transaction) = runtime.block_on(future_with_timeout).unwrap();
 
-    assert_eq!(
-        funding_transaction.unwrap().transaction.hash,
-        actual_transaction
-    )
+    assert_eq!(funding_transaction.transaction.hash, actual_transaction)
 }
 
 pub fn new_web3_client<D: Docker, E: Image>(

@@ -1,9 +1,7 @@
 use crate::{
-    btsieve::{
-        bitcoin::{BitcoindConnector, TransactionExt, TransactionPattern},
-        MatchingTransactions,
+    btsieve::bitcoin::{
+        matching_transaction, BitcoindConnector, TransactionExt, TransactionPattern,
     },
-    first_or_else::StreamExt,
     swap_protocols::{
         ledger::Bitcoin,
         rfc003::{
@@ -20,41 +18,52 @@ use crate::{
 use bitcoin::{Amount, OutPoint};
 use futures::{
     future::{self, Either},
-    Future, Stream,
+    Future,
 };
+use futures_core::future::{FutureExt, TryFutureExt};
 
 impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
     fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
     ) -> Box<DeployedFuture<Bitcoin>> {
-        let future = self
-            .matching_transactions(TransactionPattern {
+        let future = {
+            let connector = self.clone();
+            let pattern = TransactionPattern {
                 to_address: Some(htlc_params.compute_address()),
                 from_outpoint: None,
                 unlock_script: None,
-            }, None)
-            .map_err(|_| rfc003::Error::Btsieve)
-            .first_or_else(|| {
-                log::warn!("stream of matching transactions ended before yielding a value");
-                rfc003::Error::Btsieve
-            })
-            .and_then(move |tx| {
-                let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
-                    .ok_or_else(|| {
-                        rfc003::Error::Internal(
-                            "Query returned Bitcoin transaction that didn't match the requested address".into(),
-                        )
-                    })?;
+            };
 
-                Ok(Deployed {
-                    location: OutPoint {
-                        txid: tx.txid(),
-                        vout,
-                    },
-                    transaction: tx,
-                })
-            });
+            async {
+                matching_transaction(
+                    connector,
+                    pattern,
+                    None,
+                )
+                .await
+            }
+            .boxed()
+            .compat()
+            .map_err(|_| rfc003::Error::Btsieve)
+            .and_then({
+                move |tx| {
+                    let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
+                        .ok_or_else(|| {
+                            rfc003::Error::Internal(
+                                "Query returned Bitcoin transaction that didn't match the requested address".into(),
+                            )
+                        })?;
+                    Ok(Deployed {
+                        location: OutPoint {
+                            txid: tx.txid(),
+                            vout,
+                        },
+                        transaction: tx,
+                    })
+                }
+            })
+        };
 
         Box::new(future)
     }
@@ -79,49 +88,51 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         _htlc_funding: &Funded<Bitcoin, Amount>,
     ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
         let refunded_future = {
-            self.matching_transactions(
-                TransactionPattern {
-                    to_address: None,
-                    from_outpoint: Some(htlc_deployment.location),
-                    unlock_script: Some(vec![vec![]]),
-                },
-                None,
-            )
-            .map_err(|_| rfc003::Error::Btsieve)
-            .first_or_else(|| {
-                log::warn!("stream of matching transactions ended before yielding a value");
-                rfc003::Error::Btsieve
-            })
-            .and_then(|transaction| Ok(Refunded { transaction }))
+            let connector = self.clone();
+            let pattern = TransactionPattern {
+                to_address: None,
+                from_outpoint: Some(htlc_deployment.location),
+                unlock_script: Some(vec![vec![]]),
+            };
+
+            async { matching_transaction(connector, pattern, None).await }
+                .boxed()
+                .compat()
+                .map_err(|_| rfc003::Error::Btsieve)
+                .and_then(|transaction| Ok(Refunded { transaction }))
         };
 
         let redeemed_future = {
-            self.matching_transactions(
-                TransactionPattern {
-                    to_address: None,
-                    from_outpoint: Some(htlc_deployment.location),
-                    unlock_script: Some(vec![vec![1u8]]),
-                },
-                None,
-            )
-            .map_err(|_| rfc003::Error::Btsieve)
-            .first_or_else(|| {
-                log::warn!("stream of matching transactions ended before yielding a value");
-                rfc003::Error::Btsieve
-            })
-            .and_then(move |tx| {
-                let secret = extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
-                    log::error!("Redeem transaction didn't have secret it in: {:?}", tx);
-                    rfc003::Error::Internal(
-                        "Redeem transaction didn't have the secret in it".into(),
-                    )
-                })?;
+            let connector = self.clone();
+            let pattern = TransactionPattern {
+                to_address: None,
+                from_outpoint: Some(htlc_deployment.location),
+                unlock_script: Some(vec![vec![1u8]]),
+            };
 
-                Ok(Redeemed {
-                    transaction: tx,
-                    secret,
+            async { matching_transaction(connector, pattern, None).await }
+                .boxed()
+                .compat()
+                .map_err(|_| rfc003::Error::Btsieve)
+                .and_then({
+                    move |tx| {
+                        let secret =
+                            extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
+                                log::error!(
+                                    "Redeem transaction didn't have secret it in: {:?}",
+                                    tx
+                                );
+                                rfc003::Error::Internal(
+                                    "Redeem transaction didn't have the secret in it".into(),
+                                )
+                            })?;
+
+                        Ok(Redeemed {
+                            transaction: tx,
+                            secret,
+                        })
+                    }
                 })
-            })
         };
 
         Box::new(

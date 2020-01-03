@@ -8,41 +8,18 @@ pub use self::{
     transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 
-use crate::btsieve::{BlockByHash, LatestBlock, MatchingTransactions};
+use crate::btsieve::{BlockByHash, LatestBlock};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     hashes::sha256d,
     BitcoinHash,
 };
-use futures_core::{compat::Future01CompatExt, TryFutureExt};
+use futures_core::compat::Future01CompatExt;
 use reqwest::{r#async::Client, Url};
 use std::{collections::HashSet, fmt::Debug, ops::Add};
-use tokio::{
-    prelude::{future::Future, stream, Stream},
-    timer::Delay,
-};
+use tokio::{prelude::future::Future, timer::Delay};
 
-impl<C, E> MatchingTransactions<TransactionPattern> for C
-where
-    C: LatestBlock<Block = bitcoin::Block, Error = E>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash, Error = E>
-        + Clone,
-    E: Debug + Send + 'static,
-{
-    type Transaction = bitcoin::Transaction;
-
-    fn matching_transactions(
-        &self,
-        pattern: TransactionPattern,
-        timestamp: Option<u32>,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send + 'static> {
-        let matching_transaction =
-            Box::pin(matching_transaction(self.clone(), pattern, timestamp)).compat();
-        Box::new(stream::futures_unordered(vec![matching_transaction]))
-    }
-}
-
-async fn matching_transaction<C, E>(
+pub async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,

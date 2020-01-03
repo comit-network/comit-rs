@@ -23,7 +23,7 @@ impl BlockchainInfoConnector {
 
         if network != Network::Bitcoin {
             log::error!(
-                "Network {} not supported for bitcoin http blocksource",
+                "Network {} not supported for bitcoin http connector",
                 network
             );
             return Err(crate::btsieve::bitcoin::Error::UnsupportedNetwork(format!(
