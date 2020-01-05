@@ -32,6 +32,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Stop the job if no source code has changed
+          command: |
+            git diff --name-only `git merge-base origin/master HEAD` | grep -v -q -e '\.md' -e '\.mergify\.yml' -e '\.dependabot/' || circleci step halt
+      - run:
           name: TODOs or FIXMEs are not allowed
           command: |
             sudo snap install ripgrep --classic
