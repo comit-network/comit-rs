@@ -2,9 +2,10 @@
 // They are mostly about checking invalid request responses
 import { expect, request } from "chai";
 import "chai/register-should";
-import { Entity } from "../gen/siren";
+import { Entity, Link } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
+import * as sirenJsonSchema from "../siren.schema.json";
 
 const alice = new Actor("alice");
 
@@ -88,20 +89,42 @@ setTimeout(async function() {
             expect(res.body.peers).to.have.length(0);
         });
 
+        it("[Alice] Response for GET / is a valid siren document", async () => {
+            const res = await request(alice.cndHttpApiUrl()).get("/");
+
+            expect(res).to.have.status(200);
+            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
+        });
+
         it("[Alice] Returns its peer ID when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
-            expect(res).to.have.status(200);
-            expect(res.body.id).to.be.a("string");
+            expect(res.body.properties.id).to.be.a("string");
         });
 
-        it("[Alice] Returns the addresses it listens on when you GET /", async () => {
+        it("[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
+            const links = res.body.links;
 
-            expect(res).to.have.status(200);
-            expect(res.body.listen_addresses).to.be.an("array");
-            // At least 2 ipv4 addresses, lookup and external interface
-            expect(res.body.listen_addresses.length).to.be.greaterThan(1);
+            const swapsLink = links.find(
+                (link: Link) => link.href === "/swaps"
+            );
+
+            expect(swapsLink).to.be.deep.equal({
+                rel: ["collection"],
+                class: ["swaps"],
+                href: "/swaps",
+            });
+
+            const rfc003SwapsLink = links.find(
+                (link: Link) => link.href === "/swaps/rfc003"
+            );
+
+            expect(rfc003SwapsLink).to.be.deep.equal({
+                rel: ["collection", "edit"],
+                class: ["swaps", "rfc003"],
+                href: "/swaps/rfc003",
+            });
         });
     });
 

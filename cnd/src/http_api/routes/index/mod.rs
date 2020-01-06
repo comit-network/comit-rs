@@ -4,29 +4,38 @@ use self::handlers::handle_get_swaps;
 use crate::{
     db::{DetermineTypes, Retrieve},
     http_api::{problem, routes::into_rejection, Http},
-    network::Network,
     swap_protocols::rfc003::state_store::StateStore,
 };
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
-use libp2p::{Multiaddr, PeerId};
+use http_api_problem::HttpApiProblem;
+use libp2p::PeerId;
 use serde::Serialize;
-use warp::{Rejection, Reply};
+use warp::{http::StatusCode, Rejection, Reply};
 
 #[derive(Serialize, Debug)]
 pub struct InfoResource {
     id: Http<PeerId>,
-    listen_addresses: Vec<Multiaddr>,
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
-    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
-
-    Ok(warp::reply::json(&InfoResource {
-        id: Http(id),
-        listen_addresses,
-    }))
+pub fn get_info(id: PeerId) -> Result<impl Reply, Rejection> {
+    Ok(warp::reply::json(
+        &siren::Entity::default()
+            .with_properties(&InfoResource { id: Http(id) })
+            .map_err(|e| {
+                log::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })
+            .map_err(into_rejection)?
+            .with_link(
+                siren::NavigationalLink::new(&["collection"], "/swaps").with_class_member("swaps"),
+            )
+            .with_link(
+                siren::NavigationalLink::new(&["collection", "edit"], "/swaps/rfc003")
+                    .with_class_member("swaps")
+                    .with_class_member("rfc003"),
+            ),
+    ))
 }
 
 #[allow(clippy::needless_pass_by_value)]
