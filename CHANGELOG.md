@@ -5,7 +5,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+
+### Changed
 - Write all diagnostics and log messages to stderr.
+- **Breaking (HTTP API):** Return Siren document containing peer ID, listen addresses and links to `\swaps` and `\swaps\rfc003` on `GET \`.
 
 ## [0.5.0] - 2019-12-06
 
