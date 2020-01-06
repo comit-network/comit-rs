@@ -3,8 +3,8 @@ use crate::swap_protocols::{
     ledger::Bitcoin,
     rfc003::{
         actions::{FundAction, RedeemAction, RefundAction},
+        create_swap::HtlcParams,
         secret_source::SecretSource,
-        state_machine::HtlcParams,
         Secret,
     },
 };
@@ -34,7 +34,7 @@ impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
         secret_source: &dyn SecretSource,
         fund_transaction: &Transaction,
     ) -> Self::RefundActionOutput {
-        let htlc = BitcoinHtlc::from(htlc_params.clone());
+        let htlc = BitcoinHtlc::from(htlc_params);
 
         SpendOutput {
             output: PrimedInput::new(
@@ -56,7 +56,7 @@ impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
         secret_source: &dyn SecretSource,
         secret: Secret,
     ) -> Self::RedeemActionOutput {
-        let htlc = BitcoinHtlc::from(htlc_params.clone());
+        let htlc = BitcoinHtlc::from(htlc_params);
 
         SpendOutput {
             output: PrimedInput::new(

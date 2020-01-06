@@ -116,14 +116,12 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
         let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
         let parameters = SwapParameters::from(state.clone().request());
-        let actions = state.clone().actions();
+        let actions = state.actions();
 
-        let error = state.error;
         let status = SwapStatus::new(
             communication.status,
             alpha_ledger.status,
             beta_ledger.status,
-            &error,
         );
 
         let swap = SwapResource {

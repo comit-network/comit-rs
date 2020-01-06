@@ -9,11 +9,11 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             self,
+            create_swap::HtlcParams,
             events::{
                 Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
                 RedeemedOrRefundedFuture, Refunded,
             },
-            state_machine::HtlcParams,
             Secret,
         },
     },

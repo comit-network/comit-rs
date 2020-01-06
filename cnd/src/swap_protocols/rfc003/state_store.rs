@@ -1,18 +1,8 @@
 use crate::swap_protocols::{
-    rfc003::{
-        ledger_state::LedgerState,
-        state_machine::{
-            AlphaDeployed, AlphaFunded, AlphaFundedBetaDeployed, AlphaFundedBetaRedeemed,
-            AlphaFundedBetaRefunded, AlphaIncorrectlyFunded, AlphaRedeemedBetaFunded,
-            AlphaRefundedBetaFunded, BothFunded, Error as ErrorState, Final, SwapOutcome,
-            SwapStates,
-        },
-        ActorState,
-    },
+    rfc003::{create_swap::SwapEvent, ActorState},
     swap_id::SwapId,
 };
-use either::Either;
-use std::{any::Any, collections::HashMap, sync::Mutex};
+use std::{any::Any, cmp::Ordering, collections::HashMap, sync::Mutex};
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -23,7 +13,7 @@ pub enum Error {
 pub trait StateStore: Send + Sync + 'static {
     fn insert<A: ActorState>(&self, key: SwapId, value: A);
     fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error>;
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>);
+    fn update<A: ActorState>(&self, key: &SwapId, update: SwapEvent<A::AL, A::BL, A::AA, A::BA>);
 }
 
 #[derive(Default, Debug)]
@@ -48,9 +38,7 @@ impl StateStore for InMemoryStateStore {
         }
     }
 
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
-        use self::{LedgerState::*, SwapStates as SS};
-
+    fn update<A: ActorState>(&self, key: &SwapId, event: SwapEvent<A::AL, A::BL, A::AA, A::BA>) {
         let mut actor_state = match self.get::<A>(key) {
             Ok(Some(actor_state)) => actor_state,
             Ok(None) => {
@@ -63,192 +51,51 @@ impl StateStore for InMemoryStateStore {
             }
         };
 
-        match update {
-            SS::Start(_) => {
-                log::warn!("Attempted to update Start state for key {}", key);
-                return;
-            }
-            SS::AlphaDeployed(AlphaDeployed { alpha_deployed, .. }) => {
-                *actor_state.alpha_ledger_mut() = Deployed {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                }
-            }
+        match event {
+            SwapEvent::AlphaDeployed(deployed) => actor_state
+                .alpha_ledger_mut()
+                .transition_to_deployed(deployed),
+            SwapEvent::AlphaFunded(funded) => {
+                let expected_asset = actor_state.expected_alpha_asset();
 
-            SS::AlphaIncorrectlyFunded(AlphaIncorrectlyFunded {
-                alpha_deployed,
-                alpha_funded,
-                ..
-            }) => {
-                *actor_state.alpha_ledger_mut() = IncorrectlyFunded {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
+                match expected_asset.cmp(&funded.asset) {
+                    Ordering::Equal => actor_state.alpha_ledger_mut().transition_to_funded(funded),
+                    _ => actor_state
+                        .alpha_ledger_mut()
+                        .transition_to_incorrectly_funded(funded),
                 }
             }
-            SS::AlphaFunded(AlphaFunded {
-                alpha_deployed,
-                alpha_funded,
-                ..
-            }) => {
-                *actor_state.alpha_ledger_mut() = Funded {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
+            SwapEvent::AlphaRedeemed(redeemed) => {
+                // what if redeemed.secret.hash() != secret_hash in request ??
+
+                actor_state
+                    .alpha_ledger_mut()
+                    .transition_to_redeemed(redeemed);
+            }
+            SwapEvent::AlphaRefunded(refunded) => actor_state
+                .alpha_ledger_mut()
+                .transition_to_refunded(refunded),
+            SwapEvent::BetaDeployed(deployed) => actor_state
+                .beta_ledger_mut()
+                .transition_to_deployed(deployed),
+            SwapEvent::BetaFunded(funded) => {
+                let expected_asset = actor_state.expected_beta_asset();
+
+                match expected_asset.cmp(&funded.asset) {
+                    Ordering::Equal => actor_state.beta_ledger_mut().transition_to_funded(funded),
+                    _ => actor_state
+                        .beta_ledger_mut()
+                        .transition_to_incorrectly_funded(funded),
                 }
             }
-            SS::AlphaFundedBetaDeployed(AlphaFundedBetaDeployed {
-                alpha_deployed,
-                alpha_funded,
-                beta_deployed,
-                ..
-            }) => {
-                *actor_state.alpha_ledger_mut() = Funded {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
-                };
-                *actor_state.beta_ledger_mut() = Deployed {
-                    htlc_location: beta_deployed.location,
-                    deploy_transaction: beta_deployed.transaction,
-                };
+            SwapEvent::BetaRedeemed(redeemed) => {
+                actor_state
+                    .beta_ledger_mut()
+                    .transition_to_redeemed(redeemed);
             }
-            SS::BothFunded(BothFunded {
-                alpha_deployed,
-                alpha_funded,
-                beta_deployed,
-                beta_funded,
-                ..
-            }) => {
-                *actor_state.alpha_ledger_mut() = Funded {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
-                };
-                *actor_state.beta_ledger_mut() = Funded {
-                    htlc_location: beta_deployed.location,
-                    deploy_transaction: beta_deployed.transaction,
-                    fund_transaction: beta_funded.transaction,
-                };
-            }
-            SS::AlphaFundedBetaRefunded(AlphaFundedBetaRefunded {
-                beta_deployed,
-                beta_funded,
-                beta_refund_transaction,
-                ..
-            })
-            | SS::Final(Final(SwapOutcome::BothRefunded {
-                beta_deployed,
-                beta_funded,
-                alpha_or_beta_refunded: Either::Right(beta_refund_transaction),
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded {
-                beta_deployed,
-                beta_funded,
-                alpha_redeemed_or_beta_refunded: Either::Right(beta_refund_transaction),
-                ..
-            })) => {
-                *actor_state.beta_ledger_mut() = Refunded {
-                    htlc_location: beta_deployed.location,
-                    deploy_transaction: beta_deployed.transaction,
-                    fund_transaction: beta_funded.transaction,
-                    refund_transaction: beta_refund_transaction.transaction,
-                }
-            }
-            SS::AlphaRefundedBetaFunded(AlphaRefundedBetaFunded {
-                alpha_deployed,
-                alpha_funded,
-                alpha_refunded,
-                ..
-            })
-            | SS::Final(Final(SwapOutcome::AlphaRefunded {
-                alpha_deployed,
-                alpha_funded,
-                alpha_refunded,
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::BothRefunded {
-                alpha_deployed,
-                alpha_funded,
-                alpha_or_beta_refunded: Either::Left(alpha_refunded),
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed {
-                alpha_deployed,
-                alpha_funded,
-                alpha_refunded_or_beta_redeemed: Either::Left(alpha_refunded),
-                ..
-            })) => {
-                *actor_state.alpha_ledger_mut() = Refunded {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
-                    refund_transaction: alpha_refunded.transaction,
-                }
-            }
-            SS::AlphaFundedBetaRedeemed(AlphaFundedBetaRedeemed {
-                beta_deployed,
-                beta_funded,
-                beta_redeem_transaction,
-                ..
-            })
-            | SS::Final(Final(SwapOutcome::BothRedeemed {
-                beta_deployed,
-                beta_funded,
-                alpha_or_beta_redeemed: Either::Right(beta_redeem_transaction),
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::AlphaRefundedBetaRedeemed {
-                beta_deployed,
-                beta_funded,
-                alpha_refunded_or_beta_redeemed: Either::Right(beta_redeem_transaction),
-                ..
-            })) => {
-                *actor_state.beta_ledger_mut() = Redeemed {
-                    htlc_location: beta_deployed.location,
-                    deploy_transaction: beta_deployed.transaction,
-                    fund_transaction: beta_funded.transaction,
-                    redeem_transaction: beta_redeem_transaction.transaction,
-                };
-                actor_state.set_secret(beta_redeem_transaction.secret);
-            }
-            SS::AlphaRedeemedBetaFunded(AlphaRedeemedBetaFunded {
-                alpha_deployed,
-                alpha_funded,
-                alpha_redeemed,
-                ..
-            })
-            | SS::Final(Final(SwapOutcome::AlphaRedeemed {
-                alpha_deployed,
-                alpha_funded,
-                alpha_redeemed,
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::BothRedeemed {
-                alpha_deployed,
-                alpha_funded,
-                alpha_or_beta_redeemed: Either::Left(alpha_redeemed),
-                ..
-            }))
-            | SS::Final(Final(SwapOutcome::AlphaRedeemedBetaRefunded {
-                alpha_deployed,
-                alpha_funded,
-                alpha_redeemed_or_beta_refunded: Either::Left(alpha_redeemed),
-                ..
-            })) => {
-                *actor_state.alpha_ledger_mut() = Redeemed {
-                    htlc_location: alpha_deployed.location,
-                    deploy_transaction: alpha_deployed.transaction,
-                    fund_transaction: alpha_funded.transaction,
-                    redeem_transaction: alpha_redeemed.transaction,
-                };
-                actor_state.set_secret(alpha_redeemed.secret);
-            }
-            SS::Error(ErrorState(e)) => {
-                log::error!("Internal failure: {:?}", e);
-                return;
-            }
+            SwapEvent::BetaRefunded(refunded) => actor_state
+                .beta_ledger_mut()
+                .transition_to_refunded(refunded),
         }
 
         self.insert(key.clone(), actor_state)
