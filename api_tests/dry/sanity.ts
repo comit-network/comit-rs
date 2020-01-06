@@ -96,10 +96,15 @@ setTimeout(async function() {
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
-        it("[Alice] Returns its peer ID when you GET /", async () => {
+        it("[Alice] Returns its peer ID and the addresses it listens on when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
             expect(res.body.properties.id).to.be.a("string");
+            expect(res.body.properties.listen_addresses).to.be.an("array");
+            // At least 2 ipv4 addresses, lookup and external interface
+            expect(
+                res.body.properties.listen_addresses.length
+            ).to.be.greaterThan(1);
         });
 
         it("[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET /", async () => {

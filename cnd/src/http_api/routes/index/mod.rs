@@ -4,24 +4,31 @@ use self::handlers::handle_get_swaps;
 use crate::{
     db::{DetermineTypes, Retrieve},
     http_api::{problem, routes::into_rejection, Http},
+    network::Network,
     swap_protocols::rfc003::state_store::StateStore,
 };
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
 use http_api_problem::HttpApiProblem;
-use libp2p::PeerId;
+use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{http::StatusCode, Rejection, Reply};
 
 #[derive(Serialize, Debug)]
 pub struct InfoResource {
     id: Http<PeerId>,
+    listen_addresses: Vec<Multiaddr>,
 }
 
-pub fn get_info(id: PeerId) -> Result<impl Reply, Rejection> {
+pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
+
     Ok(warp::reply::json(
         &siren::Entity::default()
-            .with_properties(&InfoResource { id: Http(id) })
+            .with_properties(&InfoResource {
+                id: Http(id),
+                listen_addresses,
+            })
             .map_err(|e| {
                 log::error!("failed to set properties of entity: {:?}", e);
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
