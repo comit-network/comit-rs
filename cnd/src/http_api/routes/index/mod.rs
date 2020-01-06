@@ -23,6 +23,15 @@ pub struct InfoResource {
 pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
     let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
 
+    Ok(warp::reply::json(&InfoResource {
+        id: Http(id),
+        listen_addresses,
+    }))
+}
+
+pub fn get_info_siren<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
+
     Ok(warp::reply::json(
         &siren::Entity::default()
             .with_properties(&InfoResource {

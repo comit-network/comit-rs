@@ -101,6 +101,13 @@ pub fn create<
         .and(dependencies.clone())
         .and_then(http_api::routes::peers::get_peers);
 
+    let get_info_siren = warp::get2()
+        .and(warp::path::end())
+        .and(warp::header::exact("accept", "application/vnd.siren+json"))
+        .and(peer_id.clone())
+        .and(dependencies.clone())
+        .and_then(http_api::routes::index::get_info_siren);
+
     let get_info = warp::get2()
         .and(warp::path::end())
         .and(peer_id)
@@ -113,6 +120,7 @@ pub fn create<
         .or(rfc003_action)
         .or(get_swaps)
         .or(get_peers)
+        .or(get_info_siren)
         .or(get_info)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))

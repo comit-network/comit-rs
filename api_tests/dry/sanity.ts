@@ -89,15 +89,26 @@ setTimeout(async function() {
             expect(res.body.peers).to.have.length(0);
         });
 
-        it("[Alice] Response for GET / is a valid siren document", async () => {
+        it("[Alice] Returns its peer ID and the addresses it listens on when you GET /", async () => {
+            const res = await request(alice.cndHttpApiUrl()).get("/");
+
+            expect(res.body.id).to.be.a("string");
+            expect(res.body.listen_addresses).to.be.an("array");
+            // At least 2 ipv4 addresses, lookup and external interface
+            expect(res.body.listen_addresses.length).to.be.greaterThan(1);
+        });
+
+        it("[Alice] Response for GET / with accept header set as application/vnd.siren+json is a valid siren document", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
             expect(res).to.have.status(200);
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
         });
 
-        it("[Alice] Returns its peer ID and the addresses it listens on when you GET /", async () => {
-            const res = await request(alice.cndHttpApiUrl()).get("/");
+        it("[Alice] Returns its peer ID and the addresses it listens on when you GET / with accept header set as application/vnd.siren+json", async () => {
+            const res = await request(alice.cndHttpApiUrl())
+                .get("/")
+                .set("accept", "application/vnd.siren+json");
 
             expect(res.body.properties.id).to.be.a("string");
             expect(res.body.properties.listen_addresses).to.be.an("array");
@@ -107,8 +118,10 @@ setTimeout(async function() {
             ).to.be.greaterThan(1);
         });
 
-        it("[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET /", async () => {
-            const res = await request(alice.cndHttpApiUrl()).get("/");
+        it("[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET / with accept header set as application/vnd.siren+json", async () => {
+            const res = await request(alice.cndHttpApiUrl())
+                .get("/")
+                .set("accept", "application/vnd.siren+json");
             const links = res.body.links;
 
             const swapsLink = links.find(
