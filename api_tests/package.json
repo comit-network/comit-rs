@@ -34,7 +34,7 @@
         "bcoin": "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001",
         "bignumber.js": "^9.0.0",
         "bitcoin-core": "^3.0.0",
-        "bitcoinjs-lib": "^5.1.6",
+        "bitcoinjs-lib": "^5.1.7",
         "bn-chai": "^1.0.1",
         "chai": "^4.2.0",
         "chai-as-promised": "^7.1.1",
