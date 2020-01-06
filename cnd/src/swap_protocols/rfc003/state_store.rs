@@ -260,7 +260,7 @@ mod tests {
     use super::*;
     use crate::{
         ethereum::{Address, EtherQuantity},
-        seed::Seed,
+        seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
             rfc003::{alice, messages::Request, Accept, Secret},
@@ -302,8 +302,8 @@ mod tests {
         };
 
         let id = SwapId::default();
-        let seed = Seed::from(*b"hello world, you are beautiful!!");
-        let secret_source = seed.swap_seed(id);
+        let seed = RootSeed::from(*b"hello world, you are beautiful!!");
+        let secret_source = seed.derive_swap_seed(id);
         let state = alice::State::accepted(request, accept, secret_source);
 
         state_store

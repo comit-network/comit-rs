@@ -3,7 +3,7 @@ use crate::{
     ethereum::{self, Erc20Token, EtherQuantity},
     http_api::{HttpAsset, HttpLedger},
     network::{DialInformation, Network},
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         asset::Asset,
@@ -32,7 +32,7 @@ pub async fn handle_post_swap<
         + Executor
         + StateStore
         + Save<Swap>
-        + SwapSeed
+        + DeriveSwapSeed
         + Saver
         + Network
         + Clone
@@ -44,7 +44,7 @@ pub async fn handle_post_swap<
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
-    let seed = dependencies.swap_seed(id);
+    let seed = dependencies.derive_swap_seed(id);
     let secret_hash = seed.secret().hash();
 
     let body = serde_json::from_value(body)?;
@@ -212,7 +212,7 @@ async fn initiate_request<D, AL, BL, AA, BA>(
 where
     D: StateStore
         + Executor
-        + SwapSeed
+        + DeriveSwapSeed
         + Save<Request<AL, BL, AA, BA>>
         + Save<Accept<AL, BL>>
         + Save<Swap>
@@ -227,7 +227,7 @@ where
     BA: Asset,
 {
     let counterparty = peer.peer_id.clone();
-    let seed = dependencies.swap_seed(id);
+    let seed = dependencies.derive_swap_seed(id);
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;

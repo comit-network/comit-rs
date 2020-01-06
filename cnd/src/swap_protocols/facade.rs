@@ -5,7 +5,7 @@ use crate::{
         SwapTypes,
     },
     network::{DialInformation, Network, RequestError},
-    seed::{Seed, SwapSeed},
+    seed::{DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
         asset::Asset,
         ledger::{Bitcoin, Ethereum},
@@ -38,7 +38,7 @@ pub struct Facade<S> {
     pub bitcoin_connector: BitcoindConnector,
     pub ethereum_connector: Web3Connector,
     pub state_store: Arc<InMemoryStateStore>,
-    pub seed: Seed,
+    pub seed: RootSeed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
     pub db: Sqlite,
     pub task_executor: TaskExecutor,
@@ -103,12 +103,12 @@ where
     }
 }
 
-impl<S> SwapSeed for Facade<S>
+impl<S> DeriveSwapSeed for Facade<S>
 where
     S: Send + Sync + 'static,
 {
-    fn swap_seed(&self, id: SwapId) -> Seed {
-        self.seed.swap_seed(id)
+    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
+        self.seed.derive_swap_seed(id)
     }
 }
 

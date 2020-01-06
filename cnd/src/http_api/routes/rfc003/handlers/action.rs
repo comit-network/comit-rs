@@ -11,7 +11,7 @@ use crate::{
     },
     libp2p_comit_ext::ToHeader,
     network::Network,
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         actions::Actions,
@@ -38,7 +38,7 @@ use warp::http;
 pub async fn handle_action<
     D: StateStore
         + Network
-        + SwapSeed
+        + DeriveSwapSeed
         + Saver
         + DetermineTypes
         + HtlcEvents<Bitcoin, Amount>
@@ -78,7 +78,7 @@ pub async fn handle_action<
                     })?;
 
                 let accept_message =
-                    body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
+                    body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
 
                 Save::save(&dependencies, accept_message).await?;
 
@@ -124,7 +124,7 @@ pub async fn handle_action<
                 })?;
 
                 let swap_request = state.request();
-                let seed = dependencies.swap_seed(swap_id);
+                let seed = dependencies.derive_swap_seed(swap_id);
                 let state = State::declined(swap_request, decline_message, seed);
                 StateStore::insert(&dependencies, swap_id, state);
 

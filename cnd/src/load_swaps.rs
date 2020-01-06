@@ -2,7 +2,7 @@
 use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     ethereum::{Erc20Token, EtherQuantity},
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         ledger::{Bitcoin, Ethereum},
@@ -18,7 +18,7 @@ where
     D: StateStore
         + Executor
         + Clone
-        + SwapSeed
+        + DeriveSwapSeed
         + Retrieve
         + DetermineTypes
         + HtlcEvents<Bitcoin, Amount>

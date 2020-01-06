@@ -12,48 +12,75 @@ use std::{
 };
 use thiserror;
 
-pub const SEED_LENGTH: usize = 32;
+const SEED_LENGTH: usize = 32;
+pub type Seed = [u8; SEED_LENGTH];
+
+/// We create a `RootSeed` either randomly or by reading in the PEM file from
+/// disk.  This `RootSeed` is used to generate a per swap `SwapSeed` which is
+/// then use as the secret source for deriving redeem/refund identities.
+/// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
+/// solely to allow the compiler to provide us with type safety.
+
+pub trait DeriveSwapSeed {
+    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed;
+}
+
+impl DeriveSwapSeed for RootSeed {
+    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
+        SwapSeed(self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]))
+    }
+}
+
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
+pub struct RootSeed(#[serde(with = "hex_serde")] Seed);
 
-impl fmt::Debug for Seed {
+impl fmt::Debug for RootSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "Seed([*****])")
+        obscure_seed(f)
     }
 }
 
-impl fmt::Display for Seed {
+impl fmt::Display for RootSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        obscure_seed(f)
     }
 }
 
-impl Seed {
-    pub fn swap_seed(&self, id: SwapId) -> Seed {
-        Seed(self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]))
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+pub struct SwapSeed(#[serde(with = "hex_serde")] Seed);
+
+impl fmt::Debug for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        obscure_seed(f)
     }
-    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
-        let mut sha = Sha256::new();
-        sha.input(&self.0);
-        for slice in slices {
-            sha.input(slice);
-        }
-        let mut result = [0u8; SEED_LENGTH];
-        sha.result(&mut result);
-        result
+}
+
+impl fmt::Display for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        obscure_seed(f)
+    }
+}
+
+fn obscure_seed(f: &mut fmt::Formatter<'_>) -> fmt::Result {
+    write!(f, "Seed([*****])")
+}
+
+impl RootSeed {
+    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> Seed {
+        sha256_with_seed(&self.0, slices)
     }
 
-    pub fn new_random<R: Rng>(mut rand: R) -> Result<Seed, rand::Error> {
+    pub fn new_random<R: Rng>(mut rand: R) -> Result<RootSeed, rand::Error> {
         let mut arr = [0u8; 32];
         rand.try_fill(&mut arr[..])?;
-        Ok(Seed(arr))
+        Ok(RootSeed(arr))
     }
 
     /// Read the seed from the default location if it exists, otherwise
     /// generate a random seed and write it to the default location.
-    pub fn from_default_dir_or_generate<R: Rng>(rand: R) -> Result<Seed, Error> {
+    pub fn from_default_dir_or_generate<R: Rng>(rand: R) -> Result<RootSeed, Error> {
         let path = default_seed_path()?;
-        Seed::from_dir_or_generate(&path, rand)
+        RootSeed::from_dir_or_generate(&path, rand)
     }
 
     /// Read the seed from the directory if it exists, otherwise
@@ -61,7 +88,7 @@ impl Seed {
     pub fn from_dir_or_generate<D: AsRef<OsStr>, R: Rng>(
         data_dir: D,
         rand: R,
-    ) -> Result<Seed, Error> {
+    ) -> Result<RootSeed, Error> {
         let dir = Path::new(&data_dir);
         let path = seed_path_from_dir(dir);
 
@@ -69,7 +96,7 @@ impl Seed {
             return Self::from_file(&path);
         }
 
-        let random_seed = Seed::new_random(rand)?;
+        let random_seed = RootSeed::new_random(rand)?;
         random_seed.write_to(path.clone())?;
 
         log::info!("No seed file found, creating at: {}", path.display());
@@ -77,17 +104,17 @@ impl Seed {
         Ok(random_seed)
     }
 
-    fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<Seed, Error> {
+    fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<RootSeed, Error> {
         let file = Path::new(&seed_file);
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
 
         log::info!("Read in seed from file: {}", file.display());
 
-        Seed::from_pem(pem)
+        RootSeed::from_pem(pem)
     }
 
-    fn from_pem(pem: pem::Pem) -> Result<Seed, Error> {
+    fn from_pem(pem: pem::Pem) -> Result<RootSeed, Error> {
         if pem.contents.len() != SEED_LENGTH {
             Err(Error::IncorrectLength(pem.contents.len()))
         } else {
@@ -96,7 +123,7 @@ impl Seed {
                 array[i] = *b;
             }
 
-            Ok(Seed::from(array))
+            Ok(RootSeed::from(array))
         }
     }
 
@@ -121,21 +148,28 @@ impl Seed {
     }
 }
 
-pub trait SwapSeed {
-    fn swap_seed(&self, id: SwapId) -> Seed;
+impl SwapSeed {
+    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> Seed {
+        sha256_with_seed(&self.0, slices)
+    }
 }
 
-impl SwapSeed for Seed {
-    fn swap_seed(&self, id: SwapId) -> Seed {
-        self.swap_seed(id)
+fn sha256_with_seed(seed: &Seed, slices: &[&[u8]]) -> Seed {
+    let mut sha = Sha256::new();
+    sha.input(seed);
+    for slice in slices {
+        sha.input(slice);
     }
+    let mut result = [0u8; SEED_LENGTH];
+    sha.result(&mut result);
+    result
 }
 
 fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     if let Some(path) = file.parent() {
         if !path.exists() {
             log::info!(
-                "Seed file parent directory does not exist, creating recursively: {}",
+                "RootSeed file parent directory does not exist, creating recursively: {}",
                 file.display()
             );
             fs::create_dir_all(path)?;
@@ -168,9 +202,9 @@ pub enum Error {
     NoDefaultPath,
 }
 
-impl From<[u8; 32]> for Seed {
+impl From<[u8; 32]> for RootSeed {
     fn from(seed: [u8; 32]) -> Self {
-        Seed(seed)
+        RootSeed(seed)
     }
 }
 
@@ -182,18 +216,18 @@ mod tests {
 
     #[test]
     fn seed_byte_string_must_be_32_bytes_long() {
-        let _seed = Seed::from(*b"this string is exactly 32 bytes!");
+        let _seed = RootSeed::from(*b"this string is exactly 32 bytes!");
     }
 
     #[test]
     fn data_and_seed_used_to_calculate_hash() {
-        let seed1 = Seed::from(*b"hello world, you are beautiful!!");
+        let seed1 = RootSeed::from(*b"hello world, you are beautiful!!");
         assert_ne!(
             seed1.sha256_with_seed(&[b"foo"]),
             seed1.sha256_with_seed(&[b"bar"])
         );
 
-        let seed2 = Seed::from(*b"bye world, you are beautiful!!!!");
+        let seed2 = RootSeed::from(*b"bye world, you are beautiful!!!!");
         assert_ne!(
             seed1.sha256_with_seed(&[b"foo"]),
             seed2.sha256_with_seed(&[b"foo"])
@@ -202,20 +236,20 @@ mod tests {
 
     #[test]
     fn test_two_random_seeds_are_different() {
-        let random1 = Seed::new_random(OsRng).unwrap();
-        let random2 = Seed::new_random(OsRng).unwrap();
+        let random1 = RootSeed::new_random(OsRng).unwrap();
+        let random2 = RootSeed::new_random(OsRng).unwrap();
 
         assert_ne!(random1, random2);
     }
 
     #[test]
     fn test_display_and_debug_not_implemented() {
-        let seed = Seed::new_random(OsRng).unwrap();
+        let seed = RootSeed::new_random(OsRng).unwrap();
 
         let out = seed.to_string();
-        assert_eq!(out, "Seed([*****])".to_string());
+        assert_eq!(out, "RootSeed([*****])".to_string());
         let debug = format!("{:?}", seed);
-        assert_eq!(debug, "Seed([*****])".to_string());
+        assert_eq!(debug, "RootSeed([*****])".to_string());
     }
 
     #[test]
@@ -230,7 +264,7 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
 
         let want = base64::decode(payload).unwrap();
         let pem = pem::parse(pem_string).unwrap();
-        let got = Seed::from_pem(pem).unwrap();
+        let got = RootSeed::from_pem(pem).unwrap();
 
         assert_eq!(got.0, *want);
     }
@@ -242,7 +276,7 @@ VnZUNFZ4dlY=
 -----END SEED-----
 ";
         let pem = pem::parse(short).unwrap();
-        match Seed::from_pem(pem) {
+        match RootSeed::from_pem(pem) {
             Ok(_) => panic!("should fail for short payload"),
             Err(e) => {
                 match e {
@@ -262,7 +296,7 @@ mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
 -----END SEED-----
 ";
         let pem = pem::parse(long).unwrap();
-        match Seed::from_pem(pem) {
+        match RootSeed::from_pem(pem) {
             Ok(_) => panic!("should fail for short payload"),
             Err(e) => {
                 match e {
@@ -278,11 +312,11 @@ mbKANv2qKGmNVg1qtquj6Hx1pFPelpqOfE2JaJJAMEg1FlFhNRNlFlE=
         let tmpfile = tempfile::NamedTempFile::new().expect("Could not create temp file");
         let path = tmpfile.path().to_path_buf();
 
-        let seed = Seed::new_random(OsRng).unwrap();
+        let seed = RootSeed::new_random(OsRng).unwrap();
         seed._write_to(path.clone())
             .expect("Write seed to temp file");
 
-        let rinsed = Seed::from_file(path).expect("Read from temp file");
+        let rinsed = RootSeed::from_file(path).expect("Read from temp file");
         assert_eq!(seed.0, rinsed.0);
     }
 }
