@@ -107,7 +107,11 @@ setTimeout(async function() {
             const links = res.body.links;
 
             const swapsLink = links.find(
-                (link: Link) => link.href === "/swaps"
+                (link: Link) =>
+                    link.rel.length === 1 &&
+                    link.rel.includes("collection") &&
+                    link.class.length === 1 &&
+                    link.class.includes("swaps")
             );
 
             expect(swapsLink).to.be.deep.equal({
@@ -117,7 +121,13 @@ setTimeout(async function() {
             });
 
             const rfc003SwapsLink = links.find(
-                (link: Link) => link.href === "/swaps/rfc003"
+                (link: Link) =>
+                    link.rel.length === 2 &&
+                    link.rel.includes("collection") &&
+                    link.rel.includes("edit") &&
+                    link.class.length === 2 &&
+                    link.class.includes("swaps") &&
+                    link.class.includes("rfc003")
             );
 
             expect(rfc003SwapsLink).to.be.deep.equal({
