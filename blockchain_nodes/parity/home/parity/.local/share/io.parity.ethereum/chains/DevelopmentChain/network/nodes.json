@@ -1,20 +1,4 @@
 {
   "nodes": [
-    {
-      "url": "enode://147573f46fe9f5cc38fbe070089a31390baec5dd2827c8f2ef168833e4d0254fbee3969a02c5b9910ea5d5b23d86a6ed5eabcda17cc12007b7d9178b6c697aa5@172.16.0.10:30303",
-      "last_contact": null
-    },
-    {
-      "url": "enode://1412ee9b9e23700e4a67a8fe3d8d02e10376b6e1cb748eaaf8aa60d4652b27872a8e1ad65bb31046438a5d3c1b71b00ec3ce0b4b42ac71464b28026a3d0b53af@172.16.0.11:30303",
-      "last_contact": {
-        "failure": 1576577737
-      }
-    },
-    {
-      "url": "enode://9076c143a487aa163437a86f7d009f257f405c50bb2316800b9c9cc40e5a38fef5b414a47636ec38fdabc8a1872b563effa8574a7f8f85dc6bde465c368f1bf5@172.16.0.12:30303",
-      "last_contact": {
-        "failure": 1576577741
-      }
-    }
   ]
 }
