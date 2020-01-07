@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
 import { promisify } from "util";
-import { sleep } from "./util";
+import { LogReader } from "./log_reader";
 
 const openAsync = promisify(fs.open);
 
@@ -44,7 +44,8 @@ export class ParityInstance {
         this.process.on("exit", (code: number, signal: number) => {
             console.log(`parity exited with ${code || "signal " + signal}`);
         });
-        await sleep(3000); // allow the nodes to start up
+        const logReader = new LogReader(this.logDir + "/parity.log");
+        await logReader.waitForLogMessage("Public node URL:");
         return this;
     }
 

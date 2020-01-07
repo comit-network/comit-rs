@@ -2,7 +2,7 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
 import { promisify } from "util";
-import { sleep } from "./util";
+import { LogReader } from "./log_reader";
 
 const openAsync = promisify(fs.open);
 
@@ -53,7 +53,8 @@ export class BitcoindInstance {
             console.log(`bitcoind exited with ${code || "signal " + signal}`);
         });
 
-        await sleep(3000); // allow the nodes to start up
+        const logReader = new LogReader(this.logDir + "/bitcoind.log");
+        await logReader.waitForLogMessage("Wallet completed loading");
 
         const result = fs.readFileSync(
             `${this.dbDir.name}/regtest/.cookie`,
