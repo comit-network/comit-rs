@@ -17,7 +17,6 @@ fi
 
 TARGET_FILE="${TARGET_FOLDER}/bitcoin-0.17.0"
 if [ -d "$TARGET_FILE" ]; then
-  echo "${TARGET_FILE} exists; all good mate!"
   exit 0;
 fi
 

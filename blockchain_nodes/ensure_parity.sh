@@ -17,7 +17,6 @@ fi
 
 TARGET_FILE="${TARGET_FOLDER}/parity"
 if [ -f "$TARGET_FILE" ]; then
-  echo "${TARGET_FILE} exists; all good mate!"
   exit 0;
 fi
 
