@@ -288,9 +288,14 @@ async fn process_next_look_in_the_past<C, E>(
                             parent_blockhash,
                             e
                         );
-                        // FIXME: If connector errs repeatedly here then re-queueing is
-                        // going to swamp the connector with repeated requests because
-                        // this loops immediately.
+
+                        Delay::new(
+                            std::time::Instant::now().add(std::time::Duration::from_secs(1)),
+                        )
+                        .compat()
+                        .await
+                        .unwrap();
+
                         look_in_the_past_queue.send(parent_blockhash).await
                     }
                 }
