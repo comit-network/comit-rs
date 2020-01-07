@@ -2,9 +2,10 @@
 // They are mostly about checking invalid request responses
 import { expect, request } from "chai";
 import "chai/register-should";
-import { Entity } from "../gen/siren";
+import { Entity, Link } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
+import * as sirenJsonSchema from "../siren.schema.json";
 
 const alice = new Actor("alice");
 
@@ -88,20 +89,70 @@ setTimeout(async function() {
             expect(res.body.peers).to.have.length(0);
         });
 
-        it("[Alice] Returns its peer ID when you GET /", async () => {
+        it("[Alice] Returns its peer ID and the addresses it listens on when you GET /", async () => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
-            expect(res).to.have.status(200);
             expect(res.body.id).to.be.a("string");
-        });
-
-        it("[Alice] Returns the addresses it listens on when you GET /", async () => {
-            const res = await request(alice.cndHttpApiUrl()).get("/");
-
-            expect(res).to.have.status(200);
             expect(res.body.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface
             expect(res.body.listen_addresses.length).to.be.greaterThan(1);
+        });
+
+        it("[Alice] Response for GET / with accept header set as application/vnd.siren+json is a valid siren document", async () => {
+            const res = await request(alice.cndHttpApiUrl()).get("/");
+
+            expect(res).to.have.status(200);
+            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
+        });
+
+        it("[Alice] Returns its peer ID and the addresses it listens on when you GET / with accept header set as application/vnd.siren+json", async () => {
+            const res = await request(alice.cndHttpApiUrl())
+                .get("/")
+                .set("accept", "application/vnd.siren+json");
+
+            expect(res.body.properties.id).to.be.a("string");
+            expect(res.body.properties.listen_addresses).to.be.an("array");
+            // At least 2 ipv4 addresses, lookup and external interface
+            expect(
+                res.body.properties.listen_addresses.length
+            ).to.be.greaterThan(1);
+        });
+
+        it("[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET / with accept header set as application/vnd.siren+json", async () => {
+            const res = await request(alice.cndHttpApiUrl())
+                .get("/")
+                .set("accept", "application/vnd.siren+json");
+            const links = res.body.links;
+
+            const swapsLink = links.find(
+                (link: Link) =>
+                    link.rel.length === 1 &&
+                    link.rel.includes("collection") &&
+                    link.class.length === 1 &&
+                    link.class.includes("swaps")
+            );
+
+            expect(swapsLink).to.be.deep.equal({
+                rel: ["collection"],
+                class: ["swaps"],
+                href: "/swaps",
+            });
+
+            const rfc003SwapsLink = links.find(
+                (link: Link) =>
+                    link.rel.length === 2 &&
+                    link.rel.includes("collection") &&
+                    link.rel.includes("edit") &&
+                    link.class.length === 2 &&
+                    link.class.includes("swaps") &&
+                    link.class.includes("rfc003")
+            );
+
+            expect(rfc003SwapsLink).to.be.deep.equal({
+                rel: ["collection", "edit"],
+                class: ["swaps", "rfc003"],
+                href: "/swaps/rfc003",
+            });
         });
     });
 
