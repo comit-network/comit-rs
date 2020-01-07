@@ -33,7 +33,7 @@ pub struct SwapResource<S> {
     pub state: Option<S>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Copy, Serialize)]
 pub struct SwapParameters {
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
@@ -41,7 +41,7 @@ pub struct SwapParameters {
     beta_asset: HttpAsset,
 }
 
-#[derive(Debug, Serialize, PartialEq)]
+#[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum SwapStatus {
     InProgress,

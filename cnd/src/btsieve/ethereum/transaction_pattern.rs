@@ -123,7 +123,7 @@ fn events_exist_in_receipt(events: &[Event], receipt: &TransactionReceipt) -> bo
     })
 }
 
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
 pub struct Topic(pub H256);
 
 /// Event  work similar as web3 filters:
