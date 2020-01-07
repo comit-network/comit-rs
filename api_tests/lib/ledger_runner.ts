@@ -1,3 +1,4 @@
+import getPort from "get-port";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
@@ -31,7 +32,9 @@ export class LedgerRunner {
                 case "bitcoin": {
                     const instance = new BitcoindInstance(
                         this.projectRoot,
-                        this.logDir
+                        this.logDir,
+                        await getPort({ port: 18444 }),
+                        await getPort({ port: 18443 })
                     );
                     return {
                         ledger,
@@ -41,7 +44,8 @@ export class LedgerRunner {
                 case "ethereum": {
                     const instance = new ParityInstance(
                         this.projectRoot,
-                        this.logDir
+                        this.logDir,
+                        await getPort({ port: 8545 })
                     );
                     return {
                         ledger,
@@ -90,16 +94,16 @@ export class LedgerRunner {
     }
 
     private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {
-        const container = this.runningLedgers.bitcoin;
+        const instance = this.runningLedgers.bitcoin;
 
-        if (container) {
-            const { username, password } = container.getUsernamePassword();
+        if (instance) {
+            const { username, password } = instance.getUsernamePassword();
 
             return {
                 network: "regtest",
                 host: "localhost",
-                rpcPort: 18443,
-                p2pPort: 18444,
+                rpcPort: instance.rpcPort,
+                p2pPort: instance.p2pPort,
                 username,
                 password,
             };
@@ -109,11 +113,11 @@ export class LedgerRunner {
     }
 
     private async getEthereumNodeConfig(): Promise<EthereumNodeConfig> {
-        const container = this.runningLedgers.ethereum;
+        const instance = this.runningLedgers.ethereum;
 
-        if (container) {
+        if (instance) {
             const host = "localhost";
-            const port = 8545;
+            const port = instance.rpcPort;
 
             return {
                 rpc_url: `http://${host}:${port}`,

@@ -14,7 +14,9 @@ export class BitcoindInstance {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string
+        private readonly logDir: string,
+        private readonly p2pPort: number,
+        private readonly rpcPort: number
     ) {}
 
     public async start() {
@@ -32,8 +34,8 @@ export class BitcoindInstance {
                 "-regtest",
                 "-server",
                 "-printtoconsole",
-                "-bind=0.0.0.0:18444",
-                "-rpcbind=0.0.0.0:18443",
+                `-bind=0.0.0.0:${this.p2pPort}`,
+                `-rpcbind=0.0.0.0:${this.rpcPort}`,
                 "-rpcallowip=0.0.0.0/0",
                 "-nodebug",
                 "-acceptnonstdtxn=0",

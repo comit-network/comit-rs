@@ -12,7 +12,8 @@ export class ParityInstance {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string
+        private readonly logDir: string,
+        private readonly rpcPort: number
     ) {}
 
     public async start() {
@@ -29,6 +30,7 @@ export class ParityInstance {
                 `--base-path=${this.projectRoot}/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum`,
                 `--db-path=${this.dbDir.name}`,
                 `--password=${this.projectRoot}/blockchain_nodes/parity/home/parity/authorities/authority.pwd`,
+                `--jsonrpc-port=${this.rpcPort}`,
             ],
 
             {
@@ -53,3 +55,5 @@ export class ParityInstance {
         this.process.kill("SIGINT");
     }
 }
+
+// --jsonrpc-port=8545 --jsonrpc-hosts=all --config=/Users/bonomat/src/github/comit/comit-rs/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum/config.toml --chain=/Users/bonomat/src/github/comit/comit-rs/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum/chain.json --base-path=/Users/bonomat/src/github/comit/comit-rs/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum --db-path=./ --password=/Users/bonomat/src/github/comit/comit-rs/blockchain_nodes/parity/home/parity/authorities/authority.pwd
