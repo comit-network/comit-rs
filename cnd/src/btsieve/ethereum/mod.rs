@@ -164,8 +164,8 @@ async fn process_latest_blocks<C, E>(
 }
 
 /// Processes block hashes from the `next_hash` receiver, fetches blocks from
-/// the blockchain connector by block hash and queues the block on the
-/// `block_queue`. Queues the block hash and parent block hash on the
+/// the blockchain connector by block hash and enqueues the block on the
+/// `block_queue`. Enqueues the block hash and parent block hash on the
 /// `find_parent_queue`.
 async fn process_blocks_by_hash<C, E>(
     connector: C,
@@ -243,9 +243,9 @@ async fn process_next_find_parent<C, E>(
     }
 }
 
-/// Process hashes from the `next_look_in_the_past` receiver.  Gets the block
+/// Process hashes from the `next_look_in_the_past` receiver. Gets the block
 /// for this hash from the blockchain connector, if the block is _not_ yet
-/// further back in time than `reference_timestamp` then en ques block on the
+/// further back in time than `reference_timestamp` then enqueues block on the
 /// `block_queue` and the block hash of parent to the `look_in_the_past_queue`.
 async fn process_next_look_in_the_past<C, E>(
     connector: C,
@@ -305,8 +305,8 @@ async fn process_next_look_in_the_past<C, E>(
     }
 }
 
-/// This is the actual processing of the blocks.  Gets receipts if needed,
-/// matches transactions in the block using `pattern` and en queues 'transaction
+/// This is the actual processing of the blocks. Gets receipts if needed,
+/// matches transactions in the block using `pattern` and enqueues 'transaction
 /// and receipt' onto the `matching_transaction_queue` if a matching transaction
 /// is found.
 async fn process_next_block<C, E>(
