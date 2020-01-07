@@ -519,7 +519,10 @@ mod tests {
             &ether_serialized,
             r#"{"name":"ether","quantity":"1000000000000000000"}"#
         );
-        assert_eq!(&pay_serialized, r#"{"name":"erc20","quantity":"100000000000","token_contract":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"}"#);
+        assert_eq!(
+            &pay_serialized,
+            r#"{"name":"erc20","quantity":"100000000000","token_contract":"0xb97048628db6b661d4c2aa833e95dbe1a905b280"}"#
+        );
     }
 
     #[test]

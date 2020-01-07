@@ -8,7 +8,10 @@ import * as bitcoin from "./bitcoin";
 import { LedgerAction } from "./comit";
 import { CND_CONFIGS, E2ETestActorConfig } from "./config";
 import { seconds_until, sleep } from "./util";
+import { HarnessGlobal } from "./util";
 import { Wallet, WalletConfig } from "./wallet";
+
+declare var global: HarnessGlobal;
 
 use(chaiHttp);
 
@@ -182,10 +185,12 @@ export class Actor {
                     let diff = min_median_block_time - currentMedianBlockTime;
 
                     if (diff > 0) {
-                        console.log(
-                            `Waiting for median time to pass %d`,
-                            min_median_block_time
-                        );
+                        if (global.verbose) {
+                            console.log(
+                                `Waiting for median time to pass %d`,
+                                min_median_block_time
+                            );
+                        }
 
                         let escapeSequence = "";
 
@@ -196,10 +201,12 @@ export class Actor {
                             diff =
                                 min_median_block_time - currentMedianBlockTime;
 
-                            console.log(
-                                `${escapeSequence}Current median time:            %d`,
-                                currentMedianBlockTime
-                            );
+                            if (global.verbose) {
+                                console.log(
+                                    `${escapeSequence}Current median time:            %d`,
+                                    currentMedianBlockTime
+                                );
+                            }
                             escapeSequence = MOVE_CURSOR_UP_ONE_LINE;
                         }
                     }
@@ -238,12 +245,13 @@ export class Actor {
                     const buffer = 2;
                     const delay = seconds_until(min_block_timestamp) + buffer;
 
-                    console.log(
-                        `Waiting for %d seconds before action can be executed to reach %d.`,
-                        delay,
-                        min_block_timestamp
-                    );
-
+                    if (global.verbose) {
+                        console.log(
+                            `Waiting for %d seconds before action can be executed to reach %d.`,
+                            delay,
+                            min_block_timestamp
+                        );
+                    }
                     await sleep(delay * 1000);
                 }
 

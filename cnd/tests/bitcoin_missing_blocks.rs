@@ -2,10 +2,8 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
-use cnd::{
-    btsieve::{bitcoin::TransactionPattern, MatchingTransactions},
-    first_or_else::StreamExt,
-};
+use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
+use futures_core::{FutureExt, TryFutureExt};
 use std::str::FromStr;
 use tokio::prelude::Future;
 
@@ -25,8 +23,9 @@ fn find_transaction_in_missing_block() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(
+    let expected_transaction: bitcoin::Transaction = async {
+        matching_transaction(
+            connector,
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
@@ -40,7 +39,10 @@ fn find_transaction_in_missing_block() {
             },
             None,
         )
-        .first_or_else(|| panic!())
+        .await
+    }
+        .boxed()
+        .compat()
         .wait()
         .unwrap();
 
@@ -69,13 +71,14 @@ fn find_transaction_in_missing_block_with_big_gap() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(
+    let expected_transaction: bitcoin::Transaction = async {
+        matching_transaction(
+            connector,
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
                         include_str!(
-                            "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
+                        "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
                     )
                         .trim(),
                     )
@@ -86,7 +89,10 @@ fn find_transaction_in_missing_block_with_big_gap() {
             },
             None,
         )
-        .first_or_else(|| panic!())
+        .await
+    }
+        .boxed()
+        .compat()
         .wait()
         .unwrap();
 
@@ -113,13 +119,14 @@ fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(
+    let expected_transaction: bitcoin::Transaction = async {
+        matching_transaction(
+            connector,
             TransactionPattern {
                 to_address: Some(
                     Address::from_str(
                         include_str!(
-                            "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
+                        "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
                     )
                         .trim(),
                     )
@@ -130,7 +137,10 @@ fn find_transaction_if_blockchain_reorganisation() {
             },
             None,
         )
-        .first_or_else(|| panic!())
+        .await
+    }
+        .boxed()
+        .compat()
         .wait()
         .unwrap();
 
@@ -160,21 +170,27 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = connector
-        .matching_transactions(TransactionPattern {
-            to_address: Some(
-                Address::from_str(
-                    include_str!(
-                        "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
-                    ).trim()
-                    ,
-                )
-                .unwrap(),
-            ),
-            from_outpoint: None,
-            unlock_script: None,
-        }, None)
-        .first_or_else(|| panic!())
+    let expected_transaction: bitcoin::Transaction = async {
+        matching_transaction(
+            connector,
+            TransactionPattern {
+                to_address: Some(
+                    Address::from_str(
+                        include_str!(
+                            "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+                        ).trim()
+                            ,
+                    )
+                        .unwrap(),
+                ),
+                from_outpoint: None,
+                unlock_script: None,
+            }, None
+        )
+            .await
+    }
+    .boxed()
+        .compat()
         .wait()
         .unwrap();
 

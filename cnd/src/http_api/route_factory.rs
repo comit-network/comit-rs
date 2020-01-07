@@ -103,8 +103,8 @@ pub fn create<
 
     let get_info = warp::get2()
         .and(warp::path::end())
-        .and(peer_id.clone())
-        .and(dependencies.clone())
+        .and(peer_id)
+        .and(dependencies)
         .and_then(http_api::routes::index::get_info);
 
     preflight_cors_route

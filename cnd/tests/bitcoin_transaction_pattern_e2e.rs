@@ -1,21 +1,13 @@
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
-use cnd::btsieve::{
-    bitcoin::{BitcoindConnector, TransactionPattern},
-    MatchingTransactions,
-};
+use cnd::btsieve::bitcoin::{matching_transaction, BitcoindConnector, TransactionPattern};
+use futures::future::Future;
+use futures_core::{FutureExt, TryFutureExt};
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;
-use std::{
-    sync::Arc,
-    time::{Duration, Instant},
-};
+use std::time::{Duration, Instant};
 use testcontainers::*;
-use tokio::{
-    prelude::{Future, FutureExt, Stream},
-    runtime::Runtime,
-    timer::Delay,
-};
+use tokio::{runtime::Runtime, timer::Delay, util::FutureExt as TokioFutureExt};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for bitcoin transaction pattern matching.
@@ -33,25 +25,25 @@ fn bitcoin_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(18443).unwrap() as u16))
         .unwrap();
 
-    let blocksource = Arc::new(BitcoindConnector::new(url, Network::Regtest).unwrap());
+    let connector = BitcoindConnector::new(url, Network::Regtest).unwrap();
 
     let target_address = client.get_new_address(None, None).unwrap();
 
     // make sure we have money
     client.generate(101, None).unwrap();
 
-    let funding_transaction = blocksource
-        .matching_transactions(
-            TransactionPattern {
-                to_address: Some(target_address.clone()),
-                from_outpoint: None,
-                unlock_script: None,
-            },
-            None,
-        )
-        .take(1)
-        .into_future()
-        .map_err(|_| ());
+    let funding_transaction = {
+        let pattern = TransactionPattern {
+            to_address: Some(target_address.clone()),
+            from_outpoint: None,
+            unlock_script: None,
+        };
+
+        async { matching_transaction(connector, pattern, None).await }
+            .boxed()
+            .compat()
+            .map_err(|_| ())
+    };
 
     let now_in_two_seconds = Instant::now() + Duration::from_secs(2);
 
@@ -81,10 +73,9 @@ fn bitcoin_transaction_pattern_e2e_test() {
 
     let future_with_timeout = future.timeout(Duration::from_secs(5));
 
-    let (actual_transaction, (funding_transaction, _)) =
-        runtime.block_on(future_with_timeout).unwrap();
+    let (actual_transaction, funding_transaction) = runtime.block_on(future_with_timeout).unwrap();
 
-    assert_eq!(funding_transaction.unwrap().txid(), actual_transaction)
+    assert_eq!(funding_transaction.txid(), actual_transaction)
 }
 
 pub fn new_bitcoincore_client<D: Docker>(

@@ -6,21 +6,22 @@ pub use self::{
     web3_connector::Web3Connector,
 };
 use crate::{
-    btsieve::{BlockByHash, LatestBlock, MatchingTransactions, ReceiptByHash},
+    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use async_std::sync::{Receiver, Sender};
 use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
 use std::{collections::HashSet, fmt::Debug, ops::Add};
-use tokio::{
-    prelude::{stream, Stream},
-    timer::Delay,
-};
+use tokio::timer::Delay;
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
 
-impl<C, E> MatchingTransactions<TransactionPattern> for C
+pub async fn matching_transaction<C, E>(
+    connector: C,
+    pattern: TransactionPattern,
+    reference_timestamp: Option<u32>,
+) -> TransactionAndReceipt
 where
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
@@ -29,82 +30,67 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
-    type Transaction = TransactionAndReceipt;
+    let (block_queue, next_block) = async_std::sync::channel(1);
+    let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
+    let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
 
-    fn matching_transactions(
-        &self,
-        pattern: TransactionPattern,
-        reference_timestamp: Option<u32>,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send> {
-        let (block_queue, next_block) = async_std::sync::channel(1);
-        let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
-        let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
+    spawn(
+        connector.clone(),
+        process_latest_blocks(
+            connector.clone(),
+            block_queue.clone(),
+            find_parent_queue.clone(),
+            look_in_the_past_queue.clone(),
+        ),
+    );
 
-        spawn(
-            self.clone(),
-            process_latest_blocks(
-                self.clone(),
-                block_queue.clone(),
-                find_parent_queue.clone(),
-                look_in_the_past_queue.clone(),
-            ),
-        );
+    let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
-        let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
+    spawn(
+        connector.clone(),
+        process_blocks_by_hash(
+            connector.clone(),
+            block_queue.clone(),
+            find_parent_queue.clone(),
+            (fetch_block_by_hash_queue.clone(), next_hash),
+        ),
+    );
 
-        spawn(
-            self.clone(),
-            process_blocks_by_hash(
-                self.clone(),
-                block_queue.clone(),
-                find_parent_queue.clone(),
-                (fetch_block_by_hash_queue.clone(), next_hash),
-            ),
-        );
+    spawn(
+        connector.clone(),
+        process_next_find_parent(
+            connector.clone(),
+            next_find_parent.clone(),
+            fetch_block_by_hash_queue.clone(),
+        ),
+    );
 
-        spawn(
-            self.clone(),
-            process_next_find_parent(
-                self.clone(),
-                next_find_parent.clone(),
-                fetch_block_by_hash_queue.clone(),
-            ),
-        );
+    spawn(
+        connector.clone(),
+        process_next_look_in_the_past(
+            connector.clone(),
+            block_queue.clone(),
+            (look_in_the_past_queue.clone(), next_look_in_the_past),
+            reference_timestamp,
+        ),
+    );
 
-        spawn(
-            self.clone(),
-            process_next_look_in_the_past(
-                self.clone(),
-                block_queue.clone(),
-                (look_in_the_past_queue.clone(), next_look_in_the_past),
-                reference_timestamp,
-            ),
-        );
+    let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
 
-        let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
+    spawn(
+        connector.clone(),
+        process_next_block(
+            connector.clone(),
+            next_block,
+            matching_transaction_queue,
+            pattern,
+        ),
+    );
 
-        spawn(
-            self.clone(),
-            process_next_block(
-                self.clone(),
-                next_block,
-                matching_transaction_queue,
-                pattern,
-            ),
-        );
-
-        let matching_transaction = async move {
-            matching_transaction
-                .recv()
-                .await
-                .expect("sender cannot be dropped")
-        };
-
-        Box::new(stream::futures_unordered(vec![matching_transaction
-            .unit_error()
-            .boxed()
-            .compat()]))
-    }
+    matching_transaction
+        .recv()
+        .await
+        .expect("sender cannot be dropped")
 }
 
 /// Repeatedly fetches the latest block from the Ethereum blockchain connector.

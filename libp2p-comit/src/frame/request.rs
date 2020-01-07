@@ -84,7 +84,7 @@ impl UnvalidatedInboundRequest {
             (Headers::default(), UnknownMandatoryHeaders::default()),
             |(parsed_headers, mut unknown_headers), (key, header)| {
                 if key.must_understand && !known_headers.contains(&key.value) {
-                    unknown_headers.add(key.value.clone());
+                    unknown_headers.add(key.value);
 
                     (parsed_headers, unknown_headers)
                 } else {

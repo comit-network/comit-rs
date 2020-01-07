@@ -91,7 +91,7 @@ fn main() -> anyhow::Result<()> {
         state_store: Arc::clone(&state_store),
         seed,
         swarm: Arc::clone(&swarm),
-        db: database.clone(),
+        db: database,
         task_executor: runtime.executor(),
     };
 

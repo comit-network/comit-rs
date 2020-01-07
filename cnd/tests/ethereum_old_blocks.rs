@@ -1,11 +1,11 @@
 pub mod ethereum_helper;
 
 use cnd::{
-    btsieve::{ethereum::TransactionPattern, MatchingTransactions},
+    btsieve::ethereum::{matching_transaction, TransactionPattern},
     ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
-    first_or_else::StreamExt,
 };
 use ethereum_helper::EthereumConnectorMock;
+use futures_core::{FutureExt, TryFutureExt};
 use tokio::prelude::Future;
 
 #[test]
@@ -48,8 +48,9 @@ fn find_transaction_in_old_block() {
         runtime.executor(),
     );
 
-    let expected_transaction_and_receipt: TransactionAndReceipt = connector
-        .matching_transactions(
+    let expected_transaction_and_receipt: TransactionAndReceipt = async {
+        matching_transaction(
+            connector,
             TransactionPattern {
                 from_address: None,
                 to_address: Some(transaction.to.unwrap()),
@@ -60,7 +61,11 @@ fn find_transaction_in_old_block() {
             },
             Some(block1_with_transaction.timestamp.low_u32()),
         )
-        .first_or_else(|| panic!())
+        .await
+    }
+        .unit_error()
+        .boxed()
+        .compat()
         .wait()
         .unwrap();
 

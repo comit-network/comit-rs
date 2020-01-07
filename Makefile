@@ -59,7 +59,7 @@ clean:
 
 ## Development tasks
 
-all: format build clippy test doc e2e_scripts
+all: format build clippy test doc e2e
 
 ci: check_format doc clippy test build e2e
 

@@ -3,7 +3,7 @@ use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::{
         asset::Asset,
-        rfc003::{self, alice, bob, Ledger, SecretHash},
+        rfc003::{self, Ledger, SecretHash},
     },
     timestamp::Timestamp,
 };
@@ -55,53 +55,13 @@ pub enum SwapCommunicationState {
     Declined,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<alice::SwapCommunication<AL, BL, AA, BA>>
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
     for SwapCommunication<AL::Identity, BL::Identity>
 {
-    fn from(communication: alice::SwapCommunication<AL, BL, AA, BA>) -> Self {
-        use self::alice::SwapCommunication::*;
+    fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA>) -> Self {
+        use rfc003::SwapCommunication::*;
         match communication {
             Proposed { request } => Self {
-                status: SwapCommunicationState::Sent,
-                alpha_expiry: request.alpha_expiry,
-                beta_expiry: request.beta_expiry,
-                alpha_redeem_identity: None,
-                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
-                beta_refund_identity: None,
-                secret_hash: request.secret_hash,
-            },
-            Accepted { request, response } => Self {
-                status: SwapCommunicationState::Accepted,
-                alpha_expiry: request.alpha_expiry,
-                beta_expiry: request.beta_expiry,
-                alpha_redeem_identity: Some(Http(response.alpha_ledger_redeem_identity)),
-                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
-                beta_refund_identity: Some(Http(response.beta_ledger_refund_identity)),
-                secret_hash: request.secret_hash,
-            },
-            Declined { request, .. } => Self {
-                status: SwapCommunicationState::Declined,
-                alpha_expiry: request.alpha_expiry,
-                beta_expiry: request.beta_expiry,
-                alpha_redeem_identity: None,
-                beta_redeem_identity: Http(request.beta_ledger_redeem_identity),
-                alpha_refund_identity: Http(request.alpha_ledger_refund_identity),
-                beta_refund_identity: None,
-                secret_hash: request.secret_hash,
-            },
-        }
-    }
-}
-
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<bob::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication<AL::Identity, BL::Identity>
-{
-    fn from(communication: bob::SwapCommunication<AL, BL, AA, BA>) -> Self {
-        use self::bob::SwapCommunication::*;
-        match communication {
-            Proposed { request, .. } => Self {
                 status: SwapCommunicationState::Sent,
                 alpha_expiry: request.alpha_expiry,
                 beta_expiry: request.beta_expiry,

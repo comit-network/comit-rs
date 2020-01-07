@@ -4,6 +4,9 @@ import { promisify } from "util";
 import { CndInstance } from "../lib_sdk/cnd_instance";
 import { CND_CONFIGS } from "./config";
 import { LedgerConfig } from "./ledger_runner";
+import { HarnessGlobal } from "./util";
+
+declare var global: HarnessGlobal;
 
 const unlinkAsync = promisify(fs.unlink);
 const existsAsync = promisify(fs.exists);
@@ -26,7 +29,9 @@ export class CndRunner {
             actor => !Object.keys(this.runningNodes).includes(actor)
         );
 
-        console.log("Starting cnd for " + actorsToBeStarted.join(", "));
+        if (global.verbose) {
+            console.log("Starting cnd for " + actorsToBeStarted.join(", "));
+        }
 
         const promises = actorsToBeStarted.map(async name => {
             const cndconfig = CND_CONFIGS[name];
@@ -69,7 +74,9 @@ export class CndRunner {
         const names = Object.keys(this.runningNodes);
 
         if (names.length > 0) {
-            console.log("Stopping cnds: " + names.join(", "));
+            if (global.verbose) {
+                console.log("Stopping cnds: " + names.join(", "));
+            }
             for (const process of Object.values(this.runningNodes)) {
                 process.stop();
             }
