@@ -267,9 +267,9 @@ mod tests {
         let seed = RootSeed::new_random(OsRng).unwrap();
 
         let out = seed.to_string();
-        assert_eq!(out, "RootSeed([*****])".to_string());
+        assert_eq!(out, "Seed([*****])".to_string());
         let debug = format!("{:?}", seed);
-        assert_eq!(debug, "RootSeed([*****])".to_string());
+        assert_eq!(debug, "Seed([*****])".to_string());
     }
 
     #[test]
