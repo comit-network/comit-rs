@@ -33,7 +33,7 @@ pub enum HashFunction {
     Sha256,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum SwapProtocol {
     Rfc003(HashFunction),
 }

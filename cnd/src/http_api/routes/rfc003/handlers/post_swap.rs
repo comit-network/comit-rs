@@ -194,7 +194,7 @@ where
 
 /// An error type for describing that a particular combination of assets and
 /// ledgers is not supported.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("swapping {alpha_asset:?} for {beta_asset:?} from {alpha_ledger:?} to {beta_ledger:?} is not supported")]
 pub struct UnsupportedSwap {
     alpha_asset: HttpAsset,
@@ -256,9 +256,9 @@ where
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {:?}", decline);
-                    let state = State::declined(swap_request.clone(), decline.clone(), seed);
+                    let state = State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    Save::save(&dependencies, decline.clone()).await?;
+                    Save::save(&dependencies, decline).await?;
                 }
             };
             Ok(())
@@ -270,7 +270,7 @@ where
     Ok(())
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Clone, Copy, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,
 }
@@ -317,26 +317,26 @@ trait IntoIdentities<AL: Ledger, BL: Ledger> {
     ) -> anyhow::Result<Identities<AL, BL>>;
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} identity was not expected")]
 pub struct UnexpectedIdentity {
     kind: IdentityKind,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} identity was missing")]
 pub struct MissingIdentity {
     kind: IdentityKind,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} was not a valid ethereum address")]
 pub struct InvalidEthereumAddress {
     kind: IdentityKind,
     source: <ethereum::Address as FromStr>::Err,
 }
 
-#[derive(strum_macros::Display, Debug)]
+#[derive(strum_macros::Display, Debug, Clone, Copy)]
 #[strum(serialize_all = "snake_case")]
 pub enum IdentityKind {
     AlphaLedgerRefundIdentity,

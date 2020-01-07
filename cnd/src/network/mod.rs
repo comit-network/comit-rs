@@ -76,7 +76,7 @@ impl Display for DialInformation {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum RequestError {
     #[error("peer node had an internal error while processing the request")]
     InternalError,
@@ -88,7 +88,7 @@ pub enum RequestError {
     Connection,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
 pub struct Reason {
     pub value: SwapDeclineReason,
 }

@@ -236,7 +236,7 @@ impl<'de> Deserialize<'de> for DialInformation {
 /// `beta_ledger`.
 ///
 /// Note: This enum makes use of serde's "try_from" and "into" feature: https://serde.rs/container-attrs.html#from
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(try_from = "HttpLedgerParams")]
 #[serde(into = "HttpLedgerParams")]
 pub enum HttpLedger {
@@ -248,7 +248,7 @@ pub enum HttpLedger {
 /// `beta_asset`.
 ///
 /// Note: This enum makes use of serde's "try_from" and "try_into" feature: https://serde.rs/container-attrs.html#from
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(try_from = "HttpAssetParams")]
 #[serde(into = "HttpAssetParams")]
 pub enum HttpAsset {
@@ -276,7 +276,7 @@ pub struct BitcoinLedgerParams {
     network: Http<bitcoin::Network>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EthereumLedgerParams {
     chain_id: Option<ChainId>,
     network: Option<ethereum_network::Network>,
@@ -302,12 +302,12 @@ pub struct BitcoinAssetParams {
     quantity: Http<bitcoin::Amount>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EtherAssetParams {
     quantity: ethereum::EtherQuantity,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Erc20AssetParams {
     quantity: ethereum::Erc20Quantity,
     token_contract: ethereum::Address,
@@ -349,7 +349,7 @@ impl From<ledger::Bitcoin> for BitcoinLedgerParams {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("The Ethereum ledger requires either a network or a chain-id parameter.")]
 pub struct InvalidEthereumLedgerParams;
 

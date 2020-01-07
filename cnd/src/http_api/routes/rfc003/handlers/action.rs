@@ -113,9 +113,9 @@ pub async fn handle_action<
                     reason: to_swap_decline_reason(body.reason),
                 };
 
-                Save::save(&dependencies, decline_message.clone()).await?;
+                Save::save(&dependencies, decline_message).await?;
 
-                let response = rfc003_decline_response(decline_message.clone());
+                let response = rfc003_decline_response(decline_message);
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(
                         "failed to send response through channel for swap {}",
@@ -125,7 +125,7 @@ pub async fn handle_action<
 
                 let swap_request = state.request();
                 let seed = dependencies.swap_seed(swap_id);
-                let state = State::declined(swap_request, decline_message.clone(), seed);
+                let state = State::declined(swap_request, decline_message, seed);
                 StateStore::insert(&dependencies, swap_id, state);
 
                 Ok(ActionResponseBody::None)
@@ -145,7 +145,7 @@ pub struct InvalidActionInvocation {
     method: http::Method,
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, Copy, thiserror::Error, PartialEq)]
 #[error("action {action_kind} is invalid for this swap")]
 pub struct InvalidAction {
     action_kind: ActionKind,
