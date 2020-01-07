@@ -12,9 +12,6 @@ use std::{
 };
 use thiserror;
 
-const SEED_LENGTH: usize = 32;
-pub type Seed = [u8; SEED_LENGTH];
-
 /// We create a `RootSeed` either randomly or by reading in the PEM file from
 /// disk.  This `RootSeed` is used to generate a per swap `SwapSeed` which is
 /// then use as the secret source for deriving redeem/refund identities.
@@ -27,53 +24,86 @@ pub trait DeriveSwapSeed {
 
 impl DeriveSwapSeed for RootSeed {
     fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
-        SwapSeed(self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]))
+        let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
+        SwapSeed(Seed(data))
+    }
+}
+
+const SEED_LENGTH: usize = 32;
+
+#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
+
+impl fmt::Debug for Seed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Seed([*****])")
+    }
+}
+
+impl fmt::Display for Seed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+impl Seed {
+    fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
+        let mut sha = Sha256::new();
+        sha.input(&self.0);
+        for slice in slices {
+            sha.input(slice);
+        }
+        let mut result = [0u8; SEED_LENGTH];
+        sha.result(&mut result);
+        result
+    }
+}
+
+impl From<[u8; SEED_LENGTH]> for Seed {
+    fn from(seed: [u8; SEED_LENGTH]) -> Self {
+        Seed(seed)
     }
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct RootSeed(#[serde(with = "hex_serde")] Seed);
+pub struct RootSeed(Seed);
 
 impl fmt::Debug for RootSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        obscure_seed(f)
+        write!(f, "{:?}", self.0)
     }
 }
 
 impl fmt::Display for RootSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        obscure_seed(f)
+        write!(f, "{}", self.0)
     }
 }
 
 #[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
-pub struct SwapSeed(#[serde(with = "hex_serde")] Seed);
+pub struct SwapSeed(Seed);
 
 impl fmt::Debug for SwapSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        obscure_seed(f)
+        write!(f, "{:?}", self.0)
     }
 }
 
 impl fmt::Display for SwapSeed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        obscure_seed(f)
+        write!(f, "{}", self.0)
     }
-}
-
-fn obscure_seed(f: &mut fmt::Formatter<'_>) -> fmt::Result {
-    write!(f, "Seed([*****])")
 }
 
 impl RootSeed {
-    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> Seed {
-        sha256_with_seed(&self.0, slices)
+    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
+        self.0.sha256_with_seed(slices)
     }
 
     pub fn new_random<R: Rng>(mut rand: R) -> Result<RootSeed, rand::Error> {
-        let mut arr = [0u8; 32];
+        let mut arr = [0u8; SEED_LENGTH];
         rand.try_fill(&mut arr[..])?;
-        Ok(RootSeed(arr))
+        Ok(RootSeed(Seed(arr)))
     }
 
     /// Read the seed from the default location if it exists, otherwise
@@ -134,9 +164,10 @@ impl RootSeed {
     }
 
     fn _write_to(&self, path: PathBuf) -> Result<(), Error> {
+        let data = (self.0).0;
         let pem = Pem {
             tag: String::from("SEED"),
-            contents: self.0.to_vec(),
+            contents: data.to_vec(),
         };
 
         let pem_string = encode(&pem);
@@ -149,20 +180,9 @@ impl RootSeed {
 }
 
 impl SwapSeed {
-    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> Seed {
-        sha256_with_seed(&self.0, slices)
+    pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
+        self.0.sha256_with_seed(slices)
     }
-}
-
-fn sha256_with_seed(seed: &Seed, slices: &[&[u8]]) -> Seed {
-    let mut sha = Sha256::new();
-    sha.input(seed);
-    for slice in slices {
-        sha.input(slice);
-    }
-    let mut result = [0u8; SEED_LENGTH];
-    sha.result(&mut result);
-    result
 }
 
 fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
@@ -202,9 +222,9 @@ pub enum Error {
     NoDefaultPath,
 }
 
-impl From<[u8; 32]> for RootSeed {
-    fn from(seed: [u8; 32]) -> Self {
-        RootSeed(seed)
+impl From<[u8; SEED_LENGTH]> for RootSeed {
+    fn from(seed: [u8; SEED_LENGTH]) -> Self {
+        RootSeed(Seed(seed))
     }
 }
 
@@ -266,7 +286,7 @@ syl9wSYaruvgxg9P5Q1qkZaq5YkM6GvXkxe+VYrL/XM=
         let pem = pem::parse(pem_string).unwrap();
         let got = RootSeed::from_pem(pem).unwrap();
 
-        assert_eq!(got.0, *want);
+        assert_eq!((got.0).0, *want);
     }
 
     #[test]
