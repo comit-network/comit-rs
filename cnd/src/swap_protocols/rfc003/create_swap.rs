@@ -12,7 +12,7 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use futures_core::{compat::Future01CompatExt, future};
+use futures_core::future::{self, Either};
 use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
@@ -89,25 +89,21 @@ where
     BA: Asset,
     D: HtlcEvents<AL, AA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params).compat().await?;
+    let deployed = dependencies.htlc_deployed(htlc_params).await?;
     co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
 
-    let funded = dependencies
-        .htlc_funded(htlc_params, &deployed)
-        .compat()
-        .await?;
+    let funded = dependencies.htlc_funded(htlc_params, &deployed).await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
         .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded)
-        .compat()
         .await?;
 
     match redeemed_or_refunded {
-        futures::future::Either::A(redeemed) => {
+        Either::Left(redeemed) => {
             co.yield_(SwapEvent::AlphaRedeemed(redeemed.clone())).await;
         }
-        futures::future::Either::B(refunded) => {
+        Either::Right(refunded) => {
             co.yield_(SwapEvent::AlphaRefunded(refunded.clone())).await;
         }
     }
@@ -130,25 +126,21 @@ where
     BA: Asset,
     D: HtlcEvents<BL, BA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params).compat().await?;
+    let deployed = dependencies.htlc_deployed(htlc_params).await?;
     co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
 
-    let funded = dependencies
-        .htlc_funded(htlc_params, &deployed)
-        .compat()
-        .await?;
+    let funded = dependencies.htlc_funded(htlc_params, &deployed).await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
         .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded)
-        .compat()
         .await?;
 
     match redeemed_or_refunded {
-        futures::future::Either::A(redeemed) => {
+        Either::Left(redeemed) => {
             co.yield_(SwapEvent::BetaRedeemed(redeemed.clone())).await;
         }
-        futures::future::Either::B(refunded) => {
+        Either::Right(refunded) => {
             co.yield_(SwapEvent::BetaRefunded(refunded.clone())).await;
         }
     }
