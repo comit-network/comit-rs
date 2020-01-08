@@ -11,11 +11,11 @@ use crate::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
+            create_swap::{HtlcParams, SwapEvent},
             events::{
                 Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents,
                 RedeemedOrRefundedFuture,
             },
-            state_machine::{HtlcParams, SwapStates},
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger,
         },
@@ -70,7 +70,7 @@ where
         self.state_store.get(key)
     }
 
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapStates<A::AL, A::BL, A::AA, A::BA>) {
+    fn update<A: ActorState>(&self, key: &SwapId, update: SwapEvent<A::AL, A::BL, A::AA, A::BA>) {
         self.state_store.update::<A>(key, update)
     }
 }

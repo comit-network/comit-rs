@@ -5,7 +5,7 @@ use crate::{
     swap_protocols::{
         actions::ethereum::DeployContract,
         ledger::Ethereum,
-        rfc003::{state_machine::HtlcParams, Ledger},
+        rfc003::{create_swap::HtlcParams, Ledger},
     },
 };
 use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
@@ -57,7 +57,7 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
 
 impl HtlcParams<Ethereum, EtherQuantity> {
     pub fn bytecode(&self) -> Bytes {
-        EtherHtlc::from(self.clone()).into()
+        EtherHtlc::from(*self).into()
     }
 }
 
@@ -76,13 +76,13 @@ impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
 
 impl HtlcParams<Ethereum, Erc20Token> {
     pub fn bytecode(&self) -> Bytes {
-        Erc20Htlc::from(self.clone()).into()
+        Erc20Htlc::from(*self).into()
     }
 }
 
 impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
-        let htlc = EtherHtlc::from(htlc_params.clone());
+        let htlc = EtherHtlc::from(htlc_params);
         let gas_limit = htlc.deployment_gas_limit();
 
         DeployContract {
@@ -96,7 +96,7 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
 
 impl From<HtlcParams<Ethereum, Erc20Token>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
-        let htlc = Erc20Htlc::from(htlc_params.clone());
+        let htlc = Erc20Htlc::from(htlc_params);
         let gas_limit = htlc.deployment_gas_limit();
 
         DeployContract {

@@ -95,8 +95,10 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunicatio
     }
 }
 
-impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L::Transaction> {
-    fn from(ledger_state: rfc003::LedgerState<L>) -> Self {
+impl<L: Ledger, A: Asset> From<rfc003::LedgerState<L, A>>
+    for LedgerState<L::HtlcLocation, L::Transaction>
+{
+    fn from(ledger_state: rfc003::LedgerState<L, A>) -> Self {
         use self::rfc003::LedgerState::*;
         let status = ledger_state.clone().into();
         match ledger_state {
@@ -116,6 +118,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 htlc_location,
                 deploy_transaction,
                 fund_transaction,
+                ..
             } => Self {
                 status,
                 htlc_location: Some(Http(htlc_location)),
@@ -128,6 +131,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 htlc_location,
                 deploy_transaction,
                 fund_transaction,
+                ..
             } => Self {
                 status,
                 htlc_location: Some(Http(htlc_location)),
@@ -141,6 +145,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 deploy_transaction,
                 fund_transaction,
                 redeem_transaction,
+                ..
             } => Self {
                 status,
                 htlc_location: Some(Http(htlc_location)),
@@ -154,6 +159,7 @@ impl<L: Ledger> From<rfc003::LedgerState<L>> for LedgerState<L::HtlcLocation, L:
                 deploy_transaction,
                 fund_transaction,
                 refund_transaction,
+                ..
             } => Self {
                 status,
                 htlc_location: Some(Http(htlc_location)),
@@ -171,15 +177,9 @@ impl SwapStatus {
         swap_communication_state: SwapCommunicationState,
         alpha_ledger: rfc003::HtlcState,
         beta_ledger: rfc003::HtlcState,
-        error: &Option<rfc003::Error>,
     ) -> Self {
         use self::SwapCommunicationState::*;
         use crate::swap_protocols::rfc003::HtlcState::*;
-
-        if let Some(e) = error {
-            log::debug!(target: "http-api", "derived SwapStatus is InternalFailure because: {:?}", e);
-            return SwapStatus::InternalFailure;
-        }
 
         if swap_communication_state == Declined {
             return SwapStatus::NotSwapped;
@@ -217,7 +217,7 @@ mod tests {
     #[test]
     fn given_alpha_refunded_and_beta_never_funded_should_be_not_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, Refunded, NotDeployed, &None),
+            SwapStatus::new(Accepted, Refunded, NotDeployed),
             SwapStatus::NotSwapped
         )
     }
@@ -225,7 +225,7 @@ mod tests {
     #[test]
     fn given_alpha_incorrectly_funded_and_beta_never_deployed_should_be_no_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, IncorrectlyFunded, NotDeployed, &None),
+            SwapStatus::new(Accepted, IncorrectlyFunded, NotDeployed),
             SwapStatus::NotSwapped
         )
     }
@@ -233,7 +233,7 @@ mod tests {
     #[test]
     fn given_both_refund_should_not_be_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, Refunded, Refunded, &None),
+            SwapStatus::new(Accepted, Refunded, Refunded),
             SwapStatus::NotSwapped
         )
     }
@@ -241,7 +241,7 @@ mod tests {
     #[test]
     fn given_declined_should_not_be_swapped() {
         assert_eq!(
-            SwapStatus::new(Declined, NotDeployed, NotDeployed, &None),
+            SwapStatus::new(Declined, NotDeployed, NotDeployed),
             SwapStatus::NotSwapped
         )
     }
@@ -249,7 +249,7 @@ mod tests {
     #[test]
     fn given_both_redeem_should_be_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, Redeemed, Redeemed, &None),
+            SwapStatus::new(Accepted, Redeemed, Redeemed),
             SwapStatus::Swapped
         )
     }
@@ -257,7 +257,7 @@ mod tests {
     #[test]
     fn given_alpha_redeemed_and_beta_refunded_should_not_be_swapped() {
         assert_eq!(
-            SwapStatus::new(Accepted, Redeemed, Refunded, &None),
+            SwapStatus::new(Accepted, Redeemed, Refunded),
             SwapStatus::NotSwapped
         )
     }
@@ -265,21 +265,8 @@ mod tests {
     #[test]
     fn given_sent_should_be_in_progress() {
         assert_eq!(
-            SwapStatus::new(Sent, NotDeployed, NotDeployed, &None),
+            SwapStatus::new(Sent, NotDeployed, NotDeployed),
             SwapStatus::InProgress
-        )
-    }
-
-    #[test]
-    fn given_error_should_be_internal_error() {
-        assert_eq!(
-            SwapStatus::new(
-                Sent,
-                NotDeployed,
-                NotDeployed,
-                &Some(rfc003::Error::TimerError)
-            ),
-            SwapStatus::InternalFailure
         )
     }
 
@@ -289,7 +276,7 @@ mod tests {
             alpha_state: rfc003::HtlcState,
             beta_state: rfc003::HtlcState
         ) -> bool {
-            SwapStatus::new(swap_communication_state, alpha_state, beta_state, &None)
+            SwapStatus::new(swap_communication_state, alpha_state, beta_state)
                 != SwapStatus::InternalFailure
         }
     }

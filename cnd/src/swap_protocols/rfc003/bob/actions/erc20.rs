@@ -7,7 +7,7 @@ use crate::{
         rfc003::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             bob,
-            state_machine::HtlcParams,
+            create_swap::HtlcParams,
             Ledger, LedgerState, SwapCommunication,
         },
     },
@@ -50,19 +50,19 @@ where
 
         use self::LedgerState::*;
 
-        let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => {
+        let mut actions = match (alpha_state, beta_state) {
+            (Funded { htlc_location, .. }, Redeemed { secret, .. }) => {
                 vec![Action::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
-                    secret,
+                    *secret,
                 ))]
             }
-            (Funded { .. }, NotDeployed, _) => vec![Action::Deploy(erc20::deploy_action(
+            (Funded { .. }, NotDeployed) => vec![Action::Deploy(erc20::deploy_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
-            (Funded { .. }, Deployed { htlc_location, .. }, _) => {
+            (Funded { .. }, Deployed { htlc_location, .. }) => {
                 vec![Action::Fund(erc20::fund_action(
                     HtlcParams::new_beta_params(request, response),
                     request.beta_asset.token_contract,
@@ -118,11 +118,11 @@ where
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => vec![Action::Redeem(
-                erc20::redeem_action(*htlc_location, secret, request.alpha_ledger.chain_id),
+        let mut actions = match (alpha_state, beta_state) {
+            (Funded { htlc_location, .. }, Redeemed { secret, .. }) => vec![Action::Redeem(
+                erc20::redeem_action(*htlc_location, *secret, request.alpha_ledger.chain_id),
             )],
-            (Funded { .. }, NotDeployed, _) => vec![Action::Fund(<(BL, BA)>::fund_action(
+            (Funded { .. }, NotDeployed) => vec![Action::Fund(<(BL, BA)>::fund_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
             _ => vec![],

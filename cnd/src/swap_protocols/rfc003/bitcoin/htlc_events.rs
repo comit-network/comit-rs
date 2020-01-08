@@ -7,11 +7,11 @@ use crate::{
         rfc003::{
             self,
             bitcoin::extract_secret::extract_secret,
+            create_swap::HtlcParams,
             events::{
                 Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
                 RedeemedOrRefundedFuture, Refunded,
             },
-            state_machine::HtlcParams,
         },
     },
 };

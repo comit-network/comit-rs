@@ -4,7 +4,7 @@ use crate::swap_protocols::{
     rfc003::{
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         bob,
-        state_machine::HtlcParams,
+        create_swap::HtlcParams,
         Ledger, LedgerState, SwapCommunication,
     },
 };
@@ -48,16 +48,16 @@ where
         let beta_state = &self.beta_ledger_state;
 
         use self::LedgerState::*;
-        let mut actions = match (alpha_state, beta_state, self.secret) {
-            (Funded { htlc_location, .. }, _, Some(secret)) => {
+        let mut actions = match (alpha_state, beta_state) {
+            (Funded { htlc_location, .. }, Redeemed { secret, .. }) => {
                 vec![Action::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source,
-                    secret,
+                    *secret,
                 ))]
             }
-            (Funded { .. }, NotDeployed, _) => vec![Action::Fund(<(BL, BA)>::fund_action(
+            (Funded { .. }, NotDeployed) => vec![Action::Fund(<(BL, BA)>::fund_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
             _ => vec![],

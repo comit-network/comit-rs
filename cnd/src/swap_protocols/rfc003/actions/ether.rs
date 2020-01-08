@@ -5,8 +5,8 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             actions::{FundAction, RedeemAction, RefundAction},
+            create_swap::HtlcParams,
             secret_source::SecretSource,
-            state_machine::HtlcParams,
             Secret,
         },
     },

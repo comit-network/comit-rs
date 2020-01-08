@@ -25,6 +25,7 @@ ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
 futures-core = { version = "=0.3.0-alpha.19", features = ["alloc", "compat", "async-await"], package = "futures-preview" }
+genawaiter = { version = "0.2" }
 hex = "0.4"
 hex-serde = "0.1.0"
 http-api-problem = "0.13"
@@ -46,7 +47,6 @@ rust-crypto = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 siren = { version = "0.1", package = "siren-types" }
-state_machine_future = { version = "0.2" }
 structopt = "0.3"
 strum = "0.17"
 strum_macros = "0.17"

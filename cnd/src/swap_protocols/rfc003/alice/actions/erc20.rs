@@ -7,7 +7,7 @@ use crate::{
         rfc003::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             alice,
-            state_machine::HtlcParams,
+            create_swap::HtlcParams,
             Ledger, LedgerState, SwapCommunication,
         },
     },
