@@ -1,20 +1,10 @@
 use crate::{
     config::settings::AllowedOrigins,
-    db::{DetermineTypes, Retrieve, Saver},
-    ethereum::{Erc20Token, EtherQuantity},
     http_api,
     network::Network,
-    seed::DeriveSwapSeed,
-    swap_protocols::{
-        self,
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{events::HtlcEvents, state_store::StateStore},
-        SwapId,
-    },
+    swap_protocols::{self, Facade, SwapId},
 };
-use bitcoin::Amount;
 use libp2p::PeerId;
-use tokio::executor::Executor;
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
@@ -27,21 +17,9 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create<
-    D: Clone
-        + StateStore
-        + Executor
-        + Network
-        + DeriveSwapSeed
-        + DetermineTypes
-        + Retrieve
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>
-        + Saver,
->(
+pub fn create<S: Network>(
     peer_id: PeerId,
-    dependencies: D,
+    dependencies: Facade<S>,
     allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
     let swaps = warp::path(http_api::PATH);

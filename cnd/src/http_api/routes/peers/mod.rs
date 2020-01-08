@@ -1,4 +1,4 @@
-use crate::{http_api::Http, network::Network};
+use crate::{http_api::Http, network::Network, swap_protocols::Facade};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
@@ -15,7 +15,10 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<D: Network>(dependencies: D) -> Result<impl Reply, Rejection> {
+pub fn get_peers<S: Network>(dependencies: Facade<S>) -> Result<impl Reply, Rejection>
+where
+    S: Send + Sync + 'static,
+{
     let peers = Network::comit_peers(&dependencies)
         .map(|(peer, addresses)| Peer {
             id: Http(peer),

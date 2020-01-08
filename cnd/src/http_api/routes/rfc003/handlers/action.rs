@@ -1,6 +1,5 @@
 use crate::{
-    db::{DetermineTypes, Save, Saver},
-    ethereum::{Erc20Token, EtherQuantity},
+    db::{DetermineTypes, Save},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -15,45 +14,33 @@ use crate::{
     swap_protocols::{
         self,
         actions::Actions,
-        ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
             actions::{Action, ActionKind},
             bob::State,
-            events::HtlcEvents,
             messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
         },
-        SwapId,
+        Facade, SwapId,
     },
 };
 use anyhow::Context;
-use bitcoin::Amount;
 use libp2p_comit::frame::Response;
 use std::fmt::Debug;
-use tokio::executor::Executor;
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-pub async fn handle_action<
-    D: StateStore
-        + Network
-        + DeriveSwapSeed
-        + Saver
-        + DetermineTypes
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>
-        + Executor
-        + Clone,
->(
+pub async fn handle_action<S: Network>(
     method: http::Method,
     swap_id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: D,
-) -> anyhow::Result<ActionResponseBody> {
+    dependencies: Facade<S>,
+) -> anyhow::Result<ActionResponseBody>
+where
+    S: Send + Sync + 'static,
+{
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
