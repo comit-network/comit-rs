@@ -4,7 +4,7 @@ use crate::{
     ethereum::{Erc20Token, EtherQuantity},
     http_api,
     network::Network,
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         ledger::{Bitcoin, Ethereum},
@@ -32,7 +32,7 @@ pub fn create<
         + StateStore
         + Executor
         + Network
-        + SwapSeed
+        + DeriveSwapSeed
         + DetermineTypes
         + Retrieve
         + HtlcEvents<Bitcoin, Amount>

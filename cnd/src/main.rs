@@ -9,7 +9,7 @@ use cnd::{
     http_api::route_factory,
     load_swaps,
     network::{self, transport, Network},
-    seed::Seed,
+    seed::RootSeed,
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
 use futures::{stream, Future, Stream};
@@ -47,7 +47,7 @@ fn main() -> anyhow::Result<()> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    let seed = Seed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+    let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
     let mut runtime = tokio::runtime::Runtime::new()?;
 
@@ -127,7 +127,7 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-fn derive_key_pair(seed: &Seed) -> identity::Keypair {
+fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
     let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())

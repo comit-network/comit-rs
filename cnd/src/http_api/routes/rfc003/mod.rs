@@ -15,7 +15,7 @@ use crate::{
         },
     },
     network::Network,
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{actions::ActionKind, events::HtlcEvents, state_store::StateStore},
@@ -41,7 +41,7 @@ pub fn post_swap<
         + StateStore
         + Executor
         + Save<Swap>
-        + SwapSeed
+        + DeriveSwapSeed
         + Saver
         + HtlcEvents<Bitcoin, Amount>
         + HtlcEvents<Ethereum, EtherQuantity>
@@ -84,7 +84,7 @@ pub fn action<
         + Executor
         + Clone
         + Network
-        + SwapSeed
+        + DeriveSwapSeed
         + Saver
         + HtlcEvents<Bitcoin, Amount>
         + HtlcEvents<Ethereum, EtherQuantity>
