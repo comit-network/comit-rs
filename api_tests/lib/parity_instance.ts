@@ -2,18 +2,19 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
 import { promisify } from "util";
+import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 
 const openAsync = promisify(fs.open);
 
-export class ParityInstance {
+export class ParityInstance implements LedgerInstance {
     private process: ChildProcess;
     private dbDir: any;
 
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
-        private readonly rpcPort: number
+        public readonly rpcPort: number
     ) {}
 
     public async start() {

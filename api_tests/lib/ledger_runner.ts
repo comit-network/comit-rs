@@ -10,8 +10,13 @@ export interface LedgerConfig {
     ethereum?: EthereumNodeConfig;
 }
 
+export interface LedgerInstance {
+    start(): Promise<LedgerInstance>;
+    stop(): void;
+}
+
 export class LedgerRunner {
-    public readonly runningLedgers: { [key: string]: any };
+    public readonly runningLedgers: { [key: string]: LedgerInstance };
     private readonly blockTimers: { [key: string]: NodeJS.Timeout };
 
     constructor(
@@ -94,7 +99,7 @@ export class LedgerRunner {
     }
 
     private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {
-        const instance = this.runningLedgers.bitcoin;
+        const instance = this.runningLedgers.bitcoin as BitcoindInstance;
 
         if (instance) {
             const { username, password } = instance.getUsernamePassword();
@@ -113,7 +118,7 @@ export class LedgerRunner {
     }
 
     private async getEthereumNodeConfig(): Promise<EthereumNodeConfig> {
-        const instance = this.runningLedgers.ethereum;
+        const instance = this.runningLedgers.ethereum as ParityInstance;
 
         if (instance) {
             const host = "localhost";

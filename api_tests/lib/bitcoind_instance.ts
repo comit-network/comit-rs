@@ -2,11 +2,12 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
 import { promisify } from "util";
+import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 
 const openAsync = promisify(fs.open);
 
-export class BitcoindInstance {
+export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
     private dbDir: any;
     private username: string;
@@ -15,8 +16,8 @@ export class BitcoindInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
-        private readonly p2pPort: number,
-        private readonly rpcPort: number
+        public readonly p2pPort: number,
+        public readonly rpcPort: number
     ) {}
 
     public async start() {
