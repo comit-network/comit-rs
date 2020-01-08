@@ -2,10 +2,9 @@ mod handlers;
 
 use self::handlers::handle_get_swaps;
 use crate::{
-    db::{DetermineTypes, Retrieve},
     http_api::{problem, routes::into_rejection, Http},
     network::Network,
-    swap_protocols::rfc003::state_store::StateStore,
+    swap_protocols::Facade,
 };
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
@@ -20,7 +19,10 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
+pub fn get_info<S: Network>(id: PeerId, dependencies: Facade<S>) -> Result<impl Reply, Rejection>
+where
+    S: Send + Sync + 'static,
+{
     let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
 
     Ok(warp::reply::json(&InfoResource {
@@ -29,7 +31,13 @@ pub fn get_info<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, R
     }))
 }
 
-pub fn get_info_siren<D: Network>(id: PeerId, dependencies: D) -> Result<impl Reply, Rejection> {
+pub fn get_info_siren<S: Network>(
+    id: PeerId,
+    dependencies: Facade<S>,
+) -> Result<impl Reply, Rejection>
+where
+    S: Send + Sync + 'static,
+{
     let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
 
     Ok(warp::reply::json(
@@ -55,9 +63,10 @@ pub fn get_info_siren<D: Network>(id: PeerId, dependencies: D) -> Result<impl Re
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<D: DetermineTypes + Retrieve + StateStore>(
-    dependencies: D,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+pub fn get_swaps<S>(dependencies: Facade<S>) -> impl Future<Item = impl Reply, Error = Rejection>
+where
+    S: Send + Sync + 'static,
+{
     handle_get_swaps(dependencies)
         .boxed()
         .compat()

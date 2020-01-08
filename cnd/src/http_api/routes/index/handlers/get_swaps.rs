@@ -1,12 +1,13 @@
 use crate::{
     db::{DetermineTypes, Retrieve},
     http_api::swap_resource::{build_rfc003_siren_entity, IncludeState},
-    swap_protocols::rfc003::state_store::StateStore,
+    swap_protocols::Facade,
 };
 
-pub async fn handle_get_swaps<D: DetermineTypes + Retrieve + StateStore>(
-    dependencies: D,
-) -> anyhow::Result<siren::Entity> {
+pub async fn handle_get_swaps<S>(dependencies: Facade<S>) -> anyhow::Result<siren::Entity>
+where
+    S: Send + Sync + 'static,
+{
     let mut entity = siren::Entity::default().with_class_member("swaps");
 
     for swap in Retrieve::all(&dependencies).await?.into_iter() {

@@ -1,23 +1,22 @@
 use crate::{
-    db::{Save, Saver, Swap},
-    ethereum::{self, Erc20Token, EtherQuantity},
+    db::{Save, Sqlite, Swap},
+    ethereum,
     http_api::{HttpAsset, HttpLedger},
     network::{DialInformation, Network},
     seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         asset::Asset,
-        ledger::{self, Bitcoin, Ethereum},
+        ledger,
         rfc003::{
             self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
             Ledger, Request, SecretHash, SecretSource,
         },
-        HashFunction, Role, SwapId,
+        Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
 };
 use anyhow::Context;
-use bitcoin::Amount;
 use futures::Future;
 use futures_core::{
     compat::Future01CompatExt,
@@ -25,22 +24,9 @@ use futures_core::{
 };
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use tokio::executor::Executor;
 
-pub async fn handle_post_swap<
-    D: Clone
-        + Executor
-        + StateStore
-        + Save<Swap>
-        + DeriveSwapSeed
-        + Saver
-        + Network
-        + Clone
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>,
->(
-    dependencies: D,
+pub async fn handle_post_swap<S: Network>(
+    dependencies: Facade<S>,
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
@@ -203,28 +189,20 @@ pub struct UnsupportedSwap {
     beta_ledger: HttpLedger,
 }
 
-async fn initiate_request<D, AL, BL, AA, BA>(
-    dependencies: D,
+async fn initiate_request<S, AL, BL, AA, BA>(
+    dependencies: Facade<S>,
     id: SwapId,
     peer: DialInformation,
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    D: StateStore
-        + Executor
-        + DeriveSwapSeed
-        + Save<Request<AL, BL, AA, BA>>
-        + Save<Accept<AL, BL>>
-        + Save<Swap>
-        + Save<Decline>
-        + Network
-        + HtlcEvents<AL, AA>
-        + HtlcEvents<BL, BA>
-        + Clone,
+    S: Network + Send + Sync + 'static,
+    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
+    Facade<S>: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
 {
     let counterparty = peer.peer_id.clone();
     let seed = dependencies.derive_swap_seed(id);
