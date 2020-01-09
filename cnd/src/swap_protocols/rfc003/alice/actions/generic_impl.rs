@@ -5,7 +5,7 @@ use crate::swap_protocols::{
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         alice,
         create_swap::HtlcParams,
-        Ledger, LedgerState, SwapCommunication,
+        DeriveSecret, Ledger, LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
@@ -52,7 +52,7 @@ where
             } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
-                &*self.secret_source,
+                &self.secret_source,
                 fund_transaction,
             ))],
             Funded {
@@ -62,7 +62,7 @@ where
             } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
-                &*self.secret_source,
+                &self.secret_source,
                 fund_transaction,
             ))],
             _ => vec![],
@@ -72,8 +72,8 @@ where
             actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
-                &*self.secret_source,
-                self.secret_source.secret(),
+                &self.secret_source, // Derive identities with this.
+                self.secret_source.derive_secret(), // The secret used by Alice.
             )));
         }
         actions

@@ -2,15 +2,16 @@ mod actions;
 
 pub use self::actions::*;
 
-use crate::swap_protocols::{
-    asset::Asset,
-    rfc003::{
-        ledger::Ledger, ledger_state::LedgerState, messages, secret_source::SecretSource,
-        ActorState, SwapCommunication,
+use crate::{
+    seed::SwapSeed,
+    swap_protocols::{
+        asset::Asset,
+        rfc003::{
+            ledger::Ledger, ledger_state::LedgerState, messages, ActorState, SwapCommunication,
+        },
     },
 };
 use derivative::Derivative;
-use std::sync::Arc;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug, PartialEq)]
@@ -19,45 +20,42 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub alpha_ledger_state: LedgerState<AL, AA>,
     pub beta_ledger_state: LedgerState<BL, BA>,
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
-    pub secret_source: Arc<dyn SecretSource>,
+    pub secret_source: SwapSeed, // Used to derive identities and also to generate the secret.
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
-    pub fn proposed(
-        request: messages::Request<AL, BL, AA, BA>,
-        secret_source: impl SecretSource,
-    ) -> Self {
+    pub fn proposed(request: messages::Request<AL, BL, AA, BA>, secret_source: SwapSeed) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
-            secret_source: Arc::new(secret_source),
+            secret_source,
         }
     }
 
     pub fn accepted(
         request: messages::Request<AL, BL, AA, BA>,
         response: messages::Accept<AL, BL>,
-        secret_source: impl SecretSource,
+        secret_source: SwapSeed,
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Accepted { request, response },
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
-            secret_source: Arc::new(secret_source),
+            secret_source,
         }
     }
 
     pub fn declined(
         request: messages::Request<AL, BL, AA, BA>,
         response: messages::Decline,
-        secret_source: impl SecretSource,
+        secret_source: SwapSeed,
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Declined { request, response },
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
-            secret_source: Arc::new(secret_source),
+            secret_source,
         }
     }
 

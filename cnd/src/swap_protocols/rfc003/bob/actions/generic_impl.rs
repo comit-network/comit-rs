@@ -53,8 +53,9 @@ where
                 vec![Action::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
-                    &*self.secret_source,
-                    *secret,
+                    &*self.secret_source, // Derive identities with this.
+                    *secret,              /* Bob uses the secret learned from Alice's redeem
+                                           * action. */
                 ))]
             }
             (Funded { .. }, NotDeployed) => vec![Action::Fund(<(BL, BA)>::fund_action(
