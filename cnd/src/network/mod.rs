@@ -4,7 +4,7 @@ use crate::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     db::{Save, Saver, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
-    seed::Seed,
+    seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         asset::{Asset, AssetKind},
         rfc003::{
@@ -37,7 +37,7 @@ use std::{
     io,
     sync::{Arc, Mutex},
 };
-use tokio::runtime::TaskExecutor;
+use tokio_compat::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -52,7 +52,7 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
-    pub seed: Seed,
+    pub seed: RootSeed,
     #[behaviour(ignore)]
     pub db: Sqlite,
     #[behaviour(ignore)]
@@ -76,7 +76,7 @@ impl Display for DialInformation {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum RequestError {
     #[error("peer node had an internal error while processing the request")]
     InternalError,
@@ -88,7 +88,7 @@ pub enum RequestError {
     Connection,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, serde::Deserialize)]
 pub struct Reason {
     pub value: SwapDeclineReason,
 }
@@ -98,7 +98,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         bitcoin_connector: BitcoindConnector,
         ethereum_connector: Web3Connector,
         state_store: Arc<InMemoryStateStore>,
-        seed: Seed,
+        seed: RootSeed,
         db: Sqlite,
         task_executor: TaskExecutor,
     ) -> Result<Self, io::Error> {
@@ -138,7 +138,7 @@ impl<TSubstream> ComitNode<TSubstream> {
 
 async fn handle_request(
     db: Sqlite,
-    seed: Seed,
+    seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
     counterparty: PeerId,
     mut request: ValidatedInboundRequest,
@@ -315,7 +315,7 @@ async fn handle_request(
 #[allow(clippy::type_complexity)]
 async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
     db: DB,
-    seed: Seed,
+    seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
     counterparty: PeerId,
     swap_request: Request<AL, BL, AA, BA>,
@@ -324,7 +324,7 @@ where
     DB: Save<Request<AL, BL, AA, BA>> + Saver,
 {
     let id = swap_request.swap_id;
-    let seed = seed.swap_seed(id);
+    let seed = seed.derive_swap_seed(id);
 
     Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;

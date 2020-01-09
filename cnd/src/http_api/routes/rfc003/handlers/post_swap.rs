@@ -1,50 +1,32 @@
 use crate::{
-    db::{Save, Saver, Swap},
-    ethereum::{self, Erc20Token, EtherQuantity},
+    db::{Save, Sqlite, Swap},
+    ethereum,
     http_api::{HttpAsset, HttpLedger},
     network::{DialInformation, Network},
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         asset::Asset,
-        ledger::{self, Bitcoin, Ethereum},
+        ledger,
         rfc003::{
             self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
             Ledger, Request, SecretHash, SecretSource,
         },
-        HashFunction, Role, SwapId,
+        Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
 };
 use anyhow::Context;
-use bitcoin::Amount;
-use futures::Future;
-use futures_core::{
-    compat::Future01CompatExt,
-    future::{FutureExt, TryFutureExt},
-};
+use futures_core::{compat::Future01CompatExt, future::TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
-use tokio::executor::Executor;
 
-pub async fn handle_post_swap<
-    D: Clone
-        + Executor
-        + StateStore
-        + Save<Swap>
-        + SwapSeed
-        + Saver
-        + Network
-        + Clone
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>,
->(
-    dependencies: D,
+pub async fn handle_post_swap<S: Network>(
+    dependencies: Facade<S>,
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
-    let seed = dependencies.swap_seed(id);
+    let seed = dependencies.derive_swap_seed(id);
     let secret_hash = seed.secret().hash();
 
     let body = serde_json::from_value(body)?;
@@ -194,7 +176,7 @@ where
 
 /// An error type for describing that a particular combination of assets and
 /// ledgers is not supported.
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("swapping {alpha_asset:?} for {beta_asset:?} from {alpha_ledger:?} to {beta_ledger:?} is not supported")]
 pub struct UnsupportedSwap {
     alpha_asset: HttpAsset,
@@ -203,31 +185,23 @@ pub struct UnsupportedSwap {
     beta_ledger: HttpLedger,
 }
 
-async fn initiate_request<D, AL, BL, AA, BA>(
-    dependencies: D,
+async fn initiate_request<S, AL, BL, AA, BA>(
+    dependencies: Facade<S>,
     id: SwapId,
     peer: DialInformation,
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    D: StateStore
-        + Executor
-        + SwapSeed
-        + Save<Request<AL, BL, AA, BA>>
-        + Save<Accept<AL, BL>>
-        + Save<Swap>
-        + Save<Decline>
-        + Network
-        + HtlcEvents<AL, AA>
-        + HtlcEvents<BL, BA>
-        + Clone,
+    S: Network + Send + Sync + 'static,
+    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
+    Facade<S>: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
 {
     let counterparty = peer.peer_id.clone();
-    let seed = dependencies.swap_seed(id);
+    let seed = dependencies.derive_swap_seed(id);
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
@@ -256,21 +230,23 @@ where
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {:?}", decline);
-                    let state = State::declined(swap_request.clone(), decline.clone(), seed);
+                    let state = State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state.clone());
-                    Save::save(&dependencies, decline.clone()).await?;
+                    Save::save(&dependencies, decline).await?;
                 }
             };
             Ok(())
         }
     };
-    tokio::spawn(future.boxed().compat().map_err(|e: anyhow::Error| {
+
+    tokio::task::spawn(future.map_err(|e: anyhow::Error| {
         log::error!("{:?}", e);
     }));
+
     Ok(())
 }
 
-#[derive(Serialize, Debug)]
+#[derive(Serialize, Clone, Copy, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,
 }
@@ -317,26 +293,26 @@ trait IntoIdentities<AL: Ledger, BL: Ledger> {
     ) -> anyhow::Result<Identities<AL, BL>>;
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} identity was not expected")]
 pub struct UnexpectedIdentity {
     kind: IdentityKind,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} identity was missing")]
 pub struct MissingIdentity {
     kind: IdentityKind,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("{kind} was not a valid ethereum address")]
 pub struct InvalidEthereumAddress {
     kind: IdentityKind,
     source: <ethereum::Address as FromStr>::Err,
 }
 
-#[derive(strum_macros::Display, Debug)]
+#[derive(strum_macros::Display, Debug, Clone, Copy)]
 #[strum(serialize_all = "snake_case")]
 pub enum IdentityKind {
     AlphaLedgerRefundIdentity,

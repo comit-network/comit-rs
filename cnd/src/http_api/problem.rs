@@ -10,21 +10,21 @@ use warp::{
     Rejection, Reply,
 };
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("Missing GET parameters for a {} action type. Expected: {:?}", action, parameters.iter().map(|parameter| parameter.name).collect::<Vec<&str>>())]
 pub struct MissingQueryParameters {
     pub action: &'static str,
     pub parameters: &'static [MissingQueryParameter],
 }
 
-#[derive(Debug, serde::Serialize)]
+#[derive(Debug, Clone, Copy, serde::Serialize)]
 pub struct MissingQueryParameter {
     pub name: &'static str,
     pub data_type: &'static str,
     pub description: &'static str,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 #[error("unexpected GET parameters {parameters:?} for a {action} action type, expected: none")]
 pub struct UnexpectedQueryParameters {
     pub action: &'static str,

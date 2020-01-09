@@ -3,7 +3,7 @@ use crate::{
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::{ethereum::ChainId, Ethereum},
-        rfc003::{state_machine::HtlcParams, Secret},
+        rfc003::{create_swap::HtlcParams, Secret},
     },
     timestamp::Timestamp,
 };

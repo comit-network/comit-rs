@@ -2,9 +2,10 @@ use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
 use bitcoin::{hashes::sha256d, Network};
-use reqwest::{r#async::Client, Url};
+use futures::future::Future;
+use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
+use reqwest::{Client, Url};
 use serde::Deserialize;
-use tokio::prelude::Future;
 
 #[derive(Deserialize)]
 struct BlockchainInfoLatestBlock {
@@ -58,23 +59,26 @@ impl LatestBlock for BlockchainInfoConnector {
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         let latest_block_url = "https://blockchain.info/latestblock";
-        let latest_block_without_tx = self
-            .client
-            .get(latest_block_url)
-            .send()
-            .map_err(crate::btsieve::bitcoin::Error::Reqwest)
-            .and_then(move |mut response| {
-                response
-                    .json::<BlockchainInfoLatestBlock>()
-                    .map_err(crate::btsieve::bitcoin::Error::Reqwest)
-            });
+        let this = self.clone();
 
-        let cloned_self = self.clone();
+        let latest_block = async move {
+            let blockchain_info_latest_block = this
+                .client
+                .get(latest_block_url)
+                .send()
+                .await?
+                .json::<BlockchainInfoLatestBlock>()
+                .await?;
 
-        Box::new(
-            latest_block_without_tx
-                .and_then(move |latest_block| cloned_self.block_by_hash(latest_block.hash)),
-        )
+            let block = this
+                .block_by_hash(blockchain_info_latest_block.hash)
+                .compat()
+                .await?;
+
+            Ok(block)
+        };
+
+        Box::new(latest_block.boxed().compat())
     }
 }
 
@@ -87,10 +91,11 @@ impl BlockByHash for BlockchainInfoConnector {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(
-            Self::block_by_hash_url(&block_hash),
-            self.client.clone(),
-        );
+        let url = Self::block_by_hash_url(&block_hash);
+        let block =
+            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone())
+                .boxed()
+                .compat();
 
         Box::new(block.inspect(|block| {
             log::trace!("Fetched block from blockchain.info: {:?}", block);

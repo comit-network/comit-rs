@@ -2,7 +2,7 @@
 use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     ethereum::{Erc20Token, EtherQuantity},
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         ledger::{Bitcoin, Ethereum},
@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use bitcoin::Amount;
-use tokio::executor::Executor;
+use tokio_executor01::Executor;
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn load_swaps_from_database<D>(dependencies: D) -> anyhow::Result<()>
@@ -18,7 +18,7 @@ where
     D: StateStore
         + Executor
         + Clone
-        + SwapSeed
+        + DeriveSwapSeed
         + Retrieve
         + DetermineTypes
         + HtlcEvents<Bitcoin, Amount>

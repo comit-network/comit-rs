@@ -9,20 +9,13 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             self,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
+            create_swap::HtlcParams,
+            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
             Secret,
         },
     },
 };
-use futures::{
-    future::{self, Either},
-    Future,
-};
-use futures_core::future::{FutureExt, TryFutureExt};
+use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {
     /// keccak256(Redeemed())
@@ -33,54 +26,48 @@ lazy_static::lazy_static! {
     pub static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
 }
 
+#[async_trait::async_trait]
 impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
-    fn htlc_deployed(
+    async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-    ) -> Box<DeployedFuture<Ethereum>> {
-        let future = {
-            let connector = self.clone();
-            let pattern = TransactionPattern {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: Some(true),
-                transaction_data: Some(htlc_params.bytecode()),
-                transaction_data_length: None,
-                events: None,
-            };
+    ) -> Result<Deployed<Ethereum>, rfc003::Error> {
+        let connector = self.clone();
+        let pattern = TransactionPattern {
+            from_address: None,
+            to_address: None,
+            is_contract_creation: Some(true),
+            transaction_data: Some(htlc_params.bytecode()),
+            transaction_data_length: None,
+            events: None,
+        };
+        let TransactionAndReceipt { transaction, .. } =
+            matching_transaction(connector, pattern, None).await;
 
-            async { matching_transaction(connector, pattern, None).await }
-        }
-        .unit_error()
-        .boxed()
-        .compat()
-        .map_err(|_| rfc003::Error::Btsieve)
-        .map(|txr| Deployed {
-            location: calculate_contract_address_from_deployment_transaction(&txr.transaction),
-            transaction: txr.transaction,
-        });
-
-        Box::new(future)
+        Ok(Deployed {
+            location: calculate_contract_address_from_deployment_transaction(&transaction),
+            transaction,
+        })
     }
 
-    fn htlc_funded(
+    async fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         deploy_transaction: &Deployed<Ethereum>,
-    ) -> Box<FundedFuture<Ethereum, EtherQuantity>> {
-        Box::new(future::ok(Funded {
+    ) -> Result<Funded<Ethereum, EtherQuantity>, rfc003::Error> {
+        Ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
             asset: EtherQuantity::from_wei(deploy_transaction.transaction.value),
-        }))
+        })
     }
 
-    fn htlc_redeemed_or_refunded(
+    async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, EtherQuantity>,
-    ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
-        htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
+    ) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+        htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding).await
     }
 }
 
@@ -88,14 +75,58 @@ fn calculate_contract_address_from_deployment_transaction(tx: &Transaction) -> A
     tx.from.calculate_contract_address(&tx.nonce)
 }
 
-fn htlc_redeemed_or_refunded<A: Asset>(
+async fn htlc_redeemed_or_refunded<A: Asset>(
     connector: Web3Connector,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
-) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
-    let refunded_future = {
+) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+    let redeemed = {
         let connector = connector.clone();
+        async {
+            let pattern = TransactionPattern {
+                from_address: None,
+                to_address: None,
+                is_contract_creation: None,
+                transaction_data: None,
+                transaction_data_length: None,
+                events: Some(vec![Event {
+                    address: Some(htlc_deployment.location),
+                    data: None,
+                    topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
+                }]),
+            };
+
+            let TransactionAndReceipt {
+                transaction,
+                receipt,
+            } = matching_transaction(connector, pattern, None).await;
+            let log = receipt
+                .logs
+                .into_iter()
+                .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
+                .ok_or_else(|| {
+                    rfc003::Error::Internal(format!(
+                        "transaction receipt {:?} did not contain a REDEEM log",
+                        transaction.hash
+                    ))
+                })?;
+            let log_data = log.data.0.as_ref();
+            let secret = Secret::from_vec(log_data).map_err(|e| {
+                rfc003::Error::Internal(format!(
+                    "failed to construct secret from data in transaction receipt {:?}: {:?}",
+                    transaction.hash, e
+                ))
+            })?;
+
+            Ok(Redeemed {
+                transaction,
+                secret,
+            })
+        }
+    };
+
+    let refunded = async {
         let pattern = TransactionPattern {
             from_address: None,
             to_address: None,
@@ -109,184 +140,111 @@ fn htlc_redeemed_or_refunded<A: Asset>(
             }]),
         };
 
-        async { matching_transaction(connector, pattern, None).await }
-            .unit_error()
-            .boxed()
-            .compat()
-            .map_err(|_| rfc003::Error::Btsieve)
-            .map(|transaction| Refunded {
-                transaction: transaction.transaction,
-            })
+        let TransactionAndReceipt { transaction, .. } =
+            matching_transaction(connector, pattern, None).await;
+
+        Ok(Refunded { transaction })
     };
 
-    let redeemed_future = {
-        let pattern = TransactionPattern {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: Some(vec![Event {
-                address: Some(htlc_deployment.location),
-                data: None,
-                topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
-            }]),
-        };
+    futures_core::pin_mut!(redeemed);
+    futures_core::pin_mut!(refunded);
 
-        async {
-            matching_transaction(
-                connector,
-                pattern,
-                None,
-            )
-            .await
+    match future::try_select(redeemed, refunded).await {
+        Ok(Either::Left((tx, _))) => Ok(Either::Left(tx)),
+        Ok(Either::Right((tx, _))) => Ok(Either::Right(tx)),
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+
+            Err(error)
         }
-        .unit_error()
-        .boxed()
-        .compat()
-        .map_err(|_| rfc003::Error::Btsieve)
-        .and_then(|TransactionAndReceipt { transaction, receipt }| {
-            receipt
-                .logs
-                .into_iter()
-                .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
-                .ok_or_else(|| {
-                    rfc003::Error::Internal(format!("transaction receipt {:?} did not contain a REDEEM log", transaction.hash))
-                }).and_then(|log| {
-                    let log_data = log.data.0.as_ref();
-                    let secret = Secret::from_vec(log_data)
-                        .map_err(|e| rfc003::Error::Internal(format!("failed to construct secret from data in transaction receipt {:?}: {:?}", transaction.hash, e)))?;
-                    Ok(Redeemed {
-                        transaction,
-                        secret,
-                    })
-                })
-        })
-    };
-
-    Box::new(
-        redeemed_future
-            .select2(refunded_future)
-            .map(|tx| match tx {
-                Either::A((tx, _)) => Either::A(tx),
-                Either::B((tx, _)) => Either::B(tx),
-            })
-            .map_err(|either| match either {
-                Either::A((error, _)) => error,
-                Either::B((error, _)) => error,
-            }),
-    )
+    }
 }
 
 mod erc20 {
     use super::*;
     use crate::ethereum::{Erc20Quantity, U256};
 
+    #[async_trait::async_trait]
     impl HtlcEvents<Ethereum, Erc20Token> for Web3Connector {
-        fn htlc_deployed(
+        async fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-        ) -> Box<DeployedFuture<Ethereum>> {
-            let future = {
-                let connector = self.clone();
-                let pattern = TransactionPattern {
-                    from_address: None,
-                    to_address: None,
-                    is_contract_creation: Some(true),
-                    transaction_data: Some(htlc_params.bytecode()),
-                    transaction_data_length: None,
-                    events: None,
-                };
-
-                async { matching_transaction(connector, pattern, None).await }
-                    .unit_error()
-                    .boxed()
-                    .compat()
-                    .map_err(|_| rfc003::Error::Btsieve)
-                    .map(|txr| Deployed {
-                        location: calculate_contract_address_from_deployment_transaction(
-                            &txr.transaction,
-                        ),
-                        transaction: txr.transaction,
-                    })
+        ) -> Result<Deployed<Ethereum>, rfc003::Error> {
+            let connector = self.clone();
+            let pattern = TransactionPattern {
+                from_address: None,
+                to_address: None,
+                is_contract_creation: Some(true),
+                transaction_data: Some(htlc_params.bytecode()),
+                transaction_data_length: None,
+                events: None,
             };
+            let TransactionAndReceipt { transaction, .. } =
+                matching_transaction(connector, pattern, None).await;
 
-            Box::new(future)
+            Ok(Deployed {
+                location: calculate_contract_address_from_deployment_transaction(&transaction),
+                transaction,
+            })
         }
 
-        fn htlc_funded(
+        async fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
             htlc_deployment: &Deployed<Ethereum>,
-        ) -> Box<FundedFuture<Ethereum, Erc20Token>> {
-            let future = {
-                let connector = self.clone();
-                let events = Some(vec![Event {
-                    address: Some(htlc_params.asset.token_contract),
-                    data: None,
-                    topics: vec![
-                        Some(Topic(*super::TRANSFER_LOG_MSG)),
-                        None,
-                        Some(Topic(htlc_deployment.location.into())),
-                    ],
-                }]);
+        ) -> Result<Funded<Ethereum, Erc20Token>, rfc003::Error> {
+            let connector = self.clone();
+            let events = Some(vec![Event {
+                address: Some(htlc_params.asset.token_contract),
+                data: None,
+                topics: vec![
+                    Some(Topic(*super::TRANSFER_LOG_MSG)),
+                    None,
+                    Some(Topic(htlc_deployment.location.into())),
+                ],
+            }]);
+            let TransactionAndReceipt {
+                transaction,
+                receipt,
+            } = matching_transaction(
+                connector,
+                TransactionPattern {
+                    from_address: None,
+                    to_address: None,
+                    is_contract_creation: None,
+                    transaction_data: None,
+                    transaction_data_length: None,
+                    events,
+                },
+                None,
+            )
+            .await;
+            let log = receipt
+                .logs
+                .into_iter()
+                .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
+                .ok_or_else(|| {
+                    log::warn!(
+                        "receipt for transaction {:?} did not contain any Transfer events",
+                        transaction.hash
+                    );
+                    rfc003::Error::IncorrectFunding
+                })?;
 
-                async {
-                    matching_transaction(
-                        connector,
-                        TransactionPattern {
-                            from_address: None,
-                            to_address: None,
-                            is_contract_creation: None,
-                            transaction_data: None,
-                            transaction_data_length: None,
-                            events,
-                        },
-                        None,
-                    )
-                        .await
-                }
-                .unit_error()
-                    .boxed()
-                    .compat()
-                    .map_err(|_| rfc003::Error::Btsieve)
-                    .and_then(
-                        |TransactionAndReceipt {
-                            transaction,
-                            receipt,
-                        }| {
-                            receipt
-                                .logs
-                                .into_iter()
-                                .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
-                                .ok_or_else(|| {
-                                    log::warn!(
-                                        "receipt for transaction {:?} did not contain any Transfer events",
-                                        transaction.hash
-                                    );
-                                    rfc003::Error::IncorrectFunding
-                                })
-                                .map(|log| {
-                                    let quantity =
-                                        Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
-                                    let asset = Erc20Token::new(log.address, quantity);
+            let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+            let asset = Erc20Token::new(log.address, quantity);
 
-                                    Funded { transaction, asset }
-                                })
-                        },
-                    )
-            };
-
-            Box::new(future)
+            Ok(Funded { transaction, asset })
         }
 
-        fn htlc_redeemed_or_refunded(
+        async fn htlc_redeemed_or_refunded(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
             htlc_deployment: &Deployed<Ethereum>,
             htlc_funding: &Funded<Ethereum, Erc20Token>,
-        ) -> Box<RedeemedOrRefundedFuture<Ethereum>> {
+        ) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
             htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
+                .await
         }
     }
 }

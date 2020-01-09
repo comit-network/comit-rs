@@ -9,7 +9,7 @@ use cnd::{
     http_api::route_factory,
     load_swaps,
     network::{self, transport, Network},
-    seed::Seed,
+    seed::RootSeed,
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
 use futures::{stream, Future, Stream};
@@ -25,6 +25,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
+use tokio_compat::runtime::Runtime;
 
 mod cli;
 mod logging;
@@ -47,9 +48,9 @@ fn main() -> anyhow::Result<()> {
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
 
-    let seed = Seed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+    let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let mut runtime = Runtime::new()?;
 
     let bitcoin_connector = {
         let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
@@ -57,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let (ethereum_connector, _event_loop_handle) =
-        { Web3Connector::new(settings.clone().ethereum.node_url, runtime.executor())? };
+        { Web3Connector::new(settings.clone().ethereum.node_url)? };
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
@@ -127,7 +128,7 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-fn derive_key_pair(seed: &Seed) -> identity::Keypair {
+fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
     let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     identity::Keypair::Ed25519(key.into())
@@ -136,7 +137,7 @@ fn derive_key_pair(seed: &Seed) -> identity::Keypair {
 fn spawn_warp_instance<S: Network>(
     settings: &Settings,
     peer_id: PeerId,
-    runtime: &mut tokio::runtime::Runtime,
+    runtime: &mut Runtime,
     dependencies: Facade<S>,
 ) {
     let routes = route_factory::create(

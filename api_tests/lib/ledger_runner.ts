@@ -1,22 +1,28 @@
-import { createWriteStream } from "fs";
-import { GenericContainer, StartedTestContainer, Wait } from "testcontainers";
+import getPort from "get-port";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
+import { BitcoindInstance } from "./bitcoind_instance";
 import { EthereumNodeConfig } from "./ethereum";
-import { HarnessGlobal } from "./util";
-
-declare var global: HarnessGlobal;
+import { ParityInstance } from "./parity_instance";
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
 }
 
+export interface LedgerInstance {
+    start(): Promise<LedgerInstance>;
+    stop(): void;
+}
+
 export class LedgerRunner {
-    public readonly runningLedgers: { [key: string]: StartedTestContainer };
+    public readonly runningLedgers: { [key: string]: LedgerInstance };
     private readonly blockTimers: { [key: string]: NodeJS.Timeout };
 
-    constructor(private readonly logDir: string) {
+    constructor(
+        private readonly projectRoot: string,
+        private readonly logDir: string
+    ) {
         this.runningLedgers = {};
         this.blockTimers = {};
     }
@@ -25,20 +31,30 @@ export class LedgerRunner {
         const toBeStarted = ledgers.filter(name => !this.runningLedgers[name]);
 
         const promises = toBeStarted.map(async ledger => {
-            if (global.verbose) {
-                console.log(`Starting ledger ${ledger}`);
-            }
+            console.log(`Starting ledger ${ledger}`);
+
             switch (ledger) {
                 case "bitcoin": {
+                    const instance = new BitcoindInstance(
+                        this.projectRoot,
+                        this.logDir,
+                        await getPort({ port: 18444 }),
+                        await getPort({ port: 18443 })
+                    );
                     return {
                         ledger,
-                        container: await startBitcoinContainer(),
+                        instance: await instance.start(),
                     };
                 }
                 case "ethereum": {
+                    const instance = new ParityInstance(
+                        this.projectRoot,
+                        this.logDir,
+                        await getPort({ port: 8545 })
+                    );
                     return {
                         ledger,
-                        container: await startEthereumContainer(),
+                        instance: await instance.start(),
                     };
                 }
                 default: {
@@ -49,25 +65,8 @@ export class LedgerRunner {
 
         const startedContainers = await Promise.all(promises);
 
-        for (const { ledger, container } of startedContainers) {
-            this.runningLedgers[ledger] = container;
-
-            // @ts-ignore hack around the fact that container is not publicly exposed
-            const containerLogs = await container.container.logs();
-
-            const logFile = createWriteStream(`${this.logDir}/${ledger}.log`, {
-                encoding: "utf8",
-            });
-
-            containerLogs.on("data", (buffer: Buffer) => {
-                buffer = sanitizeBuffer(buffer);
-
-                logFile.write(buffer);
-
-                if (buffer.length > 0) {
-                    logFile.write("\n");
-                }
-            });
+        for (const { ledger, instance } of startedContainers) {
+            this.runningLedgers[ledger] = instance;
 
             if (ledger === "bitcoin") {
                 bitcoin.init(await this.getBitcoinClientConfig());
@@ -82,9 +81,8 @@ export class LedgerRunner {
         const ledgers = Object.entries(this.runningLedgers);
 
         const promises = ledgers.map(async ([ledger, container]) => {
-            if (global.verbose) {
-                console.log(`Stopping ledger ${ledger}`);
-            }
+            console.log(`Stopping ledger ${ledger}`);
+
             clearInterval(this.blockTimers[ledger]);
             await container.stop();
             delete this.runningLedgers[ledger];
@@ -101,21 +99,17 @@ export class LedgerRunner {
     }
 
     private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {
-        const container = this.runningLedgers.bitcoin;
+        const instance = this.runningLedgers.bitcoin as BitcoindInstance;
 
-        if (container) {
-            const result = await container.exec([
-                "cat",
-                "/root/.bitcoin/regtest/.cookie",
-            ]);
-            const [, password] = result.output.split(":");
+        if (instance) {
+            const { username, password } = instance.getUsernamePassword();
 
             return {
                 network: "regtest",
-                host: container.getContainerIpAddress(),
-                rpcPort: container.getMappedPort(18443),
-                p2pPort: container.getMappedPort(18444),
-                username: "__cookie__",
+                host: "localhost",
+                rpcPort: instance.rpcPort,
+                p2pPort: instance.p2pPort,
+                username,
                 password,
             };
         } else {
@@ -124,11 +118,11 @@ export class LedgerRunner {
     }
 
     private async getEthereumNodeConfig(): Promise<EthereumNodeConfig> {
-        const container = this.runningLedgers.ethereum;
+        const instance = this.runningLedgers.ethereum as ParityInstance;
 
-        if (container) {
-            const host = container.getContainerIpAddress();
-            const port = container.getMappedPort(8545);
+        if (instance) {
+            const host = "localhost";
+            const port = instance.rpcPort;
 
             return {
                 rpc_url: `http://${host}:${port}`,
@@ -137,47 +131,4 @@ export class LedgerRunner {
             return Promise.reject("ethereum not yet started");
         }
     }
-}
-
-/*
- * For some weird reason, the log buffer contains weird prefixes
- *
- * This function removes those prefixes so that the logs can be printed to the file.
- */
-function sanitizeBuffer(buffer: Buffer) {
-    if (buffer.indexOf(Buffer.from("01000000000000", "hex")) === 0) {
-        buffer = buffer.slice(8);
-    }
-    if (buffer.indexOf(Buffer.from("020000000000", "hex")) === 0) {
-        buffer = buffer.slice(8);
-    }
-    if (buffer.indexOf(Buffer.from("bfbd", "hex")) === 0) {
-        buffer = buffer.slice(2);
-    }
-    return buffer;
-}
-
-async function startBitcoinContainer(): Promise<StartedTestContainer> {
-    return new GenericContainer("coblox/bitcoin-core", "0.17.0")
-        .withCmd([
-            "-regtest",
-            "-server",
-            "-printtoconsole",
-            "-bind=0.0.0.0:18444",
-            "-rpcbind=0.0.0.0:18443",
-            "-rpcallowip=0.0.0.0/0",
-            "-debug=1",
-            "-acceptnonstdtxn=0",
-            "-rest",
-        ])
-        .withExposedPorts(18443, 18444)
-        .withWaitStrategy(Wait.forLogMessage("Flushed wallet.dat"))
-        .start();
-}
-
-async function startEthereumContainer(): Promise<StartedTestContainer> {
-    return new GenericContainer("coblox/parity-poa", "v2.5.9-stable")
-        .withExposedPorts(8545)
-        .withWaitStrategy(Wait.forLogMessage("Public node URL:"))
-        .start();
 }

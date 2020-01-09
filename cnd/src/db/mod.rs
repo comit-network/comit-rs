@@ -123,7 +123,7 @@ struct QueryableSwapRole {
     pub role: Text<Role>,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,

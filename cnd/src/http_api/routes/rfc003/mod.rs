@@ -4,8 +4,6 @@ pub mod handlers;
 mod swap_state;
 
 use crate::{
-    db::{DetermineTypes, Retrieve, Save, Swap},
-    ethereum::{Erc20Token, EtherQuantity},
     http_api::{
         action::ActionExecutionParameters,
         route_factory::swap_path,
@@ -15,14 +13,8 @@ use crate::{
         },
     },
     network::Network,
-    seed::SwapSeed,
-    swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
-        rfc003::{actions::ActionKind, events::HtlcEvents, state_store::StateStore},
-        SwapId,
-    },
+    swap_protocols::{rfc003::actions::ActionKind, Facade, SwapId},
 };
-use bitcoin::Amount;
 use futures::Future;
 use futures_core::future::{FutureExt, TryFutureExt};
 use warp::{
@@ -31,25 +23,16 @@ use warp::{
 };
 
 pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationState, SwapState};
-use crate::{db::Saver, http_api::problem};
-use tokio::executor::Executor;
+use crate::http_api::problem;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<
-    D: Clone
-        + Network
-        + StateStore
-        + Executor
-        + Save<Swap>
-        + SwapSeed
-        + Saver
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>,
->(
-    dependencies: D,
+pub fn post_swap<S: Network>(
+    dependencies: Facade<S>,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection>
+where
+    S: Send + Sync + 'static,
+{
     handle_post_swap(dependencies, body)
         .boxed()
         .compat()
@@ -64,10 +47,13 @@ pub fn post_swap<
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
-    dependencies: D,
+pub fn get_swap<S>(
+    dependencies: Facade<S>,
     id: SwapId,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection>
+where
+    S: Send + Sync + 'static,
+{
     handle_get_swap(dependencies, id)
         .boxed()
         .compat()
@@ -77,26 +63,17 @@ pub fn get_swap<D: DetermineTypes + Retrieve + StateStore>(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<
-    D: DetermineTypes
-        + Retrieve
-        + StateStore
-        + Executor
-        + Clone
-        + Network
-        + SwapSeed
-        + Saver
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>,
->(
+pub fn action<S: Network>(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    dependencies: D,
+    dependencies: Facade<S>,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+) -> impl Future<Item = impl Reply, Error = Rejection>
+where
+    S: Send + Sync + 'static,
+{
     handle_action(method, id, action_kind, body, query_params, dependencies)
         .boxed()
         .compat()

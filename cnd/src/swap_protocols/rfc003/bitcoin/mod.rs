@@ -3,7 +3,7 @@ mod htlc_events;
 
 use crate::swap_protocols::{
     ledger::Bitcoin,
-    rfc003::{state_machine::HtlcParams, Ledger},
+    rfc003::{create_swap::HtlcParams, Ledger},
 };
 use bitcoin::{
     hashes::{hash160, Hash},
@@ -36,6 +36,6 @@ impl From<HtlcParams<Bitcoin, Amount>> for BitcoinHtlc {
 
 impl HtlcParams<Bitcoin, Amount> {
     pub fn compute_address(&self) -> Address {
-        BitcoinHtlc::from(self.clone()).compute_address(self.ledger.network)
+        BitcoinHtlc::from(*self).compute_address(self.ledger.network)
     }
 }

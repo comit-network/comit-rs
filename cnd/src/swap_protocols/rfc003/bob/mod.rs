@@ -4,7 +4,7 @@ use crate::swap_protocols::{
     asset::Asset,
     rfc003::{
         self, ledger::Ledger, ledger_state::LedgerState, messages::Request,
-        secret_source::SecretSource, Accept, ActorState, Decline, Secret, SwapCommunication,
+        secret_source::SecretSource, Accept, ActorState, Decline, SwapCommunication,
     },
 };
 use derivative::Derivative;
@@ -19,12 +19,10 @@ pub type ResponseSender<AL: Ledger, BL: Ledger> =
 #[derivative(Debug)]
 pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
-    pub alpha_ledger_state: LedgerState<AL>,
-    pub beta_ledger_state: LedgerState<BL>,
+    pub alpha_ledger_state: LedgerState<AL, AA>,
+    pub beta_ledger_state: LedgerState<BL, BA>,
     #[derivative(Debug = "ignore")]
     pub secret_source: Arc<dyn SecretSource>,
-    pub secret: Option<Secret>,
-    pub error: Option<rfc003::Error>,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
@@ -34,8 +32,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
-            secret: None,
-            error: None,
         }
     }
 
@@ -49,8 +45,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
-            secret: None,
-            error: None,
         }
     }
 
@@ -64,8 +58,6 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
-            secret: None,
-            error: None,
         }
     }
 
@@ -84,19 +76,19 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     type AA = AA;
     type BA = BA;
 
-    fn set_secret(&mut self, secret: Secret) {
-        self.secret = Some(secret)
+    fn expected_alpha_asset(&self) -> Self::AA {
+        self.swap_communication.request().alpha_asset
     }
 
-    fn set_error(&mut self, error: rfc003::Error) {
-        self.error = Some(error)
+    fn expected_beta_asset(&self) -> Self::BA {
+        self.swap_communication.request().beta_asset
     }
 
-    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL> {
+    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL, AA> {
         &mut self.alpha_ledger_state
     }
 
-    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL> {
+    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL, BA> {
         &mut self.beta_ledger_state
     }
 }

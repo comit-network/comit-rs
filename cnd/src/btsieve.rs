@@ -4,7 +4,7 @@
 pub mod bitcoin;
 pub mod ethereum;
 
-use tokio::prelude::{Future, Stream};
+use futures::{Future, Stream};
 
 pub trait MatchingTransactions<P>: Send + Sync + 'static {
     type Transaction;

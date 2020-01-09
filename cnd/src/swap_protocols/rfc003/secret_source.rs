@@ -1,4 +1,4 @@
-use crate::{seed::Seed, swap_protocols::rfc003::Secret};
+use crate::{seed::SwapSeed, swap_protocols::rfc003::Secret};
 use bitcoin::secp256k1::SecretKey;
 
 pub trait SecretSource: Send + Sync + 'static {
@@ -7,7 +7,7 @@ pub trait SecretSource: Send + Sync + 'static {
     fn secp256k1_refund(&self) -> SecretKey;
 }
 
-impl SecretSource for Seed {
+impl SecretSource for SwapSeed {
     fn secret(&self) -> Secret {
         self.sha256_with_seed(&[b"SECRET"]).into()
     }

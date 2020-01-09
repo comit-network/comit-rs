@@ -10,9 +10,8 @@ use crate::{
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use async_std::sync::{Receiver, Sender};
-use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
-use std::{collections::HashSet, fmt::Debug, ops::Add};
-use tokio::timer::Delay;
+use futures_core::{compat::Future01CompatExt, future::join};
+use std::{collections::HashSet, fmt::Debug};
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
@@ -26,7 +25,6 @@ where
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -34,8 +32,7 @@ where
     let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
     let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
 
-    spawn(
-        connector.clone(),
+    tokio::task::spawn(
         process_latest_blocks(
             connector.clone(),
             block_queue.clone(),
@@ -46,8 +43,7 @@ where
 
     let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
-    spawn(
-        connector.clone(),
+    tokio::task::spawn(
         process_blocks_by_hash(
             connector.clone(),
             block_queue.clone(),
@@ -56,8 +52,7 @@ where
         ),
     );
 
-    spawn(
-        connector.clone(),
+    tokio::task::spawn(
         process_next_find_parent(
             connector.clone(),
             next_find_parent.clone(),
@@ -65,8 +60,7 @@ where
         ),
     );
 
-    spawn(
-        connector.clone(),
+    tokio::task::spawn(
         process_next_look_in_the_past(
             connector.clone(),
             block_queue.clone(),
@@ -77,8 +71,7 @@ where
 
     let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
 
-    spawn(
-        connector.clone(),
+    tokio::task::spawn(
         process_next_block(
             connector.clone(),
             next_block,
@@ -106,7 +99,6 @@ async fn process_latest_blocks<C, E>(
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -159,7 +151,6 @@ async fn process_blocks_by_hash<C, E>(
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -206,7 +197,6 @@ async fn process_next_find_parent<C, E>(
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -239,7 +229,6 @@ async fn process_next_look_in_the_past<C, E>(
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -295,7 +284,6 @@ async fn process_next_block<C, E>(
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Debug + Send + 'static,
 {
@@ -365,13 +353,4 @@ async fn process_next_block<C, E>(
             None => unreachable!("senders cannot be dropped"),
         }
     }
-}
-
-fn spawn(
-    mut executor: impl tokio::executor::Executor,
-    future: impl std::future::Future<Output = ()> + Send + 'static + Sized,
-) {
-    executor
-        .spawn(Box::new(future.unit_error().boxed().compat()))
-        .unwrap()
 }

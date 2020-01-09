@@ -92,7 +92,7 @@ pub enum AllowedOrigins {
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, PartialEq, derivative::Derivative)]
+#[derive(Clone, Copy, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
     #[derivative(Default(value = "LevelFilter::Debug"))]

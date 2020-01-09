@@ -5,7 +5,7 @@ use std::{
     str::FromStr,
 };
 
-#[derive(PartialEq, Debug, thiserror::Error)]
+#[derive(PartialEq, Clone, Copy, Debug, thiserror::Error)]
 pub enum FromErr {
     #[error("invalid length, expected: {expected:?}, got: {got:?}")]
     InvalidLength { expected: usize, got: usize },

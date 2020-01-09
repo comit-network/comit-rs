@@ -63,7 +63,7 @@ export interface E2ETestConfig {
 }
 
 async function runTests(testFiles: string[]) {
-    const ledgerRunner = new LedgerRunner(logDir);
+    const ledgerRunner = new LedgerRunner(projectRoot, logDir);
 
     const nodeRunner = new CndRunner(projectRoot, logDir);
 

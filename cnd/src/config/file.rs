@@ -39,7 +39,7 @@ impl File {
     }
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Logging {
     pub level: Option<LevelFilter>,
     pub structured: Option<bool>,
@@ -64,13 +64,13 @@ pub enum AllowedOrigins {
     Some(Vec<String>),
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum All {
     All,
 }
 
-#[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum None {
     None,

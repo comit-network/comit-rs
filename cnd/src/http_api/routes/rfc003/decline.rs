@@ -4,7 +4,7 @@ use crate::{
 };
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Copy, Deserialize)]
 pub struct DeclineBody {
     pub reason: Option<HttpApiSwapDeclineReason>,
 }
@@ -29,7 +29,7 @@ pub fn to_swap_decline_reason(
     })
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Deserialize)]
 pub enum HttpApiSwapDeclineReason {
     UnsatisfactoryRate,
 }
