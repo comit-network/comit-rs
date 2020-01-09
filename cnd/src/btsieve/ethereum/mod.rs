@@ -9,9 +9,9 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
-use async_std::sync::{Receiver, Sender};
 use futures_core::{compat::Future01CompatExt, future::join};
 use std::{collections::HashSet, fmt::Debug};
+use tokio::sync::mpsc::{self, Receiver, Sender};
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
@@ -28,9 +28,9 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
-    let (block_queue, next_block) = async_std::sync::channel(1);
-    let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
-    let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
+    let (block_queue, next_block) = mpsc::channel(1);
+    let (find_parent_queue, next_find_parent) = mpsc::channel(5);
+    let (look_in_the_past_queue, next_look_in_the_past) = mpsc::channel(5);
 
     tokio::task::spawn(process_latest_blocks(
         connector.clone(),
@@ -39,7 +39,7 @@ where
         look_in_the_past_queue.clone(),
     ));
 
-    let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
+    let (fetch_block_by_hash_queue, next_hash) = mpsc::channel(5);
 
     tokio::task::spawn(process_blocks_by_hash(
         connector.clone(),
@@ -50,7 +50,7 @@ where
 
     tokio::task::spawn(process_next_find_parent(
         connector.clone(),
-        next_find_parent.clone(),
+        next_find_parent,
         fetch_block_by_hash_queue.clone(),
     ));
 
@@ -61,7 +61,7 @@ where
         reference_timestamp,
     ));
 
-    let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
+    let (matching_transaction_queue, mut matching_transaction) = mpsc::channel(1);
 
     tokio::task::spawn(process_next_block(
         connector.clone(),
@@ -82,9 +82,9 @@ where
 /// to the `block_queue` and `find_parent_queue` channels.
 async fn process_latest_blocks<C, E>(
     mut connector: C,
-    block_queue: Sender<Block>,
-    find_parent_queue: Sender<(Hash, Hash)>,
-    look_in_the_past_queue: Sender<Hash>,
+    mut block_queue: Sender<Block>,
+    mut find_parent_queue: Sender<(Hash, Hash)>,
+    mut look_in_the_past_queue: Sender<Hash>,
 ) where
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
@@ -104,14 +104,14 @@ async fn process_latest_blocks<C, E>(
                 if !sent_blockhashes.contains(&blockhash) {
                     sent_blockhashes.insert(blockhash);
 
-                    join(
+                    let _ = join(
                         block_queue.send(block.clone()),
                         find_parent_queue.send((blockhash, block.parent_hash)),
                     )
                     .await;
 
                     if sent_blockhashes.len() == 1 {
-                        look_in_the_past_queue.send(block.parent_hash).await
+                        let _ = look_in_the_past_queue.send(block.parent_hash).await;
                     };
                 }
             }
@@ -134,8 +134,8 @@ async fn process_latest_blocks<C, E>(
 /// `find_parent_queue`.
 async fn process_blocks_by_hash<C, E>(
     connector: C,
-    block_queue: Sender<Block>,
-    find_parent_queue: Sender<(Hash, Hash)>,
+    mut block_queue: Sender<Block>,
+    mut find_parent_queue: Sender<(Hash, Hash)>,
     next_block_channel: (Sender<Hash>, Receiver<Hash>),
 ) where
     C: LatestBlock<Block = Option<Block>, Error = E>
@@ -144,7 +144,7 @@ async fn process_blocks_by_hash<C, E>(
         + Clone,
     E: Debug + Send + 'static,
 {
-    let (fetch_block_by_hash_queue, next_hash) = next_block_channel;
+    let (mut fetch_block_by_hash_queue, mut next_hash) = next_block_channel;
     let mut sent_blockhashes: HashSet<H256> = HashSet::new();
 
     loop {
@@ -155,7 +155,7 @@ async fn process_blocks_by_hash<C, E>(
                         if !sent_blockhashes.contains(&blockhash) {
                             sent_blockhashes.insert(blockhash);
 
-                            join(
+                            let _ = join(
                                 block_queue.send(block.clone()),
                                 find_parent_queue.send((blockhash, block.parent_hash)),
                             )
@@ -168,7 +168,7 @@ async fn process_blocks_by_hash<C, E>(
                     Err(e) => {
                         log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
 
-                        fetch_block_by_hash_queue.send(blockhash).await
+                        let _ = fetch_block_by_hash_queue.send(blockhash).await;
                     }
                 };
             }
@@ -181,8 +181,8 @@ async fn process_blocks_by_hash<C, E>(
 /// `fetch_block_by_hash` if it has not already been seen.
 async fn process_next_find_parent<C, E>(
     _connector: C,
-    next_find_parent: Receiver<(Hash, Hash)>,
-    fetch_block_by_hash_queue: Sender<Hash>,
+    mut next_find_parent: Receiver<(Hash, Hash)>,
+    mut fetch_block_by_hash_queue: Sender<Hash>,
 ) where
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
@@ -198,7 +198,7 @@ async fn process_next_find_parent<C, E>(
                 prev_blockhashes.insert(blockhash);
 
                 if !prev_blockhashes.contains(&parent_blockhash) && prev_blockhashes.len() > 1 {
-                    fetch_block_by_hash_queue.send(parent_blockhash).await
+                    let _ = fetch_block_by_hash_queue.send(parent_blockhash).await;
                 }
             }
             None => unreachable!("senders cannot be dropped"),
@@ -212,7 +212,7 @@ async fn process_next_find_parent<C, E>(
 /// `block_queue` and the block hash of parent to the `look_in_the_past_queue`.
 async fn process_next_look_in_the_past<C, E>(
     connector: C,
-    block_queue: Sender<Block>,
+    mut block_queue: Sender<Block>,
     look_in_the_past_channel: (Sender<Hash>, Receiver<Hash>),
     reference_timestamp: Option<u32>,
 ) where
@@ -223,7 +223,7 @@ async fn process_next_look_in_the_past<C, E>(
     E: Debug + Send + 'static,
 {
     let reference_timestamp = reference_timestamp.map(U256::from);
-    let (look_in_the_past_queue, next_look_in_the_past) = look_in_the_past_channel;
+    let (mut look_in_the_past_queue, mut next_look_in_the_past) = look_in_the_past_channel;
 
     loop {
         match next_look_in_the_past.recv().await {
@@ -234,7 +234,7 @@ async fn process_next_look_in_the_past<C, E>(
                             .map(|reference_timestamp| reference_timestamp <= block.timestamp)
                             .unwrap_or(false);
                         if younger_than_reference_timestamp {
-                            join(
+                            let _ = join(
                                 block_queue.send(block.clone()),
                                 look_in_the_past_queue.send(block.parent_hash),
                             )
@@ -252,7 +252,7 @@ async fn process_next_look_in_the_past<C, E>(
                         );
                         // Delay here otherwise the error code path can go into a hot loop.
                         tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-                        look_in_the_past_queue.send(parent_blockhash).await
+                        let _ = look_in_the_past_queue.send(parent_blockhash).await;
                     }
                 }
             }
@@ -267,8 +267,8 @@ async fn process_next_look_in_the_past<C, E>(
 /// is found.
 async fn process_next_block<C, E>(
     connector: C,
-    next_block: Receiver<Block>,
-    matching_transaction_queue: Sender<TransactionAndReceipt>,
+    mut next_block: Receiver<Block>,
+    mut matching_transaction_queue: Sender<TransactionAndReceipt>,
     pattern: TransactionPattern,
 ) where
     C: LatestBlock<Block = Option<Block>, Error = E>
@@ -303,7 +303,7 @@ async fn process_next_block<C, E>(
                         };
 
                         if pattern.matches(&transaction, Some(&receipt)) {
-                            matching_transaction_queue
+                            let _ = matching_transaction_queue
                                 .send(TransactionAndReceipt {
                                     transaction,
                                     receipt,
@@ -331,7 +331,7 @@ async fn process_next_block<C, E>(
                             }
                         };
 
-                        matching_transaction_queue
+                        let _ = matching_transaction_queue
                             .send(TransactionAndReceipt {
                                 transaction,
                                 receipt,
