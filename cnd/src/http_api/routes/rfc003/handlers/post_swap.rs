@@ -2,10 +2,10 @@ use crate::{
     db::{Save, Sqlite, Swap},
     ethereum,
     http_api::{HttpAsset, HttpLedger},
+    init_swap::init_accepted_swap,
     network::{DialInformation, Network},
     seed::DeriveSwapSeed,
     swap_protocols::{
-        self,
         asset::Asset,
         ledger,
         rfc003::{
@@ -223,12 +223,7 @@ where
                 Ok(accept) => {
                     Save::save(&dependencies, accept).await?;
 
-                    swap_protocols::init_accepted_swap(
-                        &dependencies,
-                        swap_request,
-                        accept,
-                        Role::Alice,
-                    )?;
+                    init_accepted_swap(&dependencies, swap_request, accept, Role::Alice)?;
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {}", decline);

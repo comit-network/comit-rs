@@ -8,11 +8,11 @@ use crate::{
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
     },
+    init_swap::init_accepted_swap,
     libp2p_comit_ext::ToHeader,
     network::Network,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        self,
         actions::Actions,
         rfc003::{
             self,
@@ -82,12 +82,7 @@ where
                 })?;
 
                 let swap_request = state.request();
-                swap_protocols::init_accepted_swap(
-                    &dependencies,
-                    swap_request,
-                    accept_message,
-                    types.role,
-                )?;
+                init_accepted_swap(&dependencies, swap_request, accept_message, types.role)?;
 
                 Ok(ActionResponseBody::None)
             }
