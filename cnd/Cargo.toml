@@ -27,7 +27,7 @@ futures-core = { version = "0.3", features = ["alloc", "compat", "async-await"],
 genawaiter = { version = "0.2" }
 hex = "0.4"
 hex-serde = "0.1.0"
-http-api-problem = "0.13"
+http-api-problem = "0.14"
 lazy_static = "1"
 libp2p = { version = "0.13" }
 libp2p-comit = { path = "../libp2p-comit" }
