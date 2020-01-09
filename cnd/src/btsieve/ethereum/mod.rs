@@ -32,53 +32,43 @@ where
     let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
     let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
 
-    tokio::task::spawn(
-        process_latest_blocks(
-            connector.clone(),
-            block_queue.clone(),
-            find_parent_queue.clone(),
-            look_in_the_past_queue.clone(),
-        ),
-    );
+    tokio::task::spawn(process_latest_blocks(
+        connector.clone(),
+        block_queue.clone(),
+        find_parent_queue.clone(),
+        look_in_the_past_queue.clone(),
+    ));
 
     let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
-    tokio::task::spawn(
-        process_blocks_by_hash(
-            connector.clone(),
-            block_queue.clone(),
-            find_parent_queue.clone(),
-            (fetch_block_by_hash_queue.clone(), next_hash),
-        ),
-    );
+    tokio::task::spawn(process_blocks_by_hash(
+        connector.clone(),
+        block_queue.clone(),
+        find_parent_queue.clone(),
+        (fetch_block_by_hash_queue.clone(), next_hash),
+    ));
 
-    tokio::task::spawn(
-        process_next_find_parent(
-            connector.clone(),
-            next_find_parent.clone(),
-            fetch_block_by_hash_queue.clone(),
-        ),
-    );
+    tokio::task::spawn(process_next_find_parent(
+        connector.clone(),
+        next_find_parent.clone(),
+        fetch_block_by_hash_queue.clone(),
+    ));
 
-    tokio::task::spawn(
-        process_next_look_in_the_past(
-            connector.clone(),
-            block_queue.clone(),
-            (look_in_the_past_queue.clone(), next_look_in_the_past),
-            reference_timestamp,
-        ),
-    );
+    tokio::task::spawn(process_next_look_in_the_past(
+        connector.clone(),
+        block_queue.clone(),
+        (look_in_the_past_queue.clone(), next_look_in_the_past),
+        reference_timestamp,
+    ));
 
     let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
 
-    tokio::task::spawn(
-        process_next_block(
-            connector.clone(),
-            next_block,
-            matching_transaction_queue,
-            pattern,
-        ),
-    );
+    tokio::task::spawn(process_next_block(
+        connector.clone(),
+        next_block,
+        matching_transaction_queue,
+        pattern,
+    ));
 
     matching_transaction
         .recv()
