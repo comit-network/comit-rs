@@ -30,6 +30,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
 };
+use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
 
@@ -37,7 +38,7 @@ use std::{
 #[derivative(Debug)]
 pub struct Sqlite {
     #[derivative(Debug = "ignore")]
-    connection: Arc<async_std::sync::Mutex<SqliteConnection>>,
+    connection: Arc<Mutex<SqliteConnection>>,
 }
 
 impl Sqlite {
@@ -66,7 +67,7 @@ impl Sqlite {
         log::info!("SQLite database file: {}", file.display());
 
         Ok(Sqlite {
-            connection: Arc::new(async_std::sync::Mutex::new(connection)),
+            connection: Arc::new(Mutex::new(connection)),
         })
     }
 
