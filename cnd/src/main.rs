@@ -93,7 +93,6 @@ fn main() -> anyhow::Result<()> {
         seed,
         swarm: Arc::clone(&swarm),
         db: database,
-        task_executor: runtime.executor(),
     };
 
     runtime.block_on(

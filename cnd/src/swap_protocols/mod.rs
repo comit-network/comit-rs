@@ -1,14 +1,12 @@
 pub mod actions;
 pub mod asset;
 mod facade;
-mod init_swap;
 pub mod ledger;
 pub mod rfc003;
 mod swap_id;
 
 pub use self::{
     facade::*,
-    init_swap::*,
     ledger::{Ledger, LedgerKind},
     swap_id::*,
 };
