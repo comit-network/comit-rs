@@ -4,7 +4,7 @@ pub mod ether;
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{secret_source::SecretSource, state_machine::HtlcParams, Ledger, Secret},
+    rfc003::{create_swap::HtlcParams, secret_source::SecretSource, Ledger, Secret},
 };
 use std::marker::PhantomData;
 

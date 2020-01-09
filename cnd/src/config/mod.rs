@@ -18,7 +18,7 @@ pub struct Network {
     pub listen: Vec<Multiaddr>,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Socket {
     pub address: IpAddr,
     pub port: u16,

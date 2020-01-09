@@ -57,3 +57,7 @@ TAGS
 # `cargo cov test` artifacts
 *.gcno
 *.gcda
+
+# Blockchain nodes artifacts
+blockchain_nodes/bitcoin/
+blockchain_nodes/parity/parity

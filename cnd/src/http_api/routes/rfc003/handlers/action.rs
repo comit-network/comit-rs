@@ -1,6 +1,5 @@
 use crate::{
-    db::{DetermineTypes, Save, Saver},
-    ethereum::{Erc20Token, EtherQuantity},
+    db::{DetermineTypes, Save},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -11,50 +10,39 @@ use crate::{
     },
     libp2p_comit_ext::ToHeader,
     network::Network,
-    seed::SwapSeed,
+    seed::DeriveSwapSeed,
     swap_protocols::{
         self,
         actions::Actions,
-        ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,
             actions::{Action, ActionKind},
             bob::State,
-            events::HtlcEvents,
             messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
         },
-        SwapId,
+        Facade, SwapId,
     },
     Scribe,
 };
 use anyhow::Context;
-use bitcoin::Amount;
 use libp2p_comit::frame::Response;
 use std::{fmt::Debug, string::ToString};
 use tokio::executor::Executor;
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-pub async fn handle_action<
-    D: StateStore
-        + Network
-        + SwapSeed
-        + Saver
-        + DetermineTypes
-        + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>
-        + Executor
-        + Clone,
->(
+pub async fn handle_action<S: Network>(
     method: http::Method,
     swap_id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: D,
-) -> anyhow::Result<ActionResponseBody> {
+    dependencies: Facade<S>,
+) -> anyhow::Result<ActionResponseBody>
+where
+    S: Send + Sync + 'static,
+{
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
@@ -78,7 +66,7 @@ pub async fn handle_action<
                     })?;
 
                 let accept_message =
-                    body.into_accept_message(swap_id, &SwapSeed::swap_seed(&dependencies, swap_id));
+                    body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
 
                 Save::save(&dependencies, accept_message).await?;
 
@@ -115,11 +103,11 @@ pub async fn handle_action<
                     reason: to_swap_decline_reason(body.reason),
                 };
 
-                Save::save(&dependencies, decline_message.clone()).await?;
+                Save::save(&dependencies, decline_message).await?;
 
                 log::trace!("received decline action: {}", swap_id);
 
-                let response = rfc003_decline_response(decline_message.clone());
+                let response = rfc003_decline_response(decline_message);
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(
                         "failed to send response through channel for swap {}",
@@ -128,8 +116,8 @@ pub async fn handle_action<
                 })?;
 
                 let swap_request = state.request();
-                let seed = dependencies.swap_seed(swap_id);
-                let state = State::declined(swap_request, decline_message.clone(), seed);
+                let seed = dependencies.derive_swap_seed(swap_id);
+                let state = State::declined(swap_request, decline_message, seed);
                 StateStore::insert(&dependencies, swap_id, state);
 
                 Ok(ActionResponseBody::None)
@@ -161,7 +149,7 @@ pub struct InvalidActionInvocation {
     method: http::Method,
 }
 
-#[derive(Debug, thiserror::Error, PartialEq)]
+#[derive(Debug, Clone, Copy, thiserror::Error, PartialEq)]
 #[error("action {action_kind} is invalid for this swap")]
 pub struct InvalidAction {
     action_kind: ActionKind,

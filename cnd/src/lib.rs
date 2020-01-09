@@ -1,4 +1,9 @@
-#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
+#![warn(
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    rust_2018_idioms
+)]
 #![forbid(unsafe_code)]
 
 // Cannot do `#[strum_discriminants(derive(strum_macros::EnumString))]` at the

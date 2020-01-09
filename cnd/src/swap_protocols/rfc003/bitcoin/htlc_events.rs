@@ -7,103 +7,70 @@ use crate::{
         rfc003::{
             self,
             bitcoin::extract_secret::extract_secret,
-            events::{
-                Deployed, DeployedFuture, Funded, FundedFuture, HtlcEvents, Redeemed,
-                RedeemedOrRefundedFuture, Refunded,
-            },
-            state_machine::HtlcParams,
+            create_swap::HtlcParams,
+            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
         },
     },
-    Scribe,
 };
 use bitcoin::{Amount, OutPoint};
-use futures::{
-    future::{self, Either},
-    Future,
-};
-use futures_core::future::{FutureExt, TryFutureExt};
+use futures_core::future::{self, Either};
 
+#[async_trait::async_trait]
 impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
-    fn htlc_deployed(
+    async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
-    ) -> Box<DeployedFuture<Bitcoin>> {
-        let future = {
-            let connector = self.clone();
-            let pattern = TransactionPattern {
-                to_address: Some(htlc_params.compute_address()),
-                from_outpoint: None,
-                unlock_script: None,
-            };
-
-            async {
-                matching_transaction(
-                    connector,
-                    pattern,
-                    None,
-                )
-                .await
-            }
-            .boxed()
-            .compat()
-            .map_err(|_| rfc003::Error::Btsieve)
-            .and_then({
-                move |tx| {
-                    let (vout, _txout) = tx.find_output(&htlc_params.compute_address())
-                        .ok_or_else(|| {
-                            rfc003::Error::Internal(
-                                "Query returned Bitcoin transaction that didn't match the requested address".into(),
-                            )
-                        })?;
-                    Ok(Deployed {
-                        location: OutPoint {
-                            txid: tx.txid(),
-                            vout,
-                        },
-                        transaction: tx,
-                    })
-                }
-            })
+    ) -> Result<Deployed<Bitcoin>, rfc003::Error> {
+        let connector = self.clone();
+        let pattern = TransactionPattern {
+            to_address: Some(htlc_params.compute_address()),
+            from_outpoint: None,
+            unlock_script: None,
         };
 
-        Box::new(future)
+        let transaction = matching_transaction(connector, pattern, None)
+            .await
+            .map_err(|_| rfc003::Error::Btsieve)?;
+
+        let (vout, _txout) = transaction
+            .find_output(&htlc_params.compute_address())
+            .ok_or_else(|| {
+                rfc003::Error::Internal(
+                    "Query returned Bitcoin transaction that didn't match the requested address"
+                        .into(),
+                )
+            })?;
+
+        Ok(Deployed {
+            location: OutPoint {
+                txid: transaction.txid(),
+                vout,
+            },
+            transaction,
+        })
     }
 
-    fn htlc_funded(
+    async fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> Box<FundedFuture<Bitcoin, Amount>> {
+    ) -> Result<Funded<Bitcoin, Amount>, rfc003::Error> {
         let tx = &htlc_deployment.transaction;
         let asset = Amount::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
-        Box::new(future::ok(Funded {
+
+        Ok(Funded {
             transaction: tx.clone(),
             asset,
-        }))
+        })
     }
 
-    fn htlc_redeemed_or_refunded(
+    async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
         _htlc_funding: &Funded<Bitcoin, Amount>,
-    ) -> Box<RedeemedOrRefundedFuture<Bitcoin>> {
-        let refunded_future = {
-            let connector = self.clone();
-            let pattern = TransactionPattern {
-                to_address: None,
-                from_outpoint: Some(htlc_deployment.location),
-                unlock_script: Some(vec![vec![]]),
-            };
-
-            async { matching_transaction(connector, pattern, None).await }
-                .boxed()
-                .compat()
-                .map_err(|_| rfc003::Error::Btsieve)
-                .and_then(|transaction| Ok(Refunded { transaction }))
-        };
-
-        let redeemed_future = {
+    ) -> Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>, rfc003::Error> {
+        let redeemed = async {
             let connector = self.clone();
             let pattern = TransactionPattern {
                 to_address: None,
@@ -111,42 +78,51 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
                 unlock_script: Some(vec![vec![1u8]]),
             };
 
-            async { matching_transaction(connector, pattern, None).await }
-                .boxed()
-                .compat()
-                .map_err(|_| rfc003::Error::Btsieve)
-                .and_then({
-                    move |tx| {
-                        let secret =
-                            extract_secret(&tx, &htlc_params.secret_hash).ok_or_else(|| {
-                                log::error!(
-                                    "Redeem transaction didn't have secret it in: {}",
-                                    tx.scribe()
-                                );
-                                rfc003::Error::Internal(
-                                    "Redeem transaction didn't have the secret in it".into(),
-                                )
-                            })?;
+            let transaction = matching_transaction(connector, pattern, None)
+                .await
+                .map_err(|_| rfc003::Error::Btsieve)?;
+            let secret =
+                extract_secret(&transaction, &htlc_params.secret_hash).ok_or_else(|| {
+                    log::error!(
+                        "Redeem transaction didn't have secret it in: {:?}",
+                        transaction
+                    );
+                    rfc003::Error::Internal(
+                        "Redeem transaction didn't have the secret in it".into(),
+                    )
+                })?;
 
-                        Ok(Redeemed {
-                            transaction: tx,
-                            secret,
-                        })
-                    }
-                })
+            Ok(Redeemed {
+                transaction,
+                secret,
+            })
         };
 
-        Box::new(
-            redeemed_future
-                .select2(refunded_future)
-                .map(|tx| match tx {
-                    Either::A((tx, _)) => Either::A(tx),
-                    Either::B((tx, _)) => Either::B(tx),
-                })
-                .map_err(|either| match either {
-                    Either::A((error, _)) => error,
-                    Either::B((error, _)) => error,
-                }),
-        )
+        let refunded = async {
+            let connector = self.clone();
+            let pattern = TransactionPattern {
+                to_address: None,
+                from_outpoint: Some(htlc_deployment.location),
+                unlock_script: Some(vec![vec![]]),
+            };
+            let transaction = matching_transaction(connector, pattern, None)
+                .await
+                .map_err(|_| rfc003::Error::Btsieve)?;
+
+            Ok(Refunded { transaction })
+        };
+
+        futures_core::pin_mut!(redeemed);
+        futures_core::pin_mut!(refunded);
+
+        match future::try_select(redeemed, refunded).await {
+            Ok(Either::Left((tx, _))) => Ok(Either::Left(tx)),
+            Ok(Either::Right((tx, _))) => Ok(Either::Right(tx)),
+            Err(either) => {
+                let (error, _other_future) = either.factor_first();
+
+                Err(error)
+            }
+        }
     }
 }

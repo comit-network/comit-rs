@@ -52,7 +52,7 @@ pub struct Accept<AL: Ledger, BL: Ledger> {
 ///
 /// This does _not_ represent the actual network message, that is why it also
 /// does not implement Serialize.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Decline {
     pub swap_id: SwapId,
     pub reason: Option<SwapDeclineReason>,
@@ -88,13 +88,13 @@ pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
 }
 
 /// Body of the rfc003 decline message
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DeclineResponseBody {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reason: Option<SwapDeclineReason>,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SwapDeclineReason {
     UnsatisfactoryRate,

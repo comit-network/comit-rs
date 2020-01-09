@@ -4,25 +4,24 @@ mod transition_save;
 pub mod alice;
 pub mod bitcoin;
 pub mod bob;
+pub mod create_swap;
 pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
-pub mod state_machine;
 pub mod state_store;
 
 pub mod actions;
 mod actor_state;
 mod ledger;
-mod save_state;
 mod secret;
 mod secret_source;
 
 pub use self::{
     actor_state::ActorState,
+    create_swap::create_swap,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
-    save_state::SaveState,
     secret::{FromErr, Secret, SecretHash},
     secret_source::*,
 };
@@ -59,4 +58,14 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
         request: Request<AL, BL, AA, BA>,
         response: Decline,
     },
+}
+
+impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapCommunication<AL, BL, AA, BA> {
+    pub fn request(&self) -> &Request<AL, BL, AA, BA> {
+        match self {
+            SwapCommunication::Accepted { request, .. } => request,
+            SwapCommunication::Proposed { request } => request,
+            SwapCommunication::Declined { request, .. } => request,
+        }
+    }
 }

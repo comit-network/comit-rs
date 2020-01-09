@@ -1,7 +1,10 @@
 import * as bcoin from "bcoin";
 import BitcoinRpcClient from "bitcoin-core";
-import { Asset, BigNumber, BitcoinWallet as BitcoinWalletSdk } from "comit-sdk";
-import { BigNumberish } from "ethers/utils";
+import {
+    Asset,
+    BigNumber,
+    InMemoryBitcoinWallet as BitcoinWalletSdk,
+} from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { BitcoinNodeConfig } from "../../lib/bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
@@ -47,12 +50,12 @@ export class BitcoinWallet implements Wallet {
         await this.bitcoinRpcClient.generate(101);
         await this.bitcoinRpcClient.sendToAddress(
             await this.address(),
-            toBitcoin(minimumExpectedBalance.mul(2).toString()) // make sure we have at least twice as much
+            toBitcoin(minimumExpectedBalance.times(2).toString()) // make sure we have at least twice as much
         );
 
         await pollUntilMinted(
             this,
-            startingBalance.add(minimumExpectedBalance)
+            startingBalance.plus(minimumExpectedBalance)
         );
     }
 
@@ -60,7 +63,7 @@ export class BitcoinWallet implements Wallet {
         return this.inner.getAddress();
     }
 
-    public async getBalance(): Promise<BigNumberish> {
-        return toSatoshi(await this.inner.getBalance());
+    public async getBalance(): Promise<BigNumber> {
+        return new BigNumber(toSatoshi(await this.inner.getBalance()));
     }
 }
