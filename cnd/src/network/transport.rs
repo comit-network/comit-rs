@@ -1,39 +1,36 @@
 use libp2p::{
     core::{
-        muxing::{StreamMuxer, StreamMuxerBox},
+        either::EitherError,
+        muxing::StreamMuxerBox,
+        transport::{boxed::Boxed, timeout::TransportTimeoutError},
         upgrade::{SelectUpgrade, Version},
+        UpgradeError,
     },
-    dns::DnsConfig,
+    dns::{DnsConfig, DnsErr},
     identity,
     mplex::MplexConfig,
-    secio::SecioConfig,
+    secio::{SecioConfig, SecioError},
     tcp::TcpConfig,
     yamux, PeerId, Transport,
 };
-use std::{error, io, time::Duration};
+use std::{io, time::Duration};
+
+pub type ComitTransport = Boxed<
+    (PeerId, StreamMuxerBox),
+    TransportTimeoutError<
+        EitherError<
+            EitherError<DnsErr<io::Error>, UpgradeError<SecioError>>,
+            UpgradeError<EitherError<io::Error, io::Error>>,
+        >,
+    >,
+>;
 
 /// Builds a libp2p transport with the following features:
 /// - TcpConnection
 /// - DNS name resolution
 /// - authentication via secio
 /// - multiplexing via yamux or mplex
-pub fn build_comit_transport(
-    keypair: identity::Keypair,
-) -> impl Transport<
-    Output = (
-        PeerId,
-        impl StreamMuxer<
-                OutboundSubstream = impl Send,
-                Substream = impl Send,
-                Error = impl Into<io::Error>,
-            > + Send
-            + Sync,
-    ),
-    Error = impl error::Error + Send,
-    Listener = impl Send,
-    Dial = impl Send,
-    ListenerUpgrade = impl Send,
-> + Clone {
+pub fn build_comit_transport(keypair: identity::Keypair) -> ComitTransport {
     let transport = TcpConfig::new().nodelay(true);
     let transport = DnsConfig::new(transport);
 
@@ -46,4 +43,5 @@ pub fn build_comit_transport(
         ))
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(20))
+        .boxed()
 }

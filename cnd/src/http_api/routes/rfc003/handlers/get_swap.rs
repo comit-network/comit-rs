@@ -4,13 +4,7 @@ use crate::{
     swap_protocols::{Facade, SwapId},
 };
 
-pub async fn handle_get_swap<S>(
-    dependencies: Facade<S>,
-    id: SwapId,
-) -> anyhow::Result<siren::Entity>
-where
-    S: Send + Sync + 'static,
-{
+pub async fn handle_get_swap(dependencies: Facade, id: SwapId) -> anyhow::Result<siren::Entity> {
     let swap = Retrieve::get(&dependencies, &id).await?;
     let types = dependencies.determine_types(&id).await?;
 
