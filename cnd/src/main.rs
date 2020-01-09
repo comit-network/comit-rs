@@ -25,6 +25,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 use structopt::StructOpt;
+use tokio_compat::runtime::Runtime;
 
 mod cli;
 mod logging;
@@ -49,7 +50,7 @@ fn main() -> anyhow::Result<()> {
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
-    let mut runtime = tokio::runtime::Runtime::new()?;
+    let mut runtime = Runtime::new()?;
 
     let bitcoin_connector = {
         let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
@@ -57,7 +58,7 @@ fn main() -> anyhow::Result<()> {
     };
 
     let (ethereum_connector, _event_loop_handle) =
-        { Web3Connector::new(settings.clone().ethereum.node_url, runtime.executor())? };
+        { Web3Connector::new(settings.clone().ethereum.node_url)? };
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
@@ -136,7 +137,7 @@ fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
 fn spawn_warp_instance<S: Network>(
     settings: &Settings,
     peer_id: PeerId,
-    runtime: &mut tokio::runtime::Runtime,
+    runtime: &mut Runtime,
     dependencies: Facade<S>,
 ) {
     let routes = route_factory::create(

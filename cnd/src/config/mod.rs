@@ -28,13 +28,11 @@ pub struct Socket {
 pub struct Bitcoin {
     #[serde(with = "crate::config::serde_bitcoin_network")]
     pub network: bitcoin::Network,
-    #[serde(with = "url_serde")]
     pub node_url: reqwest::Url,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
-    #[serde(with = "url_serde")]
     pub node_url: reqwest::Url,
 }
 

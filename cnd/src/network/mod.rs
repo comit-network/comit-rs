@@ -37,7 +37,7 @@ use std::{
     io,
     sync::{Arc, Mutex},
 };
-use tokio::runtime::TaskExecutor;
+use tokio_compat::runtime::TaskExecutor;
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]

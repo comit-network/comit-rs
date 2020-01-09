@@ -8,11 +8,10 @@ use cnd::{
         TransactionRequest, U256,
     },
 };
-use futures_core::{FutureExt, TryFutureExt};
+use futures_core::{compat::Future01CompatExt, future};
 use reqwest::Url;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 use testcontainers::*;
-use tokio::{prelude::Future, runtime::Runtime, timer::Delay, util::FutureExt as TokioFutureExt};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum transaction pattern matching.
@@ -20,8 +19,8 @@ use tokio::{prelude::Future, runtime::Runtime, timer::Delay, util::FutureExt as 
 /// We get the default account from the node and send some money to it
 /// from the parity dev account. Afterwards we verify that the tx hash of
 /// the sent tx equals the one that we found through btsieve.
-#[test]
-fn ethereum_transaction_pattern_e2e_test() {
+#[tokio::test]
+async fn ethereum_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(images::parity_parity::ParityEthereum::default());
 
@@ -32,61 +31,49 @@ fn ethereum_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
         .unwrap();
 
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-    let (connector, _event_loop) = Web3Connector::new(url, runtime.executor()).unwrap();
+    let (connector, _event_loop) = Web3Connector::new(url).unwrap();
 
-    let mut runtime = Runtime::new().unwrap();
-
-    let accounts = runtime.block_on(client.eth().accounts()).unwrap();
+    let accounts = client.eth().accounts().compat().await.unwrap();
 
     let target_address = accounts[0];
 
-    let funding_transaction = {
-        let pattern = TransactionPattern {
-            from_address: None,
-            to_address: Some(target_address),
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: None,
-        };
-
-        async { matching_transaction(connector, pattern, None).await }
-            .unit_error()
-            .boxed()
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: Some(target_address),
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: None,
+    };
+    let funding_transaction = matching_transaction(connector, pattern, None);
+    let send_money_to_address = async {
+        tokio::time::delay_for(Duration::from_secs(2)).await;
+        client
+            .personal()
+            .send_transaction(
+                TransactionRequest {
+                    from: "00a329c0648769a73afac7f9381e08fb43dbea72".parse().unwrap(),
+                    to: Some(target_address),
+                    gas: None,
+                    gas_price: None,
+                    value: Some(U256::from(1_000_000_000u64)),
+                    data: None,
+                    nonce: None,
+                    condition: None,
+                },
+                "",
+            )
             .compat()
-            .map_err(|_| ())
+            .await
+            .unwrap()
     };
 
-    let now_in_two_seconds = Instant::now() + Duration::from_secs(2);
+    let future = future::join(send_money_to_address, funding_transaction);
 
-    let send_money_to_address = Delay::new(now_in_two_seconds)
-        .map_err(|_| ())
-        .and_then(move |_| {
-            client
-                .personal()
-                .send_transaction(
-                    TransactionRequest {
-                        from: "00a329c0648769a73afac7f9381e08fb43dbea72".parse().unwrap(),
-                        to: Some(target_address),
-                        gas: None,
-                        gas_price: None,
-                        value: Some(U256::from(1_000_000_000)),
-                        data: None,
-                        nonce: None,
-                        condition: None,
-                    },
-                    "",
-                )
-                .map_err(|_| ())
-        })
-        .map_err(|_| ());
-
-    let future = send_money_to_address.join(funding_transaction);
-
-    let future_with_timeout = future.timeout(Duration::from_secs(5));
-
-    let (actual_transaction, funding_transaction) = runtime.block_on(future_with_timeout).unwrap();
+    let (actual_transaction, funding_transaction) =
+        tokio::time::timeout(Duration::from_secs(5), future)
+            .await
+            .unwrap();
 
     assert_eq!(funding_transaction.transaction.hash, actual_transaction)
 }

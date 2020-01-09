@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use futures_core::{FutureExt, TryFutureExt};
-use tokio::executor::Executor;
+use tokio_executor01::Executor;
 
 #[allow(clippy::cognitive_complexity)]
 pub fn init_accepted_swap<D, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(

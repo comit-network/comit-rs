@@ -10,7 +10,7 @@ use crate::{
     },
 };
 use bitcoin::Amount;
-use tokio::executor::Executor;
+use tokio_executor01::Executor;
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn load_swaps_from_database<D>(dependencies: D) -> anyhow::Result<()>
