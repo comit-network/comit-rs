@@ -1,6 +1,6 @@
 on:
   push:
-    branches:    
+    branches:
       - master
       - test-stale-bot
 name: stale
