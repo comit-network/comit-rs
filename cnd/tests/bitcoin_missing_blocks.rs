@@ -3,12 +3,10 @@ pub mod bitcoin_helper;
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
 use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
-use futures_core::{FutureExt, TryFutureExt};
 use std::str::FromStr;
-use tokio::prelude::Future;
 
-#[test]
-fn find_transaction_in_missing_block() {
+#[tokio::test]
+async fn find_transaction_in_missing_block() {
     let connector = BitcoinConnectorMock::new(
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
@@ -23,27 +21,18 @@ fn find_transaction_in_missing_block() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                to_address: Some(
-                    Address::from_str(
-                        include_str!("test_data/bitcoin/find_transaction_in_missing_block/address")
-                            .trim(),
-                    )
-                    .unwrap(),
-                ),
-                from_outpoint: None,
-                unlock_script: None,
-            },
-            None,
-        )
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!("test_data/bitcoin/find_transaction_in_missing_block/address").trim(),
+            )
+            .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
+    let expected_transaction = matching_transaction(connector, pattern, None)
         .await
-    }
-        .boxed()
-        .compat()
-        .wait()
         .unwrap();
 
     assert_eq!(
@@ -52,8 +41,8 @@ fn find_transaction_in_missing_block() {
     );
 }
 
-#[test]
-fn find_transaction_in_missing_block_with_big_gap() {
+#[tokio::test]
+async fn find_transaction_in_missing_block_with_big_gap() {
     let connector = BitcoinConnectorMock::new(
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block1.hex"),
@@ -71,29 +60,21 @@ fn find_transaction_in_missing_block_with_big_gap() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                to_address: Some(
-                    Address::from_str(
-                        include_str!(
-                        "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
-                    )
-                        .trim(),
-                    )
-                    .unwrap(),
-                ),
-                from_outpoint: None,
-                unlock_script: None,
-            },
-            None,
-        )
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!(
+                    "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
+                )
+                .trim(),
+            )
+            .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
+    let expected_transaction = matching_transaction(connector, pattern, None)
         .await
-    }
-        .boxed()
-        .compat()
-        .wait()
         .unwrap();
 
     assert_eq!(
@@ -104,8 +85,8 @@ fn find_transaction_in_missing_block_with_big_gap() {
     );
 }
 
-#[test]
-fn find_transaction_if_blockchain_reorganisation() {
+#[tokio::test]
+async fn find_transaction_if_blockchain_reorganisation() {
     let connector = BitcoinConnectorMock::new(
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation/block1.hex"),
@@ -119,29 +100,21 @@ fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                to_address: Some(
-                    Address::from_str(
-                        include_str!(
-                        "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
-                    )
-                        .trim(),
-                    )
-                    .unwrap(),
-                ),
-                from_outpoint: None,
-                unlock_script: None,
-            },
-            None,
-        )
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!(
+                    "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
+                )
+                .trim(),
+            )
+            .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
+    let expected_transaction = matching_transaction(connector, pattern, None)
         .await
-    }
-        .boxed()
-        .compat()
-        .wait()
         .unwrap();
 
     assert_eq!(
@@ -152,8 +125,8 @@ fn find_transaction_if_blockchain_reorganisation() {
     );
 }
 
-#[test]
-fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
+#[tokio::test]
+async fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
     let connector = BitcoinConnectorMock::new(
         vec![
             include_hex!("./test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/block4.hex"),
@@ -170,28 +143,21 @@ fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let expected_transaction: bitcoin::Transaction = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                to_address: Some(
-                    Address::from_str(
-                        include_str!(
-                            "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
-                        ).trim()
-                            ,
-                    )
-                        .unwrap(),
-                ),
-                from_outpoint: None,
-                unlock_script: None,
-            }, None
-        )
-            .await
-    }
-    .boxed()
-        .compat()
-        .wait()
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!(
+                    "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+                ).trim()
+                ,
+            )
+                .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
+    let expected_transaction = matching_transaction(connector, pattern, None)
+        .await
         .unwrap();
 
     assert_eq!(

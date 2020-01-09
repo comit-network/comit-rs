@@ -4,8 +4,8 @@
 pub mod bitcoin;
 pub mod ethereum;
 
+use futures::{Future, Stream};
 use std::fmt::Display;
-use tokio::prelude::{Future, Stream};
 
 pub trait MatchingTransactions<P>: Send + Sync + 'static {
     type Transaction;

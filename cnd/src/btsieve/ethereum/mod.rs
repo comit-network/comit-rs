@@ -9,9 +9,8 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
     ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
-use futures_core::{compat::Future01CompatExt, future::join, FutureExt, TryFutureExt};
-use std::{collections::HashSet, fmt::Display, ops::Add};
-use tokio::timer::Delay;
+use futures_core::{compat::Future01CompatExt, future::join};
+use std::{collections::HashSet, fmt::Display};
 
 pub async fn matching_transaction<C, E>(
     blockchain_connector: C,
@@ -22,7 +21,6 @@ where
     C: LatestBlock<Block = Option<Block<Transaction>>, Error = E>
         + BlockByHash<Block = Option<Block<Transaction>>, BlockHash = H256, Error = E>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = H256, Error = E>
-        + tokio::executor::Executor
         + Clone,
     E: Display + Send + 'static,
 {
@@ -32,7 +30,7 @@ where
 
     let reference_timestamp = reference_timestamp.map(U256::from);
 
-    spawn(blockchain_connector.clone(), {
+    tokio::task::spawn({
         let mut connector = blockchain_connector.clone();
         let block_queue = block_queue.clone();
         let find_parent_queue = find_parent_queue.clone();
@@ -42,10 +40,7 @@ where
             let mut sent_blockhashes: HashSet<H256> = HashSet::new();
 
             loop {
-                Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-                    .compat()
-                    .await
-                    .unwrap();
+                tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
 
                 match connector.latest_block().compat().await {
                     Ok(Some(block)) if block.hash.is_some() => {
@@ -81,7 +76,7 @@ where
 
     let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
 
-    spawn(blockchain_connector.clone(), {
+    tokio::task::spawn({
         let connector = blockchain_connector.clone();
         let block_queue = block_queue.clone();
         let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
@@ -114,7 +109,7 @@ where
         }
     });
 
-    spawn(blockchain_connector.clone(), {
+    tokio::task::spawn({
         async move {
             let mut prev_blockhashes: HashSet<H256> = HashSet::new();
 
@@ -135,7 +130,7 @@ where
         }
     });
 
-    spawn(blockchain_connector.clone(), {
+    tokio::task::spawn({
         let connector = blockchain_connector.clone();
 
         async move {
@@ -179,7 +174,7 @@ where
 
     let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
 
-    spawn(blockchain_connector.clone(), {
+    tokio::task::spawn({
         let connector = blockchain_connector.clone();
 
         async move {
@@ -256,13 +251,4 @@ where
         .recv()
         .await
         .expect("sender cannot be dropped")
-}
-
-fn spawn(
-    mut executor: impl tokio::executor::Executor,
-    future: impl std::future::Future<Output = ()> + Send + 'static + Sized,
-) {
-    executor
-        .spawn(Box::new(future.unit_error().boxed().compat()))
-        .unwrap()
 }

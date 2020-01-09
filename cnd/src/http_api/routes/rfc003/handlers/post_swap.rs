@@ -17,11 +17,7 @@ use crate::{
     timestamp::Timestamp,
 };
 use anyhow::Context;
-use futures::Future;
-use futures_core::{
-    compat::Future01CompatExt,
-    future::{FutureExt, TryFutureExt},
-};
+use futures_core::{compat::Future01CompatExt, future::TryFutureExt};
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
@@ -244,9 +240,11 @@ where
             Ok(())
         }
     };
-    tokio::spawn(future.boxed().compat().map_err(|e: anyhow::Error| {
+
+    tokio::task::spawn(future.map_err(|e: anyhow::Error| {
         log::error!("{}", e);
     }));
+
     Ok(())
 }
 

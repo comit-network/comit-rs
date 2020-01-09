@@ -16,19 +16,14 @@ use std::sync::Arc;
 #[derive(Clone, Debug)]
 pub struct Web3Connector {
     web3: Arc<Web3<Http>>,
-    task_executor: tokio::runtime::TaskExecutor,
 }
 
 impl Web3Connector {
-    pub fn new(
-        node_url: Url,
-        task_executor: tokio::runtime::TaskExecutor,
-    ) -> Result<(Self, EventLoopHandle), web3::Error> {
+    pub fn new(node_url: Url) -> Result<(Self, EventLoopHandle), web3::Error> {
         let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
         Ok((
             Self {
                 web3: Arc::new(Web3::new(http_transport)),
-                task_executor,
             },
             event_loop_handle,
         ))
@@ -78,14 +73,5 @@ impl ReceiptByHash for Web3Connector {
     ) -> Box<dyn Future<Item = Self::Receipt, Error = Self::Error> + Send + 'static> {
         let web = self.web3.clone();
         Box::new(web.eth().transaction_receipt(transaction_hash))
-    }
-}
-
-impl tokio::executor::Executor for Web3Connector {
-    fn spawn(
-        &mut self,
-        future: Box<dyn Future<Item = (), Error = ()> + Send>,
-    ) -> Result<(), tokio::executor::SpawnError> {
-        tokio::executor::Executor::spawn(&mut self.task_executor, future)
     }
 }

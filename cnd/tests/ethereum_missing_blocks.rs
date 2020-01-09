@@ -5,13 +5,9 @@ use cnd::{
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt},
 };
 use ethereum_helper::EthereumConnectorMock;
-use futures_core::{FutureExt, TryFutureExt};
-use tokio::prelude::Future;
 
-#[test]
-fn find_transaction_in_missing_block() {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
+#[tokio::test]
+async fn find_transaction_in_missing_block() {
     let transaction: Transaction = include_json_test_data!(
         "./test_data/ethereum/find_transaction_in_missing_block/transaction.json"
     );
@@ -39,29 +35,17 @@ fn find_transaction_in_missing_block() {
             ),
         ],
         vec![(transaction.hash, receipt.clone())],
-        runtime.executor(),
     );
 
-    let expected_transaction_and_receipt: TransactionAndReceipt = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                from_address: None,
-                to_address: Some(transaction.to.unwrap()),
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-                events: None,
-            },
-            None,
-        )
-        .await
-    }
-        .unit_error()
-        .boxed()
-        .compat()
-        .wait()
-        .unwrap();
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: Some(transaction.to.unwrap()),
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: None,
+    };
+    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None).await;
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,
@@ -69,10 +53,8 @@ fn find_transaction_in_missing_block() {
     });
 }
 
-#[test]
-fn find_transaction_in_missing_block_with_big_gap() {
-    let runtime = tokio::runtime::Runtime::new().unwrap();
-
+#[tokio::test]
+async fn find_transaction_in_missing_block_with_big_gap() {
     let transaction: Transaction = include_json_test_data!(
         "./test_data/ethereum/find_transaction_in_missing_block/transaction.json"
     );
@@ -106,29 +88,17 @@ fn find_transaction_in_missing_block_with_big_gap() {
             ),
         ],
         vec![(transaction.hash, receipt.clone())],
-        runtime.executor(),
     );
 
-    let expected_transaction_and_receipt: TransactionAndReceipt = async {
-        matching_transaction(
-            connector,
-            TransactionPattern {
-                from_address: None,
-                to_address: Some(transaction.to.unwrap()),
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-                events: None,
-            },
-            None,
-        )
-        .await
-    }
-        .unit_error()
-        .boxed()
-        .compat()
-        .wait()
-        .unwrap();
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: Some(transaction.to.unwrap()),
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: None,
+    };
+    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None).await;
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,
