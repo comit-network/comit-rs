@@ -7,6 +7,7 @@ export interface CndConfigFile {
     http_api: HttpApi;
     data?: { dir: string };
     network: { listen: string[] };
+    logging: { level: string; structured: boolean };
 }
 
 export interface HttpApi {
@@ -43,6 +44,10 @@ export class E2ETestActorConfig {
             },
             network: {
                 listen: [`/ip4/0.0.0.0/tcp/${this.comitPort}`],
+            },
+            logging: {
+                level: "TRACE",
+                structured: false,
             },
             ...createLedgerConnectors(ledgerConfig),
         };
