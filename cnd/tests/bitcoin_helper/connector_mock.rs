@@ -1,6 +1,5 @@
 use bitcoin::{hashes::sha256d, util::hash::BitcoinHash};
 use cnd::btsieve::{BlockByHash, LatestBlock};
-use futures::{future::IntoFuture, Future};
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -33,16 +32,15 @@ impl BitcoinConnectorMock {
     }
 }
 
+#[async_trait::async_trait]
 impl LatestBlock for BitcoinConnectorMock {
     type Error = ();
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    async fn latest_block(&mut self) -> Result<Self::Block, Self::Error> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(()).into_future());
+            return Err(());
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -56,25 +54,18 @@ impl LatestBlock for BitcoinConnectorMock {
                 self.current_latest_block_index += 1;
             }
         }
-        Box::new(Ok(latest_block).into_future())
+
+        Ok(latest_block)
     }
 }
 
+#[async_trait::async_trait]
 impl BlockByHash for BitcoinConnectorMock {
     type Error = ();
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
-        Box::new(
-            self.all_blocks
-                .get(&block_hash)
-                .cloned()
-                .ok_or(())
-                .into_future(),
-        )
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> Result<Self::Block, Self::Error> {
+        self.all_blocks.get(&block_hash).cloned().ok_or(())
     }
 }

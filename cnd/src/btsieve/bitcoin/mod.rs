@@ -14,12 +14,11 @@ use bitcoin::{
     hashes::sha256d,
     BitcoinHash,
 };
-use futures_core::compat::Future01CompatExt;
 use reqwest::{Client, Url};
 use std::{collections::HashSet, fmt::Debug};
 
 pub async fn matching_transaction<C, E>(
-    mut blockchain_connector: C,
+    blockchain_connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,
 ) -> Result<bitcoin::Transaction, ()>
@@ -29,9 +28,15 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
+    // code-smell: we need to have our own copy of this because it needs to be
+    // mutable (for now) and our tests are failing if we clone it more than once
+    // (as there is a timer in there which never finishes if we constantly clone
+    // it)
+    let mut latest_block_connector = blockchain_connector.clone();
+
     // Verify that we can successfully connect to the blockchain connector and check
     // if the transaction is in the latest block.
-    let latest_block = match blockchain_connector.latest_block().compat().await {
+    let latest_block = match latest_block_connector.latest_block().await {
         Ok(block) => block,
         Err(e) => {
             log::error!("Failed to connect to the blockchain_connector: {:?}", e,);
@@ -54,7 +59,7 @@ where
     prev_blockhashes.insert(latest_block.bitcoin_hash());
 
     let prev_blockhash = latest_block.header.prev_blockhash;
-    let future = blockchain_connector.block_by_hash(prev_blockhash).compat();
+    let future = blockchain_connector.block_by_hash(prev_blockhash);
     missing_block_futures.push((future, prev_blockhash));
 
     loop {
@@ -74,8 +79,7 @@ where
                             let unknown_parent = prev_blockhashes.insert(prev_blockhash);
 
                             if unknown_parent {
-                                let future =
-                                    blockchain_connector.block_by_hash(prev_blockhash).compat();
+                                let future = blockchain_connector.block_by_hash(prev_blockhash);
                                 new_missing_block_futures.push((future, prev_blockhash));
                             }
                         }
@@ -84,7 +88,7 @@ where
                 Err(e) => {
                     log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
 
-                    let future = blockchain_connector.block_by_hash(blockhash).compat();
+                    let future = blockchain_connector.block_by_hash(blockhash);
                     new_missing_block_futures.push((future, blockhash));
                 }
             };
@@ -99,7 +103,6 @@ where
             if block.header.time >= reference_timestamp {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
-                    .compat()
                     .await
                 {
                     Ok(block) => match check_block_against_pattern(&block, &pattern) {
@@ -119,7 +122,7 @@ where
 
         // Check if a new block has been mined.
 
-        if let Ok(latest_block) = blockchain_connector.latest_block().compat().await {
+        if let Ok(latest_block) = latest_block_connector.latest_block().await {
             // If we can insert then we have not seen this block.
             if prev_blockhashes.insert(latest_block.bitcoin_hash()) {
                 if let Some(transaction) = check_block_against_pattern(&latest_block, &pattern) {
@@ -129,7 +132,7 @@ where
                 // In case we missed a block somehow, check this blocks parent.
                 if !prev_blockhashes.contains(&latest_block.header.prev_blockhash) {
                     let prev_blockhash = latest_block.header.prev_blockhash;
-                    let future = blockchain_connector.block_by_hash(prev_blockhash).compat();
+                    let future = blockchain_connector.block_by_hash(prev_blockhash);
 
                     missing_block_futures.push((future, prev_blockhash));
                 }
