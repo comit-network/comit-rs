@@ -7,7 +7,6 @@ description = "Reference implementation of a COMIT network daemon."
 
 [dependencies]
 anyhow = "1"
-async-std = { version = "1", features = ["unstable"] }
 async-trait = "0.1"
 bigdecimal = "0.1.0"
 bitcoin = { version = "0.19.1", features = ["use-serde"] }
@@ -53,7 +52,7 @@ strum_macros = "0.17"
 testcontainers = "0.8"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-tokio = { version = "0.2", features = ["rt-core", "time", "macros"] }
+tokio = { version = "0.2", features = ["rt-core", "time", "macros", "sync"] }
 tokio-compat = "0.1"
 tokio-executor01 = { version = "0.1", package = "tokio-executor" }
 toml = "0.5"

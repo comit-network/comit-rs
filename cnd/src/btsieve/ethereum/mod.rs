@@ -11,6 +11,7 @@ use crate::{
 };
 use futures_core::{compat::Future01CompatExt, future::join};
 use std::{collections::HashSet, fmt::Debug};
+use tokio::sync::mpsc;
 
 pub async fn matching_transaction<C, E>(
     blockchain_connector: C,
@@ -24,17 +25,17 @@ where
         + Clone,
     E: Debug + Send + 'static,
 {
-    let (block_queue, next_block) = async_std::sync::channel(1);
-    let (find_parent_queue, next_find_parent) = async_std::sync::channel(5);
-    let (look_in_the_past_queue, next_look_in_the_past) = async_std::sync::channel(5);
+    let (mut block_queue, mut next_block) = mpsc::channel(1);
+    let (mut find_parent_queue, mut next_find_parent) = mpsc::channel(5);
+    let (mut look_in_the_past_queue, mut next_look_in_the_past) = mpsc::channel(5);
 
     let reference_timestamp = reference_timestamp.map(U256::from);
 
     tokio::task::spawn({
         let mut connector = blockchain_connector.clone();
-        let block_queue = block_queue.clone();
-        let find_parent_queue = find_parent_queue.clone();
-        let look_in_the_past_queue = look_in_the_past_queue.clone();
+        let mut block_queue = block_queue.clone();
+        let mut find_parent_queue = find_parent_queue.clone();
+        let mut look_in_the_past_queue = look_in_the_past_queue.clone();
 
         async move {
             let mut sent_blockhashes: HashSet<H256> = HashSet::new();
@@ -49,14 +50,14 @@ where
                         if !sent_blockhashes.contains(&blockhash) {
                             sent_blockhashes.insert(blockhash);
 
-                            join(
+                            let _ = join(
                                 block_queue.send(block.clone()),
                                 find_parent_queue.send((blockhash, block.parent_hash)),
                             )
                             .await;
 
                             if sent_blockhashes.len() == 1 {
-                                look_in_the_past_queue.send(block.parent_hash).await
+                                let _ = look_in_the_past_queue.send(block.parent_hash).await;
                             };
                         }
                     }
@@ -74,12 +75,12 @@ where
         }
     });
 
-    let (fetch_block_by_hash_queue, next_hash) = async_std::sync::channel(5);
+    let (mut fetch_block_by_hash_queue, mut next_hash) = mpsc::channel(5);
 
     tokio::task::spawn({
         let connector = blockchain_connector.clone();
-        let block_queue = block_queue.clone();
-        let fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
+        let mut block_queue = block_queue.clone();
+        let mut fetch_block_by_hash_queue = fetch_block_by_hash_queue.clone();
 
         async move {
             loop {
@@ -87,7 +88,7 @@ where
                     Some(blockhash) => {
                         match connector.block_by_hash(blockhash).compat().await {
                             Ok(Some(block)) => {
-                                join(
+                                let _ = join(
                                     block_queue.send(block.clone()),
                                     find_parent_queue.send((blockhash, block.parent_hash)),
                                 )
@@ -99,7 +100,7 @@ where
                             Err(e) => {
                                 log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
 
-                                fetch_block_by_hash_queue.send(blockhash).await
+                                let _ = fetch_block_by_hash_queue.send(blockhash).await;
                             }
                         };
                     }
@@ -121,7 +122,7 @@ where
                         if !prev_blockhashes.contains(&parent_blockhash)
                             && prev_blockhashes.len() > 1
                         {
-                            fetch_block_by_hash_queue.send(parent_blockhash).await
+                            let _ = fetch_block_by_hash_queue.send(parent_blockhash).await;
                         }
                     }
                     None => unreachable!("senders cannot be dropped"),
@@ -145,7 +146,7 @@ where
                                     })
                                     .unwrap_or(false);
                                 if younger_than_reference_timestamp {
-                                    join(
+                                    let _ = join(
                                         block_queue.send(block.clone()),
                                         look_in_the_past_queue.send(block.parent_hash),
                                     )
@@ -162,7 +163,7 @@ where
                                     e
                                 );
 
-                                look_in_the_past_queue.send(parent_blockhash).await
+                                let _ = look_in_the_past_queue.send(parent_blockhash).await;
                             }
                         }
                     }
@@ -172,7 +173,7 @@ where
         }
     });
 
-    let (matching_transaction_queue, matching_transaction) = async_std::sync::channel(1);
+    let (mut matching_transaction_queue, mut matching_transaction) = mpsc::channel(1);
 
     tokio::task::spawn({
         let connector = blockchain_connector.clone();
@@ -205,7 +206,7 @@ where
                                 };
 
                                 if pattern.matches(&transaction, Some(&receipt)) {
-                                    matching_transaction_queue
+                                    let _ = matching_transaction_queue
                                         .send(TransactionAndReceipt {
                                             transaction,
                                             receipt,
@@ -232,7 +233,7 @@ where
                                     }
                                 };
 
-                                matching_transaction_queue
+                                let _ = matching_transaction_queue
                                     .send(TransactionAndReceipt {
                                         transaction,
                                         receipt,

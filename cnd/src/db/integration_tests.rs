@@ -48,7 +48,7 @@ macro_rules! db_roundtrip_test {
                     };
 
                     let (loaded_swap, loaded_request, loaded_accept, loaded_swap_types) =
-                    async_std::task::block_on::<_, Result<_, anyhow::Error>>(async {
+                    tokio::runtime::Runtime::new()?.block_on(async {
                         db.save(saved_swap.clone()).await?;
                         db.save(saved_request.clone()).await?;
                         db.save(saved_accept.clone()).await?;
@@ -58,7 +58,7 @@ macro_rules! db_roundtrip_test {
                         let (loaded_request, loaded_accept, _at) = db.load_accepted_swap(&swap_id).await?;
                         let loaded_swap_types = db.determine_types(&swap_id).await?;
 
-                        Ok((loaded_swap, loaded_request, loaded_accept, loaded_swap_types))
+                        anyhow::Result::<_>::Ok((loaded_swap, loaded_request, loaded_accept, loaded_swap_types))
                     })?;
 
                     Ok(
