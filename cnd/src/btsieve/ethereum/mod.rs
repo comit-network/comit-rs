@@ -113,10 +113,7 @@ async fn process_latest_blocks<C, E>(
     let mut sent_blockhashes: HashSet<H256> = HashSet::new();
 
     loop {
-        Delay::new(std::time::Instant::now().add(std::time::Duration::from_secs(1)))
-            .compat()
-            .await
-            .unwrap();
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
 
         match connector.latest_block().compat().await {
             Ok(Some(block)) if block.hash.is_some() => {
@@ -274,14 +271,8 @@ async fn process_next_look_in_the_past<C, E>(
                             parent_blockhash,
                             e
                         );
-
-                        Delay::new(
-                            std::time::Instant::now().add(std::time::Duration::from_secs(1)),
-                        )
-                        .compat()
-                        .await
-                        .unwrap();
-
+                        // Delay here otherwise the error code path can go into a hot loop.
+                        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
                         look_in_the_past_queue.send(parent_blockhash).await
                     }
                 }
