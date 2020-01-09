@@ -6,12 +6,12 @@
 //!       libraries
 //!     - Common functionality that is not (yet) available upstream
 
-use bitcoin::secp256k1;
+use bitcoin::{blockdata::block::Block, secp256k1};
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt;
+use std::fmt::{self, Display};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PublicKey(bitcoin::PublicKey);
@@ -72,5 +72,15 @@ impl<'de> Deserialize<'de> for PublicKey {
         }
 
         deserializer.deserialize_str(PublicKeyVisitor)
+    }
+}
+
+/// Pretty print bitcoin block.
+#[derive(Debug)]
+pub struct PrettyBlock<'a>(pub &'a Block);
+
+impl Display for PrettyBlock<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Block: {:?}", self.0)
     }
 }

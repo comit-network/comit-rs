@@ -15,7 +15,6 @@ use crate::{
         Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
-    Scribe,
 };
 use anyhow::Context;
 use futures::Future;
@@ -177,7 +176,7 @@ where
         beta_expiry: beta_expiry.unwrap_or_else(default_beta_expiry),
         secret_hash,
     };
-    log::trace!("New request: {}", request.scribe());
+    log::trace!("New request: {}", request);
     request
 }
 
@@ -236,7 +235,7 @@ where
                     )?;
                 }
                 Err(decline) => {
-                    log::info!("Swap declined: {}", decline.scribe());
+                    log::info!("Swap declined: {}", decline);
                     let state = State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     Save::save(&dependencies, decline).await?;

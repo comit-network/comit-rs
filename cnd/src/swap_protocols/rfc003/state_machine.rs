@@ -16,7 +16,6 @@ use crate::{
         HashFunction,
     },
     timestamp::Timestamp,
-    Scribe,
 };
 use either::Either;
 use futures::{future, sync::mpsc, try_ready, Async, Future, Stream};
@@ -359,7 +358,7 @@ where
         },
         context,
     )
-    .map(move |outcome| log::info!("Swap {} finished with {}", id, outcome.scribe()))
+    .map(move |outcome| log::info!("Swap {} finished with {}", id, outcome))
     .map_err(move |e| log::error!("Swap {} failed with {}", id, e));
 
     (swap_execution, receiver)
@@ -827,25 +826,3 @@ impl_display!(AlphaRefundedBetaFunded);
 impl_display!(AlphaFundedBetaRedeemed);
 impl_display!(AlphaRedeemedBetaFunded);
 impl_display!(Final);
-
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for OngoingSwap<AL, BL, AA, BA> {}
-
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> Scribe for SwapOutcome<AL, BL, AA, BA> {
-    fn scribe(&self) -> String
-    where
-        Self: Debug,
-    {
-        match self {
-            SwapOutcome::AlphaRefunded { .. } => "AlphaRefunded".to_string(),
-            SwapOutcome::AlphaRedeemed { .. } => "AlphaRedeemed".to_string(),
-            SwapOutcome::BothRefunded { .. } => "BothRefunded".to_string(),
-            SwapOutcome::BothRedeemed { .. } => "BothRedeemed".to_string(),
-            SwapOutcome::AlphaRedeemedBetaRefunded { .. } => {
-                "AlphaRedeemedBetaRefunded".to_string()
-            }
-            SwapOutcome::AlphaRefundedBetaRedeemed { .. } => {
-                "AlphaRefundedBetaRedeemed".to_string()
-            }
-        }
-    }
-}

@@ -1,6 +1,6 @@
 use crate::{
+    bitcoin::PrettyBlock,
     btsieve::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock},
-    logging::Scribe,
 };
 use bitcoin::{hashes::sha256d, Network};
 use reqwest::{r#async::Client, Url};
@@ -90,7 +90,7 @@ impl BlockByHash for BlockchainInfoConnector {
         );
 
         Box::new(block.inspect(|block| {
-            log::trace!("Fetched block from blockchain.info: {}", block.scribe());
+            log::trace!("Fetched block from blockchain.info: {}", PrettyBlock(block));
         }))
     }
 }

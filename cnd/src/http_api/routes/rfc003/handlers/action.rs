@@ -23,11 +23,13 @@ use crate::{
         },
         Facade, SwapId,
     },
-    Scribe,
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
-use std::{fmt::Debug, string::ToString};
+use std::{
+    fmt::{self, Debug, Display},
+    string::ToString,
+};
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -433,20 +435,18 @@ where
     }
 }
 
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund> Scribe
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> Display
     for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
 {
-    fn scribe(&self) -> String
-    where
-        Self: Debug,
-    {
-        match self {
-            Action::Accept { .. } => "Accept".to_string(),
-            Action::Decline { .. } => "Decline".to_string(),
-            Action::Deploy { .. } => "Deploy".to_string(),
-            Action::Fund { .. } => "Fund".to_string(),
-            Action::Redeem { .. } => "Redeem".to_string(),
-            Action::Refund { .. } => "Refund".to_string(),
-        }
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Action::Accept { .. } => "Accept",
+            Action::Decline { .. } => "Decline",
+            Action::Deploy { .. } => "Deploy",
+            Action::Fund { .. } => "Fund",
+            Action::Redeem { .. } => "Redeem",
+            Action::Refund { .. } => "Refund",
+        };
+        write!(f, "{}", s)
     }
 }

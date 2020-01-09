@@ -5,9 +5,9 @@ use crate::{
         HashFunction, SwapId,
     },
     timestamp::Timestamp,
-    Scribe,
 };
 use serde::{Deserialize, Serialize};
+use std::fmt::{self, Display};
 
 /// High-level message that represents a Swap request to another party
 ///
@@ -28,13 +28,18 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub secret_hash: SecretHash,
 }
 
-impl<AL, BL, AA, BA> Scribe for Request<AL, BL, AA, BA>
+impl<AL, BL, AA, BA> Display for Request<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
 {
+    // This is used for log messages, adding Ledger and Asset here is going to be a
+    // bothersome since we will need to bubble up `+ Display` for <AL, BL, AA, BA>.
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Request: {}", self.swap_id)
+    }
 }
 
 /// High-level message that represents accepting a Swap request
@@ -58,9 +63,9 @@ pub struct Decline {
     pub reason: Option<SwapDeclineReason>,
 }
 
-impl Scribe for Decline {
-    fn scribe(&self) -> String {
-        format!("Declining swap: {}", self.swap_id.scribe())
+impl Display for Decline {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "Declining swap: {}", self.swap_id)
     }
 }
 
