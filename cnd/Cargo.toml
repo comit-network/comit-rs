@@ -54,7 +54,6 @@ thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 tokio = { version = "0.2", features = ["rt-core", "time", "macros", "sync"] }
 tokio-compat = "0.1"
-tokio-executor01 = { version = "0.1", package = "tokio-executor" }
 toml = "0.5"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }

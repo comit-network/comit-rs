@@ -26,8 +26,6 @@ use futures_core::future::Either;
 use libp2p::PeerId;
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
-use tokio_compat::runtime::TaskExecutor;
-use tokio_executor01::Executor;
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
@@ -40,7 +38,6 @@ pub struct Facade<S> {
     pub seed: RootSeed,
     pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
     pub db: Sqlite,
-    pub task_executor: TaskExecutor,
 }
 
 impl<S> Clone for Facade<S> {
@@ -52,7 +49,6 @@ impl<S> Clone for Facade<S> {
             seed: self.seed,
             swarm: Arc::clone(&self.swarm),
             db: self.db.clone(),
-            task_executor: self.task_executor.clone(),
         }
     }
 }
@@ -235,17 +231,5 @@ where
         self.ethereum_connector
             .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
             .await
-    }
-}
-
-impl<S> Executor for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
-    fn spawn(
-        &mut self,
-        future: Box<dyn Future<Item = (), Error = ()> + Send>,
-    ) -> Result<(), tokio_executor01::SpawnError> {
-        Executor::spawn(&mut self.task_executor, future)
     }
 }

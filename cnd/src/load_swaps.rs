@@ -2,21 +2,19 @@
 use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     ethereum::{Erc20Token, EtherQuantity},
+    init_swap::init_accepted_swap,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        self,
         ledger::{Bitcoin, Ethereum},
         rfc003::{events::HtlcEvents, state_store::StateStore},
     },
 };
 use bitcoin::Amount;
-use tokio_executor01::Executor;
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn load_swaps_from_database<D>(dependencies: D) -> anyhow::Result<()>
 where
     D: StateStore
-        + Executor
         + Clone
         + DeriveSwapSeed
         + Retrieve
@@ -44,7 +42,7 @@ where
 
             match accepted {
                 Ok((request, accept, _at)) => {
-                    swap_protocols::init_accepted_swap(&dependencies, request, accept, types.role)?;
+                    init_accepted_swap(&dependencies, request, accept, types.role)?;
                 }
                 Err(e) => log::error!("failed to load swap: {}, continuing ...", e),
             };

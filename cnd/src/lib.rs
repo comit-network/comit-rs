@@ -28,6 +28,7 @@ pub mod comit_api;
 pub mod config;
 pub mod ethereum;
 pub mod http_api;
+pub mod init_swap;
 pub mod load_swaps;
 pub mod logging;
 pub mod network;
