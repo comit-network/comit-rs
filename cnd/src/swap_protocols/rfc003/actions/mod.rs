@@ -4,7 +4,7 @@ pub mod ether;
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{create_swap::HtlcParams, secret_source::SecretSource, Ledger, Secret},
+    rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
 };
 use std::marker::PhantomData;
 
@@ -36,7 +36,7 @@ pub trait RefundAction<L: Ledger, A: Asset> {
     fn refund_action(
         htlc_params: HtlcParams<L, A>,
         htlc_location: L::HtlcLocation,
-        secret_source: &dyn SecretSource,
+        secret_source: &dyn DeriveIdentities,
         fund_transaction: &L::Transaction,
     ) -> Self::RefundActionOutput;
 }
@@ -47,7 +47,7 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
     fn redeem_action(
         htlc_params: HtlcParams<L, A>,
         htlc_location: L::HtlcLocation,
-        secret_source: &dyn SecretSource,
+        secret_source: &dyn DeriveIdentities,
         secret: Secret,
     ) -> Self::RedeemActionOutput;
 }

@@ -1,7 +1,7 @@
 use crate::{
     swap_protocols::{
         asset::Asset,
-        rfc003::{Ledger, SecretHash, SecretSource},
+        rfc003::{DeriveIdentities, Ledger, SecretHash},
         HashFunction, SwapId,
     },
     timestamp::Timestamp,
@@ -88,12 +88,12 @@ pub enum SwapDeclineReason {
     BadJsonField,
 }
 
-pub trait ToRequest<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
-    fn to_request(&self, id: SwapId, secret_source: &dyn SecretSource) -> Request<AL, BL, AA, BA>;
-}
-
 pub trait IntoAcceptMessage<AL: Ledger, BL: Ledger> {
-    fn into_accept_message(self, id: SwapId, secret_source: &dyn SecretSource) -> Accept<AL, BL>;
+    fn into_accept_message(
+        self,
+        id: SwapId,
+        secret_source: &dyn DeriveIdentities,
+    ) -> Accept<AL, BL>;
 }
 
 #[cfg(test)]

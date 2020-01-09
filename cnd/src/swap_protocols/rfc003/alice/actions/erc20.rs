@@ -8,7 +8,7 @@ use crate::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             alice,
             create_swap::HtlcParams,
-            Ledger, LedgerState, SwapCommunication,
+            DeriveSecret, Ledger, LedgerState, SwapCommunication,
         },
     },
 };
@@ -64,8 +64,8 @@ where
             actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
-                &*self.secret_source,
-                self.secret_source.secret(),
+                &self.secret_source, // Derive identities with this.
+                self.secret_source.derive_secret(), // The secret used by Alice.
             )));
         }
         actions
@@ -112,7 +112,7 @@ where
             } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
-                &*self.secret_source,
+                &self.secret_source,
                 fund_transaction,
             ))],
             _ => vec![],
@@ -121,7 +121,7 @@ where
         if let Funded { htlc_location, .. } = beta_state {
             actions.push(Action::Redeem(erc20::redeem_action(
                 *htlc_location,
-                self.secret_source.secret(),
+                self.secret_source.derive_secret(),
                 request.beta_ledger.chain_id,
             )));
         }
