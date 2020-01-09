@@ -95,7 +95,7 @@ pub enum AllowedOrigins {
 #[derive(Clone, Debug, PartialEq, derivative::Derivative)]
 #[derivative(Default)]
 pub struct Logging {
-    #[derivative(Default(value = "LevelFilter::Trace"))]
+    #[derivative(Default(value = "LevelFilter::Info"))]
     pub level: LevelFilter,
     pub structured: bool,
 }
