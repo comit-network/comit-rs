@@ -28,7 +28,6 @@ use crate::{
 use anyhow::Context;
 use libp2p_comit::frame::Response;
 use std::{fmt::Debug, string::ToString};
-use tokio::executor::Executor;
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
