@@ -4,10 +4,7 @@ use crate::{
     swap_protocols::Facade,
 };
 
-pub async fn handle_get_swaps<S>(dependencies: Facade<S>) -> anyhow::Result<siren::Entity>
-where
-    S: Send + Sync + 'static,
-{
+pub async fn handle_get_swaps(dependencies: Facade) -> anyhow::Result<siren::Entity> {
     let mut entity = siren::Entity::default().with_class_member("swaps");
 
     for swap in Retrieve::all(&dependencies).await?.into_iter() {

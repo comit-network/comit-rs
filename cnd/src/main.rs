@@ -8,22 +8,13 @@ use cnd::{
     db::Sqlite,
     http_api::route_factory,
     load_swaps,
-    network::{self, transport, Network},
+    network::Swarm,
     seed::RootSeed,
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
-use futures::{stream, Future, Stream};
 use futures_core::{FutureExt, TryFutureExt};
-use libp2p::{
-    identity::{self, ed25519},
-    PeerId, Swarm,
-};
 use rand::rngs::OsRng;
-use std::{
-    net::SocketAddr,
-    process,
-    sync::{Arc, Mutex},
-};
+use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
 use tokio_compat::runtime::Runtime;
 
@@ -64,34 +55,22 @@ fn main() -> anyhow::Result<()> {
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
-    let local_key_pair = derive_key_pair(&seed);
-    let local_peer_id = PeerId::from(local_key_pair.clone().public());
-    log::info!("Starting with peer_id: {}", local_peer_id);
-
-    let transport = transport::build_comit_transport(local_key_pair);
-    let behaviour = network::ComitNode::new(
-        bitcoin_connector.clone(),
-        ethereum_connector.clone(),
-        Arc::clone(&state_store),
+    let swarm = Swarm::new(
+        &settings,
         seed,
-        database.clone(),
-        runtime.executor(),
+        &mut runtime,
+        &bitcoin_connector,
+        &ethereum_connector,
+        &state_store,
+        &database,
     )?;
-
-    let mut swarm = Swarm::new(transport, behaviour, local_peer_id.clone());
-
-    for addr in settings.network.listen.clone() {
-        Swarm::listen_on(&mut swarm, addr).expect("Could not listen on specified address");
-    }
-
-    let swarm = Arc::new(Mutex::new(swarm));
 
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
         state_store: Arc::clone(&state_store),
         seed,
-        swarm: Arc::clone(&swarm),
+        swarm,
         db: database,
     };
 
@@ -101,15 +80,7 @@ fn main() -> anyhow::Result<()> {
             .compat(),
     )?;
 
-    spawn_warp_instance(&settings, local_peer_id, &mut runtime, deps);
-
-    let swarm_worker = stream::poll_fn(move || swarm.lock().unwrap().poll())
-        .for_each(|_| Ok(()))
-        .map_err(|e| {
-            log::error!("failed with {:?}", e);
-        });
-
-    runtime.spawn(swarm_worker);
+    spawn_warp_instance(&settings, &mut runtime, deps);
 
     // Block the current thread.
     ::std::thread::park();
@@ -127,23 +98,8 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
-    let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
-    let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
-    identity::Keypair::Ed25519(key.into())
-}
-
-fn spawn_warp_instance<S: Network>(
-    settings: &Settings,
-    peer_id: PeerId,
-    runtime: &mut Runtime,
-    dependencies: Facade<S>,
-) {
-    let routes = route_factory::create(
-        peer_id,
-        dependencies,
-        &settings.http_api.cors.allowed_origins,
-    );
+fn spawn_warp_instance(settings: &Settings, runtime: &mut Runtime, dependencies: Facade) {
+    let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
 
     let listen_addr = SocketAddr::new(
         settings.http_api.socket.address,

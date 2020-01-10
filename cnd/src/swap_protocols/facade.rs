@@ -4,7 +4,10 @@ use crate::{
         AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Saver, Sqlite, Swap,
         SwapTypes,
     },
-    network::{DialInformation, Network, RequestError},
+    network::{
+        ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
+        SendRequest, Swarm,
+    },
     seed::{DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
         asset::Asset,
@@ -21,42 +24,26 @@ use crate::{
 };
 use async_trait::async_trait;
 use bitcoin::Amount;
-use futures::{sync::oneshot::Sender, Future};
+use futures::sync::oneshot::Sender;
 use futures_core::future::Either;
-use libp2p::PeerId;
+use libp2p::{Multiaddr, PeerId};
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
-#[allow(missing_debug_implementations)]
-pub struct Facade<S> {
+#[derive(Clone, Debug)]
+pub struct Facade {
     pub bitcoin_connector: BitcoindConnector,
     pub ethereum_connector: Web3Connector,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: RootSeed,
-    pub swarm: Arc<S>, // S is the libp2p Swarm within a mutex.
+    pub swarm: Swarm,
     pub db: Sqlite,
 }
 
-impl<S> Clone for Facade<S> {
-    fn clone(&self) -> Self {
-        Self {
-            bitcoin_connector: self.bitcoin_connector.clone(),
-            ethereum_connector: self.ethereum_connector.clone(),
-            state_store: Arc::clone(&self.state_store),
-            seed: self.seed,
-            swarm: Arc::clone(&self.swarm),
-            db: self.db.clone(),
-        }
-    }
-}
-
-impl<S> StateStore for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
+impl StateStore for Facade {
     fn insert<A: ActorState>(&self, key: SwapId, value: A) {
         self.state_store.insert(key, value)
     }
@@ -70,48 +57,54 @@ where
     }
 }
 
-impl<S: Network> Network for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
-    fn comit_peers(
-        &self,
-    ) -> Box<dyn Iterator<Item = (PeerId, Vec<libp2p::Multiaddr>)> + Send + 'static> {
-        self.swarm.comit_peers()
-    }
-
-    fn listen_addresses(&self) -> Vec<libp2p::Multiaddr> {
-        self.swarm.listen_addresses()
-    }
-
-    fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        self.swarm.pending_request_for(swap)
-    }
-
-    fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
-        &self,
-        peer_identity: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send + 'static>
-    {
-        self.swarm.send_request(peer_identity, request)
+impl LocalPeerId for Facade {
+    fn local_peer_id(&self) -> PeerId {
+        self.swarm.local_peer_id()
     }
 }
 
-impl<S> DeriveSwapSeed for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
+#[async_trait]
+impl ComitPeers for Facade {
+    async fn comit_peers(
+        &self,
+    ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
+        self.swarm.comit_peers().await
+    }
+}
+
+#[async_trait]
+impl ListenAddresses for Facade {
+    async fn listen_addresses(&self) -> Vec<Multiaddr> {
+        self.swarm.listen_addresses().await
+    }
+}
+
+#[async_trait]
+impl PendingRequestFor for Facade {
+    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
+        self.swarm.pending_request_for(swap).await
+    }
+}
+
+#[async_trait]
+impl SendRequest for Facade {
+    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+        &self,
+        peer_identity: DialInformation,
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
+        self.swarm.send_request(peer_identity, request).await
+    }
+}
+
+impl DeriveSwapSeed for Facade {
     fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
         self.seed.derive_swap_seed(id)
     }
 }
 
 #[async_trait]
-impl<S> Retrieve for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
+impl Retrieve for Facade {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
         self.db.get(key).await
     }
@@ -122,9 +115,8 @@ where
 }
 
 #[async_trait]
-impl<S, AL, BL, AA, BA> LoadAcceptedSwap<AL, BL, AA, BA> for Facade<S>
+impl<AL, BL, AA, BA> LoadAcceptedSwap<AL, BL, AA, BA> for Facade
 where
-    S: Send + Sync + 'static,
     AL: Ledger + Send + 'static,
     BL: Ledger + Send + 'static,
     AA: Asset + Send + 'static,
@@ -140,22 +132,18 @@ where
 }
 
 #[async_trait]
-impl<S> DetermineTypes for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
+impl DetermineTypes for Facade {
     async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
         self.db.determine_types(key).await
     }
 }
 
 #[async_trait]
-impl<S> Saver for Facade<S> where S: Send + Sync + 'static {}
+impl Saver for Facade {}
 
 #[async_trait]
-impl<S, T> Save<T> for Facade<S>
+impl<T> Save<T> for Facade
 where
-    S: Send + Sync + 'static,
     T: Send + 'static,
     Sqlite: Save<T>,
 {
@@ -165,10 +153,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<S> HtlcEvents<Bitcoin, Amount> for Facade<S>
-where
-    S: Send + Sync + 'static,
-{
+impl HtlcEvents<Bitcoin, Amount> for Facade {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
@@ -199,9 +184,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<A, S> HtlcEvents<Ethereum, A> for Facade<S>
+impl<A> HtlcEvents<Ethereum, A> for Facade
 where
-    S: Send + Sync + 'static,
     A: Asset + Send + Sync + 'static,
     Web3Connector: HtlcEvents<Ethereum, A>,
 {

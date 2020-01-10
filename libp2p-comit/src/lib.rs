@@ -4,7 +4,7 @@
 #[macro_use]
 pub mod frame;
 mod behaviour;
-mod handler;
+pub mod handler;
 mod protocol;
 mod substream;
 #[cfg(test)]

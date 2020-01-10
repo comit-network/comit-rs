@@ -3,7 +3,7 @@ mod handlers;
 use self::handlers::handle_get_swaps;
 use crate::{
     http_api::{problem, routes::into_rejection, Http},
-    network::Network,
+    network::ListenAddresses,
     swap_protocols::Facade,
 };
 use futures::Future;
@@ -19,11 +19,15 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub fn get_info<S: Network>(id: PeerId, dependencies: Facade<S>) -> Result<impl Reply, Rejection>
-where
-    S: Send + Sync + 'static,
-{
-    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
+pub fn get_info(
+    id: PeerId,
+    dependencies: Facade,
+) -> impl Future<Item = impl Reply, Error = Rejection> {
+    get_info_async(id, dependencies).boxed().compat()
+}
+
+async fn get_info_async(id: PeerId, facade: Facade) -> anyhow::Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: Http(id),
@@ -31,14 +35,15 @@ where
     }))
 }
 
-pub fn get_info_siren<S: Network>(
+pub fn get_info_siren(
     id: PeerId,
-    dependencies: Facade<S>,
-) -> Result<impl Reply, Rejection>
-where
-    S: Send + Sync + 'static,
-{
-    let listen_addresses: Vec<Multiaddr> = Network::listen_addresses(&dependencies).to_vec();
+    dependencies: Facade,
+) -> impl Future<Item = impl Reply, Error = Rejection> {
+    get_info_siren_async(id, dependencies).boxed().compat()
+}
+
+async fn get_info_siren_async(id: PeerId, facade: Facade) -> anyhow::Result<impl Reply, Rejection> {
+    let listen_addresses: Vec<Multiaddr> = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()
@@ -63,10 +68,7 @@ where
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps<S>(dependencies: Facade<S>) -> impl Future<Item = impl Reply, Error = Rejection>
-where
-    S: Send + Sync + 'static,
-{
+pub fn get_swaps(dependencies: Facade) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_get_swaps(dependencies)
         .boxed()
         .compat()

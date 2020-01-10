@@ -10,7 +10,7 @@ use crate::{
     },
     init_swap::init_accepted_swap,
     libp2p_comit_ext::ToHeader,
-    network::Network,
+    network::PendingRequestFor,
     seed::DeriveSwapSeed,
     swap_protocols::{
         actions::Actions,
@@ -30,17 +30,14 @@ use std::fmt::Debug;
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-pub async fn handle_action<S: Network>(
+pub async fn handle_action(
     method: http::Method,
     swap_id: SwapId,
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: Facade<S>,
-) -> anyhow::Result<ActionResponseBody>
-where
-    S: Send + Sync + 'static,
-{
+    dependencies: Facade,
+) -> anyhow::Result<ActionResponseBody> {
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
@@ -59,8 +56,10 @@ where
                 let body = serde_json::from_value::<AcceptBody>(body)
                     .context("failed to deserialize accept body")?;
 
-                let channel =
-                    Network::pending_request_for(&dependencies, swap_id).with_context(|| {
+                let channel = dependencies
+                    .pending_request_for(swap_id)
+                    .await
+                    .with_context(|| {
                         format!("unable to find response channel for swap {}", swap_id)
                     })?;
 
@@ -85,8 +84,10 @@ where
             Action::Decline(_) => {
                 let body = serde_json::from_value::<DeclineBody>(body)?;
 
-                let channel =
-                    Network::pending_request_for(&dependencies, swap_id).with_context(|| {
+                let channel = dependencies
+                    .pending_request_for(swap_id)
+                    .await
+                    .with_context(|| {
                         format!("unable to find response channel for swap {}", swap_id)
                     })?;
 
