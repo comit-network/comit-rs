@@ -218,7 +218,7 @@ mod tests {
     }
 
     #[test]
-    fn logging_section_defaults_to_debug_and_false() {
+    fn logging_section_defaults_to_info_and_false() {
         let config_file = File {
             logging: None,
             ..File::default()
@@ -230,7 +230,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.logging)
             .is_equal_to(Logging {
-                level: LevelFilter::Trace,
+                level: LevelFilter::Info,
                 structured: false,
             })
     }
