@@ -33,7 +33,7 @@ use std::sync::Arc;
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
-#[allow(missing_debug_implementations)]
+#[derive(Clone, Debug)]
 pub struct Facade {
     pub bitcoin_connector: BitcoindConnector,
     pub ethereum_connector: Web3Connector,
@@ -41,19 +41,6 @@ pub struct Facade {
     pub seed: RootSeed,
     pub swarm: Swarm,
     pub db: Sqlite,
-}
-
-impl Clone for Facade {
-    fn clone(&self) -> Self {
-        Self {
-            bitcoin_connector: self.bitcoin_connector.clone(),
-            ethereum_connector: self.ethereum_connector.clone(),
-            state_store: Arc::clone(&self.state_store),
-            seed: self.seed,
-            swarm: self.swarm.clone(),
-            db: self.db.clone(),
-        }
-    }
 }
 
 impl StateStore for Facade {
