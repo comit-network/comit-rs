@@ -995,6 +995,9 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 name = "genawaiter"
 version = "0.2.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "futures-core 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
+]
 
 [[package]]
 name = "generic-array"

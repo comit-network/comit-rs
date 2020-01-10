@@ -23,13 +23,15 @@ impl EthereumConnectorMock {
         all_blocks: impl IntoIterator<Item = Block<Transaction>>,
         receipts: Vec<(H256, TransactionReceipt)>,
     ) -> Self {
+        let all_blocks = all_blocks
+            .into_iter()
+            .fold(HashMap::new(), |mut hm, block| {
+                hm.insert(block.hash.unwrap(), block);
+                hm
+            });
+
         EthereumConnectorMock {
-            all_blocks: all_blocks
-                .into_iter()
-                .fold(HashMap::new(), |mut hm, block| {
-                    hm.insert(block.hash.unwrap(), block);
-                    hm
-                }),
+            all_blocks,
             latest_blocks: latest_blocks.into_iter().collect(),
             latest_time_return_block: Instant::now(),
             current_latest_block_index: 0,
@@ -39,7 +41,7 @@ impl EthereumConnectorMock {
 }
 
 impl LatestBlock for EthereumConnectorMock {
-    type Error = ();
+    type Error = Error;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
@@ -47,7 +49,7 @@ impl LatestBlock for EthereumConnectorMock {
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(()).into_future());
+            return Box::new(Err(Error::NoMoreBlocks).into_future());
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -66,7 +68,7 @@ impl LatestBlock for EthereumConnectorMock {
 }
 
 impl BlockByHash for EthereumConnectorMock {
-    type Error = ();
+    type Error = Error;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
@@ -79,7 +81,7 @@ impl BlockByHash for EthereumConnectorMock {
 }
 
 impl ReceiptByHash for EthereumConnectorMock {
-    type Error = ();
+    type Error = Error;
     type Receipt = Option<TransactionReceipt>;
     type TransactionHash = H256;
 
@@ -89,4 +91,10 @@ impl ReceiptByHash for EthereumConnectorMock {
     ) -> Box<dyn Future<Item = Self::Receipt, Error = Self::Error> + Send + 'static> {
         Box::new(Ok(self.receipts.get(&transaction_hash).cloned()).into_future())
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("ran out of blocks in chain")]
+    NoMoreBlocks,
 }

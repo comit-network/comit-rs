@@ -2,7 +2,7 @@ pub mod ethereum_helper;
 
 use cnd::{
     btsieve::ethereum::{matching_transaction, TransactionPattern},
-    ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt},
+    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
 };
 use ethereum_helper::EthereumConnectorMock;
 
@@ -36,6 +36,9 @@ async fn find_transaction_in_missing_block() {
         ],
         vec![(transaction.hash, receipt.clone())],
     );
+    let block1: Block<Transaction> = include_json_test_data!(
+        "./test_data/ethereum/find_transaction_in_missing_block/block1.json"
+    );
 
     let pattern = TransactionPattern {
         from_address: None,
@@ -45,9 +48,10 @@ async fn find_transaction_in_missing_block() {
         transaction_data_length: None,
         events: None,
     };
-    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None)
-        .await
-        .unwrap();
+    let expected_transaction_and_receipt =
+        matching_transaction(connector, pattern, Some(block1.timestamp.as_u32()))
+            .await
+            .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,
@@ -91,6 +95,9 @@ async fn find_transaction_in_missing_block_with_big_gap() {
         ],
         vec![(transaction.hash, receipt.clone())],
     );
+    let block1: Block<Transaction> = include_json_test_data!(
+        "./test_data/ethereum/find_transaction_in_missing_block/block1.json"
+    );
 
     let pattern = TransactionPattern {
         from_address: None,
@@ -100,9 +107,10 @@ async fn find_transaction_in_missing_block_with_big_gap() {
         transaction_data_length: None,
         events: None,
     };
-    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None)
-        .await
-        .unwrap();
+    let expected_transaction_and_receipt =
+        matching_transaction(connector, pattern, Some(block1.timestamp.as_u32()))
+            .await
+            .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,
