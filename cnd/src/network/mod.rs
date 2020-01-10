@@ -5,7 +5,7 @@ pub use transport::ComitTransport;
 use crate::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::Settings,
-    db::{Save, Saver, Sqlite, Swap},
+    db::{Save, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
@@ -414,7 +414,7 @@ async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
     swap_request: Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    DB: Save<Request<AL, BL, AA, BA>> + Saver,
+    DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);
