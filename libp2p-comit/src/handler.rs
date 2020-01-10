@@ -13,7 +13,9 @@ use futures::{
     Async, Poll,
 };
 use libp2p_core::Negotiated;
-use libp2p_swarm::{KeepAlive, ProtocolsHandler, ProtocolsHandlerUpgrErr, SubstreamProtocol};
+use libp2p_swarm::{
+    KeepAlive, ProtocolsHandler, ProtocolsHandlerEvent, ProtocolsHandlerUpgrErr, SubstreamProtocol,
+};
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
@@ -31,6 +33,8 @@ pub struct ComitHandler<TSubstream> {
     inbound_substreams: Vec<substream::inbound::State<TSubstream>>,
     #[derivative(Debug = "ignore")]
     outbound_substreams: Vec<substream::outbound::State<TSubstream>>,
+
+    to_send: Vec<PendingOutboundRequest>,
 
     #[derivative(Debug = "ignore")]
     current_task: Option<Task>,
@@ -70,6 +74,7 @@ impl<TSubstream> ComitHandler<TSubstream> {
             known_headers,
             inbound_substreams: Vec::new(),
             outbound_substreams: Vec::new(),
+            to_send: Vec::new(),
             current_task: None,
         }
     }
@@ -176,8 +181,7 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
     fn inject_event(&mut self, event: Self::InEvent) {
         match event {
             ProtocolInEvent::Message(OutboundMessage::Request(request)) => {
-                self.outbound_substreams
-                    .push(substream::outbound::State::WaitingOpen { request });
+                self.to_send.push(request)
             }
         }
 
@@ -198,6 +202,15 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
     }
 
     fn poll(&mut self) -> Poll<ComitHandlerEvent, Self::Error> {
+        if let Some(request) = self.to_send.pop() {
+            return Ok(Async::Ready(
+                ProtocolsHandlerEvent::OutboundSubstreamRequest {
+                    protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
+                    info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
+                },
+            ));
+        }
+
         if let Some(result) = poll_substreams(&mut self.outbound_substreams, &self.known_headers) {
             return result;
         }
