@@ -29,13 +29,6 @@ impl<S> Advanced<S> {
         }
     }
 
-    fn emit_event(event: ComitHandlerEvent) -> Self {
-        Self {
-            new_state: None,
-            event: Some(event),
-        }
-    }
-
     fn end() -> Self {
         Self {
             new_state: None,

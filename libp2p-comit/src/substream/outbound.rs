@@ -1,15 +1,12 @@
 use crate::{
     frame::Response,
-    handler::{
-        self, InboundMessage, OutboundMessage, PendingInboundResponse, PendingOutboundRequest,
-        ProtocolOutEvent, ProtocolOutboundOpenInfo,
-    },
-    protocol::{ComitProtocolConfig, Frames},
+    handler::{self, InboundMessage, PendingInboundResponse, ProtocolOutEvent},
+    protocol::Frames,
     substream::{Advance, Advanced, CloseStream},
     Frame, FrameType,
 };
 use futures::sync::oneshot;
-use libp2p_swarm::{ProtocolsHandlerEvent, SubstreamProtocol};
+use libp2p_swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 use tokio::prelude::*;
 
@@ -17,8 +14,6 @@ use tokio::prelude::*;
 #[allow(missing_debug_implementations)]
 /// States of an outbound substream i.e. from us to peer node.
 pub enum State<TSubstream> {
-    /// We haven't started opening the outgoing substream yet.
-    WaitingOpen { request: PendingOutboundRequest },
     /// Waiting to send a message to the remote.
     WaitingSend {
         frame: Frame,
@@ -54,12 +49,6 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
     ) -> Advanced<State<TSubstream>> {
         use self::State::*;
         match self {
-            WaitingOpen { request } => {
-                Advanced::emit_event(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                    protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
-                    info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
-                })
-            }
             WaitingSend {
                 frame,
                 response_sender,
