@@ -32,6 +32,10 @@ export class CndInstance {
             ? process.env.CND_BIN
             : this.projectRoot + "/target/debug/cnd";
 
+        if (global.verbose) {
+            console.log(`[${this.actorConfig.name}] using binary ${bin}`);
+        }
+
         this.configFile = this.actorConfig.generateCndConfigFile(
             this.ledgerConfig
         );
@@ -55,6 +59,12 @@ export class CndInstance {
                 ), // stderr
             ],
         });
+
+        if (global.verbose) {
+            console.log(
+                `[${this.actorConfig.name}] process spawned with PID ${this.process.pid}`
+            );
+        }
 
         this.process.on("exit", (code: number, signal: number) => {
             if (global.verbose) {

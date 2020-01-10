@@ -1,4 +1,6 @@
-use crate::{http_api::Http, network::Network, swap_protocols::Facade};
+use crate::{http_api::Http, network::ComitPeers, swap_protocols::Facade};
+use futures::Future;
+use futures_core::future::{FutureExt, TryFutureExt};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};
@@ -15,11 +17,14 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_peers<S: Network>(dependencies: Facade<S>) -> Result<impl Reply, Rejection>
-where
-    S: Send + Sync + 'static,
-{
-    let peers = Network::comit_peers(&dependencies)
+pub fn get_peers(dependencies: Facade) -> impl Future<Item = impl Reply, Error = Rejection> {
+    get_peers_async(dependencies).boxed().compat()
+}
+
+async fn get_peers_async(facade: Facade) -> anyhow::Result<impl Reply, Rejection> {
+    let peers = facade
+        .comit_peers()
+        .await
         .map(|(peer, addresses)| Peer {
             id: Http(peer),
             endpoints: addresses,

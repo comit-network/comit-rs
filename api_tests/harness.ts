@@ -118,7 +118,17 @@ async function runTests(testFiles: string[]) {
                 .run((failures: number) => res(failures));
         });
 
+        if (global.verbose) {
+            console.log(`Running test ${testFile}`);
+        }
+
         const failures = await runTests;
+
+        if (global.verbose) {
+            console.log(
+                `Test ${testFile} ${failures ? "failed" : "succeeded"}`
+            );
+        }
 
         if (failures) {
             if (commander.dumpLogs || process.env.CARGO_MAKE_CI === "TRUE") {

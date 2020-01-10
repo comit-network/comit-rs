@@ -12,7 +12,6 @@ use crate::{
             rfc003::handlers::{handle_action, handle_get_swap, handle_post_swap},
         },
     },
-    network::Network,
     swap_protocols::{rfc003::actions::ActionKind, Facade, SwapId},
 };
 use futures::Future;
@@ -26,13 +25,10 @@ pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationStat
 use crate::http_api::problem;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap<S: Network>(
-    dependencies: Facade<S>,
+pub fn post_swap(
+    dependencies: Facade,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection>
-where
-    S: Send + Sync + 'static,
-{
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_post_swap(dependencies, body)
         .boxed()
         .compat()
@@ -47,13 +43,10 @@ where
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap<S>(
-    dependencies: Facade<S>,
+pub fn get_swap(
+    dependencies: Facade,
     id: SwapId,
-) -> impl Future<Item = impl Reply, Error = Rejection>
-where
-    S: Send + Sync + 'static,
-{
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_get_swap(dependencies, id)
         .boxed()
         .compat()
@@ -63,17 +56,14 @@ where
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action<S: Network>(
+pub fn action(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    dependencies: Facade<S>,
+    dependencies: Facade,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection>
-where
-    S: Send + Sync + 'static,
-{
+) -> impl Future<Item = impl Reply, Error = Rejection> {
     handle_action(method, id, action_kind, body, query_params, dependencies)
         .boxed()
         .compat()

@@ -1,7 +1,10 @@
 pub mod transport;
 
+pub use transport::ComitTransport;
+
 use crate::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    config::Settings,
     db::{Save, Saver, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::{DeriveSwapSeed, RootSeed},
@@ -16,20 +19,31 @@ use crate::{
         HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
     },
 };
+use async_trait::async_trait;
 use futures::{
     future::Future,
+    stream::Stream,
     sync::oneshot::{self, Sender},
 };
-use futures_core::{FutureExt, TryFutureExt};
+use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use libp2p::{
-    core::muxing::{StreamMuxer, SubstreamRef},
+    core::muxing::SubstreamRef,
+    identity::{self, ed25519},
     mdns::Mdns,
-    swarm::NetworkBehaviourEventProcess,
-    Multiaddr, NetworkBehaviour, PeerId, Swarm, Transport,
+    swarm::{
+        protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect,
+        NetworkBehaviourEventProcess,
+    },
+    Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
-    frame::{self, OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{self, CodecError, OutboundRequest, Response, ValidatedInboundRequest},
+    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
+};
+use libp2p_core::{
+    either::{EitherError, EitherOutput},
+    muxing::StreamMuxerBox,
 };
 use std::{
     collections::{HashMap, HashSet},
@@ -37,7 +51,86 @@ use std::{
     io,
     sync::{Arc, Mutex},
 };
-use tokio_compat::runtime::TaskExecutor;
+use tokio_compat::runtime::{Runtime, TaskExecutor};
+
+#[derive(Clone, derivative::Derivative)]
+#[derivative(Debug)]
+#[allow(clippy::type_complexity)]
+pub struct Swarm {
+    #[derivative(Debug = "ignore")]
+    swarm: Arc<
+        Mutex<
+            ExpandedSwarm<
+                ComitTransport,
+                ComitNode<SubstreamRef<Arc<StreamMuxerBox>>>,
+                EitherOutput<ProtocolInEvent, void::Void>,
+                EitherOutput<ProtocolOutEvent, void::Void>,
+                IntoProtocolsHandlerSelect<
+                    ComitHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
+                    DummyProtocolsHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
+                >,
+                EitherError<CodecError, void::Void>,
+            >,
+        >,
+    >,
+    local_peer_id: PeerId,
+}
+
+impl Swarm {
+    pub fn new(
+        settings: &Settings,
+        seed: RootSeed,
+        runtime: &mut Runtime,
+        bitcoin_connector: &BitcoindConnector,
+        ethereum_connector: &Web3Connector,
+        state_store: &Arc<InMemoryStateStore>,
+        database: &Sqlite,
+    ) -> anyhow::Result<Self> {
+        let local_key_pair = derive_key_pair(&seed);
+        let local_peer_id = PeerId::from(local_key_pair.clone().public());
+        log::info!("Starting with peer_id: {}", local_peer_id);
+
+        let transport = transport::build_comit_transport(local_key_pair);
+        let behaviour = ComitNode::new(
+            bitcoin_connector.clone(),
+            ethereum_connector.clone(),
+            Arc::clone(&state_store),
+            seed,
+            database.clone(),
+            runtime.executor(),
+        )?;
+        let mut swarm = libp2p::Swarm::new(transport, behaviour, local_peer_id.clone());
+
+        for addr in settings.network.listen.clone() {
+            libp2p::Swarm::listen_on(&mut swarm, addr)
+                .expect("Could not listen on specified address");
+        }
+
+        let swarm = Arc::new(Mutex::new(swarm));
+
+        let swarm_worker = futures::stream::poll_fn({
+            let swarm = swarm.clone();
+            move || swarm.lock().unwrap().poll()
+        })
+        .for_each(|_| Ok(()))
+        .map_err(|e| {
+            log::error!("failed with {:?}", e);
+        });
+
+        runtime.spawn(swarm_worker);
+
+        Ok(Self {
+            swarm,
+            local_peer_id,
+        })
+    }
+}
+
+fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
+    let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
+    let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
+    identity::Keypair::Ed25519(key.into())
+}
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -335,136 +428,158 @@ where
     Ok(())
 }
 
-/// Defines all the operations the Comit Node can perform in regards to the
-/// Comit network.
-///
-/// Ideally, this trait would not be necessary and we would instead have one
-/// trait per function. Unfortunately, an instance of `Swarm` is very hard to
-/// name (see the complex traits bound below). To avoid this kind of code 4
-/// times, we bundle all these methods up into one trait.
-pub trait Network: Send + Sync + 'static {
-    fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
-    fn listen_addresses(&self) -> Vec<Multiaddr>;
-    fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
-    fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
-        &self,
-        peer_identity: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send>;
+/// Get the `PeerId` of this node.
+pub trait LocalPeerId {
+    fn local_peer_id(&self) -> PeerId;
 }
 
-impl<
-        TTransport: Transport + Send + Sync + 'static,
-        TMuxer: StreamMuxer + Send + Sync + 'static,
-    > Network for Mutex<Swarm<TTransport, ComitNode<SubstreamRef<Arc<TMuxer>>>>>
-where
-    <TMuxer as StreamMuxer>::OutboundSubstream: Send + 'static,
-    <TMuxer as StreamMuxer>::Substream: Send + Sync + 'static,
-    <TTransport as Transport>::Dial: Send,
-    <TTransport as Transport>::Error: Send,
-    <TTransport as Transport>::Listener: Send,
-    <TTransport as Transport>::ListenerUpgrade: Send,
-    TTransport: Transport<Output = (PeerId, TMuxer)> + Clone,
-{
-    fn comit_peers(&self) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        let mut swarm = self.lock().unwrap();
+impl LocalPeerId for Swarm {
+    fn local_peer_id(&self) -> PeerId {
+        self.local_peer_id.clone()
+    }
+}
 
+/// Get `PeerId`s of connected nodes.
+#[async_trait]
+pub trait ComitPeers {
+    async fn comit_peers(
+        &self,
+    ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static>;
+}
+
+#[async_trait]
+impl ComitPeers for Swarm {
+    async fn comit_peers(
+        &self,
+    ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
+        let mut swarm = self.swarm.lock().unwrap();
         Box::new(swarm.comit.connected_peers())
     }
+}
 
-    fn listen_addresses(&self) -> Vec<Multiaddr> {
-        let swarm = self.lock().unwrap();
+/// IP addresses local node is listening on.
+#[async_trait]
+pub trait ListenAddresses {
+    async fn listen_addresses(&self) -> Vec<Multiaddr>;
+}
 
-        Swarm::listeners(&swarm)
-            .chain(Swarm::external_addresses(&swarm))
+#[async_trait]
+impl ListenAddresses for Swarm {
+    async fn listen_addresses(&self) -> Vec<Multiaddr> {
+        let swarm = self.swarm.lock().unwrap();
+
+        libp2p::Swarm::listeners(&swarm)
+            .chain(libp2p::Swarm::external_addresses(&swarm))
             .cloned()
             .collect()
     }
+}
 
-    fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        let swarm = self.lock().unwrap();
+/// Get pending network requests for swap.
+#[async_trait]
+pub trait PendingRequestFor {
+    async fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
+}
+
+#[async_trait]
+impl PendingRequestFor for Swarm {
+    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
+        let swarm = self.swarm.lock().unwrap();
         let mut response_channels = swarm.response_channels.lock().unwrap();
-
         response_channels.remove(&swap)
     }
+}
 
-    fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+/// Send swap request to connected peer.
+#[async_trait]
+pub trait SendRequest {
+    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+        &self,
+        peer_identity: DialInformation,
+        request: rfc003::Request<AL, BL, AA, BA>,
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>;
+}
+
+#[async_trait]
+impl SendRequest for Swarm {
+    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
         &self,
         dial_information: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Box<dyn Future<Item = rfc003::Response<AL, BL>, Error = RequestError> + Send> {
+    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
         let id = request.swap_id;
         let request = build_outbound_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
 
-        let response = {
-            let mut swarm = self.lock().unwrap();
-            log::trace!(
-                "Making swap request to {}: swap_id: {}",
+        let result = {
+            let mut guard = self.swarm.lock().unwrap();
+            let swarm = &mut *guard;
+
+            log::debug!(
+                "Making swap request to {}: {:?}",
                 dial_information.clone(),
                 id,
             );
 
-            swarm.send_request(dial_information.clone(), request)
-        };
+            swarm
+                .send_request(dial_information.clone(), request)
+                .compat()
+        }
+        .await;
 
-        let response =
-            response.then(move |result| match result {
-                Ok(mut response) => {
-                    let decision = response
-                        .take_header("decision")
-                        .map(Decision::from_header)
-                        .map_or(Ok(None), |x| x.map(Some))
-                        .map_err(|e| {
-                            log::error!(
-                                "Could not deserialize header in response {:?}: {}",
-                                response,
-                                e,
-                            );
-                            RequestError::InvalidResponse
-                        })?;
+        match result {
+            Ok(mut response) => {
+                let decision = response
+                    .take_header("decision")
+                    .map(Decision::from_header)
+                    .map_or(Ok(None), |x| x.map(Some))
+                    .map_err(|e| {
+                        log::error!(
+                            "Could not deserialize header in response {:?}: {}",
+                            response,
+                            e,
+                        );
+                        RequestError::InvalidResponse
+                    })?;
 
-                    match decision {
-                        Some(Decision::Accepted) => {
-                            match serde_json::from_value::<
-                                rfc003::messages::AcceptResponseBody<AL, BL>,
-                            >(response.body().clone())
-                            {
-                                Ok(body) => Ok(Ok(rfc003::Accept {
-                                    swap_id: id,
-                                    beta_ledger_refund_identity: body.beta_ledger_refund_identity,
-                                    alpha_ledger_redeem_identity: body.alpha_ledger_redeem_identity,
-                                })),
-                                Err(_e) => Err(RequestError::InvalidResponse),
-                            }
+                match decision {
+                    Some(Decision::Accepted) => {
+                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AL, BL>>(
+                            response.body().clone(),
+                        ) {
+                            Ok(body) => Ok(Ok(rfc003::Accept {
+                                swap_id: id,
+                                beta_ledger_refund_identity: body.beta_ledger_refund_identity,
+                                alpha_ledger_redeem_identity: body.alpha_ledger_redeem_identity,
+                            })),
+                            Err(_e) => Err(RequestError::InvalidResponse),
                         }
-
-                        Some(Decision::Declined) => {
-                            match serde_json::from_value::<rfc003::messages::DeclineResponseBody>(
-                                response.body().clone(),
-                            ) {
-                                Ok(body) => Ok(Err(rfc003::Decline {
-                                    swap_id: id,
-                                    reason: body.reason,
-                                })),
-                                Err(_e) => Err(RequestError::InvalidResponse),
-                            }
-                        }
-
-                        None => Err(RequestError::InvalidResponse),
                     }
-                }
-                Err(e) => {
-                    log::error!(
-                        "Unable to request over connection {:?}:{:?}",
-                        dial_information,
-                        e
-                    );
-                    Err(RequestError::Connection)
-                }
-            });
 
-        Box::new(response)
+                    Some(Decision::Declined) => {
+                        match serde_json::from_value::<rfc003::messages::DeclineResponseBody>(
+                            response.body().clone(),
+                        ) {
+                            Ok(body) => Ok(Err(rfc003::Decline {
+                                swap_id: id,
+                                reason: body.reason,
+                            })),
+                            Err(_e) => Err(RequestError::InvalidResponse),
+                        }
+                    }
+
+                    None => Err(RequestError::InvalidResponse),
+                }
+            }
+            Err(e) => {
+                log::error!(
+                    "Unable to request over connection {:?}:{:?}",
+                    dial_information,
+                    e
+                );
+                Err(RequestError::Connection)
+            }
+        }
     }
 }
 

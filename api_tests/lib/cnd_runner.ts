@@ -68,6 +68,10 @@ export class CndRunner {
         for (const { name, process } of startedNodes) {
             this.runningNodes[name] = process;
         }
+
+        if (global.verbose) {
+            console.log("All nodes successfully started");
+        }
     }
 
     public stopCnds() {

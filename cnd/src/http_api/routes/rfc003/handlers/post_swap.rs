@@ -3,7 +3,7 @@ use crate::{
     ethereum,
     http_api::{HttpAsset, HttpLedger},
     init_swap::init_accepted_swap,
-    network::{DialInformation, Network},
+    network::{DialInformation, SendRequest},
     seed::DeriveSwapSeed,
     swap_protocols::{
         asset::Asset,
@@ -17,12 +17,12 @@ use crate::{
     timestamp::Timestamp,
 };
 use anyhow::Context;
-use futures_core::{compat::Future01CompatExt, future::TryFutureExt};
+use futures_core::future::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
-pub async fn handle_post_swap<S: Network>(
-    dependencies: Facade<S>,
+pub async fn handle_post_swap(
+    dependencies: Facade,
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
@@ -187,20 +187,19 @@ pub struct UnsupportedSwap {
     beta_ledger: HttpLedger,
 }
 
-async fn initiate_request<S, AL, BL, AA, BA>(
-    dependencies: Facade<S>,
+async fn initiate_request<AL, BL, AA, BA>(
+    dependencies: Facade,
     id: SwapId,
     peer: DialInformation,
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    S: Network + Send + Sync + 'static,
     Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    Facade<S>: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
+    Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
 {
     let counterparty = peer.peer_id.clone();
     let seed = dependencies.derive_swap_seed(id);
@@ -215,7 +214,6 @@ where
         async move {
             let response = dependencies
                 .send_request(peer.clone(), swap_request.clone())
-                .compat()
                 .await
                 .with_context(|| format!("Failed to send swap request to {}", peer.clone()))?;
 
