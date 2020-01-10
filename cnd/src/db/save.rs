@@ -23,21 +23,6 @@ pub trait Save<T>: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub trait Saver:
-    Save<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>>
-    + Save<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>>
-    + Save<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>>
-    + Save<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>>
-    + Save<Accept<Bitcoin, Ethereum>>
-    + Save<Accept<Ethereum, Bitcoin>>
-    + Save<Decline>
-    + Save<Swap>
-{
-}
-
-impl Saver for Sqlite {}
-
-#[async_trait]
 impl Save<Swap> for Sqlite {
     async fn save(&self, swap: Swap) -> anyhow::Result<()> {
         let insertable = InsertableSwap::from(swap);

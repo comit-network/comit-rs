@@ -1,9 +1,6 @@
 use crate::{
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
-    db::{
-        AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Saver, Sqlite, Swap,
-        SwapTypes,
-    },
+    db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     network::{
         ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
         SendRequest, Swarm,
@@ -137,9 +134,6 @@ impl DetermineTypes for Facade {
         self.db.determine_types(key).await
     }
 }
-
-#[async_trait]
-impl Saver for Facade {}
 
 #[async_trait]
 impl<T> Save<T> for Facade
