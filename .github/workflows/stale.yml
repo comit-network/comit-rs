@@ -1,8 +1,6 @@
 on:
-  push:
-    branches:
-      - master
-      - test-stale-bot
+  schedule:
+    - cron: '0 * * * *'
 name: stale
 jobs:
   stale:
