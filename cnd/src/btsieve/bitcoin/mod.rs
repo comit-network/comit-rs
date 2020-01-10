@@ -22,22 +22,16 @@ pub async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,
-) -> Result<bitcoin::Transaction, ()>
+) -> anyhow::Result<bitcoin::Transaction>
 where
     C: LatestBlock<Block = bitcoin::Block, Error = E>
         + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash, Error = E>
         + Clone,
-    E: Debug + Send + 'static,
+    E: std::error::Error + Debug + Send + Sync + 'static,
 {
     // Verify that we can successfully connect to the blockchain connector and check
     // if the transaction is in the latest block.
-    let latest_block = match blockchain_connector.latest_block().compat().await {
-        Ok(block) => block,
-        Err(e) => {
-            log::error!("Failed to connect to the blockchain_connector: {:?}", e,);
-            return Err(());
-        }
-    };
+    let latest_block = blockchain_connector.latest_block().compat().await?;
     if let Some(transaction) = check_block_against_pattern(&latest_block.clone(), &pattern) {
         return Ok(transaction.clone());
     };

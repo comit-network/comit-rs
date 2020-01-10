@@ -56,7 +56,8 @@ async fn find_transaction_in_old_block() {
         pattern,
         Some(block1_with_transaction.timestamp.low_u32()),
     )
-    .await;
+    .await
+    .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,

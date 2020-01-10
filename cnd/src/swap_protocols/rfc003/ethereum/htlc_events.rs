@@ -8,13 +8,13 @@ use crate::{
         asset::Asset,
         ledger::Ethereum,
         rfc003::{
-            self,
             create_swap::HtlcParams,
             events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
             Secret,
         },
     },
 };
+use anyhow::Context;
 use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {
@@ -31,7 +31,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
-    ) -> Result<Deployed<Ethereum>, rfc003::Error> {
+    ) -> anyhow::Result<Deployed<Ethereum>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             from_address: None,
@@ -42,7 +42,9 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
             events: None,
         };
         let TransactionAndReceipt { transaction, .. } =
-            matching_transaction(connector, pattern, None).await;
+            matching_transaction(connector, pattern, None)
+                .await
+                .context("failed to find transaction for htlc deployment")?;
 
         Ok(Deployed {
             location: calculate_contract_address_from_deployment_transaction(&transaction),
@@ -54,7 +56,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
         &self,
         _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         deploy_transaction: &Deployed<Ethereum>,
-    ) -> Result<Funded<Ethereum, EtherQuantity>, rfc003::Error> {
+    ) -> anyhow::Result<Funded<Ethereum, EtherQuantity>> {
         Ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
             asset: EtherQuantity::from_wei(deploy_transaction.transaction.value),
@@ -66,7 +68,7 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
         htlc_params: HtlcParams<Ethereum, EtherQuantity>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, EtherQuantity>,
-    ) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+    ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
         htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding).await
     }
 }
@@ -80,7 +82,7 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
-) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
     let redeemed = {
         let connector = connector.clone();
         async {
@@ -100,24 +102,17 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
             let TransactionAndReceipt {
                 transaction,
                 receipt,
-            } = matching_transaction(connector, pattern, None).await;
+            } = matching_transaction(connector, pattern, None)
+                .await
+                .context("failed to find transaction to redeem from htlc")?;
             let log = receipt
                 .logs
                 .into_iter()
                 .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
-                .ok_or_else(|| {
-                    rfc003::Error::Internal(format!(
-                        "transaction receipt {:?} did not contain a REDEEM log",
-                        transaction.hash
-                    ))
-                })?;
+                .expect("Redeem transaction receipt must contain redeem logs");
             let log_data = log.data.0.as_ref();
-            let secret = Secret::from_vec(log_data).map_err(|e| {
-                rfc003::Error::Internal(format!(
-                    "failed to construct secret from data in transaction receipt {:?}: {:?}",
-                    transaction.hash, e
-                ))
-            })?;
+            let secret =
+                Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
 
             Ok(Redeemed {
                 transaction,
@@ -141,7 +136,9 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
         };
 
         let TransactionAndReceipt { transaction, .. } =
-            matching_transaction(connector, pattern, None).await;
+            matching_transaction(connector, pattern, None)
+                .await
+                .context("failed to find transaction to refund from htlc")?;
 
         Ok(Refunded { transaction })
     };
@@ -169,7 +166,7 @@ mod erc20 {
         async fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
-        ) -> Result<Deployed<Ethereum>, rfc003::Error> {
+        ) -> anyhow::Result<Deployed<Ethereum>> {
             let connector = self.clone();
             let pattern = TransactionPattern {
                 from_address: None,
@@ -180,7 +177,9 @@ mod erc20 {
                 events: None,
             };
             let TransactionAndReceipt { transaction, .. } =
-                matching_transaction(connector, pattern, None).await;
+                matching_transaction(connector, pattern, None)
+                    .await
+                    .context("failed to find transaction to deploy htlc")?;
 
             Ok(Deployed {
                 location: calculate_contract_address_from_deployment_transaction(&transaction),
@@ -192,7 +191,7 @@ mod erc20 {
             &self,
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
             htlc_deployment: &Deployed<Ethereum>,
-        ) -> Result<Funded<Ethereum, Erc20Token>, rfc003::Error> {
+        ) -> anyhow::Result<Funded<Ethereum, Erc20Token>> {
             let connector = self.clone();
             let events = Some(vec![Event {
                 address: Some(htlc_params.asset.token_contract),
@@ -218,18 +217,13 @@ mod erc20 {
                 },
                 None,
             )
-            .await;
+            .await
+            .context("failed to find transaction to fund htlc")?;
             let log = receipt
                 .logs
                 .into_iter()
                 .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
-                .ok_or_else(|| {
-                    log::warn!(
-                        "receipt for transaction {:?} did not contain any Transfer events",
-                        transaction.hash
-                    );
-                    rfc003::Error::IncorrectFunding
-                })?;
+                .expect("Fund transaction receipt must contain transfer events");
 
             let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
             let asset = Erc20Token::new(log.address, quantity);
@@ -242,7 +236,7 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, Erc20Token>,
             htlc_deployment: &Deployed<Ethereum>,
             htlc_funding: &Funded<Ethereum, Erc20Token>,
-        ) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+        ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
             htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
                 .await
         }
