@@ -62,7 +62,7 @@
         "temp-write": "^4.0.0",
         "testcontainers": "^2.2.0",
         "tmp": "^0.1.0",
-        "ts-node": "^8.5.4",
+        "ts-node": "^8.6.1",
         "tslint": "^5.20.1",
         "tslint-config-prettier": "^1.18.0",
         "tslint-no-unused-expression-chai": "^0.1.4",
