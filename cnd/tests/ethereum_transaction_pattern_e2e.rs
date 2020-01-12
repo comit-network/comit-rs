@@ -75,7 +75,10 @@ async fn ethereum_transaction_pattern_e2e_test() {
             .await
             .unwrap();
 
-    assert_eq!(funding_transaction.transaction.hash, actual_transaction)
+    assert_eq!(
+        funding_transaction.unwrap().transaction.hash,
+        actual_transaction
+    )
 }
 
 pub fn new_web3_client<D: Docker, E: Image>(

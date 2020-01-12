@@ -151,7 +151,7 @@ impl HtlcEvents<Bitcoin, Amount> for Facade {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
-    ) -> Result<Deployed<Bitcoin>, rfc003::Error> {
+    ) -> anyhow::Result<Deployed<Bitcoin>> {
         self.bitcoin_connector.htlc_deployed(htlc_params).await
     }
 
@@ -159,7 +159,7 @@ impl HtlcEvents<Bitcoin, Amount> for Facade {
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> Result<Funded<Bitcoin, Amount>, rfc003::Error> {
+    ) -> anyhow::Result<Funded<Bitcoin, Amount>> {
         self.bitcoin_connector
             .htlc_funded(htlc_params, htlc_deployment)
             .await
@@ -170,7 +170,7 @@ impl HtlcEvents<Bitcoin, Amount> for Facade {
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
         htlc_funding: &Funded<Bitcoin, Amount>,
-    ) -> Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>, rfc003::Error> {
+    ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
         self.bitcoin_connector
             .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
             .await
@@ -186,7 +186,7 @@ where
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
-    ) -> Result<Deployed<Ethereum>, rfc003::Error> {
+    ) -> anyhow::Result<Deployed<Ethereum>> {
         self.ethereum_connector.htlc_deployed(htlc_params).await
     }
 
@@ -194,7 +194,7 @@ where
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
-    ) -> Result<Funded<Ethereum, A>, rfc003::Error> {
+    ) -> anyhow::Result<Funded<Ethereum, A>> {
         self.ethereum_connector
             .htlc_funded(htlc_params, htlc_deployment)
             .await
@@ -205,7 +205,7 @@ where
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, A>,
-    ) -> Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>, rfc003::Error> {
+    ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
         self.ethereum_connector
             .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
             .await

@@ -4,7 +4,7 @@
 
 use crate::swap_protocols::{
     asset::Asset,
-    rfc003::{self, create_swap::HtlcParams, ledger::Ledger, Secret},
+    rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
 };
 use futures_core::future::Either;
 use serde::{Deserialize, Serialize};
@@ -34,19 +34,16 @@ pub struct Refunded<L: Ledger> {
 
 #[async_trait::async_trait]
 pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {
-    async fn htlc_deployed(
-        &self,
-        htlc_params: HtlcParams<L, A>,
-    ) -> Result<Deployed<L>, rfc003::Error>;
+    async fn htlc_deployed(&self, htlc_params: HtlcParams<L, A>) -> anyhow::Result<Deployed<L>>;
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
-    ) -> Result<Funded<L, A>, rfc003::Error>;
+    ) -> anyhow::Result<Funded<L, A>>;
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
         htlc_funding: &Funded<L, A>,
-    ) -> Result<Either<Redeemed<L>, Refunded<L>>, rfc003::Error>;
+    ) -> anyhow::Result<Either<Redeemed<L>, Refunded<L>>>;
 }

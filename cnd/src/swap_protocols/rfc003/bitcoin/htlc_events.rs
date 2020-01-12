@@ -5,13 +5,13 @@ use crate::{
     swap_protocols::{
         ledger::Bitcoin,
         rfc003::{
-            self,
             bitcoin::extract_secret::extract_secret,
             create_swap::HtlcParams,
             events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
         },
     },
 };
+use anyhow::Context;
 use bitcoin::{Amount, OutPoint};
 use futures_core::future::{self, Either};
 
@@ -20,7 +20,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, Amount>,
-    ) -> Result<Deployed<Bitcoin>, rfc003::Error> {
+    ) -> anyhow::Result<Deployed<Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: Some(htlc_params.compute_address()),
@@ -30,16 +30,11 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
 
         let transaction = matching_transaction(connector, pattern, None)
             .await
-            .map_err(|_| rfc003::Error::Btsieve)?;
+            .context("failed to find transaction to deploy htlc")?;
 
         let (vout, _txout) = transaction
             .find_output(&htlc_params.compute_address())
-            .ok_or_else(|| {
-                rfc003::Error::Internal(
-                    "Query returned Bitcoin transaction that didn't match the requested address"
-                        .into(),
-                )
-            })?;
+            .expect("Deployment transaction must contain outpoint described in pattern");
 
         Ok(Deployed {
             location: OutPoint {
@@ -54,7 +49,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         &self,
         _htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> Result<Funded<Bitcoin, Amount>, rfc003::Error> {
+    ) -> anyhow::Result<Funded<Bitcoin, Amount>> {
         let tx = &htlc_deployment.transaction;
         let asset = Amount::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
 
@@ -69,7 +64,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
         htlc_params: HtlcParams<Bitcoin, Amount>,
         htlc_deployment: &Deployed<Bitcoin>,
         _htlc_funding: &Funded<Bitcoin, Amount>,
-    ) -> Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>, rfc003::Error> {
+    ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
         let redeemed = async {
             let connector = self.clone();
             let pattern = TransactionPattern {
@@ -80,17 +75,9 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
 
             let transaction = matching_transaction(connector, pattern, None)
                 .await
-                .map_err(|_| rfc003::Error::Btsieve)?;
-            let secret =
-                extract_secret(&transaction, &htlc_params.secret_hash).ok_or_else(|| {
-                    log::error!(
-                        "Redeem transaction didn't have secret it in: {:?}",
-                        transaction
-                    );
-                    rfc003::Error::Internal(
-                        "Redeem transaction didn't have the secret in it".into(),
-                    )
-                })?;
+                .context("failed to find transaction to redeem from htlc")?;
+            let secret = extract_secret(&transaction, &htlc_params.secret_hash)
+                .expect("Redeem transaction must contain secret");
 
             Ok(Redeemed {
                 transaction,
@@ -107,7 +94,7 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
             };
             let transaction = matching_transaction(connector, pattern, None)
                 .await
-                .map_err(|_| rfc003::Error::Btsieve)?;
+                .context("failed to find transaction to refund from htlc")?;
 
             Ok(Refunded { transaction })
         };

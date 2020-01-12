@@ -81,7 +81,7 @@ async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<AL, AA>,
-) -> Result<(), rfc003::Error>
+) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
@@ -118,7 +118,7 @@ async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<BL, BA>,
-) -> Result<(), rfc003::Error>
+) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,

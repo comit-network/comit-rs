@@ -45,7 +45,9 @@ async fn find_transaction_in_missing_block() {
         transaction_data_length: None,
         events: None,
     };
-    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None).await;
+    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None)
+        .await
+        .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,
@@ -98,7 +100,9 @@ async fn find_transaction_in_missing_block_with_big_gap() {
         transaction_data_length: None,
         events: None,
     };
-    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None).await;
+    let expected_transaction_and_receipt = matching_transaction(connector, pattern, None)
+        .await
+        .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,

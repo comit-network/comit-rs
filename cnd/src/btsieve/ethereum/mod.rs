@@ -20,7 +20,7 @@ pub async fn matching_transaction<C, E>(
     connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,
-) -> TransactionAndReceipt
+) -> anyhow::Result<TransactionAndReceipt>
 where
     C: LatestBlock<Block = Option<Block>, Error = E>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
@@ -70,10 +70,10 @@ where
         pattern,
     ));
 
-    matching_transaction
+    Ok(matching_transaction
         .recv()
         .await
-        .expect("sender cannot be dropped")
+        .expect("sender cannot be dropped"))
 }
 
 /// Repeatedly fetches the latest block from the Ethereum blockchain connector.
