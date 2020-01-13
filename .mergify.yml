@@ -20,6 +20,14 @@ pull_request_rules:
     actions:
       comment:
         message: "bors r+"
+  - name: recreate dependabot PRs with merge conflicts
+    conditions:
+      - "status-success=ci/circleci: debug-build-test"
+      - "author=dependabot-preview[bot]"
+      - conflict
+    actions:
+      comment:
+        message: "@dependabot recreate"
   - name: Delete branch if the pull request is merged
     conditions:
       - merged
