@@ -103,14 +103,15 @@ where
     }
 }
 
-async fn yield_blocks_until_timestamp<C>(
+async fn yield_until<C, P>(
     connector: C,
     co: &Co<Block>,
     starting_blockhash: Hash,
-    timestamp: u32,
+    stop_condition: P,
 ) -> anyhow::Result<()>
 where
     C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
+    P: Fn(&Block) -> anyhow::Result<bool>,
 {
     let mut blockhash = starting_blockhash;
 
@@ -123,12 +124,27 @@ where
 
         co.yield_(block.clone()).await;
 
-        if block.timestamp <= U256::from(timestamp) {
+        if stop_condition(&block)? {
             return Ok(());
         } else {
             blockhash = block.parent_hash
         }
     }
+}
+
+async fn yield_blocks_until_timestamp<C>(
+    connector: C,
+    co: &Co<Block>,
+    starting_blockhash: Hash,
+    timestamp: u32,
+) -> anyhow::Result<()>
+where
+    C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
+{
+    yield_until(connector, co, starting_blockhash, |block| {
+        Ok(block.timestamp <= U256::from(timestamp))
+    })
+    .await
 }
 
 async fn yield_missed_blocks<C>(
@@ -141,28 +157,17 @@ async fn yield_missed_blocks<C>(
 where
     C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
 {
-    let mut blockhash = starting_blockhash;
-
-    loop {
-        let block = connector
-            .block_by_hash(blockhash)
-            .compat()
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Could not fetch block with hash {}", blockhash))?;
-
-        co.yield_(block.clone()).await;
-
-        if seen_blockhashes.contains(
+    yield_until(connector, co, starting_blockhash, |block| {
+        let block_is_known = seen_blockhashes.contains(
             &block
                 .hash
                 .ok_or_else(|| anyhow::anyhow!("Block with nullable hash"))?,
-        ) || U256::from(timestamp) >= block.timestamp
-        {
-            return Ok(());
-        } else {
-            blockhash = block.parent_hash
-        }
-    }
+        );
+        let past_known_block = U256::from(timestamp) >= block.timestamp;
+
+        Ok(block_is_known || past_known_block)
+    })
+    .await
 }
 
 async fn check_block_against_pattern<C>(
