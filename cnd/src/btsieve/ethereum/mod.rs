@@ -6,7 +6,7 @@ pub use self::{
     web3_connector::Web3Connector,
 };
 use crate::{
-    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
+    btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use anyhow;
@@ -143,10 +143,10 @@ where
     }
 }
 
-/// Constructs a predicate that returns `true` if the given block is younger
-/// than the swap itself.
+/// Constructs a predicate that returns `true` if the given block predates the
+/// start of the swap.
 fn past_timestamp(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Result<bool> {
-    move |block| Ok(block.timestamp <= U256::from(start_of_swap))
+    move |block| Ok(block.predates(start_of_swap))
 }
 
 /// Constructs a predicate that returns `true` if we have seen the given block
@@ -212,4 +212,10 @@ where
     }
 
     Ok(None)
+}
+
+impl Predates for Block {
+    fn predates(&self, timestamp: u32) -> bool {
+        self.timestamp < U256::from(timestamp)
+    }
 }

@@ -34,3 +34,8 @@ pub trait ReceiptByHash: Send + Sync + 'static {
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static>;
 }
+
+/// Checks if a given block predates a certain timestamp.
+pub trait Predates {
+    fn predates(&self, timestamp: u32) -> bool;
+}

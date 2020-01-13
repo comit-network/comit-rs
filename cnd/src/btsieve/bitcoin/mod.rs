@@ -8,7 +8,7 @@ pub use self::{
     transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 
-use crate::btsieve::{BlockByHash, LatestBlock};
+use crate::btsieve::{BlockByHash, LatestBlock, Predates};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     hashes::sha256d,
@@ -89,7 +89,7 @@ where
         if let (Some(block), Some(reference_timestamp)) =
             (oldest_block.as_ref(), reference_timestamp)
         {
-            if block.header.time >= reference_timestamp {
+            if !block.predates(reference_timestamp) {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
                     .compat()
@@ -166,6 +166,12 @@ pub enum Error {
 pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> {
     let bytes = hex::decode(response_text.trim()).map_err(Error::Hex)?;
     deserialize(bytes.as_slice()).map_err(Error::Deserialization)
+}
+
+impl Predates for bitcoin::Block {
+    fn predates(&self, timestamp: u32) -> bool {
+        self.header.time < timestamp
+    }
 }
 
 #[cfg(test)]
