@@ -34,15 +34,14 @@ impl BitcoinConnectorMock {
 }
 
 impl LatestBlock for BitcoinConnectorMock {
-    type Error = Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
     fn latest_block(
         &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(Error::NoMoreBlocks).into_future());
+            return Box::new(Err(anyhow::Error::from(Error::NoMoreBlocks)).into_future());
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -61,19 +60,18 @@ impl LatestBlock for BitcoinConnectorMock {
 }
 
 impl BlockByHash for BitcoinConnectorMock {
-    type Error = Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
         &self,
         block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         Box::new(
             self.all_blocks
                 .get(&block_hash)
                 .cloned()
-                .ok_or_else(|| Error::UnknownHash(block_hash))
+                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(block_hash)))
                 .into_future(),
         )
     }

@@ -8,7 +8,7 @@ pub use self::{
     transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 
-use crate::btsieve::{BlockByHash, LatestBlock};
+use crate::btsieve::{BlockByHash, LatestBlock, Predates};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     hashes::sha256d,
@@ -16,18 +16,17 @@ use bitcoin::{
 };
 use futures_core::compat::Future01CompatExt;
 use reqwest::{Client, Url};
-use std::{collections::HashSet, fmt};
+use std::collections::HashSet;
 
-pub async fn matching_transaction<C, E>(
+pub async fn matching_transaction<C>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,
 ) -> anyhow::Result<bitcoin::Transaction>
 where
-    C: LatestBlock<Block = bitcoin::Block, Error = E>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash, Error = E>
+    C: LatestBlock<Block = bitcoin::Block>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash>
         + Clone,
-    E: std::error::Error + fmt::Debug + Send + Sync + 'static,
 {
     // Verify that we can successfully connect to the blockchain connector and check
     // if the transaction is in the latest block.
@@ -90,7 +89,7 @@ where
         if let (Some(block), Some(reference_timestamp)) =
             (oldest_block.as_ref(), reference_timestamp)
         {
-            if block.header.time >= reference_timestamp {
+            if !block.predates(reference_timestamp) {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
                     .compat()
@@ -145,7 +144,7 @@ fn check_block_against_pattern<'b>(
 pub async fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
     request_url: Url,
     client: Client,
-) -> Result<T, Error> {
+) -> anyhow::Result<T> {
     let response_text = client.get(request_url).send().await?.text().await?;
     let decoded_response = decode_response(response_text)?;
 
@@ -167,6 +166,12 @@ pub enum Error {
 pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> {
     let bytes = hex::decode(response_text.trim()).map_err(Error::Hex)?;
     deserialize(bytes.as_slice()).map_err(Error::Deserialization)
+}
+
+impl Predates for bitcoin::Block {
+    fn predates(&self, timestamp: u32) -> bool {
+        self.header.time < timestamp
+    }
 }
 
 #[cfg(test)]

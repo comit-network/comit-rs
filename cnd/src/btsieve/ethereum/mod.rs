@@ -6,7 +6,7 @@ pub use self::{
     web3_connector::Web3Connector,
 };
 use crate::{
-    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
+    btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use anyhow;
@@ -15,26 +15,25 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
-use std::{collections::HashSet, fmt::Debug};
+use std::collections::HashSet;
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
 
-pub async fn matching_transaction<C, E>(
+pub async fn matching_transaction<C>(
     connector: C,
     pattern: TransactionPattern,
-    reference_timestamp: Option<u32>,
+    start_of_swap: Option<u32>,
 ) -> anyhow::Result<TransactionAndReceipt>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + 'static + Sync,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
-        |co| async move { yield_blocks(connector, &co, reference_timestamp).await }
+        |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await }
     });
 
     loop {
@@ -54,69 +53,76 @@ where
     }
 }
 
-async fn yield_blocks<C, E>(
+/// This function uses the `connector` to find blocks relevant to a swap.
+///
+/// It yields those blocks as part of the process.
+async fn find_relevant_blocks<C>(
     mut connector: C,
     co: &Co<Block>,
-    reference_timestamp: Option<u32>,
+    start_of_swap: Option<u32>,
 ) -> anyhow::Result<std::convert::Infallible>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
 {
-    let mut seen_blockhashes: HashSet<Hash> = HashSet::new();
+    let mut seen_blocks: HashSet<Hash> = HashSet::new();
 
     loop {
-        // The duration of this timeout could/should depend on the network
-        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-
         let block = connector
             .latest_block()
             .compat()
             .await?
             .ok_or_else(|| anyhow::anyhow!("Connector returned nullable latest block"))?;
+        co.yield_(block.clone()).await;
 
         let blockhash = block
             .hash
             .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with nullable hash"))?;
-        seen_blockhashes.insert(blockhash);
+        seen_blocks.insert(blockhash);
 
-        if let Some(timestamp) = reference_timestamp {
-            if seen_blockhashes.len() == 1 && block.timestamp > U256::from(timestamp) {
-                yield_blocks_until_timestamp(connector.clone(), co, blockhash, timestamp).await?;
+        if let Some(start_of_swap) = start_of_swap {
+            if seen_blocks.len() == 1 && block.timestamp > U256::from(start_of_swap) {
+                walk_back_until(
+                    past_timestamp(start_of_swap),
+                    connector.clone(),
+                    co,
+                    blockhash,
+                )
+                .await?;
             }
         }
 
         let parent_hash = block.parent_hash;
-        if !seen_blockhashes.contains(&parent_hash) && seen_blockhashes.len() > 1 {
-            yield_missed_blocks(
+        if !seen_blocks.contains(&parent_hash) && seen_blocks.len() > 1 {
+            walk_back_until(
+                seen_block_or_past_seen_block(seen_blocks.clone(), start_of_swap.unwrap_or(0)),
                 connector.clone(),
                 co,
                 parent_hash,
-                seen_blockhashes.clone(),
-                reference_timestamp.unwrap_or(0),
             )
             .await?;
         }
 
-        co.yield_(block).await;
+        // The duration of this timeout could/should depend on the network
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
     }
 }
 
-async fn yield_blocks_until_timestamp<C, E>(
+/// Walks the blockchain backwards from the given hash until the predicate given
+/// in `stop_condition` returns `true`.
+///
+/// This functions yields all blocks as part of its process.
+async fn walk_back_until<C, P>(
+    stop_condition: P,
     connector: C,
     co: &Co<Block>,
     starting_blockhash: Hash,
-    timestamp: u32,
 ) -> anyhow::Result<()>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
+    C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
+    P: Fn(&Block) -> anyhow::Result<bool>,
 {
     let mut blockhash = starting_blockhash;
 
@@ -129,7 +135,7 @@ where
 
         co.yield_(block.clone()).await;
 
-        if block.timestamp <= U256::from(timestamp) {
+        if stop_condition(&block)? {
             return Ok(());
         } else {
             blockhash = block.parent_hash
@@ -137,55 +143,37 @@ where
     }
 }
 
-async fn yield_missed_blocks<C, E>(
-    connector: C,
-    co: &Co<Block>,
-    starting_blockhash: Hash,
-    seen_blockhashes: HashSet<Hash>,
-    timestamp: u32,
-) -> anyhow::Result<()>
-where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
-{
-    let mut blockhash = starting_blockhash;
+/// Constructs a predicate that returns `true` if the given block predates the
+/// start of the swap.
+fn past_timestamp(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Result<bool> {
+    move |block| Ok(block.predates(start_of_swap))
+}
 
-    loop {
-        let block = connector
-            .block_by_hash(blockhash)
-            .compat()
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Could not fetch block with hash {}", blockhash))?;
-
-        co.yield_(block.clone()).await;
-
-        if seen_blockhashes.contains(
+/// Constructs a predicate that returns `true` if we have seen the given block
+/// or the block is younger than the swap itself.
+fn seen_block_or_past_seen_block(
+    seen_blocks: HashSet<Hash>,
+    start_of_swap: u32,
+) -> impl Fn(&Block) -> anyhow::Result<bool> {
+    move |block: &Block| {
+        let have_seen_block = seen_blocks.contains(
             &block
                 .hash
                 .ok_or_else(|| anyhow::anyhow!("Block with nullable hash"))?,
-        ) || U256::from(timestamp) >= block.timestamp
-        {
-            return Ok(());
-        } else {
-            blockhash = block.parent_hash
-        }
+        );
+        let past_start_of_swap = past_timestamp(start_of_swap)(block)?;
+
+        Ok(have_seen_block || past_start_of_swap)
     }
 }
 
-async fn check_block_against_pattern<C, E>(
+async fn check_block_against_pattern<C>(
     connector: C,
     block: Block,
     pattern: TransactionPattern,
 ) -> anyhow::Result<Option<TransactionAndReceipt>>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
-        + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
+    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>,
 {
     let needs_receipt = pattern.needs_receipts(&block);
 
@@ -224,4 +212,10 @@ where
     }
 
     Ok(None)
+}
+
+impl Predates for Block {
+    fn predates(&self, timestamp: u32) -> bool {
+        self.timestamp < U256::from(timestamp)
+    }
 }
