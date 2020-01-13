@@ -15,22 +15,21 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
-use std::{collections::HashSet, fmt::Debug};
+use std::collections::HashSet;
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
 
-pub async fn matching_transaction<C, E>(
+pub async fn matching_transaction<C>(
     connector: C,
     pattern: TransactionPattern,
     reference_timestamp: Option<u32>,
 ) -> anyhow::Result<TransactionAndReceipt>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + 'static + Sync,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
@@ -54,17 +53,16 @@ where
     }
 }
 
-async fn yield_blocks<C, E>(
+async fn yield_blocks<C>(
     mut connector: C,
     co: &Co<Block>,
     reference_timestamp: Option<u32>,
 ) -> anyhow::Result<std::convert::Infallible>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
 {
     let mut seen_blockhashes: HashSet<Hash> = HashSet::new();
 
@@ -105,18 +103,17 @@ where
     }
 }
 
-async fn yield_blocks_until_timestamp<C, E>(
+async fn yield_blocks_until_timestamp<C>(
     connector: C,
     co: &Co<Block>,
     starting_blockhash: Hash,
     timestamp: u32,
 ) -> anyhow::Result<()>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
 {
     let mut blockhash = starting_blockhash;
 
@@ -137,7 +134,7 @@ where
     }
 }
 
-async fn yield_missed_blocks<C, E>(
+async fn yield_missed_blocks<C>(
     connector: C,
     co: &Co<Block>,
     starting_blockhash: Hash,
@@ -145,11 +142,10 @@ async fn yield_missed_blocks<C, E>(
     timestamp: u32,
 ) -> anyhow::Result<()>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
 {
     let mut blockhash = starting_blockhash;
 
@@ -175,17 +171,16 @@ where
     }
 }
 
-async fn check_block_against_pattern<C, E>(
+async fn check_block_against_pattern<C>(
     connector: C,
     block: Block,
     pattern: TransactionPattern,
 ) -> anyhow::Result<Option<TransactionAndReceipt>>
 where
-    C: LatestBlock<Block = Option<Block>, Error = E>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash, Error = E>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash, Error = E>
+    C: LatestBlock<Block = Option<Block>>
+        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
+        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
 {
     let needs_receipt = pattern.needs_receipts(&block);
 

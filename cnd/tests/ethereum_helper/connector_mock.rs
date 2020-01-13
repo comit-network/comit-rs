@@ -41,15 +41,14 @@ impl EthereumConnectorMock {
 }
 
 impl LatestBlock for EthereumConnectorMock {
-    type Error = Error;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
     fn latest_block(
         &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(Error::NoMoreBlocks).into_future());
+            return Box::new(Err(anyhow::Error::from(Error::NoMoreBlocks)).into_future());
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -68,27 +67,25 @@ impl LatestBlock for EthereumConnectorMock {
 }
 
 impl BlockByHash for EthereumConnectorMock {
-    type Error = Error;
     type Block = Option<Block<Transaction>>;
     type BlockHash = H256;
 
     fn block_by_hash(
         &self,
         block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         Box::new(Ok(self.all_blocks.get(&block_hash).cloned()).into_future())
     }
 }
 
 impl ReceiptByHash for EthereumConnectorMock {
-    type Error = Error;
     type Receipt = Option<TransactionReceipt>;
     type TransactionHash = H256;
 
     fn receipt_by_hash(
         &self,
         transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
         Box::new(Ok(self.receipts.get(&transaction_hash).cloned()).into_future())
     }
 }

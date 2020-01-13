@@ -36,13 +36,12 @@ impl BitcoindConnector {
 }
 
 impl LatestBlock for BitcoindConnector {
-    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
     fn latest_block(
         &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         let chaininfo_url = self.chaininfo_url.clone();
         let this = self.clone();
 
@@ -68,14 +67,13 @@ impl LatestBlock for BitcoindConnector {
 }
 
 impl BlockByHash for BitcoindConnector {
-    type Error = crate::btsieve::bitcoin::Error;
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
     fn block_by_hash(
         &self,
         block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = Self::Error> + Send + 'static> {
+    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         let url = self.raw_block_by_hash_url(&block_hash);
 
         let block =
