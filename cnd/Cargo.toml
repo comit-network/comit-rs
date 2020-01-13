@@ -24,7 +24,7 @@ ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
 futures-core = { version = "0.3", features = ["alloc", "compat", "async-await"], package = "futures" }
-genawaiter = { version = "0.2" }
+genawaiter = { version = "0.2", features = ["futures03"] }
 hex = "0.4"
 hex-serde = "0.1.0"
 http-api-problem = "0.13"
