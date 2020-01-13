@@ -106,7 +106,7 @@ fn spawn_warp_instance(settings: &Settings, runtime: &mut Runtime, dependencies:
         settings.http_api.socket.port,
     );
 
-    log::info!("Starting HTTP server on {:?}", listen_addr);
+    log::info!("Starting HTTP server on {}", listen_addr);
 
     let server = warp::serve(routes).bind(listen_addr);
 

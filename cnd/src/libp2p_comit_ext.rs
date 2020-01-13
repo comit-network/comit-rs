@@ -39,7 +39,7 @@ macro_rules! body {
         match $e {
             Ok(body) => body,
             Err(e) => {
-                log::error!("Failed to deserialize body because of unexpected field: {:?}", e);
+                log::error!("Failed to deserialize body because of unexpected field: {}", e);
                 let decline_body = DeclineResponseBody {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
@@ -64,7 +64,7 @@ macro_rules! header_internal {
         match $e {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
-                log::error!("Failed to deserialize header because of unexpected field: {:?}", e);
+                log::error!("Failed to deserialize header because of unexpected field: {}", e);
 
                 let decline_body = DeclineResponseBody {
                     reason: Some(SwapDeclineReason::BadJsonField),

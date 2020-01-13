@@ -1,7 +1,7 @@
 use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
-use bitcoin::{hashes::sha256d, BitcoinHash, Network};
+use bitcoin::{hashes::sha256d, Network};
 use futures::Future;
 use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
@@ -83,12 +83,9 @@ impl BlockByHash for BitcoindConnector {
                 .boxed()
                 .compat();
 
-        Box::new(block.inspect(|block| {
-            log::debug!(
-                "Fetched block {} from bitcoind",
-                block.header.bitcoin_hash()
-            );
-        }))
+        log::debug!("Fetched block {} from bitcoind", block_hash);
+
+        Box::new(block)
     }
 }
 

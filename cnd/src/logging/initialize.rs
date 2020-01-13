@@ -31,13 +31,25 @@ fn create_logger<T: Into<fern::Output>>(
     Dispatch::new()
         .format(formatter)
         .level(base_log_level)
-        .level_for("tokio_core::reactor", LevelFilter::Info)
-        .level_for("tokio_reactor", LevelFilter::Info)
+        // Upstream libraries
+        .level_for("http", LevelFilter::Warn) // Logging requests to the cnd HTTP API is too verbose.
         .level_for("hyper", LevelFilter::Info)
+        .level_for("libp2p", LevelFilter::Info)
+        .level_for("libp2p_dns", LevelFilter::Info)
+        .level_for("libp2p_tcp", LevelFilter::Info)
+        .level_for("libp2p_secio", LevelFilter::Info)
+        .level_for("libp2p_core", LevelFilter::Info)
+        .level_for("mio", LevelFilter::Info)
+        .level_for("multistream_select", LevelFilter::Info)
+        .level_for("reqwest", LevelFilter::Info)
+        .level_for("tokio_core::reactor", LevelFilter::Info)
+        .level_for("tokio_io", LevelFilter::Info)
+        .level_for("tokio_reactor", LevelFilter::Info)
+        .level_for("tokio_threadpool", LevelFilter::Info)
+        .level_for("want", LevelFilter::Info)
         .level_for("warp", LevelFilter::Info)
-        .level_for("libp2p", LevelFilter::Debug) // the libp2p library
-        .level_for("sub-libp2p", LevelFilter::Debug) // the libp2p subsystem in our application
-        .level_for("http-api", LevelFilter::Debug) // the http-api of our application
+        .level_for("web3", LevelFilter::Info)
+        .level_for("yamux", LevelFilter::Info)
         .chain(target)
         .into_log()
 }

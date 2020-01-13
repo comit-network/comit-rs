@@ -26,7 +26,10 @@ use crate::{
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
-use std::fmt::Debug;
+use std::{
+    fmt::{self, Debug, Display},
+    string::ToString,
+};
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -44,7 +47,6 @@ pub async fn handle_action(
         let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
             anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
         })?;
-        log::trace!("Retrieved state for {}: {:?}", swap_id, state);
 
         let action = state
             .actions()
@@ -67,6 +69,8 @@ pub async fn handle_action(
                     body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
 
                 Save::save(&dependencies, accept_message).await?;
+
+                log::trace!("received accept action: {}", swap_id);
 
                 let response = rfc003_accept_response(accept_message);
                 channel.send(response).map_err(|_| {
@@ -98,6 +102,8 @@ pub async fn handle_action(
 
                 Save::save(&dependencies, decline_message).await?;
 
+                log::trace!("received decline action: {}", swap_id);
+
                 let response = rfc003_decline_response(decline_message);
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(
@@ -113,10 +119,22 @@ pub async fn handle_action(
 
                 Ok(ActionResponseBody::None)
             }
-            Action::Deploy(action) => action.into_response_payload(query_params),
-            Action::Fund(action) => action.into_response_payload(query_params),
-            Action::Redeem(action) => action.into_response_payload(query_params),
-            Action::Refund(action) => action.into_response_payload(query_params),
+            Action::Deploy(action) => {
+                log::trace!("received deploy action");
+                action.into_response_payload(query_params)
+            }
+            Action::Fund(action) => {
+                log::trace!("received fund action");
+                action.into_response_payload(query_params)
+            }
+            Action::Redeem(action) => {
+                log::trace!("received redeem action");
+                action.into_response_payload(query_params)
+            }
+            Action::Refund(action) => {
+                log::trace!("received refund action");
+                action.into_response_payload(query_params)
+            }
         }
     })
 }
@@ -401,8 +419,6 @@ where
             Action::Refund(_) => Refund::list_required_fields(),
         };
 
-        log::debug!(target: "http-api", "Creating siren::Action from {:?} with HTTP method: {}, Media-Type: {:?}, Name: {}, Fields: {:?}", self, method, media_type, name, fields);
-
         siren::Action {
             href: new_action_link(id, &name),
             name,
@@ -412,5 +428,21 @@ where
             class: vec![],
             title: None,
         }
+    }
+}
+
+impl<Accept, Decline, Deploy, Fund, Redeem, Refund> Display
+    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Action::Accept { .. } => "Accept",
+            Action::Decline { .. } => "Decline",
+            Action::Deploy { .. } => "Deploy",
+            Action::Fund { .. } => "Fund",
+            Action::Redeem { .. } => "Redeem",
+            Action::Refund { .. } => "Refund",
+        };
+        write!(f, "{}", s)
     }
 }
