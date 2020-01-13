@@ -4,6 +4,7 @@ pull_request_rules:
       - "author=dependabot-preview[bot]"
       - "status-success=ci/circleci: debug-build-test"
       - "status-success=license/cla"
+      - label!=no-mergify
     actions:
       comment:
         message: "bors r+"
@@ -26,6 +27,7 @@ pull_request_rules:
       - "status-success=ci/circleci: debug-build-test"
       - "author=dependabot-preview[bot]"
       - conflict
+      - label!=no-mergify
     actions:
       comment:
         message: "@dependabot recreate"
