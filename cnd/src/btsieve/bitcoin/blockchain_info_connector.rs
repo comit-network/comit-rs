@@ -23,10 +23,6 @@ impl BlockchainInfoConnector {
         // support hex-encoded block retrieval for testnet.
 
         if network != Network::Bitcoin {
-            log::error!(
-                "Network {} not supported for bitcoin http connector",
-                network
-            );
             return Err(crate::btsieve::bitcoin::Error::UnsupportedNetwork(format!(
                 "Network {} currently not supported for bitcoin http plocksource",
                 network
@@ -97,9 +93,9 @@ impl BlockByHash for BlockchainInfoConnector {
                 .boxed()
                 .compat();
 
-        Box::new(block.inspect(|block| {
-            log::trace!("Fetched block from blockchain.info: {:?}", block);
-        }))
+        log::trace!("Fetched block from blockchain.info: {}", block_hash);
+
+        Box::new(block)
     }
 }
 

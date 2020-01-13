@@ -22,6 +22,7 @@ where
 {
     let id = request.swap_id;
     let seed = dependencies.derive_swap_seed(id);
+    log::trace!("initialising accepted swap: {}", id);
 
     match role {
         Role::Alice => {

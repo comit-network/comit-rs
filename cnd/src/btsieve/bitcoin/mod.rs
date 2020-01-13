@@ -16,7 +16,7 @@ use bitcoin::{
 };
 use futures_core::compat::Future01CompatExt;
 use reqwest::{Client, Url};
-use std::{collections::HashSet, fmt::Debug};
+use std::{collections::HashSet, fmt};
 
 pub async fn matching_transaction<C, E>(
     mut blockchain_connector: C,
@@ -27,7 +27,7 @@ where
     C: LatestBlock<Block = bitcoin::Block, Error = E>
         + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash, Error = E>
         + Clone,
-    E: std::error::Error + Debug + Send + Sync + 'static,
+    E: std::error::Error + fmt::Debug + Send + Sync + 'static,
 {
     // Verify that we can successfully connect to the blockchain connector and check
     // if the transaction is in the latest block.
@@ -76,7 +76,7 @@ where
                     };
                 }
                 Err(e) => {
-                    log::warn!("Could not get block with hash {}: {:?}", blockhash, e);
+                    log::warn!("Could not get block with hash {}: {}", blockhash, e);
 
                     let future = blockchain_connector.block_by_hash(blockhash).compat();
                     new_missing_block_futures.push((future, blockhash));
@@ -103,7 +103,7 @@ where
                         }
                     },
                     Err(e) => log::warn!(
-                        "Could not get block with hash {}: {:?}",
+                        "Could not get block with hash {}: {}",
                         block.bitcoin_hash(),
                         e
                     ),
