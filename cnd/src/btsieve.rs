@@ -4,17 +4,7 @@
 pub mod bitcoin;
 pub mod ethereum;
 
-use futures::{Future, Stream};
-
-pub trait MatchingTransactions<P>: Send + Sync + 'static {
-    type Transaction;
-
-    fn matching_transactions(
-        &self,
-        pattern: P,
-        timestamp: Option<u32>,
-    ) -> Box<dyn Stream<Item = Self::Transaction, Error = ()> + Send>;
-}
+use futures::Future;
 
 pub trait LatestBlock: Send + Sync + 'static {
     type Block;

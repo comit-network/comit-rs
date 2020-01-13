@@ -70,14 +70,12 @@ where
     let mut seen_blocks: HashSet<Hash> = HashSet::new();
 
     loop {
-        // The duration of this timeout could/should depend on the network
-        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-
         let block = connector
             .latest_block()
             .compat()
             .await?
             .ok_or_else(|| anyhow::anyhow!("Connector returned nullable latest block"))?;
+        co.yield_(block.clone()).await;
 
         let blockhash = block
             .hash
@@ -107,7 +105,8 @@ where
             .await?;
         }
 
-        co.yield_(block).await;
+        // The duration of this timeout could/should depend on the network
+        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
     }
 }
 
