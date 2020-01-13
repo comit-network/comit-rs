@@ -110,10 +110,7 @@ async fn yield_blocks_until_timestamp<C>(
     timestamp: u32,
 ) -> anyhow::Result<()>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
-        + Clone,
+    C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
 {
     let mut blockhash = starting_blockhash;
 
@@ -142,10 +139,7 @@ async fn yield_missed_blocks<C>(
     timestamp: u32,
 ) -> anyhow::Result<()>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
-        + Clone,
+    C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
 {
     let mut blockhash = starting_blockhash;
 
@@ -177,10 +171,7 @@ async fn check_block_against_pattern<C>(
     pattern: TransactionPattern,
 ) -> anyhow::Result<Option<TransactionAndReceipt>>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
-        + Clone,
+    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>,
 {
     let needs_receipt = pattern.needs_receipts(&block);
 
