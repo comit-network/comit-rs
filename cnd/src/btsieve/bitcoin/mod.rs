@@ -1,13 +1,11 @@
 mod bitcoind_connector;
-mod blockchain_info_connector;
 mod transaction_ext;
 mod transaction_pattern;
 
 pub use self::{
-    bitcoind_connector::BitcoindConnector, blockchain_info_connector::BlockchainInfoConnector,
-    transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
+    bitcoind_connector::BitcoindConnector, transaction_ext::TransactionExt,
+    transaction_pattern::TransactionPattern,
 };
-
 use crate::btsieve::{BlockByHash, LatestBlock, Predates};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
