@@ -23,16 +23,14 @@ setTimeout(function() {
     });
 
     describe("happy path", function() {
-        this.timeout(60000);
+        this.timeout(90000);
         it("ether bitcoin", async function() {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
-
             await alice.fund();
             await bob.fund();
             await alice.redeem();
             await bob.redeem();
-
             await alice.assertSwapped();
             await bob.assertSwapped();
         });
