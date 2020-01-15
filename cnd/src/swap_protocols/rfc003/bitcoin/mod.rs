@@ -7,14 +7,17 @@ use crate::swap_protocols::{
 };
 use bitcoin::{
     hashes::{hash160, Hash},
-    Address, Amount, OutPoint,
+    Address, Amount, OutPoint, Transaction,
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
+use crate::bitcoin::PublicKey;
 
 impl Ledger for Bitcoin {
     type HtlcLocation = OutPoint;
+    type Identity = PublicKey;
+    type Transaction = Transaction;
 }
 
 impl From<HtlcParams<Bitcoin, Amount>> for BitcoinHtlc {
