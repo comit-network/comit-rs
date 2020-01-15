@@ -47,7 +47,7 @@
         "comit-sdk": "^0.9.0",
         "commander": "^4.1.0",
         "ethers": "^4.0.43",
-        "get-port": "^5.1.0",
+        "get-port": "^5.1.1",
         "glob": "^7.1.6",
         "json-schema-to-typescript": "^8.0.1",
         "log4js": "^6.1.0",
