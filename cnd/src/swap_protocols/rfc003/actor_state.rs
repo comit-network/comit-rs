@@ -1,6 +1,6 @@
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{ledger_state::LedgerState, Ledger},
+    swap_protocols::rfc003::{ledger_state::LedgerState, Ledger},
 };
 use std::fmt::Debug;
 

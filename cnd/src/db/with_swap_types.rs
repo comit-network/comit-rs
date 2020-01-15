@@ -25,8 +25,8 @@ macro_rules! _match_role {
 macro_rules! with_swap_types {
     ($swap_types:expr, $fn:expr) => {{
         use crate::{
+            asset,
             db::{AssetKind, LedgerKind, SwapTypes},
-            ethereum::{Erc20Token, EtherQuantity},
             swap_protocols::ledger::{Bitcoin, Ethereum},
         };
         use bitcoin::Amount;
@@ -48,7 +48,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = Amount;
                 #[allow(dead_code)]
-                type BA = EtherQuantity;
+                type BA = asset::Ether;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
 
@@ -68,7 +68,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = Amount;
                 #[allow(dead_code)]
-                type BA = Erc20Token;
+                type BA = asset::Erc20;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
 
@@ -86,7 +86,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Bitcoin;
                 #[allow(dead_code)]
-                type AA = EtherQuantity;
+                type AA = asset::Ether;
                 #[allow(dead_code)]
                 type BA = Amount;
                 #[allow(dead_code)]
@@ -106,7 +106,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Bitcoin;
                 #[allow(dead_code)]
-                type AA = Erc20Token;
+                type AA = asset::Erc20;
                 #[allow(dead_code)]
                 type BA = Amount;
                 #[allow(dead_code)]

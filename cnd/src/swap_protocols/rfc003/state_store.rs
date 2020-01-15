@@ -106,7 +106,8 @@ impl StateStore for InMemoryStateStore {
 mod tests {
     use super::*;
     use crate::{
-        ethereum::{Address, EtherQuantity},
+        asset,
+        ethereum::Address,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
             ledger::{Bitcoin, Ethereum},
@@ -134,7 +135,7 @@ mod tests {
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: Amount::from_btc(1.0).unwrap(),
-            beta_asset: EtherQuantity::from_eth(10.0),
+            beta_asset: asset::Ether::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: bitcoin_pub_key,
             beta_ledger_redeem_identity: ethereum_address,
@@ -154,10 +155,10 @@ mod tests {
         let state = alice::State::accepted(request, accept, secret_source);
 
         state_store
-            .insert::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(id, state.clone());
+            .insert::<alice::State<Bitcoin, Ethereum, Amount, asset::Ether>>(id, state.clone());
 
         let res = state_store
-            .get::<alice::State<Bitcoin, Ethereum, Amount, EtherQuantity>>(&id)
+            .get::<alice::State<Bitcoin, Ethereum, Amount, asset::Ether>>(&id)
             .unwrap();
         assert_that(&res).contains_value(state);
     }

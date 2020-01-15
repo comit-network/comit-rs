@@ -1,6 +1,6 @@
 use crate::ethereum::{
     u256_ext::{FromDecimalStr, ToBigInt},
-    U256,
+    Address, U256,
 };
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -54,5 +54,26 @@ impl Serialize for Erc20Quantity {
         S: Serializer,
     {
         serializer.serialize_str(self.to_string().as_str())
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+pub struct Erc20 {
+    pub token_contract: Address,
+    pub quantity: Erc20Quantity,
+}
+
+impl fmt::Display for Erc20 {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.quantity)
+    }
+}
+
+impl Erc20 {
+    pub fn new(token_contract: Address, quantity: Erc20Quantity) -> Self {
+        Erc20 {
+            token_contract,
+            quantity,
+        }
     }
 }

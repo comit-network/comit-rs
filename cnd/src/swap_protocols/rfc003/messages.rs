@@ -1,6 +1,6 @@
 use crate::{
+    asset::Asset,
     swap_protocols::{
-        asset::Asset,
         rfc003::{DeriveIdentities, Ledger, SecretHash},
         HashFunction, SwapId,
     },

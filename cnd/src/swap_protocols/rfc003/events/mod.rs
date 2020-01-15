@@ -2,9 +2,9 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
+    swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
 };
 use futures_core::future::Either;
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,8 @@
 pub mod actions;
 
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{
+    swap_protocols::rfc003::{
         self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
         Decline, DeriveIdentities, SwapCommunication,
     },

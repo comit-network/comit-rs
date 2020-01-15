@@ -1,4 +1,5 @@
 use crate::{
+    asset::Asset,
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     network::{
@@ -7,7 +8,6 @@ use crate::{
     },
     seed::{DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
-        asset::Asset,
         ledger::{Bitcoin, Ethereum},
         rfc003::{
             self,

@@ -2,9 +2,9 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
+    swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
 };
 use std::marker::PhantomData;
 

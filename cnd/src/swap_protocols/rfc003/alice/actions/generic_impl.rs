@@ -1,11 +1,13 @@
-use crate::swap_protocols::{
-    actions::Actions,
+use crate::{
     asset::Asset,
-    rfc003::{
-        actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-        alice,
-        create_swap::HtlcParams,
-        DeriveSecret, Ledger, LedgerState, SwapCommunication,
+    swap_protocols::{
+        actions::Actions,
+        rfc003::{
+            actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+            alice,
+            create_swap::HtlcParams,
+            DeriveSecret, Ledger, LedgerState, SwapCommunication,
+        },
     },
 };
 use std::convert::Infallible;

@@ -1,8 +1,8 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
+    asset,
     db::{Swap, SwapTypes},
-    ethereum,
     http_api::{
         action::ToSirenAction,
         route_factory::swap_path,
@@ -73,24 +73,24 @@ impl_from_request_for_swap_parameters!(
     ledger::Bitcoin,
     ledger::Ethereum,
     bitcoin::Amount,
-    ethereum::EtherQuantity
+    asset::Ether
 );
 impl_from_request_for_swap_parameters!(
     ledger::Ethereum,
     ledger::Bitcoin,
-    ethereum::EtherQuantity,
+    asset::Ether,
     bitcoin::Amount
 );
 impl_from_request_for_swap_parameters!(
     ledger::Bitcoin,
     ledger::Ethereum,
     bitcoin::Amount,
-    ethereum::Erc20Token
+    asset::Erc20
 );
 impl_from_request_for_swap_parameters!(
     ledger::Ethereum,
     ledger::Bitcoin,
-    ethereum::Erc20Token,
+    asset::Erc20,
     bitcoin::Amount
 );
 

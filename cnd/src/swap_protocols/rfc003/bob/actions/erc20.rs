@@ -1,8 +1,7 @@
 use crate::{
-    ethereum::Erc20Token,
+    asset::{self, Asset},
     swap_protocols::{
         actions::{ethereum, Actions},
-        asset::Asset,
         ledger::Ethereum,
         rfc003::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
@@ -14,7 +13,7 @@ use crate::{
 };
 use std::convert::Infallible;
 
-impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, Erc20Token>
+impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, asset::Erc20>
 where
     AL: Ledger,
     AA: Asset,
@@ -84,7 +83,7 @@ where
     }
 }
 
-impl<BL, BA> Actions for bob::State<Ethereum, BL, Erc20Token, BA>
+impl<BL, BA> Actions for bob::State<Ethereum, BL, asset::Erc20, BA>
 where
     BL: Ledger,
     BA: Asset,

@@ -40,7 +40,8 @@ pub mod bitcoin {
 
 pub mod ethereum {
     use crate::{
-        ethereum::{Address, Bytes, EtherQuantity, U256},
+        asset,
+        ethereum::{Address, Bytes, U256},
         swap_protocols::ledger::ethereum::ChainId,
         timestamp::Timestamp,
     };
@@ -48,7 +49,7 @@ pub mod ethereum {
     #[derive(Debug, Clone, PartialEq)]
     pub struct DeployContract {
         pub data: Bytes,
-        pub amount: EtherQuantity,
+        pub amount: asset::Ether,
         pub gas_limit: U256,
         pub chain_id: ChainId,
     }
