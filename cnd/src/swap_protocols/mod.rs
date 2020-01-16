@@ -1,5 +1,4 @@
 pub mod actions;
-pub mod asset;
 mod facade;
 pub mod ledger;
 pub mod rfc003;

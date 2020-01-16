@@ -26,7 +26,7 @@ pub use self::{
 
 pub use self::messages::{Accept, Decline, Request};
 
-use crate::{seed::SwapSeed, swap_protocols::asset::Asset};
+use crate::{asset::Asset, seed::SwapSeed};
 use ::bitcoin::secp256k1::SecretKey;
 
 /// Swap request response as received from peer node acting as Bob.

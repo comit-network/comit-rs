@@ -1,8 +1,7 @@
 use crate::{
-    ethereum::Erc20Token,
+    asset::{self, AssetKind},
     libp2p_comit_ext::{FromHeader, ToHeader},
     swap_protocols::{
-        asset::AssetKind,
         ledger::{Bitcoin, Ethereum, LedgerKind},
         rfc003::messages::Decision,
         SwapId, SwapProtocol,
@@ -102,7 +101,7 @@ impl FromHeader for AssetKind {
                 AssetKind::Bitcoin(amount)
             }
             "ether" => AssetKind::Ether(header.take_parameter("quantity")?),
-            "erc20" => AssetKind::Erc20(Erc20Token::new(
+            "erc20" => AssetKind::Erc20(asset::Erc20::new(
                 header.take_parameter("address")?,
                 header.take_parameter("quantity")?,
             )),
@@ -154,16 +153,16 @@ impl FromHeader for Decision {
 mod tests {
     use super::*;
     use crate::{
-        ethereum::{Address, Erc20Quantity, U256},
+        ethereum::{Address, U256},
         swap_protocols::{ledger::ethereum, HashFunction},
     };
     use bitcoin::Amount;
 
     #[test]
     fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
-        let quantity = Erc20Token::new(
+        let quantity = asset::Erc20::new(
             Address::zero(),
-            Erc20Quantity(U256::from(100_000_000_000_000u64)),
+            asset::Erc20Quantity(U256::from(100_000_000_000_000u64)),
         );
         let header = AssetKind::from(quantity).to_header()?;
 

@@ -15,7 +15,7 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    ethereum::{self, Erc20Token},
+    asset, ethereum,
     network::DialInformation,
     swap_protocols::{
         ledger::{self, ethereum::ChainId},
@@ -253,8 +253,8 @@ pub enum HttpLedger {
 #[serde(into = "HttpAssetParams")]
 pub enum HttpAsset {
     Bitcoin(bitcoin::Amount),
-    Ether(ethereum::EtherQuantity),
-    Erc20(ethereum::Erc20Token),
+    Ether(asset::Ether),
+    Erc20(asset::Erc20),
 }
 
 /// The actual enum that is used by serde to deserialize the `alpha_ledger` and
@@ -304,12 +304,12 @@ pub struct BitcoinAssetParams {
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EtherAssetParams {
-    quantity: ethereum::EtherQuantity,
+    quantity: asset::Ether,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Erc20AssetParams {
-    quantity: ethereum::Erc20Quantity,
+    quantity: asset::Erc20Quantity,
     token_contract: ethereum::Address,
 }
 
@@ -421,19 +421,19 @@ impl From<bitcoin::Amount> for BitcoinAssetParams {
     }
 }
 
-impl From<EtherAssetParams> for ethereum::EtherQuantity {
+impl From<EtherAssetParams> for asset::Ether {
     fn from(params: EtherAssetParams) -> Self {
         params.quantity
     }
 }
 
-impl From<ethereum::EtherQuantity> for EtherAssetParams {
-    fn from(ether: ethereum::EtherQuantity) -> Self {
+impl From<asset::Ether> for EtherAssetParams {
+    fn from(ether: asset::Ether) -> Self {
         Self { quantity: ether }
     }
 }
 
-impl From<Erc20AssetParams> for ethereum::Erc20Token {
+impl From<Erc20AssetParams> for asset::Erc20 {
     fn from(params: Erc20AssetParams) -> Self {
         Self {
             token_contract: params.token_contract,
@@ -442,8 +442,8 @@ impl From<Erc20AssetParams> for ethereum::Erc20Token {
     }
 }
 
-impl From<ethereum::Erc20Token> for Erc20AssetParams {
-    fn from(erc20: Erc20Token) -> Self {
+impl From<asset::Erc20> for Erc20AssetParams {
+    fn from(erc20: asset::Erc20) -> Self {
         Self {
             quantity: erc20.quantity,
             token_contract: erc20.token_contract,
@@ -469,14 +469,14 @@ impl From<bitcoin::Amount> for HttpAsset {
     }
 }
 
-impl From<ethereum::EtherQuantity> for HttpAsset {
-    fn from(ether: ethereum::EtherQuantity) -> Self {
+impl From<asset::Ether> for HttpAsset {
+    fn from(ether: asset::Ether) -> Self {
         HttpAsset::Ether(ether)
     }
 }
 
-impl From<ethereum::Erc20Token> for HttpAsset {
-    fn from(erc20: ethereum::Erc20Token) -> Self {
+impl From<asset::Erc20> for HttpAsset {
+    fn from(erc20: asset::Erc20) -> Self {
         HttpAsset::Erc20(erc20)
     }
 }
@@ -484,7 +484,8 @@ impl From<ethereum::Erc20Token> for HttpAsset {
 #[cfg(test)]
 mod tests {
     use crate::{
-        ethereum::{Erc20Quantity, Erc20Token, EtherQuantity, H160, H256, U256},
+        asset,
+        ethereum::{H160, H256, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
             ledger::{ethereum, Bitcoin, Ethereum},
@@ -501,10 +502,10 @@ mod tests {
     #[test]
     fn http_asset_serializes_correctly_to_json() {
         let bitcoin = HttpAsset::from(bitcoin::Amount::from_btc(1.0).unwrap());
-        let ether = HttpAsset::from(EtherQuantity::from_eth(1.0));
-        let pay = HttpAsset::from(Erc20Token::new(
+        let ether = HttpAsset::from(asset::Ether::from_eth(1.0));
+        let pay = HttpAsset::from(asset::Erc20::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
-            Erc20Quantity(U256::from(100_000_000_000u64)),
+            asset::Erc20Quantity(U256::from(100_000_000_000u64)),
         ));
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();

@@ -1,5 +1,6 @@
 use crate::{
-    ethereum::{Bytes, Erc20Token},
+    asset,
+    ethereum::Bytes,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::{ethereum::ChainId, Ethereum},
@@ -9,12 +10,12 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 
-pub fn deploy_action(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> DeployContract {
+pub fn deploy_action(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> DeployContract {
     htlc_params.into()
 }
 
 pub fn fund_action(
-    htlc_params: HtlcParams<Ethereum, Erc20Token>,
+    htlc_params: HtlcParams<Ethereum, asset::Erc20>,
     to_erc20_contract: crate::ethereum::Address,
     beta_htlc_location: crate::ethereum::Address,
 ) -> CallContract {

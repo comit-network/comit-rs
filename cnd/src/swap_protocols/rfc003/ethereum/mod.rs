@@ -1,7 +1,8 @@
 pub mod htlc_events;
 
 use crate::{
-    ethereum::{Address, Bytes, Erc20Token, EtherQuantity},
+    asset,
+    ethereum::{Address, Bytes},
     swap_protocols::{
         actions::ethereum::DeployContract,
         ledger::Ethereum,
@@ -44,8 +45,8 @@ impl Ledger for Ethereum {
     type HtlcLocation = Address;
 }
 
-impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
-    fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Ether>> for EtherHtlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self {
         EtherHtlc::new(
             htlc_params.expiry.into(),
             htlc_params.refund_identity,
@@ -55,14 +56,14 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for EtherHtlc {
     }
 }
 
-impl HtlcParams<Ethereum, EtherQuantity> {
+impl HtlcParams<Ethereum, asset::Ether> {
     pub fn bytecode(&self) -> Bytes {
         EtherHtlc::from(*self).into()
     }
 }
 
-impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
-    fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> Self {
         Erc20Htlc::new(
             htlc_params.expiry.into(),
             htlc_params.refund_identity,
@@ -74,14 +75,14 @@ impl From<HtlcParams<Ethereum, Erc20Token>> for Erc20Htlc {
     }
 }
 
-impl HtlcParams<Ethereum, Erc20Token> {
+impl HtlcParams<Ethereum, asset::Erc20> {
     pub fn bytecode(&self) -> Bytes {
         Erc20Htlc::from(*self).into()
     }
 }
 
-impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
-    fn from(htlc_params: HtlcParams<Ethereum, EtherQuantity>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Ether>> for DeployContract {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self {
         let htlc = EtherHtlc::from(htlc_params);
         let gas_limit = htlc.deployment_gas_limit();
 
@@ -94,14 +95,14 @@ impl From<HtlcParams<Ethereum, EtherQuantity>> for DeployContract {
     }
 }
 
-impl From<HtlcParams<Ethereum, Erc20Token>> for DeployContract {
-    fn from(htlc_params: HtlcParams<Ethereum, Erc20Token>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Erc20>> for DeployContract {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> Self {
         let htlc = Erc20Htlc::from(htlc_params);
         let gas_limit = htlc.deployment_gas_limit();
 
         DeployContract {
             data: htlc.into(),
-            amount: EtherQuantity::zero(),
+            amount: asset::Ether::zero(),
             gas_limit,
             chain_id: htlc_params.ledger.chain_id,
         }

@@ -1,11 +1,8 @@
 use crate::{
+    asset::{self, Asset},
     btsieve::ethereum::{matching_transaction, Event, Topic, TransactionPattern, Web3Connector},
-    ethereum::{
-        Address, CalculateContractAddress, Erc20Token, EtherQuantity, Transaction,
-        TransactionAndReceipt, H256,
-    },
+    ethereum::{Address, CalculateContractAddress, Transaction, TransactionAndReceipt, H256},
     swap_protocols::{
-        asset::Asset,
         ledger::Ethereum,
         rfc003::{
             create_swap::HtlcParams,
@@ -27,10 +24,10 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
+impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+        htlc_params: HtlcParams<Ethereum, asset::Ether>,
     ) -> anyhow::Result<Deployed<Ethereum>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
@@ -54,20 +51,20 @@ impl HtlcEvents<Ethereum, EtherQuantity> for Web3Connector {
 
     async fn htlc_funded(
         &self,
-        _htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+        _htlc_params: HtlcParams<Ethereum, asset::Ether>,
         deploy_transaction: &Deployed<Ethereum>,
-    ) -> anyhow::Result<Funded<Ethereum, EtherQuantity>> {
+    ) -> anyhow::Result<Funded<Ethereum, asset::Ether>> {
         Ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
-            asset: EtherQuantity::from_wei(deploy_transaction.transaction.value),
+            asset: asset::Ether::from_wei(deploy_transaction.transaction.value),
         })
     }
 
     async fn htlc_redeemed_or_refunded(
         &self,
-        htlc_params: HtlcParams<Ethereum, EtherQuantity>,
+        htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<Ethereum>,
-        htlc_funding: &Funded<Ethereum, EtherQuantity>,
+        htlc_funding: &Funded<Ethereum, asset::Ether>,
     ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
         htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding).await
     }
@@ -159,13 +156,13 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
 
 mod erc20 {
     use super::*;
-    use crate::ethereum::{Erc20Quantity, U256};
+    use crate::ethereum::U256;
 
     #[async_trait::async_trait]
-    impl HtlcEvents<Ethereum, Erc20Token> for Web3Connector {
+    impl HtlcEvents<Ethereum, asset::Erc20> for Web3Connector {
         async fn htlc_deployed(
             &self,
-            htlc_params: HtlcParams<Ethereum, Erc20Token>,
+            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
         ) -> anyhow::Result<Deployed<Ethereum>> {
             let connector = self.clone();
             let pattern = TransactionPattern {
@@ -189,9 +186,9 @@ mod erc20 {
 
         async fn htlc_funded(
             &self,
-            htlc_params: HtlcParams<Ethereum, Erc20Token>,
+            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
-        ) -> anyhow::Result<Funded<Ethereum, Erc20Token>> {
+        ) -> anyhow::Result<Funded<Ethereum, asset::Erc20>> {
             let connector = self.clone();
             let events = Some(vec![Event {
                 address: Some(htlc_params.asset.token_contract),
@@ -225,17 +222,17 @@ mod erc20 {
                 .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
                 .expect("Fund transaction receipt must contain transfer events");
 
-            let quantity = Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
-            let asset = Erc20Token::new(log.address, quantity);
+            let quantity = asset::Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+            let asset = asset::Erc20::new(log.address, quantity);
 
             Ok(Funded { transaction, asset })
         }
 
         async fn htlc_redeemed_or_refunded(
             &self,
-            htlc_params: HtlcParams<Ethereum, Erc20Token>,
+            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
-            htlc_funding: &Funded<Ethereum, Erc20Token>,
+            htlc_funding: &Funded<Ethereum, asset::Erc20>,
         ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
             htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
                 .await

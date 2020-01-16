@@ -22,6 +22,7 @@ pub mod libp2p_comit_ext;
 #[macro_use]
 pub mod db;
 
+pub mod asset;
 pub mod bitcoin;
 pub mod btsieve;
 pub mod comit_api;
@@ -40,9 +41,9 @@ pub mod spectral_ext;
 pub mod swap_protocols;
 pub mod timestamp;
 
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{events::HtlcEvents, Ledger},
+    swap_protocols::rfc003::{events::HtlcEvents, Ledger},
 };
 use anyhow::Context;
 use directories::ProjectDirs;

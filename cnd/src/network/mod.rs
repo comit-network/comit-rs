@@ -3,13 +3,13 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
+    asset::{Asset, AssetKind},
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     config::Settings,
     db::{Save, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
-        asset::{Asset, AssetKind},
         rfc003::{
             self, bob,
             messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},

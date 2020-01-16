@@ -1,6 +1,6 @@
-use crate::swap_protocols::{
+use crate::{
     asset::Asset,
-    rfc003::{
+    swap_protocols::rfc003::{
         events::{Deployed, Funded, Redeemed, Refunded},
         ledger::Ledger,
         Secret,

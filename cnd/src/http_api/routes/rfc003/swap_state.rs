@@ -1,10 +1,8 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
+    asset::Asset,
     http_api::{Http, SwapStatus},
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{self, Ledger, SecretHash},
-    },
+    swap_protocols::rfc003::{self, Ledger, SecretHash},
     timestamp::Timestamp,
 };
 use serde::Serialize;

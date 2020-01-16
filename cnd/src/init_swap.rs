@@ -1,7 +1,7 @@
 use crate::{
+    asset::Asset,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        asset::Asset,
         rfc003::{
             alice, bob, create_swap, events::HtlcEvents, state_store::StateStore, Accept, Ledger,
             Request,

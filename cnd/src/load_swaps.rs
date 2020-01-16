@@ -1,7 +1,7 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
+    asset,
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
-    ethereum::{Erc20Token, EtherQuantity},
     init_swap::init_accepted_swap,
     seed::DeriveSwapSeed,
     swap_protocols::{
@@ -20,12 +20,12 @@ where
         + Retrieve
         + DetermineTypes
         + HtlcEvents<Bitcoin, Amount>
-        + HtlcEvents<Ethereum, EtherQuantity>
-        + HtlcEvents<Ethereum, Erc20Token>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>,
+        + HtlcEvents<Ethereum, asset::Ether>
+        + HtlcEvents<Ethereum, asset::Erc20>
+        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>
+        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>
+        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>
+        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>,
 {
     log::debug!("loading swaps from database ...");
 

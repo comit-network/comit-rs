@@ -1,7 +1,8 @@
 use crate::{
+    asset,
     db::{custom_sql_types::Text, schema, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
-    swap_protocols::{asset, ledger, Role, SwapId},
+    swap_protocols::{ledger, Role, SwapId},
 };
 use async_trait::async_trait;
 use strum_macros::{Display, EnumString};

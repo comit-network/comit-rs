@@ -1,4 +1,11 @@
-use crate::ethereum::{Erc20Token, EtherQuantity};
+mod erc20;
+mod ether;
+pub use self::{
+    erc20::{Erc20, Erc20Quantity},
+    ether::Ether,
+};
+
+use crate::asset;
 use bitcoin::Amount;
 use derivative::Derivative;
 use std::{
@@ -24,16 +31,16 @@ pub trait Asset:
 
 impl Asset for Amount {}
 
-impl Asset for EtherQuantity {}
+impl Asset for Ether {}
 
-impl Asset for Erc20Token {}
+impl Asset for Erc20 {}
 
 #[derive(Clone, Copy, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum AssetKind {
     Bitcoin(Amount),
-    Ether(EtherQuantity),
-    Erc20(Erc20Token),
+    Ether(Ether),
+    Erc20(Erc20),
 }
 
 impl From<Amount> for AssetKind {
@@ -42,14 +49,14 @@ impl From<Amount> for AssetKind {
     }
 }
 
-impl From<EtherQuantity> for AssetKind {
-    fn from(quantity: EtherQuantity) -> Self {
+impl From<asset::Ether> for AssetKind {
+    fn from(quantity: asset::Ether) -> Self {
         AssetKind::Ether(quantity)
     }
 }
 
-impl From<Erc20Token> for AssetKind {
-    fn from(quantity: Erc20Token) -> Self {
+impl From<asset::Erc20> for AssetKind {
+    fn from(quantity: asset::Erc20) -> Self {
         AssetKind::Erc20(quantity)
     }
 }

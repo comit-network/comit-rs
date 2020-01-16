@@ -3,12 +3,10 @@ mod actions;
 pub use self::actions::*;
 
 use crate::{
+    asset::Asset,
     seed::SwapSeed,
-    swap_protocols::{
-        asset::Asset,
-        rfc003::{
-            ledger::Ledger, ledger_state::LedgerState, messages, ActorState, SwapCommunication,
-        },
+    swap_protocols::rfc003::{
+        ledger::Ledger, ledger_state::LedgerState, messages, ActorState, SwapCommunication,
     },
 };
 use derivative::Derivative;

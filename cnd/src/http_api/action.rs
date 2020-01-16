@@ -1,4 +1,5 @@
 use crate::{
+    asset,
     http_api::{
         ethereum_network, problem, Http, MissingQueryParameters, UnexpectedQueryParameters,
     },
@@ -54,7 +55,7 @@ pub enum ActionResponseBody {
     },
     EthereumDeployContract {
         data: crate::ethereum::Bytes,
-        amount: crate::ethereum::EtherQuantity,
+        amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
         network: ethereum_network::Network,
         chain_id: ledger::ethereum::ChainId,

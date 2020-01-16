@@ -1,11 +1,11 @@
 use crate::{
+    asset,
     db::{
         custom_sql_types::{Text, U32},
         new_types::{DecimalU256, EthereumAddress, Satoshis},
         schema::{self, *},
         Sqlite, Swap,
     },
-    ethereum::{Erc20Token, EtherQuantity},
     swap_protocols::{
         ledger::{Bitcoin, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
@@ -73,10 +73,10 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>> for Sqlite {
+impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Bitcoin, Ethereum, bitcoin::Amount, EtherQuantity>,
+        message: Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -135,10 +135,10 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>> for Sqlite {
+impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Bitcoin, Ethereum, bitcoin::Amount, Erc20Token>,
+        message: Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -197,10 +197,10 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>> for Sqlite {
+impl Save<Request<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Ethereum, Bitcoin, EtherQuantity, bitcoin::Amount>,
+        message: Request<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -258,10 +258,10 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>> for Sqlite {
+impl Save<Request<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Ethereum, Bitcoin, Erc20Token, bitcoin::Amount>,
+        message: Request<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,

@@ -1,4 +1,5 @@
 use crate::{
+    asset::Asset,
     db::{Save, Sqlite, Swap},
     ethereum,
     http_api::{HttpAsset, HttpLedger},
@@ -6,7 +7,6 @@ use crate::{
     network::{DialInformation, SendRequest},
     seed::DeriveSwapSeed,
     swap_protocols::{
-        asset::Asset,
         ledger,
         rfc003::{
             self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
