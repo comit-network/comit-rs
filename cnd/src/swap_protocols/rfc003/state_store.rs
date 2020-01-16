@@ -116,7 +116,6 @@ mod tests {
         },
         timestamp::Timestamp,
     };
-    use bitcoin::Amount;
     use spectral::prelude::*;
 
     #[test]
@@ -134,7 +133,7 @@ mod tests {
             swap_id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_asset: Amount::from_btc(1.0).unwrap(),
+            alpha_asset: asset::Bitcoin::from_btc(1.0).unwrap(),
             beta_asset: asset::Ether::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: bitcoin_pub_key,
@@ -154,11 +153,13 @@ mod tests {
         let secret_source = seed.derive_swap_seed(id);
         let state = alice::State::accepted(request, accept, secret_source);
 
-        state_store
-            .insert::<alice::State<Bitcoin, Ethereum, Amount, asset::Ether>>(id, state.clone());
+        state_store.insert::<alice::State<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>>(
+            id,
+            state.clone(),
+        );
 
         let res = state_store
-            .get::<alice::State<Bitcoin, Ethereum, Amount, asset::Ether>>(&id)
+            .get::<alice::State<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>>(&id)
             .unwrap();
         assert_that(&res).contains_value(state);
     }

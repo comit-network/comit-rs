@@ -72,26 +72,26 @@ macro_rules! impl_from_request_for_swap_parameters {
 impl_from_request_for_swap_parameters!(
     ledger::Bitcoin,
     ledger::Ethereum,
-    bitcoin::Amount,
+    asset::Bitcoin,
     asset::Ether
 );
 impl_from_request_for_swap_parameters!(
     ledger::Ethereum,
     ledger::Bitcoin,
     asset::Ether,
-    bitcoin::Amount
+    asset::Bitcoin
 );
 impl_from_request_for_swap_parameters!(
     ledger::Bitcoin,
     ledger::Ethereum,
-    bitcoin::Amount,
+    asset::Bitcoin,
     asset::Erc20
 );
 impl_from_request_for_swap_parameters!(
     ledger::Ethereum,
     ledger::Bitcoin,
     asset::Erc20,
-    bitcoin::Amount
+    asset::Bitcoin
 );
 
 pub enum IncludeState {

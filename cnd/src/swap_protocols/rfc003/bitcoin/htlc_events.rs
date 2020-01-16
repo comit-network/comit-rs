@@ -1,4 +1,5 @@
 use crate::{
+    asset,
     btsieve::bitcoin::{
         matching_transaction, BitcoindConnector, TransactionExt, TransactionPattern,
     },
@@ -12,14 +13,14 @@ use crate::{
     },
 };
 use anyhow::Context;
-use bitcoin::{Amount, OutPoint};
+use bitcoin::OutPoint;
 use futures_core::future::{self, Either};
 
 #[async_trait::async_trait]
-impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
+impl HtlcEvents<Bitcoin, asset::Bitcoin> for BitcoindConnector {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
     ) -> anyhow::Result<Deployed<Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
@@ -47,11 +48,12 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
 
     async fn htlc_funded(
         &self,
-        _htlc_params: HtlcParams<Bitcoin, Amount>,
+        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> anyhow::Result<Funded<Bitcoin, Amount>> {
+    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
         let tx = &htlc_deployment.transaction;
-        let asset = Amount::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
+        let asset =
+            asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
 
         Ok(Funded {
             transaction: tx.clone(),
@@ -61,9 +63,9 @@ impl HtlcEvents<Bitcoin, Amount> for BitcoindConnector {
 
     async fn htlc_redeemed_or_refunded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
-        _htlc_funding: &Funded<Bitcoin, Amount>,
+        _htlc_funding: &Funded<Bitcoin, asset::Bitcoin>,
     ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
         let redeemed = async {
             let connector = self.clone();

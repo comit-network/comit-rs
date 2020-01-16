@@ -11,13 +11,14 @@ pub trait Actions {
 }
 
 pub mod bitcoin {
-    use bitcoin::{Address, Amount};
+    use crate::asset;
+    use bitcoin::Address;
     use blockchain_contracts::bitcoin::witness::{PrimedInput, PrimedTransaction};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SendToAddress {
         pub to: Address,
-        pub amount: Amount,
+        pub amount: asset::Bitcoin,
         pub network: bitcoin::Network,
     }
 

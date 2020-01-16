@@ -1,4 +1,5 @@
 use crate::{
+    asset,
     db::Swap,
     ethereum::Bytes,
     swap_protocols::{
@@ -75,9 +76,9 @@ impl Arbitrary for Quickcheck<ChainId> {
     }
 }
 
-impl Arbitrary for Quickcheck<bitcoin::Amount> {
+impl Arbitrary for Quickcheck<asset::Bitcoin> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let amount = bitcoin::Amount::from_sat(g.next_u64());
+        let amount = asset::Bitcoin::from_sat(g.next_u64());
 
         Quickcheck(amount)
     }
@@ -211,7 +212,7 @@ impl Arbitrary for Quickcheck<SecretHash> {
 }
 
 impl Arbitrary
-    for Quickcheck<Request<ledger::Bitcoin, ledger::Ethereum, bitcoin::Amount, crate::asset::Ether>>
+    for Quickcheck<Request<ledger::Bitcoin, ledger::Ethereum, asset::Bitcoin, crate::asset::Ether>>
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
@@ -222,7 +223,7 @@ impl Arbitrary
             beta_ledger: ledger::Ethereum {
                 chain_id: *Quickcheck::<ChainId>::arbitrary(g),
             },
-            alpha_asset: *Quickcheck::<bitcoin::Amount>::arbitrary(g),
+            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
             beta_asset: *Quickcheck::<crate::asset::Ether>::arbitrary(g),
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
@@ -235,7 +236,7 @@ impl Arbitrary
 }
 
 impl Arbitrary
-    for Quickcheck<Request<ledger::Ethereum, ledger::Bitcoin, crate::asset::Erc20, bitcoin::Amount>>
+    for Quickcheck<Request<ledger::Ethereum, ledger::Bitcoin, crate::asset::Erc20, asset::Bitcoin>>
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
@@ -247,7 +248,7 @@ impl Arbitrary
                 network: *Quickcheck::<bitcoin::Network>::arbitrary(g),
             },
             alpha_asset: *Quickcheck::<crate::asset::Erc20>::arbitrary(g),
-            beta_asset: *Quickcheck::<bitcoin::Amount>::arbitrary(g),
+            beta_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
             beta_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
@@ -259,7 +260,7 @@ impl Arbitrary
 }
 
 impl Arbitrary
-    for Quickcheck<Request<ledger::Ethereum, ledger::Bitcoin, crate::asset::Ether, bitcoin::Amount>>
+    for Quickcheck<Request<ledger::Ethereum, ledger::Bitcoin, crate::asset::Ether, asset::Bitcoin>>
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
@@ -271,7 +272,7 @@ impl Arbitrary
                 network: *Quickcheck::<bitcoin::Network>::arbitrary(g),
             },
             alpha_asset: *Quickcheck::<crate::asset::Ether>::arbitrary(g),
-            beta_asset: *Quickcheck::<bitcoin::Amount>::arbitrary(g),
+            beta_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
             beta_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
@@ -283,7 +284,7 @@ impl Arbitrary
 }
 
 impl Arbitrary
-    for Quickcheck<Request<ledger::Bitcoin, ledger::Ethereum, bitcoin::Amount, crate::asset::Erc20>>
+    for Quickcheck<Request<ledger::Bitcoin, ledger::Ethereum, asset::Bitcoin, crate::asset::Erc20>>
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
@@ -294,7 +295,7 @@ impl Arbitrary
             beta_ledger: ledger::Ethereum {
                 chain_id: *Quickcheck::<ChainId>::arbitrary(g),
             },
-            alpha_asset: *Quickcheck::<bitcoin::Amount>::arbitrary(g),
+            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
             beta_asset: *Quickcheck::<crate::asset::Erc20>::arbitrary(g),
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),

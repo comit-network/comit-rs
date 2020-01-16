@@ -46,7 +46,7 @@ impl<I> Deref for Http<I> {
     }
 }
 
-impl Serialize for Http<bitcoin::Amount> {
+impl Serialize for Http<asset::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -55,13 +55,13 @@ impl Serialize for Http<bitcoin::Amount> {
     }
 }
 
-impl<'de> Deserialize<'de> for Http<bitcoin::Amount> {
+impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
     fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        let amount = bitcoin::Amount::from_str_in(value.as_str(), Denomination::Satoshi)
+        let amount = asset::Bitcoin::from_str_in(value.as_str(), Denomination::Satoshi)
             .map_err(<D as Deserializer<'de>>::Error::custom)?;
 
         Ok(Http(amount))
@@ -252,7 +252,7 @@ pub enum HttpLedger {
 #[serde(try_from = "HttpAssetParams")]
 #[serde(into = "HttpAssetParams")]
 pub enum HttpAsset {
-    Bitcoin(bitcoin::Amount),
+    Bitcoin(asset::Bitcoin),
     Ether(asset::Ether),
     Erc20(asset::Erc20),
 }
@@ -299,7 +299,7 @@ pub enum HttpAssetParams {
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct BitcoinAssetParams {
-    quantity: Http<bitcoin::Amount>,
+    quantity: Http<asset::Bitcoin>,
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
@@ -407,14 +407,14 @@ impl From<HttpAsset> for HttpAssetParams {
     }
 }
 
-impl From<BitcoinAssetParams> for bitcoin::Amount {
+impl From<BitcoinAssetParams> for asset::Bitcoin {
     fn from(params: BitcoinAssetParams) -> Self {
         *params.quantity
     }
 }
 
-impl From<bitcoin::Amount> for BitcoinAssetParams {
-    fn from(bitcoin: bitcoin::Amount) -> Self {
+impl From<asset::Bitcoin> for BitcoinAssetParams {
+    fn from(bitcoin: asset::Bitcoin) -> Self {
         Self {
             quantity: Http(bitcoin),
         }
@@ -463,8 +463,8 @@ impl From<ledger::Ethereum> for HttpLedger {
     }
 }
 
-impl From<bitcoin::Amount> for HttpAsset {
-    fn from(bitcoin: bitcoin::Amount) -> Self {
+impl From<asset::Bitcoin> for HttpAsset {
+    fn from(bitcoin: asset::Bitcoin) -> Self {
         HttpAsset::Bitcoin(bitcoin)
     }
 }
@@ -501,7 +501,7 @@ mod tests {
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = HttpAsset::from(bitcoin::Amount::from_btc(1.0).unwrap());
+        let bitcoin = HttpAsset::from(asset::Bitcoin::from_btc(1.0).unwrap());
         let ether = HttpAsset::from(asset::Ether::from_eth(1.0));
         let pay = HttpAsset::from(asset::Erc20::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),

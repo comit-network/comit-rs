@@ -95,7 +95,7 @@ impl FromHeader for AssetKind {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
                 let quantity = header.take_parameter::<String>("quantity")?;
-                let amount = bitcoin::Amount::from_str_in(quantity.as_str(), Denomination::Satoshi)
+                let amount = asset::Bitcoin::from_str_in(quantity.as_str(), Denomination::Satoshi)
                     .map_err(|e| serde_json::Error::custom(e.to_string()))?;
 
                 AssetKind::Bitcoin(amount)
@@ -156,7 +156,6 @@ mod tests {
         ethereum::{Address, U256},
         swap_protocols::{ledger::ethereum, HashFunction},
     };
-    use bitcoin::Amount;
 
     #[test]
     fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
@@ -198,7 +197,7 @@ mod tests {
 
     #[test]
     fn bitcoin_quantity_to_header() {
-        let quantity = Amount::from_btc(1.0).unwrap();
+        let quantity = asset::Bitcoin::from_btc(1.0).unwrap();
         let header = AssetKind::from(quantity).to_header().unwrap();
 
         assert_eq!(
@@ -216,7 +215,7 @@ mod tests {
             .unwrap();
 
         let quantity = AssetKind::from_header(header).unwrap();
-        let amount = Amount::from_btc(1.0).unwrap();
+        let amount = asset::Bitcoin::from_btc(1.0).unwrap();
         assert_eq!(quantity, AssetKind::Bitcoin(amount));
     }
 
