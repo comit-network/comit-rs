@@ -2,7 +2,7 @@ pub mod htlc_events;
 
 use crate::{
     asset,
-    ethereum::{Address, Bytes},
+    ethereum::{Address, Bytes, Transaction},
     swap_protocols::{
         actions::ethereum::DeployContract,
         ledger::Ethereum,
@@ -43,6 +43,8 @@ impl From<Seconds> for Duration {
 
 impl Ledger for Ethereum {
     type HtlcLocation = Address;
+    type Identity = Address;
+    type Transaction = Transaction;
 }
 
 impl From<HtlcParams<Ethereum, asset::Ether>> for EtherHtlc {

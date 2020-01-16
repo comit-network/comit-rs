@@ -1,7 +1,4 @@
-use crate::{
-    ethereum::{Address, Transaction},
-    swap_protocols::ledger::{Ledger, LedgerKind},
-};
+use crate::swap_protocols::ledger::LedgerKind;
 use serde::{Deserialize, Serialize};
 
 /// `network` is only kept for backward compatibility with client
@@ -23,11 +20,6 @@ impl Default for Ethereum {
             chain_id: ChainId::regtest(),
         }
     }
-}
-
-impl Ledger for Ethereum {
-    type Identity = Address;
-    type Transaction = Transaction;
 }
 
 impl From<Ethereum> for LedgerKind {

@@ -1,5 +1,5 @@
-use crate::swap_protocols::ledger::{Ledger, LedgerKind};
-use bitcoin::{Network, Transaction};
+use crate::swap_protocols::ledger::LedgerKind;
+use bitcoin::Network;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Bitcoin {
@@ -18,11 +18,6 @@ impl Default for Bitcoin {
             network: Network::Regtest,
         }
     }
-}
-
-impl Ledger for Bitcoin {
-    type Identity = crate::bitcoin::PublicKey;
-    type Transaction = Transaction;
 }
 
 impl From<Bitcoin> for LedgerKind {
