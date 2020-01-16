@@ -175,8 +175,8 @@ export class Actor {
             throw new Error("Cannot fund inexistent swap");
         }
 
-        this.logger.debug("Funding as part of swap @ %s", this.swap.self);
-        await this.swap.fund(Actor.defaultActionConfig);
+        const txid = await this.swap.fund(Actor.defaultActionConfig);
+        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
 
         const entity = await this.swap.fetchDetails();
         switch (entity.properties.role) {
@@ -196,8 +196,8 @@ export class Actor {
             throw new Error("Cannot refund inexistent swap");
         }
 
-        this.logger.debug("Refunding as part of swap @ %s", this.swap.self);
-        await this.swap.refund(Actor.defaultActionConfig);
+        const txid = await this.swap.refund(Actor.defaultActionConfig);
+        this.logger.debug("Refunded swap %s in %s", this.swap.self, txid);
 
         const entity = await this.swap.fetchDetails();
         switch (entity.properties.role) {
@@ -217,8 +217,8 @@ export class Actor {
             throw new Error("Cannot redeem inexistent swap");
         }
 
-        this.logger.debug("Redeeming as part of swap @ %s", this.swap.self);
-        await this.swap.redeem(Actor.defaultActionConfig);
+        const txid = await this.swap.redeem(Actor.defaultActionConfig);
+        this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
 
         const entity = await this.swap.fetchDetails();
         switch (entity.properties.role) {

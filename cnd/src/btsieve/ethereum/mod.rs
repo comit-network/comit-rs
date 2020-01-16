@@ -159,7 +159,7 @@ fn seen_block_or_past_seen_block(
         let have_seen_block = seen_blocks.contains(
             &block
                 .hash
-                .ok_or_else(|| anyhow::anyhow!("Block with nullable hash"))?,
+                .ok_or_else(|| anyhow::anyhow!("block without hash"))?,
         );
         let past_start_of_swap = past_timestamp(start_of_swap)(block)?;
 
@@ -176,33 +176,67 @@ where
     C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>,
 {
     let needs_receipt = pattern.needs_receipts(&block);
+    let block_hash = block
+        .hash
+        .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
+
+    if needs_receipt {
+        log::debug!(
+            "bloom-filter of block {:x} suggests to fetch receipts for {:?}",
+            block_hash,
+            pattern
+        );
+    } else {
+        log::debug!(
+            "bloom-filter of block {:x} suggests to not fetch receipts for {:?}",
+            block_hash,
+            pattern
+        );
+    }
 
     for transaction in block.transactions.into_iter() {
-        if needs_receipt {
-            let hash = transaction.hash;
+        let tx_hash = transaction.hash;
+
+        let receipt = if needs_receipt {
             let receipt = connector
-                .receipt_by_hash(hash)
+                .receipt_by_hash(tx_hash)
                 .compat()
                 .await?
                 .ok_or_else(|| {
-                    anyhow::anyhow!("Could not get transaction receipt for transaction {}", hash)
+                    anyhow::anyhow!(
+                        "Could not get transaction receipt for transaction {:x}",
+                        tx_hash
+                    )
                 })?;
 
-            if pattern.matches(&transaction, Some(&receipt)) {
-                return Ok(Some(TransactionAndReceipt {
-                    transaction,
-                    receipt,
-                }));
-            }
-        } else if pattern.matches(&transaction, None) {
-            let hash = transaction.hash;
-            let receipt = connector
-                .receipt_by_hash(hash)
-                .compat()
-                .await?
-                .ok_or_else(|| {
-                    anyhow::anyhow!("Could not get transaction receipt for transaction {}", hash)
-                })?;
+            Some(receipt)
+        } else {
+            None
+        };
+
+        let result = pattern.matches(&transaction, receipt.as_ref());
+
+        log::debug!(
+            "matching {:?} against transaction {:x} yielded {}",
+            pattern,
+            tx_hash,
+            result
+        );
+
+        if result {
+            let receipt = match receipt {
+                Some(receipt) => receipt,
+                None => connector
+                    .receipt_by_hash(tx_hash)
+                    .compat()
+                    .await?
+                    .ok_or_else(|| {
+                        anyhow::anyhow!(
+                            "Could not get transaction receipt for transaction {:x}",
+                            tx_hash
+                        )
+                    })?,
+            };
 
             return Ok(Some(TransactionAndReceipt {
                 transaction,

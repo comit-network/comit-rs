@@ -133,10 +133,18 @@ fn check_block_against_pattern<'b>(
     block: &'b bitcoin::Block,
     pattern: &TransactionPattern,
 ) -> Option<&'b bitcoin::Transaction> {
-    block
-        .txdata
-        .iter()
-        .find(|transaction| pattern.matches(transaction))
+    block.txdata.iter().find(|transaction| {
+        let result = pattern.matches(transaction);
+
+        log::debug!(
+            "matching {:?} against transaction {} yielded {}",
+            pattern,
+            transaction.txid(),
+            result
+        );
+
+        result
+    })
 }
 
 pub async fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
