@@ -105,8 +105,8 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }
 
-pub fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
-    if let Some(problem) = rejection.find_cause::<HttpApiProblem>() {
+pub async fn unpack_problem(rejection: Rejection) -> Result<impl Reply, Rejection> {
+    if let Some(problem) = rejection.find::<HttpApiProblem>() {
         let code = problem.status.unwrap_or(StatusCode::INTERNAL_SERVER_ERROR);
 
         let reply = warp::reply::json(problem);

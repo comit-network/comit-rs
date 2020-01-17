@@ -6,8 +6,6 @@ use crate::{
     network::ListenAddresses,
     swap_protocols::Facade,
 };
-use futures::Future;
-use futures_core::future::{FutureExt, TryFutureExt};
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
@@ -19,15 +17,8 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub fn get_info(
-    id: PeerId,
-    dependencies: Facade,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
-    get_info_async(id, dependencies).boxed().compat()
-}
-
-async fn get_info_async(id: PeerId, facade: Facade) -> anyhow::Result<impl Reply, Rejection> {
-    let listen_addresses: Vec<Multiaddr> = facade.listen_addresses().await.to_vec();
+pub async fn get_info(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
+    let listen_addresses = dependencies.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: Http(id),
@@ -35,15 +26,8 @@ async fn get_info_async(id: PeerId, facade: Facade) -> anyhow::Result<impl Reply
     }))
 }
 
-pub fn get_info_siren(
-    id: PeerId,
-    dependencies: Facade,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
-    get_info_siren_async(id, dependencies).boxed().compat()
-}
-
-async fn get_info_siren_async(id: PeerId, facade: Facade) -> anyhow::Result<impl Reply, Rejection> {
-    let listen_addresses: Vec<Multiaddr> = facade.listen_addresses().await.to_vec();
+pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
+    let listen_addresses = dependencies.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()
@@ -68,10 +52,9 @@ async fn get_info_siren_async(id: PeerId, facade: Facade) -> anyhow::Result<impl
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swaps(dependencies: Facade) -> impl Future<Item = impl Reply, Error = Rejection> {
+pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
     handle_get_swaps(dependencies)
-        .boxed()
-        .compat()
+        .await
         .map(|swaps| {
             Ok(warp::reply::with_header(
                 warp::reply::json(&swaps),

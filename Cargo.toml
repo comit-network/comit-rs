@@ -1,2 +1,5 @@
 [workspace]
 members = ["cnd", "libp2p-comit"]
+
+[replace]
+"http-api-problem:0.14.0" = { git = "https://github.com/thomaseizinger/http-api-problem", branch = "warp-support" }
