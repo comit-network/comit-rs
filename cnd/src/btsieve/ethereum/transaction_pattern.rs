@@ -1,16 +1,22 @@
 use crate::ethereum::{Address, Block, Bytes, Transaction, TransactionReceipt, H256};
 use ethbloom::Input;
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 /// If the field is set to Some(foo) then only transactions matching foo are
 /// returned. Otherwise, when the field is set to None, no pattern matching is
 /// done for this field.
 pub struct TransactionPattern {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_address: Option<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub to_address: Option<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub is_contract_creation: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_data: Option<Bytes>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub transaction_data_length: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub events: Option<Vec<Event>>,
 }
 
@@ -123,7 +129,8 @@ fn events_exist_in_receipt(events: &[Event], receipt: &TransactionReceipt) -> bo
     })
 }
 
-#[derive(Debug, Clone, Copy, Default, Eq, PartialEq)]
+#[derive(Clone, Copy, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
+#[serde(transparent)]
 pub struct Topic(pub H256);
 
 /// Event  work similar as web3 filters:
@@ -152,10 +159,13 @@ pub struct Topic(pub H256);
 /// .. ] //Other data omitted
 /// }
 /// ```
-#[derive(Debug, Clone, Default, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 pub struct Event {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub address: Option<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub data: Option<Bytes>,
+    #[serde(skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<Option<Topic>>,
 }
 

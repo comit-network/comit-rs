@@ -1,13 +1,16 @@
 use crate::btsieve::bitcoin::transaction_ext::TransactionExt;
 use ::bitcoin::{Address, OutPoint, Transaction};
 
-#[derive(Clone, Default, Debug, Eq, PartialEq)]
+#[derive(Clone, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 /// If the field is set to Some(foo) then only transactions matching foo are
 /// returned. Otherwise, when the field is set to None, no pattern matching is
 /// done for this field.
 pub struct TransactionPattern {
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub to_address: Option<Address>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub from_outpoint: Option<OutPoint>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub unlock_script: Option<Vec<Vec<u8>>>,
 }
 
