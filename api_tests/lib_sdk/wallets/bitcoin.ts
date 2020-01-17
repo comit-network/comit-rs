@@ -34,7 +34,7 @@ export class BitcoinWallet implements Wallet {
 
     private constructor(
         public readonly inner: BitcoinWalletSdk,
-        private readonly bitcoinRpcClient: any
+        private readonly bitcoinRpcClient: BitcoinRpcClient
     ) {}
 
     public async mint(asset: Asset): Promise<void> {
@@ -65,5 +65,11 @@ export class BitcoinWallet implements Wallet {
 
     public async getBalance(): Promise<BigNumber> {
         return new BigNumber(toSatoshi(await this.inner.getBalance()));
+    }
+
+    public async getBlockchainTime(): Promise<number> {
+        const blockchainInfo = await this.bitcoinRpcClient.getBlockchainInfo();
+
+        return blockchainInfo.mediantime;
     }
 }

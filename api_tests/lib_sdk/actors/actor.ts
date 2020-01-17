@@ -10,7 +10,7 @@ import { Asset, AssetKind } from "../asset";
 import { CndInstance } from "../cnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
-import { Wallets } from "../wallets";
+import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 
 export class Actor {
@@ -59,6 +59,12 @@ export class Actor {
     private readonly cnd: Cnd;
     private swap: Swap;
 
+    private alphaLedger: Ledger;
+    private alphaAsset: Asset;
+
+    private betaLedger: Ledger;
+    private betaAsset: Asset;
+
     private readonly startingBalances: Map<AssetKind, BigNumber>;
     private readonly expectedBalanceChanges: Map<AssetKind, BigNumber>;
 
@@ -90,58 +96,66 @@ export class Actor {
 
         this.logger.info("Sending swap request");
 
-        const alphaLedger = defaultLedgerDescriptionForAsset(alphaAssetKind);
-        const alphaAsset = defaultAssetDescriptionForAsset(alphaAssetKind);
+        this.alphaLedger = defaultLedgerDescriptionForAsset(alphaAssetKind);
+        this.alphaAsset = defaultAssetDescriptionForAsset(alphaAssetKind);
+        to.alphaLedger = this.alphaLedger;
+        to.alphaAsset = this.alphaAsset;
 
         this.logger.debug(
             "Derived %o from asset %s",
-            alphaLedger,
+            this.alphaLedger,
             alphaAssetKind
         );
         this.logger.debug(
             "Derived %o from asset %s",
-            alphaAsset,
+            this.alphaAsset,
             alphaAssetKind
         );
 
-        const betaLedger = defaultLedgerDescriptionForAsset(betaAssetKind);
-        const betaAsset = defaultAssetDescriptionForAsset(betaAssetKind);
+        this.betaLedger = defaultLedgerDescriptionForAsset(betaAssetKind);
+        this.betaAsset = defaultAssetDescriptionForAsset(betaAssetKind);
+        to.betaLedger = this.betaLedger;
+        to.betaAsset = this.betaAsset;
 
         this.logger.debug(
             "Derived %o from asset %s",
-            betaLedger,
+            this.betaLedger,
             betaAssetKind
         );
-        this.logger.debug("Derived %o from asset %s", betaAsset, betaAssetKind);
+        this.logger.debug(
+            "Derived %o from asset %s",
+            this.betaAsset,
+            betaAssetKind
+        );
 
-        await this.initializeDependencies([alphaLedger.name, betaLedger.name]);
-        await to.initializeDependencies([alphaLedger.name, betaLedger.name]);
+        await this.initializeDependencies();
+        await to.initializeDependencies();
 
         await this.setStartingBalance([
-            alphaAsset,
-            { name: betaAsset.name, quantity: "0" },
+            this.alphaAsset,
+            { name: this.betaAsset.name, quantity: "0" },
         ]);
         await to.setStartingBalance([
-            { name: alphaAsset.name, quantity: "0" },
-            betaAsset,
+            { name: to.alphaAsset.name, quantity: "0" },
+            to.betaAsset,
         ]);
 
         this.expectedBalanceChanges.set(
             betaAssetKind,
-            new BigNumber(betaAsset.quantity)
+            new BigNumber(this.betaAsset.quantity)
         );
         to.expectedBalanceChanges.set(
             alphaAssetKind,
-            new BigNumber(alphaAsset.quantity)
+            new BigNumber(to.alphaAsset.quantity)
         );
 
         const comitClient: ComitClient = this.getComitClient();
 
         const payload = {
-            alpha_ledger: alphaLedger,
-            beta_ledger: betaLedger,
-            alpha_asset: alphaAsset,
-            beta_asset: betaAsset,
+            alpha_ledger: this.alphaLedger,
+            beta_ledger: this.betaLedger,
+            alpha_asset: this.alphaAsset,
+            beta_asset: this.betaAsset,
             peer: {
                 peer_id: await to.cnd.getPeerId(),
                 address_hint: await to.cnd
@@ -196,10 +210,20 @@ export class Actor {
             throw new Error("Cannot refund inexistent swap");
         }
 
+        const entity = await this.swap.fetchDetails();
+
+        switch (entity.properties.role) {
+            case "Alice":
+                await this.waitForAlphaExpiry();
+                break;
+            case "Bob":
+                await this.waitForBetaExpiry();
+                break;
+        }
+
         const txid = await this.swap.refund(Actor.defaultActionConfig);
         this.logger.debug("Refunded swap %s in %s", this.swap.self, txid);
 
-        const entity = await this.swap.fetchDetails();
         switch (entity.properties.role) {
             case "Alice":
                 await this.actors.alice.assertAlphaRefunded();
@@ -337,6 +361,49 @@ export class Actor {
         this.cndInstance.stop();
     }
 
+    private async waitForAlphaExpiry() {
+        const swapDetails = await this.swap.fetchDetails();
+
+        const expiry = swapDetails.properties.state.communication.alpha_expiry;
+        const wallet = this.wallets.getWalletForLedger(this.alphaLedger.name);
+
+        await this.waitForExpiry(wallet, expiry);
+    }
+
+    private async waitForBetaExpiry() {
+        const swapDetails = await this.swap.fetchDetails();
+
+        const expiry = swapDetails.properties.state.communication.beta_expiry;
+        const wallet = this.wallets.getWalletForLedger(this.betaLedger.name);
+
+        await this.waitForExpiry(wallet, expiry);
+    }
+
+    private async waitForExpiry(wallet: Wallet, expiry: number) {
+        let currentBlockchainTime = await wallet.getBlockchainTime();
+
+        this.logger.debug(
+            `Current blockchain time is ${currentBlockchainTime}`
+        );
+
+        let diff = expiry - currentBlockchainTime;
+
+        if (diff > 0) {
+            this.logger.debug(`Waiting for blockchain time to pass ${expiry}`);
+
+            while (diff > 0) {
+                await sleep(1000);
+
+                currentBlockchainTime = await wallet.getBlockchainTime();
+                diff = expiry - currentBlockchainTime;
+
+                this.logger.debug(
+                    `Current blockchain time is ${currentBlockchainTime}`
+                );
+            }
+        }
+    }
+
     private async assertLedgerState(
         ledger: string,
         status:
@@ -383,10 +450,11 @@ export class Actor {
         return {};
     }
 
-    private async initializeDependencies<K extends LedgerKind>(
-        ledgerNames: K[]
-    ) {
-        for (const ledgerName of ledgerNames) {
+    private async initializeDependencies() {
+        for (const ledgerName of [
+            this.alphaLedger.name,
+            this.betaLedger.name,
+        ]) {
             await this.wallets.initializeForLedger(ledgerName);
         }
 
