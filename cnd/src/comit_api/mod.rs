@@ -7,9 +7,9 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin::util::amount::Denomination;
 use libp2p_comit::frame::Header;
 use serde::de::Error;
+use std::str::FromStr;
 
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
@@ -95,8 +95,9 @@ impl FromHeader for AssetKind {
         Ok(match header.value::<String>()?.as_str() {
             "bitcoin" => {
                 let quantity = header.take_parameter::<String>("quantity")?;
-                let amount = asset::Bitcoin::from_str_in(quantity.as_str(), Denomination::Satoshi)
-                    .map_err(|e| serde_json::Error::custom(e.to_string()))?;
+                let quantity =
+                    u64::from_str(quantity.as_str()).map_err(serde_json::Error::custom)?;
+                let amount = asset::Bitcoin::from_sat(quantity);
 
                 AssetKind::Bitcoin(amount)
             }
@@ -197,7 +198,7 @@ mod tests {
 
     #[test]
     fn bitcoin_quantity_to_header() {
-        let quantity = asset::Bitcoin::from_btc(1.0).unwrap();
+        let quantity = asset::Bitcoin::from_sat(100_000_000);
         let header = AssetKind::from(quantity).to_header().unwrap();
 
         assert_eq!(
@@ -215,7 +216,7 @@ mod tests {
             .unwrap();
 
         let quantity = AssetKind::from_header(header).unwrap();
-        let amount = asset::Bitcoin::from_btc(1.0).unwrap();
+        let amount = asset::Bitcoin::from_sat(100_000_000);
         assert_eq!(quantity, AssetKind::Bitcoin(amount));
     }
 

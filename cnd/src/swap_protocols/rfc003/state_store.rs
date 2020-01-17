@@ -133,7 +133,7 @@ mod tests {
             swap_id: SwapId::default(),
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
-            alpha_asset: asset::Bitcoin::from_btc(1.0).unwrap(),
+            alpha_asset: asset::Bitcoin::from_sat(100_000_000),
             beta_asset: asset::Ether::from_eth(10.0),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: bitcoin_pub_key,

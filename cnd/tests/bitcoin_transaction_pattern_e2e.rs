@@ -43,7 +43,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
             let transaction_hash = client
                 .send_to_address(
                     &target_address,
-                    Amount::from_btc(1.0).unwrap(),
+                    Amount::from_sat(100_000_000),
                     None,
                     None,
                     None,

@@ -22,7 +22,6 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use bitcoin::util::amount::Denomination;
 use libp2p::PeerId;
 use libp2p_core::Multiaddr;
 use serde::{
@@ -33,6 +32,7 @@ use serde::{
 use std::{
     convert::{TryFrom, TryInto},
     ops::Deref,
+    str::FromStr,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -61,8 +61,9 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
         D: Deserializer<'de>,
     {
         let value = String::deserialize(deserializer)?;
-        let amount = asset::Bitcoin::from_str_in(value.as_str(), Denomination::Satoshi)
-            .map_err(<D as Deserializer<'de>>::Error::custom)?;
+        let value =
+            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
+        let amount = asset::Bitcoin::from_sat(value);
 
         Ok(Http(amount))
     }
@@ -501,7 +502,7 @@ mod tests {
 
     #[test]
     fn http_asset_serializes_correctly_to_json() {
-        let bitcoin = HttpAsset::from(asset::Bitcoin::from_btc(1.0).unwrap());
+        let bitcoin = HttpAsset::from(asset::Bitcoin::from_sat(100_000_000));
         let ether = HttpAsset::from(asset::Ether::from_eth(1.0));
         let pay = HttpAsset::from(asset::Erc20::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),

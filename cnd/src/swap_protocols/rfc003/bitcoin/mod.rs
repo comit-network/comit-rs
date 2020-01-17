@@ -12,8 +12,7 @@ use bitcoin::{
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
-use crate::asset;
-use crate::bitcoin::PublicKey;
+use crate::{asset, bitcoin::PublicKey};
 
 impl Ledger for Bitcoin {
     type HtlcLocation = OutPoint;
