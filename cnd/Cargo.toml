@@ -67,7 +67,7 @@ warp = { version = "0.1", default-features = false }
 [dependencies.web3]
 default-features = false
 features = ["http"]
-version = "0.8"
+version = "0.9"
 
 [dependencies.primitive-types]
 features = ["rlp"]
