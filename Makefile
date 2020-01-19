@@ -16,7 +16,7 @@ INSTALLED_NIGHTLY_COMPONENTS = $(shell $(RUSTUP) component list --installed --to
 AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
 
 # All our targets go into .PHONY because none of them actually create files
-.PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
+.PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format format_all check_rust_format check_toml_format check_ts_format
 
 default: init_git_hooks build format
 
@@ -100,6 +100,11 @@ STAGED_RUST_FILES = $(filter %.rs,$(STAGED_FILES))
 STAGED_TOML_FILES = $(filter %.toml,$(STAGED_FILES))
 STAGED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(STAGED_FILES))
 
+MODIFIED_FILES = $(shell git status --untracked-files=no --short)
+MODIFIED_RUST_FILES = $(filter %.rs,$(MODIFIED_FILES))
+MODIFIED_TOML_FILES = $(filter %.toml,$(MODIFIED_FILES))
+MODIFIED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(MODIFIED_FILES))
+
 format: install_rustfmt install_tomlfmt
 ifneq (,$(STAGED_RUST_FILES))
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
@@ -110,6 +115,19 @@ ifneq (,$(STAGED_TOML_FILES))
 	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
 endif
 ifneq (,$(STAGED_TYPESCRIPT_FILES))
+	(cd ./api_tests; yarn install; yarn run fix)
+endif
+
+format_all: install_rustfmt install_tomlfmt
+ifneq (,$(MODIFIED_RUST_FILES))
+	$(CARGO_NIGHTLY) fmt
+endif
+ifneq (,$(MODIFIED_TOML_FILES))
+	$(CARGO) tomlfmt -p Cargo.toml
+	$(CARGO) tomlfmt -p cnd/Cargo.toml
+	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
+endif
+ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run fix)
 endif
 
