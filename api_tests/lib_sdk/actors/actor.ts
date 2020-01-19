@@ -357,13 +357,17 @@ export class Actor {
         await this.assertLedgerState("beta_ledger", "REFUNDED");
     }
 
-    public async restart() {
-        this.cndInstance.stop();
+    public async start() {
         await this.cndInstance.start();
     }
 
     public stop() {
         this.cndInstance.stop();
+    }
+
+    public async restart() {
+        this.stop();
+        await this.start();
     }
 
     public async dumpState() {

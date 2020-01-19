@@ -1,5 +1,6 @@
 pub mod ethereum_helper;
 
+use chrono::NaiveDateTime;
 use cnd::{
     btsieve::ethereum::{matching_transaction, TransactionPattern},
     ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
@@ -51,13 +52,12 @@ async fn find_transaction_in_old_block() {
         transaction_data_length: None,
         events: None,
     };
-    let expected_transaction_and_receipt = matching_transaction(
-        connector,
-        pattern,
-        Some(block1_with_transaction.timestamp.low_u32()),
-    )
-    .await
-    .unwrap();
+
+    let start_of_swap =
+        NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0);
+    let expected_transaction_and_receipt = matching_transaction(connector, pattern, start_of_swap)
+        .await
+        .unwrap();
 
     assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
         transaction,

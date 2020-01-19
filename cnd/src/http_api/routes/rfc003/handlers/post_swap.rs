@@ -1,6 +1,6 @@
 use crate::{
     asset::Asset,
-    db::{Save, Sqlite, Swap},
+    db::{LoadAcceptedSwap, Save, Sqlite, Swap},
     ethereum,
     http_api::{HttpAsset, HttpLedger},
     init_swap::init_accepted_swap,
@@ -197,7 +197,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
+    Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + LoadAcceptedSwap<AL, BL, AA, BA>,
 {
     log::trace!("initiating new request: {}", swap_request.swap_id);
 
@@ -220,8 +220,10 @@ where
             match response {
                 Ok(accept) => {
                     Save::save(&dependencies, accept).await?;
-
-                    init_accepted_swap(&dependencies, swap_request, accept, Role::Alice)?;
+                    let accepted =
+                        LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &id)
+                            .await?;
+                    init_accepted_swap(&dependencies, accepted, Role::Alice)?;
                 }
                 Err(decline) => {
                     log::info!("Swap declined: {}", decline.swap_id);

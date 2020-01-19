@@ -2,6 +2,7 @@ pub mod bitcoin_helper;
 
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
+use chrono::offset::Utc;
 use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
 use std::str::FromStr;
 
@@ -31,7 +32,8 @@ async fn find_transaction_in_missing_block() {
         from_outpoint: None,
         unlock_script: None,
     };
-    let expected_transaction = matching_transaction(connector, pattern, None)
+    let start_of_swap = Utc::now().naive_local();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
         .await
         .unwrap();
 
@@ -73,7 +75,8 @@ async fn find_transaction_in_missing_block_with_big_gap() {
         from_outpoint: None,
         unlock_script: None,
     };
-    let expected_transaction = matching_transaction(connector, pattern, None)
+    let start_of_swap = Utc::now().naive_local();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
         .await
         .unwrap();
 
@@ -113,7 +116,8 @@ async fn find_transaction_if_blockchain_reorganisation() {
         from_outpoint: None,
         unlock_script: None,
     };
-    let expected_transaction = matching_transaction(connector, pattern, None)
+    let start_of_swap = Utc::now().naive_local();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
         .await
         .unwrap();
 
@@ -156,7 +160,8 @@ async fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         from_outpoint: None,
         unlock_script: None,
     };
-    let expected_transaction = matching_transaction(connector, pattern, None)
+    let start_of_swap = Utc::now().naive_local();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
         .await
         .unwrap();
 

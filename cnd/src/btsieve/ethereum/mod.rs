@@ -10,6 +10,7 @@ use crate::{
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
 };
 use anyhow;
+use chrono::NaiveDateTime;
 use futures_core::compat::Future01CompatExt;
 use genawaiter::{
     sync::{Co, Gen},
@@ -23,7 +24,7 @@ type Block = crate::ethereum::Block<Transaction>;
 pub async fn matching_transaction<C>(
     connector: C,
     pattern: TransactionPattern,
-    start_of_swap: Option<u32>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<TransactionAndReceipt>
 where
     C: LatestBlock<Block = Option<Block>>
@@ -59,7 +60,7 @@ where
 async fn find_relevant_blocks<C>(
     mut connector: C,
     co: &Co<Block>,
-    start_of_swap: Option<u32>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<std::convert::Infallible>
 where
     C: LatestBlock<Block = Option<Block>>
@@ -82,25 +83,21 @@ where
             .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with nullable hash"))?;
         seen_blocks.insert(blockhash);
 
-        if let Some(start_of_swap) = start_of_swap {
-            if seen_blocks.len() == 1 && block.timestamp > U256::from(start_of_swap) {
-                walk_back_until(
-                    predates_start_of_swap(start_of_swap),
-                    connector.clone(),
-                    co,
-                    blockhash,
-                )
-                .await?;
-            }
+        let start = start_of_swap.timestamp() as i64;
+        if seen_blocks.len() == 1 && !block.predates(start) {
+            walk_back_until(
+                predates_start_of_swap(start),
+                connector.clone(),
+                co,
+                blockhash,
+            )
+            .await?;
         }
 
         let parent_hash = block.parent_hash;
         if !seen_blocks.contains(&parent_hash) && seen_blocks.len() > 1 {
             walk_back_until(
-                seen_block_or_predates_start_of_swap(
-                    seen_blocks.clone(),
-                    start_of_swap.unwrap_or(0),
-                ),
+                seen_block_or_predates_start_of_swap(seen_blocks.clone(), start),
                 connector.clone(),
                 co,
                 parent_hash,
@@ -148,7 +145,7 @@ where
 
 /// Constructs a predicate that returns `true` if the given block predates the
 /// start_of_swap timestamp.
-fn predates_start_of_swap(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Result<bool> {
+fn predates_start_of_swap(start_of_swap: i64) -> impl Fn(&Block) -> anyhow::Result<bool> {
     move |block| Ok(block.predates(start_of_swap))
 }
 
@@ -156,7 +153,7 @@ fn predates_start_of_swap(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Resu
 /// or the block predates the start_of_swap timestamp.
 fn seen_block_or_predates_start_of_swap(
     seen_blocks: HashSet<Hash>,
-    start_of_swap: u32,
+    start_of_swap: i64,
 ) -> impl Fn(&Block) -> anyhow::Result<bool> {
     move |block: &Block| {
         let have_seen_block = seen_blocks.contains(
@@ -252,7 +249,7 @@ where
 }
 
 impl Predates for Block {
-    fn predates(&self, timestamp: u32) -> bool {
+    fn predates(&self, timestamp: i64) -> bool {
         self.timestamp < U256::from(timestamp)
     }
 }

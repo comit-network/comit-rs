@@ -12,6 +12,7 @@ use bitcoin::{
     hashes::sha256d,
     BitcoinHash,
 };
+use chrono::NaiveDateTime;
 use futures_core::compat::Future01CompatExt;
 use reqwest::{Client, Url};
 use std::collections::HashSet;
@@ -19,7 +20,7 @@ use std::collections::HashSet;
 pub async fn matching_transaction<C>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
-    reference_timestamp: Option<u32>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<bitcoin::Transaction>
 where
     C: LatestBlock<Block = bitcoin::Block>
@@ -35,7 +36,7 @@ where
 
     // We didn't find the transaction, now we need to do two things; keep polling
     // for latest block so that we see transactions in new blocks and also go
-    // back up the blockchain until 'reference_timestamp' i.e., look back in the
+    // back up the blockchain until 'start_of_swap' i.e., look back in the
     // past.
 
     let mut prev_blockhashes: HashSet<sha256d::Hash> = HashSet::new();
@@ -84,10 +85,8 @@ where
 
         // Look back into the past (upto timestamp) for one block.
 
-        if let (Some(block), Some(reference_timestamp)) =
-            (oldest_block.as_ref(), reference_timestamp)
-        {
-            if !block.predates(reference_timestamp) {
+        if let Some(block) = oldest_block.as_ref() {
+            if !block.predates(start_of_swap.timestamp()) {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
                     .compat()
@@ -175,8 +174,9 @@ pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> 
 }
 
 impl Predates for bitcoin::Block {
-    fn predates(&self, timestamp: u32) -> bool {
-        self.header.time < timestamp
+    fn predates(&self, timestamp: i64) -> bool {
+        let block_time = self.header.time as i64;
+        block_time < timestamp
     }
 }
 

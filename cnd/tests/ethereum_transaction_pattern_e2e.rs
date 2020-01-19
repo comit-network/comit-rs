@@ -1,3 +1,4 @@
+use chrono::offset::Utc;
 use cnd::{
     btsieve::ethereum::{matching_transaction, TransactionPattern, Web3Connector},
     ethereum::{TransactionRequest, U256},
@@ -43,7 +44,8 @@ async fn ethereum_transaction_pattern_e2e_test() {
         transaction_data_length: None,
         events: None,
     };
-    let funding_transaction = matching_transaction(connector, pattern, None);
+    let start_of_swap = Utc::now().naive_local();
+    let funding_transaction = matching_transaction(connector, pattern, start_of_swap);
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;
         client

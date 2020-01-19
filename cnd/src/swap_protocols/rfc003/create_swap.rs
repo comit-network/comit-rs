@@ -1,5 +1,6 @@
 use crate::{
     asset::Asset,
+    db::AcceptedSwap,
     swap_protocols::{
         rfc003::{
             self,
@@ -12,6 +13,7 @@ use crate::{
     },
     timestamp::Timestamp,
 };
+use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
 use genawaiter::{
     sync::{Co, Gen},
@@ -31,23 +33,26 @@ use genawaiter::{
 /// implementation is still waiting for that.
 pub async fn create_swap<D, A: ActorState>(
     dependencies: D,
-    request: Request<A::AL, A::BL, A::AA, A::BA>,
-    accept: Accept<A::AL, A::BL>,
+    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
     D: HtlcEvents<A::AL, A::AA> + HtlcEvents<A::BL, A::BA> + StateStore + Clone,
 {
+    let (request, accept, at) = accepted.clone();
+
     let id = request.swap_id;
     let swap = OngoingSwap::new(request, accept);
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
         let dependencies = dependencies.clone();
-        |co| async move {
-            future::try_join(
-                watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params()),
-                watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params()),
-            )
-            .await
+        |co| {
+            async move {
+                future::try_join(
+                    watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params(), at),
+                    watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params(), at),
+                )
+                .await
+            }
         }
     });
 
@@ -80,6 +85,7 @@ async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<AL, AA>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
@@ -88,16 +94,18 @@ where
     BA: Asset,
     D: HtlcEvents<AL, AA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params.clone()).await?;
+    let deployed = dependencies
+        .htlc_deployed(htlc_params.clone(), start_of_swap)
+        .await?;
     co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
 
     let funded = dependencies
-        .htlc_funded(htlc_params.clone(), &deployed)
+        .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
         .await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
-        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded)
+        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded, start_of_swap)
         .await?;
 
     match redeemed_or_refunded {
@@ -119,6 +127,7 @@ async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<BL, BA>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
@@ -127,16 +136,18 @@ where
     BA: Asset,
     D: HtlcEvents<BL, BA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params.clone()).await?;
+    let deployed = dependencies
+        .htlc_deployed(htlc_params.clone(), start_of_swap)
+        .await?;
     co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
 
     let funded = dependencies
-        .htlc_funded(htlc_params.clone(), &deployed)
+        .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
         .await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
-        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded)
+        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded, start_of_swap)
         .await?;
 
     match redeemed_or_refunded {
