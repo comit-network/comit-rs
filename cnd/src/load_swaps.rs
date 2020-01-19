@@ -9,7 +9,6 @@ use crate::{
         rfc003::{events::HtlcEvents, state_store::StateStore},
     },
 };
-use bitcoin::Amount;
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn load_swaps_from_database<D>(dependencies: D) -> anyhow::Result<()>
@@ -19,13 +18,13 @@ where
         + DeriveSwapSeed
         + Retrieve
         + DetermineTypes
-        + HtlcEvents<Bitcoin, Amount>
+        + HtlcEvents<Bitcoin, asset::Bitcoin>
         + HtlcEvents<Ethereum, asset::Ether>
         + HtlcEvents<Ethereum, asset::Erc20>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>,
+        + LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>
+        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>
+        + LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>
+        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>,
 {
     log::debug!("loading swaps from database ...");
 

@@ -4,6 +4,9 @@ import { BitcoinNodeConfig } from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { EthereumNodeConfig } from "./ethereum";
 import { ParityInstance } from "./parity_instance";
+import { HarnessGlobal } from "./util";
+
+declare var global: HarnessGlobal;
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
@@ -69,6 +72,11 @@ export class LedgerRunner {
             this.runningLedgers[ledger] = instance;
 
             if (ledger === "bitcoin") {
+                if (global.verbose) {
+                    console.log(
+                        "Bitcoin initialization after ledger is running."
+                    );
+                }
                 bitcoin.init(await this.getBitcoinClientConfig());
                 this.blockTimers.bitcoin = global.setInterval(async () => {
                     await bitcoin.generate();

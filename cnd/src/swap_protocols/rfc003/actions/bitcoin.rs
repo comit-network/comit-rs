@@ -1,19 +1,22 @@
-use crate::swap_protocols::{
-    actions::bitcoin::{SendToAddress, SpendOutput},
-    ledger::Bitcoin,
-    rfc003::{
-        actions::{FundAction, RedeemAction, RefundAction},
-        create_swap::HtlcParams,
-        DeriveIdentities, Secret,
+use crate::{
+    asset,
+    swap_protocols::{
+        actions::bitcoin::{SendToAddress, SpendOutput},
+        ledger::Bitcoin,
+        rfc003::{
+            actions::{FundAction, RedeemAction, RefundAction},
+            create_swap::HtlcParams,
+            DeriveIdentities, Secret,
+        },
     },
 };
 use bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl FundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
+impl FundAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
     type FundActionOutput = SendToAddress;
 
-    fn fund_action(htlc_params: HtlcParams<Bitcoin, Amount>) -> Self::FundActionOutput {
+    fn fund_action(htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
         SendToAddress {
@@ -24,11 +27,11 @@ impl FundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     }
 }
 
-impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
+impl RefundAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &Transaction,
@@ -46,11 +49,11 @@ impl RefundAction<Bitcoin, Amount> for (Bitcoin, Amount) {
     }
 }
 
-impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
+impl RedeemAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
@@ -60,7 +63,7 @@ impl RedeemAction<Bitcoin, Amount> for (Bitcoin, Amount) {
         SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
-                htlc_params.asset,
+                htlc_params.asset.into(),
                 htlc.unlock_with_secret(
                     &*crate::SECP,
                     secret_source.derive_redeem_identity(),

@@ -367,7 +367,7 @@ mod test {
     #[test]
     fn bitcoin_send_amount_to_address_serializes_correctly_to_json() {
         let to = BitcoinAddress::from_str("2N3pk6v15FrDiRNKYVuxnnugn1Yg7wfQRL9").unwrap();
-        let amount = bitcoin::Amount::from_btc(1.0).unwrap();
+        let amount = asset::Bitcoin::from_sat(100_000_000);
 
         let input = &[
             ActionResponseBody::from(SendToAddress {

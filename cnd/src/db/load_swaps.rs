@@ -51,11 +51,11 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether> for Sqlite {
+impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>> {
+    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
@@ -102,7 +102,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether> for Sqli
                 beta_ledger: Ethereum {
                     chain_id: ChainId::new(record.ethereum_chain_id.into()),
                 },
-                alpha_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
+                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 beta_asset: asset::Ether::from_wei(crate::ethereum::U256::from(
                     *record.ether_amount,
                 )),
@@ -149,11 +149,11 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>> {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
@@ -203,7 +203,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount> for Sqli
                 alpha_asset: asset::Ether::from_wei(crate::ethereum::U256::from(
                     *record.ether_amount,
                 )),
-                beta_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
+                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
                 beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
@@ -248,11 +248,11 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20> for Sqlite {
+impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>> {
+    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
@@ -300,7 +300,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20> for Sqli
                 beta_ledger: Ethereum {
                     chain_id: ChainId::new(record.ethereum_chain_id.into()),
                 },
-                alpha_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
+                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 beta_asset: asset::Erc20::new(
                     (record.erc20_token_contract.0).0,
                     asset::Erc20Quantity((record.erc20_amount.0).0),
@@ -349,11 +349,11 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>> {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>> {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
@@ -405,7 +405,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount> for Sqli
                     (record.erc20_token_contract.0).0,
                     asset::Erc20Quantity((record.erc20_amount.0).0),
                 ),
-                beta_asset: bitcoin::Amount::from_sat(u64::from(*record.bitcoin_amount)),
+                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
                 beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(

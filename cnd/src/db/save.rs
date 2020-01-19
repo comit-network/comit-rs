@@ -73,10 +73,10 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>> for Sqlite {
+impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Ether>,
+        message: Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -135,10 +135,10 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>> for Sqlite {
+impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Bitcoin, Ethereum, bitcoin::Amount, asset::Erc20>,
+        message: Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -197,10 +197,10 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>> for Sqlite {
+impl Save<Request<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Ethereum, Bitcoin, asset::Ether, bitcoin::Amount>,
+        message: Request<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -258,10 +258,10 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
 }
 
 #[async_trait]
-impl Save<Request<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>> for Sqlite {
+impl Save<Request<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>> for Sqlite {
     async fn save(
         &self,
-        message: Request<Ethereum, Bitcoin, asset::Erc20, bitcoin::Amount>,
+        message: Request<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,

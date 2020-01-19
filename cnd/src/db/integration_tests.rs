@@ -1,5 +1,5 @@
 use crate::{
-    asset::{Erc20, Ether},
+    asset::{Bitcoin as BitcoinAsset, Erc20, Ether},
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
@@ -11,7 +11,6 @@ use crate::{
         rfc003::{Accept, Request},
     },
 };
-use bitcoin::Amount as BitcoinAmount;
 use std::path::Path;
 
 macro_rules! db_roundtrip_test {
@@ -79,7 +78,7 @@ macro_rules! db_roundtrip_test {
     };
 }
 
-db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAmount, Ether, |role| {
+db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAsset, Ether, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Bitcoin,
         beta_ledger: LedgerKind::Ethereum,
@@ -88,7 +87,7 @@ db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAmount, Ether, |role| {
         role,
     }
 });
-db_roundtrip_test!(Ethereum, Bitcoin, Ether, BitcoinAmount, |role| {
+db_roundtrip_test!(Ethereum, Bitcoin, Ether, BitcoinAsset, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Ethereum,
         beta_ledger: LedgerKind::Bitcoin,
@@ -97,7 +96,7 @@ db_roundtrip_test!(Ethereum, Bitcoin, Ether, BitcoinAmount, |role| {
         role,
     }
 });
-db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAmount, Erc20, |role| {
+db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAsset, Erc20, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Bitcoin,
         beta_ledger: LedgerKind::Ethereum,
@@ -106,7 +105,7 @@ db_roundtrip_test!(Bitcoin, Ethereum, BitcoinAmount, Erc20, |role| {
         role,
     }
 });
-db_roundtrip_test!(Ethereum, Bitcoin, Erc20, BitcoinAmount, |role| {
+db_roundtrip_test!(Ethereum, Bitcoin, Erc20, BitcoinAsset, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Ethereum,
         beta_ledger: LedgerKind::Bitcoin,

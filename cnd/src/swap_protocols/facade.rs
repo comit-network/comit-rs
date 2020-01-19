@@ -1,5 +1,5 @@
 use crate::{
-    asset::Asset,
+    asset::{self, Asset},
     btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
     db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     network::{
@@ -20,7 +20,6 @@ use crate::{
     },
 };
 use async_trait::async_trait;
-use bitcoin::Amount;
 use futures::sync::oneshot::Sender;
 use futures_core::future::Either;
 use libp2p::{Multiaddr, PeerId};
@@ -147,19 +146,19 @@ where
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Bitcoin, Amount> for Facade {
+impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
     ) -> anyhow::Result<Deployed<Bitcoin>> {
         self.bitcoin_connector.htlc_deployed(htlc_params).await
     }
 
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
-    ) -> anyhow::Result<Funded<Bitcoin, Amount>> {
+    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
         self.bitcoin_connector
             .htlc_funded(htlc_params, htlc_deployment)
             .await
@@ -167,9 +166,9 @@ impl HtlcEvents<Bitcoin, Amount> for Facade {
 
     async fn htlc_redeemed_or_refunded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, Amount>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
-        htlc_funding: &Funded<Bitcoin, Amount>,
+        htlc_funding: &Funded<Bitcoin, asset::Bitcoin>,
     ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
         self.bitcoin_connector
             .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)

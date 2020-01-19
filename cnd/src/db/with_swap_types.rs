@@ -29,7 +29,6 @@ macro_rules! with_swap_types {
             db::{AssetKind, LedgerKind, SwapTypes},
             swap_protocols::ledger::{Bitcoin, Ethereum},
         };
-        use bitcoin::Amount;
         let swap_types: SwapTypes = $swap_types;
         let role = swap_types.role;
 
@@ -46,7 +45,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Ethereum;
                 #[allow(dead_code)]
-                type AA = Amount;
+                type AA = asset::Bitcoin;
                 #[allow(dead_code)]
                 type BA = asset::Ether;
                 #[allow(dead_code)]
@@ -66,7 +65,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type BL = Ethereum;
                 #[allow(dead_code)]
-                type AA = Amount;
+                type AA = asset::Bitcoin;
                 #[allow(dead_code)]
                 type BA = asset::Erc20;
                 #[allow(dead_code)]
@@ -88,7 +87,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = asset::Ether;
                 #[allow(dead_code)]
-                type BA = Amount;
+                type BA = asset::Bitcoin;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 
@@ -108,7 +107,7 @@ macro_rules! with_swap_types {
                 #[allow(dead_code)]
                 type AA = asset::Erc20;
                 #[allow(dead_code)]
-                type BA = Amount;
+                type BA = asset::Bitcoin;
                 #[allow(dead_code)]
                 type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRedeem<AL>;
 

@@ -7,12 +7,12 @@ use crate::swap_protocols::{
 };
 use bitcoin::{
     hashes::{hash160, Hash},
-    Address, Amount, OutPoint, Transaction,
+    Address, OutPoint, Transaction,
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
-use crate::bitcoin::PublicKey;
+use crate::{asset, bitcoin::PublicKey};
 
 impl Ledger for Bitcoin {
     type HtlcLocation = OutPoint;
@@ -20,8 +20,8 @@ impl Ledger for Bitcoin {
     type Transaction = Transaction;
 }
 
-impl From<HtlcParams<Bitcoin, Amount>> for BitcoinHtlc {
-    fn from(htlc_params: HtlcParams<Bitcoin, Amount>) -> Self {
+impl From<HtlcParams<Bitcoin, asset::Bitcoin>> for BitcoinHtlc {
+    fn from(htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>) -> Self {
         let refund_public_key = htlc_params.refund_identity.into_inner();
         let redeem_public_key = htlc_params.redeem_identity.into_inner();
 
@@ -37,7 +37,7 @@ impl From<HtlcParams<Bitcoin, Amount>> for BitcoinHtlc {
     }
 }
 
-impl HtlcParams<Bitcoin, Amount> {
+impl HtlcParams<Bitcoin, asset::Bitcoin> {
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(self.ledger.network)
     }
