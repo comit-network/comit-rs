@@ -59,7 +59,7 @@ toml = "0.5"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1.0.2"
-warp = { version = "0.1", default-features = false }
+warp = { version = "0.2", default-features = false }
 
 # These versions need to be "in sync".
 # web3 0.8 gives us primitive-types 0.3.0
