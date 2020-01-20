@@ -4,6 +4,7 @@
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/comit-network/community)
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fcomit-network%2Fcomit-rs.svg?type=shield)](https://app.fossa.io/projects/git%2Bgithub.com%2Fcomit-network%2Fcomit-rs?ref=badge_shield)
 
 COMIT is an open protocol facilitating trustless cross-blockchain applications.
 This is a reference implementation for the COMIT protocol. 
@@ -62,3 +63,6 @@ If you have any question please [reach out to the team in our Gitter chat](https
 ## License
 
 This project is licensed under the terms of the [GNU GENERAL PUBLIC LICENSE v3](LICENSE.md).
+
+
+[![FOSSA Status](https://app.fossa.io/api/projects/git%2Bgithub.com%2Fcomit-network%2Fcomit-rs.svg?type=large)](https://app.fossa.io/projects/git%2Bgithub.com%2Fcomit-network%2Fcomit-rs?ref=badge_large)
