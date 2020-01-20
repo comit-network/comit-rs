@@ -27,7 +27,7 @@ futures-core = { version = "0.3", features = ["alloc", "compat", "async-await"],
 genawaiter = "0.2"
 hex = "0.4"
 hex-serde = "0.1.0"
-http-api-problem = "0.13"
+http-api-problem = { version = "0.14", features = ["with_warp"] }
 lazy_static = "1"
 libp2p = { version = "0.13" }
 libp2p-comit = { path = "../libp2p-comit" }
@@ -46,7 +46,7 @@ rust-crypto = "0.2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 serdebug = "1"
-siren = { version = "0.1", package = "siren-types" }
+siren = { version = "0.2", package = "siren-types" }
 structopt = "0.3"
 strum = "0.17"
 strum_macros = "0.17"
@@ -59,7 +59,7 @@ toml = "0.5"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1.0.2"
-warp = { version = "0.1", default-features = false }
+warp = { version = "0.2", default-features = false }
 
 # These versions need to be "in sync".
 # web3 0.8 gives us primitive-types 0.3.0

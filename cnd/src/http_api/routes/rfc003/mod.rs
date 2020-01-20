@@ -14,8 +14,6 @@ use crate::{
     },
     swap_protocols::{rfc003::actions::ActionKind, Facade, SwapId},
 };
-use futures::Future;
-use futures_core::future::{FutureExt, TryFutureExt};
 use warp::{
     http::{self, header},
     Rejection, Reply,
@@ -25,13 +23,12 @@ pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationStat
 use crate::http_api::problem;
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn post_swap(
+pub async fn post_swap(
     dependencies: Facade,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+) -> Result<impl Reply, Rejection> {
     handle_post_swap(dependencies, body)
-        .boxed()
-        .compat()
+        .await
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
             let response =
@@ -43,30 +40,25 @@ pub fn post_swap(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn get_swap(
-    dependencies: Facade,
-    id: SwapId,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+pub async fn get_swap(dependencies: Facade, id: SwapId) -> Result<impl Reply, Rejection> {
     handle_get_swap(dependencies, id)
-        .boxed()
-        .compat()
+        .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub fn action(
+pub async fn action(
     method: http::Method,
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
     dependencies: Facade,
     body: serde_json::Value,
-) -> impl Future<Item = impl Reply, Error = Rejection> {
+) -> Result<impl Reply, Rejection> {
     handle_action(method, id, action_kind, body, query_params, dependencies)
-        .boxed()
-        .compat()
+        .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)

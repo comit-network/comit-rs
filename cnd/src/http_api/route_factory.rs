@@ -42,20 +42,20 @@ pub fn create(
 
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
-        .and(warp::post2())
+        .and(warp::post())
         .and(dependencies.clone())
         .and(warp::body::json())
         .and_then(http_api::routes::rfc003::post_swap);
 
     let rfc003_get_swap = rfc003
-        .and(warp::get2())
+        .and(warp::get())
         .and(dependencies.clone())
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(http_api::routes::rfc003::get_swap);
 
     let get_swaps = swaps
-        .and(warp::get2())
+        .and(warp::get())
         .and(warp::path::end())
         .and(dependencies.clone())
         .and_then(http_api::routes::index::get_swaps);
@@ -72,20 +72,20 @@ pub fn create(
         .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::routes::rfc003::action);
 
-    let get_peers = warp::get2()
+    let get_peers = warp::get()
         .and(warp::path("peers"))
         .and(warp::path::end())
         .and(dependencies.clone())
         .and_then(http_api::routes::peers::get_peers);
 
-    let get_info_siren = warp::get2()
+    let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
         .and(peer_id.clone())
         .and(dependencies.clone())
         .and_then(http_api::routes::index::get_info_siren);
 
-    let get_info = warp::get2()
+    let get_info = warp::get()
         .and(warp::path::end())
         .and(peer_id)
         .and(dependencies)

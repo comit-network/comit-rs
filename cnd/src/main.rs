@@ -79,7 +79,7 @@ fn main() -> anyhow::Result<()> {
             .compat(),
     )?;
 
-    spawn_warp_instance(&settings, &mut runtime, deps);
+    runtime.spawn_std(spawn_warp_instance(settings, deps));
 
     // Block the current thread.
     ::std::thread::park();
@@ -97,7 +97,7 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-fn spawn_warp_instance(settings: &Settings, runtime: &mut Runtime, dependencies: Facade) {
+async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
     let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
 
     let listen_addr = SocketAddr::new(
@@ -107,9 +107,7 @@ fn spawn_warp_instance(settings: &Settings, runtime: &mut Runtime, dependencies:
 
     log::info!("Starting HTTP server on {}", listen_addr);
 
-    let server = warp::serve(routes).bind(listen_addr);
-
-    runtime.spawn(server);
+    warp::serve(routes).bind(listen_addr).await
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
