@@ -53,6 +53,10 @@ where
     }
 }
 
+#[allow(missing_debug_implementations)]
+#[derive(Copy, Clone)]
+pub enum Infallible {}
+
 /// This function uses the `connector` to find blocks relevant to a swap.
 ///
 /// It yields those blocks as part of the process.
@@ -60,7 +64,7 @@ async fn find_relevant_blocks<C>(
     mut connector: C,
     co: &Co<Block>,
     start_of_swap: Option<u32>,
-) -> anyhow::Result<std::convert::Infallible>
+) -> anyhow::Result<Infallible>
 where
     C: LatestBlock<Block = Option<Block>>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash>
