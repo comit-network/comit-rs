@@ -22,12 +22,15 @@ where
 {
     let id = request.swap_id;
     let seed = dependencies.derive_swap_seed(id);
-    log::trace!("initialising accepted swap: {}", id);
+    tracing::trace!("Initialising accepted swap");
 
     match role {
         Role::Alice => {
             let state = alice::State::accepted(request.clone(), accept, seed);
             StateStore::insert(dependencies, id, state);
+
+            // TODO: Create a new span here and add the request to it.
+            // Store a reference to new span in the state object.
 
             tokio::task::spawn(create_swap::<D, alice::State<AL, BL, AA, BA>>(
                 dependencies.clone(),

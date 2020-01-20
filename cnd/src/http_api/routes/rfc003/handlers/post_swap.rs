@@ -20,6 +20,7 @@ use anyhow::Context;
 use futures_core::future::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+use tracing::{Level, Span};
 
 pub async fn handle_post_swap(
     dependencies: Facade,
@@ -30,6 +31,9 @@ pub async fn handle_post_swap(
     let secret_hash = seed.derive_secret().hash();
 
     let body = serde_json::from_value(body)?;
+
+    let swap_span = tracing::span!(Level::TRACE, "swap", %id);
+    let _enter = swap_span.enter();
 
     match body {
         SwapRequestBody {
@@ -138,7 +142,10 @@ pub async fn handle_post_swap(
         }
     }
 
-    Ok(SwapCreated { id })
+    Ok(SwapCreated {
+        id,
+        span: swap_span.clone(), // Keep a reference to span so it stays alive.
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -199,7 +206,7 @@ where
     BA: Asset,
     Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA>,
 {
-    log::trace!("initiating new request: {}", swap_request.swap_id);
+    tracing::trace!("Initiating new request");
 
     let counterparty = peer.peer_id.clone();
     let seed = dependencies.derive_swap_seed(id);
@@ -212,6 +219,9 @@ where
 
     let future = {
         async move {
+            let swap_span = tracing::span!(Level::TRACE, "swap", %id);
+            let _enter = swap_span.enter();
+
             let response = dependencies
                 .send_request(peer.clone(), swap_request.clone())
                 .await
@@ -220,11 +230,11 @@ where
             match response {
                 Ok(accept) => {
                     Save::save(&dependencies, accept).await?;
-
+                    tracing::event!(target: "swap", Level::TRACE, "Initiating accepted swap");
                     init_accepted_swap(&dependencies, swap_request, accept, Role::Alice)?;
                 }
                 Err(decline) => {
-                    log::info!("Swap declined: {}", decline.swap_id);
+                    tracing::info!("Swap declined");
                     let state = State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     Save::save(&dependencies, decline).await?;
@@ -235,15 +245,17 @@ where
     };
 
     tokio::task::spawn(future.map_err(|e: anyhow::Error| {
-        log::error!("{}", e);
+        tracing::error!("{}", e);
     }));
 
     Ok(())
 }
 
-#[derive(Serialize, Clone, Copy, Debug)]
+#[derive(Serialize, Clone, Debug)]
 pub struct SwapCreated {
     pub id: SwapId,
+    #[serde(skip_serializing)]
+    pub span: Span,
 }
 
 /// A struct describing the expected HTTP body for creating a new swap request.

@@ -63,11 +63,11 @@ pub async fn create_swap<D, A: ActorState>(
             // the generator stopped executing, this means there are no more events that can be
             // watched.
             GeneratorState::Complete(Ok(_)) => {
-                log::info!("Swap {} finished", id);
+                tracing::info!("Swap finished");
                 return;
             }
             GeneratorState::Complete(Err(e)) => {
-                log::error!("Swap {} failed with {:?}", id, e);
+                tracing::error!("Swap failed with {:?}", e);
                 return;
             }
         }

@@ -20,6 +20,7 @@ use tokio_compat::runtime::Runtime;
 
 mod cli;
 mod logging;
+mod trace;
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -36,8 +37,11 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    let base_log_level = settings.logging.level;
-    logging::initialize(base_log_level, settings.logging.structured)?;
+    // let base_log_level = settings.logging.level;
+    // logging::initialize(base_log_level, settings.logging.structured)?;
+
+    crate::trace::init_tracing()?;
+    tracing::info!("Started Comit Network Daemon");
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
