@@ -33,7 +33,7 @@ pub struct SwapResource<S> {
     pub state: Option<S>,
 }
 
-#[derive(Debug, Clone, Copy, Serialize)]
+#[derive(Debug, Clone, Serialize)]
 pub struct SwapParameters {
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,

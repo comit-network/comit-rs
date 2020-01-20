@@ -87,10 +87,12 @@ where
     BA: Asset,
     D: HtlcEvents<AL, AA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params).await?;
+    let deployed = dependencies.htlc_deployed(htlc_params.clone()).await?;
     co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
 
-    let funded = dependencies.htlc_funded(htlc_params, &deployed).await?;
+    let funded = dependencies
+        .htlc_funded(htlc_params.clone(), &deployed)
+        .await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
@@ -124,10 +126,12 @@ where
     BA: Asset,
     D: HtlcEvents<BL, BA>,
 {
-    let deployed = dependencies.htlc_deployed(htlc_params).await?;
+    let deployed = dependencies.htlc_deployed(htlc_params.clone()).await?;
     co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
 
-    let funded = dependencies.htlc_funded(htlc_params, &deployed).await?;
+    let funded = dependencies
+        .htlc_funded(htlc_params.clone(), &deployed)
+        .await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
     let redeemed_or_refunded = dependencies
@@ -162,7 +166,7 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
         accept_response: &rfc003::Accept<L, BL>,
     ) -> Self {
         HtlcParams {
-            asset: request.alpha_asset,
+            asset: request.alpha_asset.clone(),
             ledger: request.alpha_ledger,
             redeem_identity: accept_response.alpha_ledger_redeem_identity,
             refund_identity: request.alpha_ledger_refund_identity,
@@ -176,7 +180,7 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A> {
         accept_response: &rfc003::Accept<AL, L>,
     ) -> Self {
         HtlcParams {
-            asset: request.beta_asset,
+            asset: request.beta_asset.clone(),
             ledger: request.beta_ledger,
             redeem_identity: request.beta_ledger_redeem_identity,
             refund_identity: accept_response.beta_ledger_refund_identity,
@@ -228,7 +232,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
     pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
         HtlcParams {
-            asset: self.alpha_asset,
+            asset: self.alpha_asset.clone(),
             ledger: self.alpha_ledger,
             redeem_identity: self.alpha_ledger_redeem_identity,
             refund_identity: self.alpha_ledger_refund_identity,
@@ -239,7 +243,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
 
     pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA> {
         HtlcParams {
-            asset: self.beta_asset,
+            asset: self.beta_asset.clone(),
             ledger: self.beta_ledger,
             redeem_identity: self.beta_ledger_redeem_identity,
             refund_identity: self.beta_ledger_refund_identity,

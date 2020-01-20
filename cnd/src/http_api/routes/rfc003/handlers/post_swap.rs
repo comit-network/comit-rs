@@ -176,7 +176,7 @@ where
 
 /// An error type for describing that a particular combination of assets and
 /// ledgers is not supported.
-#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 #[error("swapping {alpha_asset:?} for {beta_asset:?} from {alpha_ledger:?} to {beta_ledger:?} is not supported")]
 pub struct UnsupportedSwap {
     alpha_asset: HttpAsset,
