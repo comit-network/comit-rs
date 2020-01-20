@@ -1,5 +1,7 @@
-// @ts-ignore
-import BitcoinRpcClient from "bitcoin-core";
+import BitcoinRpcClient, {
+    HexRawTransactionResponse,
+    VerboseRawTransactionResponse,
+} from "bitcoin-core";
 import {
     address,
     ECPair,
@@ -20,43 +22,6 @@ export interface BitcoinNodeConfig {
     host: string;
     rpcPort: number;
     p2pPort: number;
-}
-
-interface GetBlockchainInfoResponse {
-    mediantime: number;
-}
-
-interface VerboseRawTransactionResponse {
-    vout: Array<{
-        scriptPubKey: {
-            addresses: string[];
-        };
-        value: number;
-    }>;
-}
-
-type HexRawTransactionResponse = string;
-
-type GetRawTransactionResponse =
-    | null
-    | HexRawTransactionResponse
-    | VerboseRawTransactionResponse;
-
-interface BitcoinRpcClient {
-    generate(num: number): Promise<string[]>;
-    getBlockchainInfo(): Promise<GetBlockchainInfoResponse>;
-
-    getBlockCount(): Promise<number>;
-
-    getRawTransaction(
-        txId: string,
-        verbose?: boolean,
-        blockHash?: string
-    ): Promise<GetRawTransactionResponse>;
-
-    sendToAddress(address: string, amount: number | string): Promise<string>;
-
-    sendRawTransaction(hexString: string): Promise<string>;
 }
 
 interface Utxo {

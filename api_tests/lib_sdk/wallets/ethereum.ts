@@ -10,6 +10,7 @@ export class EthereumWallet implements Wallet {
     public MaximumFee = 0;
 
     private readonly parity: ethers.Wallet;
+    private readonly jsonRpcProvider: ethers.providers.JsonRpcProvider;
 
     constructor(config: EthereumNodeConfig) {
         const provider = new ethers.providers.JsonRpcProvider(config.rpc_url);
@@ -18,6 +19,7 @@ export class EthereumWallet implements Wallet {
             provider
         );
 
+        this.jsonRpcProvider = provider;
         this.inner = new EthereumWalletSdk(config.rpc_url);
     }
 
@@ -53,5 +55,14 @@ export class EthereumWallet implements Wallet {
     public async getBalance(): Promise<BigNumber> {
         const balance = await this.inner.getBalance();
         return new BigNumber(balance.toString());
+    }
+
+    public async getBlockchainTime(): Promise<number> {
+        const block = await this.jsonRpcProvider.send("eth_getBlockByNumber", [
+            "latest",
+            false,
+        ]);
+
+        return block.timestamp;
     }
 }
