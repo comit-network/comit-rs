@@ -4,7 +4,7 @@ ECHO = echo
 TOOLCHAIN = $(shell cat rust-toolchain)
 CARGO = $(RUSTUP) run --install $(TOOLCHAIN) cargo --color always
 
-NIGHTLY_TOOLCHAIN = nightly-2019-07-31
+NIGHTLY_TOOLCHAIN = nightly-2020-01-15
 CARGO_NIGHTLY = $(RUSTUP) run --install $(NIGHTLY_TOOLCHAIN) cargo --color always
 
 GIT_HOOKS_PATH = ".githooks"
@@ -102,7 +102,7 @@ STAGED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(STAGED_FILES))
 
 format: install_rustfmt install_tomlfmt
 ifneq (,$(STAGED_RUST_FILES))
-	$(CARGO_NIGHTLY) fmt
+	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
 endif
 ifneq (,$(STAGED_TOML_FILES))
 	$(CARGO) tomlfmt -p Cargo.toml

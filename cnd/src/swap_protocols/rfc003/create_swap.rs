@@ -42,14 +42,12 @@ pub async fn create_swap<D, A: ActorState>(
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
         let dependencies = dependencies.clone();
-        |co| {
-            async move {
-                future::try_join(
-                    watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params()),
-                    watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params()),
-                )
-                .await
-            }
+        |co| async move {
+            future::try_join(
+                watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params()),
+                watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params()),
+            )
+            .await
         }
     });
 

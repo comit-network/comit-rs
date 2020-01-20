@@ -1,17 +1,15 @@
 use cnd::{
     btsieve::ethereum::{matching_transaction, TransactionPattern, Web3Connector},
-    ethereum::{
-        web3::{
-            transports::{EventLoopHandle, Http},
-            Web3,
-        },
-        TransactionRequest, U256,
-    },
+    ethereum::{TransactionRequest, U256},
 };
 use futures_core::{compat::Future01CompatExt, future};
 use reqwest::Url;
 use std::time::Duration;
 use testcontainers::*;
+use web3::{
+    transports::{EventLoopHandle, Http},
+    Web3,
+};
 
 /// A very basic e2e test that verifies that we glued all our code together
 /// correctly for ethereum transaction pattern matching.
@@ -31,7 +29,7 @@ async fn ethereum_transaction_pattern_e2e_test() {
     url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
         .unwrap();
 
-    let (connector, _event_loop) = Web3Connector::new(url).unwrap();
+    let connector = Web3Connector::new(url);
 
     let accounts = client.eth().accounts().compat().await.unwrap();
 

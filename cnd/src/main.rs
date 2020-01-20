@@ -48,8 +48,7 @@ fn main() -> anyhow::Result<()> {
         BitcoindConnector::new(node_url, network)?
     };
 
-    let (ethereum_connector, _event_loop_handle) =
-        { Web3Connector::new(settings.clone().ethereum.node_url)? };
+    let ethereum_connector = Web3Connector::new(settings.clone().ethereum.node_url);
 
     let state_store = Arc::new(InMemoryStateStore::default());
 

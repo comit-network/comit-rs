@@ -1,32 +1,26 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
-    ethereum::{
-        web3::{
-            self,
-            transports::{EventLoopHandle, Http},
-            Web3,
-        },
-        BlockId, BlockNumber,
-    },
+    ethereum::{BlockId, BlockNumber},
 };
+use anyhow::Context;
 use futures::Future;
-use reqwest::Url;
+use futures_core::{FutureExt, TryFutureExt};
+use reqwest::{Client, Url};
+use serde::Serialize;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct Web3Connector {
-    web3: Arc<Web3<Http>>,
+    web3: Arc<Client>,
+    url: Url,
 }
 
 impl Web3Connector {
-    pub fn new(node_url: Url) -> Result<(Self, EventLoopHandle), web3::Error> {
-        let (event_loop_handle, http_transport) = Http::new(node_url.as_str())?;
-        Ok((
-            Self {
-                web3: Arc::new(Web3::new(http_transport)),
-            },
-            event_loop_handle,
-        ))
+    pub fn new(node_url: Url) -> Self {
+        Self {
+            web3: Arc::new(Client::new()),
+            url: node_url,
+        }
     }
 }
 
@@ -37,13 +31,73 @@ impl LatestBlock for Web3Connector {
     fn latest_block(
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let web = self.web3.clone();
-        Box::new(
-            web.eth()
-                .block_with_txs(BlockId::Number(BlockNumber::Latest))
-                .from_err(),
-        )
+        let web3 = self.web3.clone();
+        let url = self.url.clone();
+
+        let future = async move {
+            let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
+                serialize(BlockId::Number(BlockNumber::Latest))?,
+                serialize(true)?,
+            ]);
+
+            let response = web3
+                .post(url)
+                .json(&request)
+                .send()
+                .await?
+                .json::<JsonRpcResponse<crate::ethereum::Block<crate::ethereum::Transaction>>>()
+                .await?;
+
+            let block = match response {
+                JsonRpcResponse::Success { result } => result,
+                JsonRpcResponse::Error { code, message } => {
+                    log::warn!(
+                        "eth_getBlockByNumber request failed with {}: {}",
+                        code,
+                        message
+                    );
+                    return Ok(None);
+                }
+            };
+
+            log::trace!(
+                "Fetched block from web3: {}",
+                block.hash.expect("blocks to have a hash")
+            );
+
+            Ok(Some(block))
+        }
+            .boxed()
+            .compat();
+
+        Box::new(future)
     }
+}
+
+#[derive(serde::Serialize)]
+struct JsonRpcRequest<T> {
+    id: String,
+    jsonrpc: String,
+    method: String,
+    params: T,
+}
+
+impl<T> JsonRpcRequest<T> {
+    fn new(method: &str, params: T) -> Self {
+        Self {
+            id: "1".to_owned(),
+            jsonrpc: "2.0".to_owned(),
+            method: method.to_owned(),
+            params,
+        }
+    }
+}
+
+#[derive(serde::Deserialize)]
+#[serde(untagged)]
+enum JsonRpcResponse<T> {
+    Success { result: T },
+    Error { code: i64, message: String },
 }
 
 impl BlockByHash for Web3Connector {
@@ -54,13 +108,43 @@ impl BlockByHash for Web3Connector {
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let web = self.web3.clone();
-        let block = web
-            .eth()
-            .block_with_txs(BlockId::Hash(block_hash))
-            .from_err();
-        log::trace!("Fetched block from web3: {}", block_hash);
-        Box::new(block)
+        let web3 = self.web3.clone();
+        let url = self.url.clone();
+
+        let future = async move {
+            let request = JsonRpcRequest::new("eth_getBlockByHash", vec![
+                serialize(&block_hash)?,
+                serialize(true)?,
+            ]);
+
+            let response = web3
+                .post(url)
+                .json(&request)
+                .send()
+                .await?
+                .json::<JsonRpcResponse<crate::ethereum::Block<crate::ethereum::Transaction>>>()
+                .await?;
+
+            let block = match response {
+                JsonRpcResponse::Success { result } => result,
+                JsonRpcResponse::Error { code, message } => {
+                    log::warn!(
+                        "eth_getBlockByHash request failed with {}: {}",
+                        code,
+                        message
+                    );
+                    return Ok(None);
+                }
+            };
+
+            log::trace!("Fetched block from web3: {}", block_hash);
+
+            Ok(Some(block))
+        }
+            .boxed()
+            .compat();
+
+        Box::new(future)
     }
 }
 
@@ -72,7 +156,47 @@ impl ReceiptByHash for Web3Connector {
         &self,
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
-        let web = self.web3.clone();
-        Box::new(web.eth().transaction_receipt(transaction_hash).from_err())
+        let web3 = self.web3.clone();
+        let url = self.url.clone();
+
+        let future = async move {
+            let request = JsonRpcRequest::new("eth_getTransactionReceipt", vec![serialize(
+                transaction_hash,
+            )?]);
+
+            let response = web3
+                .post(url)
+                .json(&request)
+                .send()
+                .await?
+                .json::<JsonRpcResponse<crate::ethereum::TransactionReceipt>>()
+                .await?;
+
+            let receipt = match response {
+                JsonRpcResponse::Success { result } => result,
+                JsonRpcResponse::Error { code, message } => {
+                    log::warn!(
+                        "eth_getTransactionReceipt request failed with {}: {}",
+                        code,
+                        message
+                    );
+                    return Ok(None);
+                }
+            };
+
+            log::trace!("Fetched receipt from web3: {}", transaction_hash);
+
+            Ok(Some(receipt))
+        }
+            .boxed()
+            .compat();
+
+        Box::new(future)
     }
+}
+
+fn serialize<T: Serialize>(t: T) -> anyhow::Result<serde_json::Value> {
+    let value = serde_json::to_value(t).context("failed to serialize parameter")?;
+
+    Ok(value)
 }
