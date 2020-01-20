@@ -1,6 +1,6 @@
 mod bitcoin;
 mod erc20;
-mod ether;
+pub mod ether;
 pub use self::{
     bitcoin::Bitcoin,
     erc20::{Erc20, Erc20Quantity},
@@ -15,18 +15,7 @@ use std::{
 };
 
 pub trait Asset:
-    Clone
-    + Copy
-    + Debug
-    + Display
-    + Send
-    + Sync
-    + 'static
-    + PartialEq
-    + Eq
-    + Hash
-    + Into<AssetKind>
-    + Ord
+    Clone + Debug + Display + Send + Sync + 'static + PartialEq + Eq + Hash + Into<AssetKind> + Ord
 {
 }
 
@@ -36,7 +25,7 @@ impl Asset for Ether {}
 
 impl Asset for Erc20 {}
 
-#[derive(Clone, Copy, Derivative, PartialEq)]
+#[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum AssetKind {
     Bitcoin(Bitcoin),

@@ -107,6 +107,7 @@ mod tests {
     use super::*;
     use crate::{
         asset,
+        asset::ether::FromWei,
         ethereum::Address,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
@@ -134,7 +135,7 @@ mod tests {
             alpha_ledger: Bitcoin::default(),
             beta_ledger: Ethereum::default(),
             alpha_asset: asset::Bitcoin::from_sat(100_000_000),
-            beta_asset: asset::Ether::from_eth(10.0),
+            beta_asset: asset::Ether::from_wei(10_000_000_000_000_000_000u64),
             hash_function: HashFunction::Sha256,
             alpha_ledger_refund_identity: bitcoin_pub_key,
             beta_ledger_redeem_identity: ethereum_address,

@@ -1,5 +1,6 @@
 use crate::{
     asset,
+    asset::ether::FromWei,
     db::Swap,
     ethereum::Bytes,
     swap_protocols::{
@@ -224,7 +225,7 @@ impl Arbitrary
                 chain_id: *Quickcheck::<ChainId>::arbitrary(g),
             },
             alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            beta_asset: *Quickcheck::<crate::asset::Ether>::arbitrary(g),
+            beta_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
             beta_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
@@ -271,7 +272,7 @@ impl Arbitrary
             beta_ledger: ledger::Bitcoin {
                 network: *Quickcheck::<bitcoin::Network>::arbitrary(g),
             },
-            alpha_asset: *Quickcheck::<crate::asset::Ether>::arbitrary(g),
+            alpha_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
             beta_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
             alpha_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),

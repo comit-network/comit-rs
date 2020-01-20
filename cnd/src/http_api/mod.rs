@@ -249,7 +249,7 @@ pub enum HttpLedger {
 /// `beta_asset`.
 ///
 /// Note: This enum makes use of serde's "try_from" and "try_into" feature: https://serde.rs/container-attrs.html#from
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(try_from = "HttpAssetParams")]
 #[serde(into = "HttpAssetParams")]
 pub enum HttpAsset {
@@ -303,7 +303,7 @@ pub struct BitcoinAssetParams {
     quantity: Http<asset::Bitcoin>,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EtherAssetParams {
     quantity: asset::Ether,
 }
@@ -486,6 +486,7 @@ impl From<asset::Erc20> for HttpAsset {
 mod tests {
     use crate::{
         asset,
+        asset::ether::FromWei,
         ethereum::{H160, H256, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
@@ -503,7 +504,7 @@ mod tests {
     #[test]
     fn http_asset_serializes_correctly_to_json() {
         let bitcoin = HttpAsset::from(asset::Bitcoin::from_sat(100_000_000));
-        let ether = HttpAsset::from(asset::Ether::from_eth(1.0));
+        let ether = HttpAsset::from(asset::Ether::from_wei(1_000_000_000_000_000_000u64));
         let pay = HttpAsset::from(asset::Erc20::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
             asset::Erc20Quantity(U256::from(100_000_000_000u64)),

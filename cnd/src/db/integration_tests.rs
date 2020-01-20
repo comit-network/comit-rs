@@ -39,7 +39,7 @@ macro_rules! db_roundtrip_test {
                     };
                     let saved_request = Request {
                         swap_id,
-                        ..*request
+                        ..(*request).clone()
                     };
                     let saved_accept = Accept {
                         swap_id,
