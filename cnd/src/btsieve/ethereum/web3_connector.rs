@@ -67,8 +67,8 @@ impl LatestBlock for Web3Connector {
 
             Ok(Some(block))
         }
-            .boxed()
-            .compat();
+        .boxed()
+        .compat();
 
         Box::new(future)
     }
@@ -141,8 +141,8 @@ impl BlockByHash for Web3Connector {
 
             Ok(Some(block))
         }
-            .boxed()
-            .compat();
+        .boxed()
+        .compat();
 
         Box::new(future)
     }
@@ -188,8 +188,8 @@ impl ReceiptByHash for Web3Connector {
 
             Ok(Some(receipt))
         }
-            .boxed()
-            .compat();
+        .boxed()
+        .compat();
 
         Box::new(future)
     }

@@ -1,5 +1,5 @@
-use crypto::{digest::Digest, sha2::Sha256};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
+use sha2::{Digest, Sha256};
 use std::{
     fmt::{self, Debug},
     str::FromStr,
@@ -149,10 +149,9 @@ impl Secret {
     pub fn hash(&self) -> SecretHash {
         let mut sha = Sha256::new();
         sha.input(&self.0);
+        let hash: [u8; SecretHash::LENGTH] = sha.result().into();
 
-        let mut result: [u8; Self::LENGTH] = [0; SecretHash::LENGTH];
-        sha.result(&mut result);
-        SecretHash::from(result)
+        SecretHash::from(hash)
     }
 
     pub fn as_raw_secret(&self) -> &[u8; Self::LENGTH] {

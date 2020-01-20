@@ -1,8 +1,8 @@
 use crate::swap_protocols::SwapId;
-use crypto::{digest::Digest, sha2::Sha256};
 use pem::{encode, Pem};
 use rand::Rng;
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::{
     ffi::OsStr,
     fmt,
@@ -53,9 +53,8 @@ impl Seed {
         for slice in slices {
             sha.input(slice);
         }
-        let mut result = [0u8; SEED_LENGTH];
-        sha.result(&mut result);
-        result
+
+        sha.result().into()
     }
 }
 
