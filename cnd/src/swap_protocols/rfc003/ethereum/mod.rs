@@ -72,14 +72,14 @@ impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
             htlc_params.redeem_identity,
             htlc_params.secret_hash.into(),
             htlc_params.asset.token_contract,
-            htlc_params.asset.quantity.0,
+            htlc_params.asset.quantity.to_u256(),
         )
     }
 }
 
 impl HtlcParams<Ethereum, asset::Erc20> {
-    pub fn bytecode(&self) -> Bytes {
-        Erc20Htlc::from(*self).into()
+    pub fn bytecode(self) -> Bytes {
+        Erc20Htlc::from(self).into()
     }
 }
 
@@ -99,6 +99,7 @@ impl From<HtlcParams<Ethereum, asset::Ether>> for DeployContract {
 
 impl From<HtlcParams<Ethereum, asset::Erc20>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> Self {
+        let chain_id = htlc_params.ledger.chain_id;
         let htlc = Erc20Htlc::from(htlc_params);
         let gas_limit = htlc.deployment_gas_limit();
 
@@ -106,7 +107,7 @@ impl From<HtlcParams<Ethereum, asset::Erc20>> for DeployContract {
             data: htlc.into(),
             amount: asset::Ether::zero(),
             gas_limit,
-            chain_id: htlc_params.ledger.chain_id,
+            chain_id,
         }
     }
 }

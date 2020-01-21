@@ -107,7 +107,7 @@ mod tests {
     use super::*;
     use crate::{
         asset,
-        asset::ether::FromWei,
+        asset::ethereum::FromWei,
         ethereum::Address,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{

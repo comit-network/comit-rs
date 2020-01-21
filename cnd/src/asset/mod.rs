@@ -1,12 +1,9 @@
 mod bitcoin;
-mod erc20;
-pub mod ether;
+pub mod ethereum;
 pub use self::{
     bitcoin::Bitcoin,
-    erc20::{Erc20, Erc20Quantity},
-    ether::Ether,
+    ethereum::{Erc20, Erc20Quantity, Ether},
 };
-
 use crate::asset;
 use derivative::Derivative;
 use std::{
