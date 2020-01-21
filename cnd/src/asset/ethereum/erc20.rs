@@ -1,35 +1,36 @@
 use crate::{
     asset::ethereum::FromWei,
-    ethereum::{
-        u256_ext::{FromDecimalStr, ToBigInt},
-        Address, U256,
-    },
+    ethereum::{Address, U256},
 };
+use num::{BigUint, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct Erc20Quantity(U256);
+pub struct Erc20Quantity(BigUint);
 
 impl Erc20Quantity {
     pub fn zero() -> Self {
-        Self(U256::zero())
+        Self(BigUint::zero())
     }
 
-    pub fn to_u256(self) -> U256 {
-        self.0
+    pub fn to_u256(&self) -> U256 {
+        let buf = self.0.to_bytes_be();
+        U256::from_big_endian(&buf)
     }
 }
 
 impl FromWei<U256> for Erc20Quantity {
     fn from_wei(wei: U256) -> Self {
-        Self(wei)
+        let mut buf = [0u8; 32];
+        wei.to_big_endian(&mut buf);
+        Self(BigUint::from_bytes_be(&buf))
     }
 }
 
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0.to_bigint())
+        write!(f, "{}", self.0)
     }
 }
 
@@ -37,7 +38,7 @@ macro_rules! impl_from_wei_primitive {
     ($primitive:ty) => {
         impl FromWei<$primitive> for Erc20Quantity {
             fn from_wei(w: $primitive) -> Self {
-                Erc20Quantity(U256::from(w))
+                Erc20Quantity(BigUint::from(w))
             }
         }
     };
@@ -67,9 +68,8 @@ impl<'de> Deserialize<'de> for Erc20Quantity {
             where
                 E: de::Error,
             {
-                U256::from_decimal_str(v)
-                    .map(Erc20Quantity)
-                    .map_err(E::custom)
+                let wei = BigUint::from_str(v).map_err(E::custom)?;
+                Ok(Erc20Quantity(wei))
             }
         }
 
@@ -132,13 +132,13 @@ mod tests {
 
     #[test]
     fn display() {
-        let quantity = Erc20Quantity::from_wei(123456789u64);
+        let quantity = Erc20Quantity::from_wei(123_456_789u64);
         assert_eq!(quantity.to_string(), "123456789".to_string());
     }
 
     #[test]
     fn serialize() {
-        let quantity = Erc20Quantity::from_wei(123456789u64);
+        let quantity = Erc20Quantity::from_wei(123_456_789u64);
         let quantity_str = serde_json::to_string(&quantity).unwrap();
         assert_eq!(quantity_str, "\"123456789\"");
     }
@@ -147,6 +147,6 @@ mod tests {
     fn deserialize() {
         let quantity_str = "\"123456789\"";
         let quantity = serde_json::from_str::<Erc20Quantity>(quantity_str).unwrap();
-        assert_eq!(quantity, Erc20Quantity::from_wei(123456789u64));
+        assert_eq!(quantity, Erc20Quantity::from_wei(123_456_789u64));
     }
 }
