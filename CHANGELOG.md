@@ -6,6 +6,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2020-01-21
+
 ### Added
 - Return Siren document containing peer ID, listen addresses and links to `/swaps` and `/swaps/rfc003` on `GET /` with the Accept request HTTP header set to `application/vnd.siren+json`.
 
@@ -60,7 +62,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Move config files to standard location based on platform (OSX, Windows, Linux).
 - Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.5.0...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.5.1...HEAD
+[0.5.1]: https://github.com/comit-network/comit-rs/compare/0.5.0...0.5.1
 [0.5.0]: https://github.com/comit-network/comit-rs/compare/0.4.0...0.5.0
 [0.4.0]: https://github.com/comit-network/comit-rs/compare/0.3.0...0.4.0
 [0.3.0]: https://github.com/comit-network/comit-rs/compare/0.2.1...0.3.0
