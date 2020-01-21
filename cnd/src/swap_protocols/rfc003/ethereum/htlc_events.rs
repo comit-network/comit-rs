@@ -1,6 +1,8 @@
 use crate::{
     asset::{self, Asset},
-    btsieve::ethereum::{matching_transaction, Event, Topic, TransactionPattern, Web3Connector},
+    btsieve::ethereum::{
+        matching_transaction, EthereumCache, Event, Topic, TransactionPattern, Web3Connector,
+    },
     ethereum::{Address, CalculateContractAddress, Transaction, TransactionAndReceipt, H256},
     swap_protocols::{
         ledger::Ethereum,
@@ -26,7 +28,7 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
+impl HtlcEvents<Ethereum, asset::Ether> for EthereumCache<Web3Connector> {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
@@ -87,7 +89,7 @@ fn calculate_contract_address_from_deployment_transaction(tx: &Transaction) -> A
 }
 
 async fn htlc_redeemed_or_refunded<A: Asset>(
-    connector: Web3Connector,
+    connector: EthereumCache<Web3Connector>,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
@@ -173,7 +175,7 @@ mod erc20 {
     use asset::ethereum::FromWei;
 
     #[async_trait::async_trait]
-    impl HtlcEvents<Ethereum, asset::Erc20> for Web3Connector {
+    impl HtlcEvents<Ethereum, asset::Erc20> for EthereumCache<Web3Connector> {
         async fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,

@@ -1,10 +1,11 @@
+mod bitcoin_cache;
 mod bitcoind_connector;
 mod transaction_ext;
 mod transaction_pattern;
 
 pub use self::{
-    bitcoind_connector::BitcoindConnector, transaction_ext::TransactionExt,
-    transaction_pattern::TransactionPattern,
+    bitcoin_cache::BitcoinCache, bitcoind_connector::BitcoindConnector,
+    transaction_ext::TransactionExt, transaction_pattern::TransactionPattern,
 };
 use crate::btsieve::{BlockByHash, LatestBlock, Predates};
 use bitcoin::{

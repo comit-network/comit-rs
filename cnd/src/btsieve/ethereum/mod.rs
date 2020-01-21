@@ -1,7 +1,9 @@
+mod ethereum_cache;
 mod transaction_pattern;
 mod web3_connector;
 
 pub use self::{
+    ethereum_cache::EthereumCache,
     transaction_pattern::{Event, Topic, TransactionPattern},
     web3_connector::Web3Connector,
 };

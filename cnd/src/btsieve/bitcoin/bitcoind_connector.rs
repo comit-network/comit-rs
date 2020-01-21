@@ -76,12 +76,20 @@ impl BlockByHash for BitcoindConnector {
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         let url = self.raw_block_by_hash_url(&block_hash);
 
-        let block =
-            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, self.client.clone())
-                .boxed()
-                .compat();
+        let client = self.client.clone();
+        let block = async move {
+            let block =
+                bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
+            log::debug!(
+                "Fetched block {} with {} transactions from bitcoind",
+                block_hash,
+                block.txdata.len()
+            );
 
-        log::debug!("Fetched block {} from bitcoind", block_hash);
+            Ok(block)
+        }
+        .boxed()
+        .compat();
 
         Box::new(block)
     }
