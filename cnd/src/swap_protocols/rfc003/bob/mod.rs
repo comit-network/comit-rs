@@ -80,11 +80,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
     type BA = BA;
 
     fn expected_alpha_asset(&self) -> Self::AA {
-        self.swap_communication.request().alpha_asset
+        self.swap_communication.request().alpha_asset.clone()
     }
 
     fn expected_beta_asset(&self) -> Self::BA {
-        self.swap_communication.request().beta_asset
+        self.swap_communication.request().beta_asset.clone()
     }
 
     fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL, AA> {

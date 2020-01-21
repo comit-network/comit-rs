@@ -60,7 +60,7 @@ impl From<HtlcParams<Ethereum, asset::Ether>> for EtherHtlc {
 
 impl HtlcParams<Ethereum, asset::Ether> {
     pub fn bytecode(&self) -> Bytes {
-        EtherHtlc::from(*self).into()
+        EtherHtlc::from(self.clone()).into()
     }
 }
 
@@ -85,12 +85,12 @@ impl HtlcParams<Ethereum, asset::Erc20> {
 
 impl From<HtlcParams<Ethereum, asset::Ether>> for DeployContract {
     fn from(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self {
-        let htlc = EtherHtlc::from(htlc_params);
+        let htlc = EtherHtlc::from(htlc_params.clone());
         let gas_limit = htlc.deployment_gas_limit();
 
         DeployContract {
             data: htlc.into(),
-            amount: htlc_params.asset,
+            amount: htlc_params.asset.clone(),
             gas_limit,
             chain_id: htlc_params.ledger.chain_id,
         }
