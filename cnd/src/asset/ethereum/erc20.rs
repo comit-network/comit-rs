@@ -131,6 +131,12 @@ mod tests {
     }
 
     #[test]
+    fn display() {
+        let quantity = Erc20Quantity::from_wei(123456789u64);
+        assert_eq!(quantity.to_string(), "123456789".to_string());
+    }
+
+    #[test]
     fn serialize() {
         let quantity = Erc20Quantity::from_wei(123456789u64);
         let quantity_str = serde_json::to_string(&quantity).unwrap();
