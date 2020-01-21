@@ -89,7 +89,7 @@ where
 
     // Look back in time until we get a block that predates start_of_swap.
     let start = start_of_swap.timestamp() as i64;
-    if seen_blocks.len() == 1 && !block.predates(start) {
+    if !block.predates(start) {
         walk_back_until(
             predates_start_of_swap(start),
             connector.clone(),
@@ -114,7 +114,7 @@ where
 
         // Look back along the blockchain for missing blocks.
         let parent_hash = block.parent_hash;
-        if !seen_blocks.contains(&parent_hash) && seen_blocks.len() > 1 {
+        if !seen_blocks.contains(&parent_hash) {
             walk_back_until(
                 seen_block_or_predates_start_of_swap(seen_blocks.clone(), start),
                 connector.clone(),
