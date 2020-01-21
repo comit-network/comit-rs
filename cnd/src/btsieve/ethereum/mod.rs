@@ -88,16 +88,15 @@ where
     seen_blocks.insert(blockhash);
 
     // Look back in time until we get a block that predates start_of_swap.
+    let parent_hash = block.parent_hash;
     let start = start_of_swap.timestamp() as i64;
-    if !block.predates(start) {
-        walk_back_until(
-            predates_start_of_swap(start),
-            connector.clone(),
-            co,
-            blockhash,
-        )
-        .await?;
-    }
+    walk_back_until(
+        predates_start_of_swap(start),
+        connector.clone(),
+        co,
+        parent_hash,
+    )
+    .await?;
 
     loop {
         let block = connector
