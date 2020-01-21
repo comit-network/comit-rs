@@ -25,14 +25,23 @@ async fn ethereum_transaction_pattern_e2e_test() {
 
     let (_handle, client) = new_web3_client(&container);
 
-    let mut url = Url::parse("http://localhost").unwrap();
+    let mut url = Url::parse("http://localhost").expect("failed to parse static URL");
     #[allow(clippy::cast_possible_truncation)]
-    url.set_port(Some(container.get_host_port(8545).unwrap() as u16))
-        .unwrap();
+    url.set_port(Some(
+        container
+            .get_host_port(8545)
+            .expect("failed to get host port") as u16,
+    ))
+    .unwrap();
 
     let connector = Web3Connector::new(url);
 
-    let accounts = client.eth().accounts().compat().await.unwrap();
+    let accounts = client
+        .eth()
+        .accounts()
+        .compat()
+        .await
+        .expect("failed to get accounts");
 
     let target_address = accounts[0];
 
@@ -52,7 +61,9 @@ async fn ethereum_transaction_pattern_e2e_test() {
             .personal()
             .send_transaction(
                 TransactionRequest {
-                    from: "00a329c0648769a73afac7f9381e08fb43dbea72".parse().unwrap(),
+                    from: "00a329c0648769a73afac7f9381e08fb43dbea72"
+                        .parse()
+                        .expect("failed to parse static string"),
                     to: Some(target_address),
                     gas: None,
                     gas_price: None,
@@ -65,7 +76,7 @@ async fn ethereum_transaction_pattern_e2e_test() {
             )
             .compat()
             .await
-            .unwrap()
+            .expect("failed to send transaction")
     };
 
     let future = future::join(send_money_to_address, funding_transaction);
@@ -73,10 +84,13 @@ async fn ethereum_transaction_pattern_e2e_test() {
     let (actual_transaction, funding_transaction) =
         tokio::time::timeout(Duration::from_secs(5), future)
             .await
-            .unwrap();
+            .expect("failed to timeout");
 
     assert_eq!(
-        funding_transaction.unwrap().transaction.hash,
+        funding_transaction
+            .expect("failed to get funding transaction")
+            .transaction
+            .hash,
         actual_transaction
     )
 }
