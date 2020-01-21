@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    asset::ether::FromWei,
+    asset::ethereum::FromWei,
     db::Swap,
     ethereum::Bytes,
     swap_protocols::{

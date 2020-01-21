@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use anyhow::Context;
-use asset::ether::FromWei;
+use asset::ethereum::FromWei;
 use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {

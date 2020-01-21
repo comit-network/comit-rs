@@ -486,7 +486,7 @@ impl From<asset::Erc20> for HttpAsset {
 mod tests {
     use crate::{
         asset,
-        asset::ether::FromWei,
+        asset::ethereum::FromWei,
         ethereum::{H160, H256, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{

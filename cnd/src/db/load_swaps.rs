@@ -15,7 +15,7 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use asset::ether::FromWei;
+use asset::ethereum::FromWei;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};

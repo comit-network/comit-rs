@@ -1,4 +1,7 @@
-use crate::ethereum::U256;
+use crate::{
+    asset::ethereum::{FromWei, TryFromWei},
+    ethereum::U256,
+};
 use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
 use num::{
@@ -71,18 +74,6 @@ impl fmt::Display for Ether {
         let ether = dec.div(WEI_IN_ETHER_BIGDEC.clone());
         write!(f, "{} ETH", ether)
     }
-}
-
-pub trait FromWei<W> {
-    fn from_wei(wei: W) -> Self;
-}
-
-pub trait TryFromWei<W>
-where
-    Self: std::marker::Sized,
-{
-    type Err;
-    fn try_from_wei(wei: W) -> Result<Self, Self::Err>;
 }
 
 macro_rules! impl_from_wei_primitive {
