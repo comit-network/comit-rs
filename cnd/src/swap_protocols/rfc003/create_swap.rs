@@ -56,16 +56,17 @@ pub async fn create_swap<D, A: ActorState>(
         match generator.async_resume().await {
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
+                log::info!("swap {} yielded event {}", id, event);
                 dependencies.update::<A>(&id, event);
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
             GeneratorState::Complete(Ok(_)) => {
-                log::info!("Swap {} finished", id);
+                log::info!("swap {} finished", id);
                 return;
             }
             GeneratorState::Complete(Err(e)) => {
-                log::error!("Swap {} failed with {:?}", id, e);
+                log::error!("swap {} failed with {:?}", id, e);
                 return;
             }
         }
@@ -249,7 +250,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum SwapEvent<AL, BL, AA, BA>
 where
     AL: Ledger,
@@ -266,4 +267,22 @@ where
     BetaFunded(Funded<BL, BA>),
     BetaRedeemed(Redeemed<BL>),
     BetaRefunded(Refunded<BL>),
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{asset, ethereum, swap_protocols::ledger};
+
+    #[test]
+    fn swap_event_should_render_to_nice_string() {
+        let event = SwapEvent::<ledger::Bitcoin, ledger::Ethereum, asset::Bitcoin, asset::Ether>::BetaDeployed(Deployed {
+            transaction: ethereum::Transaction::default(),
+            location: ethereum::Address::default(),
+        });
+
+        let formatted = format!("{}", event);
+
+        assert_eq!(formatted, "BetaDeployed")
+    }
 }

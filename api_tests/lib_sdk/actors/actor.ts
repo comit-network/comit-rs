@@ -302,6 +302,11 @@ export class Actor {
             const currentWalletBalance = await wallet.getBalance();
 
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+
+            this.logger.debug(
+                "Balance check was positive, current balance is %d",
+                currentWalletBalance
+            );
         }
     }
 
@@ -361,11 +366,29 @@ export class Actor {
         this.cndInstance.stop();
     }
 
+    public async dumpState() {
+        this.logger.debug("dumping current state");
+
+        const swapDetails = await this.swap.fetchDetails();
+
+        this.logger.debug("swap status: %s", swapDetails.properties.status);
+        this.logger.debug("swap details: ", JSON.stringify(swapDetails));
+
+        this.logger.debug(
+            "alpha ledger wallet balance %d",
+            await this.alphaLedgerWallet().getBalance()
+        );
+        this.logger.debug(
+            "beta ledger wallet balance %d",
+            await this.betaLedgerWallet().getBalance()
+        );
+    }
+
     private async waitForAlphaExpiry() {
         const swapDetails = await this.swap.fetchDetails();
 
         const expiry = swapDetails.properties.state.communication.alpha_expiry;
-        const wallet = this.wallets.getWalletForLedger(this.alphaLedger.name);
+        const wallet = this.alphaLedgerWallet();
 
         await this.waitForExpiry(wallet, expiry);
     }
@@ -374,9 +397,17 @@ export class Actor {
         const swapDetails = await this.swap.fetchDetails();
 
         const expiry = swapDetails.properties.state.communication.beta_expiry;
-        const wallet = this.wallets.getWalletForLedger(this.betaLedger.name);
+        const wallet = this.betaLedgerWallet();
 
         await this.waitForExpiry(wallet, expiry);
+    }
+
+    private alphaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.alphaLedger.name);
+    }
+
+    private betaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.betaLedger.name);
     }
 
     private async waitForExpiry(wallet: Wallet, expiry: number) {

@@ -19,6 +19,11 @@ export function twoActorTest(
 
         try {
             await timeout(60000, testFn(actors));
+        } catch (e) {
+            await actors.alice.dumpState();
+            await actors.bob.dumpState();
+
+            throw e;
         } finally {
             actors.alice.stop();
             actors.bob.stop();
