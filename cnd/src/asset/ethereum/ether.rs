@@ -248,7 +248,7 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_ether_quantity() {
+    fn deserialize() {
         let ether_str = "\"1000000000000000000\"";
         let ether = serde_json::from_str::<Ether>(ether_str).unwrap();
         assert_eq!(ether, Ether::from_wei(*WEI_IN_ETHER_U128));
