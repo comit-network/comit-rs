@@ -308,7 +308,7 @@ pub struct EtherAssetParams {
     quantity: asset::Ether,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Erc20AssetParams {
     quantity: asset::Erc20Quantity,
     token_contract: ethereum::Address,

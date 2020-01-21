@@ -8,7 +8,7 @@ use crate::{
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20Quantity(U256);
 
 impl Erc20Quantity {
@@ -86,7 +86,7 @@ impl Serialize for Erc20Quantity {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct Erc20 {
     pub token_contract: Address,
     pub quantity: Erc20Quantity,
