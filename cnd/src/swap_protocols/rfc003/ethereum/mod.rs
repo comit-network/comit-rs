@@ -72,7 +72,7 @@ impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
             htlc_params.redeem_identity,
             htlc_params.secret_hash.into(),
             htlc_params.asset.token_contract,
-            htlc_params.asset.quantity.0,
+            htlc_params.asset.quantity.to_u256(),
         )
     }
 }

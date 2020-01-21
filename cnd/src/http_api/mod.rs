@@ -507,7 +507,7 @@ mod tests {
         let ether = HttpAsset::from(asset::Ether::from_wei(1_000_000_000_000_000_000u64));
         let pay = HttpAsset::from(asset::Erc20::new(
             "B97048628DB6B661D4C2aA833e95Dbe1A905B280".parse().unwrap(),
-            asset::Erc20Quantity(U256::from(100_000_000_000u64)),
+            asset::Erc20Quantity::from_wei(U256::from(100_000_000_000u64)),
         ));
 
         let bitcoin_serialized = serde_json::to_string(&bitcoin).unwrap();

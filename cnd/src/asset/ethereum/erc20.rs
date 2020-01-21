@@ -1,16 +1,29 @@
-use crate::ethereum::{
-    u256_ext::{FromDecimalStr, ToBigInt},
-    Address, U256,
+use crate::{
+    asset::ethereum::FromWei,
+    ethereum::{
+        u256_ext::{FromDecimalStr, ToBigInt},
+        Address, U256,
+    },
 };
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
-pub struct Erc20Quantity(pub U256);
+pub struct Erc20Quantity(U256);
 
 impl Erc20Quantity {
     pub fn zero() -> Self {
         Self(U256::zero())
+    }
+
+    pub fn to_u256(self) -> U256 {
+        self.0
+    }
+}
+
+impl FromWei<U256> for Erc20Quantity {
+    fn from_wei(wei: U256) -> Self {
+        Self(wei)
     }
 }
 

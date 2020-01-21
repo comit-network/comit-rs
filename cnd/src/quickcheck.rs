@@ -117,7 +117,7 @@ impl Arbitrary for Quickcheck<crate::asset::Ether> {
 impl Arbitrary for Quickcheck<crate::asset::Erc20Quantity> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let u256 = *Quickcheck::<crate::ethereum::U256>::arbitrary(g);
-        let erc20_quantity = crate::asset::Erc20Quantity(u256);
+        let erc20_quantity = crate::asset::Erc20Quantity::from_wei(u256);
 
         Quickcheck(erc20_quantity)
     }
