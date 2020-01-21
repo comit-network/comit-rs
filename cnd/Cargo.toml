@@ -9,7 +9,7 @@ description = "Reference implementation of a COMIT network daemon."
 anyhow = "1"
 async-trait = "0.1"
 bigdecimal = "0.1.0"
-bitcoin = { version = "0.19.1", features = ["use-serde"] }
+bitcoin = { version = "0.23.0", features = ["use-serde"] }
 blockchain_contracts = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 config = { version = "0.10", features = ["toml"], default-features = false }
