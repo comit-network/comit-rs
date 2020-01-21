@@ -75,6 +75,30 @@ where
 {
     let mut seen_blocks: HashSet<Hash> = HashSet::new();
 
+    let block = connector
+        .latest_block()
+        .compat()
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
+    co.yield_(block.clone()).await;
+
+    let blockhash = block
+        .hash
+        .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
+    seen_blocks.insert(blockhash);
+
+    // Look back in time until we get a block that predates start_of_swap.
+    let start = start_of_swap.timestamp() as i64;
+    if seen_blocks.len() == 1 && !block.predates(start) {
+        walk_back_until(
+            predates_start_of_swap(start),
+            connector.clone(),
+            co,
+            blockhash,
+        )
+        .await?;
+    }
+
     loop {
         let block = connector
             .latest_block()
@@ -87,18 +111,6 @@ where
             .hash
             .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
         seen_blocks.insert(blockhash);
-
-        // Look back in time until we get a block that predates start_of_swap.
-        let start = start_of_swap.timestamp() as i64;
-        if seen_blocks.len() == 1 && !block.predates(start) {
-            walk_back_until(
-                predates_start_of_swap(start),
-                connector.clone(),
-                co,
-                blockhash,
-            )
-            .await?;
-        }
 
         // Look back along the blockchain for missing blocks.
         let parent_hash = block.parent_hash;
