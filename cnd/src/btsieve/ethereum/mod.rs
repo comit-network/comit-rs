@@ -49,7 +49,7 @@ where
                 }
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
-            GeneratorState::Complete(Ok(infallible)) => match infallible {},
+            GeneratorState::Complete(Ok(_)) => unreachable!(), // Remove this before 0.1 release.
         }
     }
 }
