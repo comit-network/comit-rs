@@ -12,7 +12,7 @@ use crate::{
     },
 };
 use anyhow::Context;
-use asset::ether::FromWei;
+use asset::ethereum::FromWei;
 use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {
@@ -158,6 +158,7 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
 mod erc20 {
     use super::*;
     use crate::ethereum::U256;
+    use asset::ethereum::FromWei;
 
     #[async_trait::async_trait]
     impl HtlcEvents<Ethereum, asset::Erc20> for Web3Connector {
@@ -223,7 +224,8 @@ mod erc20 {
                 .find(|log| log.topics.contains(&*super::TRANSFER_LOG_MSG))
                 .expect("Fund transaction receipt must contain transfer events");
 
-            let quantity = asset::Erc20Quantity(U256::from_big_endian(log.data.0.as_ref()));
+            let quantity =
+                asset::Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
             let asset = asset::Erc20::new(log.address, quantity);
 
             Ok(Funded { transaction, asset })

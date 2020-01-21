@@ -22,8 +22,10 @@ pub fn fund_action(
     let chain_id = htlc_params.ledger.chain_id;
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
-    let data =
-        Erc20Htlc::transfer_erc20_tx_payload(htlc_params.asset.quantity.0, beta_htlc_location);
+    let data = Erc20Htlc::transfer_erc20_tx_payload(
+        htlc_params.asset.quantity.to_u256(),
+        beta_htlc_location,
+    );
 
     CallContract {
         to: to_erc20_contract,

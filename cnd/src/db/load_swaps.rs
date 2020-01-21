@@ -15,7 +15,7 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use asset::ether::FromWei;
+use asset::ethereum::FromWei;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
@@ -304,7 +304,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlit
                 alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 beta_asset: asset::Erc20::new(
                     (record.erc20_token_contract.0).0,
-                    asset::Erc20Quantity((record.erc20_amount.0).0),
+                    asset::Erc20Quantity::from_wei((record.erc20_amount.0).0),
                 ),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
@@ -404,7 +404,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlit
                 },
                 alpha_asset: asset::Erc20::new(
                     (record.erc20_token_contract.0).0,
-                    asset::Erc20Quantity((record.erc20_amount.0).0),
+                    asset::Erc20Quantity::from_wei((record.erc20_amount.0).0),
                 ),
                 beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 hash_function: *record.hash_function,
