@@ -80,6 +80,10 @@ export class Actor {
         this.expectedBalanceChanges = new Map();
     }
 
+    public cndIsRunning() {
+        return this.cndInstance.isRunning();
+    }
+
     public async sendRequest(
         maybeAlphaAssetKind?: AssetKind,
         maybeBetaAssetKind?: AssetKind
@@ -196,10 +200,14 @@ export class Actor {
         switch (entity.properties.role) {
             case "Alice":
                 await this.actors.alice.assertAlphaFunded();
-                await this.actors.bob.assertAlphaFunded();
+                if (this.actors.bob.cndIsRunning()) {
+                    await this.actors.bob.assertAlphaFunded();
+                }
                 break;
             case "Bob":
-                await this.actors.alice.assertBetaFunded();
+                if (this.actors.alice.cndIsRunning()) {
+                    await this.actors.alice.assertBetaFunded();
+                }
                 await this.actors.bob.assertBetaFunded();
                 break;
         }
@@ -227,10 +235,14 @@ export class Actor {
         switch (entity.properties.role) {
             case "Alice":
                 await this.actors.alice.assertAlphaRefunded();
-                await this.actors.bob.assertAlphaRefunded();
+                if (this.actors.bob.cndIsRunning()) {
+                    await this.actors.bob.assertAlphaRefunded();
+                }
                 break;
             case "Bob":
-                await this.actors.alice.assertBetaRefunded();
+                if (this.actors.alice.cndIsRunning()) {
+                    await this.actors.alice.assertBetaRefunded();
+                }
                 await this.actors.bob.assertBetaRefunded();
                 break;
         }
@@ -248,10 +260,14 @@ export class Actor {
         switch (entity.properties.role) {
             case "Alice":
                 await this.actors.alice.assertBetaRedeemed();
-                await this.actors.bob.assertBetaRedeemed();
+                if (this.actors.bob.cndIsRunning()) {
+                    await this.actors.bob.assertBetaRedeemed();
+                }
                 break;
             case "Bob":
-                await this.actors.alice.assertAlphaRedeemed();
+                if (this.actors.alice.cndIsRunning()) {
+                    await this.actors.alice.assertAlphaRedeemed();
+                }
                 await this.actors.bob.assertAlphaRedeemed();
                 break;
         }
