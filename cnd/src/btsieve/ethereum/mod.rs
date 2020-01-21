@@ -75,12 +75,12 @@ where
             .latest_block()
             .compat()
             .await?
-            .ok_or_else(|| anyhow::anyhow!("Connector returned nullable latest block"))?;
+            .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
         co.yield_(block.clone()).await;
 
         let blockhash = block
             .hash
-            .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with nullable hash"))?;
+            .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
         seen_blocks.insert(blockhash);
 
         let start = start_of_swap.timestamp() as i64;
