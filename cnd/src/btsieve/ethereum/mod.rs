@@ -54,7 +54,12 @@ where
     }
 }
 
-/// This function uses the `connector` to find blocks relevant to a swap.
+/// This function uses the `connector` to find blocks relevant to a swap.  To do
+/// this we must get the latest block, for each latest block we receive we must
+/// ensure that we saw its parent i.e., that we did not miss any blocks between
+/// this latest block and the previous latest block we received.  Finally, we
+/// must also get each block back until the time that the swap started i.e.,
+/// look into the past (in case we were restarted during an ongoing swap).
 ///
 /// It yields those blocks as part of the process.
 async fn find_relevant_blocks<C>(
@@ -83,6 +88,7 @@ where
             .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
         seen_blocks.insert(blockhash);
 
+        // Look back in time until we get a block that predates start_of_swap.
         let start = start_of_swap.timestamp() as i64;
         if seen_blocks.len() == 1 && !block.predates(start) {
             walk_back_until(
@@ -94,6 +100,7 @@ where
             .await?;
         }
 
+        // Look back along the blockchain for missing blocks.
         let parent_hash = block.parent_hash;
         if !seen_blocks.contains(&parent_hash) && seen_blocks.len() > 1 {
             walk_back_until(
