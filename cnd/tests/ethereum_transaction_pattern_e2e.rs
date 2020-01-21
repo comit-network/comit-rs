@@ -3,7 +3,7 @@ use cnd::{
     btsieve::ethereum::{matching_transaction, TransactionPattern, Web3Connector},
     ethereum::{TransactionRequest, U256},
 };
-use futures_core::{compat::Future01CompatExt, future};
+use futures_core::compat::Future01CompatExt;
 use reqwest::Url;
 use std::time::Duration;
 use testcontainers::*;
@@ -22,6 +22,7 @@ use web3::{
 async fn ethereum_transaction_pattern_e2e_test() {
     let cli = clients::Cli::default();
     let container = cli.run(images::parity_parity::ParityEthereum::default());
+    let start_of_swap = Utc::now().naive_local();
 
     let (_handle, client) = new_web3_client(&container);
 
@@ -45,16 +46,6 @@ async fn ethereum_transaction_pattern_e2e_test() {
 
     let target_address = accounts[0];
 
-    let pattern = TransactionPattern {
-        from_address: None,
-        to_address: Some(target_address),
-        is_contract_creation: None,
-        transaction_data: None,
-        transaction_data_length: None,
-        events: None,
-    };
-    let start_of_swap = Utc::now().naive_local();
-    let funding_transaction = matching_transaction(connector, pattern, start_of_swap);
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;
         client
@@ -78,20 +69,31 @@ async fn ethereum_transaction_pattern_e2e_test() {
             .await
             .expect("failed to send transaction")
     };
+    let transaction = tokio::time::timeout(Duration::from_secs(5), send_money_to_address)
+        .await
+        .expect("failed to send money to address");
 
-    let future = future::join(send_money_to_address, funding_transaction);
-
-    let (actual_transaction, funding_transaction) =
-        tokio::time::timeout(Duration::from_secs(5), future)
-            .await
-            .expect("failed to timeout");
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: Some(target_address),
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: None,
+    };
+    let matched_transaction = tokio::time::timeout(
+        Duration::from_secs(5),
+        matching_transaction(connector, pattern, start_of_swap),
+    )
+    .await
+    .expect("failed to timeout");
 
     assert_eq!(
-        funding_transaction
+        matched_transaction
             .expect("failed to get funding transaction")
             .transaction
             .hash,
-        actual_transaction
+        transaction
     )
 }
 
