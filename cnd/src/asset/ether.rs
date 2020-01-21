@@ -33,32 +33,6 @@ impl Ether {
         U256::from_big_endian(&buf)
     }
 
-    pub fn checked_add(self, rhs: Self) -> Option<Self> {
-        if self > Self::max_value() || rhs > Self::max_value() {
-            None
-        } else {
-            let res = Ether(self.0 + rhs.0);
-            if res > Self::max_value() {
-                None
-            } else {
-                Some(res)
-            }
-        }
-    }
-
-    pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-        if self > Self::max_value() || rhs > Self::max_value() {
-            None
-        } else {
-            let res = Ether(self.0 * rhs.0);
-            if res > Self::max_value() {
-                None
-            } else {
-                Some(res)
-            }
-        }
-    }
-
     pub fn zero() -> Self {
         Self(BigUint::zero())
     }
@@ -163,49 +137,6 @@ impl Serialize for Ether {
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn one_plus_one_equals_two() {
-        let one = Ether::from_wei(1u8);
-        let two = one.clone().checked_add(one);
-
-        assert_eq!(two, Some(Ether::from_wei(2u8)))
-    }
-
-    #[test]
-    fn max_plus_one_equals_none() {
-        let one = Ether::from_wei(1u8);
-        let max = Ether::max_value();
-        let none = one.checked_add(max);
-
-        assert_eq!(none, None)
-    }
-
-    #[test]
-    fn one_times_one_equals_one() {
-        let one = Ether::from_wei(1u8);
-        let res = one.clone().checked_mul(one);
-
-        assert_eq!(res, Some(Ether::from_wei(1u8)))
-    }
-
-    #[test]
-    fn max_times_one_equals_max() {
-        let one = Ether::from_wei(1u8);
-        let max = Ether::max_value();
-        let res = max.checked_mul(one);
-
-        assert_eq!(res, Some(Ether::max_value()))
-    }
-
-    #[test]
-    fn max_times_two_equals_none() {
-        let two = Ether::from_wei(2u8);
-        let max = Ether::max_value();
-        let res = max.checked_mul(two);
-
-        assert_eq!(res, None)
-    }
 
     #[test]
     fn from_one_thousand_in_u256_equals_one_thousand_u32() {
