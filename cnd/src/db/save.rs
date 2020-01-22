@@ -2,7 +2,7 @@ use crate::{
     asset,
     db::{
         custom_sql_types::{Text, U32},
-        new_types::{DecimalU256, EthereumAddress, Satoshis},
+        new_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
         schema::{self, *},
         Sqlite, Swap,
     },
@@ -63,7 +63,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     bitcoin_network: Text<bitcoin::Network>,
     ethereum_chain_id: U32,
     bitcoin_amount: Text<Satoshis>,
-    ether_amount: Text<DecimalU256>,
+    ether_amount: Text<Ether>,
     hash_function: Text<HashFunction>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
@@ -97,7 +97,7 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
             bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
-            ether_amount: Text(DecimalU256(beta_asset.to_u256())),
+            ether_amount: Text(beta_asset.into()),
             hash_function: Text(hash_function),
             bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
@@ -117,14 +117,14 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
     }
 }
 
-#[derive(Insertable, Debug, Copy, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages"]
 struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     swap_id: Text<SwapId>,
     bitcoin_network: Text<bitcoin::Network>,
     ethereum_chain_id: U32,
     bitcoin_amount: Text<Satoshis>,
-    erc20_amount: Text<DecimalU256>,
+    erc20_amount: Text<Erc20Amount>,
     erc20_token_contract: Text<EthereumAddress>,
     hash_function: Text<HashFunction>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
@@ -159,7 +159,7 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
             bitcoin_network: Text(alpha_ledger.network),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
-            erc20_amount: Text(DecimalU256(beta_asset.quantity.to_u256())),
+            erc20_amount: Text(beta_asset.quantity.into()),
             erc20_token_contract: Text(EthereumAddress(beta_asset.token_contract)),
             hash_function: Text(hash_function),
             bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
@@ -180,13 +180,13 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
     }
 }
 
-#[derive(Insertable, Debug, Copy, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_ether_bitcoin_request_messages"]
 struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     swap_id: Text<SwapId>,
     ethereum_chain_id: U32,
     bitcoin_network: Text<bitcoin::Network>,
-    ether_amount: Text<DecimalU256>,
+    ether_amount: Text<Ether>,
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
@@ -220,7 +220,7 @@ impl Save<Request<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> for Sqlite {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             bitcoin_network: Text(beta_ledger.network),
-            ether_amount: Text(DecimalU256(alpha_asset.to_u256())),
+            ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
             hash_function: Text(hash_function),
             ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_refund_identity)),
@@ -240,13 +240,13 @@ impl Save<Request<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> for Sqlite {
         Ok(())
     }
 }
-#[derive(Insertable, Debug, Copy, Clone)]
+#[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages"]
 struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     swap_id: Text<SwapId>,
     ethereum_chain_id: U32,
     bitcoin_network: Text<bitcoin::Network>,
-    erc20_amount: Text<DecimalU256>,
+    erc20_amount: Text<Erc20Amount>,
     erc20_token_contract: Text<EthereumAddress>,
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
@@ -281,7 +281,7 @@ impl Save<Request<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>> for Sqlite {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             bitcoin_network: Text(beta_ledger.network),
-            erc20_amount: Text(DecimalU256(alpha_asset.quantity.to_u256())),
+            erc20_amount: Text(Erc20Amount::from(alpha_asset.quantity)),
             erc20_token_contract: Text(EthereumAddress(alpha_asset.token_contract)),
             bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
             hash_function: Text(hash_function),

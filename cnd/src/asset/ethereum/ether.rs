@@ -4,7 +4,7 @@ use crate::{
 };
 use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
-use num::{bigint::Sign, BigInt, BigUint, Num, Zero};
+use num::{bigint::Sign, pow::Pow, BigInt, BigUint, Num, Zero};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -29,7 +29,7 @@ impl Ether {
     }
 
     pub fn max_value() -> Self {
-        Self(BigUint::from(std::u64::MAX) * 4u64)
+        Self(BigUint::from(2u8).pow(256u32) - 1u8)
     }
 
     pub fn to_wei_dec(&self) -> String {
@@ -212,7 +212,8 @@ mod tests {
 
     #[test]
     fn given_too_big_string_when_deserializing_return_overflow_error() {
-        let quantity_str = "\"73786976294838206461\""; // This is Erc20Quantity::max_value() + 1
+        let quantity_str =
+            "\"115792089237316195423570985008687907853269984665640564039457584007913129639936\""; // This is Erc20Quantity::max_value() + 1
         let res = serde_json::from_str::<Ether>(quantity_str);
         assert!(res.is_err())
     }
@@ -231,7 +232,9 @@ mod tests {
 
     #[test]
     fn given_str_above_u256_max_in_dec_format_return_overflow() {
-        let res = Ether::from_wei_dec_str("73786976294838206461"); // This is u256::MAX + 1
+        let res = Ether::from_wei_dec_str(
+            "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+        ); // This is u256::MAX + 1
         assert_eq!(res, Err(Error::Overflow))
     }
 }

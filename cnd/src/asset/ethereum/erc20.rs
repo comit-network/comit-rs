@@ -2,7 +2,7 @@ use crate::{
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
 };
-use num::{BigUint, Num, Zero};
+use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
 
@@ -15,9 +15,10 @@ impl Erc20Quantity {
     }
 
     pub fn max_value() -> Self {
-        Self(BigUint::from(std::u64::MAX) * 4u64)
+        Self(BigUint::from(2u8).pow(256u32) - 1u8)
     }
 
+    // Self(BigUint::from(2u8).pow(256u32) - 1u8
     pub fn to_wei_dec(&self) -> String {
         self.0.to_str_radix(10)
     }
@@ -183,15 +184,32 @@ mod tests {
             std::u32::MAX,
             std::u32::MAX,
             std::u32::MAX,
-            std::u32::MAX, // 9th u32, should make it over u256
+            1, // 9th u32, should make it over u256
         ]);
         let quantity = Erc20Quantity::try_from_wei(wei);
         assert_eq!(quantity, Err(Error::Overflow))
     }
 
     #[test]
+    fn given_max_u256_it_does_not_overflow() {
+        let wei = BigUint::from_slice(&[
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+        ]);
+        let quantity = Erc20Quantity::try_from_wei(wei);
+        assert!(quantity.is_ok())
+    }
+
+    #[test]
     fn given_too_big_string_when_deserializing_return_overflow_error() {
-        let quantity_str = "\"73786976294838206461\""; // This is u256::MAX + 1
+        let quantity_str =
+            "\"115792089237316195423570985008687907853269984665640564039457584007913129639936\""; // This is u256::MAX + 1
         let res = serde_json::from_str::<Erc20Quantity>(quantity_str);
         assert!(res.is_err())
     }
@@ -210,7 +228,9 @@ mod tests {
 
     #[test]
     fn given_str_above_u256_max_in_dec_format_return_overflow() {
-        let res = Erc20Quantity::from_wei_dec_str("73786976294838206461"); // This is u256::MAX + 1
+        let res = Erc20Quantity::from_wei_dec_str(
+            "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+        ); // This is u256::MAX + 1
         assert_eq!(res, Err(Error::Overflow))
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     asset::{self, Asset},
     db::{
         custom_sql_types::{Text, U32},
-        new_types::{DecimalU256, EthereumAddress, Satoshis},
+        new_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
         schema, Sqlite,
     },
     swap_protocols::{
@@ -15,7 +15,6 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use asset::ethereum::FromWei;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
@@ -37,7 +36,7 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     bitcoin_network: Text<bitcoin::Network>,
     ethereum_chain_id: U32,
     bitcoin_amount: Text<Satoshis>,
-    ether_amount: Text<DecimalU256>,
+    ether_amount: Text<Ether>,
     hash_function: Text<HashFunction>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
@@ -104,9 +103,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlit
                     chain_id: ChainId::new(record.ethereum_chain_id.into()),
                 },
                 alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
-                beta_asset: asset::Ether::from_wei(crate::ethereum::U256::from(
-                    *record.ether_amount,
-                )),
+                beta_asset: (record.ether_amount.0).into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
                     *record.bitcoin_refund_identity,
@@ -134,7 +131,7 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     swap_id: Text<SwapId>,
     ethereum_chain_id: U32,
     bitcoin_network: Text<bitcoin::Network>,
-    ether_amount: Text<DecimalU256>,
+    ether_amount: Text<Ether>,
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
@@ -201,9 +198,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin> for Sqlit
                 beta_ledger: Bitcoin {
                     network: *record.bitcoin_network,
                 },
-                alpha_asset: asset::Ether::from_wei(crate::ethereum::U256::from(
-                    *record.ether_amount,
-                )),
+                alpha_asset: (record.ether_amount.0).into(),
                 beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
@@ -234,7 +229,7 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     ethereum_chain_id: U32,
     bitcoin_amount: Text<Satoshis>,
     erc20_token_contract: Text<EthereumAddress>,
-    erc20_amount: Text<DecimalU256>,
+    erc20_amount: Text<Erc20Amount>,
     hash_function: Text<HashFunction>,
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
@@ -304,7 +299,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlit
                 alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 beta_asset: asset::Erc20::new(
                     (record.erc20_token_contract.0).0,
-                    asset::Erc20Quantity::from_wei((record.erc20_amount.0).0),
+                    (record.erc20_amount.0).into(),
                 ),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
@@ -334,7 +329,7 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     ethereum_chain_id: U32,
     bitcoin_network: Text<bitcoin::Network>,
     erc20_token_contract: Text<EthereumAddress>,
-    erc20_amount: Text<DecimalU256>,
+    erc20_amount: Text<Erc20Amount>,
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
@@ -404,7 +399,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlit
                 },
                 alpha_asset: asset::Erc20::new(
                     (record.erc20_token_contract.0).0,
-                    asset::Erc20Quantity::from_wei((record.erc20_amount.0).0),
+                    (record.erc20_amount.0).into(),
                 ),
                 beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
                 hash_function: *record.hash_function,
