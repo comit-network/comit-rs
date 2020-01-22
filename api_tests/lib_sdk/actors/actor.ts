@@ -186,7 +186,7 @@ export class Actor {
 
     public async fund() {
         if (!this.swap) {
-            throw new Error("Cannot fund non-existent swap");
+            throw new Error("Cannot fund nonexistent swap");
         }
 
         const txid = await this.swap.fund(Actor.defaultActionConfig);
