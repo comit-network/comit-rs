@@ -11,32 +11,46 @@ use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
 };
-use std::fmt;
+use std::{fmt, str::FromStr};
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct PublicKey(bitcoin::PublicKey);
 
 impl PublicKey {
-    pub fn new(key: secp256k1::PublicKey) -> Self {
+    pub fn from_secret_key<C: secp256k1::Signing>(
+        secp: &secp256k1::Secp256k1<C>,
+        secret_key: &secp256k1::SecretKey,
+    ) -> Self {
+        secp256k1::PublicKey::from_secret_key(secp, secret_key).into()
+    }
+}
+
+impl From<secp256k1::PublicKey> for PublicKey {
+    fn from(key: secp256k1::PublicKey) -> Self {
         Self(bitcoin::PublicKey {
             compressed: true, // we always want the PublicKey to be serialized in a compressed way
             key,
         })
     }
+}
 
-    pub fn from(key: bitcoin::util::key::PublicKey) -> Self {
+impl From<PublicKey> for bitcoin::PublicKey {
+    fn from(pubkey: PublicKey) -> bitcoin::PublicKey {
+        pubkey.0
+    }
+}
+
+impl From<bitcoin::util::key::PublicKey> for PublicKey {
+    fn from(key: bitcoin::util::key::PublicKey) -> Self {
         Self(key)
     }
+}
 
-    pub fn from_secret_key<C: secp256k1::Signing>(
-        secp: &secp256k1::Secp256k1<C>,
-        secret_key: &secp256k1::SecretKey,
-    ) -> Self {
-        Self::new(secp256k1::PublicKey::from_secret_key(secp, secret_key))
-    }
+impl FromStr for PublicKey {
+    type Err = bitcoin::consensus::encode::Error;
 
-    pub fn into_inner(self) -> bitcoin::PublicKey {
-        self.0
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(bitcoin::PublicKey::from_str(s)?.into())
     }
 }
 
@@ -67,10 +81,47 @@ impl<'de> Deserialize<'de> for PublicKey {
             where
                 E: de::Error,
             {
-                v.parse().map(PublicKey::new).map_err(E::custom)
+                v.parse::<secp256k1::PublicKey>()
+                    .map(PublicKey::from)
+                    .map_err(E::custom)
             }
         }
 
         deserializer.deserialize_str(PublicKeyVisitor)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn serialize_bitcoin_identity() {
+        let secp_pubkey = secp256k1::PublicKey::from_str(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        )
+        .unwrap();
+        let pubkey = PublicKey::from(secp_pubkey);
+
+        let str = serde_json::to_string(&pubkey).unwrap();
+        assert_eq!(
+            str,
+            "\"02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275\""
+        )
+    }
+
+    #[test]
+    fn deserialize_bitcoin_identity() {
+        let pubkey_str = "\"02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275\"";
+        let pubkey = serde_json::from_str::<PublicKey>(pubkey_str).unwrap();
+
+        let expected_pubkey = secp256k1::PublicKey::from_str(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        )
+        .unwrap();
+        let expected_pubkey = PublicKey::from(expected_pubkey);
+
+        assert_eq!(pubkey, expected_pubkey);
     }
 }

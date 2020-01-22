@@ -123,11 +123,9 @@ mod tests {
     fn insert_and_get_state() {
         let state_store = InMemoryStateStore::default();
 
-        let bitcoin_pub_key = crate::bitcoin::PublicKey::new(
-            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275"
-                .parse()
-                .unwrap(),
-        );
+        let bitcoin_pub_key = "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275"
+            .parse()
+            .unwrap();
         let ethereum_address: Address = "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap();
 
         let request = Request {

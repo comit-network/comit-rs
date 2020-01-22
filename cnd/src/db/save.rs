@@ -99,7 +99,7 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
             bitcoin_amount: Text(Satoshis(alpha_asset.as_sat())),
             ether_amount: Text(beta_asset.into()),
             hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
@@ -162,7 +162,7 @@ impl Save<Request<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
             erc20_amount: Text(beta_asset.quantity.into()),
             erc20_token_contract: Text(EthereumAddress(beta_asset.token_contract)),
             hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into_inner()),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
             ethereum_redeem_identity: Text(EthereumAddress(beta_ledger_redeem_identity)),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
@@ -224,7 +224,7 @@ impl Save<Request<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> for Sqlite {
             bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
             hash_function: Text(hash_function),
             ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_refund_identity)),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
+            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
             secret_hash: Text(secret_hash),
@@ -286,7 +286,7 @@ impl Save<Request<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>> for Sqlite {
             bitcoin_amount: Text(Satoshis(beta_asset.as_sat())),
             hash_function: Text(hash_function),
             ethereum_refund_identity: Text(EthereumAddress(alpha_ledger_refund_identity)),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into_inner()),
+            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
             ethereum_expiry: U32(alpha_expiry.into()),
             bitcoin_expiry: U32(beta_expiry.into()),
             secret_hash: Text(secret_hash),
@@ -323,7 +323,7 @@ impl Save<Accept<Ethereum, Bitcoin>> for Sqlite {
         let insertable = InsertableEthereumBitcoinAcceptMessage {
             swap_id: Text(swap_id),
             ethereum_redeem_identity: Text(EthereumAddress(alpha_ledger_redeem_identity)),
-            bitcoin_refund_identity: Text(beta_ledger_refund_identity.into_inner()),
+            bitcoin_refund_identity: Text(beta_ledger_refund_identity.into()),
         };
 
         self.do_in_transaction(|connection| {
@@ -355,7 +355,7 @@ impl Save<Accept<Bitcoin, Ethereum>> for Sqlite {
 
         let insertable = InsertableBitcoinEthereumAcceptMessage {
             swap_id: Text(swap_id),
-            bitcoin_redeem_identity: Text(alpha_ledger_redeem_identity.into_inner()),
+            bitcoin_redeem_identity: Text(alpha_ledger_redeem_identity.into()),
             ethereum_refund_identity: Text(EthereumAddress(beta_ledger_refund_identity)),
         };
 

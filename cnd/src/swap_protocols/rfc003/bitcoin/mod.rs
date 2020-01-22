@@ -22,8 +22,8 @@ impl Ledger for Bitcoin {
 
 impl From<HtlcParams<Bitcoin, asset::Bitcoin>> for BitcoinHtlc {
     fn from(htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>) -> Self {
-        let refund_public_key = htlc_params.refund_identity.into_inner();
-        let redeem_public_key = htlc_params.redeem_identity.into_inner();
+        let refund_public_key = bitcoin::PublicKey::from(htlc_params.refund_identity);
+        let redeem_public_key = bitcoin::PublicKey::from(htlc_params.redeem_identity);
 
         let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
         let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
