@@ -64,7 +64,8 @@ where
 /// ensure that we saw its parent i.e., that we did not miss any blocks between
 /// this latest block and the previous latest block we received.  Finally, we
 /// must also get each block back until the time that the swap started i.e.,
-/// look into the past (in case we were restarted during an ongoing swap).
+/// look into the past (in case any action occurred on chain while we were not
+/// watching).
 ///
 /// It yields those blocks as part of the process.
 async fn find_relevant_blocks<C>(
