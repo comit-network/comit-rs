@@ -15,7 +15,7 @@ import { Actors } from "./index";
 
 export class Actor {
     public static defaultActionConfig = {
-        maxTimeoutSecs: 5,
+        maxTimeoutSecs: 20,
         tryIntervalSecs: 1,
     };
 
