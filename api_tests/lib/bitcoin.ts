@@ -56,7 +56,9 @@ function createBitcoinRpcClient(btcConfig?: BitcoinNodeConfig) {
 }
 
 export async function generate(num: number = 1) {
-    return createBitcoinRpcClient(bitcoinConfig).generate(num);
+    const client = createBitcoinRpcClient(bitcoinConfig);
+
+    return client.generateToAddress(num, await client.getNewAddress());
 }
 
 export async function getBlockchainInfo() {
@@ -68,7 +70,12 @@ export async function ensureFunding() {
         bitcoinConfig
     ).getBlockCount();
     if (blockHeight < 101) {
-        await createBitcoinRpcClient(bitcoinConfig).generate(101 - blockHeight);
+        const client = createBitcoinRpcClient(bitcoinConfig);
+
+        await client.generateToAddress(
+            101 - blockHeight,
+            await client.getNewAddress()
+        );
     }
 }
 

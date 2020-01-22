@@ -78,6 +78,7 @@ export class LedgerRunner {
                     );
                 }
                 bitcoin.init(await this.getBitcoinClientConfig());
+                await bitcoin.ensureFunding();
                 this.blockTimers.bitcoin = global.setInterval(async () => {
                     await bitcoin.generate();
                 }, 1000);

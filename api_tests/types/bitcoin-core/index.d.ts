@@ -30,10 +30,11 @@ declare module "bitcoin-core" {
     export default class BitcoinRpcClient {
         public constructor(args: ClientConstructorArgs);
 
-        public generate(num: number): Promise<string[]>;
         public getBlockchainInfo(): Promise<GetBlockchainInfoResponse>;
 
         public getBlockCount(): Promise<number>;
+
+        public getNewAddress(): Promise<string>;
 
         public getRawTransaction(
             txId: string,
@@ -45,6 +46,11 @@ declare module "bitcoin-core" {
             address: string,
             amount: number | string
         ): Promise<string>;
+
+        public generateToAddress(
+            nblocks: number,
+            address: string
+        ): Promise<string[]>;
 
         public sendRawTransaction(hexString: string): Promise<string>;
     }
