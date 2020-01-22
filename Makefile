@@ -105,9 +105,9 @@ ifneq (,$(MODIFIED_RUST_FILES))
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
 endif
 ifneq (,$(MODIFIED_TOML_FILES))
-	$(CARGO) tomlfmt -p Cargo.toml
-	$(CARGO) tomlfmt -p cnd/Cargo.toml
-	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml
+	$(CARGO) tomlfmt -p Cargo.toml && git add Cargo.toml
+	$(CARGO) tomlfmt -p cnd/Cargo.toml && git add cnd/Cargo.toml
+	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml && git add libp2p-comit/Cargo.toml
 endif
 ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run fix)
