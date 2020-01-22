@@ -7,58 +7,18 @@ use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
 use std::str::FromStr;
 
 #[tokio::test]
-async fn find_transaction_in_missing_block() {
+async fn find_transaction_missed_previous_latest_block() {
     let connector = BitcoinConnectorMock::new(
         vec![
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block/block3.hex"),
         ],
         vec![
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block/block1.hex"),
             include_hex!(
-                "./test_data/bitcoin/find_transaction_in_missing_block/block2_with_transaction.hex"
+                "./test_data/bitcoin/find_transaction_missed_previous_latest_block/block2_with_transaction.hex"
             ),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/block3.hex"),
-        ],
-    );
-
-    let pattern = TransactionPattern {
-        to_address: Some(
-            Address::from_str(
-                include_str!("test_data/bitcoin/find_transaction_in_missing_block/address").trim(),
-            )
-            .unwrap(),
-        ),
-        from_outpoint: None,
-        unlock_script: None,
-    };
-    let start_of_swap = Utc::now().naive_local();
-    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
-        .await
-        .unwrap();
-
-    assert_eq!(
-        expected_transaction,
-        include_hex!("./test_data/bitcoin/find_transaction_in_missing_block/transaction.hex")
-    );
-}
-
-#[tokio::test]
-async fn find_transaction_in_missing_block_with_big_gap() {
-    let connector = BitcoinConnectorMock::new(
-        vec![
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block1.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block8.hex"),
-        ],
-        vec![
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block1.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block2_with_transaction.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block3.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block4.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block5.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block6.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block7.hex"),
-            include_hex!("./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/block8.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block/block3.hex"),
         ],
     );
 
@@ -66,7 +26,7 @@ async fn find_transaction_in_missing_block_with_big_gap() {
         to_address: Some(
             Address::from_str(
                 include_str!(
-                    "test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/address"
+                    "test_data/bitcoin/find_transaction_missed_previous_latest_block/address"
                 )
                 .trim(),
             )
@@ -83,7 +43,52 @@ async fn find_transaction_in_missing_block_with_big_gap() {
     assert_eq!(
         expected_transaction,
         include_hex!(
-            "./test_data/bitcoin/find_transaction_in_missing_block_with_big_gap/transaction.hex"
+            "./test_data/bitcoin/find_transaction_missed_previous_latest_block/transaction.hex"
+        )
+    );
+}
+
+#[tokio::test]
+async fn find_transaction_missed_previous_latest_block_with_big_gap() {
+    let connector = BitcoinConnectorMock::new(
+        vec![
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block8.hex"),
+        ],
+        vec![
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block1.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block2_with_transaction.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block3.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block4.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block5.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block6.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block7.hex"),
+            include_hex!("./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block8.hex"),
+        ],
+    );
+
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!(
+                    "test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/address"
+                )
+                .trim(),
+            )
+            .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
+    let start_of_swap = Utc::now().naive_local();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
+        .await
+        .unwrap();
+
+    assert_eq!(
+        expected_transaction,
+        include_hex!(
+            "./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/transaction.hex"
         )
     );
 }

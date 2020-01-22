@@ -8,37 +8,38 @@ use cnd::{
 use ethereum_helper::EthereumConnectorMock;
 
 #[tokio::test]
-async fn find_transaction_in_old_block() {
+async fn find_transaction_go_back_into_the_past() {
     let block1_with_transaction: Block<Transaction> = include_json_test_data!(
-        "./test_data/ethereum/find_transaction_in_old_block/block1_with_transaction.json"
+        "./test_data/ethereum/find_transaction_go_back_into_the_past/block1_with_transaction.json"
     );
     let transaction: Transaction = include_json_test_data!(
-        "./test_data/ethereum/find_transaction_in_old_block/transaction.json"
+        "./test_data/ethereum/find_transaction_go_back_into_the_past/transaction.json"
     );
-    let receipt: TransactionReceipt =
-        include_json_test_data!("./test_data/ethereum/find_transaction_in_old_block/receipt.json");
+    let receipt: TransactionReceipt = include_json_test_data!(
+        "./test_data/ethereum/find_transaction_go_back_into_the_past/receipt.json"
+    );
     let connector = EthereumConnectorMock::new(
         vec![
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block4.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block4.json"
             ),
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block5.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block5.json"
             ),
         ],
         vec![
             block1_with_transaction.clone(),
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block2.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block2.json"
             ),
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block3.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block3.json"
             ),
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block4.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block4.json"
             ),
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_in_old_block/block5.json"
+                "./test_data/ethereum/find_transaction_go_back_into_the_past/block5.json"
             ),
         ],
         vec![(transaction.hash, receipt.clone())],
