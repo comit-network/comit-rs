@@ -60,6 +60,9 @@ setTimeout(function() {
         await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
         await bob.accept();
 
+        // Wait for Alice to receive the accept message before stopping Bob's cnd.
+        await alice.currentSwapIsAccepted();
+
         bob.stop();
 
         // Action happens while bob is down.
