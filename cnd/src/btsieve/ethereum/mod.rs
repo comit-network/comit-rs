@@ -89,9 +89,8 @@ where
 
     // Look back in time until we get a block that predates start_of_swap.
     let parent_hash = block.parent_hash;
-    let start = start_of_swap.timestamp() as i64;
     walk_back_until(
-        predates_start_of_swap(start),
+        predates_start_of_swap(start_of_swap),
         connector.clone(),
         co,
         parent_hash,
@@ -115,7 +114,7 @@ where
         let parent_hash = block.parent_hash;
         if !seen_blocks.contains(&parent_hash) {
             walk_back_until(
-                seen_block_or_predates_start_of_swap(seen_blocks.clone(), start),
+                seen_block_or_predates_start_of_swap(seen_blocks.clone(), start_of_swap),
                 connector.clone(),
                 co,
                 parent_hash,
@@ -163,7 +162,7 @@ where
 
 /// Constructs a predicate that returns `true` if the given block predates the
 /// start_of_swap timestamp.
-fn predates_start_of_swap(start_of_swap: i64) -> impl Fn(&Block) -> anyhow::Result<bool> {
+fn predates_start_of_swap(start_of_swap: NaiveDateTime) -> impl Fn(&Block) -> anyhow::Result<bool> {
     move |block| Ok(block.predates(start_of_swap))
 }
 
@@ -171,7 +170,7 @@ fn predates_start_of_swap(start_of_swap: i64) -> impl Fn(&Block) -> anyhow::Resu
 /// or the block predates the start_of_swap timestamp.
 fn seen_block_or_predates_start_of_swap(
     seen_blocks: HashSet<Hash>,
-    start_of_swap: i64,
+    start_of_swap: NaiveDateTime,
 ) -> impl Fn(&Block) -> anyhow::Result<bool> {
     move |block: &Block| {
         let have_seen_block = seen_blocks.contains(
@@ -267,7 +266,9 @@ where
 }
 
 impl Predates for Block {
-    fn predates(&self, timestamp: i64) -> bool {
-        self.timestamp < U256::from(timestamp)
+    fn predates(&self, timestamp: NaiveDateTime) -> bool {
+        let unix_timestamp = timestamp.timestamp();
+
+        self.timestamp < U256::from(unix_timestamp)
     }
 }
