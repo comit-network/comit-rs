@@ -80,10 +80,10 @@ export class CndInstance {
 
     public stop() {
         this.process.kill("SIGINT");
-        this.configFile = null; // Please see function is_running() below before changing this.
+        this.process = null;
     }
 
     public isRunning() {
-        return !this.configFile == null;
+        return this.process != null;
     }
 }
