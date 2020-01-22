@@ -47,7 +47,14 @@ export class BitcoinWallet implements Wallet {
         const startingBalance = new BigNumber(await this.getBalance());
 
         const minimumExpectedBalance = new BigNumber(asset.quantity);
-        await this.bitcoinRpcClient.generate(101);
+
+        const blockHeight = await this.bitcoinRpcClient.getBlockCount();
+        if (blockHeight < 101) {
+            throw new Error(
+                "unable to mint bitcoin, coinbase transactions are not yet spendable"
+            );
+        }
+
         await this.bitcoinRpcClient.sendToAddress(
             await this.address(),
             toBitcoin(minimumExpectedBalance.times(2).toString()) // make sure we have at least twice as much

@@ -389,19 +389,21 @@ export class Actor {
     public async dumpState() {
         this.logger.debug("dumping current state");
 
-        const swapDetails = await this.swap.fetchDetails();
+        if (this.swap) {
+            const swapDetails = await this.swap.fetchDetails();
 
-        this.logger.debug("swap status: %s", swapDetails.properties.status);
-        this.logger.debug("swap details: ", JSON.stringify(swapDetails));
+            this.logger.debug("swap status: %s", swapDetails.properties.status);
+            this.logger.debug("swap details: ", JSON.stringify(swapDetails));
 
-        this.logger.debug(
-            "alpha ledger wallet balance %d",
-            await this.alphaLedgerWallet().getBalance()
-        );
-        this.logger.debug(
-            "beta ledger wallet balance %d",
-            await this.betaLedgerWallet().getBalance()
-        );
+            this.logger.debug(
+                "alpha ledger wallet balance %d",
+                await this.alphaLedgerWallet().getBalance()
+            );
+            this.logger.debug(
+                "beta ledger wallet balance %d",
+                await this.betaLedgerWallet().getBalance()
+            );
+        }
     }
 
     private async waitForAlphaExpiry() {
