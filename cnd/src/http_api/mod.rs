@@ -92,7 +92,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
     where
         S: Serializer,
     {
-        let public_key = self.0.into_inner();
+        let public_key = bitcoin::PublicKey::from(self.0);
         serializer.serialize_str(&public_key.to_string())
     }
 }
@@ -487,6 +487,7 @@ mod tests {
     use crate::{
         asset,
         asset::ethereum::FromWei,
+        bitcoin::PublicKey,
         ethereum::{H160, H256, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
@@ -610,11 +611,10 @@ mod tests {
 
     #[test]
     fn http_identity_serializes_correctly_to_json() {
-        let bitcoin_identity = crate::bitcoin::PublicKey::new(
+        let bitcoin_identity: PublicKey =
             "02ef606e64a51b07373f81e042887e8e9c3806f0ff3fe3711df18beba8b82d82e6"
                 .parse()
-                .unwrap(),
-        );
+                .unwrap();
 
         let ethereum_identity = H160::repeat_byte(7);
 
