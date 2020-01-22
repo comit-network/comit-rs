@@ -77,3 +77,5 @@ pub fn data_dir() -> Option<PathBuf> {
 pub trait CreateLedgerEvents<L: Ledger, A: Asset> {
     fn create_ledger_events(&self) -> Box<dyn HtlcEvents<L, A>>;
 }
+
+pub type Never = std::convert::Infallible;
