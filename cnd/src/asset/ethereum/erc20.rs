@@ -18,7 +18,6 @@ impl Erc20Quantity {
         Self(BigUint::from(2u8).pow(256u32) - 1u8)
     }
 
-    // Self(BigUint::from(2u8).pow(256u32) - 1u8
     pub fn to_wei_dec(&self) -> String {
         self.0.to_str_radix(10)
     }
@@ -138,17 +137,17 @@ mod tests {
 
     #[test]
     fn from_one_thousand_in_u256_equals_one_thousand_u32() {
-        let u256 = U256::from(1000);
+        let u256 = U256::from(1_000);
         let u256 = Erc20Quantity::from_wei(u256);
-        let u32 = Erc20Quantity::from_wei(1000u32);
+        let u32 = Erc20Quantity::from_wei(1_000u32);
 
         assert_eq!(u256, u32)
     }
 
     #[test]
     fn from_one_thousand_in_u32_converts_to_u256() {
-        let quantity = Erc20Quantity::from_wei(1000u32);
-        let u256 = U256::from(1000);
+        let quantity = Erc20Quantity::from_wei(1_000u32);
+        let u256 = U256::from(1_000);
 
         assert_eq!(quantity.to_u256(), u256)
     }
@@ -216,14 +215,14 @@ mod tests {
 
     #[test]
     fn to_dec() {
-        let quantity = Erc20Quantity::from_wei(12345u32);
+        let quantity = Erc20Quantity::from_wei(12_345u32);
         assert_eq!(quantity.to_wei_dec(), "12345".to_string())
     }
 
     #[test]
     fn given_str_of_wei_in_dec_format_instantiate_ether() {
         let quantity = Erc20Quantity::from_wei_dec_str("12345").unwrap();
-        assert_eq!(quantity, Erc20Quantity::from_wei(12345u32))
+        assert_eq!(quantity, Erc20Quantity::from_wei(12_345u32))
     }
 
     #[test]
