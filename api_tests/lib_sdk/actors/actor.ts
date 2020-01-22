@@ -178,7 +178,7 @@ export class Actor {
 
     public async accept() {
         if (!this.swap) {
-            throw new Error("Cannot accept inexistent swap");
+            throw new Error("Cannot accept non-existent swap");
         }
 
         await this.swap.accept(Actor.defaultActionConfig);
@@ -186,7 +186,7 @@ export class Actor {
 
     public async fund() {
         if (!this.swap) {
-            throw new Error("Cannot fund inexistent swap");
+            throw new Error("Cannot fund nonexistent swap");
         }
 
         const txid = await this.swap.fund(Actor.defaultActionConfig);
@@ -207,7 +207,7 @@ export class Actor {
 
     public async refund() {
         if (!this.swap) {
-            throw new Error("Cannot refund inexistent swap");
+            throw new Error("Cannot refund non-existent swap");
         }
 
         const entity = await this.swap.fetchDetails();
@@ -238,7 +238,7 @@ export class Actor {
 
     public async redeem() {
         if (!this.swap) {
-            throw new Error("Cannot redeem inexistent swap");
+            throw new Error("Cannot redeem non-existent swap");
         }
 
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
