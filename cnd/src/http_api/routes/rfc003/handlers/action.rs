@@ -1,5 +1,5 @@
 use crate::{
-    db::{DetermineTypes, Save},
+    db::{DetermineTypes, LoadAcceptedSwap, Save},
     http_api::{
         action::{
             ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
@@ -80,8 +80,10 @@ pub async fn handle_action(
                     )
                 })?;
 
-                let swap_request = state.request();
-                init_accepted_swap(&dependencies, swap_request, accept_message, types.role)?;
+                let accepted =
+                    LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &swap_id)
+                        .await?;
+                init_accepted_swap(&dependencies, accepted, types.role)?;
 
                 Ok(ActionResponseBody::None)
             }

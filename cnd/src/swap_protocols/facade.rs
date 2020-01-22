@@ -20,6 +20,7 @@ use crate::{
     },
 };
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use futures::sync::oneshot::Sender;
 use futures_core::future::Either;
 use libp2p::{Multiaddr, PeerId};
@@ -150,17 +151,21 @@ impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Bitcoin>> {
-        self.bitcoin_connector.htlc_deployed(htlc_params).await
+        self.bitcoin_connector
+            .htlc_deployed(htlc_params, start_of_swap)
+            .await
     }
 
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
         self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment)
+            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 
@@ -169,9 +174,10 @@ impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
         htlc_funding: &Funded<Bitcoin, asset::Bitcoin>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
         self.bitcoin_connector
-            .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
+            .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
             .await
     }
 }
@@ -185,17 +191,21 @@ where
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Ethereum>> {
-        self.ethereum_connector.htlc_deployed(htlc_params).await
+        self.ethereum_connector
+            .htlc_deployed(htlc_params, start_of_swap)
+            .await
     }
 
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Ethereum, A>> {
         self.ethereum_connector
-            .htlc_funded(htlc_params, htlc_deployment)
+            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 
@@ -204,9 +214,10 @@ where
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, A>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
         self.ethereum_connector
-            .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding)
+            .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
             .await
     }
 }

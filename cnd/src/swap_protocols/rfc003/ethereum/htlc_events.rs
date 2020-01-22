@@ -13,6 +13,7 @@ use crate::{
 };
 use anyhow::Context;
 use asset::ether::FromWei;
+use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {
@@ -29,6 +30,7 @@ impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Ethereum>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
@@ -40,7 +42,7 @@ impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
             events: None,
         };
         let TransactionAndReceipt { transaction, .. } =
-            matching_transaction(connector, pattern, None)
+            matching_transaction(connector, pattern, start_of_swap)
                 .await
                 .context("failed to find transaction for htlc deployment")?;
 
@@ -54,6 +56,7 @@ impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
         &self,
         _htlc_params: HtlcParams<Ethereum, asset::Ether>,
         deploy_transaction: &Deployed<Ethereum>,
+        _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Ethereum, asset::Ether>> {
         Ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
@@ -66,8 +69,16 @@ impl HtlcEvents<Ethereum, asset::Ether> for Web3Connector {
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, asset::Ether>,
+        start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
-        htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding).await
+        htlc_redeemed_or_refunded(
+            self.clone(),
+            htlc_params,
+            htlc_deployment,
+            htlc_funding,
+            start_of_swap,
+        )
+        .await
     }
 }
 
@@ -80,6 +91,7 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
     let redeemed = {
         let connector = connector.clone();
@@ -100,7 +112,7 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
             let TransactionAndReceipt {
                 transaction,
                 receipt,
-            } = matching_transaction(connector, pattern, None)
+            } = matching_transaction(connector, pattern, start_of_swap)
                 .await
                 .context("failed to find transaction to redeem from htlc")?;
             let log = receipt
@@ -134,7 +146,7 @@ async fn htlc_redeemed_or_refunded<A: Asset>(
         };
 
         let TransactionAndReceipt { transaction, .. } =
-            matching_transaction(connector, pattern, None)
+            matching_transaction(connector, pattern, start_of_swap)
                 .await
                 .context("failed to find transaction to refund from htlc")?;
 
@@ -164,6 +176,7 @@ mod erc20 {
         async fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
+            start_of_swap: NaiveDateTime,
         ) -> anyhow::Result<Deployed<Ethereum>> {
             let connector = self.clone();
             let pattern = TransactionPattern {
@@ -175,7 +188,7 @@ mod erc20 {
                 events: None,
             };
             let TransactionAndReceipt { transaction, .. } =
-                matching_transaction(connector, pattern, None)
+                matching_transaction(connector, pattern, start_of_swap)
                     .await
                     .context("failed to find transaction to deploy htlc")?;
 
@@ -189,6 +202,7 @@ mod erc20 {
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
+            start_of_swap: NaiveDateTime,
         ) -> anyhow::Result<Funded<Ethereum, asset::Erc20>> {
             let connector = self.clone();
             let events = Some(vec![Event {
@@ -213,7 +227,7 @@ mod erc20 {
                     transaction_data_length: None,
                     events,
                 },
-                None,
+                start_of_swap,
             )
             .await
             .context("failed to find transaction to fund htlc")?;
@@ -234,9 +248,16 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
             htlc_funding: &Funded<Ethereum, asset::Erc20>,
+            start_of_swap: NaiveDateTime,
         ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
-            htlc_redeemed_or_refunded(self.clone(), htlc_params, htlc_deployment, htlc_funding)
-                .await
+            htlc_redeemed_or_refunded(
+                self.clone(),
+                htlc_params,
+                htlc_deployment,
+                htlc_funding,
+                start_of_swap,
+            )
+            .await
         }
     }
 }

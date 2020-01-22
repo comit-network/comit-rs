@@ -40,8 +40,8 @@ where
                     .await;
 
             match accepted {
-                Ok((request, accept, _at)) => {
-                    init_accepted_swap(&dependencies, request, accept, types.role)?;
+                Ok(accepted) => {
+                    init_accepted_swap(&dependencies, accepted, types.role)?;
                 }
                 Err(e) => log::error!("failed to load swap: {}, continuing ...", e),
             };

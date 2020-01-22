@@ -37,5 +37,5 @@ pub trait ReceiptByHash: Send + Sync + 'static {
 
 /// Checks if a given block predates a certain timestamp.
 pub trait Predates {
-    fn predates(&self, timestamp: u32) -> bool;
+    fn predates(&self, timestamp: i64) -> bool;
 }

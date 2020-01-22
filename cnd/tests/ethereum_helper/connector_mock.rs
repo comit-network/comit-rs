@@ -30,11 +30,14 @@ impl EthereumConnectorMock {
                 hm
             });
 
+        let latest_blocks = latest_blocks.into_iter().collect();
+
         EthereumConnectorMock {
             all_blocks,
-            latest_blocks: latest_blocks.into_iter().collect(),
+            latest_blocks,
             latest_time_return_block: Instant::now(),
-            current_latest_block_index: 0,
+            // This is 1 because we need to get the parent of latest block.
+            current_latest_block_index: 1,
             receipts: receipts.into_iter().collect(),
         }
     }
