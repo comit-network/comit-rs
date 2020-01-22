@@ -1,3 +1,5 @@
+use num::bigint::ParseBigIntError;
+
 mod erc20;
 mod ether;
 
@@ -14,12 +16,19 @@ pub trait TryFromWei<W>
 where
     Self: std::marker::Sized,
 {
-    type Err;
-    fn try_from_wei(wei: W) -> Result<Self, Self::Err>;
+    fn try_from_wei(wei: W) -> Result<Self, Error>;
 }
 
-#[derive(Clone, Copy, Debug, thiserror::Error, PartialEq)]
+#[derive(Clone, Debug, thiserror::Error, PartialEq)]
 pub enum Error {
     #[error("value provided overflows")]
     Overflow,
+    #[error("parsing error encountered")]
+    Parse(ParseBigIntError),
+}
+
+impl From<ParseBigIntError> for Error {
+    fn from(err: ParseBigIntError) -> Self {
+        Error::Parse(err)
+    }
 }

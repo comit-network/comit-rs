@@ -4,10 +4,7 @@ use crate::{
 };
 use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
-use num::{
-    bigint::{ParseBigIntError, Sign},
-    BigInt, BigUint, Zero,
-};
+use num::{bigint::Sign, BigInt, BigUint, Num, Zero};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -27,17 +24,26 @@ lazy_static! {
 pub struct Ether(BigUint);
 
 impl Ether {
+    pub fn zero() -> Self {
+        Self(BigUint::zero())
+    }
+
     pub fn max_value() -> Self {
         Self(BigUint::from(std::u64::MAX) * 4u64)
+    }
+
+    pub fn to_wei_dec(&self) -> String {
+        self.0.to_str_radix(10)
+    }
+
+    pub fn from_wei_dec_str(str: &str) -> Result<Self, Error> {
+        let int = BigUint::from_str_radix(str, 10)?;
+        Ok(Self::try_from_wei(int)?)
     }
 
     pub fn to_u256(&self) -> U256 {
         let buf = self.0.to_bytes_be();
         U256::from_big_endian(&buf)
-    }
-
-    pub fn zero() -> Self {
-        Self(BigUint::zero())
     }
 }
 
@@ -75,9 +81,7 @@ impl FromWei<U256> for Ether {
 }
 
 impl TryFromWei<BigUint> for Ether {
-    type Err = Error;
-
-    fn try_from_wei(wei: BigUint) -> Result<Self, Self::Err> {
+    fn try_from_wei(wei: BigUint) -> Result<Self, Error> {
         if wei > Self::max_value().0 {
             Err(Error::Overflow)
         } else {
@@ -87,9 +91,7 @@ impl TryFromWei<BigUint> for Ether {
 }
 
 impl TryFromWei<&str> for Ether {
-    type Err = ParseBigIntError;
-
-    fn try_from_wei(string: &str) -> Result<Ether, Self::Err> {
+    fn try_from_wei(string: &str) -> Result<Ether, Error> {
         let uint = BigUint::from_str(string)?;
         Ok(Self(uint))
     }
@@ -213,5 +215,23 @@ mod tests {
         let quantity_str = "\"73786976294838206461\""; // This is Erc20Quantity::max_value() + 1
         let res = serde_json::from_str::<Ether>(quantity_str);
         assert!(res.is_err())
+    }
+
+    #[test]
+    fn to_dec() {
+        let ether = Ether::from_wei(12345u32);
+        assert_eq!(ether.to_wei_dec(), "12345".to_string())
+    }
+
+    #[test]
+    fn given_str_of_wei_in_dec_format_instantiate_ether() {
+        let ether = Ether::from_wei_dec_str("12345").unwrap();
+        assert_eq!(ether, Ether::from_wei(12345u32))
+    }
+
+    #[test]
+    fn given_str_above_u256_max_in_dec_format_return_overflow() {
+        let res = Ether::from_wei_dec_str("73786976294838206461"); // This is u256::MAX + 1
+        assert_eq!(res, Err(Error::Overflow))
     }
 }
