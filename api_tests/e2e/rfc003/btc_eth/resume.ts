@@ -109,4 +109,4 @@ setTimeout(function() {
     );
 
     run();
-}, 60000);
+}, 120_000);
