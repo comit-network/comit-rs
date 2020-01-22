@@ -8,6 +8,7 @@ pub use self::{
 use crate::{
     btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
     ethereum::{Transaction, TransactionAndReceipt, TransactionReceipt, H256, U256},
+    Never,
 };
 use anyhow;
 use chrono::NaiveDateTime;
@@ -49,7 +50,11 @@ where
                 }
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
-            GeneratorState::Complete(Ok(_)) => unreachable!(), // Remove this before 0.1 release.
+            // By matching against the never type explicitly, we assert that the `Ok` value of the
+            // result is actually the never type and has not been changed since this
+            // line was written. The never type can never be constructed, so we cannot
+            // reach this line never anyway.
+            GeneratorState::Complete(Ok(never)) => match never {},
         }
     }
 }
@@ -66,7 +71,7 @@ async fn find_relevant_blocks<C>(
     mut connector: C,
     co: &Co<Block>,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<std::convert::Infallible>
+) -> anyhow::Result<Never>
 where
     C: LatestBlock<Block = Option<Block>>
         + BlockByHash<Block = Option<Block>, BlockHash = Hash>
