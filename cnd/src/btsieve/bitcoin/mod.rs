@@ -86,7 +86,7 @@ where
         // Look back into the past (upto timestamp) for one block.
 
         if let Some(block) = oldest_block.as_ref() {
-            if !block.predates(start_of_swap.timestamp()) {
+            if !block.predates(start_of_swap) {
                 match blockchain_connector
                     .block_by_hash(block.header.prev_blockhash)
                     .compat()
@@ -174,9 +174,11 @@ pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> 
 }
 
 impl Predates for bitcoin::Block {
-    fn predates(&self, timestamp: i64) -> bool {
+    fn predates(&self, timestamp: NaiveDateTime) -> bool {
+        let unix_timestamp = timestamp.timestamp();
         let block_time = self.header.time as i64;
-        block_time < timestamp
+
+        block_time < unix_timestamp
     }
 }
 

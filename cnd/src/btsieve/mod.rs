@@ -4,6 +4,7 @@
 pub mod bitcoin;
 pub mod ethereum;
 
+use chrono::NaiveDateTime;
 use futures::Future;
 
 pub trait LatestBlock: Send + Sync + 'static {
@@ -37,5 +38,5 @@ pub trait ReceiptByHash: Send + Sync + 'static {
 
 /// Checks if a given block predates a certain timestamp.
 pub trait Predates {
-    fn predates(&self, timestamp: i64) -> bool;
+    fn predates(&self, timestamp: NaiveDateTime) -> bool;
 }
