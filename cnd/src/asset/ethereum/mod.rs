@@ -24,11 +24,5 @@ pub enum Error {
     #[error("value provided overflows")]
     Overflow,
     #[error("parsing error encountered")]
-    Parse(ParseBigIntError),
-}
-
-impl From<ParseBigIntError> for Error {
-    fn from(err: ParseBigIntError) -> Self {
-        Error::Parse(err)
-    }
+    Parse(#[from] ParseBigIntError),
 }

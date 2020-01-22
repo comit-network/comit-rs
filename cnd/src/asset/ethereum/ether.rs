@@ -213,7 +213,7 @@ mod tests {
     #[test]
     fn given_too_big_string_when_deserializing_return_overflow_error() {
         let quantity_str =
-            "\"115792089237316195423570985008687907853269984665640564039457584007913129639936\""; // This is Erc20Quantity::max_value() + 1
+            "\"115792089237316195423570985008687907853269984665640564039457584007913129639936\""; // This is Ether::max_value() + 1
         let res = serde_json::from_str::<Ether>(quantity_str);
         assert!(res.is_err())
     }
@@ -234,7 +234,7 @@ mod tests {
     fn given_str_above_u256_max_in_dec_format_return_overflow() {
         let res = Ether::from_wei_dec_str(
             "115792089237316195423570985008687907853269984665640564039457584007913129639936",
-        ); // This is u256::MAX + 1
+        ); // This is Ether::max_value() + 1
         assert_eq!(res, Err(Error::Overflow))
     }
 }
