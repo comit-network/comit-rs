@@ -1,16 +1,19 @@
 use crate::btsieve::{BlockByHash, LatestBlock};
 use bitcoin::{hashes::sha256d, util::hash::BitcoinHash};
-use fmt::Debug;
+use derivative::Derivative;
 use futures::Future;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
-use std::{fmt, fmt::Formatter, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct BitcoinCache<T> {
     pub inner: T,
+    #[derivative(Debug = "ignore")]
     pub cache: Arc<Mutex<lru::LruCache<sha256d::Hash, bitcoin::Block>>>,
 }
 
@@ -23,15 +26,6 @@ where
             inner: self.inner.clone(),
             cache: self.cache.clone(),
         }
-    }
-}
-
-impl<T> Debug for BitcoinCache<T>
-where
-    T: Debug,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        self.inner.fmt(f)
     }
 }
 

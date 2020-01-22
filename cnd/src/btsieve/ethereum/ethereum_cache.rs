@@ -5,18 +5,22 @@ use crate::{
     },
     ethereum::TransactionReceipt,
 };
-use fmt::Debug;
+use derivative::Derivative;
 use futures::Future;
 use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
-use std::{fmt, fmt::Formatter, sync::Arc};
+use std::sync::Arc;
 use tokio::sync::Mutex;
 
+#[derive(Derivative)]
+#[derivative(Debug)]
 pub struct EthereumCache<T> {
     pub inner: T,
+    #[derivative(Debug = "ignore")]
     pub block_cache: Arc<Mutex<lru::LruCache<Hash, Option<Block>>>>,
+    #[derivative(Debug = "ignore")]
     pub receipt_cache: Arc<Mutex<lru::LruCache<Hash, Option<TransactionReceipt>>>>,
 }
 
@@ -30,15 +34,6 @@ where
             block_cache: self.block_cache.clone(),
             receipt_cache: self.receipt_cache.clone(),
         }
-    }
-}
-
-impl<T> Debug for EthereumCache<T>
-where
-    T: Debug,
-{
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), fmt::Error> {
-        self.inner.fmt(f)
     }
 }
 
