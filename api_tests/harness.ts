@@ -19,7 +19,7 @@ const rlp = readline.createInterface({
     terminal: true,
 });
 
-const IS_CI = process.env.CI ?? Boolean(JSON.parse(process.env.CI));
+const IS_CI = process.env.CI && Boolean(JSON.parse(process.env.CI));
 
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
