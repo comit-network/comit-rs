@@ -125,8 +125,8 @@ impl ToHeader for AssetKind {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
             }
             AssetKind::Erc20(erc20) => Header::with_str_value("erc20")
-                .with_parameter("address", erc20.token_contract)?
-                .with_parameter("quantity", erc20.quantity)?,
+                .with_parameter("address", erc20.token_contract.clone())?
+                .with_parameter("quantity", erc20.quantity.clone())?,
         })
     }
 }
@@ -154,6 +154,7 @@ impl FromHeader for Decision {
 mod tests {
     use super::*;
     use crate::{
+        asset::ethereum::FromWei,
         ethereum::{Address, U256},
         swap_protocols::{ledger::ethereum, HashFunction},
     };
@@ -162,7 +163,7 @@ mod tests {
     fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
         let quantity = asset::Erc20::new(
             Address::zero(),
-            asset::Erc20Quantity(U256::from(100_000_000_000_000u64)),
+            asset::Erc20Quantity::from_wei(U256::from(100_000_000_000_000u64)),
         );
         let header = AssetKind::from(quantity).to_header()?;
 

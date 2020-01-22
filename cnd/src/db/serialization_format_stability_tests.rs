@@ -3,7 +3,7 @@
 /// activity that involves migration scripts to migrate old data. These tests
 /// make sure we don't change the format accidentally!
 use crate::{
-    db::new_types::{DecimalU256, EthereumAddress, Satoshis},
+    db::new_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
     swap_protocols::{rfc003::SecretHash, HashFunction, SwapId},
 };
 use std::{fmt, str::FromStr};
@@ -21,8 +21,13 @@ fn bitcoin_network() {
 }
 
 #[test]
-fn decimal_u256() {
-    roundtrip_test::<DecimalU256>("1000000000000000");
+fn ether() {
+    roundtrip_test::<Ether>("1000000000000000");
+}
+
+#[test]
+fn erc20_amount() {
+    roundtrip_test::<Erc20Amount>("1000000000000000");
 }
 
 #[test]

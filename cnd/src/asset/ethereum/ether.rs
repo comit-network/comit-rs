@@ -1,10 +1,10 @@
-use crate::ethereum::U256;
+use crate::{
+    asset::ethereum::{Error, FromWei, TryFromWei},
+    ethereum::U256,
+};
 use bigdecimal::BigDecimal;
 use lazy_static::lazy_static;
-use num::{
-    bigint::{ParseBigIntError, Sign},
-    BigInt, BigUint, Zero,
-};
+use num::{bigint::Sign, pow::Pow, BigInt, BigUint, Num, Zero};
 use serde::{
     de::{self, Deserialize, Deserializer},
     ser::{Serialize, Serializer},
@@ -24,43 +24,26 @@ lazy_static! {
 pub struct Ether(BigUint);
 
 impl Ether {
+    pub fn zero() -> Self {
+        Self(BigUint::zero())
+    }
+
     pub fn max_value() -> Self {
-        Self(BigUint::from(std::u64::MAX) * 4u64)
+        Self(BigUint::from(2u8).pow(256u32) - 1u8)
+    }
+
+    pub fn to_wei_dec(&self) -> String {
+        self.0.to_str_radix(10)
+    }
+
+    pub fn from_wei_dec_str(str: &str) -> Result<Self, Error> {
+        let int = BigUint::from_str_radix(str, 10)?;
+        Ok(Self::try_from_wei(int)?)
     }
 
     pub fn to_u256(&self) -> U256 {
         let buf = self.0.to_bytes_be();
         U256::from_big_endian(&buf)
-    }
-
-    pub fn checked_add(self, rhs: Self) -> Option<Self> {
-        if self > Self::max_value() || rhs > Self::max_value() {
-            None
-        } else {
-            let res = Ether(self.0 + rhs.0);
-            if res > Self::max_value() {
-                None
-            } else {
-                Some(res)
-            }
-        }
-    }
-
-    pub fn checked_mul(self, rhs: Self) -> Option<Self> {
-        if self > Self::max_value() || rhs > Self::max_value() {
-            None
-        } else {
-            let res = Ether(self.0 * rhs.0);
-            if res > Self::max_value() {
-                None
-            } else {
-                Some(res)
-            }
-        }
-    }
-
-    pub fn zero() -> Self {
-        Self(BigUint::zero())
     }
 }
 
@@ -71,18 +54,6 @@ impl fmt::Display for Ether {
         let ether = dec.div(WEI_IN_ETHER_BIGDEC.clone());
         write!(f, "{} ETH", ether)
     }
-}
-
-pub trait FromWei<W> {
-    fn from_wei(wei: W) -> Self;
-}
-
-pub trait TryFromWei<W>
-where
-    Self: std::marker::Sized,
-{
-    type Err;
-    fn try_from_wei(wei: W) -> Result<Self, Self::Err>;
 }
 
 macro_rules! impl_from_wei_primitive {
@@ -109,18 +80,20 @@ impl FromWei<U256> for Ether {
     }
 }
 
-impl FromWei<BigUint> for Ether {
-    fn from_wei(wei: BigUint) -> Self {
-        Ether(wei)
+impl TryFromWei<BigUint> for Ether {
+    fn try_from_wei(wei: BigUint) -> Result<Self, Error> {
+        if wei > Self::max_value().0 {
+            Err(Error::Overflow)
+        } else {
+            Ok(Self(wei))
+        }
     }
 }
 
 impl TryFromWei<&str> for Ether {
-    type Err = ParseBigIntError;
-
-    fn try_from_wei(string: &str) -> Result<Ether, Self::Err> {
+    fn try_from_wei(string: &str) -> Result<Ether, Error> {
         let uint = BigUint::from_str(string)?;
-        Ok(Self::from_wei(uint))
+        Ok(Self(uint))
     }
 }
 
@@ -143,7 +116,8 @@ impl<'de> Deserialize<'de> for Ether {
                 E: de::Error,
             {
                 let wei = BigUint::from_str(v).map_err(E::custom)?;
-                Ok(Ether(wei))
+                let quantity = Ether::try_from_wei(wei).map_err(E::custom)?;
+                Ok(quantity)
             }
         }
 
@@ -165,62 +139,18 @@ mod tests {
     use super::*;
 
     #[test]
-    fn one_plus_one_equals_two() {
-        let one = Ether::from_wei(1u8);
-        let two = one.clone().checked_add(one);
-
-        assert_eq!(two, Some(Ether::from_wei(2u8)))
-    }
-
-    #[test]
-    fn max_plus_one_equals_none() {
-        let one = Ether::from_wei(1u8);
-        let max = Ether::max_value();
-        let none = one.checked_add(max);
-
-        assert_eq!(none, None)
-    }
-
-    #[test]
-    fn one_times_one_equals_one() {
-        let one = Ether::from_wei(1u8);
-        let res = one.clone().checked_mul(one);
-
-        assert_eq!(res, Some(Ether::from_wei(1u8)))
-    }
-
-    #[test]
-    fn max_times_one_equals_max() {
-        let one = Ether::from_wei(1u8);
-        let max = Ether::max_value();
-        let res = max.checked_mul(one);
-
-        assert_eq!(res, Some(Ether::max_value()))
-    }
-
-    #[test]
-    fn max_times_two_equals_none() {
-        let two = Ether::from_wei(2u8);
-        let max = Ether::max_value();
-        let res = max.checked_mul(two);
-
-        assert_eq!(res, None)
-    }
-
-    #[test]
     fn from_one_thousand_in_u256_equals_one_thousand_u32() {
-        let u256 = U256::from(1000);
+        let u256 = U256::from(1_000);
         let u256 = Ether::from_wei(u256);
-        let u32 = Ether::from_wei(1000u32);
+        let u32 = Ether::from_wei(1_000u32);
 
         assert_eq!(u256, u32)
     }
 
     #[test]
     fn from_one_thousand_in_u32_converts_to_u256() {
-        let ether = Ether::from_wei(1000u32);
-
-        let u256 = U256::from(1000);
+        let ether = Ether::from_wei(1_000u32);
+        let u256 = U256::from(1_000);
 
         assert_eq!(ether.to_u256(), u256)
     }
@@ -228,7 +158,7 @@ mod tests {
     #[test]
     fn given_9000_exa_wei_display_in_ether() {
         assert_eq!(
-            Ether::from_wei(9000 * *WEI_IN_ETHER_U128).to_string(),
+            Ether::from_wei(9_000 * *WEI_IN_ETHER_U128).to_string(),
             "9000 ETH"
         );
     }
@@ -257,9 +187,54 @@ mod tests {
     }
 
     #[test]
-    fn deserialize_ether_quantity() {
+    fn deserialize() {
         let ether_str = "\"1000000000000000000\"";
         let ether = serde_json::from_str::<Ether>(ether_str).unwrap();
         assert_eq!(ether, Ether::from_wei(*WEI_IN_ETHER_U128));
+    }
+
+    #[test]
+    fn given_too_big_biguint_return_overflow_error() {
+        let wei = BigUint::from_slice(&[
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX,
+            std::u32::MAX, // 9th u32, should make it over u256
+        ]);
+        let quantity = Ether::try_from_wei(wei);
+        assert_eq!(quantity, Err(Error::Overflow))
+    }
+
+    #[test]
+    fn given_too_big_string_when_deserializing_return_overflow_error() {
+        let quantity_str =
+            "\"115792089237316195423570985008687907853269984665640564039457584007913129639936\""; // This is Ether::max_value() + 1
+        let res = serde_json::from_str::<Ether>(quantity_str);
+        assert!(res.is_err())
+    }
+
+    #[test]
+    fn to_dec() {
+        let ether = Ether::from_wei(12_345u32);
+        assert_eq!(ether.to_wei_dec(), "12345".to_string())
+    }
+
+    #[test]
+    fn given_str_of_wei_in_dec_format_instantiate_ether() {
+        let ether = Ether::from_wei_dec_str("12345").unwrap();
+        assert_eq!(ether, Ether::from_wei(12_345u32))
+    }
+
+    #[test]
+    fn given_str_above_u256_max_in_dec_format_return_overflow() {
+        let res = Ether::from_wei_dec_str(
+            "115792089237316195423570985008687907853269984665640564039457584007913129639936",
+        ); // This is Ether::max_value() + 1
+        assert_eq!(res, Err(Error::Overflow))
     }
 }
