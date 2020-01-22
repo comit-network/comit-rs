@@ -18,9 +18,6 @@ async fn find_transaction_missed_previous_latest_block_single_block_gap() {
     let connector = EthereumConnectorMock::new(
         vec![
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_missed_previous_latest_block/block1.json"
-            ),
-            include_json_test_data!(
                 "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
             ),
             include_json_test_data!(
@@ -43,7 +40,6 @@ async fn find_transaction_missed_previous_latest_block_single_block_gap() {
         ],
         vec![(transaction.hash, receipt.clone())],
     );
-    // Set start_of_swap to time of block 2, this allows us to go back to block 1.
     let block2: Block<Transaction> = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
@@ -79,9 +75,6 @@ async fn find_transaction_missed_previous_latest_block_two_block_gap() {
     let connector = EthereumConnectorMock::new(
         vec![
             include_json_test_data!(
-                "./test_data/ethereum/find_transaction_missed_previous_latest_block/block1.json"
-            ),
-            include_json_test_data!(
                 "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
             ),
             include_json_test_data!(
@@ -107,7 +100,6 @@ async fn find_transaction_missed_previous_latest_block_two_block_gap() {
         ],
         vec![(transaction.hash, receipt.clone())],
     );
-    // Set start_of_swap to time of block 2, this allows us to go back to block 1.
     let block2: Block<Transaction> = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
