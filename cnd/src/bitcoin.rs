@@ -81,9 +81,7 @@ impl<'de> Deserialize<'de> for PublicKey {
             where
                 E: de::Error,
             {
-                v.parse::<secp256k1::PublicKey>()
-                    .map(PublicKey::from)
-                    .map_err(E::custom)
+                v.parse().map_err(E::custom)
             }
         }
 
