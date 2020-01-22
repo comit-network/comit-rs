@@ -85,7 +85,7 @@ where
         if let Some(start_of_swap) = start_of_swap {
             if seen_blocks.len() == 1 && block.timestamp > U256::from(start_of_swap) {
                 walk_back_until(
-                    past_timestamp(start_of_swap),
+                    predates_start_of_swap(start_of_swap),
                     connector.clone(),
                     co,
                     blockhash,
@@ -97,7 +97,10 @@ where
         let parent_hash = block.parent_hash;
         if !seen_blocks.contains(&parent_hash) && seen_blocks.len() > 1 {
             walk_back_until(
-                seen_block_or_past_seen_block(seen_blocks.clone(), start_of_swap.unwrap_or(0)),
+                seen_block_or_predates_start_of_swap(
+                    seen_blocks.clone(),
+                    start_of_swap.unwrap_or(0),
+                ),
                 connector.clone(),
                 co,
                 parent_hash,
@@ -144,14 +147,14 @@ where
 }
 
 /// Constructs a predicate that returns `true` if the given block predates the
-/// start of the swap.
-fn past_timestamp(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Result<bool> {
+/// start_of_swap timestamp.
+fn predates_start_of_swap(start_of_swap: u32) -> impl Fn(&Block) -> anyhow::Result<bool> {
     move |block| Ok(block.predates(start_of_swap))
 }
 
 /// Constructs a predicate that returns `true` if we have seen the given block
-/// or the block is younger than the swap itself.
-fn seen_block_or_past_seen_block(
+/// or the block predates the start_of_swap timestamp.
+fn seen_block_or_predates_start_of_swap(
     seen_blocks: HashSet<Hash>,
     start_of_swap: u32,
 ) -> impl Fn(&Block) -> anyhow::Result<bool> {
@@ -161,9 +164,9 @@ fn seen_block_or_past_seen_block(
                 .hash
                 .ok_or_else(|| anyhow::anyhow!("block without hash"))?,
         );
-        let past_start_of_swap = past_timestamp(start_of_swap)(block)?;
+        let predates_start_of_swap = predates_start_of_swap(start_of_swap)(block)?;
 
-        Ok(have_seen_block || past_start_of_swap)
+        Ok(have_seen_block || predates_start_of_swap)
     }
 }
 

@@ -61,7 +61,7 @@ impl LatestBlock for Web3Connector {
             };
 
             log::trace!(
-                "Fetched block from web3: {}",
+                "Fetched block from web3: {:x}",
                 block.hash.expect("blocks to have a hash")
             );
 
@@ -137,7 +137,7 @@ impl BlockByHash for Web3Connector {
                 }
             };
 
-            log::trace!("Fetched block from web3: {}", block_hash);
+            log::trace!("Fetched block from web3: {:x}", block_hash);
 
             Ok(Some(block))
         }
@@ -184,7 +184,7 @@ impl ReceiptByHash for Web3Connector {
                 }
             };
 
-            log::trace!("Fetched receipt from web3: {}", transaction_hash);
+            log::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
             Ok(Some(receipt))
         }

@@ -19,6 +19,8 @@ const rlp = readline.createInterface({
     terminal: true,
 });
 
+const IS_CI = process.env.CI ?? Boolean(JSON.parse(process.env.CI));
+
 commander
     .option("--dump-logs", "Dump logs to stdout on failure")
     .option("--verbose", "Verbose output")
@@ -28,6 +30,10 @@ commander
         false
     )
     .parse(process.argv);
+
+if (IS_CI) {
+    commander.verbose = true;
+}
 
 // ************************ //
 // Setting global variables //
