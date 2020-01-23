@@ -18,6 +18,7 @@ use thiserror;
 /// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
 /// solely to allow the compiler to provide us with type safety.
 
+#[ambassador::delegatable_trait]
 pub trait DeriveSwapSeed {
     fn derive_swap_seed(&self, id: SwapId) -> SwapSeed;
 }

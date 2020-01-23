@@ -7,7 +7,9 @@ mod save;
 mod schema;
 #[cfg(test)]
 mod serialization_format_stability_tests;
+#[macro_use]
 mod swap;
+#[macro_use]
 mod swap_types;
 #[macro_use]
 pub mod with_swap_types;

@@ -32,9 +32,11 @@ pub mod http_api;
 pub mod init_swap;
 pub mod load_swaps;
 pub mod logging;
+#[macro_use]
 pub mod network;
 #[cfg(test)]
 pub mod quickcheck;
+#[macro_use]
 pub mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
