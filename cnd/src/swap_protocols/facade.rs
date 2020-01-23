@@ -21,7 +21,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures::sync::oneshot::Sender;
+use futures::sync::oneshot;
 use futures_core::future::Either;
 use libp2p::{Multiaddr, PeerId};
 use libp2p_comit::frame::Response;
@@ -30,7 +30,14 @@ use std::sync::Arc;
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, ambassador::Delegate)]
+#[delegate(DeriveSwapSeed, target = "seed")]
+#[delegate(LocalPeerId, target = "swarm")]
+#[delegate(ComitPeers, target = "swarm")]
+#[delegate(ListenAddresses, target = "swarm")]
+#[delegate(PendingRequestFor, target = "swarm")]
+#[delegate(Retrieve, target = "db")]
+#[delegate(DetermineTypes, target = "db")]
 pub struct Facade {
     pub bitcoin_connector: BitcoindConnector,
     pub ethereum_connector: Web3Connector,
@@ -54,35 +61,6 @@ impl StateStore for Facade {
     }
 }
 
-impl LocalPeerId for Facade {
-    fn local_peer_id(&self) -> PeerId {
-        self.swarm.local_peer_id()
-    }
-}
-
-#[async_trait]
-impl ComitPeers for Facade {
-    async fn comit_peers(
-        &self,
-    ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        self.swarm.comit_peers().await
-    }
-}
-
-#[async_trait]
-impl ListenAddresses for Facade {
-    async fn listen_addresses(&self) -> Vec<Multiaddr> {
-        self.swarm.listen_addresses().await
-    }
-}
-
-#[async_trait]
-impl PendingRequestFor for Facade {
-    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        self.swarm.pending_request_for(swap).await
-    }
-}
-
 #[async_trait]
 impl SendRequest for Facade {
     async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
@@ -91,23 +69,6 @@ impl SendRequest for Facade {
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<rfc003::Response<AL, BL>, RequestError> {
         self.swarm.send_request(peer_identity, request).await
-    }
-}
-
-impl DeriveSwapSeed for Facade {
-    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
-        self.seed.derive_swap_seed(id)
-    }
-}
-
-#[async_trait]
-impl Retrieve for Facade {
-    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
-        self.db.get(key).await
-    }
-
-    async fn all(&self) -> anyhow::Result<Vec<Swap>> {
-        self.db.all().await
     }
 }
 
@@ -125,13 +86,6 @@ where
         swap_id: &SwapId,
     ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>> {
         self.db.load_accepted_swap(swap_id).await
-    }
-}
-
-#[async_trait]
-impl DetermineTypes for Facade {
-    async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
-        self.db.determine_types(key).await
     }
 }
 

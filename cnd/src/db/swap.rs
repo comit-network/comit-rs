@@ -9,6 +9,7 @@ use libp2p::{self, PeerId};
 
 /// Retrieve swaps from database.
 #[async_trait]
+#[ambassador::delegatable_trait]
 pub trait Retrieve: Send + Sync + 'static {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Swap>;
     async fn all(&self) -> anyhow::Result<Vec<Swap>>;

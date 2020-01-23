@@ -12,6 +12,7 @@ use strum_macros::{Display, EnumString};
 /// SwapTypes exists solely so we can use the with_swap_types!() macro to get
 /// compile time types instead of generic types.
 #[async_trait]
+#[ambassador::delegatable_trait]
 pub trait DetermineTypes: Send + Sync + 'static {
     async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes>;
 }

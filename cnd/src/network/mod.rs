@@ -429,6 +429,7 @@ where
 }
 
 /// Get the `PeerId` of this node.
+#[ambassador::delegatable_trait]
 pub trait LocalPeerId {
     fn local_peer_id(&self) -> PeerId;
 }
@@ -441,6 +442,8 @@ impl LocalPeerId for Swarm {
 
 /// Get `PeerId`s of connected nodes.
 #[async_trait]
+#[ambassador::delegatable_trait]
+#[allow(clippy::type_complexity)]
 pub trait ComitPeers {
     async fn comit_peers(
         &self,
@@ -459,6 +462,7 @@ impl ComitPeers for Swarm {
 
 /// IP addresses local node is listening on.
 #[async_trait]
+#[ambassador::delegatable_trait]
 pub trait ListenAddresses {
     async fn listen_addresses(&self) -> Vec<Multiaddr>;
 }
@@ -477,6 +481,7 @@ impl ListenAddresses for Swarm {
 
 /// Get pending network requests for swap.
 #[async_trait]
+#[ambassador::delegatable_trait]
 pub trait PendingRequestFor {
     async fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
 }
