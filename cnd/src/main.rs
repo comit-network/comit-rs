@@ -1,4 +1,16 @@
-#![warn(unused_extern_crates, missing_debug_implementations, rust_2018_idioms)]
+#![warn(
+    unused_extern_crates,
+    missing_debug_implementations,
+    missing_copy_implementations,
+    rust_2018_idioms,
+    clippy::cast_possible_truncation,
+    clippy::cast_sign_loss,
+    clippy::fallible_impl_from,
+    clippy::cast_precision_loss,
+    clippy::cast_possible_wrap,
+    clippy::print_stdout,
+    clippy::dbg_macro
+)]
 #![forbid(unsafe_code)]
 use crate::cli::Options;
 use anyhow::Context;

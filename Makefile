@@ -72,17 +72,7 @@ build:
 	$(CARGO) build --all --all-targets $(BUILD_ARGS)
 
 clippy: install_clippy
-	$(CARGO) clippy \
-	    --all-targets \
-	    -- \
-	    -W clippy::cast_possible_truncation \
-	    -W clippy::cast_sign_loss \
-	    -W clippy::fallible_impl_from \
-	    -W clippy::cast_precision_loss \
-	    -W clippy::cast_possible_wrap \
-	    -W clippy::print_stdout \
-	    -W clippy::dbg_macro \
-	    -D warnings
+	$(CARGO) clippy --all-targets -- -D warnings
 
 test:
 	$(CARGO) test --all

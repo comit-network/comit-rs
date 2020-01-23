@@ -11,7 +11,7 @@ pub enum CodecError {
     IO(#[from] io::Error),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct JsonFrameCodec;
 
 impl Default for JsonFrameCodec {
