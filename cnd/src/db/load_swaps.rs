@@ -29,6 +29,48 @@ pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>>;
 }
 
+macro_rules! impl_load_accepted_swap {
+    ($al:tt, $bl:tt, $aa:tt, $ba:tt, $accept_messages:tt, $request_messages:tt,
+    $record:tt, $select:tt) => {
+        paste::item! {
+            // Parenthesis are needed because we use `tt`
+            // because of https://github.com/dtolnay/async-trait/issues/46
+            #[allow(unused_parens)]
+            #[async_trait]
+            impl LoadAcceptedSwap<$al, $bl, $aa, $ba> for Sqlite {
+                async fn load_accepted_swap(
+                    &self,
+                    key: &SwapId,
+                ) -> anyhow::Result<AcceptedSwap<$al, $bl, $aa, $ba>> {
+                    use schema::{
+                         $accept_messages as accept_messages,
+                         $request_messages as request_messages,
+                    };
+
+                    diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
+
+                    let record: $record = self
+                        .do_in_transaction(|connection| {
+                            let key = Text(key);
+
+                            request_messages::table
+                                .inner_join(
+                                    accept_messages::table
+                                        .on(request_messages::swap_id.eq(accept_messages::swap_id)),
+                                )
+                                .select($select)
+                                .filter(accept_messages::swap_id.eq(key))
+                                .first(connection)
+                        })
+                        .await?;
+
+                    Ok(record.into())
+                }
+        }
+        }
+    };
+}
+
 #[derive(Queryable, Debug, Clone, PartialEq)]
 struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     // Request fields.
@@ -50,50 +92,11 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[async_trait]
-impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
-    async fn load_accepted_swap(
-        &self,
-        key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>> {
-        use schema::{
-            rfc003_bitcoin_ethereum_accept_messages as accept_messages,
-            rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
-        };
-
-        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
-
-        let record: BitcoinEthereumBitcoinEtherAcceptedSwap = self
-            .do_in_transaction(|connection| {
-                let key = Text(key);
-
-                request_messages::table
-                    .inner_join(
-                        accept_messages::table
-                            .on(request_messages::swap_id.eq(accept_messages::swap_id)),
-                    )
-                    .select((
-                        request_messages::swap_id,
-                        request_messages::bitcoin_network,
-                        request_messages::ethereum_chain_id,
-                        request_messages::bitcoin_amount,
-                        request_messages::ether_amount,
-                        request_messages::hash_function,
-                        request_messages::bitcoin_refund_identity,
-                        request_messages::ethereum_redeem_identity,
-                        request_messages::bitcoin_expiry,
-                        request_messages::ethereum_expiry,
-                        request_messages::secret_hash,
-                        accept_messages::bitcoin_redeem_identity,
-                        accept_messages::ethereum_refund_identity,
-                        accept_messages::at,
-                    ))
-                    .filter(accept_messages::swap_id.eq(key))
-                    .first(connection)
-            })
-            .await?;
-
-        Ok((
+impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
+    for AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>
+{
+    fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
+        (
             Request {
                 swap_id: *record.swap_id,
                 alpha_ledger: Bitcoin {
@@ -121,9 +124,35 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlit
                 beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
             },
             record.at,
-        ))
+        )
     }
 }
+
+impl_load_accepted_swap!(
+    Bitcoin,
+    Ethereum,
+    (asset::Bitcoin),
+    (asset::Ether),
+    rfc003_bitcoin_ethereum_accept_messages,
+    rfc003_bitcoin_ethereum_bitcoin_ether_request_messages,
+    BitcoinEthereumBitcoinEtherAcceptedSwap,
+    (
+        request_messages::swap_id,
+        request_messages::bitcoin_network,
+        request_messages::ethereum_chain_id,
+        request_messages::bitcoin_amount,
+        request_messages::ether_amount,
+        request_messages::hash_function,
+        request_messages::bitcoin_refund_identity,
+        request_messages::ethereum_redeem_identity,
+        request_messages::bitcoin_expiry,
+        request_messages::ethereum_expiry,
+        request_messages::secret_hash,
+        accept_messages::bitcoin_redeem_identity,
+        accept_messages::ethereum_refund_identity,
+        accept_messages::at,
+    )
+);
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
 struct EthereumBitcoinEtherBitcoinAcceptedSwap {
@@ -146,50 +175,11 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[async_trait]
-impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin> for Sqlite {
-    async fn load_accepted_swap(
-        &self,
-        key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>> {
-        use schema::{
-            rfc003_ethereum_bitcoin_accept_messages as accept_messages,
-            rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
-        };
-
-        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
-
-        let record: EthereumBitcoinEtherBitcoinAcceptedSwap = self
-            .do_in_transaction(|connection| {
-                let key = Text(key);
-
-                request_messages::table
-                    .inner_join(
-                        accept_messages::table
-                            .on(request_messages::swap_id.eq(accept_messages::swap_id)),
-                    )
-                    .select((
-                        request_messages::swap_id,
-                        request_messages::ethereum_chain_id,
-                        request_messages::bitcoin_network,
-                        request_messages::ether_amount,
-                        request_messages::bitcoin_amount,
-                        request_messages::hash_function,
-                        request_messages::ethereum_refund_identity,
-                        request_messages::bitcoin_redeem_identity,
-                        request_messages::ethereum_expiry,
-                        request_messages::bitcoin_expiry,
-                        request_messages::secret_hash,
-                        accept_messages::ethereum_redeem_identity,
-                        accept_messages::bitcoin_refund_identity,
-                        accept_messages::at,
-                    ))
-                    .filter(accept_messages::swap_id.eq(key))
-                    .first(connection)
-            })
-            .await?;
-
-        Ok((
+impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
+    for AcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>
+{
+    fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
+        (
             Request {
                 swap_id: *record.swap_id,
                 alpha_ledger: Ethereum {
@@ -217,9 +207,35 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin> for Sqlit
                 ),
             },
             record.at,
-        ))
+        )
     }
 }
+
+impl_load_accepted_swap!(
+    Ethereum,
+    Bitcoin,
+    (asset::Ether),
+    (asset::Bitcoin),
+    rfc003_ethereum_bitcoin_accept_messages,
+    rfc003_ethereum_bitcoin_ether_bitcoin_request_messages,
+    EthereumBitcoinEtherBitcoinAcceptedSwap,
+    (
+        request_messages::swap_id,
+        request_messages::ethereum_chain_id,
+        request_messages::bitcoin_network,
+        request_messages::ether_amount,
+        request_messages::bitcoin_amount,
+        request_messages::hash_function,
+        request_messages::ethereum_refund_identity,
+        request_messages::bitcoin_redeem_identity,
+        request_messages::ethereum_expiry,
+        request_messages::bitcoin_expiry,
+        request_messages::secret_hash,
+        accept_messages::ethereum_redeem_identity,
+        accept_messages::bitcoin_refund_identity,
+        accept_messages::at,
+    )
+);
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
 struct BitcoinEthereumBitcoinErc20AcceptedSwap {
@@ -243,51 +259,11 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[async_trait]
-impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
-    async fn load_accepted_swap(
-        &self,
-        key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>> {
-        use schema::{
-            rfc003_bitcoin_ethereum_accept_messages as accept_messages,
-            rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
-        };
-
-        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
-
-        let record: BitcoinEthereumBitcoinErc20AcceptedSwap = self
-            .do_in_transaction(|connection| {
-                let key = Text(key);
-
-                request_messages::table
-                    .inner_join(
-                        accept_messages::table
-                            .on(request_messages::swap_id.eq(accept_messages::swap_id)),
-                    )
-                    .select((
-                        request_messages::swap_id,
-                        request_messages::bitcoin_network,
-                        request_messages::ethereum_chain_id,
-                        request_messages::bitcoin_amount,
-                        request_messages::erc20_token_contract,
-                        request_messages::erc20_amount,
-                        request_messages::hash_function,
-                        request_messages::bitcoin_refund_identity,
-                        request_messages::ethereum_redeem_identity,
-                        request_messages::bitcoin_expiry,
-                        request_messages::ethereum_expiry,
-                        request_messages::secret_hash,
-                        accept_messages::bitcoin_redeem_identity,
-                        accept_messages::ethereum_refund_identity,
-                        accept_messages::at,
-                    ))
-                    .filter(accept_messages::swap_id.eq(key))
-                    .first(connection)
-            })
-            .await?;
-
-        Ok((
+impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
+    for AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>
+{
+    fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
+        (
             Request {
                 swap_id: *record.swap_id,
                 alpha_ledger: Bitcoin {
@@ -318,9 +294,36 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlit
                 beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
             },
             record.at,
-        ))
+        )
     }
 }
+
+impl_load_accepted_swap!(
+    Bitcoin,
+    Ethereum,
+    (asset::Bitcoin),
+    (asset::Erc20),
+    rfc003_bitcoin_ethereum_accept_messages,
+    rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages,
+    BitcoinEthereumBitcoinErc20AcceptedSwap,
+    (
+        request_messages::swap_id,
+        request_messages::bitcoin_network,
+        request_messages::ethereum_chain_id,
+        request_messages::bitcoin_amount,
+        request_messages::erc20_token_contract,
+        request_messages::erc20_amount,
+        request_messages::hash_function,
+        request_messages::bitcoin_refund_identity,
+        request_messages::ethereum_redeem_identity,
+        request_messages::bitcoin_expiry,
+        request_messages::ethereum_expiry,
+        request_messages::secret_hash,
+        accept_messages::bitcoin_redeem_identity,
+        accept_messages::ethereum_refund_identity,
+        accept_messages::at,
+    )
+);
 
 #[derive(Queryable, Debug, Clone, PartialEq)]
 struct EthereumBitcoinErc20BitcoinAcceptedSwap {
@@ -344,51 +347,11 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[async_trait]
-impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlite {
-    async fn load_accepted_swap(
-        &self,
-        key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>> {
-        use schema::{
-            rfc003_ethereum_bitcoin_accept_messages as accept_messages,
-            rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
-        };
-
-        diesel::allow_tables_to_appear_in_same_query!(request_messages, accept_messages);
-
-        let record: EthereumBitcoinErc20BitcoinAcceptedSwap = self
-            .do_in_transaction(|connection| {
-                let key = Text(key);
-
-                request_messages::table
-                    .inner_join(
-                        accept_messages::table
-                            .on(request_messages::swap_id.eq(accept_messages::swap_id)),
-                    )
-                    .select((
-                        request_messages::swap_id,
-                        request_messages::ethereum_chain_id,
-                        request_messages::bitcoin_network,
-                        request_messages::erc20_token_contract,
-                        request_messages::erc20_amount,
-                        request_messages::bitcoin_amount,
-                        request_messages::hash_function,
-                        request_messages::ethereum_refund_identity,
-                        request_messages::bitcoin_redeem_identity,
-                        request_messages::ethereum_expiry,
-                        request_messages::bitcoin_expiry,
-                        request_messages::secret_hash,
-                        accept_messages::ethereum_redeem_identity,
-                        accept_messages::bitcoin_refund_identity,
-                        accept_messages::at,
-                    ))
-                    .filter(accept_messages::swap_id.eq(key))
-                    .first(connection)
-            })
-            .await?;
-
-        Ok((
+impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
+    for AcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>
+{
+    fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
+        (
             Request {
                 swap_id: *record.swap_id,
                 alpha_ledger: Ethereum {
@@ -419,6 +382,33 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlit
                 ),
             },
             record.at,
-        ))
+        )
     }
 }
+
+impl_load_accepted_swap!(
+    Ethereum,
+    Bitcoin,
+    (asset::Erc20),
+    (asset::Bitcoin),
+    rfc003_ethereum_bitcoin_accept_messages,
+    rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages,
+    EthereumBitcoinErc20BitcoinAcceptedSwap,
+    (
+        request_messages::swap_id,
+        request_messages::ethereum_chain_id,
+        request_messages::bitcoin_network,
+        request_messages::erc20_token_contract,
+        request_messages::erc20_amount,
+        request_messages::bitcoin_amount,
+        request_messages::hash_function,
+        request_messages::ethereum_refund_identity,
+        request_messages::bitcoin_redeem_identity,
+        request_messages::ethereum_expiry,
+        request_messages::bitcoin_expiry,
+        request_messages::secret_hash,
+        accept_messages::ethereum_redeem_identity,
+        accept_messages::bitcoin_refund_identity,
+        accept_messages::at,
+    )
+);
