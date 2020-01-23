@@ -4,10 +4,7 @@ pub use transport::ComitTransport;
 
 use crate::{
     asset::{Asset, AssetKind},
-    btsieve::{
-        bitcoin::{BitcoinCache, BitcoindConnector},
-        ethereum::{EthereumCache, Web3Connector},
-    },
+    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     config::Settings,
     db::{Save, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
@@ -84,8 +81,8 @@ impl Swarm {
         settings: &Settings,
         seed: RootSeed,
         runtime: &mut Runtime,
-        bitcoin_connector: &BitcoinCache<BitcoindConnector>,
-        ethereum_connector: &EthereumCache<Web3Connector>,
+        bitcoin_connector: &bitcoin::Cache<BitcoindConnector>,
+        ethereum_connector: &ethereum::Cache<Web3Connector>,
         state_store: &Arc<InMemoryStateStore>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
@@ -142,9 +139,9 @@ pub struct ComitNode<TSubstream> {
     mdns: Mdns<TSubstream>,
 
     #[behaviour(ignore)]
-    pub bitcoin_connector: BitcoinCache<BitcoindConnector>,
+    pub bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
     #[behaviour(ignore)]
-    pub ethereum_connector: EthereumCache<Web3Connector>,
+    pub ethereum_connector: ethereum::Cache<Web3Connector>,
     #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
@@ -191,8 +188,8 @@ pub struct Reason {
 
 impl<TSubstream> ComitNode<TSubstream> {
     pub fn new(
-        bitcoin_connector: BitcoinCache<BitcoindConnector>,
-        ethereum_connector: EthereumCache<Web3Connector>,
+        bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
+        ethereum_connector: ethereum::Cache<Web3Connector>,
         state_store: Arc<InMemoryStateStore>,
         seed: RootSeed,
         db: Sqlite,

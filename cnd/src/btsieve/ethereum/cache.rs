@@ -16,30 +16,44 @@ use tokio::sync::Mutex;
 
 #[derive(Derivative)]
 #[derivative(Debug)]
-pub struct EthereumCache<T> {
-    pub inner: T,
+pub struct Cache<C> {
+    pub connector: C,
     #[derivative(Debug = "ignore")]
     pub block_cache: Arc<Mutex<lru::LruCache<Hash, Option<Block>>>>,
     #[derivative(Debug = "ignore")]
     pub receipt_cache: Arc<Mutex<lru::LruCache<Hash, Option<TransactionReceipt>>>>,
 }
 
-impl<T> Clone for EthereumCache<T>
+impl<C> Cache<C> {
+    pub fn new(
+        connector: C,
+        block_cache_capacity: usize,
+        receipt_cache_capacity: usize,
+    ) -> Cache<C> {
+        Cache {
+            connector,
+            block_cache: Arc::new(Mutex::new(lru::LruCache::new(block_cache_capacity))),
+            receipt_cache: Arc::new(Mutex::new(lru::LruCache::new(receipt_cache_capacity))),
+        }
+    }
+}
+
+impl<C> Clone for Cache<C>
 where
-    T: Clone,
+    C: Clone,
 {
     fn clone(&self) -> Self {
-        EthereumCache {
-            inner: self.inner.clone(),
+        Cache {
+            connector: self.connector.clone(),
             block_cache: self.block_cache.clone(),
             receipt_cache: self.receipt_cache.clone(),
         }
     }
 }
 
-impl<T> LatestBlock for EthereumCache<T>
+impl<C> LatestBlock for Cache<C>
 where
-    T: LatestBlock<Block = Option<Block>, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Option<Block>, BlockHash = Hash> + Clone,
 {
     type Block = Option<Block>;
     type BlockHash = Hash;
@@ -48,18 +62,19 @@ where
         &mut self,
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         let cache = self.block_cache.clone();
-        let mut inner = self.inner.clone();
+        let mut connector = self.connector.clone();
 
         let future = async move {
-            let block = inner.latest_block().compat().await?;
+            let block = connector.latest_block().compat().await?;
 
-            match block.clone() {
-                Some(block) => {
-                    let mut guard = cache.lock().await;
-                    guard.put(block.hash.expect("no blocks without hash"), Some(block));
+            if let Some(block) = block.clone() {
+                let block_hash = block.hash.expect("no blocks without hash");
+                let mut guard = cache.lock().await;
+                if guard.get(&block_hash).is_none() {
+                    guard.put(block_hash, Some(block.clone()));
                 }
-                None => (),
-            }
+            };
+
             Ok(block)
         }
         .boxed()
@@ -69,9 +84,9 @@ where
     }
 }
 
-impl<T> BlockByHash for EthereumCache<T>
+impl<C> BlockByHash for Cache<C>
 where
-    T: BlockByHash<Block = Option<Block>, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Option<Block>, BlockHash = Hash> + Clone,
 {
     type Block = Option<Block>;
     type BlockHash = Hash;
@@ -81,13 +96,13 @@ where
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
         let cache = self.block_cache.clone();
-        let inner = self.inner.clone();
+        let connector = self.connector.clone();
 
         let future = async move {
             match cache.lock().await.get(&block_hash) {
                 Some(block) => Ok(block.clone()),
                 None => {
-                    let block = inner.block_by_hash(block_hash.clone()).compat().await?;
+                    let block = connector.block_by_hash(block_hash.clone()).compat().await?;
                     let mut guard = cache.lock().await;
                     guard.put(block_hash, block.clone());
                     Ok(block)
@@ -101,9 +116,9 @@ where
     }
 }
 
-impl<T> ReceiptByHash for EthereumCache<T>
+impl<C> ReceiptByHash for Cache<C>
 where
-    T: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
 {
     type Receipt = Option<TransactionReceipt>;
     type TransactionHash = Hash;
@@ -113,13 +128,13 @@ where
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
         let cache = self.receipt_cache.clone();
-        let inner = self.inner.clone();
+        let connector = self.connector.clone();
 
         let future = async move {
             match cache.lock().await.get(&transaction_hash) {
                 Some(receipt) => Ok(receipt.clone()),
                 None => {
-                    let receipt = inner
+                    let receipt = connector
                         .receipt_by_hash(transaction_hash.clone())
                         .compat()
                         .await?;

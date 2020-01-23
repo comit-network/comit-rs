@@ -3,10 +3,7 @@
 use crate::cli::Options;
 use anyhow::Context;
 use cnd::{
-    btsieve::{
-        bitcoin::{BitcoinCache, BitcoindConnector},
-        ethereum::{EthereumCache, Web3Connector},
-    },
+    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     config::{self, Settings},
     db::Sqlite,
     http_api::route_factory,
@@ -19,7 +16,6 @@ use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
-use tokio::sync::Mutex;
 use tokio_compat::runtime::Runtime;
 
 mod cli;
@@ -47,20 +43,22 @@ fn main() -> anyhow::Result<()> {
 
     let mut runtime = Runtime::new()?;
 
+    const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
         let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
-
-        BitcoinCache {
-            inner: BitcoindConnector::new(node_url, network)?,
-            cache: Arc::new(Mutex::new(lru::LruCache::new(100))),
-        }
+        bitcoin::Cache::new(
+            BitcoindConnector::new(node_url, network)?,
+            BITCOIN_BLOCK_CACHE_CAPACITY,
+        )
     };
 
-    let ethereum_connector = EthereumCache {
-        inner: Web3Connector::new(settings.clone().ethereum.node_url),
-        block_cache: Arc::new(Mutex::new(lru::LruCache::new(100))),
-        receipt_cache: Arc::new(Mutex::new(lru::LruCache::new(100))),
-    };
+    const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
+    const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
+    let ethereum_connector = ethereum::Cache::new(
+        Web3Connector::new(settings.clone().ethereum.node_url),
+        ETHEREUM_BLOCK_CACHE_CAPACITY,
+        ETHEREUM_RECEIPT_CACHE_CAPACITY,
+    );
 
     let state_store = Arc::new(InMemoryStateStore::default());
 

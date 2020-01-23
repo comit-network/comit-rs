@@ -1,7 +1,7 @@
 use crate::{
     asset,
     btsieve::bitcoin::{
-        matching_transaction, BitcoinCache, BitcoindConnector, TransactionExt, TransactionPattern,
+        matching_transaction, BitcoindConnector, Cache, TransactionExt, TransactionPattern,
     },
     swap_protocols::{
         ledger::Bitcoin,
@@ -18,7 +18,7 @@ use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
 
 #[async_trait::async_trait]
-impl HtlcEvents<Bitcoin, asset::Bitcoin> for BitcoinCache<BitcoindConnector> {
+impl HtlcEvents<Bitcoin, asset::Bitcoin> for Cache<BitcoindConnector> {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
