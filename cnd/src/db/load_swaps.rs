@@ -50,6 +50,42 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     at: NaiveDateTime,
 }
 
+impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
+    for AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>
+{
+    fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
+        (
+            Request {
+                swap_id: *record.swap_id,
+                alpha_ledger: Bitcoin {
+                    network: *record.bitcoin_network,
+                },
+                beta_ledger: Ethereum {
+                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
+                },
+                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
+                beta_asset: (record.ether_amount.0).into(),
+                hash_function: *record.hash_function,
+                alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_refund_identity,
+                ),
+                beta_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
+                alpha_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
+                beta_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
+                secret_hash: *record.secret_hash,
+            },
+            Accept {
+                swap_id: *record.swap_id,
+                alpha_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_redeem_identity,
+                ),
+                beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
+            },
+            record.at,
+        )
+    }
+}
+
 #[async_trait]
 impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
     async fn load_accepted_swap(
@@ -93,35 +129,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether> for Sqlit
             })
             .await?;
 
-        Ok((
-            Request {
-                swap_id: *record.swap_id,
-                alpha_ledger: Bitcoin {
-                    network: *record.bitcoin_network,
-                },
-                beta_ledger: Ethereum {
-                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
-                },
-                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
-                beta_asset: (record.ether_amount.0).into(),
-                hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_refund_identity,
-                ),
-                beta_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
-                alpha_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
-                beta_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
-                secret_hash: *record.secret_hash,
-            },
-            Accept {
-                swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_redeem_identity,
-                ),
-                beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-            },
-            record.at,
-        ))
+        Ok(record.into())
     }
 }
 
@@ -144,6 +152,42 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 
     at: NaiveDateTime,
+}
+
+impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
+    for AcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>
+{
+    fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
+        (
+            Request {
+                swap_id: *record.swap_id,
+                alpha_ledger: Ethereum {
+                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
+                },
+                beta_ledger: Bitcoin {
+                    network: *record.bitcoin_network,
+                },
+                alpha_asset: (record.ether_amount.0).into(),
+                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
+                hash_function: *record.hash_function,
+                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
+                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_redeem_identity,
+                ),
+                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
+                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
+                secret_hash: *record.secret_hash,
+            },
+            Accept {
+                swap_id: *record.swap_id,
+                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
+                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_refund_identity,
+                ),
+            },
+            record.at,
+        )
+    }
 }
 
 #[async_trait]
@@ -189,35 +233,7 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin> for Sqlit
             })
             .await?;
 
-        Ok((
-            Request {
-                swap_id: *record.swap_id,
-                alpha_ledger: Ethereum {
-                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
-                },
-                beta_ledger: Bitcoin {
-                    network: *record.bitcoin_network,
-                },
-                alpha_asset: (record.ether_amount.0).into(),
-                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
-                hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_redeem_identity,
-                ),
-                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
-                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
-                secret_hash: *record.secret_hash,
-            },
-            Accept {
-                swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
-                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_refund_identity,
-                ),
-            },
-            record.at,
-        ))
+        Ok(record.into())
     }
 }
 
@@ -241,6 +257,45 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     ethereum_refund_identity: Text<EthereumAddress>,
 
     at: NaiveDateTime,
+}
+
+impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
+    for AcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>
+{
+    fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
+        (
+            Request {
+                swap_id: *record.swap_id,
+                alpha_ledger: Bitcoin {
+                    network: *record.bitcoin_network,
+                },
+                beta_ledger: Ethereum {
+                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
+                },
+                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
+                beta_asset: asset::Erc20::new(
+                    (record.erc20_token_contract.0).0,
+                    (record.erc20_amount.0).into(),
+                ),
+                hash_function: *record.hash_function,
+                alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_refund_identity,
+                ),
+                beta_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
+                alpha_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
+                beta_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
+                secret_hash: *record.secret_hash,
+            },
+            Accept {
+                swap_id: *record.swap_id,
+                alpha_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_redeem_identity,
+                ),
+                beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
+            },
+            record.at,
+        )
+    }
 }
 
 #[async_trait]
@@ -287,38 +342,7 @@ impl LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlit
             })
             .await?;
 
-        Ok((
-            Request {
-                swap_id: *record.swap_id,
-                alpha_ledger: Bitcoin {
-                    network: *record.bitcoin_network,
-                },
-                beta_ledger: Ethereum {
-                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
-                },
-                alpha_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
-                beta_asset: asset::Erc20::new(
-                    (record.erc20_token_contract.0).0,
-                    (record.erc20_amount.0).into(),
-                ),
-                hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_refund_identity,
-                ),
-                beta_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
-                alpha_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
-                beta_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
-                secret_hash: *record.secret_hash,
-            },
-            Accept {
-                swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_redeem_identity,
-                ),
-                beta_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-            },
-            record.at,
-        ))
+        Ok(record.into())
     }
 }
 
@@ -342,6 +366,45 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 
     at: NaiveDateTime,
+}
+
+impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
+    for AcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>
+{
+    fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
+        (
+            Request {
+                swap_id: *record.swap_id,
+                alpha_ledger: Ethereum {
+                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
+                },
+                beta_ledger: Bitcoin {
+                    network: *record.bitcoin_network,
+                },
+                alpha_asset: asset::Erc20::new(
+                    (record.erc20_token_contract.0).0,
+                    (record.erc20_amount.0).into(),
+                ),
+                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
+                hash_function: *record.hash_function,
+                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
+                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_redeem_identity,
+                ),
+                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
+                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
+                secret_hash: *record.secret_hash,
+            },
+            Accept {
+                swap_id: *record.swap_id,
+                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
+                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
+                    *record.bitcoin_refund_identity,
+                ),
+            },
+            record.at,
+        )
+    }
 }
 
 #[async_trait]
@@ -388,37 +451,6 @@ impl LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin> for Sqlit
             })
             .await?;
 
-        Ok((
-            Request {
-                swap_id: *record.swap_id,
-                alpha_ledger: Ethereum {
-                    chain_id: ChainId::new(record.ethereum_chain_id.into()),
-                },
-                beta_ledger: Bitcoin {
-                    network: *record.bitcoin_network,
-                },
-                alpha_asset: asset::Erc20::new(
-                    (record.erc20_token_contract.0).0,
-                    (record.erc20_amount.0).into(),
-                ),
-                beta_asset: asset::Bitcoin::from_sat(u64::from(*record.bitcoin_amount)),
-                hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: (record.ethereum_refund_identity.0).0,
-                beta_ledger_redeem_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_redeem_identity,
-                ),
-                alpha_expiry: Timestamp::from(u32::from(record.ethereum_expiry)),
-                beta_expiry: Timestamp::from(u32::from(record.bitcoin_expiry)),
-                secret_hash: *record.secret_hash,
-            },
-            Accept {
-                swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: (record.ethereum_redeem_identity.0).0,
-                beta_ledger_refund_identity: crate::bitcoin::PublicKey::from(
-                    *record.bitcoin_refund_identity,
-                ),
-            },
-            record.at,
-        ))
+        Ok(record.into())
     }
 }
