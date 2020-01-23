@@ -36,8 +36,7 @@ impl EthereumConnectorMock {
             all_blocks,
             latest_blocks,
             latest_time_return_block: Instant::now(),
-            // This is 1 because we need to get the parent of latest block.
-            current_latest_block_index: 1,
+            current_latest_block_index: 0,
             receipts: receipts.into_iter().collect(),
         }
     }
