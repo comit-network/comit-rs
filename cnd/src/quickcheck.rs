@@ -71,7 +71,7 @@ impl Arbitrary for Quickcheck<bitcoin::Network> {
 
 impl Arbitrary for Quickcheck<ChainId> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let chain_id = ChainId::new(g.next_u32());
+        let chain_id = ChainId::from(g.next_u32());
 
         Quickcheck(chain_id)
     }

@@ -1,4 +1,4 @@
-use crate::asset;
+use crate::{asset, asset::Bitcoin, ethereum};
 use std::{fmt, str::FromStr};
 
 /// A new type for representing satoshis
@@ -6,11 +6,17 @@ use std::{fmt, str::FromStr};
 /// Together with the `Text` sql type, this will store the number as a string to
 /// avoid precision loss.
 #[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
-pub struct Satoshis(pub u64);
+pub struct Satoshis(u64);
 
-impl From<Satoshis> for u64 {
-    fn from(value: Satoshis) -> u64 {
-        value.0
+impl From<asset::Bitcoin> for Satoshis {
+    fn from(btc: Bitcoin) -> Self {
+        Satoshis(btc.as_sat())
+    }
+}
+
+impl From<Satoshis> for asset::Bitcoin {
+    fn from(value: Satoshis) -> asset::Bitcoin {
+        asset::Bitcoin::from_sat(value.0)
     }
 }
 
@@ -79,10 +85,10 @@ impl fmt::Display for Erc20Amount {
 /// Together with the `Text` sql type, this will store an ethereum address in
 /// hex encoding.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EthereumAddress(pub crate::ethereum::Address);
+pub struct EthereumAddress(ethereum::Address);
 
 impl FromStr for EthereumAddress {
-    type Err = <crate::ethereum::Address as FromStr>::Err;
+    type Err = <ethereum::Address as FromStr>::Err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse().map(EthereumAddress)
@@ -92,5 +98,17 @@ impl FromStr for EthereumAddress {
 impl fmt::Display for EthereumAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:x}", self.0)
+    }
+}
+
+impl From<EthereumAddress> for ethereum::Address {
+    fn from(address: EthereumAddress) -> Self {
+        address.0
+    }
+}
+
+impl From<ethereum::Address> for EthereumAddress {
+    fn from(address: ethereum::Address) -> Self {
+        EthereumAddress(address)
     }
 }

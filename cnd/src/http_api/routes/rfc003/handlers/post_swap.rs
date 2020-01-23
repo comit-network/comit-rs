@@ -503,7 +503,7 @@ mod tests {
             .is_ok()
             .map(|b| &b.beta_ledger)
             .is_equal_to(&HttpLedger::Ethereum(ledger::Ethereum {
-                chain_id: ChainId::new(3),
+                chain_id: ChainId::from(3),
             }));
     }
 }
