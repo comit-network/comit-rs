@@ -34,7 +34,7 @@ pub struct Refunded<L: Ledger> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + 'static {
+pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<L, A>,

@@ -69,30 +69,38 @@ macro_rules! impl_from_request_for_swap_parameters {
     };
 }
 
-impl_from_request_for_swap_parameters!(
-    ledger::Bitcoin,
-    ledger::Ethereum,
-    asset::Bitcoin,
-    asset::Ether
-);
-impl_from_request_for_swap_parameters!(
-    ledger::Ethereum,
-    ledger::Bitcoin,
-    asset::Ether,
-    asset::Bitcoin
-);
-impl_from_request_for_swap_parameters!(
-    ledger::Bitcoin,
-    ledger::Ethereum,
-    asset::Bitcoin,
-    asset::Erc20
-);
-impl_from_request_for_swap_parameters!(
-    ledger::Ethereum,
-    ledger::Bitcoin,
-    asset::Erc20,
-    asset::Bitcoin
-);
+macro_rules! impl_from_request_for_swap_parameters_bitcoin {
+    ($bitcoin_ledger:ty) => {
+        impl_from_request_for_swap_parameters!(
+            $bitcoin_ledger,
+            ledger::Ethereum,
+            asset::Bitcoin,
+            asset::Ether
+        );
+        impl_from_request_for_swap_parameters!(
+            ledger::Ethereum,
+            $bitcoin_ledger,
+            asset::Ether,
+            asset::Bitcoin
+        );
+        impl_from_request_for_swap_parameters!(
+            $bitcoin_ledger,
+            ledger::Ethereum,
+            asset::Bitcoin,
+            asset::Erc20
+        );
+        impl_from_request_for_swap_parameters!(
+            ledger::Ethereum,
+            $bitcoin_ledger,
+            asset::Erc20,
+            asset::Bitcoin
+        );
+    };
+}
+
+impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Mainnet);
+impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Testnet);
+impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Regtest);
 
 pub enum IncludeState {
     Yes,

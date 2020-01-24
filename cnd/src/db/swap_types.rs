@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    db::{custom_sql_types::Text, schema, Sqlite},
+    db::{custom_sql_types::Text, new_types::BitcoinNetwork, schema, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
     swap_protocols::{ledger, Role, SwapId},
 };
@@ -22,12 +22,12 @@ impl DetermineTypes for Sqlite {
     async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
         let role = self.role(key).await?;
 
-        if self
+        if let Some(bitcoin_network) = self
             .rfc003_bitcoin_ethereum_bitcoin_ether_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin,
+                alpha_ledger: bitcoin_network.into(),
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Ether,
@@ -35,25 +35,25 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if self
+        if let Some(bitcoin_network) = self
             .rfc003_ethereum_bitcoin_ether_bitcoin_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: LedgerKind::Bitcoin,
+                beta_ledger: bitcoin_network.into(),
                 alpha_asset: AssetKind::Ether,
                 beta_asset: AssetKind::Bitcoin,
                 role,
             });
         }
 
-        if self
+        if let Some(bitcoin_network) = self
             .rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin,
+                alpha_ledger: bitcoin_network.into(),
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Erc20,
@@ -61,13 +61,13 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if self
+        if let Some(bitcoin_network) = self
             .rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: LedgerKind::Bitcoin,
+                beta_ledger: bitcoin_network.into(),
                 alpha_asset: AssetKind::Erc20,
                 beta_asset: AssetKind::Bitcoin,
                 role,
@@ -81,20 +81,26 @@ impl DetermineTypes for Sqlite {
 macro_rules! impl_has_swap {
     ($table:ident) => {
         paste::item! {
-            async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<bool> {
+            async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<Option<BitcoinNetwork>> {
                 use schema::$table as swaps;
 
                 let record: Option<QueryableSwap> = self.do_in_transaction(|connection| {
                     let key = Text(key);
                     swaps::table
                         .filter(swaps::swap_id.eq(key))
-                        .select((swaps::swap_id,)) // Select call needs argument to be a tuple.
+                        .select((swaps::swap_id,swaps::bitcoin_network))
                         .first(&*connection)
                         .optional()
                 })
                 .await?;
 
-                Ok(record.is_some())
+                match record {
+                    None => Ok(None),
+                    Some(swap) => {
+                        let network: BitcoinNetwork = *swap.bitcoin_network;
+                        Ok(Some(network))
+                    }
+                }
             }
         }
     };
@@ -110,6 +116,7 @@ impl Sqlite {
 #[derive(Queryable, Debug, Clone, PartialEq)]
 struct QueryableSwap {
     swap_id: Text<SwapId>,
+    bitcoin_network: Text<BitcoinNetwork>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -123,14 +130,18 @@ pub struct SwapTypes {
 
 #[derive(Debug, Clone, Copy, Display, EnumString, PartialEq)]
 pub enum LedgerKind {
-    Bitcoin,
+    BitcoinMainnet,
+    BitcoinTestnet,
+    BitcoinRegtest,
     Ethereum,
 }
 
 impl From<ledger::LedgerKind> for LedgerKind {
     fn from(ledger: ledger::LedgerKind) -> LedgerKind {
         match ledger {
-            ledger::LedgerKind::Bitcoin(_) => LedgerKind::Bitcoin,
+            ledger::LedgerKind::BitcoinMainnet => LedgerKind::BitcoinMainnet,
+            ledger::LedgerKind::BitcoinTestnet => LedgerKind::BitcoinTestnet,
+            ledger::LedgerKind::BitcoinRegtest => LedgerKind::BitcoinRegtest,
             ledger::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
         }
     }

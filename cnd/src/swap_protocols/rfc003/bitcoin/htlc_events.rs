@@ -4,7 +4,7 @@ use crate::{
         matching_transaction, BitcoindConnector, Cache, TransactionExt, TransactionPattern,
     },
     swap_protocols::{
-        ledger::Bitcoin,
+        ledger::bitcoin,
         rfc003::{
             bitcoin::extract_secret::extract_secret,
             create_swap::HtlcParams,
@@ -12,13 +12,15 @@ use crate::{
         },
     },
 };
+use ::bitcoin::OutPoint;
 use anyhow::Context;
-use bitcoin::OutPoint;
 use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
 
 #[async_trait::async_trait]
-impl HtlcEvents<Bitcoin, asset::Bitcoin> for Cache<BitcoindConnector> {
+impl<Bitcoin: bitcoin::Bitcoin + 'static> HtlcEvents<Bitcoin, asset::Bitcoin>
+    for Cache<BitcoindConnector>
+{
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
