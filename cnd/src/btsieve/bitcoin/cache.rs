@@ -22,16 +22,16 @@ pub struct Cache<C> {
     pub cache: Arc<Mutex<LruCache<sha256d::Hash, bitcoin::Block>>>,
 }
 
-impl<T> Cache<T> {
-    pub fn new(connector: T, capacity: usize) -> Cache<T> {
+impl<C> Cache<C> {
+    pub fn new(connector: C, capacity: usize) -> Cache<C> {
         let cache = Arc::new(Mutex::new(LruCache::new(capacity)));
         Cache { connector, cache }
     }
 }
 
-impl<T> LatestBlock for Cache<T>
+impl<C> LatestBlock for Cache<C>
 where
-    T: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
 {
     type Block = Block;
     type BlockHash = Hash;
@@ -60,9 +60,9 @@ where
     }
 }
 
-impl<T> BlockByHash for Cache<T>
+impl<C> BlockByHash for Cache<C>
 where
-    T: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     type Block = Block;
     type BlockHash = Hash;
@@ -77,13 +77,13 @@ where
     }
 }
 
-async fn block_by_hash<T>(
-    connector: T,
+async fn block_by_hash<C>(
+    connector: C,
     cache: Arc<Mutex<LruCache<sha256d::Hash, bitcoin::Block>>>,
     block_hash: Hash,
 ) -> anyhow::Result<bitcoin::Block>
 where
-    T: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     if let Some(block) = cache.lock().await.get(&block_hash) {
         log::trace!("Found block in cache: {:x}", block_hash);
