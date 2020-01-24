@@ -11,6 +11,7 @@ use futures_core::{
     compat::Future01CompatExt,
     future::{FutureExt, TryFutureExt},
 };
+use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -19,9 +20,9 @@ use tokio::sync::Mutex;
 pub struct Cache<C> {
     pub connector: C,
     #[derivative(Debug = "ignore")]
-    pub block_cache: Arc<Mutex<lru::LruCache<Hash, Option<Block>>>>,
+    pub block_cache: Arc<Mutex<LruCache<Hash, Option<Block>>>>,
     #[derivative(Debug = "ignore")]
-    pub receipt_cache: Arc<Mutex<lru::LruCache<Hash, Option<TransactionReceipt>>>>,
+    pub receipt_cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
 }
 
 impl<C> Cache<C> {
@@ -32,8 +33,8 @@ impl<C> Cache<C> {
     ) -> Cache<C> {
         Cache {
             connector,
-            block_cache: Arc::new(Mutex::new(lru::LruCache::new(block_cache_capacity))),
-            receipt_cache: Arc::new(Mutex::new(lru::LruCache::new(receipt_cache_capacity))),
+            block_cache: Arc::new(Mutex::new(LruCache::new(block_cache_capacity))),
+            receipt_cache: Arc::new(Mutex::new(LruCache::new(receipt_cache_capacity))),
         }
     }
 }

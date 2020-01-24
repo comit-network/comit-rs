@@ -19,7 +19,7 @@ use tokio::sync::Mutex;
 pub struct Cache<C> {
     pub connector: C,
     #[derivative(Debug = "ignore")]
-    pub cache: Arc<Mutex<lru::LruCache<sha256d::Hash, bitcoin::Block>>>,
+    pub cache: Arc<Mutex<LruCache<sha256d::Hash, bitcoin::Block>>>,
 }
 
 impl<T> Cache<T> {
