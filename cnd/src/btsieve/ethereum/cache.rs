@@ -31,10 +31,12 @@ impl<C> Cache<C> {
         block_cache_capacity: usize,
         receipt_cache_capacity: usize,
     ) -> Cache<C> {
+        let block_cache = Arc::new(Mutex::new(LruCache::new(block_cache_capacity)));
+        let receipt_cache = Arc::new(Mutex::new(LruCache::new(receipt_cache_capacity)));
         Cache {
             connector,
-            block_cache: Arc::new(Mutex::new(LruCache::new(block_cache_capacity))),
-            receipt_cache: Arc::new(Mutex::new(LruCache::new(receipt_cache_capacity))),
+            block_cache,
+            receipt_cache,
         }
     }
 }

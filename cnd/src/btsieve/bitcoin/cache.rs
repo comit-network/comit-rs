@@ -24,10 +24,8 @@ pub struct Cache<C> {
 
 impl<T> Cache<T> {
     pub fn new(connector: T, capacity: usize) -> Cache<T> {
-        Cache {
-            connector,
-            cache: Arc::new(Mutex::new(LruCache::new(capacity))),
-        }
+        let cache = Arc::new(Mutex::new(LruCache::new(capacity)));
+        Cache { connector, cache }
     }
 }
 
