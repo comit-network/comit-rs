@@ -1,3 +1,4 @@
+use crate::timestamp::Timestamp;
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},
@@ -80,5 +81,11 @@ where
 impl From<U32> for u32 {
     fn from(value: U32) -> u32 {
         value.0
+    }
+}
+
+impl From<U32> for Timestamp {
+    fn from(value: U32) -> Timestamp {
+        Timestamp::from(value.0)
     }
 }

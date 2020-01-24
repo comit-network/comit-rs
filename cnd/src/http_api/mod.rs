@@ -555,9 +555,9 @@ mod tests {
     #[test]
     fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::new(1))),
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::new(3))),
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::new(17))),
+            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(1))),
+            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(3))),
+            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(17))),
         ];
 
         let expected = &[

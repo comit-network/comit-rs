@@ -32,10 +32,6 @@ impl From<Ethereum> for LedgerKind {
 pub struct ChainId(u32);
 
 impl ChainId {
-    pub fn new(chain_id: u32) -> ChainId {
-        ChainId(chain_id)
-    }
-
     pub fn mainnet() -> ChainId {
         ChainId(1)
     }
@@ -52,5 +48,11 @@ impl ChainId {
 impl From<ChainId> for u32 {
     fn from(chain_id: ChainId) -> Self {
         chain_id.0
+    }
+}
+
+impl From<u32> for ChainId {
+    fn from(id: u32) -> Self {
+        ChainId(id)
     }
 }

@@ -348,7 +348,7 @@ mod test {
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
         let addr = EthereumAddress::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
-        let chain_id = ChainId::new(3);
+        let chain_id = ChainId::from(3);
         let contract = ActionResponseBody::EthereumCallContract {
             contract_address: addr,
             data: None,
