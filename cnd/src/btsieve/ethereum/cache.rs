@@ -14,7 +14,7 @@ use futures_core::{
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Derivative)]
+#[derive(Derivative, Clone)]
 #[derivative(Debug)]
 pub struct Cache<C> {
     pub connector: C,
@@ -34,19 +34,6 @@ impl<C> Cache<C> {
             connector,
             block_cache: Arc::new(Mutex::new(lru::LruCache::new(block_cache_capacity))),
             receipt_cache: Arc::new(Mutex::new(lru::LruCache::new(receipt_cache_capacity))),
-        }
-    }
-}
-
-impl<C> Clone for Cache<C>
-where
-    C: Clone,
-{
-    fn clone(&self) -> Self {
-        Cache {
-            connector: self.connector.clone(),
-            block_cache: self.block_cache.clone(),
-            receipt_cache: self.receipt_cache.clone(),
         }
     }
 }

@@ -14,7 +14,7 @@ use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
-#[derive(Derivative)]
+#[derive(Derivative, Clone)]
 #[derivative(Debug)]
 pub struct Cache<C> {
     pub connector: C,
@@ -27,18 +27,6 @@ impl<T> Cache<T> {
         Cache {
             connector,
             cache: Arc::new(Mutex::new(LruCache::new(capacity))),
-        }
-    }
-}
-
-impl<T> Clone for Cache<T>
-where
-    T: Clone,
-{
-    fn clone(&self) -> Self {
-        Cache {
-            connector: self.connector.clone(),
-            cache: self.cache.clone(),
         }
     }
 }
