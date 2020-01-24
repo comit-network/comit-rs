@@ -58,7 +58,7 @@ where
             if let Some(block) = block.clone() {
                 let block_hash = block.hash.expect("no blocks without hash");
                 let mut guard = cache.lock().await;
-                if guard.get(&block_hash).is_none() {
+                if !guard.contains(&block_hash) {
                     guard.put(block_hash, Some(block.clone()));
                 }
             };

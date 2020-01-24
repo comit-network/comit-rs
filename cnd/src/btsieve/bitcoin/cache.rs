@@ -49,7 +49,7 @@ where
 
             let block_hash = block.bitcoin_hash();
             let mut guard = cache.lock().await;
-            if guard.get(&block_hash).is_none() {
+            if !guard.contains(&block_hash) {
                 guard.put(block_hash, block.clone());
             }
 
