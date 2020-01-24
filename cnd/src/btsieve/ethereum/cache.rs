@@ -1,6 +1,6 @@
 use crate::{
     btsieve::{
-        ethereum::{Block, Hash},
+        ethereum::{self, Hash},
         BlockByHash, LatestBlock, ReceiptByHash,
     },
     ethereum::TransactionReceipt,
@@ -15,12 +15,16 @@ use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
+// This makes it a bit obscure that we have an option, the compile will point it
+// out though; this alias allows us to use the macros :)
+type Block = Option<ethereum::Block>;
+
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
 pub struct Cache<C> {
     pub connector: C,
     #[derivative(Debug = "ignore")]
-    pub block_cache: Arc<Mutex<LruCache<Hash, Option<Block>>>>,
+    pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
     #[derivative(Debug = "ignore")]
     pub receipt_cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
 }
@@ -43,9 +47,9 @@ impl<C> Cache<C> {
 
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Option<Block>, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
 {
-    type Block = Option<Block>;
+    type Block = Block;
     type BlockHash = Hash;
 
     fn latest_block(
@@ -76,9 +80,9 @@ where
 
 impl<C> BlockByHash for Cache<C>
 where
-    C: BlockByHash<Block = Option<Block>, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    type Block = Option<Block>;
+    type Block = Block;
     type BlockHash = Hash;
 
     fn block_by_hash(
@@ -93,11 +97,11 @@ where
 
 async fn block_by_hash<C>(
     connector: C,
-    cache: Arc<Mutex<LruCache<Hash, Option<Block>>>>,
+    cache: Arc<Mutex<LruCache<Hash, Block>>>,
     block_hash: Hash,
-) -> anyhow::Result<Option<Block>>
+) -> anyhow::Result<Block>
 where
-    C: BlockByHash<Block = Option<Block>, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     if let Some(block) = cache.lock().await.get(&block_hash) {
         log::trace!("Found block in cache: {:x}", block_hash);
