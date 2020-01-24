@@ -1,6 +1,6 @@
 use crate::{
     asset::{self, Asset},
-    btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
+    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     network::{
         ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
@@ -39,8 +39,8 @@ use std::sync::Arc;
 #[delegate(Retrieve, target = "db")]
 #[delegate(DetermineTypes, target = "db")]
 pub struct Facade {
-    pub bitcoin_connector: BitcoindConnector,
-    pub ethereum_connector: Web3Connector,
+    pub bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
+    pub ethereum_connector: ethereum::Cache<Web3Connector>,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: RootSeed,
     pub swarm: Swarm,
@@ -140,7 +140,7 @@ impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
 impl<A> HtlcEvents<Ethereum, A> for Facade
 where
     A: Asset + Send + Sync + 'static,
-    Web3Connector: HtlcEvents<Ethereum, A>,
+    ethereum::Cache<Web3Connector>: HtlcEvents<Ethereum, A>,
 {
     async fn htlc_deployed(
         &self,
