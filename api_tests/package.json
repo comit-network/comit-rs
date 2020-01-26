@@ -51,7 +51,7 @@
         "glob": "^7.1.6",
         "json-schema-to-typescript": "^8.0.1",
         "log4js": "^6.1.0",
-        "mocha": "^7.0.0",
+        "mocha": "^7.0.1",
         "multiaddr": "^7.2.1",
         "pem-ts": "^2.0.0",
         "prettier": "^1.19.1",
