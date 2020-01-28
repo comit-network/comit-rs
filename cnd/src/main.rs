@@ -25,10 +25,12 @@ use cnd::{
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
 use futures_core::{FutureExt, TryFutureExt};
+use log;
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
 use tokio_compat::runtime::Runtime;
+use tracing_log::LogTracer;
 
 mod cli;
 mod logging;
@@ -52,6 +54,9 @@ fn main() -> anyhow::Result<()> {
     // TODO: Remove logging.
     let base_log_level = settings.logging.level;
     logging::initialize(base_log_level, settings.logging.structured)?;
+
+    // We still want upstream library log messages, just only at Info level.
+    LogTracer::init_with_filter(log::LevelFilter::Info)?;
 
     crate::trace::init_tracing()?;
 

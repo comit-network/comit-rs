@@ -58,6 +58,7 @@ tokio-compat = "0.1"
 toml = "0.5"
 tracing = "0.1"
 tracing-core = "0.1"
+tracing-log = "0.1"
 tracing-subscriber = "0.1"
 url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
