@@ -231,7 +231,8 @@ impl<TSubstream> ComitNode<TSubstream> {
     }
 }
 
-// tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
+// This is due to the introduction of a trust per Bitcoin network and can be
+// iteratively improved
 #[allow(clippy::cognitive_complexity)]
 async fn handle_request(
     db: Sqlite,

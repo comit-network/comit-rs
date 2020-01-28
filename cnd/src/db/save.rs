@@ -82,7 +82,6 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Eth
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -92,6 +91,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Eth
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
@@ -127,7 +127,6 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Eth
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -137,6 +136,7 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Eth
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
@@ -172,7 +172,6 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Eth
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -182,6 +181,7 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Eth
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
@@ -234,7 +234,6 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -244,6 +243,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
@@ -280,7 +280,6 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -290,6 +289,7 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
@@ -326,7 +326,6 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_ledger: _,
             alpha_asset,
             beta_ledger,
             beta_asset,
@@ -336,6 +335,7 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
@@ -390,7 +390,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -398,6 +397,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
@@ -435,7 +435,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -443,6 +442,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
@@ -480,7 +480,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -488,6 +487,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
@@ -542,7 +542,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -550,6 +549,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
@@ -588,7 +588,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -596,6 +595,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
@@ -634,7 +634,6 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitco
             swap_id,
             alpha_ledger,
             alpha_asset,
-            beta_ledger: _,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -642,6 +641,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitco
             alpha_expiry,
             beta_expiry,
             secret_hash,
+            ..
         } = message;
 
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {

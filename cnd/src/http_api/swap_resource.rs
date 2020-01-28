@@ -107,6 +107,9 @@ pub enum IncludeState {
     No,
 }
 
+// This is due to the introduction of a trust per Bitcoin network in the
+// `with_swap_types!` macro and can be iteratively improved
+#[allow(clippy::cognitive_complexity)]
 pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
     swap: Swap,
