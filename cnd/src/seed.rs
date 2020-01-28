@@ -129,7 +129,7 @@ impl RootSeed {
         let random_seed = RootSeed::new_random(rand)?;
         random_seed.write_to(path.clone())?;
 
-        log::info!("No seed file found, creating at: {}", path.display());
+        tracing::info!("No seed file found, creating at: {}", path.display());
 
         Ok(random_seed)
     }
@@ -139,7 +139,7 @@ impl RootSeed {
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;
 
-        log::info!("Read in seed from file: {}", file.display());
+        tracing::info!("Read in seed from file: {}", file.display());
 
         RootSeed::from_pem(pem)
     }
@@ -188,7 +188,7 @@ impl SwapSeed {
 fn ensure_directory_exists(file: PathBuf) -> Result<(), Error> {
     if let Some(path) = file.parent() {
         if !path.exists() {
-            log::info!(
+            tracing::info!(
                 "RootSeed file parent directory does not exist, creating recursively: {}",
                 file.display()
             );

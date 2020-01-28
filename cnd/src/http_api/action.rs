@@ -159,7 +159,7 @@ impl IntoResponsePayload for SpendOutput {
                     self.spend_to(address)
                         .sign_with_rate(&*crate::SECP, fee_per_wu)
                         .map_err(|e| {
-                            log::error!("Could not sign Bitcoin transaction: {:?}", e);
+                            tracing::error!("Could not sign Bitcoin transaction: {:?}", e);
                             match e {
                                 witness::Error::FeeHigherThanInputValue => HttpApiProblem::new(
                                     "Fee is too high.",

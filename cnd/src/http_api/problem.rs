@@ -42,7 +42,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if let Some(e) = e.downcast_ref::<UnexpectedQueryParameters>() {
-        log::error!("{}", e);
+        tracing::error!("{}", e);
 
         let mut problem = HttpApiProblem::new("Unexpected query parameter(s).")
             .set_status(StatusCode::BAD_REQUEST)
@@ -56,7 +56,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if let Some(e) = e.downcast_ref::<MissingQueryParameters>() {
-        log::error!("{}", e);
+        tracing::error!("{}", e);
 
         let mut problem = HttpApiProblem::new("Missing query parameter(s).")
             .set_status(StatusCode::BAD_REQUEST)
@@ -70,7 +70,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<serde_json::Error>() {
-        log::error!("deserialization error: {}", e);
+        tracing::error!("deserialization error: {}", e);
 
         return HttpApiProblem::new("Invalid body.")
             .set_status(StatusCode::BAD_REQUEST)
@@ -78,14 +78,14 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<InvalidActionInvocation>() {
-        log::warn!("{}", e);
+        tracing::warn!("{}", e);
 
         return HttpApiProblem::new("Invalid action invocation")
             .set_status(http::StatusCode::METHOD_NOT_ALLOWED);
     }
 
     if e.is::<InvalidAction>() {
-        log::warn!("{}", e);
+        tracing::warn!("{}", e);
 
         return HttpApiProblem::new("Invalid action.")
             .set_status(StatusCode::CONFLICT)
@@ -93,14 +93,14 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     }
 
     if e.is::<UnsupportedSwap>() {
-        log::warn!("{}", e);
+        tracing::warn!("{}", e);
 
         return HttpApiProblem::new("Swap not supported.")
             .set_status(StatusCode::BAD_REQUEST)
             .set_detail("The requested combination of ledgers and assets is not supported.");
     }
 
-    log::error!("internal error occurred: {:#}", e);
+    tracing::error!("internal error occurred: {:#}", e);
 
     HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
 }

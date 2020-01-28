@@ -4,7 +4,7 @@ macro_rules! transition_save {
         let save_state = $new_state;
         $repo.save(save_state.clone().into());
 
-        log::debug!("Transitioning to {}", save_state);
+        tracing::debug!("Transitioning to {}", save_state);
 
         return Ok(::futures::Async::Ready(save_state.into()));
     }};

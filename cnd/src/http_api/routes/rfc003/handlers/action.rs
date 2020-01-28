@@ -70,7 +70,7 @@ pub async fn handle_action(
 
                 Save::save(&dependencies, accept_message).await?;
 
-                log::trace!("received accept action: {}", swap_id);
+                tracing::trace!("received accept action: {}", swap_id);
 
                 let response = rfc003_accept_response(accept_message);
                 channel.send(response).map_err(|_| {
@@ -104,7 +104,7 @@ pub async fn handle_action(
 
                 Save::save(&dependencies, decline_message).await?;
 
-                log::trace!("received decline action: {}", swap_id);
+                tracing::trace!("received decline action: {}", swap_id);
 
                 let response = rfc003_decline_response(decline_message);
                 channel.send(response).map_err(|_| {
@@ -122,19 +122,19 @@ pub async fn handle_action(
                 Ok(ActionResponseBody::None)
             }
             Action::Deploy(action) => {
-                log::trace!("received deploy action");
+                tracing::trace!("received deploy action");
                 action.into_response_payload(query_params)
             }
             Action::Fund(action) => {
-                log::trace!("received fund action");
+                tracing::trace!("received fund action");
                 action.into_response_payload(query_params)
             }
             Action::Redeem(action) => {
-                log::trace!("received redeem action");
+                tracing::trace!("received redeem action");
                 action.into_response_payload(query_params)
             }
             Action::Refund(action) => {
-                log::trace!("received refund action");
+                tracing::trace!("received refund action");
                 action.into_response_payload(query_params)
             }
         }

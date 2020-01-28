@@ -15,7 +15,7 @@ pub trait ToHeader {
 macro_rules! header {
     ($e:expr) => {
         header_internal!($e, {
-            log::info!("Header was not present, early returning with decline response!");
+            tracing::info!("Header was not present, early returning with decline response!");
             let decline_body = DeclineResponseBody {
                 reason: Some(SwapDeclineReason::MissingMandatoryHeader),
             };
@@ -39,7 +39,7 @@ macro_rules! body {
         match $e {
             Ok(body) => body,
             Err(e) => {
-                log::error!("Failed to deserialize body because of unexpected field: {}", e);
+                tracing::error!("Failed to deserialize body because of unexpected field: {}", e);
                 let decline_body = DeclineResponseBody {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
@@ -64,7 +64,7 @@ macro_rules! header_internal {
         match $e {
             Some(Ok(header)) => header,
             Some(Err(e)) => {
-                log::error!("Failed to deserialize header because of unexpected field: {}", e);
+                tracing::error!("Failed to deserialize header because of unexpected field: {}", e);
 
                 let decline_body = DeclineResponseBody {
                     reason: Some(SwapDeclineReason::BadJsonField),

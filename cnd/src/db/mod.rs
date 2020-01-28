@@ -66,7 +66,7 @@ impl Sqlite {
         let connection = SqliteConnection::establish(&format!("file:{}", file.display()))?;
         embedded_migrations::run(&connection)?;
 
-        log::info!("SQLite database file: {}", file.display());
+        tracing::info!("SQLite database file: {}", file.display());
 
         Ok(Sqlite {
             connection: Arc::new(Mutex::new(connection)),

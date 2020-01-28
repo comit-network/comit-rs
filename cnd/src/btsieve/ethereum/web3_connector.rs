@@ -51,7 +51,7 @@ impl LatestBlock for Web3Connector {
             let block = match response {
                 JsonRpcResponse::Success { result } => result,
                 JsonRpcResponse::Error { code, message } => {
-                    log::warn!(
+                    tracing::warn!(
                         "eth_getBlockByNumber request failed with {}: {}",
                         code,
                         message
@@ -60,7 +60,7 @@ impl LatestBlock for Web3Connector {
                 }
             };
 
-            log::trace!(
+            tracing::trace!(
                 "Fetched block from web3: {:x}",
                 block.hash.expect("blocks to have a hash")
             );
@@ -128,7 +128,7 @@ impl BlockByHash for Web3Connector {
             let block = match response {
                 JsonRpcResponse::Success { result } => result,
                 JsonRpcResponse::Error { code, message } => {
-                    log::warn!(
+                    tracing::warn!(
                         "eth_getBlockByHash request failed with {}: {}",
                         code,
                         message
@@ -137,7 +137,7 @@ impl BlockByHash for Web3Connector {
                 }
             };
 
-            log::trace!("Fetched block from web3: {:x}", block_hash);
+            tracing::trace!("Fetched block from web3: {:x}", block_hash);
 
             Ok(Some(block))
         }
@@ -175,7 +175,7 @@ impl ReceiptByHash for Web3Connector {
             let receipt = match response {
                 JsonRpcResponse::Success { result } => result,
                 JsonRpcResponse::Error { code, message } => {
-                    log::warn!(
+                    tracing::warn!(
                         "eth_getTransactionReceipt request failed with {}: {}",
                         code,
                         message
@@ -184,7 +184,7 @@ impl ReceiptByHash for Web3Connector {
                 }
             };
 
-            log::trace!("Fetched receipt from web3: {:x}", transaction_hash);
+            tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
             Ok(Some(receipt))
         }

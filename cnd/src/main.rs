@@ -131,7 +131,7 @@ async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
         settings.http_api.socket.port,
     );
 
-    log::info!("Starting HTTP server on {}", listen_addr);
+    tracing::info!("Starting HTTP server on {}", listen_addr);
 
     warp::serve(routes).bind(listen_addr).await
 }

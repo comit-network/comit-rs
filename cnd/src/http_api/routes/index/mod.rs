@@ -36,7 +36,7 @@ pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Rep
                 listen_addresses,
             })
             .map_err(|e| {
-                log::error!("failed to set properties of entity: {:?}", e);
+                tracing::error!("failed to set properties of entity: {:?}", e);
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             })
             .map_err(into_rejection)?

@@ -75,7 +75,7 @@ where
                     };
                 }
                 Err(e) => {
-                    log::warn!("Could not get block with hash {}: {}", blockhash, e);
+                    tracing::warn!("Could not get block with hash {}: {}", blockhash, e);
 
                     let future = blockchain_connector.block_by_hash(blockhash).compat();
                     new_missing_block_futures.push((future, blockhash));
@@ -99,7 +99,7 @@ where
                             oldest_block.replace(block);
                         }
                     },
-                    Err(e) => log::warn!(
+                    Err(e) => tracing::warn!(
                         "Could not get block with hash {}: {}",
                         block.bitcoin_hash(),
                         e
@@ -136,7 +136,7 @@ fn check_block_against_pattern<'b>(
     block.txdata.iter().find(|transaction| {
         let result = pattern.matches(transaction);
 
-        log::debug!(
+        tracing::debug!(
             "matching {:?} against transaction {} yielded {}",
             pattern,
             transaction.txid(),

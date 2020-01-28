@@ -88,7 +88,7 @@ impl Swarm {
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
         let local_peer_id = PeerId::from(local_key_pair.clone().public());
-        log::info!("Starting with peer_id: {}", local_peer_id);
+        tracing::info!("Starting with peer_id: {}", local_peer_id);
 
         let transport = transport::build_comit_transport(local_key_pair);
         let behaviour = ComitNode::new(
@@ -114,7 +114,7 @@ impl Swarm {
         })
         .for_each(|_| Ok(()))
         .map_err(|e| {
-            log::error!("failed with {:?}", e);
+            tracing::error!("failed with {:?}", e);
         });
 
         runtime.spawn(swarm_worker);
@@ -364,7 +364,7 @@ async fn handle_request(
                             Ok(swap_id)
                         }
                         (alpha_ledger, beta_ledger, alpha_asset, beta_asset) => {
-                            log::warn!(
+                            tracing::warn!(
                                     "swapping {:?} to {:?} from {:?} to {:?} is currently not supported", alpha_asset, beta_asset, alpha_ledger, beta_ledger
                                 );
 
@@ -393,7 +393,7 @@ async fn handle_request(
         // type is checked on the messaging layer and will be handled there if
         // an unknown request_type is passed in.
         request_type => {
-            log::warn!("request type '{}' is unknown", request_type);
+            tracing::warn!("request type '{}' is unknown", request_type);
 
             Err(Response::empty().with_header(
                 "decision",
@@ -520,7 +520,7 @@ impl SendRequest for Swarm {
             let mut guard = self.swarm.lock().unwrap();
             let swarm = &mut *guard;
 
-            log::debug!(
+            tracing::debug!(
                 "Making swap request to {}: {:?}",
                 dial_information.clone(),
                 id,
@@ -539,7 +539,7 @@ impl SendRequest for Swarm {
                     .map(Decision::from_header)
                     .map_or(Ok(None), |x| x.map(Some))
                     .map_err(|e| {
-                        log::error!(
+                        tracing::error!(
                             "Could not deserialize header in response {:?}: {}",
                             response,
                             e,
@@ -577,7 +577,7 @@ impl SendRequest for Swarm {
                 }
             }
             Err(e) => {
-                log::error!(
+                tracing::error!(
                     "Unable to request over connection {:?}:{:?}",
                     dial_information,
                     e
@@ -614,7 +614,7 @@ impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<T
                                     response_channels.insert(id, channel);
                                 }
                                 Err(response) => channel.send(response).unwrap_or_else(|_| {
-                                    log::debug!("failed to send response through channel")
+                                    tracing::debug!("failed to send response through channel")
                                 }),
                             }
                             Ok(())
