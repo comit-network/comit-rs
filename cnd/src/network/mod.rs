@@ -231,7 +231,7 @@ impl<TSubstream> ComitNode<TSubstream> {
     }
 }
 
-// This is due to the introduction of a trust per Bitcoin network and can be
+// This is due to the introduction of a struct per Bitcoin network and can be
 // iteratively improved
 #[allow(clippy::cognitive_complexity)]
 async fn handle_request(
