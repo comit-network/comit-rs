@@ -1,5 +1,5 @@
 use crate::{
-    db::{custom_sql_types::Text, schema, Error, Sqlite},
+    db::{schema, wrapper_types::custom_sql_types::Text, Error, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
     swap_protocols::{Role, SwapId},
 };

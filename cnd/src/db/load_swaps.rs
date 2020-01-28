@@ -1,9 +1,12 @@
 use crate::{
     asset::{self, Asset},
     db::{
-        custom_sql_types::{Text, U32},
-        new_types::{BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis},
-        schema, Sqlite,
+        schema,
+        wrapper_types::{
+            custom_sql_types::{Text, U32},
+            BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
+        },
+        Sqlite,
     },
     swap_protocols::{
         ledger::{self, Ethereum},

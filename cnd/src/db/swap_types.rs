@@ -1,6 +1,10 @@
 use crate::{
     asset, comit_api,
-    db::{custom_sql_types::Text, new_types::BitcoinNetwork, schema, Sqlite},
+    db::{
+        schema,
+        wrapper_types::{custom_sql_types::Text, BitcoinNetwork},
+        Sqlite,
+    },
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
     swap_protocols::{Role, SwapId},
 };

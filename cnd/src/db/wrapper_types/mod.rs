@@ -1,7 +1,8 @@
-// TODO: this should be bundled with custom_sql_types in a submodule of db that
 // handles wrapper types
 use crate::{asset, asset::Bitcoin, db::LedgerKind, ethereum, swap_protocols::ledger};
 use std::{fmt, str::FromStr};
+
+pub mod custom_sql_types;
 
 /// A wrapper type for representing satoshis
 ///
