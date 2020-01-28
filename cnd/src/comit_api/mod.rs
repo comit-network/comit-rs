@@ -1,15 +1,20 @@
 use crate::{
     asset::{self, AssetKind},
     libp2p_comit_ext::{FromHeader, ToHeader},
-    swap_protocols::{
-        ledger::{Ethereum, LedgerKind},
-        rfc003::messages::Decision,
-        SwapId, SwapProtocol,
-    },
+    swap_protocols::{ledger::Ethereum, rfc003::messages::Decision, SwapId, SwapProtocol},
 };
 use libp2p_comit::frame::Header;
 use serde::de::Error;
 use std::str::FromStr;
+
+#[derive(Clone, Copy, derivative::Derivative, PartialEq)]
+#[derivative(Debug = "transparent")]
+pub enum LedgerKind {
+    BitcoinMainnet,
+    BitcoinTestnet,
+    BitcoinRegtest,
+    Ethereum(Ethereum),
+}
 
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {

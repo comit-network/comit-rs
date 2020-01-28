@@ -5,6 +5,7 @@ pub use transport::ComitTransport;
 use crate::{
     asset::{Asset, AssetKind},
     btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
     libp2p_comit_ext::{FromHeader, ToHeader},
@@ -17,7 +18,7 @@ use crate::{
             state_store::{InMemoryStateStore, StateStore},
             Ledger,
         },
-        HashFunction, LedgerKind, Role, SwapId, SwapProtocol,
+        HashFunction, Role, SwapId, SwapProtocol,
     },
 };
 use async_trait::async_trait;

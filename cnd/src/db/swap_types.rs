@@ -1,8 +1,8 @@
 use crate::{
-    asset,
+    asset, comit_api,
     db::{custom_sql_types::Text, new_types::BitcoinNetwork, schema, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
-    swap_protocols::{ledger, Role, SwapId},
+    swap_protocols::{Role, SwapId},
 };
 use async_trait::async_trait;
 use strum_macros::{Display, EnumString};
@@ -136,13 +136,13 @@ pub enum LedgerKind {
     Ethereum,
 }
 
-impl From<ledger::LedgerKind> for LedgerKind {
-    fn from(ledger: ledger::LedgerKind) -> LedgerKind {
+impl From<comit_api::LedgerKind> for LedgerKind {
+    fn from(ledger: comit_api::LedgerKind) -> LedgerKind {
         match ledger {
-            ledger::LedgerKind::BitcoinMainnet => LedgerKind::BitcoinMainnet,
-            ledger::LedgerKind::BitcoinTestnet => LedgerKind::BitcoinTestnet,
-            ledger::LedgerKind::BitcoinRegtest => LedgerKind::BitcoinRegtest,
-            ledger::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
+            comit_api::LedgerKind::BitcoinMainnet => LedgerKind::BitcoinMainnet,
+            comit_api::LedgerKind::BitcoinTestnet => LedgerKind::BitcoinTestnet,
+            comit_api::LedgerKind::BitcoinRegtest => LedgerKind::BitcoinRegtest,
+            comit_api::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
         }
     }
 }

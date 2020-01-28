@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::LedgerKind;
+use crate::comit_api::LedgerKind;
 use bitcoin::Network;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
