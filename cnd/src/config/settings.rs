@@ -26,7 +26,7 @@ impl From<Settings> for File {
             network,
             http_api: HttpApi { socket, cors },
             data,
-            logging: Logging { level, structured },
+            logging: Logging { level },
             bitcoin,
             ethereum,
         } = settings;
@@ -45,8 +45,7 @@ impl From<Settings> for File {
             }),
             data: Some(data),
             logging: Some(file::Logging {
-                level: Some(level),
-                structured: Some(structured),
+                level: Some(level.into()),
             }),
             bitcoin: Some(bitcoin),
             ethereum: Some(ethereum),
@@ -97,7 +96,6 @@ pub enum AllowedOrigins {
 pub struct Logging {
     #[derivative(Default(value = "LevelFilter::Info"))]
     pub level: LevelFilter,
-    pub structured: bool,
 }
 
 impl Settings {
@@ -149,16 +147,15 @@ impl Settings {
             },
 
             logging: {
-                let Logging {
-                    level: default_level,
-                    structured: default_structured,
-                } = Logging::default();
-                logging
-                    .map(|logging| Logging {
-                        level: logging.level.unwrap_or(default_level),
-                        structured: logging.structured.unwrap_or(default_structured),
-                    })
-                    .unwrap_or_default()
+                match logging {
+                    None => Logging::default(),
+                    Some(inner) => match inner {
+                        file::Logging { level: None } => Logging::default(),
+                        file::Logging { level: Some(level) } => Logging {
+                            level: level.into(),
+                        },
+                    },
+                }
             },
             bitcoin: bitcoin.unwrap_or_else(|| Bitcoin {
                 network: bitcoin::Network::Regtest,
@@ -182,43 +179,7 @@ mod tests {
     use std::net::{IpAddr, Ipv4Addr};
 
     #[test]
-    fn field_structured_defaults_to_false() {
-        let config_file = File {
-            logging: Some(file::Logging {
-                level: None,
-                structured: None,
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.logging.structured)
-            .is_false()
-    }
-
-    #[test]
-    fn field_structured_is_correctly_mapped() {
-        let config_file = File {
-            logging: Some(file::Logging {
-                level: None,
-                structured: Some(true),
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.logging.structured)
-            .is_true()
-    }
-
-    #[test]
-    fn logging_section_defaults_to_info_and_false() {
+    fn logging_section_defaults_to_info() {
         let config_file = File {
             logging: None,
             ..File::default()
@@ -231,7 +192,6 @@ mod tests {
             .map(|settings| &settings.logging)
             .is_equal_to(Logging {
                 level: LevelFilter::Info,
-                structured: false,
             })
     }
 
