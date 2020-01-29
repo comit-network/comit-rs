@@ -18,6 +18,7 @@ strum_macros = "0.17"
 thiserror = "1"
 tokio = "0.1"
 tokio-codec = "0.1"
+tracing = "0.1"
 
 [dev-dependencies]
 matches = "0.1.8"

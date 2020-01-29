@@ -238,7 +238,7 @@ fn poll_substreams<S: Display + Advance>(
         let Advanced { new_state, event } = substream_state.advance(known_headers);
 
         if let Some(new_state) = new_state {
-            log::trace!("{} to {}", log_message, new_state);
+            tracing::trace!("{} to {}", log_message, new_state);
             substreams.push(new_state);
         }
 
