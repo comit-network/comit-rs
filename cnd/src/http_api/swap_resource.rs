@@ -145,7 +145,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             .with_class_member("swap")
             .with_properties(swap)
             .map_err(|e| {
-                log::error!("failed to set properties of entity: {:?}", e);
+                tracing::error!("failed to set properties of entity: {:?}", e);
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             })?
             .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))

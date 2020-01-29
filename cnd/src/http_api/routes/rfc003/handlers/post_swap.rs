@@ -199,7 +199,7 @@ where
     BA: Asset,
     Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + LoadAcceptedSwap<AL, BL, AA, BA>,
 {
-    log::trace!("initiating new request: {}", swap_request.swap_id);
+    tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
     let counterparty = peer.peer_id.clone();
     let seed = dependencies.derive_swap_seed(id);
@@ -226,7 +226,7 @@ where
                     init_accepted_swap(&dependencies, accepted, Role::Alice)?;
                 }
                 Err(decline) => {
-                    log::info!("Swap declined: {}", decline.swap_id);
+                    tracing::info!("Swap declined: {}", decline.swap_id);
                     let state = State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state.clone());
                     Save::save(&dependencies, decline).await?;
@@ -237,7 +237,7 @@ where
     };
 
     tokio::task::spawn(future.map_err(|e: anyhow::Error| {
-        log::error!("{}", e);
+        tracing::error!("{}", e);
     }));
 
     Ok(())

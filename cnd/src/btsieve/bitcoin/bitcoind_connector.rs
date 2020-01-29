@@ -80,7 +80,7 @@ impl BlockByHash for BitcoindConnector {
         let block = async move {
             let block =
                 bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
-            log::debug!(
+            tracing::debug!(
                 "Fetched block {} with {} transactions from bitcoind",
                 block_hash,
                 block.txdata.len()

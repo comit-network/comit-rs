@@ -31,7 +31,7 @@ use structopt::StructOpt;
 use tokio_compat::runtime::Runtime;
 
 mod cli;
-mod logging;
+mod trace;
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -48,8 +48,7 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    let base_log_level = settings.logging.level;
-    logging::initialize(base_log_level, settings.logging.structured)?;
+    crate::trace::init_tracing(settings.logging.level)?;
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
@@ -127,7 +126,7 @@ async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
         settings.http_api.socket.port,
     );
 
-    log::info!("Starting HTTP server on {}", listen_addr);
+    tracing::info!("Starting HTTP server on {}", listen_addr);
 
     warp::serve(routes).bind(listen_addr).await
 }

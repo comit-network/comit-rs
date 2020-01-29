@@ -41,8 +41,41 @@ impl File {
 
 #[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct Logging {
-    pub level: Option<LevelFilter>,
-    pub structured: Option<bool>,
+    pub level: Option<Level>,
+}
+
+#[derive(Clone, Copy, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
+pub enum Level {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
+}
+
+impl From<LevelFilter> for Level {
+    fn from(level: LevelFilter) -> Self {
+        match level {
+            LevelFilter::Off => Level::Error, // We don't support suppressing all logs.
+            LevelFilter::Error => Level::Error,
+            LevelFilter::Warn => Level::Warn,
+            LevelFilter::Info => Level::Info,
+            LevelFilter::Debug => Level::Debug,
+            LevelFilter::Trace => Level::Trace,
+        }
+    }
+}
+
+impl From<Level> for LevelFilter {
+    fn from(level: Level) -> Self {
+        match level {
+            Level::Error => LevelFilter::Error,
+            Level::Warn => LevelFilter::Warn,
+            Level::Info => LevelFilter::Info,
+            Level::Debug => LevelFilter::Debug,
+            Level::Trace => LevelFilter::Trace,
+        }
+    }
 }
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
@@ -80,7 +113,6 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::config::Settings;
-    use log::LevelFilter;
     use spectral::prelude::*;
     use std::{
         net::{IpAddr, Ipv4Addr},
@@ -90,23 +122,6 @@ mod tests {
     #[derive(serde::Deserialize, PartialEq, Debug)]
     struct LoggingOnlyConfig {
         logging: Logging,
-    }
-
-    #[test]
-    fn structured_logging_flag_in_logging_section_is_optional() {
-        let file_contents = r#"
-        [logging]
-        level = "DEBUG"
-        "#;
-
-        let config_file = toml::from_str(file_contents);
-
-        assert_that(&config_file).is_ok_containing(LoggingOnlyConfig {
-            logging: Logging {
-                level: Option::Some(LevelFilter::Debug),
-                structured: Option::None,
-            },
-        });
     }
 
     #[test]
@@ -164,8 +179,7 @@ allowed_origins = "all"
 dir = "/tmp/comit/"
 
 [logging]
-level = "DEBUG"
-structured = false
+level = "Debug"
 
 [bitcoin]
 network = "mainnet"
@@ -192,8 +206,7 @@ node_url = "http://example.com/"
                 dir: PathBuf::from("/tmp/comit/"),
             }),
             logging: Some(Logging {
-                level: Some(LevelFilter::Debug),
-                structured: Some(false),
+                level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
                 network: bitcoin::Network::Bitcoin,

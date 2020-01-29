@@ -106,7 +106,7 @@ where
     C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
 {
     if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
-        log::trace!("Found receipt in cache: {:x}", transaction_hash);
+        tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
         return Ok(receipt.clone());
     }
 
@@ -115,7 +115,7 @@ where
         .compat()
         .await?;
 
-    log::trace!("Fetched receipt from connector: {:x}", transaction_hash);
+    tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
 
     // We dropped the lock so at this stage the receipt may have been inserted by
     // another thread, no worries, inserting the same receipt twice does not hurt.

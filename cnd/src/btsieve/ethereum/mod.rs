@@ -206,13 +206,13 @@ where
         .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
 
     if needs_receipt {
-        log::debug!(
+        tracing::debug!(
             "bloom-filter of block {:x} suggests to fetch receipts for {:?}",
             block_hash,
             pattern
         );
     } else {
-        log::debug!(
+        tracing::debug!(
             "bloom-filter of block {:x} suggests to not fetch receipts for {:?}",
             block_hash,
             pattern
@@ -241,7 +241,7 @@ where
 
         let result = pattern.matches(&transaction, receipt.as_ref());
 
-        log::debug!(
+        tracing::debug!(
             "matching {:?} against transaction {:x} yielded {}",
             pattern,
             tx_hash,

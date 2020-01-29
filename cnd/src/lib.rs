@@ -38,7 +38,6 @@ pub mod ethereum;
 pub mod http_api;
 pub mod init_swap;
 pub mod load_swaps;
-pub mod logging;
 #[macro_use]
 pub mod network;
 #[cfg(test)]
