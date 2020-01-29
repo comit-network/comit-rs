@@ -277,6 +277,7 @@ where
     }
 }
 
+// tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
 #[allow(clippy::cognitive_complexity)]
 fn log_error(err: Error, peer: PeerId) {
     use tracing::error;

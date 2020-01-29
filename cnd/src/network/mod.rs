@@ -229,6 +229,8 @@ impl<TSubstream> ComitNode<TSubstream> {
     }
 }
 
+// tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
+#[allow(clippy::cognitive_complexity)]
 async fn handle_request(
     db: Sqlite,
     seed: RootSeed,
