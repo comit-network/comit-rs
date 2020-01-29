@@ -11,6 +11,7 @@ use futures::{
     sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
     Async, Future,
 };
+use handler::Error;
 use libp2p_core::{ConnectedPoint, Multiaddr, PeerId};
 use libp2p_swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters};
 use std::{
@@ -261,53 +262,7 @@ where
             })) => {
                 let _ = channel.send(response);
             }
-            ProtocolOutEvent::Error(handler::Error::MalformedJson(error)) => {
-                tracing::error!("failure in communication with {}: {:?}", peer, error);
-            }
-            ProtocolOutEvent::Error(handler::Error::DroppedResponseSender(_)) => {
-                // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
-                // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
-                // the application or the application consciously does not want to answer the
-                // SWAP REQUEST. In either way, we should signal this to the remote peer by
-                // closing the substream.
-                tracing::error!(
-                    "user dropped `oneshot::Sender` for response, closing substream with peer {}",
-                    peer
-                );
-            }
-            ProtocolOutEvent::Error(handler::Error::UnknownMandatoryHeader(error)) => {
-                tracing::error!(
-                    "received frame with unexpected mandatory header from {}, {:?}",
-                    peer,
-                    error
-                );
-            }
-            ProtocolOutEvent::Error(handler::Error::UnknownRequestType(error)) => {
-                tracing::error!(
-                    "received frame with unknown request type from {}, {:?}",
-                    peer,
-                    error
-                );
-            }
-            ProtocolOutEvent::Error(handler::Error::UnknownFrameType) => {
-                tracing::error!("received frame with unknown type from {}", peer);
-            }
-            ProtocolOutEvent::Error(handler::Error::UnexpectedFrame(frame)) => {
-                tracing::error!(
-                    "received unexpected frame of type from {}, {:?}",
-                    peer,
-                    frame
-                );
-            }
-            ProtocolOutEvent::Error(handler::Error::MalformedFrame(error)) => {
-                tracing::error!("received malformed frame from {}, {:?}", peer, error);
-            }
-            ProtocolOutEvent::Error(handler::Error::UnexpectedEOF) => {
-                tracing::error!(
-                    "substream with {} unexpectedly ended while waiting for messages",
-                    peer
-                );
-            }
+            ProtocolOutEvent::Error(e) => log_error(e, peer),
         }
     }
 
@@ -319,5 +274,57 @@ where
             .poll()
             .expect("unbounded channel can never fail")
             .map(|item| item.expect("unbounded channel never ends"))
+    }
+}
+
+#[allow(clippy::cognitive_complexity)]
+fn log_error(err: Error, peer: PeerId) {
+    use tracing::error;
+
+    match err {
+        Error::MalformedJson(error) => {
+            error!("failure in communication with {}: {:?}", peer, error);
+        }
+        Error::DroppedResponseSender(_) => {
+            // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
+            // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
+            // the application or the application consciously does not want to answer the
+            // SWAP REQUEST. In either way, we should signal this to the remote peer by
+            // closing the substream.
+            error!(
+                "user dropped `oneshot::Sender` for response, closing substream with peer {}",
+                peer
+            );
+        }
+        Error::UnknownMandatoryHeader(error) => {
+            error!(
+                "received frame with unexpected mandatory header from {}, {:?}",
+                peer, error
+            );
+        }
+        Error::UnknownRequestType(error) => {
+            error!(
+                "received frame with unknown request type from {}, {:?}",
+                peer, error
+            );
+        }
+        Error::UnknownFrameType => {
+            error!("received frame with unknown type from {}", peer);
+        }
+        Error::UnexpectedFrame(frame) => {
+            error!(
+                "received unexpected frame of type from {}, {:?}",
+                peer, frame
+            );
+        }
+        Error::MalformedFrame(error) => {
+            error!("received malformed frame from {}, {:?}", peer, error);
+        }
+        Error::UnexpectedEOF => {
+            error!(
+                "substream with {} unexpectedly ended while waiting for messages",
+                peer
+            );
+        }
     }
 }
