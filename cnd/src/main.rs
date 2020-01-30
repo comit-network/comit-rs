@@ -28,7 +28,7 @@ use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
-use tokio_compat::runtime::Runtime;
+use tokio_compat::runtime;
 
 mod cli;
 mod trace;
@@ -52,7 +52,9 @@ fn main() -> anyhow::Result<()> {
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
-    let mut runtime = Runtime::new()?;
+    let mut runtime = runtime::Builder::new()
+        .stack_size(1024 * 1024 * 3) // the default is 2MB but that causes a segfault for some reason
+        .build()?;
 
     const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
