@@ -1,12 +1,9 @@
-mod custom_sql_types;
 #[cfg(test)]
 mod integration_tests;
 mod load_swaps;
-mod new_types;
 mod save;
 mod schema;
-#[cfg(test)]
-mod serialization_format_stability_tests;
+mod wrapper_types;
 #[macro_use]
 mod swap;
 #[macro_use]
@@ -23,7 +20,7 @@ pub use self::{
 };
 
 use crate::{
-    db::custom_sql_types::Text,
+    db::wrapper_types::custom_sql_types::Text,
     swap_protocols::{Role, SwapId},
 };
 use diesel::{self, prelude::*, sqlite::SqliteConnection};

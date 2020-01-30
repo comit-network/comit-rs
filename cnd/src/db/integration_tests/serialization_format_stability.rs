@@ -3,7 +3,7 @@
 /// activity that involves migration scripts to migrate old data. These tests
 /// make sure we don't change the format accidentally!
 use crate::{
-    db::new_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
+    db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
     swap_protocols::{rfc003::SecretHash, HashFunction, SwapId},
 };
 use std::{fmt, str::FromStr};

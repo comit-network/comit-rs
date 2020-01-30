@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::LedgerKind;
+use crate::comit_api::LedgerKind;
 use serde::{Deserialize, Serialize};
 
 /// `network` is only kept for backward compatibility with client

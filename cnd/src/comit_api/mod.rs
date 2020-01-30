@@ -1,31 +1,34 @@
 use crate::{
     asset::{self, AssetKind},
     libp2p_comit_ext::{FromHeader, ToHeader},
-    swap_protocols::{
-        ledger::{Bitcoin, Ethereum, LedgerKind},
-        rfc003::messages::Decision,
-        SwapId, SwapProtocol,
-    },
+    swap_protocols::{ledger::Ethereum, rfc003::messages::Decision, SwapId, SwapProtocol},
 };
 use libp2p_comit::frame::Header;
 use serde::de::Error;
 use std::str::FromStr;
 
+#[derive(Clone, Copy, derivative::Derivative, PartialEq)]
+#[derivative(Debug = "transparent")]
+pub enum LedgerKind {
+    BitcoinMainnet,
+    BitcoinTestnet,
+    BitcoinRegtest,
+    Ethereum(Ethereum),
+}
+
 impl FromHeader for LedgerKind {
     fn from_header(mut header: Header) -> Result<Self, serde_json::Error> {
         Ok(match header.value::<String>()?.as_str() {
-            "bitcoin" => LedgerKind::Bitcoin(Bitcoin::new(
-                match header.take_parameter::<String>("network")?.as_ref() {
-                    "mainnet" => bitcoin::Network::Bitcoin,
-                    "testnet" => bitcoin::Network::Testnet,
-                    "regtest" => bitcoin::Network::Regtest,
-                    _ => {
-                        return Err(serde_json::Error::custom(
-                            "unexpected bitcoin network variant",
-                        ))
-                    }
-                },
-            )),
+            "bitcoin" => match header.take_parameter::<String>("network")?.as_ref() {
+                "mainnet" => LedgerKind::BitcoinMainnet,
+                "testnet" => LedgerKind::BitcoinTestnet,
+                "regtest" => LedgerKind::BitcoinRegtest,
+                _ => {
+                    return Err(serde_json::Error::custom(
+                        "unexpected bitcoin network variant",
+                    ))
+                }
+            },
             "ethereum" => LedgerKind::Ethereum(Ethereum::new(header.take_parameter("network")?)),
             unknown => {
                 return Err(serde_json::Error::custom(format!(
@@ -40,14 +43,17 @@ impl FromHeader for LedgerKind {
 impl ToHeader for LedgerKind {
     fn to_header(&self) -> Result<Header, serde_json::Error> {
         Ok(match self {
-            LedgerKind::Bitcoin(bitcoin) => Header::with_str_value("bitcoin").with_parameter(
-                "network",
-                match bitcoin.network {
-                    bitcoin::Network::Bitcoin => "mainnet",
-                    bitcoin::Network::Testnet => "testnet",
-                    bitcoin::Network::Regtest => "regtest",
-                },
-            )?,
+            LedgerKind::BitcoinMainnet => {
+                Header::with_str_value("bitcoin").with_parameter("network", "mainnet")?
+            }
+            LedgerKind::BitcoinTestnet => {
+                Header::with_str_value("bitcoin").with_parameter("network", "testnet")?
+            }
+
+            LedgerKind::BitcoinRegtest => {
+                Header::with_str_value("bitcoin").with_parameter("network", "regtest")?
+            }
+
             LedgerKind::Ethereum(ethereum) => {
                 Header::with_str_value("ethereum").with_parameter("network", ethereum.chain_id)?
             }
@@ -237,15 +243,9 @@ mod tests {
     #[test]
     fn bitcoin_ledger_to_header_roundtrip() {
         let ledgerkinds = vec![
-            LedgerKind::Bitcoin(Bitcoin {
-                network: bitcoin::Network::Bitcoin,
-            }),
-            LedgerKind::Bitcoin(Bitcoin {
-                network: bitcoin::Network::Testnet,
-            }),
-            LedgerKind::Bitcoin(Bitcoin {
-                network: bitcoin::Network::Regtest,
-            }),
+            LedgerKind::BitcoinMainnet,
+            LedgerKind::BitcoinTestnet,
+            LedgerKind::BitcoinRegtest,
         ];
 
         let headers = vec![

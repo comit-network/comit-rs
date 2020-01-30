@@ -1,7 +1,9 @@
-use crate::{asset, asset::Bitcoin, ethereum};
+use crate::{asset, asset::Bitcoin, db::LedgerKind, ethereum, swap_protocols::ledger};
 use std::{fmt, str::FromStr};
 
-/// A new type for representing satoshis
+pub mod custom_sql_types;
+
+/// A wrapper type for representing satoshis
 ///
 /// Together with the `Text` sql type, this will store the number as a string to
 /// avoid precision loss.
@@ -80,7 +82,7 @@ impl fmt::Display for Erc20Amount {
     }
 }
 
-/// A new type for ethereum addresses.
+/// A wrapper type for ethereum addresses.
 ///
 /// Together with the `Text` sql type, this will store an ethereum address in
 /// hex encoding.
@@ -110,5 +112,70 @@ impl From<EthereumAddress> for ethereum::Address {
 impl From<ethereum::Address> for EthereumAddress {
     fn from(address: ethereum::Address) -> Self {
         EthereumAddress(address)
+    }
+}
+
+/// A wrapper type for Bitcoin networks.
+///
+/// This is then wrapped in the db::custom_sql_types::Text to be stored in DB
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum BitcoinNetwork {
+    Mainnet,
+    Testnet,
+    Regtest,
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+pub enum Error {
+    #[error("Unknown variant")]
+    Unknown,
+}
+
+impl FromStr for BitcoinNetwork {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mainnet" => Ok(Self::Mainnet),
+            "testnet" => Ok(Self::Testnet),
+            "regtest" => Ok(Self::Regtest),
+            _ => Err(Error::Unknown),
+        }
+    }
+}
+
+impl fmt::Display for BitcoinNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Mainnet => "mainnet",
+            Self::Testnet => "testnet",
+            Self::Regtest => "regtest",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+macro_rules! impl_from_for_bitcoinnetwork {
+    ($ledger:ident) => {
+        impl From<$ledger> for BitcoinNetwork {
+            fn from(_: $ledger) -> Self {
+                BitcoinNetwork::$ledger
+            }
+        }
+    };
+}
+
+use ledger::bitcoin::{Mainnet, Regtest, Testnet};
+impl_from_for_bitcoinnetwork!(Mainnet);
+impl_from_for_bitcoinnetwork!(Testnet);
+impl_from_for_bitcoinnetwork!(Regtest);
+
+impl From<BitcoinNetwork> for LedgerKind {
+    fn from(network: BitcoinNetwork) -> Self {
+        match network {
+            BitcoinNetwork::Mainnet => LedgerKind::BitcoinMainnet,
+            BitcoinNetwork::Testnet => LedgerKind::BitcoinTestnet,
+            BitcoinNetwork::Regtest => LedgerKind::BitcoinRegtest,
+        }
     }
 }

@@ -2,7 +2,7 @@ use crate::{
     asset,
     swap_protocols::{
         actions::bitcoin::{SendToAddress, SpendOutput},
-        ledger::Bitcoin,
+        ledger::bitcoin,
         rfc003::{
             actions::{FundAction, RedeemAction, RefundAction},
             create_swap::HtlcParams,
@@ -10,28 +10,28 @@ use crate::{
         },
     },
 };
-use bitcoin::{Amount, OutPoint, Transaction};
+use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl FundAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
+impl<B: bitcoin::Bitcoin + 'static> FundAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
     type FundActionOutput = SendToAddress;
 
-    fn fund_action(htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>) -> Self::FundActionOutput {
+    fn fund_action(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
         SendToAddress {
             to,
             amount: htlc_params.asset,
-            network: htlc_params.ledger.network,
+            network: B::network(),
         }
     }
 }
 
-impl RefundAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
+impl<B: bitcoin::Bitcoin + 'static> RefundAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &Transaction,
@@ -44,16 +44,16 @@ impl RefundAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
                 Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
                 htlc.unlock_after_timeout(&*crate::SECP, secret_source.derive_refund_identity()),
             ),
-            network: htlc_params.ledger.network,
+            network: B::network(),
         }
     }
 }
 
-impl RedeemAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
+impl<B: bitcoin::Bitcoin + 'static> RedeemAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
@@ -70,7 +70,7 @@ impl RedeemAction<Bitcoin, asset::Bitcoin> for (Bitcoin, asset::Bitcoin) {
                     secret.into_raw_secret(),
                 ),
             ),
-            network: htlc_params.ledger.network,
+            network: B::network(),
         }
     }
 }

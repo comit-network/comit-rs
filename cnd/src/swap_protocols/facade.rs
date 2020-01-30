@@ -8,7 +8,7 @@ use crate::{
     },
     seed::{DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
+        ledger::{self, Ethereum},
         rfc003::{
             self,
             create_swap::{HtlcParams, SwapEvent},
@@ -101,12 +101,12 @@ where
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
+impl<B: ledger::bitcoin::Bitcoin + 'static> HtlcEvents<B, asset::Bitcoin> for Facade {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<Bitcoin>> {
+    ) -> anyhow::Result<Deployed<B>> {
         self.bitcoin_connector
             .htlc_deployed(htlc_params, start_of_swap)
             .await
@@ -114,10 +114,10 @@ impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
 
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
-        htlc_deployment: &Deployed<Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
+        htlc_deployment: &Deployed<B>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
+    ) -> anyhow::Result<Funded<B, asset::Bitcoin>> {
         self.bitcoin_connector
             .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
@@ -125,11 +125,11 @@ impl HtlcEvents<Bitcoin, asset::Bitcoin> for Facade {
 
     async fn htlc_redeemed_or_refunded(
         &self,
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
-        htlc_deployment: &Deployed<Bitcoin>,
-        htlc_funding: &Funded<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
+        htlc_deployment: &Deployed<B>,
+        htlc_funding: &Funded<B, asset::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Either<Redeemed<Bitcoin>, Refunded<Bitcoin>>> {
+    ) -> anyhow::Result<Either<Redeemed<B>, Refunded<B>>> {
         self.bitcoin_connector
             .htlc_redeemed_or_refunded(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
             .await

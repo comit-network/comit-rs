@@ -5,7 +5,7 @@ use crate::{
     init_swap::init_accepted_swap,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
+        ledger::{self, Ethereum},
         rfc003::{events::HtlcEvents, state_store::StateStore},
     },
 };
@@ -18,13 +18,23 @@ where
         + DeriveSwapSeed
         + Retrieve
         + DetermineTypes
-        + HtlcEvents<Bitcoin, asset::Bitcoin>
+        + HtlcEvents<ledger::bitcoin::Regtest, asset::Bitcoin>
+        + HtlcEvents<ledger::bitcoin::Testnet, asset::Bitcoin>
+        + HtlcEvents<ledger::bitcoin::Mainnet, asset::Bitcoin>
         + HtlcEvents<Ethereum, asset::Ether>
         + HtlcEvents<Ethereum, asset::Erc20>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Ether>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Ether, asset::Bitcoin>
-        + LoadAcceptedSwap<Bitcoin, Ethereum, asset::Bitcoin, asset::Erc20>
-        + LoadAcceptedSwap<Ethereum, Bitcoin, asset::Erc20, asset::Bitcoin>,
+        + LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>
+        + LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>
+        + LoadAcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin>
+        + LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>
+        + LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>
+        + LoadAcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin>
+        + LoadAcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>,
 {
     tracing::debug!("loading swaps from database ...");
 

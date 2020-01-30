@@ -4,7 +4,8 @@ pub mod ledger;
 pub mod rfc003;
 mod swap_id;
 
-pub use self::{facade::*, ledger::LedgerKind, swap_id::*};
+pub use self::{facade::*, swap_id::*};
+use crate::comit_api::LedgerKind;
 use serde::{Deserialize, Serialize};
 
 #[derive(

@@ -289,7 +289,12 @@ mod tests {
 
     #[test]
     fn swap_event_should_render_to_nice_string() {
-        let event = SwapEvent::<ledger::Bitcoin, ledger::Ethereum, asset::Bitcoin, asset::Ether>::BetaDeployed(Deployed {
+        let event = SwapEvent::<
+            ledger::bitcoin::Mainnet,
+            ledger::Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+        >::BetaDeployed(Deployed {
             transaction: ethereum::Transaction::default(),
             location: ethereum::Address::default(),
         });

@@ -1,7 +1,8 @@
 use crate::{
     http_api::action::ListRequiredFields,
     swap_protocols::{
-        ledger::{Bitcoin, Ethereum},
+        ledger,
+        ledger::{bitcoin, Ethereum},
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
@@ -17,7 +18,7 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl ListRequiredFields for Accept<Ethereum, Bitcoin> {
+impl<B: ledger::Bitcoin + 'static> ListRequiredFields for Accept<Ethereum, B> {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![siren::Field {
             name: "alpha_ledger_redeem_identity".to_owned(),
@@ -29,12 +30,12 @@ impl ListRequiredFields for Accept<Ethereum, Bitcoin> {
     }
 }
 
-impl IntoAcceptMessage<Ethereum, Bitcoin> for OnlyRedeem<Ethereum> {
+impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<Ethereum> {
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<Ethereum, Bitcoin> {
+    ) -> messages::Accept<Ethereum, bitcoin::Regtest> {
         let beta_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_refund_identity(),
@@ -52,7 +53,7 @@ pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl ListRequiredFields for Accept<Bitcoin, Ethereum> {
+impl<B: ledger::Bitcoin + 'static> ListRequiredFields for Accept<B, Ethereum> {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![siren::Field {
             name: "beta_ledger_refund_identity".to_owned(),
@@ -64,12 +65,12 @@ impl ListRequiredFields for Accept<Bitcoin, Ethereum> {
     }
 }
 
-impl IntoAcceptMessage<Bitcoin, Ethereum> for OnlyRefund<Ethereum> {
+impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<Ethereum> {
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<Bitcoin, Ethereum> {
+    ) -> messages::Accept<bitcoin::Regtest, Ethereum> {
         let alpha_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_redeem_identity(),
