@@ -9,7 +9,7 @@ use crate::{
         Sqlite,
     },
     swap_protocols::{
-        ledger::{self, Ethereum},
+        ledger::{bitcoin, Ethereum},
         rfc003::{
             messages::{Accept, Request},
             Ledger, SecretHash,
@@ -67,26 +67,26 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     bitcoin_amount: Text<Satoshis>,
     ether_amount: Text<Ether>,
     hash_function: Text<HashFunction>,
-    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    bitcoin_refund_identity: Text<::bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
     secret_hash: Text<SecretHash>,
     // Accept fields.
-    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    bitcoin_redeem_identity: Text<::bitcoin::PublicKey>,
     ethereum_refund_identity: Text<EthereumAddress>,
 
     at: NaiveDateTime,
 }
 
 impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>
+    for AcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>
 {
     fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Regtest::default(),
+                alpha_ledger: bitcoin::Regtest::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -110,13 +110,12 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
@@ -157,13 +156,13 @@ impl LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset:
 }
 
 impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>
+    for AcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>
 {
     fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Testnet::default(),
+                alpha_ledger: bitcoin::Testnet::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -187,13 +186,12 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
@@ -234,13 +232,13 @@ impl LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset:
 }
 
 impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>
+    for AcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>
 {
     fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Mainnet::default(),
+                alpha_ledger: bitcoin::Mainnet::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -264,13 +262,12 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
@@ -320,19 +317,19 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
-    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    bitcoin_redeem_identity: Text<::bitcoin::PublicKey>,
     ethereum_expiry: U32,
     bitcoin_expiry: U32,
     secret_hash: Text<SecretHash>,
     // Accept fields.
     ethereum_redeem_identity: Text<EthereumAddress>,
-    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    bitcoin_refund_identity: Text<::bitcoin::PublicKey>,
 
     at: NaiveDateTime,
 }
 
 impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
         (
@@ -341,7 +338,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Regtest::default(),
+                beta_ledger: bitcoin::Regtest::default(),
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -362,13 +359,12 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
@@ -409,7 +405,7 @@ impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::B
 }
 
 impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
         (
@@ -418,7 +414,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Testnet::default(),
+                beta_ledger: bitcoin::Testnet::default(),
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -439,13 +435,12 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
@@ -486,7 +481,7 @@ impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::B
 }
 
 impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
         (
@@ -495,7 +490,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Mainnet::default(),
+                beta_ledger: bitcoin::Mainnet::default(),
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -516,13 +511,12 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
@@ -572,26 +566,26 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     erc20_token_contract: Text<EthereumAddress>,
     erc20_amount: Text<Erc20Amount>,
     hash_function: Text<HashFunction>,
-    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    bitcoin_refund_identity: Text<::bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
     secret_hash: Text<SecretHash>,
     // Accept fields.
-    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    bitcoin_redeem_identity: Text<::bitcoin::PublicKey>,
     ethereum_refund_identity: Text<EthereumAddress>,
 
     at: NaiveDateTime,
 }
 
 impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>
+    for AcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>
 {
     fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Regtest::default(),
+                alpha_ledger: bitcoin::Regtest::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -618,13 +612,12 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
@@ -666,13 +659,13 @@ impl LoadAcceptedSwap<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset:
 }
 
 impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>
+    for AcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>
 {
     fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Testnet::default(),
+                alpha_ledger: bitcoin::Testnet::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -699,13 +692,12 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
@@ -747,13 +739,13 @@ impl LoadAcceptedSwap<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset:
 }
 
 impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
-    for AcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>
+    for AcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>
 {
     fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: ledger::bitcoin::Mainnet::default(),
+                alpha_ledger: bitcoin::Mainnet::default(),
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -780,13 +772,12 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
+impl LoadAcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>>
+    {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
@@ -838,19 +829,19 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     bitcoin_amount: Text<Satoshis>,
     hash_function: Text<HashFunction>,
     ethereum_refund_identity: Text<EthereumAddress>,
-    bitcoin_redeem_identity: Text<bitcoin::PublicKey>,
+    bitcoin_redeem_identity: Text<::bitcoin::PublicKey>,
     ethereum_expiry: U32,
     bitcoin_expiry: U32,
     secret_hash: Text<SecretHash>,
     // Accept fields.
     ethereum_redeem_identity: Text<EthereumAddress>,
-    bitcoin_refund_identity: Text<bitcoin::PublicKey>,
+    bitcoin_refund_identity: Text<::bitcoin::PublicKey>,
 
     at: NaiveDateTime,
 }
 
 impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
         (
@@ -859,7 +850,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Regtest::default(),
+                beta_ledger: bitcoin::Regtest::default(),
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -883,13 +874,12 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
@@ -931,7 +921,7 @@ impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::B
 }
 
 impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
         (
@@ -940,7 +930,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Testnet::default(),
+                beta_ledger: bitcoin::Testnet::default(),
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -964,13 +954,12 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
@@ -1012,7 +1001,7 @@ impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::B
 }
 
 impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
-    for AcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>
+    for AcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>
 {
     fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
         (
@@ -1021,7 +1010,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: ledger::bitcoin::Mainnet::default(),
+                beta_ledger: bitcoin::Mainnet::default(),
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -1045,13 +1034,12 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
 }
 
 #[async_trait]
-impl LoadAcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin> for Sqlite {
+impl LoadAcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin> for Sqlite {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<
-        AcceptedSwap<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>,
-    > {
+    ) -> anyhow::Result<AcceptedSwap<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>>
+    {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
