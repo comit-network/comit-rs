@@ -510,7 +510,7 @@ pub enum IdentityKind {
     BetaLedgerRedeemIdentity,
 }
 
-impl<B: ledger::Bitcoin + 'static> IntoIdentities<B, ledger::Ethereum> for HttpIdentities {
+impl<B: ledger::Bitcoin> IntoIdentities<B, ledger::Ethereum> for HttpIdentities {
     fn into_identities(
         self,
         secret_source: &dyn DeriveIdentities,
@@ -547,7 +547,7 @@ impl<B: ledger::Bitcoin + 'static> IntoIdentities<B, ledger::Ethereum> for HttpI
     }
 }
 
-impl<B: ledger::Bitcoin + 'static> IntoIdentities<ledger::Ethereum, B> for HttpIdentities {
+impl<B: ledger::Bitcoin> IntoIdentities<ledger::Ethereum, B> for HttpIdentities {
     fn into_identities(
         self,
         secret_source: &dyn DeriveIdentities,

@@ -10,7 +10,9 @@ pub struct Testnet;
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Regtest;
 
-pub trait Bitcoin: Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send {
+pub trait Bitcoin:
+    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + 'static
+{
     fn into_ledger_kind(self) -> LedgerKind;
     fn network() -> ::bitcoin::Network;
 }

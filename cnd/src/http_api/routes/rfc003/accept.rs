@@ -18,7 +18,7 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl<B: ledger::Bitcoin + 'static> ListRequiredFields for Accept<Ethereum, B> {
+impl<B: ledger::Bitcoin> ListRequiredFields for Accept<Ethereum, B> {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![siren::Field {
             name: "alpha_ledger_redeem_identity".to_owned(),
@@ -53,7 +53,7 @@ pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl<B: ledger::Bitcoin + 'static> ListRequiredFields for Accept<B, Ethereum> {
+impl<B: ledger::Bitcoin> ListRequiredFields for Accept<B, Ethereum> {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![siren::Field {
             name: "beta_ledger_refund_identity".to_owned(),

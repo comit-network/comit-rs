@@ -2,7 +2,7 @@ mod extract_secret;
 mod htlc_events;
 
 use crate::swap_protocols::{
-    ledger::bitcoin,
+    ledger,
     rfc003::{create_swap::HtlcParams, Ledger},
 };
 use ::bitcoin::{
@@ -14,13 +14,13 @@ use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 pub use self::htlc_events::*;
 use crate::{asset, bitcoin::PublicKey};
 
-impl<B: bitcoin::Bitcoin + 'static> Ledger for B {
+impl<B: ledger::Bitcoin> Ledger for B {
     type HtlcLocation = OutPoint;
     type Identity = PublicKey;
     type Transaction = Transaction;
 }
 
-impl<B: bitcoin::Bitcoin + 'static> From<HtlcParams<B, asset::Bitcoin>> for BitcoinHtlc {
+impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin>> for BitcoinHtlc {
     fn from(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
         let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
@@ -37,7 +37,7 @@ impl<B: bitcoin::Bitcoin + 'static> From<HtlcParams<B, asset::Bitcoin>> for Bitc
     }
 }
 
-impl<B: bitcoin::Bitcoin + 'static> HtlcParams<B, asset::Bitcoin> {
+impl<B: ledger::Bitcoin> HtlcParams<B, asset::Bitcoin> {
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(B::network())
     }

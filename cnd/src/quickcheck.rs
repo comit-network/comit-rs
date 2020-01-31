@@ -356,7 +356,7 @@ impl Arbitrary
     }
 }
 
-impl<B: ledger::Bitcoin + 'static> Arbitrary for Quickcheck<Accept<B, ledger::Ethereum>> {
+impl<B: ledger::Bitcoin> Arbitrary for Quickcheck<Accept<B, ledger::Ethereum>> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Accept {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
@@ -366,7 +366,7 @@ impl<B: ledger::Bitcoin + 'static> Arbitrary for Quickcheck<Accept<B, ledger::Et
     }
 }
 
-impl<B: ledger::Bitcoin + 'static> Arbitrary for Quickcheck<Accept<ledger::Ethereum, B>> {
+impl<B: ledger::Bitcoin> Arbitrary for Quickcheck<Accept<ledger::Ethereum, B>> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Accept {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
