@@ -32,4 +32,5 @@ export interface HarnessGlobal extends Global {
     projectRoot: string;
     logRoot: string;
     verbose: boolean;
+    tokenContract: string;
 }
