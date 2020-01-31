@@ -29,7 +29,10 @@ use futures::{
 };
 use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use libp2p::{
-    core::muxing::SubstreamRef,
+    core::{
+        either::{EitherError, EitherOutput},
+        muxing::{StreamMuxerBox, SubstreamRef},
+    },
     identity::{self, ed25519},
     mdns::Mdns,
     swarm::{
@@ -42,10 +45,6 @@ use libp2p_comit::{
     frame::{self, CodecError, OutboundRequest, Response, ValidatedInboundRequest},
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
-};
-use libp2p_core::{
-    either::{EitherError, EitherOutput},
-    muxing::StreamMuxerBox,
 };
 use std::{
     collections::{HashMap, HashSet},
