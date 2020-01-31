@@ -3,20 +3,20 @@ import { AssetKind } from "../../../lib_sdk/asset";
 
 setTimeout(function() {
     twoActorTest(
-        "rfc003-eth-erc20_btc-alice-redeems-bob-redeems",
+        "rfc003-btc-eth-erc20-bob-refunds-alice-refunds",
         async function({ alice, bob }) {
-            await alice.sendRequest(AssetKind.Erc20, AssetKind.Bitcoin);
+            await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Erc20);
             await bob.accept();
 
-            await alice.deploy();
             await alice.fund();
+            await bob.deploy();
             await bob.fund();
 
-            await alice.redeem();
-            await bob.redeem();
+            await alice.refund();
+            await bob.refund();
 
-            await alice.assertSwapped();
-            await bob.assertSwapped();
+            await alice.assertRefunded();
+            await bob.assertRefunded();
         }
     );
 
