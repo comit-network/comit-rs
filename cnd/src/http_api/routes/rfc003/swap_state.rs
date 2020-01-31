@@ -1,7 +1,7 @@
 #![allow(clippy::type_repetition_in_bounds)]
-use crate::{
+use crate::http_api::{Http, SwapStatus};
+use comit::{
     asset::Asset,
-    http_api::{Http, SwapStatus},
     swap_protocols::rfc003::{self, Ledger, SecretHash},
     timestamp::Timestamp,
 };
@@ -177,7 +177,7 @@ impl SwapStatus {
         beta_ledger: rfc003::HtlcState,
     ) -> Self {
         use self::SwapCommunicationState::*;
-        use crate::swap_protocols::rfc003::HtlcState::*;
+        use comit::swap_protocols::rfc003::HtlcState::*;
 
         if swap_communication_state == Declined {
             return SwapStatus::NotSwapped;
@@ -207,10 +207,8 @@ impl quickcheck::Arbitrary for SwapCommunicationState {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        http_api::routes::rfc003::swap_state::SwapCommunicationState::*,
-        swap_protocols::rfc003::ledger_state::HtlcState::*,
-    };
+    use crate::http_api::routes::rfc003::swap_state::SwapCommunicationState::*;
+    use comit::swap_protocols::rfc003::ledger_state::HtlcState::*;
 
     #[test]
     fn given_alpha_refunded_and_beta_never_funded_should_be_not_swapped() {
@@ -266,16 +264,5 @@ mod tests {
             SwapStatus::new(Sent, NotDeployed, NotDeployed),
             SwapStatus::InProgress
         )
-    }
-
-    quickcheck::quickcheck! {
-        fn test(
-            swap_communication_state: SwapCommunicationState,
-            alpha_state: rfc003::HtlcState,
-            beta_state: rfc003::HtlcState
-        ) -> bool {
-            SwapStatus::new(swap_communication_state, alpha_state, beta_state)
-                != SwapStatus::InternalFailure
-        }
     }
 }

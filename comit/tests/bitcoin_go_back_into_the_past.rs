@@ -3,7 +3,7 @@ pub mod bitcoin_helper;
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
 use chrono::NaiveDateTime;
-use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
+use comit::btsieve::bitcoin::{matching_transaction, TransactionPattern};
 use std::str::FromStr;
 
 #[tokio::test]

@@ -1,8 +1,10 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
-    asset,
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     init_swap::init_accepted_swap,
+};
+use comit::{
+    asset,
     seed::DeriveSwapSeed,
     swap_protocols::{
         ledger::{self, Ethereum},

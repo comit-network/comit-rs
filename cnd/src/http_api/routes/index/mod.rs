@@ -4,7 +4,7 @@ use self::handlers::handle_get_swaps;
 use crate::{
     http_api::{problem, routes::into_rejection, Http},
     network::ListenAddresses,
-    swap_protocols::Facade,
+    Facade,
 };
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};

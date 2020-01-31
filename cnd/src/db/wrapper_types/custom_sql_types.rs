@@ -1,4 +1,4 @@
-use crate::timestamp::Timestamp;
+use comit::timestamp::Timestamp;
 use diesel::{
     backend::Backend,
     deserialize::{self, FromSql},

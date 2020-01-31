@@ -11,6 +11,10 @@ use crate::{
     init_swap::init_accepted_swap,
     libp2p_comit_ext::ToHeader,
     network::PendingRequestFor,
+    Facade,
+};
+use anyhow::Context;
+use comit::{
     seed::DeriveSwapSeed,
     swap_protocols::{
         actions::Actions,
@@ -21,15 +25,11 @@ use crate::{
             messages::{Decision, IntoAcceptMessage},
             state_store::StateStore,
         },
-        Facade, SwapId,
+        SwapId,
     },
 };
-use anyhow::Context;
 use libp2p_comit::frame::Response;
-use std::{
-    fmt::{self, Debug, Display},
-    string::ToString,
-};
+use std::{fmt::Debug, string::ToString};
 use warp::http;
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
@@ -169,7 +169,7 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
             .find(|action| ActionKind::from(action) == action_kind)
             .ok_or_else(|| anyhow::Error::from(InvalidAction { action_kind }))?;
 
-        if http::Method::from(action_kind) != method {
+        if action_kind_to_http_method(action_kind) != method {
             return Err(anyhow::Error::from(InvalidActionInvocation {
                 action_kind,
                 method,
@@ -177,6 +177,17 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
         }
 
         Ok(action)
+    }
+}
+
+fn action_kind_to_http_method(action_kind: ActionKind) -> http::Method {
+    match action_kind {
+        ActionKind::Accept => http::Method::POST,
+        ActionKind::Decline => http::Method::POST,
+        ActionKind::Deploy => http::Method::GET,
+        ActionKind::Fund => http::Method::GET,
+        ActionKind::Refund => http::Method::GET,
+        ActionKind::Redeem => http::Method::GET,
     }
 }
 
@@ -354,19 +365,6 @@ mod tests {
     }
 }
 
-impl From<ActionKind> for http::Method {
-    fn from(action_kind: ActionKind) -> Self {
-        match action_kind {
-            ActionKind::Accept => http::Method::POST,
-            ActionKind::Decline => http::Method::POST,
-            ActionKind::Deploy => http::Method::GET,
-            ActionKind::Fund => http::Method::GET,
-            ActionKind::Refund => http::Method::GET,
-            ActionKind::Redeem => http::Method::GET,
-        }
-    }
-}
-
 impl<Accept, Decline, Deploy, Fund, Redeem, Refund> IntoResponsePayload
     for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
 where
@@ -403,7 +401,7 @@ where
 {
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         let action_kind = ActionKind::from(self);
-        let method = http::Method::from(action_kind);
+        let method = action_kind_to_http_method(action_kind);
         let name = action_kind.to_string();
 
         let media_type = match method {
@@ -430,21 +428,5 @@ where
             class: vec![],
             title: None,
         }
-    }
-}
-
-impl<Accept, Decline, Deploy, Fund, Redeem, Refund> Display
-    for Action<Accept, Decline, Deploy, Fund, Redeem, Refund>
-{
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Action::Accept { .. } => "Accept",
-            Action::Decline { .. } => "Decline",
-            Action::Deploy { .. } => "Deploy",
-            Action::Fund { .. } => "Fund",
-            Action::Redeem { .. } => "Redeem",
-            Action::Refund { .. } => "Refund",
-        };
-        write!(f, "{}", s)
     }
 }

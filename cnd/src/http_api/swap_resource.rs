@@ -1,18 +1,20 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    asset,
-    db::{Swap, SwapTypes},
+    db::SwapTypes,
     http_api::{
         action::ToSirenAction,
         route_factory::swap_path,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
+};
+use comit::{
+    asset,
     swap_protocols::{
         actions::Actions,
         ledger,
-        rfc003::{self, state_store::StateStore},
+        rfc003::{self, state_store::StateStore, Swap},
         HashFunction, SwapId, SwapProtocol,
     },
 };

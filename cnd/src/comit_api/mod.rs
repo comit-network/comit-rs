@@ -1,7 +1,11 @@
-use crate::{
+use crate::libp2p_comit_ext::{FromHeader, ToHeader};
+use comit::{
     asset::{self, AssetKind},
-    libp2p_comit_ext::{FromHeader, ToHeader},
-    swap_protocols::{ledger::Ethereum, rfc003::messages::Decision, SwapId, SwapProtocol},
+    swap_protocols::{
+        ledger::{bitcoin, Ethereum},
+        rfc003::messages::Decision,
+        SwapId, SwapProtocol,
+    },
 };
 use libp2p_comit::frame::Header;
 use serde::de::Error;
@@ -14,6 +18,30 @@ pub enum LedgerKind {
     BitcoinTestnet,
     BitcoinRegtest,
     Ethereum(Ethereum),
+}
+
+impl From<bitcoin::Mainnet> for LedgerKind {
+    fn from(_: bitcoin::Mainnet) -> Self {
+        LedgerKind::BitcoinMainnet
+    }
+}
+
+impl From<bitcoin::Testnet> for LedgerKind {
+    fn from(_: bitcoin::Testnet) -> Self {
+        LedgerKind::BitcoinTestnet
+    }
+}
+
+impl From<bitcoin::Regtest> for LedgerKind {
+    fn from(_: bitcoin::Regtest) -> Self {
+        LedgerKind::BitcoinRegtest
+    }
+}
+
+impl From<Ethereum> for LedgerKind {
+    fn from(ethereum: Ethereum) -> Self {
+        LedgerKind::Ethereum(ethereum)
+    }
 }
 
 impl FromHeader for LedgerKind {
@@ -159,7 +187,7 @@ impl FromHeader for Decision {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
+    use comit::{
         asset::ethereum::FromWei,
         ethereum::{Address, U256},
         swap_protocols::{ledger::ethereum, HashFunction},

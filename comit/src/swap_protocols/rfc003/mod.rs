@@ -26,11 +26,35 @@ pub use self::{
 
 pub use self::messages::{Accept, Decline, Request};
 
-use crate::{asset::Asset, seed::SwapSeed};
+use crate::{
+    asset::Asset,
+    seed::SwapSeed,
+    swap_protocols::{Role, SwapId},
+};
 use ::bitcoin::secp256k1::SecretKey;
+use chrono::NaiveDateTime;
+use libp2p::PeerId;
 
 /// Swap request response as received from peer node acting as Bob.
 pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
+pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>, NaiveDateTime);
+
+#[derive(Clone, Debug, PartialEq)]
+pub struct Swap {
+    pub swap_id: SwapId,
+    pub role: Role,
+    pub counterparty: PeerId,
+}
+
+impl Swap {
+    pub fn new(swap_id: SwapId, role: Role, counterparty: PeerId) -> Swap {
+        Swap {
+            swap_id,
+            role,
+            counterparty,
+        }
+    }
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {

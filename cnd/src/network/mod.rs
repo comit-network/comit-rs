@@ -3,12 +3,15 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::{Asset, AssetKind},
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     comit_api::LedgerKind,
     config::Settings,
-    db::{Save, Sqlite, Swap},
+    db::{Save, Sqlite},
     libp2p_comit_ext::{FromHeader, ToHeader},
+};
+use async_trait::async_trait;
+use comit::{
+    asset::{Asset, AssetKind},
+    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         ledger,
@@ -16,12 +19,11 @@ use crate::{
             self, bob,
             messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
-            Ledger,
+            Ledger, Swap,
         },
         HashFunction, Role, SwapId, SwapProtocol,
     },
 };
-use async_trait::async_trait;
 use futures::{
     future::Future,
     stream::Stream,
@@ -712,20 +714,31 @@ impl PendingRequestFor for Swarm {
 /// Send swap request to connected peer.
 #[async_trait]
 pub trait SendRequest {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA>(
         &self,
         peer_identity: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError>;
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+    where
+        AL: rfc003::Ledger + Into<LedgerKind>,
+        BL: rfc003::Ledger + Into<LedgerKind>,
+        AA: Asset,
+        BA: Asset;
 }
 
 #[async_trait]
 impl SendRequest for Swarm {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA>(
         &self,
         dial_information: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+    where
+        AL: rfc003::Ledger + Into<LedgerKind>,
+        BL: rfc003::Ledger + Into<LedgerKind>,
+        AA: Asset,
+        BA: Asset,
+    {
         let id = request.swap_id;
         let request = build_outbound_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
@@ -868,7 +881,12 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     }
 }
 
-fn build_outbound_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+fn build_outbound_request<
+    AL: rfc003::Ledger + Into<LedgerKind>,
+    BL: rfc003::Ledger + Into<LedgerKind>,
+    AA: Asset,
+    BA: Asset,
+>(
     request: rfc003::Request<AL, BL, AA, BA>,
 ) -> Result<frame::OutboundRequest, serde_json::Error> {
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;

@@ -1,20 +1,20 @@
-use crate::{
-    asset,
-    db::{
-        schema::{self, *},
-        wrapper_types::{
-            custom_sql_types::{Text, U32},
-            BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
-        },
-        Sqlite, Swap,
+use crate::db::{
+    schema::{self, *},
+    wrapper_types::{
+        custom_sql_types::{Text, U32},
+        BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
     },
+    Sqlite,
+};
+use async_trait::async_trait;
+use comit::{
+    asset,
     swap_protocols::{
         ledger::{self, Ethereum},
-        rfc003::{Accept, Decline, Request, SecretHash},
+        rfc003::{Accept, Decline, Request, SecretHash, Swap},
         HashFunction, Role, SwapId,
     },
 };
-use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
 
@@ -67,7 +67,7 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     bitcoin_amount: Text<Satoshis>,
     ether_amount: Text<Ether>,
     hash_function: Text<HashFunction>,
-    bitcoin_refund_identity: Text<::bitcoin::PublicKey>,
+    bitcoin_refund_identity: Text<comit::bitcoin::PublicKey>,
     ethereum_redeem_identity: Text<EthereumAddress>,
     bitcoin_expiry: U32,
     ethereum_expiry: U32,
@@ -101,7 +101,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Eth
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
             hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity),
             ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
@@ -146,7 +146,7 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Eth
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
             hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity),
             ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),
@@ -191,7 +191,7 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Eth
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
             hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
+            bitcoin_refund_identity: Text(alpha_ledger_refund_identity),
             ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
             bitcoin_expiry: U32(alpha_expiry.into()),
             ethereum_expiry: U32(beta_expiry.into()),

@@ -1,15 +1,17 @@
 use crate::{
-    asset, comit_api,
+    comit_api,
     db::{
         schema,
         wrapper_types::{custom_sql_types::Text, BitcoinNetwork},
         Sqlite,
     },
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
-    swap_protocols::{Role, SwapId},
 };
 use async_trait::async_trait;
-use strum_macros::{Display, EnumString};
+use comit::{
+    asset,
+    swap_protocols::{Role, SwapId},
+};
 
 /// Determine swap types for swaps currently stored in the database.
 ///
@@ -132,7 +134,7 @@ pub struct SwapTypes {
     pub role: Role,
 }
 
-#[derive(Debug, Clone, Copy, Display, EnumString, PartialEq)]
+#[derive(Debug, Clone, Copy, strum_macros::Display, strum_macros::EnumString, PartialEq)]
 pub enum LedgerKind {
     BitcoinMainnet,
     BitcoinTestnet,
@@ -151,7 +153,7 @@ impl From<comit_api::LedgerKind> for LedgerKind {
     }
 }
 
-#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
 pub enum AssetKind {
     Bitcoin,
     Ether,

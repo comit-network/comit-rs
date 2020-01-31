@@ -1,7 +1,7 @@
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
 use chrono::offset::Utc;
-use cnd::btsieve::bitcoin::{matching_transaction, BitcoindConnector, TransactionPattern};
+use comit::btsieve::bitcoin::{matching_transaction, BitcoindConnector, TransactionPattern};
 use futures_core::future;
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;

@@ -14,9 +14,9 @@ pub use self::{
 
 pub const PATH: &str = "swaps";
 
-use crate::{
+use crate::network::DialInformation;
+use comit::{
     asset, ethereum,
-    network::DialInformation,
     swap_protocols::{
         ledger::{self, ethereum::ChainId},
         SwapId, SwapProtocol,
@@ -77,7 +77,7 @@ impl Serialize for Http<bitcoin::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::ethereum::Transaction> {
+impl Serialize for Http<comit::ethereum::Transaction> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -86,7 +86,7 @@ impl Serialize for Http<crate::ethereum::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::bitcoin::PublicKey> {
+impl Serialize for Http<comit::bitcoin::PublicKey> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -97,7 +97,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
 }
 
 impl_serialize_type_with_fields!(bitcoin::OutPoint { "txid" => txid, "vout" => vout });
-impl_serialize_http!(crate::ethereum::H160);
+impl_serialize_http!(comit::ethereum::H160);
 impl_serialize_http!(SwapId);
 
 impl Serialize for Http<SwapProtocol> {
@@ -501,20 +501,20 @@ impl From<asset::Erc20> for HttpAsset {
 
 #[cfg(test)]
 mod tests {
-    use crate::{
+    use crate::http_api::{Http, HttpAsset, HttpLedger};
+    use ::bitcoin::{
+        hashes::{hex::FromHex, sha256d},
+        OutPoint, Script, TxIn,
+    };
+    use comit::{
         asset,
         asset::ethereum::FromWei,
         bitcoin::PublicKey,
         ethereum::{H160, H256, U256},
-        http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
             ledger::{bitcoin, ethereum, Ethereum},
             HashFunction, SwapId, SwapProtocol,
         },
-    };
-    use ::bitcoin::{
-        hashes::{hex::FromHex, sha256d},
-        OutPoint, Script, TxIn,
     };
     use libp2p::PeerId;
     use std::str::FromStr;
@@ -605,9 +605,9 @@ mod tests {
             }],
             output: vec![],
         };
-        let ethereum_tx = crate::ethereum::Transaction {
+        let ethereum_tx = comit::ethereum::Transaction {
             hash: H256::repeat_byte(1),
-            ..crate::ethereum::Transaction::default()
+            ..comit::ethereum::Transaction::default()
         };
 
         let bitcoin_tx = Http(bitcoin_tx);

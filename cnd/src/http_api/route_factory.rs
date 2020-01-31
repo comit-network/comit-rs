@@ -1,9 +1,5 @@
-use crate::{
-    config::settings::AllowedOrigins,
-    http_api,
-    network::LocalPeerId,
-    swap_protocols::{self, Facade, SwapId},
-};
+use crate::{config::settings::AllowedOrigins, http_api, network::LocalPeerId, Facade};
+use comit::swap_protocols::{self, SwapId};
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";

@@ -12,8 +12,9 @@ use crate::{
             rfc003::handlers::{handle_action, handle_get_swap, handle_post_swap},
         },
     },
-    swap_protocols::{rfc003::actions::ActionKind, Facade, SwapId},
+    Facade,
 };
+use comit::swap_protocols::{rfc003::actions::ActionKind, SwapId};
 use warp::{
     http::{self, header},
     Rejection, Reply,

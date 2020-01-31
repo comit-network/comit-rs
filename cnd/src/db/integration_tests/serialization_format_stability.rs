@@ -2,10 +2,8 @@
 /// to interact with the database. Changing the format needs to be a conscious
 /// activity that involves migration scripts to migrate old data. These tests
 /// make sure we don't change the format accidentally!
-use crate::{
-    db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
-    swap_protocols::{rfc003::SecretHash, HashFunction, SwapId},
-};
+use crate::db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis};
+use comit::swap_protocols::{rfc003::SecretHash, HashFunction, SwapId};
 use std::{fmt, str::FromStr};
 
 #[test]

@@ -12,26 +12,26 @@
     clippy::dbg_macro
 )]
 #![forbid(unsafe_code)]
-use crate::cli::Options;
 use anyhow::Context;
 use cnd::{
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    cli,
     config::{self, Settings},
     db::Sqlite,
     http_api::route_factory,
     load_swaps,
     network::Swarm,
+    Facade,
+};
+use comit::{
+    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     seed::RootSeed,
-    swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
+    swap_protocols::rfc003::state_store::InMemoryStateStore,
 };
 use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
 use tokio_compat::runtime;
-
-mod cli;
-mod trace;
 
 fn main() -> anyhow::Result<()> {
     let options = cli::Options::from_args();
@@ -48,7 +48,7 @@ fn main() -> anyhow::Result<()> {
         process::exit(0);
     }
 
-    crate::trace::init_tracing(settings.logging.level)?;
+    cnd::trace::init_tracing(settings.logging.level)?;
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
@@ -134,7 +134,7 @@ async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
-fn read_config(options: &Options) -> anyhow::Result<config::File> {
+fn read_config(options: &cli::Options) -> anyhow::Result<config::File> {
     // if the user specifies a config path, use it
     if let Some(path) = &options.config_file {
         eprintln!("Using config file {}", path.display());

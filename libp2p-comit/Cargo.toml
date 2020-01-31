@@ -23,5 +23,5 @@ tracing = "0.1"
 [dev-dependencies]
 matches = "0.1.8"
 multistream-select = "0.6.0"
-spectral = "0.6"
+spectral = { version = "0.6", default-features = false }
 

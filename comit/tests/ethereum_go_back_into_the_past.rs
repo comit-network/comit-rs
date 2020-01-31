@@ -1,7 +1,7 @@
 pub mod ethereum_helper;
 
 use chrono::NaiveDateTime;
-use cnd::{
+use comit::{
     btsieve::ethereum::{matching_transaction, TransactionPattern},
     ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
 };

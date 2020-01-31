@@ -1,9 +1,9 @@
 use crate::{
     db::{schema, wrapper_types::custom_sql_types::Text, Error, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
-    swap_protocols::{Role, SwapId},
 };
 use async_trait::async_trait;
+use comit::swap_protocols::{rfc003::Swap, Role, SwapId};
 use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
 
@@ -13,23 +13,6 @@ use libp2p::{self, PeerId};
 pub trait Retrieve: Send + Sync + 'static {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Swap>;
     async fn all(&self) -> anyhow::Result<Vec<Swap>>;
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct Swap {
-    pub swap_id: SwapId,
-    pub role: Role,
-    pub counterparty: PeerId,
-}
-
-impl Swap {
-    pub fn new(swap_id: SwapId, role: Role, counterparty: PeerId) -> Swap {
-        Swap {
-            swap_id,
-            role,
-            counterparty,
-        }
-    }
 }
 
 #[async_trait]

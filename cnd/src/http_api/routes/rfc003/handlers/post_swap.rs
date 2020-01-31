@@ -1,22 +1,28 @@
 use crate::{
-    asset::Asset,
-    db::{LoadAcceptedSwap, Save, Sqlite, Swap},
-    ethereum,
+    comit_api::LedgerKind,
+    db::{LoadAcceptedSwap, Save, Sqlite},
     http_api::{HttpAsset, HttpLedger},
     init_swap::init_accepted_swap,
     network::{DialInformation, SendRequest},
+    Facade,
+};
+use anyhow::Context;
+use comit::{
+    asset::Asset,
+    ethereum,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        ledger::{self},
+        ledger::{
+            bitcoin, {self},
+        },
         rfc003::{
             self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
-            DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
+            DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash, Swap,
         },
-        Facade, HashFunction, Role, SwapId,
+        HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
 };
-use anyhow::Context;
 use futures_core::future::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
@@ -387,8 +393,8 @@ async fn initiate_request<AL, BL, AA, BA>(
 ) -> anyhow::Result<()>
 where
     Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
-    AL: Ledger,
-    BL: Ledger,
+    AL: Ledger + Into<LedgerKind>,
+    BL: Ledger + Into<LedgerKind>,
     AA: Asset,
     BA: Asset,
     Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + LoadAcceptedSwap<AL, BL, AA, BA>,
@@ -535,8 +541,8 @@ impl<B: ledger::Bitcoin + 'static> IntoIdentities<B, ledger::Ethereum> for HttpI
                 }
             };
 
-        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
-            &*crate::SECP,
+        let alpha_ledger_refund_identity = comit::bitcoin::PublicKey::from_secret_key(
+            &*comit::SECP,
             &secret_source.derive_refund_identity(),
         );
 
@@ -547,41 +553,66 @@ impl<B: ledger::Bitcoin + 'static> IntoIdentities<B, ledger::Ethereum> for HttpI
     }
 }
 
-impl<B: ledger::Bitcoin + 'static> IntoIdentities<ledger::Ethereum, B> for HttpIdentities {
+impl IntoIdentities<ledger::Ethereum, bitcoin::Mainnet> for HttpIdentities {
     fn into_identities(
         self,
         secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<ledger::Ethereum, B>> {
-        let HttpIdentities {
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-        } = self;
-
-        let alpha_ledger_refund_identity =
-            match (alpha_ledger_refund_identity, beta_ledger_redeem_identity) {
-                (Some(alpha_ledger_refund_identity), None) => alpha_ledger_refund_identity,
-                (_, Some(_)) => {
-                    return Err(anyhow::Error::from(UnexpectedIdentity {
-                        kind: IdentityKind::BetaLedgerRedeemIdentity,
-                    }))
-                }
-                (None, _) => {
-                    return Err(anyhow::Error::from(MissingIdentity {
-                        kind: IdentityKind::AlphaLedgerRefundIdentity,
-                    }))
-                }
-            };
-
-        let beta_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
-            &*crate::SECP,
-            &secret_source.derive_redeem_identity(),
-        );
-
-        Ok(Identities {
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-        })
+    ) -> anyhow::Result<Identities<ledger::Ethereum, bitcoin::Mainnet>> {
+        into_identities(self, secret_source)
     }
+}
+
+impl IntoIdentities<ledger::Ethereum, bitcoin::Testnet> for HttpIdentities {
+    fn into_identities(
+        self,
+        secret_source: &dyn DeriveIdentities,
+    ) -> anyhow::Result<Identities<ledger::Ethereum, bitcoin::Testnet>> {
+        into_identities(self, secret_source)
+    }
+}
+
+impl IntoIdentities<ledger::Ethereum, bitcoin::Regtest> for HttpIdentities {
+    fn into_identities(
+        self,
+        secret_source: &dyn DeriveIdentities,
+    ) -> anyhow::Result<Identities<ledger::Ethereum, bitcoin::Regtest>> {
+        into_identities(self, secret_source)
+    }
+}
+
+fn into_identities<B: ledger::Bitcoin>(
+    http_identities: HttpIdentities,
+    secret_source: &dyn DeriveIdentities,
+) -> anyhow::Result<Identities<ledger::Ethereum, B>> {
+    let HttpIdentities {
+        alpha_ledger_refund_identity,
+        beta_ledger_redeem_identity,
+    } = http_identities;
+
+    let alpha_ledger_refund_identity =
+        match (alpha_ledger_refund_identity, beta_ledger_redeem_identity) {
+            (Some(alpha_ledger_refund_identity), None) => alpha_ledger_refund_identity,
+            (_, Some(_)) => {
+                return Err(anyhow::Error::from(UnexpectedIdentity {
+                    kind: IdentityKind::BetaLedgerRedeemIdentity,
+                }))
+            }
+            (None, _) => {
+                return Err(anyhow::Error::from(MissingIdentity {
+                    kind: IdentityKind::AlphaLedgerRefundIdentity,
+                }))
+            }
+        };
+
+    let beta_ledger_redeem_identity = comit::bitcoin::PublicKey::from_secret_key(
+        &*comit::SECP,
+        &secret_source.derive_redeem_identity(),
+    );
+
+    Ok(Identities {
+        alpha_ledger_refund_identity,
+        beta_ledger_redeem_identity,
+    })
 }
 
 fn default_alpha_expiry() -> Timestamp {
@@ -595,7 +626,8 @@ fn default_beta_expiry() -> Timestamp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
+    use crate::network::DialInformation;
+    use comit::swap_protocols::ledger::ethereum::ChainId;
     use spectral::prelude::*;
 
     #[test]

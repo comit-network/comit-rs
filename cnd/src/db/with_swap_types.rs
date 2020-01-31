@@ -1,6 +1,6 @@
 macro_rules! _match_role {
     ($role:ident, $fn:expr) => {{
-        use crate::swap_protocols::{
+        use comit::swap_protocols::{
             rfc003::{alice, bob},
             Role,
         };
@@ -24,9 +24,9 @@ macro_rules! _match_role {
 #[macro_export]
 macro_rules! with_swap_types {
     ($swap_types:expr, $fn:expr) => {{
-        use crate::{
+        use crate::db::{AssetKind, LedgerKind, SwapTypes};
+        use comit::{
             asset,
-            db::{AssetKind, LedgerKind, SwapTypes},
             swap_protocols::ledger::{bitcoin, Ethereum},
         };
         let swap_types: SwapTypes = $swap_types;

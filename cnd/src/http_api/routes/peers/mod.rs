@@ -1,4 +1,4 @@
-use crate::{http_api::Http, network::ComitPeers, swap_protocols::Facade};
+use crate::{http_api::Http, network::ComitPeers, Facade};
 use libp2p::{Multiaddr, PeerId};
 use serde::Serialize;
 use warp::{Rejection, Reply};

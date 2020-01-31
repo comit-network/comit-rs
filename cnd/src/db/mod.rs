@@ -12,17 +12,9 @@ mod swap_types;
 pub mod with_swap_types;
 embed_migrations!("./migrations");
 
-pub use self::{
-    load_swaps::{AcceptedSwap, LoadAcceptedSwap},
-    save::*,
-    swap::*,
-    swap_types::*,
-};
-
-use crate::{
-    db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{Role, SwapId},
-};
+pub use self::{load_swaps::LoadAcceptedSwap, save::*, swap::*, swap_types::*};
+use crate::db::wrapper_types::custom_sql_types::Text;
+use comit::swap_protocols::{Role, SwapId};
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{
     ffi::OsStr,

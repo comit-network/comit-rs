@@ -1,8 +1,10 @@
-use crate::{
+use crate::http_api::{
+    ethereum_network, problem, Http, MissingQueryParameters, UnexpectedQueryParameters,
+};
+use anyhow::Context;
+use comit::{
     asset,
-    http_api::{
-        ethereum_network, problem, Http, MissingQueryParameters, UnexpectedQueryParameters,
-    },
+    contracts::bitcoin::witness,
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -12,8 +14,6 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use anyhow::Context;
-use blockchain_contracts::bitcoin::witness;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
 use std::convert::{Infallible, TryInto};
@@ -54,17 +54,17 @@ pub enum ActionResponseBody {
         min_median_block_time: Option<Timestamp>,
     },
     EthereumDeployContract {
-        data: crate::ethereum::Bytes,
+        data: comit::ethereum::Bytes,
         amount: asset::Ether,
-        gas_limit: crate::ethereum::U256,
+        gas_limit: comit::ethereum::U256,
         network: ethereum_network::Network,
         chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
-        contract_address: crate::ethereum::Address,
+        contract_address: comit::ethereum::Address,
         #[serde(skip_serializing_if = "Option::is_none")]
-        data: Option<crate::ethereum::Bytes>,
-        gas_limit: crate::ethereum::U256,
+        data: Option<comit::ethereum::Bytes>,
+        gas_limit: comit::ethereum::U256,
         chain_id: ledger::ethereum::ChainId,
         network: ethereum_network::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
@@ -157,7 +157,7 @@ impl IntoResponsePayload for SpendOutput {
                 let network = self.network;
                 let transaction =
                     self.spend_to(address)
-                        .sign_with_rate(&*crate::SECP, fee_per_wu)
+                        .sign_with_rate(&*comit::SECP, fee_per_wu)
                         .map_err(|e| {
                             tracing::error!("Could not sign Bitcoin transaction: {:?}", e);
                             match e {
@@ -316,11 +316,11 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
+    use bitcoin::Address as BitcoinAddress;
+    use comit::{
         ethereum::{Address as EthereumAddress, U256},
         swap_protocols::ledger::ethereum::ChainId,
     };
-    use bitcoin::Address as BitcoinAddress;
     use std::str::FromStr;
 
     #[test]

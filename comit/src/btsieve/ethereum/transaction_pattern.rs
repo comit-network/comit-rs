@@ -172,41 +172,11 @@ pub struct Event {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        ethereum::{
-            Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
-        },
-        quickcheck::Quickcheck,
+    use crate::ethereum::{
+        Address, Block, Bytes, Log, Transaction, TransactionReceipt, H160, H2048, H256,
     };
     use spectral::prelude::*;
     use std::str::FromStr;
-
-    #[test]
-    fn given_pattern_from_arbitrary_address_contract_creation_transaction_matches() {
-        fn prop(from_address: Quickcheck<Address>, transaction: Quickcheck<Transaction>) -> bool {
-            let from_address = from_address.0;
-
-            let pattern = TransactionPattern {
-                from_address: Some(from_address),
-                to_address: None,
-                is_contract_creation: Some(true),
-                transaction_data: None,
-                transaction_data_length: None,
-                events: None,
-            };
-
-            let mut transaction = transaction.0;
-
-            transaction.from = from_address;
-            transaction.to = None;
-
-            let receipt = TransactionReceipt::default();
-
-            pattern.matches(&transaction, Some(&receipt))
-        }
-
-        quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
-    }
 
     #[test]
     fn given_pattern_from_address_doesnt_match() {

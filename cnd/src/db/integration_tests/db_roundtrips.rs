@@ -1,19 +1,23 @@
 use crate::{
-    asset::{Bitcoin as BitcoinAsset, Erc20, Ether},
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
+        AssetKind, LedgerKind, Retrieve, Save, Sqlite,
     },
     quickcheck::Quickcheck,
+};
+use comit::{
+    asset::{Bitcoin as BitcoinAsset, Erc20, Ether},
     swap_protocols::{
-        ledger::Ethereum,
-        rfc003::{Accept, Request},
+        ledger::{
+            bitcoin::{Mainnet, Regtest, Testnet},
+            Ethereum,
+        },
+        rfc003::{Accept, Request, Swap},
     },
 };
 use std::path::Path;
 
-use crate::swap_protocols::ledger::bitcoin::{Mainnet, Regtest, Testnet};
 macro_rules! db_roundtrip_test {
     ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $expected_swap_types_fn:expr) => {
         paste::item! {

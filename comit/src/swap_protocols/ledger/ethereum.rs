@@ -1,4 +1,3 @@
-use crate::comit_api::LedgerKind;
 use serde::{Deserialize, Serialize};
 
 /// `network` is only kept for backward compatibility with client
@@ -19,12 +18,6 @@ impl Default for Ethereum {
         Ethereum {
             chain_id: ChainId::regtest(),
         }
-    }
-}
-
-impl From<Ethereum> for LedgerKind {
-    fn from(ethereum: Ethereum) -> Self {
-        LedgerKind::Ethereum(ethereum)
     }
 }
 

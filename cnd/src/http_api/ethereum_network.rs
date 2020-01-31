@@ -1,4 +1,4 @@
-use crate::swap_protocols::ledger::ethereum::ChainId;
+use comit::swap_protocols::ledger::ethereum::ChainId;
 use serde::{Deserialize, Serialize};
 use std::convert::TryFrom;
 

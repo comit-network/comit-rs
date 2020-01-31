@@ -1,13 +1,12 @@
 use crate::{
     asset::Asset,
-    db::AcceptedSwap,
     swap_protocols::{
         rfc003::{
             self,
             events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
             ledger::Ledger,
             state_store::StateStore,
-            Accept, ActorState, Request, SecretHash,
+            Accept, AcceptedSwap, ActorState, Request, SecretHash,
         },
         HashFunction,
     },

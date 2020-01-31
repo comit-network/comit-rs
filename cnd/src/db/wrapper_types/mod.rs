@@ -1,4 +1,5 @@
-use crate::{asset, asset::Bitcoin, db::LedgerKind, ethereum, swap_protocols::ledger};
+use crate::db::LedgerKind;
+use comit::{asset, asset::Bitcoin, ethereum, swap_protocols::ledger};
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;
@@ -54,7 +55,7 @@ impl From<asset::Ether> for Ether {
 }
 
 impl FromStr for Ether {
-    type Err = crate::asset::ethereum::Error;
+    type Err = comit::asset::ethereum::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         asset::Ether::from_wei_dec_str(s).map(Ether)
@@ -83,7 +84,7 @@ impl From<asset::Erc20Quantity> for Erc20Amount {
 }
 
 impl FromStr for Erc20Amount {
-    type Err = crate::asset::ethereum::Error;
+    type Err = comit::asset::ethereum::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         asset::Erc20Quantity::from_wei_dec_str(s).map(Erc20Amount)

@@ -1,24 +1,25 @@
-use crate::{
-    asset::{self, Asset},
-    db::{
-        schema,
-        wrapper_types::{
-            custom_sql_types::{Text, U32},
-            BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
-        },
-        Sqlite,
+use crate::db::{
+    schema,
+    wrapper_types::{
+        custom_sql_types::{Text, U32},
+        BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
     },
+    Sqlite,
+};
+use async_trait::async_trait;
+use chrono::NaiveDateTime;
+use comit::{
+    asset::{self, Asset},
+    bitcoin,
     swap_protocols::{
         ledger::{self, Ethereum},
         rfc003::{
             messages::{Accept, Request},
-            Ledger, SecretHash,
+            AcceptedSwap, Ledger, SecretHash,
         },
         HashFunction, SwapId,
     },
 };
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
 use schema::{
     rfc003_bitcoin_ethereum_accept_messages,
@@ -28,8 +29,6 @@ use schema::{
     rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages,
     rfc003_ethereum_bitcoin_ether_bitcoin_request_messages,
 };
-
-pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>, NaiveDateTime);
 
 #[async_trait]
 pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
@@ -93,7 +92,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
                 alpha_asset: record.bitcoin_amount.0.into(),
                 beta_asset: record.ether_amount.0.into(),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -101,7 +100,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -170,7 +169,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
                 alpha_asset: record.bitcoin_amount.0.into(),
                 beta_asset: record.ether_amount.0.into(),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -178,7 +177,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -247,7 +246,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
                 alpha_asset: record.bitcoin_amount.0.into(),
                 beta_asset: record.ether_amount.0.into(),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -255,7 +254,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -346,7 +345,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -354,7 +353,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )
@@ -423,7 +422,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -431,7 +430,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )
@@ -500,7 +499,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -508,7 +507,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )
@@ -601,7 +600,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
                     record.erc20_amount.0.into(),
                 ),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.0.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -609,7 +608,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -682,7 +681,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
                     record.erc20_amount.0.into(),
                 ),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.0.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -690,7 +689,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -763,7 +762,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
                     record.erc20_amount.0.into(),
                 ),
                 hash_function: *record.hash_function,
-                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                alpha_ledger_refund_identity: record.bitcoin_refund_identity.0,
                 beta_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
                 alpha_expiry: record.bitcoin_expiry.0.into(),
                 beta_expiry: record.ethereum_expiry.0.into(),
@@ -771,7 +770,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
             },
             Accept {
                 swap_id: *record.swap_id,
-                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                alpha_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 beta_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
             },
             record.at,
@@ -867,7 +866,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -875,7 +874,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )
@@ -948,7 +947,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -956,7 +955,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )
@@ -1029,7 +1028,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
                 alpha_ledger_refund_identity: record.ethereum_refund_identity.0.into(),
-                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0.into(),
+                beta_ledger_redeem_identity: record.bitcoin_redeem_identity.0,
                 alpha_expiry: record.ethereum_expiry.0.into(),
                 beta_expiry: record.bitcoin_expiry.0.into(),
                 secret_hash: *record.secret_hash,
@@ -1037,7 +1036,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
             Accept {
                 swap_id: *record.swap_id,
                 alpha_ledger_redeem_identity: record.ethereum_redeem_identity.0.into(),
-                beta_ledger_refund_identity: record.bitcoin_refund_identity.0.into(),
+                beta_ledger_refund_identity: record.bitcoin_refund_identity.0,
             },
             record.at,
         )

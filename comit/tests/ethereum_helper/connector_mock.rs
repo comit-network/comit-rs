@@ -1,4 +1,4 @@
-use cnd::{
+use comit::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
     ethereum::{Block, Transaction, TransactionReceipt, H256},
 };

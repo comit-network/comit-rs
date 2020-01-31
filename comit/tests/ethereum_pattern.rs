@@ -1,6 +1,6 @@
 pub mod ethereum_helper;
 
-use cnd::{
+use comit::{
     btsieve::ethereum::{Event, Topic, TransactionPattern},
     ethereum::{Address, Block, Bytes, Transaction, TransactionReceipt},
 };

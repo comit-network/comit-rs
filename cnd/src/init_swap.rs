@@ -1,9 +1,11 @@
-use crate::{
+use comit::{
     asset::Asset,
-    db::AcceptedSwap,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        rfc003::{alice, bob, create_swap, events::HtlcEvents, state_store::StateStore, Ledger},
+        rfc003::{
+            alice, bob, create_swap, events::HtlcEvents, state_store::StateStore, AcceptedSwap,
+            Ledger,
+        },
         Role,
     },
 };

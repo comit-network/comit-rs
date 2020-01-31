@@ -1,0 +1,64 @@
+[package]
+authors = ["CoBloX developers <team@coblox.tech>"]
+name = "comit"
+version = "0.1.0"
+edition = "2018"
+description = "Reference implementation of a COMIT protocol."
+
+[dependencies]
+anyhow = "1"
+async-trait = "0.1"
+bigdecimal = "0.1.0"
+bitcoin = { version = "0.19.1", features = ["use-serde"] }
+blockchain_contracts = "0.1"
+chrono = { version = "0.4" }
+ethbloom = "0.6.4"
+futures = { version = "0.1" }
+futures-core = { version = "0.3", features = ["compat", "async-await"], default-features = false, package = "futures" }
+hex = "0.4"
+lazy_static = "1"
+lru = "0.4.3"
+genawaiter = "0.2"
+num = "0.2"
+paste = "0.1"
+rand = "0.7"
+reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
+sha2 = "0.8"
+strum = "0.17"
+strum_macros = "0.17"
+thiserror = "1"
+tiny-keccak = { version = "2.0", features = ["keccak"] }
+toml = "0.5"
+serde = { version = "1", features = ["derive"] }
+uuid = { version = "0.8", features = ["serde", "v4"] }
+derivative = "1"
+tokio = { version = "0.2", features = ["time", "sync"] }
+pem = "0.7"
+tracing = "0.1"
+ambassador = "0.2"
+serdebug = "1"
+serde_json = "1"
+libp2p = "0.13"
+quickcheck = { version = "0.9", optional = true }
+
+# These versions need to be "in sync".
+# web3 0.8 gives us primitive-types 0.3.0
+# primitive-types 0.3.0 with the "rlp" feature gives us "rlp" version 0.4.2
+[dependencies.web3]
+default-features = false
+version = "0.8"
+
+[dependencies.primitive-types]
+features = ["rlp"]
+version = "0.3.0"
+
+[dependencies.rlp]
+version = "0.4.2"
+
+[dev-dependencies]
+quickcheck = "0.9"
+spectral = { version = "0.6", default-features = false }
+base64 = "0.11"
+tempfile = "3.1.0"
+testcontainers = "0.8"
+bitcoincore-rpc = "0.8.0-rc1"

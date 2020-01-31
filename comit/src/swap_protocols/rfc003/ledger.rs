@@ -1,20 +1,8 @@
-use crate::swap_protocols::LedgerKind;
 use serde::{de::DeserializeOwned, Serialize};
 use std::{fmt::Debug, hash::Hash};
 
 pub trait Ledger:
-    Clone
-    + Copy
-    + Debug
-    + Send
-    + Sync
-    + 'static
-    + Default
-    + PartialEq
-    + Eq
-    + Hash
-    + Into<LedgerKind>
-    + Sized
+    Clone + Copy + Debug + Send + Sync + 'static + Default + PartialEq + Eq + Hash + Sized
 {
     type HtlcLocation: PartialEq + Debug + Clone + DeserializeOwned + Serialize + Send + Sync;
     type Identity: Clone
