@@ -10,7 +10,10 @@ use crate::{
     },
     timestamp::Timestamp,
 };
-use bitcoin::hashes::{sha256d, Hash};
+use bitcoin::{
+    hashes::{sha256d, Hash},
+    secp256k1,
+};
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
@@ -147,7 +150,10 @@ impl Arbitrary for Quickcheck<crate::bitcoin::PublicKey> {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
         let secret_key = bitcoin::secp256k1::SecretKey::from_slice(&bytes)
             .expect("all bytes are a valid secret key");
-        let public_key = crate::bitcoin::PublicKey::from_secret_key(&*crate::SECP, &secret_key);
+        let public_key = crate::bitcoin::PublicKey::from_secret_key(
+            &secp256k1::Secp256k1::signing_only(),
+            &secret_key,
+        );
 
         Quickcheck(public_key)
     }
