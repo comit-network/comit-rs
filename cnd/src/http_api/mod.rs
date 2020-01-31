@@ -9,7 +9,7 @@ mod swap_resource;
 
 pub use self::{
     problem::*,
-    swap_resource::{SwapParameters, SwapResource, SwapStatus},
+    swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 
 pub const PATH: &str = "swaps";

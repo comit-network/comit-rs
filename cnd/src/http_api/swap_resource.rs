@@ -108,35 +108,21 @@ pub enum IncludeState {
     No,
 }
 
-/// Build siren entity. For failed swaps do not return any actions.
-pub fn build_rfc003_siren_entity_no_err<S: StateStore>(
-    state_store: &S,
-    swap: Swap,
-    types: SwapTypes,
-    include_state: IncludeState,
-) -> anyhow::Result<siren::Entity> {
-    build_rfc003_siren_entity(state_store, swap, types, include_state, false)
-}
-
-/// Build siren entity. For failed swaps return 500 error.
-pub fn build_rfc003_siren_entity_err<S: StateStore>(
-    state_store: &S,
-    swap: Swap,
-    types: SwapTypes,
-    include_state: IncludeState,
-) -> anyhow::Result<siren::Entity> {
-    build_rfc003_siren_entity(state_store, swap, types, include_state, true)
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum OnFail {
+    Error,
+    NoAction,
 }
 
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
-fn build_rfc003_siren_entity<S: StateStore>(
+pub fn build_rfc003_siren_entity<S: StateStore>(
     state_store: &S,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
-    return_500_error: bool,
+    on_fail: OnFail,
 ) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
@@ -145,7 +131,7 @@ fn build_rfc003_siren_entity<S: StateStore>(
             .get::<ROLE>(&id)?
             .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
 
-        if state.swap_failed() && return_500_error {
+        if on_fail == OnFail::Error && state.swap_failed() {
             return Err(anyhow!(HttpApiProblem::with_title_and_type_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
             )));
@@ -197,7 +183,7 @@ fn build_rfc003_siren_entity<S: StateStore>(
                 .with_class_member("protocol-spec"),
             );
 
-        if !state.swap_failed() {
+        if on_fail == OnFail::NoAction {
             let entity = actions.into_iter().fold(entity, |acc, action| {
                 let action = action.to_siren_action(&id);
                 acc.with_action(action)
