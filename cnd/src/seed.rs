@@ -1,7 +1,6 @@
 use crate::swap_protocols::SwapId;
 use pem::{encode, Pem};
 use rand::Rng;
-use serde::{Deserialize, Serialize};
 use sha2::{Digest, Sha256};
 use std::{
     ffi::OsStr,
@@ -32,8 +31,8 @@ impl DeriveSwapSeed for RootSeed {
 
 const SEED_LENGTH: usize = 32;
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
-struct Seed(#[serde(with = "hex_serde")] [u8; SEED_LENGTH]);
+#[derive(Clone, Copy, PartialEq)]
+struct Seed([u8; SEED_LENGTH]);
 
 impl fmt::Debug for Seed {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -65,7 +64,7 @@ impl From<[u8; SEED_LENGTH]> for Seed {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct RootSeed(Seed);
 
 impl fmt::Debug for RootSeed {
@@ -80,7 +79,7 @@ impl fmt::Display for RootSeed {
     }
 }
 
-#[derive(Clone, Copy, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Copy, PartialEq)]
 pub struct SwapSeed(Seed);
 
 impl fmt::Debug for SwapSeed {
