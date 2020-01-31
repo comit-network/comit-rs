@@ -679,6 +679,11 @@ export class Actor {
 
         return defaultBetaAssetKind;
     }
+
+    public cndHttpApiUrl() {
+        const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${cndSocket.address}:${cndSocket.port}`;
+    }
 }
 
 function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {

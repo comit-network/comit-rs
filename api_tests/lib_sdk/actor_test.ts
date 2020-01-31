@@ -1,7 +1,8 @@
 import { Actors } from "./actors";
 import { createActors } from "./create_actors";
 import { timeout } from "./utils";
-
+import { Actor } from "./actors/actor";
+import { createActor } from "./create_actor";
 /*
  * Instantiates a new e2e test based on two actors
  *
@@ -27,6 +28,31 @@ export function twoActorTest(
         } finally {
             actors.alice.stop();
             actors.bob.stop();
+        }
+    });
+}
+
+/*
+ * Instantiates a new e2e test based on one actor
+ *
+ * This test function will take care of instantiating the actor and tearing it down again after the test, regardless if the test succeeded or failed.
+ */
+export function oneActorTest(
+    name: string,
+    testFn: (actor: Actor) => Promise<void>
+) {
+    it(name, async function() {
+        this.timeout(100_000); // absurd timeout. we have our own one further down
+
+        const alice = await createActor(`${name}.log`);
+        try {
+            await timeout(60000, testFn(alice));
+        } catch (e) {
+            await alice.dumpState();
+
+            throw e;
+        } finally {
+            alice.stop();
         }
     });
 }
