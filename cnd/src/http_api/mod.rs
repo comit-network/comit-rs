@@ -22,8 +22,7 @@ use crate::{
         SwapId, SwapProtocol,
     },
 };
-use libp2p::PeerId;
-use libp2p_core::Multiaddr;
+use libp2p::{Multiaddr, PeerId};
 use serde::{
     de::{self, Error as _, MapAccess},
     ser::SerializeStruct,
