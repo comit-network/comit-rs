@@ -463,8 +463,6 @@ dependencies = [
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
  "lru 0.4.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "matches 0.1.8 (registry+https://github.com/rust-lang/crates.io-index)",
- "mime 0.3.16 (registry+https://github.com/rust-lang/crates.io-index)",
- "mime_guess 2.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "num 0.2.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "paste 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "pem 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
