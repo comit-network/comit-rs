@@ -37,7 +37,7 @@ impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin>> for BitcoinHtlc {
     }
 }
 
-impl<B: ledger::Bitcoin> HtlcParams<B, asset::Bitcoin> {
+impl<B: ledger::Bitcoin + ledger::bitcoin::Network> HtlcParams<B, asset::Bitcoin> {
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(B::network())
     }

@@ -1,5 +1,4 @@
 use crate::comit_api::LedgerKind;
-use bitcoin::Network;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Mainnet;
@@ -11,42 +10,47 @@ pub struct Testnet;
 pub struct Regtest;
 
 pub trait Bitcoin:
-    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + 'static
+    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + Into<LedgerKind> + 'static
 {
-    fn into_ledger_kind(self) -> LedgerKind;
+}
+
+pub trait Network {
     fn network() -> ::bitcoin::Network;
 }
 
-impl Bitcoin for Mainnet {
-    fn into_ledger_kind(self) -> LedgerKind {
+impl Bitcoin for Mainnet {}
+
+impl From<Mainnet> for LedgerKind {
+    fn from(_: Mainnet) -> Self {
         LedgerKind::BitcoinMainnet
     }
-
-    fn network() -> Network {
+}
+impl Network for Mainnet {
+    fn network() -> ::bitcoin::Network {
         ::bitcoin::Network::Bitcoin
     }
 }
-impl Bitcoin for Testnet {
-    fn into_ledger_kind(self) -> LedgerKind {
+impl Bitcoin for Testnet {}
+
+impl From<Testnet> for LedgerKind {
+    fn from(_: Testnet) -> Self {
         LedgerKind::BitcoinTestnet
     }
-
-    fn network() -> Network {
+}
+impl Network for Testnet {
+    fn network() -> ::bitcoin::Network {
         ::bitcoin::Network::Testnet
     }
 }
-impl Bitcoin for Regtest {
-    fn into_ledger_kind(self) -> LedgerKind {
+
+impl Bitcoin for Regtest {}
+impl From<Regtest> for LedgerKind {
+    fn from(_: Regtest) -> Self {
         LedgerKind::BitcoinRegtest
     }
-
-    fn network() -> Network {
-        ::bitcoin::Network::Regtest
-    }
 }
-
-impl<B: Bitcoin> From<B> for LedgerKind {
-    fn from(ledger: B) -> Self {
-        ledger.into_ledger_kind()
+impl Network for Regtest {
+    fn network() -> ::bitcoin::Network {
+        ::bitcoin::Network::Regtest
     }
 }

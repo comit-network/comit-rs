@@ -13,7 +13,9 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B: ledger::Bitcoin> FundAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
+impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin>
+    for (B, asset::Bitcoin)
+{
     type FundActionOutput = SendToAddress;
 
     fn fund_action(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self::FundActionOutput {
@@ -27,7 +29,9 @@ impl<B: ledger::Bitcoin> FundAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
     }
 }
 
-impl<B: ledger::Bitcoin> RefundAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
+impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitcoin>
+    for (B, asset::Bitcoin)
+{
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
@@ -49,7 +53,9 @@ impl<B: ledger::Bitcoin> RefundAction<B, asset::Bitcoin> for (B, asset::Bitcoin)
     }
 }
 
-impl<B: ledger::Bitcoin> RedeemAction<B, asset::Bitcoin> for (B, asset::Bitcoin) {
+impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RedeemAction<B, asset::Bitcoin>
+    for (B, asset::Bitcoin)
+{
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
