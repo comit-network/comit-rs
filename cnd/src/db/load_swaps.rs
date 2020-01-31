@@ -86,7 +86,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Regtest::default(),
+                alpha_ledger: bitcoin::Regtest,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -162,7 +162,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Testnet::default(),
+                alpha_ledger: bitcoin::Testnet,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -238,7 +238,7 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Mainnet::default(),
+                alpha_ledger: bitcoin::Mainnet,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -338,7 +338,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Regtest::default(),
+                beta_ledger: bitcoin::Regtest,
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -414,7 +414,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Testnet::default(),
+                beta_ledger: bitcoin::Testnet,
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -490,7 +490,7 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Mainnet::default(),
+                beta_ledger: bitcoin::Mainnet,
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -585,7 +585,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Regtest::default(),
+                alpha_ledger: bitcoin::Regtest,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -665,7 +665,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Testnet::default(),
+                alpha_ledger: bitcoin::Testnet,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -745,7 +745,7 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: bitcoin::Mainnet::default(),
+                alpha_ledger: bitcoin::Mainnet,
                 beta_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
@@ -850,7 +850,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Regtest::default(),
+                beta_ledger: bitcoin::Regtest,
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -930,7 +930,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Testnet::default(),
+                beta_ledger: bitcoin::Testnet,
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -1010,7 +1010,7 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
                 alpha_ledger: Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: bitcoin::Mainnet::default(),
+                beta_ledger: bitcoin::Mainnet,
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),

@@ -271,7 +271,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Regtest::default(),
+                                ledger::bitcoin::Regtest,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -297,7 +297,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Testnet::default(),
+                                ledger::bitcoin::Testnet,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -323,7 +323,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Mainnet::default(),
+                                ledger::bitcoin::Mainnet,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -350,7 +350,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Regtest::default(),
+                                ledger::bitcoin::Regtest,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -376,7 +376,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Testnet::default(),
+                                ledger::bitcoin::Testnet,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -402,7 +402,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Mainnet::default(),
+                                ledger::bitcoin::Mainnet,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -427,7 +427,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Regtest::default(),
+                                ledger::bitcoin::Regtest,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -454,7 +454,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Testnet::default(),
+                                ledger::bitcoin::Testnet,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -481,7 +481,7 @@ async fn handle_request(
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Mainnet::default(),
+                                ledger::bitcoin::Mainnet,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -509,7 +509,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Regtest::default(),
+                                ledger::bitcoin::Regtest,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -535,7 +535,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Testnet::default(),
+                                ledger::bitcoin::Testnet,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -561,7 +561,7 @@ async fn handle_request(
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Mainnet::default(),
+                                ledger::bitcoin::Mainnet,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,

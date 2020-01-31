@@ -1,18 +1,16 @@
 use crate::comit_api::LedgerKind;
 use bitcoin::Network;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Mainnet;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Testnet;
 
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Regtest;
 
-pub trait Bitcoin:
-    Sized + Default + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send
-{
+pub trait Bitcoin: Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send {
     fn into_ledger_kind(self) -> LedgerKind;
     fn network() -> ::bitcoin::Network;
 }
