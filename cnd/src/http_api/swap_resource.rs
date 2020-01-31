@@ -108,7 +108,7 @@ pub enum IncludeState {
     No,
 }
 
-/// Build siren entity.  For failed swaps do not return any actions.
+/// Build siren entity. For failed swaps do not return any actions.
 pub fn build_rfc003_siren_entity_no_err<S: StateStore>(
     state_store: &S,
     swap: Swap,
@@ -118,7 +118,7 @@ pub fn build_rfc003_siren_entity_no_err<S: StateStore>(
     build_rfc003_siren_entity(state_store, swap, types, include_state, false)
 }
 
-/// Build siren entity.  For failed swaps return 500 error.
+/// Build siren entity. For failed swaps return 500 error.
 pub fn build_rfc003_siren_entity_err<S: StateStore>(
     state_store: &S,
     swap: Swap,
