@@ -132,20 +132,31 @@ pub struct SwapTypes {
     pub role: Role,
 }
 
-#[derive(Debug, Clone, Copy, Display, EnumString, PartialEq)]
+#[derive(Debug, Clone, Copy, Display, PartialEq)]
+pub enum BitcoinLedgerKind {
+    Mainnet,
+    Testnet,
+    Regtest,
+}
+
+#[derive(Debug, Clone, Copy, Display, PartialEq)]
 pub enum LedgerKind {
-    BitcoinMainnet,
-    BitcoinTestnet,
-    BitcoinRegtest,
+    Bitcoin(BitcoinLedgerKind),
     Ethereum,
 }
 
 impl From<comit_api::LedgerKind> for LedgerKind {
     fn from(ledger: comit_api::LedgerKind) -> LedgerKind {
         match ledger {
-            comit_api::LedgerKind::BitcoinMainnet => LedgerKind::BitcoinMainnet,
-            comit_api::LedgerKind::BitcoinTestnet => LedgerKind::BitcoinTestnet,
-            comit_api::LedgerKind::BitcoinRegtest => LedgerKind::BitcoinRegtest,
+            comit_api::LedgerKind::BitcoinMainnet => {
+                LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet)
+            }
+            comit_api::LedgerKind::BitcoinTestnet => {
+                LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet)
+            }
+            comit_api::LedgerKind::BitcoinRegtest => {
+                LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest)
+            }
             comit_api::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
         }
     }

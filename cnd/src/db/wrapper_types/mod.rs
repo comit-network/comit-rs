@@ -165,6 +165,7 @@ macro_rules! impl_from_for_bitcoinnetwork {
     };
 }
 
+use crate::db::BitcoinLedgerKind;
 use ledger::bitcoin::{Mainnet, Regtest, Testnet};
 impl_from_for_bitcoinnetwork!(Mainnet);
 impl_from_for_bitcoinnetwork!(Testnet);
@@ -173,9 +174,9 @@ impl_from_for_bitcoinnetwork!(Regtest);
 impl From<BitcoinNetwork> for LedgerKind {
     fn from(network: BitcoinNetwork) -> Self {
         match network {
-            BitcoinNetwork::Mainnet => LedgerKind::BitcoinMainnet,
-            BitcoinNetwork::Testnet => LedgerKind::BitcoinTestnet,
-            BitcoinNetwork::Regtest => LedgerKind::BitcoinRegtest,
+            BitcoinNetwork::Mainnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            BitcoinNetwork::Testnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
+            BitcoinNetwork::Regtest => LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
         }
     }
 }

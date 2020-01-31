@@ -3,7 +3,7 @@ use crate::{
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
+        AssetKind, BitcoinLedgerKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
     },
     quickcheck::Quickcheck,
     swap_protocols::{
@@ -81,7 +81,7 @@ macro_rules! db_roundtrip_test {
 
 db_roundtrip_test!(Regtest, Ethereum, BitcoinAsset, Ether, |role| {
     SwapTypes {
-        alpha_ledger: LedgerKind::BitcoinRegtest,
+        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
         beta_ledger: LedgerKind::Ethereum,
         alpha_asset: AssetKind::Bitcoin,
         beta_asset: AssetKind::Ether,
@@ -90,7 +90,7 @@ db_roundtrip_test!(Regtest, Ethereum, BitcoinAsset, Ether, |role| {
 });
 db_roundtrip_test!(Testnet, Ethereum, BitcoinAsset, Ether, |role| {
     SwapTypes {
-        alpha_ledger: LedgerKind::BitcoinTestnet,
+        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
         beta_ledger: LedgerKind::Ethereum,
         alpha_asset: AssetKind::Bitcoin,
         beta_asset: AssetKind::Ether,
@@ -99,7 +99,7 @@ db_roundtrip_test!(Testnet, Ethereum, BitcoinAsset, Ether, |role| {
 });
 db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Ether, |role| {
     SwapTypes {
-        alpha_ledger: LedgerKind::BitcoinMainnet,
+        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
         beta_ledger: LedgerKind::Ethereum,
         alpha_asset: AssetKind::Bitcoin,
         beta_asset: AssetKind::Ether,
@@ -109,7 +109,7 @@ db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Ether, |role| {
 db_roundtrip_test!(Ethereum, Mainnet, Ether, BitcoinAsset, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Ethereum,
-        beta_ledger: LedgerKind::BitcoinMainnet,
+        beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
         alpha_asset: AssetKind::Ether,
         beta_asset: AssetKind::Bitcoin,
         role,
@@ -117,7 +117,7 @@ db_roundtrip_test!(Ethereum, Mainnet, Ether, BitcoinAsset, |role| {
 });
 db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Erc20, |role| {
     SwapTypes {
-        alpha_ledger: LedgerKind::BitcoinMainnet,
+        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
         beta_ledger: LedgerKind::Ethereum,
         alpha_asset: AssetKind::Bitcoin,
         beta_asset: AssetKind::Erc20,
@@ -127,7 +127,7 @@ db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Erc20, |role| {
 db_roundtrip_test!(Ethereum, Mainnet, Erc20, BitcoinAsset, |role| {
     SwapTypes {
         alpha_ledger: LedgerKind::Ethereum,
-        beta_ledger: LedgerKind::BitcoinMainnet,
+        beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
         alpha_asset: AssetKind::Erc20,
         beta_asset: AssetKind::Bitcoin,
         role,
