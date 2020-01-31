@@ -1,6 +1,6 @@
 use crate::{
     db::{DetermineTypes, Retrieve},
-    http_api::swap_resource::{build_rfc003_siren_entity, IncludeState},
+    http_api::swap_resource::{build_rfc003_siren_entity_no_err, IncludeState},
     swap_protocols::Facade,
 };
 
@@ -10,7 +10,8 @@ pub async fn handle_get_swaps(dependencies: Facade) -> anyhow::Result<siren::Ent
     for swap in Retrieve::all(&dependencies).await?.into_iter() {
         let types = dependencies.determine_types(&swap.swap_id).await?;
 
-        let sub_entity = build_rfc003_siren_entity(&dependencies, swap, types, IncludeState::No)?;
+        let sub_entity =
+            build_rfc003_siren_entity_no_err(&dependencies, swap, types, IncludeState::No)?;
         entity.push_sub_entity(siren::SubEntity::from_entity(sub_entity, &["item"]));
     }
 

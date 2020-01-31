@@ -12,10 +12,11 @@ use crate::{
     swap_protocols::{
         actions::Actions,
         ledger,
-        rfc003::{self, state_store::StateStore},
+        rfc003::{self, state_store::StateStore, ActorState},
         HashFunction, SwapId, SwapProtocol,
     },
 };
+use anyhow::anyhow;
 use http_api_problem::HttpApiProblem;
 use libp2p::PeerId;
 use serde::Serialize;
@@ -107,21 +108,48 @@ pub enum IncludeState {
     No,
 }
 
-// This is due to the introduction of a trust per Bitcoin network in the
-// `with_swap_types!` macro and can be iteratively improved
-#[allow(clippy::cognitive_complexity)]
-pub fn build_rfc003_siren_entity<S: StateStore>(
+/// Build siren entity.  For failed swaps do not return any actions.
+pub fn build_rfc003_siren_entity_no_err<S: StateStore>(
     state_store: &S,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
+) -> anyhow::Result<siren::Entity> {
+    build_rfc003_siren_entity(state_store, swap, types, include_state, false)
+}
+
+/// Build siren entity.  For failed swaps return 500 error.
+pub fn build_rfc003_siren_entity_err<S: StateStore>(
+    state_store: &S,
+    swap: Swap,
+    types: SwapTypes,
+    include_state: IncludeState,
+) -> anyhow::Result<siren::Entity> {
+    build_rfc003_siren_entity(state_store, swap, types, include_state, true)
+}
+
+// This is due to the introduction of a trust per Bitcoin network in the
+// `with_swap_types!` macro and can be iteratively improved
+#[allow(clippy::cognitive_complexity)]
+fn build_rfc003_siren_entity<S: StateStore>(
+    state_store: &S,
+    swap: Swap,
+    types: SwapTypes,
+    include_state: IncludeState,
+    return_500_error: bool,
 ) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
     with_swap_types!(types, {
         let state = state_store
             .get::<ROLE>(&id)?
-            .ok_or_else(|| anyhow::anyhow!("state store did not contain an entry for {}", id))?;
+            .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
+
+        if state.swap_failed() && return_500_error {
+            return Err(anyhow!(HttpApiProblem::with_title_and_type_from_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )));
+        }
 
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
@@ -168,10 +196,14 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 .with_type("text/html")
                 .with_class_member("protocol-spec"),
             );
-        let entity = actions.into_iter().fold(entity, |acc, action| {
-            let action = action.to_siren_action(&id);
-            acc.with_action(action)
-        });
+
+        if !state.swap_failed() {
+            let entity = actions.into_iter().fold(entity, |acc, action| {
+                let action = action.to_siren_action(&id);
+                acc.with_action(action)
+            });
+            return Ok(entity);
+        }
 
         Ok(entity)
     })

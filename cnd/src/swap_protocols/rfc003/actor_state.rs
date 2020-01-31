@@ -15,4 +15,12 @@ pub trait ActorState: Debug + Clone + Send + Sync + 'static {
 
     fn alpha_ledger_mut(&mut self) -> &mut LedgerState<Self::AL, Self::AA>;
     fn beta_ledger_mut(&mut self) -> &mut LedgerState<Self::BL, Self::BA>;
+
+    /// Returns true if the current swap failed at some stage.
+    fn swap_failed(&self) -> bool;
+
+    /// An error during swap execution results in this being called.  We
+    /// specifically do not support setting this to `false` because currently a
+    /// failed swap cannot be restarted.
+    fn set_swap_failed(&mut self);
 }

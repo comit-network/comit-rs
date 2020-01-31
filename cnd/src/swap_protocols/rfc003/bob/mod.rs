@@ -23,6 +23,7 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub beta_ledger_state: LedgerState<BL, BA>,
     #[derivative(Debug = "ignore")]
     pub secret_source: Arc<dyn DeriveIdentities>,
+    pub failed: bool, // Gets set on any error during the execution of a swap.
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
@@ -35,6 +36,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
+            failed: false,
         }
     }
 
@@ -48,6 +50,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
+            failed: false,
         }
     }
 
@@ -61,6 +64,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source: Arc::new(secret_source),
+            failed: false,
         }
     }
 
@@ -93,5 +97,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
 
     fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL, BA> {
         &mut self.beta_ledger_state
+    }
+
+    fn swap_failed(&self) -> bool {
+        self.failed
+    }
+
+    fn set_swap_failed(&mut self) {
+        self.failed = true;
     }
 }
