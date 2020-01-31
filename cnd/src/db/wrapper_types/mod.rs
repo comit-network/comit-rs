@@ -7,8 +7,22 @@ pub mod custom_sql_types;
 ///
 /// Together with the `Text` sql type, this will store the number as a string to
 /// avoid precision loss.
-#[derive(Debug, Clone, Copy, PartialEq, derive_more::FromStr, derive_more::Display)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Satoshis(u64);
+
+impl FromStr for Satoshis {
+    type Err = <u64 as FromStr>::Err;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        u64::from_str(s).map(Self)
+    }
+}
+
+impl fmt::Display for Satoshis {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
+    }
+}
 
 impl From<asset::Bitcoin> for Satoshis {
     fn from(btc: Bitcoin) -> Self {
