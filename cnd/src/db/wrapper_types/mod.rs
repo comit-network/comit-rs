@@ -126,20 +126,18 @@ pub enum BitcoinNetwork {
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
-pub enum Error {
-    #[error("Unknown variant")]
-    Unknown,
-}
+#[error("Unknown variant")]
+pub struct UnknownVariant;
 
 impl FromStr for BitcoinNetwork {
-    type Err = Error;
+    type Err = UnknownVariant;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "mainnet" => Ok(Self::Mainnet),
             "testnet" => Ok(Self::Testnet),
             "regtest" => Ok(Self::Regtest),
-            _ => Err(Error::Unknown),
+            _ => Err(UnknownVariant),
         }
     }
 }
