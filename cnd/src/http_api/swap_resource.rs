@@ -131,7 +131,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             .get::<ROLE>(&id)?
             .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
 
-        if on_fail == OnFail::Error && state.swap_failed() {
+        if state.swap_failed() && on_fail == OnFail::Error {
             return Err(anyhow!(HttpApiProblem::with_title_and_type_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
             )));
@@ -183,13 +183,14 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 .with_class_member("protocol-spec"),
             );
 
-        if on_fail == OnFail::NoAction {
-            let entity = actions.into_iter().fold(entity, |acc, action| {
-                let action = action.to_siren_action(&id);
-                acc.with_action(action)
-            });
+        if state.swap_failed() && on_fail == OnFail::NoAction {
             return Ok(entity);
         }
+
+        let entity = actions.into_iter().fold(entity, |acc, action| {
+            let action = action.to_siren_action(&id);
+            acc.with_action(action)
+        });
 
         Ok(entity)
     })
