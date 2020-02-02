@@ -18,7 +18,7 @@ use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
 
 #[async_trait::async_trait]
-impl<Bitcoin: bitcoin::Bitcoin + 'static> HtlcEvents<Bitcoin, asset::Bitcoin>
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bitcoin>
     for Cache<BitcoindConnector>
 {
     async fn htlc_deployed(

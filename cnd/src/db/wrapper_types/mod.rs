@@ -140,20 +140,18 @@ pub enum BitcoinNetwork {
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
-pub enum Error {
-    #[error("Unknown variant")]
-    Unknown,
-}
+#[error("Unknown variant")]
+pub struct UnknownVariant;
 
 impl FromStr for BitcoinNetwork {
-    type Err = Error;
+    type Err = UnknownVariant;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "mainnet" => Ok(Self::Mainnet),
             "testnet" => Ok(Self::Testnet),
             "regtest" => Ok(Self::Regtest),
-            _ => Err(Error::Unknown),
+            _ => Err(UnknownVariant),
         }
     }
 }
@@ -179,6 +177,7 @@ macro_rules! impl_from_for_bitcoinnetwork {
     };
 }
 
+use crate::db::BitcoinLedgerKind;
 use ledger::bitcoin::{Mainnet, Regtest, Testnet};
 impl_from_for_bitcoinnetwork!(Mainnet);
 impl_from_for_bitcoinnetwork!(Testnet);
@@ -187,9 +186,9 @@ impl_from_for_bitcoinnetwork!(Regtest);
 impl From<BitcoinNetwork> for LedgerKind {
     fn from(network: BitcoinNetwork) -> Self {
         match network {
-            BitcoinNetwork::Mainnet => LedgerKind::BitcoinMainnet,
-            BitcoinNetwork::Testnet => LedgerKind::BitcoinTestnet,
-            BitcoinNetwork::Regtest => LedgerKind::BitcoinRegtest,
+            BitcoinNetwork::Mainnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            BitcoinNetwork::Testnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
+            BitcoinNetwork::Regtest => LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
         }
     }
 }

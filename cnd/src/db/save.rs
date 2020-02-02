@@ -96,7 +96,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Eth
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
@@ -141,7 +141,7 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Eth
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
@@ -186,7 +186,7 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Eth
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
@@ -248,7 +248,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             erc20_amount: Text(beta_asset.quantity.into()),
@@ -294,7 +294,7 @@ impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             erc20_amount: Text(beta_asset.quantity.into()),
@@ -340,7 +340,7 @@ impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             erc20_amount: Text(beta_asset.quantity.into()),
@@ -402,7 +402,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitco
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -447,7 +447,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitco
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -492,7 +492,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitco
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -555,7 +555,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitco
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
             erc20_amount: Text(alpha_asset.quantity.into()),
             erc20_token_contract: Text(alpha_asset.token_contract.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -601,7 +601,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitco
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
             erc20_amount: Text(alpha_asset.quantity.into()),
             erc20_token_contract: Text(alpha_asset.token_contract.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -647,7 +647,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitco
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet::default())),
+            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
             erc20_amount: Text(alpha_asset.quantity.into()),
             erc20_token_contract: Text(alpha_asset.token_contract.into()),
             bitcoin_amount: Text(beta_asset.into()),

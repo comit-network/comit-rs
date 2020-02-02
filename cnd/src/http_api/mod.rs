@@ -549,9 +549,9 @@ mod tests {
     #[test]
     fn bitcoin_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            HttpLedger::from(bitcoin::Mainnet {}),
-            HttpLedger::from(bitcoin::Testnet {}),
-            HttpLedger::from(bitcoin::Regtest {}),
+            HttpLedger::from(bitcoin::Mainnet),
+            HttpLedger::from(bitcoin::Testnet),
+            HttpLedger::from(bitcoin::Regtest),
         ];
 
         let expected = &[

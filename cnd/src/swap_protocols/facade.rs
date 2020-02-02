@@ -101,7 +101,9 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B: ledger::bitcoin::Bitcoin + 'static> HtlcEvents<B, asset::Bitcoin> for Facade {
+impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset::Bitcoin>
+    for Facade
+{
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<B, asset::Bitcoin>,
