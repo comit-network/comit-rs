@@ -19,6 +19,7 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub beta_ledger_state: LedgerState<BL, BA>,
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     pub secret_source: SwapSeed, // Used to derive identities and also to generate the secret.
+    pub failed: bool,
 }
 
 impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
@@ -28,6 +29,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source,
+            failed: false,
         }
     }
 
@@ -41,6 +43,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source,
+            failed: false,
         }
     }
 
@@ -54,6 +57,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
             alpha_ledger_state: LedgerState::NotDeployed,
             beta_ledger_state: LedgerState::NotDeployed,
             secret_source,
+            failed: false,
         }
     }
 
@@ -82,5 +86,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
 
     fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL, BA> {
         &mut self.beta_ledger_state
+    }
+
+    fn swap_failed(&self) -> bool {
+        self.failed
+    }
+
+    fn set_swap_failed(&mut self) {
+        self.failed = true;
     }
 }

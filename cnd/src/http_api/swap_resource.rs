@@ -12,10 +12,11 @@ use crate::{
     swap_protocols::{
         actions::Actions,
         ledger,
-        rfc003::{self, state_store::StateStore},
+        rfc003::{self, state_store::StateStore, ActorState},
         HashFunction, SwapId, SwapProtocol,
     },
 };
+use anyhow::anyhow;
 use http_api_problem::HttpApiProblem;
 use libp2p::PeerId;
 use serde::Serialize;
@@ -107,6 +108,12 @@ pub enum IncludeState {
     No,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum OnFail {
+    Error,
+    NoAction,
+}
+
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
@@ -115,13 +122,20 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
+    on_fail: OnFail,
 ) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
     with_swap_types!(types, {
         let state = state_store
             .get::<ROLE>(&id)?
-            .ok_or_else(|| anyhow::anyhow!("state store did not contain an entry for {}", id))?;
+            .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
+
+        if state.swap_failed() && on_fail == OnFail::Error {
+            return Err(anyhow!(HttpApiProblem::with_title_and_type_from_status(
+                StatusCode::INTERNAL_SERVER_ERROR,
+            )));
+        }
 
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
@@ -168,6 +182,11 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
                 .with_type("text/html")
                 .with_class_member("protocol-spec"),
             );
+
+        if state.swap_failed() && on_fail == OnFail::NoAction {
+            return Ok(entity);
+        }
+
         let entity = actions.into_iter().fold(entity, |acc, action| {
             let action = action.to_siren_action(&id);
             acc.with_action(action)
