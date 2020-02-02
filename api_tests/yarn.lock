@@ -980,10 +980,10 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.9.1:
-  version "0.9.1"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.9.1.tgz#46cdfc8abe3c3b132cb91b1a688beee2ece1ce2e"
-  integrity sha512-RvecE3FFmiKGVXoUTXF0QIm56GIRXn9DlnS2SmI0kcsz/f0nhrPr5nQgdIt9juaGzNoCMMTqJgZmy4ATscMWDg==
+comit-sdk@^0.10.0:
+  version "0.10.0"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.10.0.tgz#ba24039612975e8006c7a235fd5165bb248f1ae1"
+  integrity sha512-4JMeIypj0kaMSGUYyNkkzDJeJlF4ktFH1Ss1BX/zRxzgLVoWgf0g5BTzGZ95HydqyWT+rorCgLqIuMAwmEy+7Q==
   dependencies:
     axios "^0.19.0"
     bcoin "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001"
