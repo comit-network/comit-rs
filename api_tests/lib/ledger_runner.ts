@@ -5,6 +5,7 @@ import { BitcoindInstance } from "./bitcoind_instance";
 import { EthereumNodeConfig } from "./ethereum";
 import { ParityInstance } from "./parity_instance";
 import { HarnessGlobal } from "./util";
+import { EthereumWallet } from "../lib_sdk/wallets/ethereum";
 
 declare var global: HarnessGlobal;
 
@@ -74,7 +75,7 @@ export class LedgerRunner {
             if (ledger === "bitcoin") {
                 if (global.verbose) {
                     console.log(
-                        "Bitcoin initialization after ledger is running."
+                        "Bitcoin: initialization after ledger is running."
                     );
                 }
                 bitcoin.init(await this.getBitcoinClientConfig());
@@ -82,6 +83,20 @@ export class LedgerRunner {
                 this.blockTimers.bitcoin = global.setInterval(async () => {
                     await bitcoin.generate();
                 }, 1000);
+            }
+
+            if (ledger === "ethereum") {
+                const ethereumConfig = await this.getEthereumNodeConfig();
+                const erc20Wallet = new EthereumWallet(ethereumConfig);
+                global.tokenContract = await erc20Wallet.deployErc20TokenContract(
+                    global.projectRoot
+                );
+                if (global.verbose) {
+                    console.log(
+                        "Ethereum: deployed Erc20 contract at %s",
+                        global.tokenContract
+                    );
+                }
             }
         }
     }

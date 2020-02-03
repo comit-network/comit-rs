@@ -12,6 +12,9 @@ import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
+import { HarnessGlobal } from "../../lib/util";
+
+declare var global: HarnessGlobal;
 
 export class Actor {
     public static defaultActionConfig = {
@@ -184,6 +187,35 @@ export class Actor {
         await this.swap.accept(Actor.defaultActionConfig);
     }
 
+    public async deploy() {
+        if (!this.swap) {
+            throw new Error("Cannot deploy htlc for nonexistent swap");
+        }
+
+        const txid = await this.swap.deploy(Actor.defaultActionConfig);
+        this.logger.debug(
+            "Deployed htlc for swap %s in %s",
+            this.swap.self,
+            txid
+        );
+
+        const entity = await this.swap.fetchDetails();
+        switch (entity.properties.role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaDeployed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaDeployed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaDeployed();
+                }
+                await this.actors.bob.assertBetaDeployed();
+                break;
+        }
+    }
+
     public async fund() {
         if (!this.swap) {
             throw new Error("Cannot fund nonexistent swap");
@@ -311,7 +343,10 @@ export class Actor {
             const maximumFee = wallet.MaximumFee;
 
             const balanceInclFees = expectedBalance.minus(maximumFee);
-            const currentWalletBalance = await wallet.getBalance();
+
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetDescriptionForAsset(assetKind)
+            );
 
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
 
@@ -339,10 +374,20 @@ export class Actor {
             const expectedBalance = new BigNumber(
                 this.startingBalances.get(assetKind)
             );
-            const currentWalletBalance = await wallet.getBalance();
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetDescriptionForAsset(assetKind)
+            );
             const balanceInclFees = expectedBalance.minus(maximumFee);
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
         }
+    }
+
+    public async assertAlphaDeployed() {
+        await this.assertLedgerState("alpha_ledger", "DEPLOYED");
+    }
+
+    public async assertBetaDeployed() {
+        await this.assertLedgerState("beta_ledger", "DEPLOYED");
     }
 
     public async assertAlphaFunded() {
@@ -393,11 +438,13 @@ export class Actor {
 
             this.logger.debug(
                 "alpha ledger wallet balance %d",
-                await this.alphaLedgerWallet().getBalance()
+                await this.alphaLedgerWallet().getBalanceByAsset(
+                    this.alphaAsset
+                )
             );
             this.logger.debug(
                 "beta ledger wallet balance %d",
-                await this.betaLedgerWallet().getBalance()
+                await this.betaLedgerWallet().getBalanceByAsset(this.betaAsset)
             );
         }
     }
@@ -529,14 +576,15 @@ export class Actor {
                 continue;
             }
 
-            const ledger = defaultLedgerDescriptionForAsset(asset.name).name;
+            const ledger = defaultLedgerDescriptionForAsset(asset.name);
+            const ledgerName = ledger.name;
 
-            this.logger.debug("Minting %s on %s", asset.name, ledger);
-            await this.wallets.getWalletForLedger(ledger).mint(asset);
+            this.logger.debug("Minting %s on %s", asset.name, ledgerName);
+            await this.wallets.getWalletForLedger(ledgerName).mint(asset);
 
-            const balance = await this.wallets[
-                defaultLedgerDescriptionForAsset(asset.name).name
-            ].getBalance();
+            const balance = await this.wallets[ledgerName].getBalanceByAsset(
+                asset
+            );
 
             this.logger.debug(
                 "Starting %s balance: ",
@@ -582,6 +630,12 @@ function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
                 chain_id: 17,
             };
         }
+        case AssetKind.Erc20: {
+            return {
+                name: LedgerKind.Ethereum,
+                chain_id: 17,
+            };
+        }
     }
 }
 
@@ -597,6 +651,13 @@ function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
             return {
                 name: AssetKind.Ether,
                 quantity: parseEther("10").toString(),
+            };
+        }
+        case AssetKind.Erc20: {
+            return {
+                name: AssetKind.Erc20,
+                quantity: parseEther("100").toString(),
+                token_contract: global.tokenContract,
             };
         }
     }

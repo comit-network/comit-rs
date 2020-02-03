@@ -4,6 +4,11 @@ import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
 import { EthereumNodeConfig } from "../../lib/ethereum";
 import { pollUntilMinted, Wallet } from "./index";
+import { HarnessGlobal } from "../../lib/util";
+import { TransactionRequest } from "ethers/providers";
+import * as fs from "fs";
+
+declare var global: HarnessGlobal;
 
 export class EthereumWallet implements Wallet {
     public readonly inner: EthereumWalletSdk;
@@ -24,13 +29,55 @@ export class EthereumWallet implements Wallet {
     }
 
     public async mint(asset: Asset): Promise<void> {
-        if (asset.name !== "ether") {
+        switch (asset.name) {
+            case "ether":
+                return this.mintEther(asset);
+            case "erc20":
+                return this.mintErc20(asset);
+            default:
+                throw new Error(
+                    `Cannot mint asset ${asset.name} with EthereumWallet`
+                );
+        }
+    }
+
+    private async mintErc20(asset: Asset): Promise<void> {
+        let toAddress = this.inner.getAccount();
+
+        const functionIdentifier = "40c10f19";
+        toAddress = toAddress.replace(/^0x/, "").padStart(64, "0");
+
+        const bigNumber = ethers.utils.bigNumberify(asset.quantity);
+        const hexAmount = bigNumber
+            .toHexString()
+            .replace(/^0x/, "")
+            .padStart(64, "0");
+        const data = "0x" + functionIdentifier + toAddress + hexAmount;
+
+        const tx: TransactionRequest = {
+            to: asset.token_contract,
+            gasLimit: "0x100000",
+            value: "0x0",
+            data,
+        };
+        const transactionResponse = await this.parity.sendTransaction(tx);
+        const transactionReceipt = await transactionResponse.wait(1);
+
+        if (!transactionReceipt.status) {
             throw new Error(
-                `Cannot mint asset ${asset.name} with EthereumWallet`
+                `Minting ${asset.quantity} tokens to address ${toAddress} failed`
             );
         }
 
-        const startingBalance = await this.getBalance();
+        if (global.verbose) {
+            console.log(
+                `Minted ${asset.quantity} erc20 tokens (${asset.token_contract}) for ${toAddress}`
+            );
+        }
+    }
+
+    private async mintEther(asset: Asset): Promise<void> {
+        const startingBalance = await this.getBalanceByAsset(asset);
 
         const minimumExpectedBalance = asset.quantity;
 
@@ -44,7 +91,8 @@ export class EthereumWallet implements Wallet {
 
         await pollUntilMinted(
             this,
-            startingBalance.minus(new BigNumber(minimumExpectedBalance))
+            startingBalance.minus(new BigNumber(minimumExpectedBalance)),
+            asset
         );
     }
 
@@ -52,9 +100,47 @@ export class EthereumWallet implements Wallet {
         return this.inner.getAccount();
     }
 
-    public async getBalance(): Promise<BigNumber> {
-        const balance = await this.inner.getBalance();
-        return new BigNumber(balance.toString());
+    public async deployErc20TokenContract(
+        projectRoot: string
+    ): Promise<string> {
+        const data =
+            "0x" +
+            fs
+                .readFileSync(
+                    projectRoot + "/api_tests/erc20_token_contract.asm.hex",
+                    "utf8"
+                )
+                .trim();
+        const tx: TransactionRequest = {
+            gasLimit: "0x3D0900",
+            value: "0x0",
+            data,
+        };
+        const transactionResponse = await this.parity.sendTransaction(tx);
+        const transactionReceipt = await transactionResponse.wait(1);
+        return transactionReceipt.contractAddress;
+    }
+
+    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
+        let balance = new BigNumber(0);
+        switch (asset.name) {
+            case "ether":
+                balance = new BigNumber(
+                    (await this.inner.getBalance()).toString()
+                );
+                break;
+            case "erc20":
+                balance = await this.inner.getErc20Balance(
+                    asset.token_contract,
+                    0
+                );
+                break;
+            default:
+                throw new Error(
+                    `Cannot read balance for asset ${asset.name} with EthereumWallet`
+                );
+        }
+        return balance;
     }
 
     public async getBlockchainTime(): Promise<number> {

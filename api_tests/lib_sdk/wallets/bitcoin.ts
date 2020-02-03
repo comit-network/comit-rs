@@ -44,7 +44,9 @@ export class BitcoinWallet implements Wallet {
             );
         }
 
-        const startingBalance = new BigNumber(await this.getBalance());
+        const startingBalance = new BigNumber(
+            await this.getBalanceByAsset(asset)
+        );
 
         const minimumExpectedBalance = new BigNumber(asset.quantity);
 
@@ -62,7 +64,8 @@ export class BitcoinWallet implements Wallet {
 
         await pollUntilMinted(
             this,
-            startingBalance.plus(minimumExpectedBalance)
+            startingBalance.plus(minimumExpectedBalance),
+            asset
         );
     }
 
@@ -70,7 +73,12 @@ export class BitcoinWallet implements Wallet {
         return this.inner.getAddress();
     }
 
-    public async getBalance(): Promise<BigNumber> {
+    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
+        if (asset.name !== "bitcoin") {
+            throw new Error(
+                `Cannot read balance for asset ${asset.name} with BitcoinWallet`
+            );
+        }
         return new BigNumber(toSatoshi(await this.inner.getBalance()));
     }
 
