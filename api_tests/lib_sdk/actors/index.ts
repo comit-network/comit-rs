@@ -11,6 +11,10 @@ export class Actors {
         return this.getActorByName("bob");
     }
 
+    get charlie(): Actor {
+        return this.getActorByName("charlie");
+    }
+
     private getActorByName(name: string): Actor {
         const maybeActor = this.actors.get(name);
 

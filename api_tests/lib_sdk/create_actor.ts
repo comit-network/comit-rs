@@ -4,7 +4,10 @@ import { Actor } from "./actors/actor";
 
 declare var global: HarnessGlobal;
 
-export async function createActor(logFileName: string): Promise<Actor> {
+export async function createActor(
+    logFileName: string,
+    name: string = "alice"
+): Promise<Actor> {
     const loggerFactory = (whoAmI: string) =>
         configure({
             appenders: {
@@ -20,7 +23,7 @@ export async function createActor(logFileName: string): Promise<Actor> {
 
     const alice = await Actor.newInstance(
         loggerFactory,
-        "alice",
+        name,
         global.ledgerConfigs,
         global.projectRoot,
         global.logRoot

@@ -1,48 +1,21 @@
-import { configure } from "log4js";
-import { HarnessGlobal } from "../lib/util";
 import { Actors } from "./actors";
 import { Actor } from "./actors/actor";
+import { createActor } from "./create_actor";
 
-declare var global: HarnessGlobal;
+export async function createActors(
+    logFileName: string,
+    actorNames: string[] = ["alice", "bob"]
+): Promise<Actors> {
+    const actorsMap = new Map<string, Actor>();
+    for (const name of actorNames) {
+        actorsMap.set(name, await createActor(logFileName, name));
+    }
 
-export async function createActors(logFileName: string): Promise<Actors> {
-    const loggerFactory = (whoAmI: string) =>
-        configure({
-            appenders: {
-                file: {
-                    type: "file",
-                    filename: "log/tests/" + logFileName,
-                },
-            },
-            categories: {
-                default: { appenders: ["file"], level: "debug" },
-            },
-        }).getLogger(whoAmI);
+    const actors = new Actors(actorsMap);
 
-    const alice = await Actor.newInstance(
-        loggerFactory,
-        "alice",
-        global.ledgerConfigs,
-        global.projectRoot,
-        global.logRoot
-    );
-    const bob = await Actor.newInstance(
-        loggerFactory,
-        "bob",
-        global.ledgerConfigs,
-        global.projectRoot,
-        global.logRoot
-    );
-
-    const actors = new Actors(
-        new Map<string, Actor>([
-            ["alice", alice],
-            ["bob", bob],
-        ])
-    );
-
-    alice.actors = actors;
-    bob.actors = actors;
+    for (const name of actorNames) {
+        actorsMap.get(name).actors = actors;
+    }
 
     return Promise.resolve(actors);
 }

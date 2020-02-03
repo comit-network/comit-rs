@@ -59,7 +59,7 @@ export class Actor {
     public wallets: Wallets;
 
     private comitClient: ComitClient;
-    private readonly cnd: Cnd;
+    readonly cnd: Cnd;
     private swap: Swap;
 
     private alphaLedger: Ledger;
@@ -177,6 +177,8 @@ export class Actor {
             this.swap.self
         );
         this.logger.debug("Created new swap at %s", this.swap.self);
+
+        return this.swap;
     }
 
     public async accept() {
@@ -683,6 +685,14 @@ export class Actor {
     public cndHttpApiUrl() {
         const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
         return `http://${cndSocket.address}:${cndSocket.port}`;
+    }
+
+    public async pollUntilSwapAvailable(): Promise<Swap> {
+        let newSwaps: Swap[] = [];
+        while (newSwaps.length < 1) {
+            newSwaps = await this.comitClient.getNewSwaps();
+        }
+        return newSwaps[0];
     }
 }
 
