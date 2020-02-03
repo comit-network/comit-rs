@@ -2,11 +2,19 @@
 // They are mostly about checking invalid request responses
 // These test do not use the sdk so that we can test edge cases
 import { threeActorTest } from "../lib_sdk/actor_test";
-import { request } from "chai";
+import { expect, request } from "chai";
 import "chai/register-should";
 import { ethers } from "ethers";
 import "../lib/setup_chai";
 import { Actor } from "../lib_sdk/actors/actor";
+import {
+    BitcoinWallet,
+    ComitClient,
+    EthereumWallet,
+    SwapRequest,
+} from "comit-sdk";
+import { Mock } from "ts-mockery";
+import { sleep } from "../lib_sdk/utils";
 
 const alpha = {
     ledger: {
@@ -40,7 +48,7 @@ const beta = {
 const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
 
 async function createDefaultSwapRequest(bob: Actor) {
-    return {
+    const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: alpha.ledger.name,
             network: alpha.ledger.network,
@@ -60,8 +68,14 @@ async function createDefaultSwapRequest(bob: Actor) {
         beta_ledger_redeem_identity: aliceFinalAddress,
         alpha_expiry: alpha.expiry,
         beta_expiry: beta.expiry,
-        peer: await bob.cnd.getPeerId(),
+        peer: {
+            peer_id: await bob.cnd.getPeerId(),
+            address_hint: await bob.cnd
+                .getPeerListenAddresses()
+                .then(addresses => addresses[0]),
+        },
     };
+    return swapRequest;
 }
 
 setTimeout(async function() {
@@ -81,21 +95,43 @@ setTimeout(async function() {
             }
         );
 
-        // threeActorTest(
-        //     "[Bob] should use the same swap id as Alice",
-        //     async function({ alice, bob }) {
-        //         const aliceResponse = await request(alice.cndHttpApiUrl())
-        //             .post("/swaps/rfc003")
-        //             .send(await createDefaultSwapRequest(bob));
-        //
-        //         const aliceSwapId = aliceResponse.body.properties.id;
-        //
-        //         const bobSwap = await bob.pollUntilSwapAvailable();
-        //
-        //         expect(bobSwap.properties).to.have.property("id", aliceSwapId);
-        //
-        //     }
-        // );
+        threeActorTest(
+            "[Bob] should use the same swap id as Alice",
+            async function({ alice, bob }) {
+                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
+                const mockEthereumWallet = Mock.of<EthereumWallet>();
+                const aliceComitClient = new ComitClient(
+                    mockBitcoinWallet,
+                    mockEthereumWallet,
+                    alice.cnd
+                );
+                const bobComitClient = new ComitClient(
+                    mockBitcoinWallet,
+                    mockEthereumWallet,
+                    bob.cnd
+                );
+
+                const aliceSwap = await aliceComitClient.sendSwap(
+                    await createDefaultSwapRequest(bob)
+                );
+
+                const aliceSwapDetails = await aliceSwap.fetchDetails();
+
+                let bobSwap = await bobComitClient.getNewSwaps();
+                while (bobSwap.length < 1) {
+                    bobSwap = await bobComitClient.getNewSwaps();
+                    console.log("Waiting...");
+                    await sleep(1000);
+                }
+
+                const bobSwapDetails = await bobSwap[0].fetchDetails();
+
+                expect(bobSwapDetails.properties).to.have.property(
+                    "id",
+                    aliceSwapDetails.properties.id
+                );
+            }
+        );
     });
 
     run();

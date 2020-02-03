@@ -62,6 +62,7 @@
         "temp-write": "^4.0.0",
         "testcontainers": "^2.3.2",
         "tmp": "^0.1.0",
+        "ts-mockery": "^1.2.0",
         "ts-node": "^8.6.2",
         "tslint": "^6.0.0",
         "tslint-config-prettier": "^1.18.0",

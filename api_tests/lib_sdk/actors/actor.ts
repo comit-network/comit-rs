@@ -686,14 +686,6 @@ export class Actor {
         const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
         return `http://${cndSocket.address}:${cndSocket.port}`;
     }
-
-    public async pollUntilSwapAvailable(): Promise<Swap> {
-        let newSwaps: Swap[] = [];
-        while (newSwaps.length < 1) {
-            newSwaps = await this.comitClient.getNewSwaps();
-        }
-        return newSwaps[0];
-    }
 }
 
 function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
