@@ -102,11 +102,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<AL, AA>
-        + HtlcFunded<AL, AA>
-        + HtlcDeployed<AL, AA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRefunded<AL, AA>,
+    D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
