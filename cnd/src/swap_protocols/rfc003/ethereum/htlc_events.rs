@@ -8,7 +8,10 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             create_swap::HtlcParams,
-            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
+            events::{
+                Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
+                Refunded,
+            },
             Secret,
         },
     },
@@ -16,7 +19,6 @@ use crate::{
 use anyhow::Context;
 use asset::ethereum::FromWei;
 use chrono::NaiveDateTime;
-use futures_core::future::{self, Either};
 
 lazy_static::lazy_static! {
     /// keccak256(Redeemed())
@@ -28,7 +30,22 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Ethereum, asset::Ether> for Cache<Web3Connector> {
+impl HtlcFunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
+    async fn htlc_funded(
+        &self,
+        _htlc_params: HtlcParams<Ethereum, asset::Ether>,
+        deploy_transaction: &Deployed<Ethereum>,
+        _start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Funded<Ethereum, asset::Ether>> {
+        Ok(Funded {
+            transaction: deploy_transaction.transaction.clone(),
+            asset: asset::Ether::from_wei(deploy_transaction.transaction.value),
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl HtlcDeployed<Ethereum, asset::Ether> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
@@ -53,27 +70,38 @@ impl HtlcEvents<Ethereum, asset::Ether> for Cache<Web3Connector> {
             transaction,
         })
     }
+}
 
-    async fn htlc_funded(
-        &self,
-        _htlc_params: HtlcParams<Ethereum, asset::Ether>,
-        deploy_transaction: &Deployed<Ethereum>,
-        _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Ethereum, asset::Ether>> {
-        Ok(Funded {
-            transaction: deploy_transaction.transaction.clone(),
-            asset: asset::Ether::from_wei(deploy_transaction.transaction.value),
-        })
-    }
-
-    async fn htlc_redeemed_or_refunded(
+#[async_trait::async_trait]
+impl HtlcRedeemed<Ethereum, asset::Ether> for Cache<Web3Connector> {
+    async fn htlc_redeemed(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<Ethereum>,
         htlc_funding: &Funded<Ethereum, asset::Ether>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
-        htlc_redeemed_or_refunded(
+    ) -> anyhow::Result<Redeemed<Ethereum>> {
+        htlc_redeemed(
+            self.clone(),
+            htlc_params,
+            htlc_deployment,
+            htlc_funding,
+            start_of_swap,
+        )
+        .await
+    }
+}
+
+#[async_trait::async_trait]
+impl HtlcRefunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
+    async fn htlc_refunded(
+        &self,
+        htlc_params: HtlcParams<Ethereum, asset::Ether>,
+        htlc_deployment: &Deployed<Ethereum>,
+        htlc_funding: &Funded<Ethereum, asset::Ether>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Refunded<Ethereum>> {
+        htlc_refunded(
             self.clone(),
             htlc_params,
             htlc_deployment,
@@ -88,85 +116,73 @@ fn calculate_contract_address_from_deployment_transaction(tx: &Transaction) -> A
     tx.from.calculate_contract_address(&tx.nonce)
 }
 
-async fn htlc_redeemed_or_refunded<A: Asset>(
+async fn htlc_redeemed<A: Asset>(
     connector: Cache<Web3Connector>,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
     _: &Funded<Ethereum, A>,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
-    let redeemed = {
-        let connector = connector.clone();
-        async {
-            let pattern = TransactionPattern {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: None,
-                transaction_data: None,
-                transaction_data_length: None,
-                events: Some(vec![Event {
-                    address: Some(htlc_deployment.location),
-                    data: None,
-                    topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
-                }]),
-            };
-
-            let TransactionAndReceipt {
-                transaction,
-                receipt,
-            } = matching_transaction(connector, pattern, start_of_swap)
-                .await
-                .context("failed to find transaction to redeem from htlc")?;
-            let log = receipt
-                .logs
-                .into_iter()
-                .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
-                .expect("Redeem transaction receipt must contain redeem logs");
-            let log_data = log.data.0.as_ref();
-            let secret =
-                Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
-
-            Ok(Redeemed {
-                transaction,
-                secret,
-            })
-        }
+) -> anyhow::Result<Redeemed<Ethereum>> {
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: None,
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: Some(vec![Event {
+            address: Some(htlc_deployment.location),
+            data: None,
+            topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
+        }]),
     };
 
-    let refunded = async {
-        let pattern = TransactionPattern {
-            from_address: None,
-            to_address: None,
-            is_contract_creation: None,
-            transaction_data: None,
-            transaction_data_length: None,
-            events: Some(vec![Event {
-                address: Some(htlc_deployment.location),
-                data: None,
-                topics: vec![Some(Topic(*REFUND_LOG_MSG))],
-            }]),
-        };
+    let TransactionAndReceipt {
+        transaction,
+        receipt,
+    } = matching_transaction(connector, pattern, start_of_swap)
+        .await
+        .context("failed to find transaction to redeem from htlc")?;
+    let log = receipt
+        .logs
+        .into_iter()
+        .find(|log| log.topics.contains(&*REDEEM_LOG_MSG))
+        .expect("Redeem transaction receipt must contain redeem logs");
+    let log_data = log.data.0.as_ref();
+    let secret =
+        Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
 
-        let TransactionAndReceipt { transaction, .. } =
-            matching_transaction(connector, pattern, start_of_swap)
-                .await
-                .context("failed to find transaction to refund from htlc")?;
+    Ok(Redeemed {
+        transaction,
+        secret,
+    })
+}
 
-        Ok(Refunded { transaction })
+async fn htlc_refunded<A: Asset>(
+    connector: Cache<Web3Connector>,
+    _htlc_params: HtlcParams<Ethereum, A>,
+    htlc_deployment: &Deployed<Ethereum>,
+    _: &Funded<Ethereum, A>,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Refunded<Ethereum>> {
+    let pattern = TransactionPattern {
+        from_address: None,
+        to_address: None,
+        is_contract_creation: None,
+        transaction_data: None,
+        transaction_data_length: None,
+        events: Some(vec![Event {
+            address: Some(htlc_deployment.location),
+            data: None,
+            topics: vec![Some(Topic(*REFUND_LOG_MSG))],
+        }]),
     };
 
-    futures_core::pin_mut!(redeemed);
-    futures_core::pin_mut!(refunded);
+    let TransactionAndReceipt { transaction, .. } =
+        matching_transaction(connector, pattern, start_of_swap)
+            .await
+            .context("failed to find transaction to refund from htlc")?;
 
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((tx, _))) => Ok(Either::Left(tx)),
-        Ok(Either::Right((tx, _))) => Ok(Either::Right(tx)),
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-
-            Err(error)
-        }
-    }
+    Ok(Refunded { transaction })
 }
 
 mod erc20 {
@@ -175,32 +191,7 @@ mod erc20 {
     use asset::ethereum::FromWei;
 
     #[async_trait::async_trait]
-    impl HtlcEvents<Ethereum, asset::Erc20> for Cache<Web3Connector> {
-        async fn htlc_deployed(
-            &self,
-            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
-            start_of_swap: NaiveDateTime,
-        ) -> anyhow::Result<Deployed<Ethereum>> {
-            let connector = self.clone();
-            let pattern = TransactionPattern {
-                from_address: None,
-                to_address: None,
-                is_contract_creation: Some(true),
-                transaction_data: Some(htlc_params.bytecode()),
-                transaction_data_length: None,
-                events: None,
-            };
-            let TransactionAndReceipt { transaction, .. } =
-                matching_transaction(connector, pattern, start_of_swap)
-                    .await
-                    .context("failed to find transaction to deploy htlc")?;
-
-            Ok(Deployed {
-                location: calculate_contract_address_from_deployment_transaction(&transaction),
-                transaction,
-            })
-        }
-
+    impl HtlcFunded<Ethereum, asset::Erc20> for Cache<Web3Connector> {
         async fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
@@ -246,15 +237,66 @@ mod erc20 {
 
             Ok(Funded { transaction, asset })
         }
+    }
 
-        async fn htlc_redeemed_or_refunded(
+    #[async_trait::async_trait]
+    impl HtlcDeployed<Ethereum, asset::Erc20> for Cache<Web3Connector> {
+        async fn htlc_deployed(
+            &self,
+            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
+            start_of_swap: NaiveDateTime,
+        ) -> anyhow::Result<Deployed<Ethereum>> {
+            let connector = self.clone();
+            let pattern = TransactionPattern {
+                from_address: None,
+                to_address: None,
+                is_contract_creation: Some(true),
+                transaction_data: Some(htlc_params.bytecode()),
+                transaction_data_length: None,
+                events: None,
+            };
+            let TransactionAndReceipt { transaction, .. } =
+                matching_transaction(connector, pattern, start_of_swap)
+                    .await
+                    .context("failed to find transaction to deploy htlc")?;
+
+            Ok(Deployed {
+                location: calculate_contract_address_from_deployment_transaction(&transaction),
+                transaction,
+            })
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl HtlcRedeemed<Ethereum, asset::Erc20> for Cache<Web3Connector> {
+        async fn htlc_redeemed(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
             htlc_funding: &Funded<Ethereum, asset::Erc20>,
             start_of_swap: NaiveDateTime,
-        ) -> anyhow::Result<Either<Redeemed<Ethereum>, Refunded<Ethereum>>> {
-            htlc_redeemed_or_refunded(
+        ) -> anyhow::Result<Redeemed<Ethereum>> {
+            htlc_redeemed(
+                self.clone(),
+                htlc_params,
+                htlc_deployment,
+                htlc_funding,
+                start_of_swap,
+            )
+            .await
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl HtlcRefunded<Ethereum, asset::Erc20> for Cache<Web3Connector> {
+        async fn htlc_refunded(
+            &self,
+            htlc_params: HtlcParams<Ethereum, asset::Erc20>,
+            htlc_deployment: &Deployed<Ethereum>,
+            htlc_funding: &Funded<Ethereum, asset::Erc20>,
+            start_of_swap: NaiveDateTime,
+        ) -> anyhow::Result<Refunded<Ethereum>> {
+            htlc_refunded(
                 self.clone(),
                 htlc_params,
                 htlc_deployment,
