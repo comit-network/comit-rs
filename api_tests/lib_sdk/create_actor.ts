@@ -6,7 +6,7 @@ declare var global: HarnessGlobal;
 
 export async function createActor(
     logFileName: string,
-    name: string = "alice"
+    name: string
 ): Promise<Actor> {
     const loggerFactory = (whoAmI: string) =>
         configure({

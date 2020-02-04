@@ -4,7 +4,7 @@ import { createActor } from "./create_actor";
 
 export async function createActors(
     logFileName: string,
-    actorNames: string[] = ["alice", "bob"]
+    actorNames: string[]
 ): Promise<Actors> {
     const actorsMap = new Map<string, Actor>();
     for (const name of actorNames) {

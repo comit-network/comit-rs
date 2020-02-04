@@ -78,7 +78,7 @@ export function oneActorTest(
     it(name, async function() {
         this.timeout(100_000); // absurd timeout. we have our own one further down
 
-        const alice = await createActor(`${name}.log`);
+        const alice = await createActor(`${name}.log`, "alice");
         try {
             await timeout(60000, testFn(alice));
         } catch (e) {
