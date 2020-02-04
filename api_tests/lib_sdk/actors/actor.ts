@@ -224,8 +224,8 @@ export class Actor {
         const txid = await this.swap.fund(Actor.defaultActionConfig);
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
 
-        const entity = await this.swap.fetchDetails();
-        switch (entity.properties.role) {
+        const role = await this.whoAmI();
+        switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaFunded();
                 if (this.actors.bob.cndInstance.isRunning()) {
@@ -246,9 +246,8 @@ export class Actor {
             throw new Error("Cannot refund non-existent swap");
         }
 
-        const entity = await this.swap.fetchDetails();
-
-        switch (entity.properties.role) {
+        const role = await this.whoAmI();
+        switch (role) {
             case "Alice":
                 await this.waitForAlphaExpiry();
                 break;
@@ -260,7 +259,7 @@ export class Actor {
         const txid = await this.swap.refund(Actor.defaultActionConfig);
         this.logger.debug("Refunded swap %s in %s", this.swap.self, txid);
 
-        switch (entity.properties.role) {
+        switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaRefunded();
                 if (this.actors.bob.cndInstance.isRunning()) {
@@ -284,8 +283,8 @@ export class Actor {
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
 
-        const entity = await this.swap.fetchDetails();
-        switch (entity.properties.role) {
+        const role = await this.whoAmI();
+        switch (role) {
             case "Alice":
                 await this.actors.alice.assertBetaRedeemed();
                 if (this.actors.bob.cndInstance.isRunning()) {
@@ -447,6 +446,11 @@ export class Actor {
                 await this.betaLedgerWallet().getBalanceByAsset(this.betaAsset)
             );
         }
+    }
+
+    public async whoAmI() {
+        const entity = await this.swap.fetchDetails();
+        return entity.properties.role;
     }
 
     private async waitForAlphaExpiry() {
