@@ -1,175 +1,186 @@
+// These are stateless tests -- they don't require any state of the cnd and they don't change it
+// They are mostly about checking invalid request responses
+// These test do not use the sdk so that we can test edge cases
+import { twoActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
 import "chai/register-should";
 import { ethers } from "ethers";
-import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
-import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
-import { sleep } from "../lib/util";
+import { Actor } from "../lib_sdk/actors/actor";
+import {
+    BitcoinWallet,
+    ComitClient,
+    EthereumWallet,
+    SwapRequest,
+} from "comit-sdk";
+import { Mock } from "ts-mockery";
+import { EmbeddedRepresentationSubEntity, Entity } from "../gen/siren";
+import { sleep } from "../lib_sdk/utils";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 
-(async function() {
-    const alpha = {
-        ledger: {
-            name: "bitcoin",
-            network: "regtest",
+const alpha = {
+    ledger: {
+        name: "bitcoin",
+        network: "regtest",
+    },
+    asset: {
+        name: "bitcoin",
+        quantity: {
+            reasonable: "100000000",
+            stingy: "100",
         },
-        asset: {
-            name: "bitcoin",
-            quantity: {
-                reasonable: "100000000",
-                stingy: "100",
-            },
+    },
+    expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+};
+
+const beta = {
+    ledger: {
+        name: "ethereum",
+        chain_id: 17,
+    },
+    asset: {
+        name: "ether",
+        quantity: ethers.utils.parseEther("10").toString(),
+    },
+    expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
+};
+const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
+
+async function createDefaultSwapRequest(counterParty: Actor) {
+    const swapRequest: SwapRequest = {
+        alpha_ledger: {
+            name: alpha.ledger.name,
+            network: alpha.ledger.network,
         },
-        expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
+        beta_ledger: {
+            name: beta.ledger.name,
+            chain_id: beta.ledger.chain_id,
+        },
+        alpha_asset: {
+            name: alpha.asset.name,
+            quantity: alpha.asset.quantity.reasonable,
+        },
+        beta_asset: {
+            name: beta.asset.name,
+            quantity: beta.asset.quantity,
+        },
+        beta_ledger_redeem_identity: aliceFinalAddress,
+        alpha_expiry: alpha.expiry,
+        beta_expiry: beta.expiry,
+        peer: {
+            peer_id: await counterParty.cnd.getPeerId(),
+            address_hint: await counterParty.cnd
+                .getPeerListenAddresses()
+                .then(addresses => addresses[0]),
+        },
     };
+    return swapRequest;
+}
 
-    const beta = {
-        ledger: {
-            name: "ethereum",
-            chain_id: 17,
-        },
-        asset: {
-            name: "ether",
-            quantity: ethers.utils.parseEther("10").toString(),
-        },
+async function assertSwapsInProgress(actor: Actor, message: string) {
+    const res = await request(actor.cndHttpApiUrl()).get("/swaps");
 
-        expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
-    };
+    const swapEntities = res.body.entities as EmbeddedRepresentationSubEntity[];
 
-    const alice = new Actor("alice");
-    const bob = new Actor("bob");
-    const aliceFinalAddress = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
-    const bobCndPeerId = await bob.peerId();
+    expect(swapEntities.map(entity => entity.properties, message))
+        .to.each.have.property("status")
+        .that.is.equal("IN_PROGRESS");
+}
 
+async function pollCndUntil(
+    actor: Actor,
+    location: string,
+    predicate: (body: Entity) => boolean
+): Promise<Entity> {
+    const response = await request(actor.cndHttpApiUrl()).get(location);
+
+    expect(response).to.have.status(200);
+
+    if (predicate(response.body)) {
+        return response.body;
+    } else {
+        await sleep(500);
+
+        return this.pollCndUntil(location, predicate);
+    }
+}
+
+setTimeout(async function() {
     describe("SWAP request DECLINED", () => {
-        let aliceReasonableSwapHref: string;
-        it("[Alice] Should be able to make first swap request via HTTP api", async () => {
-            const res = await request(alice.cndHttpApiUrl())
-                .post("/swaps/rfc003")
-                .send({
-                    alpha_ledger: {
-                        name: alpha.ledger.name,
-                        network: alpha.ledger.network,
-                    },
-                    beta_ledger: {
-                        name: beta.ledger.name,
-                        chain_id: beta.ledger.chain_id,
-                    },
+        twoActorTest(
+            "[Alice] Should be able to make first swap request via HTTP api",
+            async function({ alice, bob }) {
+                // setup
+
+                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
+                const mockEthereumWallet = Mock.of<EthereumWallet>();
+
+                const aliceComitClient = new ComitClient(
+                    mockBitcoinWallet,
+                    mockEthereumWallet,
+                    alice.cnd
+                );
+
+                // Alice should be able to send two swap requests to Bob
+                await aliceComitClient.sendSwap({
+                    ...(await createDefaultSwapRequest(bob)),
                     alpha_asset: {
                         name: alpha.asset.name,
                         quantity: alpha.asset.quantity.reasonable,
                     },
-                    beta_asset: {
-                        name: beta.asset.name,
-                        quantity: beta.asset.quantity,
-                    },
-                    beta_ledger_redeem_identity: aliceFinalAddress,
-                    alpha_expiry: alpha.expiry,
-                    beta_expiry: beta.expiry,
-                    peer: bobCndPeerId,
                 });
-
-            res.error.should.equal(false);
-            res.should.have.status(201);
-            const swapLocation = res.header.location;
-            swapLocation.should.be.a("string");
-            aliceReasonableSwapHref = swapLocation;
-        });
-
-        it("[Alice] Should see Bob in her list of peers after sending a swap request to him", async () => {
-            await sleep(1000);
-            const res = await request(alice.cndHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.containSubset([
-                {
-                    id: bobCndPeerId,
-                },
-            ]);
-        });
-
-        it("[Bob] Should see a new peer in his list of peers after receiving a swap request from Alice", async () => {
-            const res = await request(bob.cndHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.have.length(1);
-        });
-
-        let aliceStingySwapHref: string;
-        it("[Alice] Should be able to make second swap request via HTTP api", async () => {
-            const res = await request(alice.cndHttpApiUrl())
-                .post("/swaps/rfc003")
-                .send({
-                    alpha_ledger: {
-                        name: alpha.ledger.name,
-                        network: alpha.ledger.network,
-                    },
-                    beta_ledger: {
-                        name: beta.ledger.name,
-                        chain_id: beta.ledger.chain_id,
-                    },
+                await aliceComitClient.sendSwap({
+                    ...(await createDefaultSwapRequest(bob)),
                     alpha_asset: {
                         name: alpha.asset.name,
                         quantity: alpha.asset.quantity.stingy,
                     },
-                    beta_asset: {
-                        name: beta.asset.name,
-                        quantity: beta.asset.quantity,
-                    },
-                    beta_ledger_redeem_identity: aliceFinalAddress,
-                    alpha_expiry: alpha.expiry,
-                    beta_expiry: beta.expiry,
-                    peer: bobCndPeerId,
                 });
 
-            res.error.should.equal(false);
-            res.should.have.status(201);
-
-            const swapLocation = res.header.location;
-            swapLocation.should.be.a("string");
-            aliceStingySwapHref = swapLocation;
-        });
-
-        it("[Alice] Should still only see Bob in her list of peers after sending a second swap request to him", async () => {
-            const res = await request(alice.cndHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.containSubset([
-                {
-                    id: bobCndPeerId,
-                },
-            ]);
-        });
-
-        it("[Bob] Should still only see one peer in his list of peers after receiving a second swap request from Alice", async () => {
-            const res = await request(bob.cndHttpApiUrl()).get("/peers");
-
-            res.should.have.status(200);
-            res.body.peers.should.have.length(1);
-        });
-
-        it("[Alice] Shows the swaps as IN_PROGRESS in GET /swaps", async () => {
-            const res = await request(alice.cndHttpApiUrl()).get("/swaps");
-
-            res.should.have.status(200);
-
-            const swapEntities = res.body
-                .entities as EmbeddedRepresentationSubEntity[];
-
-            expect(swapEntities.map(entity => entity.properties))
-                .to.each.have.property("status")
-                .that.is.equal("IN_PROGRESS");
-        });
-
-        let bobStingySwapHref: string;
-        let bobReasonableSwapHref: string;
-
-        it("[Bob] Shows the swaps as IN_PROGRESS in /swaps", async () => {
-            const swapEntities = await bob
-                .pollCndUntil("/swaps", body => body.entities.length === 2)
-                .then(
-                    body => body.entities as EmbeddedRepresentationSubEntity[]
+                await assertSwapsInProgress(
+                    alice,
+                    "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
                 );
+                await assertSwapsInProgress(
+                    bob,
+                    "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
+                );
+            }
+        );
+
+        twoActorTest("[Bob] Decline one swap", async function({ alice, bob }) {
+            // setup
+
+            const mockBitcoinWallet = Mock.of<BitcoinWallet>();
+            const mockEthereumWallet = Mock.of<EthereumWallet>();
+
+            const aliceComitClient = new ComitClient(
+                mockBitcoinWallet,
+                mockEthereumWallet,
+                alice.cnd
+            );
+
+            // Alice should be able to send two swap requests to Bob
+            const aliceReasonableSwap = await aliceComitClient.sendSwap({
+                ...(await createDefaultSwapRequest(bob)),
+                alpha_asset: {
+                    name: alpha.asset.name,
+                    quantity: alpha.asset.quantity.reasonable,
+                },
+            });
+            const aliceStingySwap = await aliceComitClient.sendSwap({
+                ...(await createDefaultSwapRequest(bob)),
+                alpha_asset: {
+                    name: alpha.asset.name,
+                    quantity: alpha.asset.quantity.stingy,
+                },
+            });
+
+            const swapEntities = await pollCndUntil(
+                bob,
+                "/swaps",
+                body => body.entities.length === 2
+            ).then(body => body.entities as EmbeddedRepresentationSubEntity[]);
 
             expect(swapEntities.map(entity => entity.properties))
                 .to.each.have.property("protocol")
@@ -186,45 +197,24 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
                     ) === parseInt(alpha.asset.quantity.stingy, 10)
                 );
             });
-            const reasonableSwap = swapEntities.find(entity => {
-                return (
-                    parseInt(
-                        entity.properties.parameters.alpha_asset.quantity,
-                        10
-                    ) === parseInt(alpha.asset.quantity.reasonable, 10)
-                );
-            });
 
-            bobStingySwapHref = stingySwap.links.find(link =>
+            const bobStingySwapHref = stingySwap.links.find(link =>
                 link.rel.includes("self")
             ).href;
-            bobReasonableSwapHref = reasonableSwap.links.find(link =>
-                link.rel.includes("self")
-            ).href;
-        });
 
-        it("[Bob] Has the RFC-003 parameters when GETing the swap", async () => {
             const res = await request(bob.cndHttpApiUrl()).get(
                 bobStingySwapHref
             );
 
-            res.should.have.status(200);
-
             const body = res.body as Entity;
-
-            expect(body.properties).jsonSchema(swapPropertiesJsonSchema);
-        });
-
-        it("[Bob] Has the accept and decline actions when GETing the swap", async () => {
-            const res = await request(bob.cndHttpApiUrl()).get(
-                bobStingySwapHref
-            );
-
-            res.should.have.status(200);
-
-            const body = res.body as Entity;
-
-            expect(body.actions).containSubset([
+            expect(
+                body.properties,
+                "[Bob] Has the RFC-003 parameters when GETing the swap"
+            ).jsonSchema(swapPropertiesJsonSchema);
+            expect(
+                body.actions,
+                "[Bob] Has the accept and decline actions when GETing the swap"
+            ).containSubset([
                 {
                     name: "accept",
                 },
@@ -232,74 +222,39 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
                     name: "decline",
                 },
             ]);
-        });
 
-        it("[Bob] Can execute a decline action", async () => {
-            const bob = new Actor("bob", null, {
-                reason: "UnsatisfactoryRate",
-            });
-
-            const res = await request(bob.cndHttpApiUrl()).get(
-                bobStingySwapHref
-            );
-            const body = res.body as Entity;
-
+            /// Decline the swap
             const decline = body.actions.find(
                 action => action.name === "decline"
             );
-            const declineRes = await bob.doComitAction(decline);
+            const declineRes = await bob.cnd.executeAction(decline);
 
             declineRes.should.have.status(200);
-        });
+            expect(
+                await pollCndUntil(
+                    bob,
+                    bobStingySwapHref,
+                    entity =>
+                        entity.properties.state.communication.status ===
+                        "DECLINED"
+                ),
+                "[Bob] Should be in the Declined State after declining a swap request providing a reason"
+            ).to.exist;
 
-        it("[Bob] Should be in the Declined State after declining a swap request providing a reason", async function() {
-            await bob.pollCndUntil(
-                bobStingySwapHref,
-                entity =>
-                    entity.properties.state.communication.status === "DECLINED"
-            );
-        });
+            const aliceStingySwapDetails = await aliceStingySwap.fetchDetails();
+            expect(
+                aliceStingySwapDetails.properties.state.communication.status,
+                "[Alice] Should be in the Declined State after Bob declines a swap"
+            ).to.eq("DECLINED");
 
-        it("[Alice] Should be in the Declined State after Bob declines a swap request providing a reason", async () => {
-            await alice.pollCndUntil(
-                aliceStingySwapHref,
-                body =>
-                    body.properties.state.communication.status === "DECLINED"
-            );
-        });
-
-        it("[Bob] Can execute a decline action, without providing a reason", async () => {
-            const bob = new Actor("bob");
-
-            const res = await request(bob.cndHttpApiUrl()).get(
-                bobReasonableSwapHref
-            );
-            const body = res.body as Entity;
-
-            const decline = body.actions.find(
-                action => action.name === "decline"
-            );
-            const declineRes = await bob.doComitAction(decline);
-
-            declineRes.should.have.status(200);
-        });
-
-        it("[Bob] Should be in the Declined State after declining a swap request without a reason", async () => {
-            await bob.pollCndUntil(
-                bobReasonableSwapHref,
-                entity =>
-                    entity.properties.state.communication.status === "DECLINED"
-            );
-        });
-
-        it("[Alice] Should be in the Declined State after Bob declines a swap request without a reason", async () => {
-            await alice.pollCndUntil(
-                aliceReasonableSwapHref,
-                entity =>
-                    entity.properties.state.communication.status === "DECLINED"
-            );
+            const aliceReasonableSwapDetails = await aliceReasonableSwap.fetchDetails();
+            expect(
+                aliceReasonableSwapDetails.properties.state.communication
+                    .status,
+                "[Alice] Should be in the SENT State for the other swap request"
+            ).to.eq("SENT");
         });
     });
 
     run();
-})();
+}, 0);
