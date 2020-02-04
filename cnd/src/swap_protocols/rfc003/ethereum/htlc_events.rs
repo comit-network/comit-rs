@@ -8,7 +8,7 @@ use crate::{
         ledger::Ethereum,
         rfc003::{
             create_swap::HtlcParams,
-            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcDeployed, HtlcEvents, HtlcFunded, Redeemed, Refunded},
             Secret,
         },
     },
@@ -43,7 +43,7 @@ impl HtlcFunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
 }
 
 #[async_trait::async_trait]
-impl HtlcEvents<Ethereum, asset::Ether> for Cache<Web3Connector> {
+impl HtlcDeployed<Ethereum, asset::Ether> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
@@ -68,7 +68,10 @@ impl HtlcEvents<Ethereum, asset::Ether> for Cache<Web3Connector> {
             transaction,
         })
     }
+}
 
+#[async_trait::async_trait]
+impl HtlcEvents<Ethereum, asset::Ether> for Cache<Web3Connector> {
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
@@ -227,7 +230,7 @@ mod erc20 {
     }
 
     #[async_trait::async_trait]
-    impl HtlcEvents<Ethereum, asset::Erc20> for Cache<Web3Connector> {
+    impl HtlcDeployed<Ethereum, asset::Erc20> for Cache<Web3Connector> {
         async fn htlc_deployed(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
@@ -252,7 +255,10 @@ mod erc20 {
                 transaction,
             })
         }
+    }
 
+    #[async_trait::async_trait]
+    impl HtlcEvents<Ethereum, asset::Erc20> for Cache<Web3Connector> {
         async fn htlc_redeemed_or_refunded(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,

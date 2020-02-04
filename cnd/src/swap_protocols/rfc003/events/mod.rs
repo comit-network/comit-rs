@@ -44,12 +44,16 @@ pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<L, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<L>>;
+}
+
+#[async_trait::async_trait]
+pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<L, A>,

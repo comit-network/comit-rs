@@ -8,7 +8,7 @@ use crate::{
         rfc003::{
             bitcoin::extract_secret::extract_secret,
             create_swap::HtlcParams,
-            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcDeployed, HtlcEvents, HtlcFunded, Redeemed, Refunded},
         },
     },
 };
@@ -39,7 +39,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bi
 }
 
 #[async_trait::async_trait]
-impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bitcoin>
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcDeployed<Bitcoin, asset::Bitcoin>
     for Cache<BitcoindConnector>
 {
     async fn htlc_deployed(
@@ -70,7 +70,12 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bi
             transaction,
         })
     }
+}
 
+#[async_trait::async_trait]
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bitcoin>
+    for Cache<BitcoindConnector>
+{
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,

@@ -12,7 +12,7 @@ use crate::{
         rfc003::{
             self,
             create_swap::{HtlcParams, SwapEvent},
-            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcDeployed, HtlcEvents, HtlcFunded, Redeemed, Refunded},
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger,
         },
@@ -117,7 +117,7 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcFunded<B, asset
 }
 
 #[async_trait::async_trait]
-impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset::Bitcoin>
+impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcDeployed<B, asset::Bitcoin>
     for Facade
 {
     async fn htlc_deployed(
@@ -129,7 +129,12 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset
             .htlc_deployed(htlc_params, start_of_swap)
             .await
     }
+}
 
+#[async_trait::async_trait]
+impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset::Bitcoin>
+    for Facade
+{
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<B, asset::Bitcoin>,
@@ -162,10 +167,10 @@ where
 }
 
 #[async_trait::async_trait]
-impl<A> HtlcEvents<Ethereum, A> for Facade
+impl<A> HtlcDeployed<Ethereum, A> for Facade
 where
     A: Asset + Send + Sync + 'static,
-    ethereum::Cache<Web3Connector>: HtlcEvents<Ethereum, A>,
+    ethereum::Cache<Web3Connector>: HtlcDeployed<Ethereum, A>,
 {
     async fn htlc_deployed(
         &self,
@@ -176,7 +181,14 @@ where
             .htlc_deployed(htlc_params, start_of_swap)
             .await
     }
+}
 
+#[async_trait::async_trait]
+impl<A> HtlcEvents<Ethereum, A> for Facade
+where
+    A: Asset + Send + Sync + 'static,
+    ethereum::Cache<Web3Connector>: HtlcEvents<Ethereum, A>,
+{
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, A>,

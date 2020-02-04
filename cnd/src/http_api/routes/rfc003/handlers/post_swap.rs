@@ -11,7 +11,7 @@ use crate::{
         rfc003::{
             self,
             alice::State,
-            events::{HtlcEvents, HtlcFunded},
+            events::{HtlcDeployed, HtlcEvents, HtlcFunded},
             state_store::StateStore,
             Accept, Decline, DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
         },
@@ -398,7 +398,9 @@ where
         + HtlcEvents<AL, AA>
         + HtlcEvents<BL, BA>
         + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>,
+        + HtlcFunded<BL, BA>
+        + HtlcDeployed<AL, AA>
+        + HtlcDeployed<BL, BA>,
 {
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
