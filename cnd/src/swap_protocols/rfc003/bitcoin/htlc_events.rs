@@ -8,7 +8,7 @@ use crate::{
         rfc003::{
             bitcoin::extract_secret::extract_secret,
             create_swap::HtlcParams,
-            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
         },
     },
 };
@@ -16,6 +16,27 @@ use ::bitcoin::OutPoint;
 use anyhow::Context;
 use chrono::NaiveDateTime;
 use futures_core::future::{self, Either};
+
+#[async_trait::async_trait]
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bitcoin>
+    for Cache<BitcoindConnector>
+{
+    async fn htlc_funded(
+        &self,
+        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_deployment: &Deployed<Bitcoin>,
+        _start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
+        let tx = &htlc_deployment.transaction;
+        let asset =
+            asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
+
+        Ok(Funded {
+            transaction: tx.clone(),
+            asset,
+        })
+    }
+}
 
 #[async_trait::async_trait]
 impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bitcoin>
@@ -47,22 +68,6 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcEvents<Bitcoin, asset::Bi
                 vout,
             },
             transaction,
-        })
-    }
-
-    async fn htlc_funded(
-        &self,
-        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
-        htlc_deployment: &Deployed<Bitcoin>,
-        _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
-        let tx = &htlc_deployment.transaction;
-        let asset =
-            asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
-
-        Ok(Funded {
-            transaction: tx.clone(),
-            asset,
         })
     }
 

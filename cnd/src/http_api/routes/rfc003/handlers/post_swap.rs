@@ -9,8 +9,11 @@ use crate::{
     swap_protocols::{
         ledger::{self},
         rfc003::{
-            self, alice::State, events::HtlcEvents, state_store::StateStore, Accept, Decline,
-            DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
+            self,
+            alice::State,
+            events::{HtlcEvents, HtlcFunded},
+            state_store::StateStore,
+            Accept, Decline, DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
         },
         Facade, HashFunction, Role, SwapId,
     },
@@ -391,7 +394,11 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    Facade: HtlcEvents<AL, AA> + HtlcEvents<BL, BA> + LoadAcceptedSwap<AL, BL, AA, BA>,
+    Facade: LoadAcceptedSwap<AL, BL, AA, BA>
+        + HtlcEvents<AL, AA>
+        + HtlcEvents<BL, BA>
+        + HtlcFunded<AL, AA>
+        + HtlcFunded<BL, BA>,
 {
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 

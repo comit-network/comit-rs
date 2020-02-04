@@ -4,7 +4,7 @@ use crate::{
     swap_protocols::{
         rfc003::{
             self,
-            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
             ledger::Ledger,
             state_store::StateStore,
             Accept, ActorState, Request, SecretHash,
@@ -35,7 +35,12 @@ pub async fn create_swap<D, A: ActorState>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
-    D: HtlcEvents<A::AL, A::AA> + HtlcEvents<A::BL, A::BA> + StateStore + Clone,
+    D: HtlcEvents<A::AL, A::AA>
+        + HtlcEvents<A::BL, A::BA>
+        + HtlcFunded<A::AL, A::AA>
+        + HtlcFunded<A::BL, A::BA>
+        + StateStore
+        + Clone,
 {
     let (request, accept, at) = accepted.clone();
 
@@ -90,7 +95,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcEvents<AL, AA>,
+    D: HtlcEvents<AL, AA> + HtlcFunded<AL, AA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -132,7 +137,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcEvents<BL, BA>,
+    D: HtlcEvents<BL, BA> + HtlcFunded<BL, BA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)

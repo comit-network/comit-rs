@@ -12,7 +12,7 @@ use crate::{
         rfc003::{
             self,
             create_swap::{HtlcParams, SwapEvent},
-            events::{Deployed, Funded, HtlcEvents, Redeemed, Refunded},
+            events::{Deployed, Funded, HtlcEvents, HtlcFunded, Redeemed, Refunded},
             state_store::{self, InMemoryStateStore, StateStore},
             ActorState, Ledger,
         },
@@ -101,6 +101,22 @@ where
 }
 
 #[async_trait::async_trait]
+impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcFunded<B, asset::Bitcoin>
+    for Facade
+{
+    async fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<B, asset::Bitcoin>,
+        htlc_deployment: &Deployed<B>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Funded<B, asset::Bitcoin>> {
+        self.bitcoin_connector
+            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
+            .await
+    }
+}
+
+#[async_trait::async_trait]
 impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset::Bitcoin>
     for Facade
 {
@@ -111,17 +127,6 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset
     ) -> anyhow::Result<Deployed<B>> {
         self.bitcoin_connector
             .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-
-    async fn htlc_funded(
-        &self,
-        htlc_params: HtlcParams<B, asset::Bitcoin>,
-        htlc_deployment: &Deployed<B>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<B, asset::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 
@@ -139,6 +144,24 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcEvents<B, asset
 }
 
 #[async_trait::async_trait]
+impl<A> HtlcFunded<Ethereum, A> for Facade
+where
+    A: Asset + Send + Sync + 'static,
+    ethereum::Cache<Web3Connector>: HtlcFunded<Ethereum, A>,
+{
+    async fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_deployment: &Deployed<Ethereum>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Funded<Ethereum, A>> {
+        self.ethereum_connector
+            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
+            .await
+    }
+}
+
+#[async_trait::async_trait]
 impl<A> HtlcEvents<Ethereum, A> for Facade
 where
     A: Asset + Send + Sync + 'static,
@@ -151,17 +174,6 @@ where
     ) -> anyhow::Result<Deployed<Ethereum>> {
         self.ethereum_connector
             .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-
-    async fn htlc_funded(
-        &self,
-        htlc_params: HtlcParams<Ethereum, A>,
-        htlc_deployment: &Deployed<Ethereum>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Ethereum, A>> {
-        self.ethereum_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 

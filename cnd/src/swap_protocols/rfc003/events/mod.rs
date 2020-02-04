@@ -34,18 +34,22 @@ pub struct Refunded<L: Ledger> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_deployed(
-        &self,
-        htlc_params: HtlcParams<L, A>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<L>>;
+pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<L, A>>;
+}
+
+#[async_trait::async_trait]
+pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn htlc_deployed(
+        &self,
+        htlc_params: HtlcParams<L, A>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Deployed<L>>;
     async fn htlc_redeemed_or_refunded(
         &self,
         htlc_params: HtlcParams<L, A>,
