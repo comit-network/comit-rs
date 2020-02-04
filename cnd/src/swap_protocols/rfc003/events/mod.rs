@@ -7,7 +7,6 @@ use crate::{
     swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
 };
 use chrono::NaiveDateTime;
-use futures_core::future::Either;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -53,12 +52,23 @@ pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcEvents<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_redeemed_or_refunded(
+pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn htlc_redeemed(
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
         htlc_funding: &Funded<L, A>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Either<Redeemed<L>, Refunded<L>>>;
+    ) -> anyhow::Result<Redeemed<L>>;
+}
+
+#[async_trait::async_trait]
+pub trait HtlcRefunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn htlc_refunded(
+        &self,
+        htlc_params: HtlcParams<L, A>,
+        htlc_deployment: &Deployed<L>,
+        htlc_funding: &Funded<L, A>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Refunded<L>>;
 }

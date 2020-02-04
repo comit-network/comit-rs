@@ -4,7 +4,10 @@ use crate::{
     swap_protocols::{
         rfc003::{
             self,
-            events::{Deployed, Funded, HtlcDeployed, HtlcEvents, HtlcFunded, Redeemed, Refunded},
+            events::{
+                Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
+                Refunded,
+            },
             ledger::Ledger,
             state_store::StateStore,
             Accept, ActorState, Request, SecretHash,
@@ -36,12 +39,14 @@ pub async fn create_swap<D, A: ActorState>(
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
     D: StateStore
-        + HtlcEvents<A::AL, A::AA>
-        + HtlcEvents<A::BL, A::BA>
         + HtlcFunded<A::AL, A::AA>
         + HtlcFunded<A::BL, A::BA>
         + HtlcDeployed<A::AL, A::AA>
         + HtlcDeployed<A::BL, A::BA>
+        + HtlcRedeemed<A::AL, A::AA>
+        + HtlcRedeemed<A::BL, A::BA>
+        + HtlcRefunded<A::AL, A::AA>
+        + HtlcRefunded<A::BL, A::BA>
         + Clone,
 {
     let (request, accept, at) = accepted.clone();
@@ -97,7 +102,11 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcEvents<AL, AA> + HtlcFunded<AL, AA> + HtlcFunded<AL, AA> + HtlcDeployed<AL, AA>,
+    D: HtlcFunded<AL, AA>
+        + HtlcFunded<AL, AA>
+        + HtlcDeployed<AL, AA>
+        + HtlcRedeemed<AL, AA>
+        + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -109,16 +118,22 @@ where
         .await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
-    let redeemed_or_refunded = dependencies
-        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded, start_of_swap)
-        .await?;
+    let redeemed =
+        dependencies.htlc_redeemed(htlc_params.clone(), &deployed, &funded, start_of_swap);
 
-    match redeemed_or_refunded {
-        Either::Left(redeemed) => {
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+
+    match future::try_select(redeemed, refunded).await {
+        Ok(Either::Left((redeemed, _))) => {
             co.yield_(SwapEvent::AlphaRedeemed(redeemed.clone())).await;
         }
-        Either::Right(refunded) => {
+        Ok(Either::Right((refunded, _))) => {
             co.yield_(SwapEvent::AlphaRefunded(refunded.clone())).await;
+        }
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+
+            return Err(error);
         }
     }
 
@@ -139,7 +154,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcEvents<BL, BA> + HtlcFunded<BL, BA> + HtlcDeployed<BL, BA>,
+    D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -151,16 +166,22 @@ where
         .await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
-    let redeemed_or_refunded = dependencies
-        .htlc_redeemed_or_refunded(htlc_params, &deployed, &funded, start_of_swap)
-        .await?;
+    let redeemed =
+        dependencies.htlc_redeemed(htlc_params.clone(), &deployed, &funded, start_of_swap);
 
-    match redeemed_or_refunded {
-        Either::Left(redeemed) => {
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+
+    match future::try_select(redeemed, refunded).await {
+        Ok(Either::Left((redeemed, _))) => {
             co.yield_(SwapEvent::BetaRedeemed(redeemed.clone())).await;
         }
-        Either::Right(refunded) => {
+        Ok(Either::Right((refunded, _))) => {
             co.yield_(SwapEvent::BetaRefunded(refunded.clone())).await;
+        }
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+
+            return Err(error);
         }
     }
 

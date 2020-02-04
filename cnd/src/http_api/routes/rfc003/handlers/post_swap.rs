@@ -11,7 +11,7 @@ use crate::{
         rfc003::{
             self,
             alice::State,
-            events::{HtlcDeployed, HtlcEvents, HtlcFunded},
+            events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
             Accept, Decline, DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
         },
@@ -23,6 +23,72 @@ use anyhow::Context;
 use futures_core::future::TryFutureExt;
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;
+
+async fn initiate_request<AL, BL, AA, BA>(
+    dependencies: Facade,
+    id: SwapId,
+    peer: DialInformation,
+    swap_request: rfc003::Request<AL, BL, AA, BA>,
+) -> anyhow::Result<()>
+where
+    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+    Facade: LoadAcceptedSwap<AL, BL, AA, BA>
+        + HtlcFunded<AL, AA>
+        + HtlcFunded<BL, BA>
+        + HtlcDeployed<AL, AA>
+        + HtlcDeployed<BL, BA>
+        + HtlcRedeemed<AL, AA>
+        + HtlcRedeemed<BL, BA>
+        + HtlcRefunded<AL, AA>
+        + HtlcRefunded<BL, BA>,
+{
+    tracing::trace!("initiating new request: {}", swap_request.swap_id);
+
+    let counterparty = peer.peer_id.clone();
+    let seed = dependencies.derive_swap_seed(id);
+
+    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
+    Save::save(&dependencies, swap_request.clone()).await?;
+
+    let state = State::proposed(swap_request.clone(), seed);
+    StateStore::insert(&dependencies, id, state);
+
+    let future = {
+        async move {
+            let response = dependencies
+                .send_request(peer.clone(), swap_request.clone())
+                .await
+                .with_context(|| format!("Failed to send swap request to {}", peer.clone()))?;
+
+            match response {
+                Ok(accept) => {
+                    Save::save(&dependencies, accept).await?;
+                    let accepted =
+                        LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &id)
+                            .await?;
+                    init_accepted_swap(&dependencies, accepted, Role::Alice)?;
+                }
+                Err(decline) => {
+                    tracing::info!("Swap declined: {}", decline.swap_id);
+                    let state = State::declined(swap_request.clone(), decline, seed);
+                    StateStore::insert(&dependencies, id, state.clone());
+                    Save::save(&dependencies, decline).await?;
+                }
+            };
+            Ok(())
+        }
+    };
+
+    tokio::task::spawn(future.map_err(|e: anyhow::Error| {
+        tracing::error!("{}", e);
+    }));
+
+    Ok(())
+}
 
 pub async fn handle_post_swap(
     dependencies: Facade,
@@ -380,70 +446,6 @@ pub struct UnsupportedSwap {
     beta_asset: HttpAsset,
     alpha_ledger: HttpLedger,
     beta_ledger: HttpLedger,
-}
-
-async fn initiate_request<AL, BL, AA, BA>(
-    dependencies: Facade,
-    id: SwapId,
-    peer: DialInformation,
-    swap_request: rfc003::Request<AL, BL, AA, BA>,
-) -> anyhow::Result<()>
-where
-    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-    Facade: LoadAcceptedSwap<AL, BL, AA, BA>
-        + HtlcEvents<AL, AA>
-        + HtlcEvents<BL, BA>
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
-        + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>,
-{
-    tracing::trace!("initiating new request: {}", swap_request.swap_id);
-
-    let counterparty = peer.peer_id.clone();
-    let seed = dependencies.derive_swap_seed(id);
-
-    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
-    Save::save(&dependencies, swap_request.clone()).await?;
-
-    let state = State::proposed(swap_request.clone(), seed);
-    StateStore::insert(&dependencies, id, state);
-
-    let future = {
-        async move {
-            let response = dependencies
-                .send_request(peer.clone(), swap_request.clone())
-                .await
-                .with_context(|| format!("Failed to send swap request to {}", peer.clone()))?;
-
-            match response {
-                Ok(accept) => {
-                    Save::save(&dependencies, accept).await?;
-                    let accepted =
-                        LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &id)
-                            .await?;
-                    init_accepted_swap(&dependencies, accepted, Role::Alice)?;
-                }
-                Err(decline) => {
-                    tracing::info!("Swap declined: {}", decline.swap_id);
-                    let state = State::declined(swap_request.clone(), decline, seed);
-                    StateStore::insert(&dependencies, id, state.clone());
-                    Save::save(&dependencies, decline).await?;
-                }
-            };
-            Ok(())
-        }
-    };
-
-    tokio::task::spawn(future.map_err(|e: anyhow::Error| {
-        tracing::error!("{}", e);
-    }));
-
-    Ok(())
 }
 
 #[derive(Serialize, Clone, Copy, Debug)]

@@ -5,7 +5,7 @@ use crate::{
     swap_protocols::{
         rfc003::{
             alice, bob, create_swap,
-            events::{HtlcDeployed, HtlcEvents, HtlcFunded},
+            events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
             Ledger,
         },
@@ -23,12 +23,14 @@ where
     D: StateStore
         + Clone
         + DeriveSwapSeed
-        + HtlcEvents<AL, AA>
-        + HtlcEvents<BL, BA>
         + HtlcFunded<AL, AA>
         + HtlcFunded<BL, BA>
         + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>,
+        + HtlcDeployed<BL, BA>
+        + HtlcRedeemed<AL, AA>
+        + HtlcRedeemed<BL, BA>
+        + HtlcRefunded<AL, AA>
+        + HtlcRefunded<BL, BA>,
 {
     let (request, accept, _at) = accepted.clone();
 
