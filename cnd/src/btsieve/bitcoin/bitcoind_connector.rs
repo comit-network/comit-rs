@@ -1,7 +1,7 @@
 use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
-use bitcoin::{hashes::sha256d, Network};
+use bitcoin::{BlockHash, Network};
 use futures::Future;
 use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
@@ -9,7 +9,7 @@ use serde::Deserialize;
 
 #[derive(Deserialize)]
 struct ChainInfo {
-    bestblockhash: sha256d::Hash,
+    bestblockhash: BlockHash,
 }
 
 #[derive(Clone, Debug)]
@@ -28,7 +28,7 @@ impl BitcoindConnector {
         })
     }
 
-    fn raw_block_by_hash_url(&self, block_hash: &sha256d::Hash) -> Url {
+    fn raw_block_by_hash_url(&self, block_hash: &BlockHash) -> Url {
         self.raw_block_by_hash_url
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
@@ -37,7 +37,7 @@ impl BitcoindConnector {
 
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = bitcoin::BlockHash;
 
     fn latest_block(
         &mut self,
@@ -68,7 +68,7 @@ impl LatestBlock for BitcoindConnector {
 
 impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = bitcoin::BlockHash;
 
     fn block_by_hash(
         &self,
@@ -100,6 +100,7 @@ mod tests {
 
     use super::*;
     use crate::quickcheck::Quickcheck;
+    use bitcoin::hashes::sha256d;
 
     fn base_urls() -> Vec<Url> {
         vec![
@@ -121,7 +122,7 @@ mod tests {
     // functions and they never panic, hence it is fine to use them in production
     #[test]
     fn build_sub_url_should_never_fail() {
-        fn prop(hash: Quickcheck<sha256d::Hash>) -> bool {
+        fn prop(hash: Quickcheck<BlockHash>) -> bool {
             for base_url in base_urls() {
                 let connector = BitcoindConnector::new(base_url, Network::Regtest).unwrap();
 
@@ -131,7 +132,7 @@ mod tests {
             true // not panicing is good enough for this test
         }
 
-        quickcheck::quickcheck(prop as fn(Quickcheck<sha256d::Hash>) -> bool)
+        quickcheck::quickcheck(prop as fn(Quickcheck<BlockHash>) -> bool)
     }
 
     #[test]
@@ -145,10 +146,11 @@ mod tests {
                 Url::parse("http://localhost:8080/rest/chaininfo.json").unwrap()
             );
 
-            let block_id = "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02"
-                .parse()
-                .unwrap();
-            let raw_block_by_hash_url = connector.raw_block_by_hash_url(&block_id);
+            let block_id: sha256d::Hash =
+                "2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02"
+                    .parse()
+                    .unwrap();
+            let raw_block_by_hash_url = connector.raw_block_by_hash_url(&block_id.into());
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
         }
     }

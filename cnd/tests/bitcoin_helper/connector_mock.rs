@@ -61,7 +61,7 @@ impl LatestBlock for BitcoinConnectorMock {
 
 impl BlockByHash for BitcoinConnectorMock {
     type Block = bitcoin::Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = bitcoin::BlockHash;
 
     fn block_by_hash(
         &self,

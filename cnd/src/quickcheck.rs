@@ -97,12 +97,12 @@ impl Arbitrary for Quickcheck<crate::ethereum::U256> {
     }
 }
 
-impl Arbitrary for Quickcheck<sha256d::Hash> {
+impl Arbitrary for Quickcheck<bitcoin::BlockHash> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
 
         match sha256d::Hash::from_slice(&bytes) {
-            Ok(block_id) => Quickcheck(block_id),
+            Ok(block_id) => Quickcheck(block_id.into()),
             Err(bitcoin::hashes::Error::InvalidLength(..)) => panic!("we always generate 32 bytes"),
         }
     }
