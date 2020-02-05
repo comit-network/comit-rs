@@ -41,6 +41,20 @@ impl FromWei<U256> for Erc20Quantity {
     }
 }
 
+impl From<Erc20Quantity> for blockchain_contracts::ethereum::TokenQuantity {
+    fn from(quantity: Erc20Quantity) -> Self {
+        if quantity > Erc20Quantity::max_value() {
+            unreachable!(
+                "Somehow an overflowed Erc20Quantity was initiated, there is a bug to fix"
+            );
+        }
+        let mut buf = [0u8; 32];
+        buf.copy_from_slice(&quantity.0.to_bytes_be());
+        // TokenQuantity stores a Big Endian Byte Array
+        blockchain_contracts::ethereum::TokenQuantity(buf)
+    }
+}
+
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)

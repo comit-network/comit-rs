@@ -1,5 +1,5 @@
 use crate::btsieve::{BlockByHash, LatestBlock};
-use bitcoin::{hashes::sha256d::Hash, util::hash::BitcoinHash, Block};
+use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
 use futures::Future;
 use futures_core::{
@@ -15,7 +15,7 @@ use tokio::sync::Mutex;
 pub struct Cache<C> {
     pub connector: C,
     #[derivative(Debug = "ignore")]
-    pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
+    pub block_cache: Arc<Mutex<LruCache<BlockHash, Block>>>,
 }
 
 impl<C> Cache<C> {
@@ -30,10 +30,10 @@ impl<C> Cache<C> {
 
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block, BlockHash = BlockHash> + Clone,
 {
     type Block = Block;
-    type BlockHash = Hash;
+    type BlockHash = BlockHash;
 
     fn latest_block(
         &mut self,
