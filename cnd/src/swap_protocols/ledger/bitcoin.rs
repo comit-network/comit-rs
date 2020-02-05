@@ -19,22 +19,22 @@ impl Bitcoin for Testnet {}
 impl Bitcoin for Regtest {}
 
 pub trait Network {
-    fn network() -> ::bitcoin::Network;
+    fn network() -> bitcoin::Network;
 }
 
 impl Network for Mainnet {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Bitcoin
+    fn network() -> bitcoin::Network {
+        bitcoin::Network::Bitcoin
     }
 }
 impl Network for Testnet {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Testnet
+    fn network() -> bitcoin::Network {
+        bitcoin::Network::Testnet
     }
 }
 impl Network for Regtest {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Regtest
+    fn network() -> bitcoin::Network {
+        bitcoin::Network::Regtest
     }
 }
 
