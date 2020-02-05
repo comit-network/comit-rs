@@ -48,8 +48,23 @@ impl From<Erc20Quantity> for blockchain_contracts::ethereum::TokenQuantity {
                 "Somehow an overflowed Erc20Quantity was initiated, there is a bug to fix"
             );
         }
+
         let mut buf = [0u8; 32];
-        buf.copy_from_slice(&quantity.0.to_bytes_be());
+        let vec = quantity.0.to_bytes_be();
+
+        if vec.len() > 32 {
+            unreachable!("There is already an `unreachable!` for that few lines above")
+        }
+        if vec.len() < 32 {
+            let mut full_len_vec = Vec::new();
+            let delta = 32 - vec.len();
+            full_len_vec.resize(delta, 0);
+            full_len_vec.extend_from_slice(&vec);
+            buf.copy_from_slice(&full_len_vec);
+        } else {
+            buf.copy_from_slice(&vec);
+        }
+
         // TokenQuantity stores a Big Endian Byte Array
         blockchain_contracts::ethereum::TokenQuantity(buf)
     }
