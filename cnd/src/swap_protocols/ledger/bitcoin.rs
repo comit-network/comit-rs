@@ -1,13 +1,14 @@
 use crate::comit_api::LedgerKind;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Mainnet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Testnet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Regtest;
+macro_rules! declare_ledger {
+    ($ledger:ident) => {
+        #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+        pub struct $ledger;
+    };
+}
+declare_ledger!(Mainnet);
+declare_ledger!(Testnet);
+declare_ledger!(Regtest);
 
 pub trait Bitcoin:
     Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + Into<LedgerKind> + 'static
