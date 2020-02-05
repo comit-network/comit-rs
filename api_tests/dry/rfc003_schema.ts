@@ -4,100 +4,12 @@
 import { twoActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
 import "chai/register-should";
-import { ethers } from "ethers";
 import "../lib/setup_chai";
 import { Actor } from "../lib_sdk/actors/actor";
-import {
-    BitcoinWallet,
-    ComitClient,
-    EthereumWallet,
-    SwapRequest,
-} from "comit-sdk";
-import { Mock } from "ts-mockery";
-import { sleep } from "../lib_sdk/utils";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-
-const alpha = {
-    ledger: {
-        name: "bitcoin",
-        network: "regtest",
-    },
-    asset: {
-        name: "bitcoin",
-        quantity: {
-            bob: "100000000",
-            charlie: "200000000",
-        },
-    },
-    expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
-};
-
-const beta = {
-    ledger: {
-        name: "ethereum",
-        chain_id: 17,
-    },
-    asset: {
-        name: "ether",
-        quantity: {
-            bob: ethers.utils.parseEther("10").toString(),
-            charlie: ethers.utils.parseEther("20").toString(),
-        },
-    },
-    expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
-};
-
-async function createDefaultSwapRequest(counterParty: Actor) {
-    const swapRequest: SwapRequest = {
-        alpha_ledger: {
-            name: alpha.ledger.name,
-            network: alpha.ledger.network,
-        },
-        beta_ledger: {
-            name: beta.ledger.name,
-            chain_id: beta.ledger.chain_id,
-        },
-        alpha_asset: {
-            name: alpha.asset.name,
-            quantity: alpha.asset.quantity.bob,
-        },
-        beta_asset: {
-            name: beta.asset.name,
-            quantity: beta.asset.quantity.bob,
-        },
-        beta_ledger_redeem_identity:
-            "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-        alpha_expiry: alpha.expiry,
-        beta_expiry: beta.expiry,
-        peer: {
-            peer_id: await counterParty.cnd.getPeerId(),
-            address_hint: await counterParty.cnd
-                .getPeerListenAddresses()
-                .then(addresses => addresses[0]),
-        },
-    };
-    return swapRequest;
-}
-
-async function pollCndUntil(
-    actor: Actor,
-    location: string,
-    predicate: (body: Entity) => boolean
-): Promise<Entity> {
-    const response = await request(actor.cndHttpApiUrl()).get(location);
-
-    expect(response).to.have.status(200);
-
-    if (predicate(response.body)) {
-        return response.body;
-    } else {
-        await sleep(500);
-
-        return this.pollCndUntil(location, predicate);
-    }
-}
+import { createDefaultSwapRequest, pollCndUntil } from "./utils";
 
 async function assertValidSirenDocument(
     swapsEntity: Entity,
@@ -131,27 +43,17 @@ setTimeout(async function() {
         twoActorTest(
             "Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema",
             async function({ alice, bob }) {
-                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
-                const mockEthereumWallet = Mock.of<EthereumWallet>();
-
-                const aliceComitClient = new ComitClient(
-                    mockBitcoinWallet,
-                    mockEthereumWallet,
-                    alice.cnd
-                );
-
                 // Alice send swap request to Bob
-                await aliceComitClient.sendSwap(
-                    await createDefaultSwapRequest(bob)
-                );
+                await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
                 const aliceSwapEntity = await pollCndUntil(
-                    alice,
+                    alice.cnd,
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(
                     body => body.entities[0] as EmbeddedRepresentationSubEntity
                 );
+
                 await assertValidSirenDocument(
                     aliceSwapEntity,
                     alice,
@@ -159,7 +61,7 @@ setTimeout(async function() {
                 );
 
                 const bobsSwapEntity = await pollCndUntil(
-                    bob,
+                    bob.cnd,
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(
@@ -176,22 +78,11 @@ setTimeout(async function() {
         twoActorTest(
             "[Alice] Response for GET /swaps/rfc003/{} contains a link to the protocol spec",
             async function({ alice, bob }) {
-                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
-                const mockEthereumWallet = Mock.of<EthereumWallet>();
-
-                const aliceComitClient = new ComitClient(
-                    mockBitcoinWallet,
-                    mockEthereumWallet,
-                    alice.cnd
-                );
-
                 // Alice send swap request to Bob
-                await aliceComitClient.sendSwap(
-                    await createDefaultSwapRequest(bob)
-                );
+                await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
                 const aliceSwapEntity = await pollCndUntil(
-                    alice,
+                    alice.cnd,
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(

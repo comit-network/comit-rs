@@ -5,48 +5,9 @@ import { threeActorTest, twoActorTest } from "../lib_sdk/actor_test";
 import "chai/register-should";
 import "../lib/setup_chai";
 import { expect, request } from "chai";
-import { Mock } from "ts-mockery";
-import {
-    BitcoinWallet,
-    ComitClient,
-    EthereumWallet,
-    SwapRequest,
-} from "comit-sdk";
 import { Actor } from "../lib_sdk/actors/actor";
-import { ethers } from "ethers";
 import { sleep } from "../lib/util";
-
-async function createDefaultSwapRequest(counterParty: Actor) {
-    const swapRequest: SwapRequest = {
-        alpha_ledger: {
-            name: "bitcoin",
-            network: "regtest",
-        },
-        beta_ledger: {
-            name: "ethereum",
-            chain_id: 17,
-        },
-        alpha_asset: {
-            name: "bitcoin",
-            quantity: "100000000",
-        },
-        beta_asset: {
-            name: "ether",
-            quantity: ethers.utils.parseEther("10").toString(),
-        },
-        beta_ledger_redeem_identity:
-            "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-        alpha_expiry: new Date("2080-06-11T23:00:00Z").getTime() / 1000,
-        beta_expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
-        peer: {
-            peer_id: await counterParty.cnd.getPeerId(),
-            address_hint: await counterParty.cnd
-                .getPeerListenAddresses()
-                .then(addresses => addresses[0]),
-        },
-    };
-    return swapRequest;
-}
+import { createDefaultSwapRequest } from "./utils";
 
 async function assertNoPeersAvailable(actor: Actor, message: string) {
     const peersResponse = await request(actor.cndHttpApiUrl()).get("/peers");
@@ -86,18 +47,9 @@ setTimeout(async function() {
                     "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
                 );
 
-                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
-                const mockEthereumWallet = Mock.of<EthereumWallet>();
-
-                const aliceComitClient = new ComitClient(
-                    mockBitcoinWallet,
-                    mockEthereumWallet,
-                    alice.cnd
-                );
-
                 // Alice send swap request to Bob
                 const swapRequest = await createDefaultSwapRequest(bob);
-                await aliceComitClient.sendSwap({
+                await alice.cnd.postSwap({
                     ...swapRequest,
                     peer: {
                         peer_id:
@@ -135,17 +87,8 @@ setTimeout(async function() {
                     "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
                 );
 
-                const mockBitcoinWallet = Mock.of<BitcoinWallet>();
-                const mockEthereumWallet = Mock.of<EthereumWallet>();
-
-                const aliceComitClient = new ComitClient(
-                    mockBitcoinWallet,
-                    mockEthereumWallet,
-                    alice.cnd
-                );
-
                 // Alice send swap request to Bob
-                await aliceComitClient.sendSwap(
+                await alice.cnd.postSwap(
                     await createDefaultSwapRequest(charlie)
                 );
 
