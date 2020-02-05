@@ -15,7 +15,7 @@ export class Actors {
         return this.getActorByName("charlie");
     }
 
-    private getActorByName(name: string): Actor {
+    public getActorByName(name: string): Actor {
         const maybeActor = this.actors.get(name);
 
         if (!maybeActor) {
