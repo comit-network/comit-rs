@@ -23,21 +23,18 @@ pub trait Network {
     fn network() -> bitcoin::Network;
 }
 
-impl Network for Mainnet {
-    fn network() -> bitcoin::Network {
-        bitcoin::Network::Bitcoin
-    }
+macro_rules! impl_network {
+    ($ledger:ty, $network:expr) => {
+        impl Network for $ledger {
+            fn network() -> bitcoin::Network {
+                $network
+            }
+        }
+    };
 }
-impl Network for Testnet {
-    fn network() -> bitcoin::Network {
-        bitcoin::Network::Testnet
-    }
-}
-impl Network for Regtest {
-    fn network() -> bitcoin::Network {
-        bitcoin::Network::Regtest
-    }
-}
+impl_network!(Mainnet, bitcoin::Network::Bitcoin);
+impl_network!(Testnet, bitcoin::Network::Testnet);
+impl_network!(Regtest, bitcoin::Network::Regtest);
 
 impl From<Mainnet> for LedgerKind {
     fn from(_: Mainnet) -> Self {
