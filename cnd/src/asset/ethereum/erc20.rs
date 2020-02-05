@@ -246,4 +246,58 @@ mod tests {
         ); // This is Erc20Quantity::max_value() + 1
         assert_eq!(res, Err(Error::Overflow))
     }
+
+    mod blockchain_contracts_test {
+        use super::*;
+        use blockchain_contracts::ethereum::TokenQuantity;
+
+        #[test]
+        fn given_small_erc20_quantity_convert_to_token_quantity() {
+            let erc20 = Erc20Quantity::from_wei(1u32);
+            let token = TokenQuantity::from(erc20);
+            assert_eq!(token.0, [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1
+            ]);
+        }
+
+        #[test]
+        fn given_32_bytes_long_erc20_quantity_convert_to_token_quantity() {
+            let token = TokenQuantity::from(Erc20Quantity::max_value());
+            assert_eq!(token.0, [
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX
+            ]);
+        }
+    }
 }
