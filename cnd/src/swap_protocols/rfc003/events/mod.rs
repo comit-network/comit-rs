@@ -57,7 +57,6 @@ pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
-        htlc_funding: &Funded<L, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<L>>;
 }
