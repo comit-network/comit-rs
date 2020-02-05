@@ -22,51 +22,35 @@ pub struct Redeemed<L: Ledger> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Deployed<L: Ledger> {
-    pub transaction: L::Transaction,
-    pub location: L::HtlcLocation,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Refunded<L: Ledger> {
     pub transaction: L::Transaction,
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_funded(
+pub trait WatchFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn watch_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<L, A>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_deployed(
+pub trait WatchRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn watch_redeemed(
         &self,
         htlc_params: HtlcParams<L, A>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<L>>;
-}
-
-#[async_trait::async_trait]
-pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
+        funded: &Funded<L, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<L>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRefunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
-    async fn htlc_refunded(
+pub trait WatchRefunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+    async fn watch_refunded(
         &self,
         htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
+        funded: &Funded<L, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<L>>;
 }

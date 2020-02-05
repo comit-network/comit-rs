@@ -3,12 +3,7 @@ use crate::{
     db::AcceptedSwap,
     seed::DeriveSwapSeed,
     swap_protocols::{
-        rfc003::{
-            alice, bob, create_swap,
-            events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
-            state_store::StateStore,
-            Ledger,
-        },
+        rfc003::{alice, bob, create_swap, state_store::StateStore, Ledger},
         Role,
     },
 };
@@ -20,17 +15,14 @@ pub fn init_accepted_swap<D, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
     role: Role,
 ) -> anyhow::Result<()>
 where
-    D: StateStore
-        + Clone
-        + DeriveSwapSeed
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
-        + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRedeemed<BL, BA>
-        + HtlcRefunded<AL, AA>
-        + HtlcRefunded<BL, BA>,
+    D: StateStore + Clone + DeriveSwapSeed, /*        + HtlcFunded<AL, AA>
+                                             *        + HtlcFunded<BL, BA>
+                                             *        + HtlcDeployed<AL, AA>
+                                             *        + HtlcDeployed<BL, BA>
+                                             *        + HtlcRedeemed<AL, AA>
+                                             *        + HtlcRedeemed<BL, BA>
+                                             *        + HtlcRefunded<AL, AA>
+                                             *        + HtlcRefunded<BL, BA> */
 {
     let (request, accept, _at) = accepted.clone();
 

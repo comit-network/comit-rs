@@ -1,5 +1,3 @@
-pub mod htlc_events;
-
 use crate::{
     asset,
     ethereum::{Address, Bytes, Transaction},

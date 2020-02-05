@@ -2,15 +2,9 @@ use crate::{
     asset::Asset,
     db::AcceptedSwap,
     swap_protocols::{
+        han, herc20,
         rfc003::{
-            self,
-            events::{
-                Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
-                Refunded,
-            },
-            ledger::Ledger,
-            state_store::StateStore,
-            Accept, ActorState, Request, SecretHash,
+            self, ledger::Ledger, state_store::StateStore, Accept, ActorState, Request, SecretHash,
         },
         HashFunction,
     },
@@ -38,16 +32,15 @@ pub async fn create_swap<D, A: ActorState>(
     facade: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
-    D: StateStore
-        + HtlcFunded<A::AL, A::AA>
-        + HtlcFunded<A::BL, A::BA>
-        + HtlcDeployed<A::AL, A::AA>
-        + HtlcDeployed<A::BL, A::BA>
-        + HtlcRedeemed<A::AL, A::AA>
-        + HtlcRedeemed<A::BL, A::BA>
-        + HtlcRefunded<A::AL, A::AA>
-        + HtlcRefunded<A::BL, A::BA>
-        + Clone,
+    D: StateStore + Clone,
+    /*    + HtlcFunded<A::AL, A::AA>
+     *        + HtlcFunded<A::BL, A::BA>
+     *        + HtlcDeployed<A::AL, A::AA>
+     *        + HtlcDeployed<A::BL, A::BA>
+     *        + HtlcRedeemed<A::AL, A::AA>
+     *        + HtlcRedeemed<A::BL, A::BA>
+     *        + HtlcRefunded<A::AL, A::AA>
+     *        + HtlcRefunded<A::BL, A::BA> */
 {
     let (request, accept, at) = accepted.clone();
 
@@ -102,7 +95,8 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
+    /*    D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL,
+     * AA>, */
 {
     let deployed = facade
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -149,7 +143,8 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
+    /*    D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL,
+     * BA>, */
 {
     let deployed = facade
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -293,15 +288,23 @@ where
     AA: Asset,
     BA: Asset,
 {
-    AlphaDeployed(Deployed<AL>),
-    AlphaFunded(Funded<AL, AA>),
-    AlphaRedeemed(Redeemed<AL>),
-    AlphaRefunded(Refunded<AL>),
+    AlphaHanFunded(han::Funded<AL, AA>),
+    AlphaHanRedeemed(han::Redeemed<AL>),
+    AlphaHanRefunded(han::Refunded<AL>),
 
-    BetaDeployed(Deployed<BL>),
-    BetaFunded(Funded<BL, BA>),
-    BetaRedeemed(Redeemed<BL>),
-    BetaRefunded(Refunded<BL>),
+    BetaHanFunded(han::Funded<BL, BA>),
+    BetaHanRedeemed(han::Redeemed<BL>),
+    BetaHanRefunded(han::Refunded<BL>),
+
+    AlphaHerc20Deployed(herc20::Deployed<AL>),
+    AlphaHerc20Funded(herc20::Funded<AL, AA>),
+    AlphaHerc20Redeemed(herc20::Redeemed<AL>),
+    AlphaHerc20Refunded(herc20::Refunded<AL>),
+
+    BetaHerc20Deployed(herc20::Deployed<BL>),
+    BetaHerc20Funded(herc20::Funded<BL, BA>),
+    BetaHerc20Redeemed(herc20::Redeemed<BL>),
+    BetaHerc20Refunded(herc20::Refunded<BL>),
 }
 
 #[cfg(test)]

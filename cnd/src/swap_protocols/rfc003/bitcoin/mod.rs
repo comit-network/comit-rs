@@ -1,5 +1,4 @@
 mod extract_secret;
-mod htlc_events;
 
 use crate::swap_protocols::{
     ledger,
@@ -11,7 +10,6 @@ use ::bitcoin::{
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
-pub use self::htlc_events::*;
 use crate::{asset, bitcoin::PublicKey};
 
 impl<B: ledger::Bitcoin> Ledger for B {

@@ -6,7 +6,6 @@ pub mod bitcoin;
 pub mod bob;
 pub mod create_swap;
 pub mod ethereum;
-pub mod events;
 pub mod ledger_state;
 pub mod messages;
 pub mod state_store;

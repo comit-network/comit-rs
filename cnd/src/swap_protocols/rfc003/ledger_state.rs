@@ -1,10 +1,6 @@
 use crate::{
     asset::Asset,
-    swap_protocols::rfc003::{
-        events::{Deployed, Funded, Redeemed, Refunded},
-        ledger::Ledger,
-        Secret,
-    },
+    swap_protocols::rfc003::{ledger::Ledger, Secret},
 };
 use serde::Serialize;
 use strum_macros::EnumDiscriminants;
