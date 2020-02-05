@@ -78,17 +78,9 @@ impl HtlcRedeemed<Ethereum, asset::Ether> for Cache<Web3Connector> {
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<Ethereum>,
-        htlc_funding: &Funded<Ethereum, asset::Ether>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Ethereum>> {
-        htlc_redeemed(
-            self.clone(),
-            htlc_params,
-            htlc_deployment,
-            htlc_funding,
-            start_of_swap,
-        )
-        .await
+        htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
     }
 }
 
@@ -98,17 +90,9 @@ impl HtlcRefunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
         &self,
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<Ethereum>,
-        htlc_funding: &Funded<Ethereum, asset::Ether>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Ethereum>> {
-        htlc_refunded(
-            self.clone(),
-            htlc_params,
-            htlc_deployment,
-            htlc_funding,
-            start_of_swap,
-        )
-        .await
+        htlc_refunded(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
     }
 }
 
@@ -120,7 +104,6 @@ async fn htlc_redeemed<A: Asset>(
     connector: Cache<Web3Connector>,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
-    _: &Funded<Ethereum, A>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Redeemed<Ethereum>> {
     let pattern = TransactionPattern {
@@ -161,7 +144,6 @@ async fn htlc_refunded<A: Asset>(
     connector: Cache<Web3Connector>,
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<Ethereum>,
-    _: &Funded<Ethereum, A>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Refunded<Ethereum>> {
     let pattern = TransactionPattern {
@@ -273,17 +255,9 @@ mod erc20 {
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
-            htlc_funding: &Funded<Ethereum, asset::Erc20>,
             start_of_swap: NaiveDateTime,
         ) -> anyhow::Result<Redeemed<Ethereum>> {
-            htlc_redeemed(
-                self.clone(),
-                htlc_params,
-                htlc_deployment,
-                htlc_funding,
-                start_of_swap,
-            )
-            .await
+            htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
         }
     }
 
@@ -293,17 +267,9 @@ mod erc20 {
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
-            htlc_funding: &Funded<Ethereum, asset::Erc20>,
             start_of_swap: NaiveDateTime,
         ) -> anyhow::Result<Refunded<Ethereum>> {
-            htlc_refunded(
-                self.clone(),
-                htlc_params,
-                htlc_deployment,
-                htlc_funding,
-                start_of_swap,
-            )
-            .await
+            htlc_refunded(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
         }
     }
 }

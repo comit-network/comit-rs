@@ -141,11 +141,10 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcRedeemed<B, ass
         &self,
         htlc_params: HtlcParams<B, asset::Bitcoin>,
         htlc_deployment: &Deployed<B>,
-        htlc_funding: &Funded<B, asset::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<B>> {
         self.bitcoin_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
+            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 }
@@ -158,11 +157,10 @@ impl<B: ledger::bitcoin::Bitcoin + ledger::bitcoin::Network> HtlcRefunded<B, ass
         &self,
         htlc_params: HtlcParams<B, asset::Bitcoin>,
         htlc_deployment: &Deployed<B>,
-        htlc_funding: &Funded<B, asset::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<B>> {
         self.bitcoin_connector
-            .htlc_refunded(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
+            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 }
@@ -212,11 +210,10 @@ where
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
-        htlc_funding: &Funded<Ethereum, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Ethereum>> {
         self.ethereum_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
+            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 }
@@ -231,11 +228,10 @@ where
         &self,
         htlc_params: HtlcParams<Ethereum, A>,
         htlc_deployment: &Deployed<Ethereum>,
-        htlc_funding: &Funded<Ethereum, A>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Ethereum>> {
         self.ethereum_connector
-            .htlc_refunded(htlc_params, htlc_deployment, htlc_funding, start_of_swap)
+            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 }

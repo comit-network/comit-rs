@@ -102,11 +102,7 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<AL, AA>
-        + HtlcFunded<AL, AA>
-        + HtlcDeployed<AL, AA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRefunded<AL, AA>,
+    D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -118,10 +114,9 @@ where
         .await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
-    let redeemed =
-        dependencies.htlc_redeemed(htlc_params.clone(), &deployed, &funded, start_of_swap);
+    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -166,10 +161,9 @@ where
         .await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
-    let redeemed =
-        dependencies.htlc_redeemed(htlc_params.clone(), &deployed, &funded, start_of_swap);
+    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
