@@ -34,7 +34,7 @@ impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         CallContract {
             to: htlc_location,
             data: None,
-            gas_limit,
+            gas_limit: gas_limit.into(),
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: Some(htlc_params.expiry),
         }
@@ -55,7 +55,7 @@ impl RedeemAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         CallContract {
             to: htlc_location,
             data: Some(data),
-            gas_limit,
+            gas_limit: gas_limit.into(),
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: None,
         }
