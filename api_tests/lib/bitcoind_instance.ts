@@ -18,7 +18,10 @@ export class BitcoindInstance implements LedgerInstance {
         private readonly logDir: string,
         public readonly p2pPort: number,
         public readonly rpcPort: number
-    ) {}
+    ) {
+        this.dbDir = tmp.dirSync();
+        this.writeLogFile();
+    }
 
     public async start() {
         const bin = process.env.BITCOIND_BIN
@@ -26,31 +29,14 @@ export class BitcoindInstance implements LedgerInstance {
             : this.projectRoot +
               "/blockchain_nodes/bitcoin/bitcoin-0.17.0/bin/bitcoind";
 
-        this.dbDir = tmp.dirSync();
-
-        this.process = spawn(
-            bin,
-            [
-                `-datadir=${this.dbDir.name}`,
-                "-regtest",
-                "-server",
-                "-printtoconsole",
-                `-bind=0.0.0.0:${this.p2pPort}`,
-                `-rpcbind=0.0.0.0:${this.rpcPort}`,
-                "-rpcallowip=0.0.0.0/0",
-                "-nodebug",
-                "-acceptnonstdtxn=0",
-                "-rest",
+        this.process = spawn(bin, [`-datadir=${this.dbDir.name}`], {
+            cwd: this.projectRoot,
+            stdio: [
+                "ignore", // stdin
+                await openAsync(this.logDir + "/bitcoind.log", "w"), // stdout
+                await openAsync(this.logDir + "/bitcoind.log", "w"), // stderr
             ],
-            {
-                cwd: this.projectRoot,
-                stdio: [
-                    "ignore", // stdin
-                    await openAsync(this.logDir + "/bitcoind.log", "w"), // stdout
-                    await openAsync(this.logDir + "/bitcoind.log", "w"), // stderr
-                ],
-            }
-        );
+        });
 
         this.process.on("exit", (code: number, signal: number) => {
             console.log(`bitcoind exited with ${code || "signal " + signal}`);
@@ -77,5 +63,28 @@ export class BitcoindInstance implements LedgerInstance {
 
     public getUsernamePassword() {
         return { username: this.username, password: this.password };
+    }
+
+    private writeLogFile() {
+        const output = `regtest=1
+server=1
+printtoconsole=1
+bind=0.0.0.0:${this.p2pPort}
+rpcbind=0.0.0.0:${this.rpcPort}
+rpcallowip=0.0.0.0/0
+nodebug=1
+rest=1
+acceptnonstdtxn=0
+zmqpubrawblock=tcp://127.0.0.1:28332
+zmqpubrawtx=tcp://127.0.0.1:28333
+`;
+        const config = this.dbDir.name + "/bitcoin.conf";
+
+        fs.writeFile(config, output, function(err: any) {
+            if (err) {
+                return console.error(err);
+            }
+            console.log("bitcoind config file created: %s", config);
+        });
     }
 }
