@@ -1,8 +1,43 @@
 import { Actors } from "./actors";
 import { createActors } from "./create_actors";
 import { timeout } from "./utils";
-import { Actor } from "./actors/actor";
-import { createActor } from "./create_actor";
+
+function nActorTest(
+    name: string,
+    actorNames: string[],
+    testFn: (actors: Actors) => Promise<void>
+) {
+    it(name, async function() {
+        this.timeout(100_000); // absurd timeout. we have our own one further down
+        const actors = await createActors(`${name}.log`, actorNames);
+
+        try {
+            await timeout(60000, testFn(actors));
+        } catch (e) {
+            if (actors.alice) {
+                await actors.alice.dumpState();
+            }
+            if (actors.bob) {
+                await actors.bob.dumpState();
+            }
+            if (actors.charlie) {
+                await actors.charlie.dumpState();
+            }
+            throw e;
+        } finally {
+            if (actors.alice) {
+                await actors.alice.stop();
+            }
+            if (actors.bob) {
+                await actors.bob.stop();
+            }
+            if (actors.charlie) {
+                await actors.charlie.stop();
+            }
+        }
+    });
+}
+
 /*
  * Instantiates a new e2e test based on three actors
  *
@@ -13,28 +48,7 @@ export function threeActorTest(
     name: string,
     testFn: (actors: Actors) => Promise<void>
 ) {
-    it(name, async function() {
-        this.timeout(100_000); // absurd timeout. we have our own one further down
-        const actors = await createActors(`${name}.log`, [
-            "alice",
-            "bob",
-            "charlie",
-        ]);
-
-        try {
-            await timeout(60000, testFn(actors));
-        } catch (e) {
-            await actors.alice.dumpState();
-            await actors.bob.dumpState();
-            await actors.charlie.dumpState();
-
-            throw e;
-        } finally {
-            actors.alice.stop();
-            actors.bob.stop();
-            actors.charlie.stop();
-        }
-    });
+    nActorTest(name, ["alice", "bob", "charlie"], testFn);
 }
 
 /*
@@ -48,21 +62,7 @@ export function twoActorTest(
     testFn: (actors: Actors) => Promise<void>
 ) {
     it(name, async function() {
-        this.timeout(100_000); // absurd timeout. we have our own one further down
-
-        const actors = await createActors(`${name}.log`, ["alice", "bob"]);
-
-        try {
-            await timeout(60000, testFn(actors));
-        } catch (e) {
-            await actors.alice.dumpState();
-            await actors.bob.dumpState();
-
-            throw e;
-        } finally {
-            actors.alice.stop();
-            actors.bob.stop();
-        }
+        nActorTest(name, ["alice", "bob"], testFn);
     });
 }
 
@@ -73,20 +73,7 @@ export function twoActorTest(
  */
 export function oneActorTest(
     name: string,
-    testFn: (actor: Actor) => Promise<void>
+    testFn: (actors: Actors) => Promise<void>
 ) {
-    it(name, async function() {
-        this.timeout(100_000); // absurd timeout. we have our own one further down
-
-        const alice = await createActor(`${name}.log`, "alice");
-        try {
-            await timeout(60000, testFn(alice));
-        } catch (e) {
-            await alice.dumpState();
-
-            throw e;
-        } finally {
-            alice.stop();
-        }
-    });
+    nActorTest(name, ["alice"], testFn);
 }

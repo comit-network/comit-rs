@@ -4,7 +4,6 @@ import "chai/register-should";
 import "../lib/setup_chai";
 import { oneActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
-import { Actor } from "../lib_sdk/actors/actor";
 import { Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";
 
@@ -12,7 +11,7 @@ setTimeout(async function() {
     describe("Sanity tests", () => {
         oneActorTest(
             "[Alice] Returns 404 when you try and GET a non-existent swap",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl()).get(
                     "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
                 );
@@ -26,7 +25,7 @@ setTimeout(async function() {
         );
         oneActorTest(
             "Returns an empty list when calling GET /swaps when there are no swaps",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl()).get("/swaps");
 
                 const body = res.body as Entity;
@@ -37,7 +36,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Returns 400 invalid body for an unsupported combination of parameters",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl())
                     .post("/swaps/rfc003")
                     .send({
@@ -73,7 +72,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Returns 400 invalid body for malformed requests",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl())
                     .post("/swaps/rfc003")
                     .send({
@@ -91,7 +90,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Should have no peers before making a swap request",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
                 expect(res).to.have.status(200);
@@ -101,7 +100,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Returns its peer ID and the addresses it listens on when you GET /",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl()).get("/");
 
                 expect(res.body.id).to.be.a("string");
@@ -113,7 +112,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Response for GET / with accept header set as application/vnd.siren+json is a valid siren document",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl()).get("/");
 
                 expect(res).to.have.status(200);
@@ -123,7 +122,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Returns its peer ID and the addresses it listens on when you GET / with accept header set as application/vnd.siren+json",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl())
                     .get("/")
                     .set("accept", "application/vnd.siren+json");
@@ -139,7 +138,7 @@ setTimeout(async function() {
 
         oneActorTest(
             "[Alice] Returns the links for /swaps and /swaps/rfc003 when you GET / with accept header set as application/vnd.siren+json",
-            async function(alice: Actor) {
+            async function({ alice }) {
                 const res = await request(alice.cndHttpApiUrl())
                     .get("/")
                     .set("accept", "application/vnd.siren+json");
