@@ -116,7 +116,7 @@ where
 
     let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -163,7 +163,7 @@ where
 
     let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, &funded, start_of_swap);
+    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
