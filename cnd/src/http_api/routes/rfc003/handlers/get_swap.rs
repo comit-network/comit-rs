@@ -4,9 +4,9 @@ use crate::{
     swap_protocols::{Facade, SwapId},
 };
 
-pub async fn handle_get_swap(dependencies: Facade, id: SwapId) -> anyhow::Result<siren::Entity> {
-    let swap = Retrieve::get(&dependencies, &id).await?;
-    let types = dependencies.determine_types(&id).await?;
+pub async fn handle_get_swap(facade: Facade, id: SwapId) -> anyhow::Result<siren::Entity> {
+    let swap = Retrieve::get(&facade, &id).await?;
+    let types = facade.determine_types(&id).await?;
 
-    build_rfc003_siren_entity(&dependencies, swap, types, IncludeState::Yes, OnFail::Error)
+    build_rfc003_siren_entity(&facade, swap, types, IncludeState::Yes, OnFail::Error)
 }

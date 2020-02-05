@@ -23,11 +23,8 @@ pub use self::swap_state::{LedgerState, SwapCommunication, SwapCommunicationStat
 use crate::http_api::problem;
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn post_swap(
-    dependencies: Facade,
-    body: serde_json::Value,
-) -> Result<impl Reply, Rejection> {
-    handle_post_swap(dependencies, body)
+pub async fn post_swap(facade: Facade, body: serde_json::Value) -> Result<impl Reply, Rejection> {
+    handle_post_swap(facade, body)
         .await
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
@@ -40,8 +37,8 @@ pub async fn post_swap(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swap(dependencies: Facade, id: SwapId) -> Result<impl Reply, Rejection> {
-    handle_get_swap(dependencies, id)
+pub async fn get_swap(facade: Facade, id: SwapId) -> Result<impl Reply, Rejection> {
+    handle_get_swap(facade, id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
@@ -54,10 +51,10 @@ pub async fn action(
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    dependencies: Facade,
+    facade: Facade,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
-    handle_action(method, id, action_kind, body, query_params, dependencies)
+    handle_action(method, id, action_kind, body, query_params, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)

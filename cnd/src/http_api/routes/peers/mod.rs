@@ -15,8 +15,8 @@ pub struct Peer {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_peers(dependencies: Facade) -> Result<impl Reply, Rejection> {
-    let peers = dependencies
+pub async fn get_peers(facade: Facade) -> Result<impl Reply, Rejection> {
+    let peers = facade
         .comit_peers()
         .await
         .map(|(peer, addresses)| Peer {

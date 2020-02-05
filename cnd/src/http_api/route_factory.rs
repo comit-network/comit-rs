@@ -16,16 +16,13 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
     format!("{}/{}", swap_path(*id), action)
 }
 
-pub fn create(
-    dependencies: Facade,
-    allowed_origins: &AllowedOrigins,
-) -> BoxedFilter<(impl Reply,)> {
-    let peer_id = dependencies.local_peer_id();
+pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(impl Reply,)> {
+    let peer_id = facade.local_peer_id();
     let swaps = warp::path(http_api::PATH);
     let rfc003 = swaps.and(warp::path(RFC003));
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
-    let dependencies = warp::any().map(move || dependencies.clone());
+    let facade = warp::any().map(move || facade.clone());
 
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
@@ -43,13 +40,13 @@ pub fn create(
     let rfc003_post_swap = rfc003
         .and(warp::path::end())
         .and(warp::post())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and(warp::body::json())
         .and_then(http_api::routes::rfc003::post_swap);
 
     let rfc003_get_swap = rfc003
         .and(warp::get())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and(warp::path::param())
         .and(warp::path::end())
         .and_then(http_api::routes::rfc003::get_swap);
@@ -57,7 +54,7 @@ pub fn create(
     let get_swaps = swaps
         .and(warp::get())
         .and(warp::path::end())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::index::get_swaps);
 
     let rfc003_action = warp::method()
@@ -68,27 +65,27 @@ pub fn create(
         >())
         .and(warp::path::end())
         .and(warp::query::<http_api::action::ActionExecutionParameters>())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and(warp::body::json().or(empty_json_body).unify())
         .and_then(http_api::routes::rfc003::action);
 
     let get_peers = warp::get()
         .and(warp::path("peers"))
         .and(warp::path::end())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::peers::get_peers);
 
     let get_info_siren = warp::get()
         .and(warp::path::end())
         .and(warp::header::exact("accept", "application/vnd.siren+json"))
         .and(peer_id.clone())
-        .and(dependencies.clone())
+        .and(facade.clone())
         .and_then(http_api::routes::index::get_info_siren);
 
     let get_info = warp::get()
         .and(warp::path::end())
         .and(peer_id)
-        .and(dependencies)
+        .and(facade)
         .and_then(http_api::routes::index::get_info);
 
     preflight_cors_route

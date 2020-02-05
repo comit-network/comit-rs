@@ -120,8 +120,8 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
-    let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
+async fn spawn_warp_instance(settings: Settings, facade: Facade) {
+    let routes = route_factory::create(facade, &settings.http_api.cors.allowed_origins);
 
     let listen_addr = SocketAddr::new(
         settings.http_api.socket.address,

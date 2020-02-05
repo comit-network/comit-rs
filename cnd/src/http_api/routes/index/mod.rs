@@ -17,8 +17,8 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub async fn get_info(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
-    let listen_addresses = dependencies.listen_addresses().await.to_vec();
+pub async fn get_info(id: PeerId, facade: Facade) -> Result<impl Reply, Rejection> {
+    let listen_addresses = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
         id: Http(id),
@@ -26,8 +26,8 @@ pub async fn get_info(id: PeerId, dependencies: Facade) -> Result<impl Reply, Re
     }))
 }
 
-pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
-    let listen_addresses = dependencies.listen_addresses().await.to_vec();
+pub async fn get_info_siren(id: PeerId, facade: Facade) -> Result<impl Reply, Rejection> {
+    let listen_addresses = facade.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
         &siren::Entity::default()
@@ -52,8 +52,8 @@ pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Rep
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
-    handle_get_swaps(dependencies)
+pub async fn get_swaps(facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_get_swaps(facade)
         .await
         .map(|swaps| {
             Ok(warp::reply::with_header(

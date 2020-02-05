@@ -39,12 +39,12 @@ pub async fn handle_action(
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: Facade,
+    facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let types = dependencies.determine_types(&swap_id).await?;
+    let types = facade.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
-        let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
+        let state = StateStore::get::<ROLE>(&facade, &swap_id)?.ok_or_else(|| {
             anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
         })?;
 
@@ -58,17 +58,14 @@ pub async fn handle_action(
                 let body = serde_json::from_value::<AcceptBody>(body)
                     .context("failed to deserialize accept body")?;
 
-                let channel = dependencies
-                    .pending_request_for(swap_id)
-                    .await
-                    .with_context(|| {
-                        format!("unable to find response channel for swap {}", swap_id)
-                    })?;
+                let channel = facade.pending_request_for(swap_id).await.with_context(|| {
+                    format!("unable to find response channel for swap {}", swap_id)
+                })?;
 
                 let accept_message =
-                    body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
+                    body.into_accept_message(swap_id, &facade.derive_swap_seed(swap_id));
 
-                Save::save(&dependencies, accept_message).await?;
+                Save::save(&facade, accept_message).await?;
 
                 tracing::trace!("received accept action: {}", swap_id);
 
@@ -81,28 +78,25 @@ pub async fn handle_action(
                 })?;
 
                 let accepted =
-                    LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &swap_id)
+                    LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&facade, &swap_id)
                         .await?;
-                init_accepted_swap(&dependencies, accepted, types.role)?;
+                init_accepted_swap(&facade, accepted, types.role)?;
 
                 Ok(ActionResponseBody::None)
             }
             Action::Decline(_) => {
                 let body = serde_json::from_value::<DeclineBody>(body)?;
 
-                let channel = dependencies
-                    .pending_request_for(swap_id)
-                    .await
-                    .with_context(|| {
-                        format!("unable to find response channel for swap {}", swap_id)
-                    })?;
+                let channel = facade.pending_request_for(swap_id).await.with_context(|| {
+                    format!("unable to find response channel for swap {}", swap_id)
+                })?;
 
                 let decline_message = rfc003::Decline {
                     swap_id,
                     reason: to_swap_decline_reason(body.reason),
                 };
 
-                Save::save(&dependencies, decline_message).await?;
+                Save::save(&facade, decline_message).await?;
 
                 tracing::trace!("received decline action: {}", swap_id);
 
@@ -115,9 +109,9 @@ pub async fn handle_action(
                 })?;
 
                 let swap_request = state.request();
-                let seed = dependencies.derive_swap_seed(swap_id);
+                let seed = facade.derive_swap_seed(swap_id);
                 let state = State::declined(swap_request, decline_message, seed);
-                StateStore::insert(&dependencies, swap_id, state);
+                StateStore::insert(&facade, swap_id, state);
 
                 Ok(ActionResponseBody::None)
             }

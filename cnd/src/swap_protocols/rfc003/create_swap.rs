@@ -35,7 +35,7 @@ use genawaiter::{
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
 pub async fn create_swap<D, A: ActorState>(
-    dependencies: D,
+    facade: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
     D: StateStore
@@ -56,11 +56,11 @@ pub async fn create_swap<D, A: ActorState>(
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
-        let dependencies = dependencies.clone();
+        let facade = facade.clone();
         |co| async move {
             future::try_join(
-                watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params(), at),
-                watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params(), at),
+                watch_alpha_ledger(&facade, &co, swap.alpha_htlc_params(), at),
+                watch_beta_ledger(&facade, &co, swap.beta_htlc_params(), at),
             )
             .await
         }
@@ -72,7 +72,7 @@ pub async fn create_swap<D, A: ActorState>(
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
                 tracing::info!("swap {} yielded event {}", id, event);
-                dependencies.update::<A>(&id, event);
+                facade.update::<A>(&id, event);
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
@@ -92,7 +92,7 @@ pub async fn create_swap<D, A: ActorState>(
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
-    dependencies: &D,
+    facade: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<AL, AA>,
     start_of_swap: NaiveDateTime,
@@ -104,19 +104,19 @@ where
     BA: Asset,
     D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
 {
-    let deployed = dependencies
+    let deployed = facade
         .htlc_deployed(htlc_params.clone(), start_of_swap)
         .await?;
     co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
 
-    let funded = dependencies
+    let funded = facade
         .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
         .await?;
     co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
 
-    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
+    let redeemed = facade.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
+    let refunded = facade.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -139,7 +139,7 @@ where
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_beta_ledger<D, AL, AA, BL, BA>(
-    dependencies: &D,
+    facade: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<BL, BA>,
     start_of_swap: NaiveDateTime,
@@ -151,19 +151,19 @@ where
     BA: Asset,
     D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
 {
-    let deployed = dependencies
+    let deployed = facade
         .htlc_deployed(htlc_params.clone(), start_of_swap)
         .await?;
     co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
 
-    let funded = dependencies
+    let funded = facade
         .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
         .await?;
     co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
 
-    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
+    let redeemed = facade.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
+    let refunded = facade.htlc_refunded(htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
