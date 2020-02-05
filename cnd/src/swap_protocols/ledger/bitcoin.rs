@@ -36,20 +36,15 @@ impl_network!(Mainnet, bitcoin::Network::Bitcoin);
 impl_network!(Testnet, bitcoin::Network::Testnet);
 impl_network!(Regtest, bitcoin::Network::Regtest);
 
-impl From<Mainnet> for LedgerKind {
-    fn from(_: Mainnet) -> Self {
-        LedgerKind::BitcoinMainnet
-    }
+macro_rules! impl_from_for_ledgerkind {
+    ($ledger:ty, $ledger_kind:expr) => {
+        impl From<$ledger> for LedgerKind {
+            fn from(_: Mainnet) -> Self {
+                $ledger_kind
+            }
+        }
+    };
 }
-
-impl From<Testnet> for LedgerKind {
-    fn from(_: Testnet) -> Self {
-        LedgerKind::BitcoinTestnet
-    }
-}
-
-impl From<Regtest> for LedgerKind {
-    fn from(_: Regtest) -> Self {
-        LedgerKind::BitcoinRegtest
-    }
-}
+impl_from_for_ledgerkind!(Mainnet, LedgerKind::BitcoinMainnet);
+impl_from_for_ledgerkind!(Testnet, LedgerKind::BitcoinTestnet);
+impl_from_for_ledgerkind!(Regtest, LedgerKind::BitcoinRegtest);
