@@ -44,6 +44,7 @@ jobs:
       - restore_caches
       - install_rust
       - install_node_devlibs
+      - install_lnd
       - print_current_versions
       - run:
           name: Debug build and test
@@ -63,6 +64,7 @@ jobs:
       - restore_caches
       - install_rust
       - install_node_devlibs
+      - install_lnd
       - print_current_versions
       - run:
           name: Release build and test
@@ -147,6 +149,20 @@ commands:
             # Define variables that need interpolation
             # As CircleCI starts a new shell for each `run` declaration, we need to export cargo home to $BASH_ENV
             echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH' >> $BASH_ENV
+  install_lnd:
+    steps:
+      - run:
+          name:  "Install go 1.13 & lnd"
+          command: |
+            sudo rm -rf /usr/local/go
+            wget https://dl.google.com/go/go1.13.3.linux-amd64.tar.gz
+            sudo tar -xzvf go1.13.3.linux-amd64.tar.gz -C /usr/local/
+            unset GOPATH
+            go get -d github.com/lightningnetwork/lnd
+            cd ~/go/src/github.com/lightningnetwork/lnd
+            git checkout v0.9.0-beta
+            make tags=invoicesrpc && make install
+            echo 'export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH' >> $BASH_ENV
   print_current_versions:
     steps:
       - run:

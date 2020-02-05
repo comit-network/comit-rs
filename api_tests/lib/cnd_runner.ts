@@ -1,15 +1,11 @@
-import * as fs from "fs";
 import * as path from "path";
-import { promisify } from "util";
 import { CndInstance } from "../lib_sdk/cnd_instance";
+import { existsAsync, unlinkAsync } from "../lib_sdk/utils";
 import { CND_CONFIGS } from "./config";
 import { LedgerConfig } from "./ledger_runner";
 import { HarnessGlobal } from "./util";
 
 declare var global: HarnessGlobal;
-
-const unlinkAsync = promisify(fs.unlink);
-const existsAsync = promisify(fs.exists);
 
 export class CndRunner {
     private runningNodes: { [key: string]: CndInstance };
