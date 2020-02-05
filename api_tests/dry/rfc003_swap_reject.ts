@@ -7,13 +7,8 @@ import "chai/register-should";
 import "../lib/setup_chai";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import {
-    createDefaultSwapRequest,
-    DEFAULT_ALPHA,
-    pollCndUntil,
-    pollSwapDetails,
-} from "./utils";
 import { Actor } from "../lib_sdk/actors/actor";
+import {createDefaultSwapRequest, DEFAULT_ALPHA} from "../lib_sdk/utils";
 
 async function assertSwapsInProgress(actor: Actor, message: string) {
     const res = await request(actor.cndHttpApiUrl()).get("/swaps");
@@ -77,8 +72,7 @@ setTimeout(async function() {
                 },
             });
 
-            const bobSwapDetails = await pollSwapDetails(
-                bob.cnd,
+            const bobSwapDetails = await bob.pollSwapDetails(
                 aliceStingySwap
             );
 
@@ -106,8 +100,7 @@ setTimeout(async function() {
 
             declineRes.should.have.status(200);
             expect(
-                await pollCndUntil(
-                    bob.cnd,
+                await bob.pollCndUntil(
                     aliceStingySwap,
                     entity =>
                         entity.properties.state.communication.status ===
@@ -116,12 +109,10 @@ setTimeout(async function() {
                 "[Bob] Should be in the Declined State after declining a swap request providing a reason"
             ).to.exist;
 
-            const aliceReasonableSwapDetails = await pollSwapDetails(
-                alice.cnd,
+            const aliceReasonableSwapDetails = await alice.pollSwapDetails(
                 aliceReasonableSwap
             );
-            const aliceStingySwapDetails = await pollSwapDetails(
-                alice.cnd,
+            const aliceStingySwapDetails = await alice.pollSwapDetails(
                 aliceStingySwap
             );
 

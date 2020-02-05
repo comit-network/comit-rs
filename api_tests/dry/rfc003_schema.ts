@@ -9,7 +9,7 @@ import { Actor } from "../lib_sdk/actors/actor";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { createDefaultSwapRequest, pollCndUntil } from "./utils";
+import {createDefaultSwapRequest} from "../lib_sdk/utils";
 
 async function assertValidSirenDocument(
     swapsEntity: Entity,
@@ -46,8 +46,7 @@ setTimeout(async function() {
                 // Alice send swap request to Bob
                 await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
-                const aliceSwapEntity = await pollCndUntil(
-                    alice.cnd,
+                const aliceSwapEntity = await alice.pollCndUntil(
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(
@@ -60,8 +59,7 @@ setTimeout(async function() {
                     "[Alice] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema"
                 );
 
-                const bobsSwapEntity = await pollCndUntil(
-                    bob.cnd,
+                const bobsSwapEntity = await bob.pollCndUntil(
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(
@@ -81,8 +79,7 @@ setTimeout(async function() {
                 // Alice send swap request to Bob
                 await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
-                const aliceSwapEntity = await pollCndUntil(
-                    alice.cnd,
+                const aliceSwapEntity = await alice.pollCndUntil(
                     "/swaps",
                     body => body.entities.length > 0
                 ).then(

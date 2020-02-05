@@ -7,7 +7,7 @@ import "../lib/setup_chai";
 import { expect, request } from "chai";
 import { Actor } from "../lib_sdk/actors/actor";
 import { sleep } from "../lib/util";
-import { createDefaultSwapRequest } from "./utils";
+import {createDefaultSwapRequest} from "../lib_sdk/utils";
 
 async function assertNoPeersAvailable(actor: Actor, message: string) {
     const peersResponse = await request(actor.cndHttpApiUrl()).get("/peers");

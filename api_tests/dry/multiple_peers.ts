@@ -6,7 +6,7 @@ import { expect } from "chai";
 import "chai/register-should";
 import "../lib/setup_chai";
 import { SwapDetails } from "comit-sdk/dist/src/cnd";
-import { createDefaultSwapRequest, pollSwapDetails } from "./utils";
+import {createDefaultSwapRequest} from "../lib_sdk/utils";
 
 interface MatchInterface {
     id: string;
@@ -38,25 +38,21 @@ setTimeout(async function() {
                 );
 
                 // fetch swap details
-                const aliceToBobSwapDetails = await pollSwapDetails(
-                    alice.cnd,
+                const aliceToBobSwapDetails = await alice.pollSwapDetails(
                     aliceToBobSwapUrl
                 );
 
-                const aliceToCharlieSwapDetails = await pollSwapDetails(
-                    alice.cnd,
+                const aliceToCharlieSwapDetails = await  alice.pollSwapDetails(
                     aliceToCharlieSwapUrl
                 );
 
                 // Bob get swap details
-                const bobSwapDetails = await pollSwapDetails(
-                    bob.cnd,
+                const bobSwapDetails = await  bob.pollSwapDetails(
                     aliceToBobSwapUrl
                 );
 
                 // Charlie get swap details
-                const charlieSwapDetails = await pollSwapDetails(
-                    charlie.cnd,
+                const charlieSwapDetails = await charlie.pollSwapDetails(
                     aliceToCharlieSwapUrl
                 );
 
