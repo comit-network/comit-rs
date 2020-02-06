@@ -70,6 +70,11 @@ where
             htlc_location,
             fund_transaction,
             ..
+        }
+        | IncorrectlyFunded {
+            htlc_location,
+            fund_transaction,
+            ..
         } = beta_state
         {
             actions.push(Action::Refund(<(BL, BA)>::refund_action(

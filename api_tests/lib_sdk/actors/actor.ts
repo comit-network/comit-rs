@@ -241,6 +241,30 @@ export class Actor {
         }
     }
 
+    public async overfund() {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        const amount = response.data.payload.amount;
+        response.data.payload.amount = amount * 1.01;
+
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+    }
+
+    public async underfund() {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        const amount = response.data.payload.amount;
+        response.data.payload.amount = amount * 0.01;
+
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+    }
+
     public async refund() {
         if (!this.swap) {
             throw new Error("Cannot refund non-existent swap");
@@ -411,6 +435,22 @@ export class Actor {
 
     public async assertBetaRefunded() {
         await this.assertLedgerState("beta_ledger", "REFUNDED");
+    }
+
+    public async assertAlphaIncorrectlyFunded() {
+        await this.assertLedgerState("alpha_ledger", "INCORRECTLY_FUNDED");
+    }
+
+    public async assertBetaIncorrectlyFunded() {
+        await this.assertLedgerState("beta_ledger", "INCORRECTLY_FUNDED");
+    }
+
+    public async assertAlphaNotDeployed() {
+        await this.assertLedgerState("alpha_ledger", "NOT_DEPLOYED");
+    }
+
+    public async assertBetaNotDeployed() {
+        await this.assertLedgerState("beta_ledger", "NOT_DEPLOYED");
     }
 
     public async start() {
