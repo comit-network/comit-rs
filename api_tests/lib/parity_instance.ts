@@ -53,6 +53,6 @@ export class ParityInstance implements LedgerInstance {
     }
 
     public stop() {
-        this.process.kill("SIGINT");
+        this.process.kill("SIGKILL");
     }
 }
