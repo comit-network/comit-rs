@@ -87,16 +87,4 @@ export class BitcoinWallet implements Wallet {
 
         return blockchainInfo.mediantime;
     }
-
-    public fee(): string {
-        return this.inner.getFee();
-    }
-
-    public async sendToAddress(
-        address: string,
-        satoshis: number,
-        network: string
-    ): Promise<string> {
-        return this.inner.sendToAddress(address, satoshis, network);
-    }
 }

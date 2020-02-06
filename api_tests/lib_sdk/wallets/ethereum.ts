@@ -151,20 +151,4 @@ export class EthereumWallet implements Wallet {
 
         return block.timestamp;
     }
-
-    public async deployContract(
-        data: string,
-        amount: BigNumber,
-        gasLimit: string
-    ): Promise<string> {
-        return this.inner.deployContract(data, amount, gasLimit);
-    }
-
-    public callContract(
-        data: string,
-        constractAddress: string,
-        gasLimit: string
-    ): Promise<string> {
-        return this.inner.callContract(data, constractAddress, gasLimit);
-    }
 }

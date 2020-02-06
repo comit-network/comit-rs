@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { BigNumber, Cnd, ComitClient, Field, Swap } from "comit-sdk";
+import { BigNumber, Cnd, ComitClient, Swap } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
@@ -13,7 +13,6 @@ import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { HarnessGlobal } from "../../lib/util";
-import { timeoutPromise } from "comit-sdk/dist/src/timeout_promise";
 
 declare var global: HarnessGlobal;
 
@@ -86,9 +85,7 @@ export class Actor {
 
     public async sendRequest(
         maybeAlphaAssetKind?: AssetKind,
-        maybeBetaAssetKind?: AssetKind,
-        maybeAlphaAssetQuantity?: string,
-        maybeBetaAssetQuantity?: string
+        maybeBetaAssetKind?: AssetKind
     ) {
         const alphaAssetKind = maybeAlphaAssetKind
             ? maybeAlphaAssetKind
@@ -97,24 +94,13 @@ export class Actor {
             ? maybeBetaAssetKind
             : this.defaultBetaAssetKind();
 
-        const alphaAssetQuantity = maybeAlphaAssetQuantity
-            ? maybeAlphaAssetQuantity
-            : this.defaultAlphaAssetQuantity(alphaAssetKind);
-
-        const betaAssetQuantity = maybeBetaAssetQuantity
-            ? maybeBetaAssetQuantity
-            : this.defaultBetaAssetQuantity(betaAssetKind);
-
         // By default, we will send the swap request to bob
         const to = this.actors.bob;
 
         this.logger.info("Sending swap request");
 
-        this.alphaLedger = ledgerDescriptionForAsset(alphaAssetKind);
-        this.alphaAsset = assetDescriptionForAsset(
-            alphaAssetKind,
-            alphaAssetQuantity
-        );
+        this.alphaLedger = defaultLedgerDescriptionForAsset(alphaAssetKind);
+        this.alphaAsset = defaultAssetDescriptionForAsset(alphaAssetKind);
         to.alphaLedger = this.alphaLedger;
         to.alphaAsset = this.alphaAsset;
 
@@ -129,11 +115,8 @@ export class Actor {
             alphaAssetKind
         );
 
-        this.betaLedger = ledgerDescriptionForAsset(betaAssetKind);
-        this.betaAsset = assetDescriptionForAsset(
-            betaAssetKind,
-            betaAssetQuantity
-        );
+        this.betaLedger = defaultLedgerDescriptionForAsset(betaAssetKind);
+        this.betaAsset = defaultAssetDescriptionForAsset(betaAssetKind);
         to.betaLedger = this.betaLedger;
         to.betaAsset = this.betaAsset;
 
@@ -258,99 +241,28 @@ export class Actor {
         }
     }
 
-    private tryWaitForAction(actionName: string) {
-        return timeoutPromise(10000, this.waitForAction(actionName));
+    public async overfund() {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        const amount = response.data.payload.amount;
+        response.data.payload.amount = amount * 1.01;
+
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
     }
 
-    private async waitForAction(actionName: string) {
-        while (true) {
-            await sleep(1000);
+    public async underfund() {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        const amount = response.data.payload.amount;
+        response.data.payload.amount = amount * 0.01;
 
-            const swap = await this.swap.fetchDetails();
-            const actions = swap.actions;
-
-            if (!actions || actions.length === 0) {
-                continue;
-            }
-
-            const action = actions.find(action => action.name === actionName);
-
-            if (!action) {
-                continue;
-            }
-
-            return this.cnd.executeAction(action!, (field: Field) =>
-                this.fieldValueResolver(field)
-            );
-        }
-    }
-
-    private async fieldValueResolver(
-        field: Field
-    ): Promise<string | undefined> {
-        const classes: string[] = field.class;
-
-        if (classes.includes("bitcoin") && classes.includes("address")) {
-            return this.wallets.bitcoin.address();
-        }
-
-        if (classes.includes("bitcoin") && classes.includes("feePerWU")) {
-            return Promise.resolve(this.wallets.bitcoin.fee());
-        }
-
-        if (classes.includes("ethereum") && classes.includes("address")) {
-            return Promise.resolve(this.wallets.ethereum.account());
-        }
-    }
-
-    public async fundWithQuantity(quantity: string) {
-        if (!this.swap) {
-            throw new Error("Cannot fund nonexistent swap");
-        }
-
-        this.logger.debug("Waiting for fund action to be available...");
-
-        const response = await this.tryWaitForAction("fund");
-
-        this.logger.debug("Funding now...");
-
-        const action = response.data;
-        switch (action.type) {
-            case "bitcoin-send-amount-to-address": {
-                const { to, network } = action.payload;
-                const sats = parseInt(quantity, 10);
-
-                return await this.wallets.bitcoin.sendToAddress(
-                    to,
-                    sats,
-                    network
-                );
-            }
-            case "ethereum-call-contract": {
-                const { data, contract_address, gas_limit } = action.payload;
-
-                return await this.wallets.ethereum.callContract(
-                    data,
-                    contract_address,
-                    gas_limit
-                );
-            }
-            case "ethereum-deploy-contract": {
-                const { data, gas_limit } = action.payload;
-                const value = new BigNumber(quantity);
-
-                return await this.wallets.ethereum.deployContract(
-                    data,
-                    value,
-                    gas_limit
-                );
-            }
-            default: {
-                throw new Error(
-                    `Expected fund action, but received ledger action ${action.type} that does not match funding.`
-                );
-            }
-        }
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
     }
 
     public async refund() {
@@ -446,7 +358,7 @@ export class Actor {
             );
 
             const wallet = this.wallets[
-                ledgerDescriptionForAsset(assetKind).name
+                defaultLedgerDescriptionForAsset(assetKind).name
             ];
             const expectedBalance = new BigNumber(
                 this.startingBalances.get(assetKind)
@@ -456,10 +368,7 @@ export class Actor {
             const balanceInclFees = expectedBalance.minus(maximumFee);
 
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                assetDescriptionForAsset(
-                    assetKind,
-                    expectedBalanceChange.toString()
-                )
+                defaultAssetDescriptionForAsset(assetKind)
             );
 
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
@@ -476,7 +385,7 @@ export class Actor {
 
         for (const [assetKind] of this.startingBalances.entries()) {
             const wallet = this.wallets[
-                ledgerDescriptionForAsset(assetKind).name
+                defaultLedgerDescriptionForAsset(assetKind).name
             ];
             const maximumFee = wallet.MaximumFee;
 
@@ -489,7 +398,7 @@ export class Actor {
                 this.startingBalances.get(assetKind)
             );
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                assetDescriptionForAsset(assetKind, expectedBalance.toString())
+                defaultAssetDescriptionForAsset(assetKind)
             );
             const balanceInclFees = expectedBalance.minus(maximumFee);
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
@@ -711,7 +620,7 @@ export class Actor {
                 continue;
             }
 
-            const ledger = ledgerDescriptionForAsset(asset.name);
+            const ledger = defaultLedgerDescriptionForAsset(asset.name);
             const ledgerName = ledger.name;
 
             this.logger.debug("Minting %s on %s", asset.name, ledgerName);
@@ -749,28 +658,9 @@ export class Actor {
 
         return defaultBetaAssetKind;
     }
-
-    private defaultAlphaAssetQuantity(assetAlphaKind: AssetKind) {
-        return this.defaultQuantity(assetAlphaKind);
-    }
-
-    private defaultBetaAssetQuantity(assetBetaKind: AssetKind) {
-        return this.defaultQuantity(assetBetaKind);
-    }
-
-    private defaultQuantity(assetKind: AssetKind) {
-        switch (assetKind) {
-            case AssetKind.Bitcoin:
-                return "100000000";
-            case AssetKind.Erc20:
-                return parseEther("100").toString();
-            case AssetKind.Ether:
-                return parseEther("10").toString();
-        }
-    }
 }
 
-function ledgerDescriptionForAsset(asset: AssetKind): Ledger {
+function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
     switch (asset) {
         case AssetKind.Bitcoin: {
             return {
@@ -793,24 +683,24 @@ function ledgerDescriptionForAsset(asset: AssetKind): Ledger {
     }
 }
 
-function assetDescriptionForAsset(asset: AssetKind, quantity: string): Asset {
+function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
     switch (asset) {
         case AssetKind.Bitcoin: {
             return {
                 name: AssetKind.Bitcoin,
-                quantity,
+                quantity: "100000000",
             };
         }
         case AssetKind.Ether: {
             return {
                 name: AssetKind.Ether,
-                quantity,
+                quantity: parseEther("10").toString(),
             };
         }
         case AssetKind.Erc20: {
             return {
                 name: AssetKind.Erc20,
-                quantity,
+                quantity: parseEther("100").toString(),
                 token_contract: global.tokenContract,
             };
         }
