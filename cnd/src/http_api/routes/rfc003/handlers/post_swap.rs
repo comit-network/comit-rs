@@ -111,7 +111,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Mainnet,
@@ -135,7 +135,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Testnet,
@@ -159,7 +159,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Regtest,
@@ -183,7 +183,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -207,7 +207,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -231,7 +231,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -255,7 +255,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Mainnet,
@@ -279,7 +279,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Testnet,
@@ -303,7 +303,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
                 ledger::bitcoin::Regtest,
@@ -327,7 +327,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -351,7 +351,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -376,7 +376,7 @@ pub async fn handle_post_swap(
             identities,
             peer,
         } => {
-            let identities = identities.into_identities(&seed)?;
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
             let request = new_request(
                 id,
                 alpha_ledger,
@@ -413,7 +413,7 @@ fn new_request<AL, BL, AA, BA>(
     beta_asset: BA,
     alpha_expiry: Option<Timestamp>,
     beta_expiry: Option<Timestamp>,
-    identities: Identities<AL, BL>,
+    identities: Identities<AL::Identity, BL::Identity>,
     secret_hash: SecretHash,
 ) -> rfc003::Request<AL, BL, AA, BA>
 where
@@ -482,50 +482,11 @@ struct HttpIdentities {
     beta_ledger_redeem_identity: Option<ethereum::Address>,
 }
 
-#[derive(Debug, Clone)]
-struct Identities<AL: Ledger, BL: Ledger> {
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
-}
-
-trait IntoIdentities<AL: Ledger, BL: Ledger> {
-    fn into_identities(
+impl HttpIdentities {
+    fn into_bitcoin_ethereum_identities(
         self,
         secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<AL, BL>>;
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("{kind} identity was not expected")]
-pub struct UnexpectedIdentity {
-    kind: IdentityKind,
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("{kind} identity was missing")]
-pub struct MissingIdentity {
-    kind: IdentityKind,
-}
-
-#[derive(Debug, Clone, Copy, thiserror::Error)]
-#[error("{kind} was not a valid ethereum address")]
-pub struct InvalidEthereumAddress {
-    kind: IdentityKind,
-    source: <ethereum::Address as FromStr>::Err,
-}
-
-#[derive(strum_macros::Display, Debug, Clone, Copy)]
-#[strum(serialize_all = "snake_case")]
-pub enum IdentityKind {
-    AlphaLedgerRefundIdentity,
-    BetaLedgerRedeemIdentity,
-}
-
-impl<B: ledger::Bitcoin> IntoIdentities<B, ledger::Ethereum> for HttpIdentities {
-    fn into_identities(
-        self,
-        secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<B, ledger::Ethereum>> {
+    ) -> anyhow::Result<Identities<crate::bitcoin::PublicKey, ethereum::Address>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -556,13 +517,11 @@ impl<B: ledger::Bitcoin> IntoIdentities<B, ledger::Ethereum> for HttpIdentities 
             beta_ledger_redeem_identity,
         })
     }
-}
 
-impl<B: ledger::Bitcoin> IntoIdentities<ledger::Ethereum, B> for HttpIdentities {
-    fn into_identities(
+    fn into_ethereum_bitcoin_identities(
         self,
         secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<ledger::Ethereum, B>> {
+    ) -> anyhow::Result<Identities<ethereum::Address, crate::bitcoin::PublicKey>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -593,6 +552,38 @@ impl<B: ledger::Bitcoin> IntoIdentities<ledger::Ethereum, B> for HttpIdentities 
             beta_ledger_redeem_identity,
         })
     }
+}
+
+#[derive(Debug, Clone)]
+struct Identities<AI, BI> {
+    pub alpha_ledger_refund_identity: AI,
+    pub beta_ledger_redeem_identity: BI,
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{kind} identity was not expected")]
+pub struct UnexpectedIdentity {
+    kind: IdentityKind,
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{kind} identity was missing")]
+pub struct MissingIdentity {
+    kind: IdentityKind,
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{kind} was not a valid ethereum address")]
+pub struct InvalidEthereumAddress {
+    kind: IdentityKind,
+    source: <ethereum::Address as FromStr>::Err,
+}
+
+#[derive(strum_macros::Display, Debug, Clone, Copy)]
+#[strum(serialize_all = "snake_case")]
+pub enum IdentityKind {
+    AlphaLedgerRefundIdentity,
+    BetaLedgerRedeemIdentity,
 }
 
 fn default_alpha_expiry() -> Timestamp {

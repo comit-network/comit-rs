@@ -1,7 +1,6 @@
 use crate::{
     http_api::action::ListRequiredFields,
     swap_protocols::{
-        ledger,
         ledger::{bitcoin, Ethereum},
         rfc003::{
             actions::Accept,
@@ -18,16 +17,32 @@ pub struct OnlyRedeem<L: Ledger> {
     pub alpha_ledger_redeem_identity: L::Identity,
 }
 
-impl<B: ledger::Bitcoin> ListRequiredFields for Accept<Ethereum, B> {
+impl ListRequiredFields for Accept<Ethereum, bitcoin::Mainnet> {
     fn list_required_fields() -> Vec<siren::Field> {
-        vec![siren::Field {
-            name: "alpha_ledger_redeem_identity".to_owned(),
-            class: vec!["ethereum".to_owned(), "address".to_owned()],
-            _type: Some("text".to_owned()),
-            value: None,
-            title: Some("Alpha ledger redeem identity".to_owned()),
-        }]
+        ethereum_bitcoin_accept_required_fields()
     }
+}
+
+impl ListRequiredFields for Accept<Ethereum, bitcoin::Testnet> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        ethereum_bitcoin_accept_required_fields()
+    }
+}
+
+impl ListRequiredFields for Accept<Ethereum, bitcoin::Regtest> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        ethereum_bitcoin_accept_required_fields()
+    }
+}
+
+fn ethereum_bitcoin_accept_required_fields() -> Vec<siren::Field> {
+    vec![siren::Field {
+        name: "alpha_ledger_redeem_identity".to_owned(),
+        class: vec!["ethereum".to_owned(), "address".to_owned()],
+        _type: Some("text".to_owned()),
+        value: None,
+        title: Some("Alpha ledger redeem identity".to_owned()),
+    }]
 }
 
 impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<Ethereum> {
@@ -53,16 +68,32 @@ pub struct OnlyRefund<L: Ledger> {
     pub beta_ledger_refund_identity: L::Identity,
 }
 
-impl<B: ledger::Bitcoin> ListRequiredFields for Accept<B, Ethereum> {
+impl ListRequiredFields for Accept<bitcoin::Mainnet, Ethereum> {
     fn list_required_fields() -> Vec<siren::Field> {
-        vec![siren::Field {
-            name: "beta_ledger_refund_identity".to_owned(),
-            class: vec!["ethereum".to_owned(), "address".to_owned()],
-            _type: Some("text".to_owned()),
-            value: None,
-            title: Some("Beta ledger refund identity".to_owned()),
-        }]
+        bitcoin_ethereum_accept_required_fields()
     }
+}
+
+impl ListRequiredFields for Accept<bitcoin::Testnet, Ethereum> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        bitcoin_ethereum_accept_required_fields()
+    }
+}
+
+impl ListRequiredFields for Accept<bitcoin::Regtest, Ethereum> {
+    fn list_required_fields() -> Vec<siren::Field> {
+        bitcoin_ethereum_accept_required_fields()
+    }
+}
+
+fn bitcoin_ethereum_accept_required_fields() -> Vec<siren::Field> {
+    vec![siren::Field {
+        name: "beta_ledger_refund_identity".to_owned(),
+        class: vec!["ethereum".to_owned(), "address".to_owned()],
+        _type: Some("text".to_owned()),
+        value: None,
+        title: Some("Beta ledger refund identity".to_owned()),
+    }]
 }
 
 impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<Ethereum> {
