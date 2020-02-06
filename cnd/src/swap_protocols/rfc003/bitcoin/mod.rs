@@ -2,7 +2,10 @@ mod extract_secret;
 mod htlc_events;
 
 use crate::swap_protocols::{
-    ledger,
+    ledger::{
+        self,
+        bitcoin::{Mainnet, Regtest, Testnet},
+    },
     rfc003::{create_swap::HtlcParams, Ledger},
 };
 use ::bitcoin::{
@@ -15,6 +18,24 @@ pub use self::htlc_events::*;
 use crate::{asset, bitcoin::PublicKey};
 
 impl<B: ledger::Bitcoin> Ledger for B {
+    type HtlcLocation = OutPoint;
+    type Identity = PublicKey;
+    type Transaction = Transaction;
+}
+
+impl Ledger for Mainnet {
+    type HtlcLocation = OutPoint;
+    type Identity = PublicKey;
+    type Transaction = Transaction;
+}
+
+impl Ledger for Testnet {
+    type HtlcLocation = OutPoint;
+    type Identity = PublicKey;
+    type Transaction = Transaction;
+}
+
+impl Ledger for Regtest {
     type HtlcLocation = OutPoint;
     type Identity = PublicKey;
     type Transaction = Transaction;
