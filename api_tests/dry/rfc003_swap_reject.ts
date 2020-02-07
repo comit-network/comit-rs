@@ -8,7 +8,7 @@ import "../lib/setup_chai";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { Actor } from "../lib_sdk/actors/actor";
-import {createDefaultSwapRequest, DEFAULT_ALPHA} from "../lib_sdk/utils";
+import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../lib_sdk/utils";
 
 async function assertSwapsInProgress(actor: Actor, message: string) {
     const res = await request(actor.cndHttpApiUrl()).get("/swaps");
@@ -72,9 +72,7 @@ setTimeout(async function() {
                 },
             });
 
-            const bobSwapDetails = await bob.pollSwapDetails(
-                aliceStingySwap
-            );
+            const bobSwapDetails = await bob.pollSwapDetails(aliceStingySwap);
 
             expect(
                 bobSwapDetails.properties,

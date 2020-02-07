@@ -13,8 +13,8 @@ import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { HarnessGlobal } from "../../lib/util";
-import {Entity} from "../../gen/siren";
-import {SwapDetails} from "comit-sdk/dist/src/cnd";
+import { Entity } from "../../gen/siren";
+import { SwapDetails } from "comit-sdk/dist/src/cnd";
 
 declare var global: HarnessGlobal;
 
