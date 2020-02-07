@@ -4,6 +4,7 @@ import tmp from "tmp";
 import { promisify } from "util";
 import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
+import { sleep } from "./util";
 
 const openAsync = promisify(fs.open);
 
@@ -52,7 +53,9 @@ export class ParityInstance implements LedgerInstance {
         return this;
     }
 
-    public stop() {
+    public async stop() {
+        this.process.kill("SIGTERM");
+        await sleep(3000);
         this.process.kill("SIGKILL");
     }
 }
