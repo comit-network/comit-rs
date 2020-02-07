@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
-- Upgrade `blockchain-contracts` crate to 0.2.0. Ether and Erc20 HTLCs now use `revert` to fail the Ethereum transaction if the redeem or refund are unsuccessful.
+- Upgrade `blockchain-contracts` crate to 0.3.1. Ether and Erc20 HTLCs now use `revert` to fail the Ethereum transaction if the redeem or refund are unsuccessful.
 
 ## [0.5.1] - 2020-01-21
 
