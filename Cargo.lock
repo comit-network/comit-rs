@@ -495,6 +495,7 @@ dependencies = [
  "genawaiter",
  "hex 0.4.0",
  "http-api-problem",
+ "impl-template",
  "lazy_static",
  "libp2p",
  "libp2p-comit",
@@ -1535,6 +1536,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58e3cae7e99c7ff5a995da2cf78dd0a5383740eda71d98cf7b1910c301ac69b8"
 dependencies = [
  "serde",
+]
+
+[[package]]
+name = "impl-template"
+version = "1.0.0-alpha"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e20558cac9252437815e7231074926454f1d59d9797fff4840d135a30c930a49"
+dependencies = [
+ "itertools",
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.14",
 ]
 
 [[package]]

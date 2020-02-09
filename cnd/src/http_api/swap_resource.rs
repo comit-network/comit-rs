@@ -1,7 +1,7 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    asset,
+    asset::Asset,
     db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
@@ -11,8 +11,7 @@ use crate::{
     },
     swap_protocols::{
         actions::Actions,
-        ledger,
-        rfc003::{self, state_store::StateStore, ActorState},
+        rfc003::{self, state_store::StateStore, ActorState, Ledger},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -51,57 +50,26 @@ pub enum SwapStatus {
     InternalFailure,
 }
 
-macro_rules! impl_from_request_for_swap_parameters {
-    ($alpha_ledger:ty, $beta_ledger:ty, $alpha_asset:ty, $beta_asset:ty) => {
-        impl From<rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>
-            for SwapParameters
-        {
-            fn from(
-                request: rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>,
-            ) -> Self {
-                Self {
-                    alpha_ledger: HttpLedger::from(request.alpha_ledger),
-                    alpha_asset: HttpAsset::from(request.alpha_asset),
-                    beta_ledger: HttpLedger::from(request.beta_ledger),
-                    beta_asset: HttpAsset::from(request.beta_asset),
-                }
-            }
+impl<AL, BL, AA, BA> From<rfc003::Request<AL, BL, AA, BA>> for SwapParameters
+where
+    HttpLedger: From<AL>,
+    HttpLedger: From<BL>,
+    HttpAsset: From<AA>,
+    HttpAsset: From<BA>,
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
+    fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
+        Self {
+            alpha_ledger: HttpLedger::from(request.alpha_ledger),
+            alpha_asset: HttpAsset::from(request.alpha_asset),
+            beta_ledger: HttpLedger::from(request.beta_ledger),
+            beta_asset: HttpAsset::from(request.beta_asset),
         }
-    };
+    }
 }
-
-macro_rules! impl_from_request_for_swap_parameters_bitcoin {
-    ($bitcoin_ledger:ty) => {
-        impl_from_request_for_swap_parameters!(
-            $bitcoin_ledger,
-            ledger::Ethereum,
-            asset::Bitcoin,
-            asset::Ether
-        );
-        impl_from_request_for_swap_parameters!(
-            ledger::Ethereum,
-            $bitcoin_ledger,
-            asset::Ether,
-            asset::Bitcoin
-        );
-        impl_from_request_for_swap_parameters!(
-            $bitcoin_ledger,
-            ledger::Ethereum,
-            asset::Bitcoin,
-            asset::Erc20
-        );
-        impl_from_request_for_swap_parameters!(
-            ledger::Ethereum,
-            $bitcoin_ledger,
-            asset::Erc20,
-            asset::Bitcoin
-        );
-    };
-}
-
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Mainnet);
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Testnet);
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Regtest);
 
 pub enum IncludeState {
     Yes,
