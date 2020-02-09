@@ -5,12 +5,12 @@
 ---
 
 [COMIT](https://comit.network) is an open protocol facilitating cross-blockchain applications.
-With [COMIT](https://comit.network) you can for examples exchange Bitcoin for any Erc20 token directly with another person.
+For example, with [COMIT](https://comit.network) you can exchange Bitcoin for Ether or any ERC20 token directly with another person.
 
-This repository containers the implementation of the comit-network daemon (`cnd`), which is the reference implementation of the protocol in Rust. 
+This repository contains the implementation of the comit-network daemon (`cnd`), which is the reference implementation of the protocol written in Rust. 
 
 If you wish to do an atomic swap on your machine or to integrate COMIT into an application (e.g. a DEX) please take a look at the [Getting Started section](https://comit.network/docs/getting-started/create-comit-app/) of the COMIT documentation.
-If you have any question please [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
+If you have any questions, feel free to [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
 
 [![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
@@ -20,7 +20,7 @@ If you have any question please [reach out to the team in our Gitter chat](https
 
 # comit-rs
 
-The Rust reference implementation of the COMIT protocol (comit-rs) implements atomic swaps using hash time locked contracts (HTLCs).
+The Rust reference implementation of the COMIT protocol (comit-rs) implements atomic swaps using constructs like Hash Time-Locked Contracts (HTLCs) to keep your funds safe at any time.
 
 ## Structure
 
