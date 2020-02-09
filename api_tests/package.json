@@ -56,7 +56,7 @@
         "pem-ts": "^2.0.0",
         "prettier": "^1.19.1",
         "readline-promise": "^1.0.4",
-        "rimraf": "^3.0.1",
+        "rimraf": "^3.0.2",
         "satoshi-bitcoin": "^1.0.4",
         "tail": "^2.0.3",
         "temp-write": "^4.0.0",
