@@ -241,6 +241,20 @@ export class Actor {
         }
     }
 
+    public async fundLowGas() {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        response.data.payload.gas_limit = "0x1DBC8";
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug(
+            "Deployed with low gas swap %s in %s",
+            this.swap.self,
+            txid
+        );
+    }
+
     public async overfund() {
         const response = await this.swap.tryExecuteAction("fund", {
             maxTimeoutSecs: 10,
