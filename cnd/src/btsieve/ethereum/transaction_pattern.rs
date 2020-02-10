@@ -1,6 +1,8 @@
 use crate::ethereum::{Address, Block, Bytes, Transaction, TransactionReceipt, H256};
 use ethbloom::Input;
 
+pub const TRANSACTION_STATUS_OK: u32 = 1;
+
 #[derive(Clone, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 /// If the field is set to Some(foo) then only transactions matching foo are
 /// returned. Otherwise, when the field is set to None, no pattern matching is
@@ -23,7 +25,7 @@ pub struct TransactionPattern {
 impl TransactionPattern {
     /// Does matching based on patterns in self.  If all fields are None any
     /// transaction matches i.e., returns true.
-    pub fn matches(&self, transaction: &Transaction, receipt: Option<&TransactionReceipt>) -> bool {
+    pub fn matches(&self, transaction: &Transaction, receipt: &TransactionReceipt) -> bool {
         match self {
             Self {
                 from_address,
@@ -33,6 +35,10 @@ impl TransactionPattern {
                 transaction_data_length,
                 events,
             } => {
+                if receipt.status != Some(TRANSACTION_STATUS_OK.into()) {
+                    return false;
+                }
+
                 if let Some(from_address) = from_address {
                     if transaction.from != *from_address {
                         return false;
@@ -65,7 +71,7 @@ impl TransactionPattern {
                     }
                 }
 
-                if let (Some(receipt), Some(events)) = (receipt, events) {
+                if let Some(events) = events {
                     if !events_exist_in_receipt(events, receipt) {
                         return false;
                     }
@@ -181,6 +187,8 @@ mod tests {
     use spectral::prelude::*;
     use std::str::FromStr;
 
+    const TRANSACTION_STATUS_FAILED: u32 = 0;
+
     #[test]
     fn given_pattern_from_arbitrary_address_contract_creation_transaction_matches() {
         fn prop(from_address: Quickcheck<Address>, transaction: Quickcheck<Transaction>) -> bool {
@@ -200,9 +208,10 @@ mod tests {
             transaction.from = from_address;
             transaction.to = None;
 
-            let receipt = TransactionReceipt::default();
+            let mut receipt = TransactionReceipt::default();
+            receipt.status = Some(TRANSACTION_STATUS_OK.into());
 
-            pattern.matches(&transaction, Some(&receipt))
+            pattern.matches(&transaction, &receipt)
         }
 
         quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
@@ -228,7 +237,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, Some(&receipt));
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
@@ -251,9 +260,10 @@ mod tests {
             ..Transaction::default()
         };
 
-        let receipt = TransactionReceipt::default();
+        let mut receipt = TransactionReceipt::default();
+        receipt.status = Some(TRANSACTION_STATUS_OK.into());
 
-        let result = pattern.matches(&transaction, Some(&receipt));
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
     }
 
@@ -278,7 +288,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, Some(&receipt));
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
@@ -302,7 +312,7 @@ mod tests {
 
         let receipt = TransactionReceipt::default();
 
-        let result = pattern.matches(&transaction, Some(&receipt));
+        let result = pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
@@ -341,15 +351,16 @@ mod tests {
             ..Transaction::default()
         };
 
-        let receipt = TransactionReceipt::default();
+        let mut receipt = TransactionReceipt::default();
+        receipt.status = Some(TRANSACTION_STATUS_OK.into());
 
-        let result = pattern_data.matches(&transaction, Some(&receipt));
+        let result = pattern_data.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
 
-        let result = pattern_data_length.matches(&transaction, Some(&receipt));
+        let result = pattern_data_length.matches(&transaction, &receipt);
         assert_that!(&result).is_true();
 
-        let result = refund_pattern.matches(&transaction, Some(&receipt));
+        let result = refund_pattern.matches(&transaction, &receipt);
         assert_that!(&result).is_false();
     }
 
@@ -666,5 +677,33 @@ mod tests {
         let receipt = TransactionReceipt::default();
 
         assert_that!(events_exist_in_receipt(&events, &receipt)).is_true();
+    }
+
+    #[test]
+    fn given_failed_transaction_doesnt_match() {
+        fn prop(from_address: Quickcheck<Address>, transaction: Quickcheck<Transaction>) -> bool {
+            let from_address = from_address.0;
+
+            let pattern = TransactionPattern {
+                from_address: Some(from_address),
+                to_address: None,
+                is_contract_creation: Some(true),
+                transaction_data: None,
+                transaction_data_length: None,
+                events: None,
+            };
+
+            let mut transaction = transaction.0;
+
+            transaction.from = from_address;
+            transaction.to = None;
+
+            let mut receipt = TransactionReceipt::default();
+            receipt.status = Some(TRANSACTION_STATUS_FAILED.into());
+
+            !pattern.matches(&transaction, &receipt)
+        }
+
+        quickcheck::quickcheck(prop as fn(Quickcheck<Address>, Quickcheck<Transaction>) -> bool)
     }
 }
