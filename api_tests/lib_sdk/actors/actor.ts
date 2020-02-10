@@ -241,18 +241,23 @@ export class Actor {
         }
     }
 
-    public async fundLowGas() {
+    public async fundLowGas(hexGasLimit: string) {
         const response = await this.swap.tryExecuteAction("fund", {
             maxTimeoutSecs: 10,
             tryIntervalSecs: 1,
         });
-        response.data.payload.gas_limit = "0x1DBC8";
+        response.data.payload.gas_limit = hexGasLimit;
         const txid = await this.swap.doLedgerAction(response.data);
         this.logger.debug(
             "Deployed with low gas swap %s in %s",
             this.swap.self,
             txid
         );
+
+        const status = await this.wallets.ethereum.getTransactionStatus(txid);
+        if (status !== 0) {
+            throw new Error("Deploy with low gas transaction was successful.");
+        }
     }
 
     public async overfund() {

@@ -9,7 +9,7 @@ setTimeout(function() {
         await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
         await bob.accept();
 
-        await alice.fundLowGas();
+        await alice.fundLowGas("0x1b000");
 
         await alice.assertAlphaNotDeployed();
         await bob.assertAlphaNotDeployed();
