@@ -7,6 +7,7 @@ import { pollUntilMinted, Wallet } from "./index";
 import { HarnessGlobal } from "../../lib/util";
 import { TransactionRequest } from "ethers/providers";
 import * as fs from "fs";
+import { sleep } from "../utils";
 
 declare var global: HarnessGlobal;
 
@@ -150,5 +151,21 @@ export class EthereumWallet implements Wallet {
         ]);
 
         return block.timestamp;
+    }
+
+    public async getTransactionStatus(txid: string): Promise<number> {
+        let transaction = await this.parity.provider.getTransaction(txid);
+
+        // Note that TransactionResponse.wait throws an Error if the transaction is failed
+        // Hence we are going for a more manual method.
+        do {
+            await sleep(100);
+            transaction = await this.parity.provider.getTransaction(txid);
+        } while (transaction.confirmations === 0);
+
+        const transactionReceipt = await this.parity.provider.getTransactionReceipt(
+            txid
+        );
+        return transactionReceipt.status;
     }
 }
