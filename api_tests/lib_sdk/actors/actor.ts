@@ -241,6 +241,25 @@ export class Actor {
         }
     }
 
+    public async fundLowGas(hexGasLimit: string) {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        response.data.payload.gas_limit = hexGasLimit;
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug(
+            "Deployed with low gas swap %s in %s",
+            this.swap.self,
+            txid
+        );
+
+        const status = await this.wallets.ethereum.getTransactionStatus(txid);
+        if (status !== 0) {
+            throw new Error("Deploy with low gas transaction was successful.");
+        }
+    }
+
     public async overfund() {
         const response = await this.swap.tryExecuteAction("fund", {
             maxTimeoutSecs: 10,
@@ -446,10 +465,12 @@ export class Actor {
     }
 
     public async assertAlphaNotDeployed() {
+        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("alpha_ledger", "NOT_DEPLOYED");
     }
 
     public async assertBetaNotDeployed() {
+        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("beta_ledger", "NOT_DEPLOYED");
     }
 

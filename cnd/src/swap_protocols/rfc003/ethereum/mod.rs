@@ -4,7 +4,6 @@ use crate::{
     asset,
     ethereum::{Address, Bytes, Transaction},
     swap_protocols::{
-        actions::ethereum::DeployContract,
         ledger::Ethereum,
         rfc003::{create_swap::HtlcParams, Ledger},
     },
@@ -92,34 +91,5 @@ impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
 impl HtlcParams<Ethereum, asset::Erc20> {
     pub fn bytecode(self) -> Bytes {
         Erc20Htlc::from(self).into()
-    }
-}
-
-impl From<HtlcParams<Ethereum, asset::Ether>> for DeployContract {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self {
-        let htlc = EtherHtlc::from(htlc_params.clone());
-        let gas_limit = EtherHtlc::deploy_tx_gas_limit();
-
-        DeployContract {
-            data: htlc.into(),
-            amount: htlc_params.asset.clone(),
-            gas_limit: gas_limit.into(),
-            chain_id: htlc_params.ledger.chain_id,
-        }
-    }
-}
-
-impl From<HtlcParams<Ethereum, asset::Erc20>> for DeployContract {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> Self {
-        let chain_id = htlc_params.ledger.chain_id;
-        let htlc = Erc20Htlc::from(htlc_params);
-        let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-
-        DeployContract {
-            data: htlc.into(),
-            amount: asset::Ether::zero(),
-            gas_limit: gas_limit.into(),
-            chain_id,
-        }
     }
 }

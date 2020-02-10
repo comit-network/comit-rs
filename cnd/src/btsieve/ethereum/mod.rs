@@ -4,7 +4,7 @@ mod web3_connector;
 
 pub use self::{
     cache::Cache,
-    transaction_pattern::{Event, Topic, TransactionPattern},
+    transaction_pattern::{Event, Topic, TransactionPattern, TRANSACTION_STATUS_OK},
     web3_connector::Web3Connector,
 };
 use crate::{
@@ -222,24 +222,18 @@ where
     for transaction in block.transactions.into_iter() {
         let tx_hash = transaction.hash;
 
-        let receipt = if needs_receipt {
-            let receipt = connector
-                .receipt_by_hash(tx_hash)
-                .compat()
-                .await?
-                .ok_or_else(|| {
-                    anyhow::anyhow!(
-                        "Could not get transaction receipt for transaction {:x}",
-                        tx_hash
-                    )
-                })?;
+        let receipt = connector
+            .receipt_by_hash(tx_hash)
+            .compat()
+            .await?
+            .ok_or_else(|| {
+                anyhow::anyhow!(
+                    "Could not get transaction receipt for transaction {:x}",
+                    tx_hash
+                )
+            })?;
 
-            Some(receipt)
-        } else {
-            None
-        };
-
-        let result = pattern.matches(&transaction, receipt.as_ref());
+        let result = pattern.matches(&transaction, &receipt);
 
         tracing::debug!(
             "matching {:?} against transaction {:x} yielded {}",
@@ -249,20 +243,6 @@ where
         );
 
         if result {
-            let receipt = match receipt {
-                Some(receipt) => receipt,
-                None => connector
-                    .receipt_by_hash(tx_hash)
-                    .compat()
-                    .await?
-                    .ok_or_else(|| {
-                        anyhow::anyhow!(
-                            "Could not get transaction receipt for transaction {:x}",
-                            tx_hash
-                        )
-                    })?,
-            };
-
             return Ok(Some(TransactionAndReceipt {
                 transaction,
                 receipt,

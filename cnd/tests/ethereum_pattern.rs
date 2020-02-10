@@ -1,7 +1,7 @@
 pub mod ethereum_helper;
 
 use cnd::{
-    btsieve::ethereum::{Event, Topic, TransactionPattern},
+    btsieve::ethereum::{Event, Topic, TransactionPattern, TRANSACTION_STATUS_OK},
     ethereum::{Address, Block, Bytes, Transaction, TransactionReceipt},
 };
 use spectral::prelude::*;
@@ -35,8 +35,11 @@ fn cannot_skip_block_containing_transaction_with_event() {
 fn pattern_matches_block(pattern: TransactionPattern) -> bool {
     let block: Block<Transaction> = include_json_test_data!("./test_data/ethereum/block.json");
 
+    let mut receipt = TransactionReceipt::default();
+    receipt.status = Some(TRANSACTION_STATUS_OK.into());
+
     for transaction in block.transactions.into_iter() {
-        if pattern.matches(&transaction, None) {
+        if pattern.matches(&transaction, &receipt) {
             return true;
         }
     }
