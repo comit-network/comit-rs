@@ -11,7 +11,16 @@ use crate::{
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 
 pub fn deploy_action(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> DeployContract {
-    htlc_params.into()
+    let chain_id = htlc_params.ledger.chain_id;
+    let htlc = Erc20Htlc::from(htlc_params);
+    let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
+
+    DeployContract {
+        data: htlc.into(),
+        amount: asset::Ether::zero(),
+        gas_limit: gas_limit.into(),
+        chain_id,
+    }
 }
 
 pub fn fund_action(

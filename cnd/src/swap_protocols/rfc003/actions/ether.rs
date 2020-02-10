@@ -17,7 +17,15 @@ impl FundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
     type FundActionOutput = DeployContract;
 
     fn fund_action(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self::FundActionOutput {
-        htlc_params.into()
+        let htlc = EtherHtlc::from(htlc_params.clone());
+        let gas_limit = EtherHtlc::deploy_tx_gas_limit();
+
+        DeployContract {
+            data: htlc.into(),
+            amount: htlc_params.asset.clone(),
+            gas_limit: gas_limit.into(),
+            chain_id: htlc_params.ledger.chain_id,
+        }
     }
 }
 impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
