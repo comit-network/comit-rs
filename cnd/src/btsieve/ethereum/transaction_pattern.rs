@@ -368,7 +368,7 @@ mod tests {
         pub static ref CONTRACT_ADDRESS: H160 = Address::from_str("e46FB33e4DB653De84cB0E0E8b810A6c4cD39d59").unwrap();
     }
     lazy_static::lazy_static! {
-        pub static ref REDEEM_LOG_MSG: H256 = H256::from_str("B8CAC300E37F03AD332E581DEA21B2F0B84EAAADC184A295FEF71E81F44A7413").unwrap();
+        pub static ref REDEEM_LOG_MSG: H256 = H256::from_str(blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG).unwrap();
     }
     lazy_static::lazy_static! {
         pub static ref UNKNOWN_LOG_MSG: H256 = H256::from_str("0000000000000000000000000000000000000000000000000000000000000001").unwrap();

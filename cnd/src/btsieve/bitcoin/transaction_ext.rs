@@ -99,7 +99,7 @@ mod tests {
 
     fn create_outpoint(tx: &str, vout: u32) -> OutPoint {
         OutPoint {
-            txid: Sha256dHash::from_hex(tx).unwrap(),
+            txid: Sha256dHash::from_hex(tx).unwrap().into(),
             vout,
         }
     }

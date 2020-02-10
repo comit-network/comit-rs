@@ -657,7 +657,8 @@ mod tests {
             txid: sha256d::Hash::from_hex(
                 "ad067ee417ee5518122374307d1fa494c67e30c75d38c7061d944b59e56fe024",
             )
-            .unwrap(),
+            .unwrap()
+            .into(),
             vout: 1u32,
         };
         // Ethereum HtlcLocation matches Ethereum Identity, so it is already being

@@ -1,4 +1,4 @@
-use bitcoin::{hashes::sha256d, util::hash::BitcoinHash};
+use bitcoin::{hashes::sha256d, util::hash::BitcoinHash, BlockHash};
 use cnd::btsieve::{BlockByHash, LatestBlock};
 use futures::{future::IntoFuture, Future};
 use std::{
@@ -8,7 +8,7 @@ use std::{
 
 #[derive(Clone)]
 pub struct BitcoinConnectorMock {
-    all_blocks: HashMap<sha256d::Hash, bitcoin::Block>,
+    all_blocks: HashMap<BlockHash, bitcoin::Block>,
     latest_blocks: Vec<bitcoin::Block>,
     latest_time_return_block: Instant,
     current_latest_block_index: usize,
@@ -61,7 +61,7 @@ impl LatestBlock for BitcoinConnectorMock {
 
 impl BlockByHash for BitcoinConnectorMock {
     type Block = bitcoin::Block;
-    type BlockHash = sha256d::Hash;
+    type BlockHash = bitcoin::BlockHash;
 
     fn block_by_hash(
         &self,
@@ -82,5 +82,5 @@ pub enum Error {
     #[error("ran out of blocks in chain")]
     NoMoreBlocks,
     #[error("could not find block with hash {0}")]
-    UnknownHash(sha256d::Hash),
+    UnknownHash(BlockHash),
 }
