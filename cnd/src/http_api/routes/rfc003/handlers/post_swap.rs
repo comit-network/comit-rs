@@ -609,7 +609,7 @@ mod tests {
                 },
                 "beta_ledger": {
                     "name": "ethereum",
-                    "network": "regtest"
+                    "chain_id": 17
                 },
                 "alpha_asset": {
                     "name": "bitcoin",
@@ -639,7 +639,7 @@ mod tests {
                 },
                 "beta_ledger": {
                     "name": "ethereum",
-                    "network": "regtest"
+                    "chain_id": 17
                 },
                 "alpha_asset": {
                     "name": "bitcoin",
@@ -666,40 +666,12 @@ mod tests {
                     .unwrap(),
                 address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
             });
-    }
-
-    #[test]
-    fn can_deserialize_swap_request_body_with_chain_id() {
-        let body = r#"{
-                "alpha_ledger": {
-                    "name": "bitcoin",
-                    "network": "regtest"
-                },
-                "beta_ledger": {
-                    "name": "ethereum",
-                    "chain_id": 3
-                },
-                "alpha_asset": {
-                    "name": "bitcoin",
-                    "quantity": "100000000"
-                },
-                "beta_asset": {
-                    "name": "ether",
-                    "quantity": "10000000000000000000"
-                },
-                "beta_ledger_redeem_identity": "0x00a329c0648769a73afac7f9381e08fb43dbea72",
-                "alpha_expiry": 2000000000,
-                "beta_expiry": 2000000000,
-                "peer": "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-            }"#;
-
-        let body = serde_json::from_str::<SwapRequestBody>(body);
 
         assert_that(&body)
             .is_ok()
             .map(|b| &b.beta_ledger)
             .is_equal_to(&HttpLedger::Ethereum(ledger::Ethereum {
-                chain_id: ChainId::from(3),
+                chain_id: ChainId::from(17),
             }));
     }
 }

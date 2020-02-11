@@ -55,7 +55,7 @@ impl ToHeader for LedgerKind {
             }
 
             LedgerKind::Ethereum(ethereum) => {
-                Header::with_str_value("ethereum").with_parameter("network", ethereum.chain_id)?
+                Header::with_str_value("ethereum").with_parameter("chain_id", ethereum.chain_id)?
             }
         })
     }
