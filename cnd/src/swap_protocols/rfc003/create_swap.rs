@@ -17,6 +17,10 @@ use genawaiter::{
     GeneratorState,
 };
 
+// TODO: Move this up a level.  Move the `watch_alpha/beta_ledger` functions to
+// protocol specific directories because we need to have a 'watach_ledger'
+// function that is protocol specific.  How do we conditionally call it?
+
 /// Returns a future that tracks the swap negotiated from the given request and
 /// accept response on both ledgers.
 ///
