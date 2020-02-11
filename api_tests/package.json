@@ -50,7 +50,7 @@
         "get-port": "^5.1.1",
         "glob": "^7.1.6",
         "json-schema-to-typescript": "^8.0.1",
-        "log4js": "^6.1.1",
+        "log4js": "^6.1.2",
         "mocha": "^7.0.1",
         "multiaddr": "^7.3.0",
         "pem-ts": "^2.0.0",
