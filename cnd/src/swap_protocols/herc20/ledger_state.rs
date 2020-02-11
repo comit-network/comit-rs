@@ -49,15 +49,15 @@ pub enum LedgerState<L: Ledger, A: Asset> {
 impl<L: Ledger, A: Asset> LedgerState<L, A> {
     pub fn transition_to_deployed(&mut self, deployed: Deployed<L>) {
         let Deployed {
-            transaction,
-            location,
+            htlc_location,
+            deploy_transaction,
         } = deployed;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::NotDeployed => {
                 *self = LedgerState::Deployed {
-                    deploy_transaction: transaction,
-                    htlc_location: location,
+                    deploy_transaction,
+                    htlc_location,
                 }
             }
             other => panic!("expected state NotDeployed, got {}", HtlcState::from(other)),
@@ -65,17 +65,20 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
     }
 
     pub fn transition_to_funded(&mut self, funded: Funded<L, A>) {
-        let Funded { transaction, asset } = funded;
+        let Funded {
+            fund_transaction,
+            asset,
+        } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::Deployed {
-                deploy_transaction,
                 htlc_location,
+                deploy_transaction,
             } => {
                 *self = LedgerState::Funded {
-                    deploy_transaction,
                     htlc_location,
-                    fund_transaction: transaction,
+                    deploy_transaction,
+                    fund_transaction,
                     asset,
                 }
             }
@@ -84,17 +87,20 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
     }
 
     pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L, A>) {
-        let Funded { transaction, asset } = funded;
+        let Funded {
+            fund_transaction,
+            asset,
+        } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::Deployed {
-                deploy_transaction,
                 htlc_location,
+                deploy_transaction,
             } => {
                 *self = LedgerState::IncorrectlyFunded {
                     deploy_transaction,
                     htlc_location,
-                    fund_transaction: transaction,
+                    fund_transaction,
                     asset,
                 }
             }
@@ -104,22 +110,22 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
 
     pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L>) {
         let Redeemed {
-            transaction,
+            redeem_transaction,
             secret,
         } = redeemed;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::Funded {
-                deploy_transaction,
                 htlc_location,
-                asset,
+                deploy_transaction,
                 fund_transaction,
+                asset,
             } => {
                 *self = LedgerState::Redeemed {
-                    deploy_transaction,
                     htlc_location,
+                    deploy_transaction,
                     fund_transaction,
-                    redeem_transaction: transaction,
+                    redeem_transaction,
                     asset,
                     secret,
                 }
@@ -129,26 +135,26 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
     }
 
     pub fn transition_to_refunded(&mut self, refunded: Refunded<L>) {
-        let Refunded { transaction } = refunded;
+        let Refunded { refund_transaction } = refunded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::Funded {
-                deploy_transaction,
                 htlc_location,
-                asset,
+                deploy_transaction,
                 fund_transaction,
+                asset,
             }
             | LedgerState::IncorrectlyFunded {
-                deploy_transaction,
                 htlc_location,
-                asset,
+                deploy_transaction,
                 fund_transaction,
+                asset,
             } => {
                 *self = LedgerState::Refunded {
-                    deploy_transaction,
                     htlc_location,
+                    deploy_transaction,
                     fund_transaction,
-                    refund_transaction: transaction,
+                    refund_transaction,
                     asset,
                 }
             }

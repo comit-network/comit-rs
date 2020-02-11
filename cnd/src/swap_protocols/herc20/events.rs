@@ -10,6 +10,12 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct Deployed<L: Ledger> {
+    pub location: L::HtlcLocation,
+    pub transaction: L::Transaction,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Funded<L: Ledger, A: Asset> {
     pub transaction: L::Transaction,
     pub asset: A,
@@ -19,12 +25,6 @@ pub struct Funded<L: Ledger, A: Asset> {
 pub struct Redeemed<L: Ledger> {
     pub transaction: L::Transaction,
     pub secret: Secret,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Deployed<L: Ledger> {
-    pub transaction: L::Transaction,
-    pub location: L::HtlcLocation,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

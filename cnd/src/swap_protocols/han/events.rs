@@ -11,6 +11,7 @@ use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 pub struct Funded<L: Ledger, A: Asset> {
+    pub location: L::HtlcLocation,
     pub transaction: L::Transaction,
     pub asset: A,
 }
@@ -26,6 +27,8 @@ pub struct Refunded<L: Ledger> {
     pub transaction: L::Transaction,
 }
 
+/// A 'funded' event implies that the HTLC was deployed since deploying and
+/// funding of the HTLC occurs at the same time for HAN protocol swaps.
 #[async_trait::async_trait]
 pub trait WatchFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn watch_funded(
