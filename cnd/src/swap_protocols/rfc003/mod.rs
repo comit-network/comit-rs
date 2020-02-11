@@ -11,7 +11,6 @@ pub mod state_store;
 
 pub mod actions;
 mod actor_state;
-mod ledger;
 mod secret;
 
 pub use self::{
