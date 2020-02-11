@@ -13,6 +13,8 @@ import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { HarnessGlobal } from "../../lib/util";
+import { Entity } from "../../gen/siren";
+import { SwapDetails } from "comit-sdk/dist/src/cnd";
 
 declare var global: HarnessGlobal;
 
@@ -59,7 +61,7 @@ export class Actor {
     public wallets: Wallets;
 
     private comitClient: ComitClient;
-    private readonly cnd: Cnd;
+    readonly cnd: Cnd;
     private swap: Swap;
 
     private alphaLedger: Ledger;
@@ -177,6 +179,8 @@ export class Actor {
             this.swap.self
         );
         this.logger.debug("Created new swap at %s", this.swap.self);
+
+        return this.swap;
     }
 
     public async accept() {
@@ -678,6 +682,45 @@ export class Actor {
         );
 
         return defaultBetaAssetKind;
+    }
+
+    public cndHttpApiUrl() {
+        const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${cndSocket.address}:${cndSocket.port}`;
+    }
+
+    public async pollCndUntil(
+        location: string,
+        predicate: (body: Entity) => boolean
+    ): Promise<Entity> {
+        const response = await this.cnd.fetch(location);
+
+        expect(response).to.have.status(200);
+
+        if (predicate(response.data)) {
+            return response.data;
+        } else {
+            await sleep(500);
+
+            return this.pollCndUntil(location, predicate);
+        }
+    }
+
+    public async pollSwapDetails(
+        swapUrl: string,
+        iteration: number = 0
+    ): Promise<SwapDetails> {
+        if (iteration > 5) {
+            throw new Error(`Could not retrieve Swap ${swapUrl}`);
+        }
+        iteration++;
+
+        try {
+            return (await this.cnd.fetch<SwapDetails>(swapUrl)).data;
+        } catch (error) {
+            await sleep(1000);
+            return await this.pollSwapDetails(swapUrl, iteration);
+        }
     }
 }
 
