@@ -18,7 +18,7 @@ use strum_macros::EnumDiscriminants;
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum LedgerState<L: Ledger, A: Asset> {
-    NotDeployed,
+    NotFunded,
     /// The HTLC has been deployed and funded.
     Funded {
         htlc_location: L::HtlcLocation,
@@ -48,34 +48,40 @@ pub enum LedgerState<L: Ledger, A: Asset> {
     },
 }
 
+impl<L: Ledger, A: Asset> Default for LedgerState<L,A> {
+    fn default() -> Self {
+        LedgerState<L,A>::NotFunded
+    }
+}
+
 impl<L: Ledger, A: Asset> LedgerState<L, A> {
     pub fn transition_to_funded(&mut self, funded: Funded<L, A>) {
         let Funded { htlc_location, fund_transaction, aasset } = funded;
 
-        match std::mem::replace(self, LedgerState::NotDeployed) {
-            LedgerState::NotDeployed } => {
+        match std::mem::replace(self, LedgerState::NotFunded) {
+            LedgerState::NotFunded } => {
             *self = LedgerState::Funded {
                 htlc_location,
                 fund_transaction,
                 asset,
             }
         }
-        other => panic!("expected state NotDeployed, got {}", HtlcState::from(other)),
+        other => panic!("expected state NotFunded, got {}", HtlcState::from(other)),
     }
 
 
     pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L, A>) {
         let Funded { htlc_location, fund_transaction, aasset } = funded;
 
-        match std::mem::replace(self, LedgerState::NotDeployed) {
-            LedgerState::NotDeployed => {
+        match std::mem::replace(self, LedgerState::NotFunded) {
+            LedgerState::NotFunded => {
                 *self = LedgerState::IncorrectlyFunded {
                     htlc_location,
                     fund_transaction,
                     asset,
                 }
             }
-            other => panic!("expected state NotDeployed, got {}", HtlcState::from(other)),
+            other => panic!("expected state NotFunded, got {}", HtlcState::from(other)),
         }
     }
 
@@ -85,7 +91,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
             secret,
         } = redeemed;
 
-        match std::mem::replace(self, LedgerState::NotDeployed) {
+        match std::mem::replace(self, LedgerState::NotFunded) {
             LedgerState::Funded {
                 htlc_location,
                 fund_transaction,
@@ -106,7 +112,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
     pub fn transition_to_refunded(&mut self, refunded: Refunded<L>) {
         let Refunded { redund_transaction } = refunded;
 
-        match std::mem::replace(self, LedgerState::NotDeployed) {
+        match std::mem::replace(self, LedgerState::NotFunded) {
             LedgerState::Funded {
                 htlc_location,
                 fund_transaction,
@@ -134,7 +140,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
 
 impl Default for HtlcState {
     fn default() -> Self {
-        HtlcState::NotDeployed
+        HtlcState::NotFunded
     }
 }
 
@@ -142,7 +148,7 @@ impl Default for HtlcState {
 impl quickcheck::Arbitrary for HtlcState {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         match g.next_u32() % 6 {
-            0 => HtlcState::NotDeployed,
+            0 => HtlcState::NotFunded,
             1 => HtlcState::Funded,
             2 => HtlcState::Redeemed,
             3 => HtlcState::Refunded,
@@ -157,7 +163,7 @@ mod tests {
     use super::*;
     #[test]
     fn not_deployed_serializes_correctly_to_json() {
-        let state = HtlcState::NotDeployed;
+        let state = HtlcState::NotFunded;
         let serialized = serde_json::to_string(&state).unwrap();
         assert_eq!(serialized, r#""NOT_DEPLOYED""#);
     }

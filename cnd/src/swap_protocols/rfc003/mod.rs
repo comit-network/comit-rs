@@ -16,10 +16,10 @@ mod secret;
 pub use self::{
     actor_state::ActorState,
     create_swap::create_swap,
-    ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
 };
+use crate::swap_protocols;
 
 pub use self::messages::{Accept, Decline, Request};
 
@@ -30,7 +30,12 @@ use ::bitcoin::secp256k1::SecretKey;
 pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub enum SwapCommunication<
+    AL: swap_protocols::Ledger,
+    BL: swap_protocols::Ledger,
+    AA: Asset,
+    BA: Asset,
+> {
     Proposed {
         request: Request<AL, BL, AA, BA>,
     },
@@ -44,7 +49,9 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapCommunication<AL, BL, AA, BA> {
+impl<AL: swap_protocols::Ledger, BL: swap_protocols::Ledger, AA: Asset, BA: Asset>
+    SwapCommunication<AL, BL, AA, BA>
+{
     pub fn request(&self) -> &Request<AL, BL, AA, BA> {
         match self {
             SwapCommunication::Accepted { request, .. } => request,

@@ -46,6 +46,12 @@ pub enum LedgerState<L: Ledger, A: Asset> {
     },
 }
 
+impl<L: Ledger, A: Asset> Default for LedgerState<L, A> {
+    fn default() -> Self {
+        Self::NotDeployed
+    }
+}
+
 impl<L: Ledger, A: Asset> LedgerState<L, A> {
     pub fn transition_to_deployed(&mut self, deployed: Deployed<L>) {
         let Deployed {

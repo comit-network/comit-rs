@@ -4,7 +4,7 @@
 
 use crate::{
     asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
+    swap_protocols::rfc003::{create_swap::HtlcParams, herc20::ledger::Ledger, Secret},
 };
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};

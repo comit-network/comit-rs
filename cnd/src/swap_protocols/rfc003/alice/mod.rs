@@ -13,21 +13,37 @@ use derivative::Derivative;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug, PartialEq)]
-pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub struct State<ALS, BLS, AL, BL, AA, BA>
+where
+    ALS: Default,
+    BLS: Default,
+    AL: swap_protocols::Ledger,
+    BL: swap_protocols::Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
-    pub alpha_ledger_state: LedgerState<AL, AA>,
-    pub beta_ledger_state: LedgerState<BL, BA>,
+    pub alpha_ledger_state: ALS,
+    pub beta_ledger_state: BLS,
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     pub secret_source: SwapSeed, // Used to derive identities and also to generate the secret.
     pub failed: bool,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
+impl<ALS, BLS, AL, BL, AA, BA> State<ALS, BLS, AL, BL, AA, BA>
+where
+    ALS: Default,
+    BLS: Default,
+    AL: swap_protocols::Ledger,
+    BL: swap_protocols::Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub fn proposed(request: messages::Request<AL, BL, AA, BA>, secret_source: SwapSeed) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
-            alpha_ledger_state: LedgerState::NotDeployed,
-            beta_ledger_state: LedgerState::NotDeployed,
+            alpha_ledger_state: ALS::default(),
+            beta_ledger_state: BLS::default(),
             secret_source,
             failed: false,
         }
@@ -40,8 +56,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Accepted { request, response },
-            alpha_ledger_state: LedgerState::NotDeployed,
-            beta_ledger_state: LedgerState::NotDeployed,
+            alpha_ledger_state: ALS::default(),
+            beta_ledger_state: BLS::default(),
             secret_source,
             failed: false,
         }
@@ -54,8 +70,8 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     ) -> Self {
         Self {
             swap_communication: SwapCommunication::Declined { request, response },
-            alpha_ledger_state: LedgerState::NotDeployed,
-            beta_ledger_state: LedgerState::NotDeployed,
+            alpha_ledger_state: ALS::default(),
+            beta_ledger_state: BLS::default(),
             secret_source,
             failed: false,
         }
