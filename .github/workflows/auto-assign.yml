@@ -8,6 +8,6 @@ jobs:
     steps:
       - name: Assign PR to creator
         uses: thomaseizinger/assign-pr-creator-action@v1.0.0
-        if: github.event_name == 'pull_request' && github.event.action == 'opened'
+        if: github.event_name == 'pull_request' && (github.event.action == 'opened' || github.event.action == 'ready_for_review')
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
