@@ -24,7 +24,7 @@ export class LndInstance {
         this.lndDir = this.logDir + "/lnd-" + this.actorConfig.name;
         fs.mkdirSync(this.lndDir);
 
-        this.writeLogFile(bitcoindDataDir);
+        this.createConfigFile(bitcoindDataDir);
     }
 
     public async start() {
@@ -134,7 +134,7 @@ export class LndInstance {
         return "127.0.0.1:" + this.actorConfig.lndRpcPort;
     }
 
-    private writeLogFile(bitcoindDataDir: string) {
+    private createConfigFile(bitcoindDataDir: string) {
         const output = `[Application Options]
 
 debuglevel=debug

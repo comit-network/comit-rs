@@ -20,7 +20,7 @@ export class BitcoindInstance implements LedgerInstance {
         public readonly rpcPort: number
     ) {
         this.dbDir = tmp.dirSync();
-        this.writeLogFile();
+        this.createConfigFile();
     }
 
     public async start() {
@@ -69,7 +69,7 @@ export class BitcoindInstance implements LedgerInstance {
         return this.dbDir.name;
     }
 
-    private writeLogFile() {
+    private createConfigFile() {
         const output = `regtest=1
 server=1
 printtoconsole=1
