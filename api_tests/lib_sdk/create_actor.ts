@@ -13,7 +13,7 @@ export async function createActor(
             appenders: {
                 file: {
                     type: "file",
-                    filename: "log/tests/" + logFileName,
+                    filename: "log/tests/" + logFileName.replace(/\//g, "_"),
                 },
             },
             categories: {
@@ -21,7 +21,7 @@ export async function createActor(
             },
         }).getLogger(whoAmI);
 
-    const alice = await Actor.newInstance(
+    const actor = await Actor.newInstance(
         loggerFactory,
         name,
         global.ledgerConfigs,
@@ -29,5 +29,5 @@ export async function createActor(
         global.logRoot
     );
 
-    return Promise.resolve(alice);
+    return actor;
 }

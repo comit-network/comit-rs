@@ -48,9 +48,7 @@ export function twoActorTest(
     name: string,
     testFn: (actors: Actors) => Promise<void>
 ) {
-    it(name, async function() {
-        nActorTest(name, ["alice", "bob"], testFn);
-    });
+    nActorTest(name, ["alice", "bob"], testFn);
 }
 
 /*
