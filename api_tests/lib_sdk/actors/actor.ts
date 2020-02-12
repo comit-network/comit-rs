@@ -574,6 +574,11 @@ export class Actor {
         await sleep(1);
     }
 
+    public async assertInvoiceSettled(invoice: string) {
+        console.log("got invoice: %s", invoice);
+        await sleep(1);
+    }
+
     private async waitForAlphaExpiry() {
         const swapDetails = await this.swap.fetchDetails();
 

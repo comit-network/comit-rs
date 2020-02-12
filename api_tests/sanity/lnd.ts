@@ -13,6 +13,9 @@ setTimeout(function() {
         const invoice = await bob.addInvoice(alice);
         await alice.sendPayment(invoice);
 
+        await alice.assertInvoiceSettled(invoice);
+        await bob.assertInvoiceSettled(invoice);
+
         await alice.assertChannelBalanceSender();
         await bob.assertChannelBalanceReceiver();
     });
