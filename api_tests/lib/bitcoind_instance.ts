@@ -65,6 +65,10 @@ export class BitcoindInstance implements LedgerInstance {
         return { username: this.username, password: this.password };
     }
 
+    public getDataDir() {
+        return this.dbDir.name;
+    }
+
     private writeLogFile() {
         const output = `regtest=1
 server=1

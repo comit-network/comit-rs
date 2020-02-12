@@ -45,6 +45,7 @@ export class LedgerRunner {
                         await getPort({ port: 18444 }),
                         await getPort({ port: 18443 })
                     );
+                    global.bitcoind = instance;
                     return {
                         ledger,
                         instance: await instance.start(),

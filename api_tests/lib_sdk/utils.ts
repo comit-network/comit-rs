@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
+import * as fs from "fs";
 
 export async function sleep(time: number) {
     return new Promise(res => {
@@ -82,4 +83,12 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
         },
     };
     return swapRequest;
+}
+
+export async function fileExists(filepath: string) {
+    let logFileExists = false;
+    do {
+        await sleep(500);
+        logFileExists = fs.existsSync(filepath);
+    } while (!logFileExists);
 }

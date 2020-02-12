@@ -8,6 +8,7 @@ import { LedgerConfig } from "../../lib/ledger_runner";
 import "../../lib/setup_chai";
 import { Asset, AssetKind } from "../asset";
 import { CndInstance } from "../cnd_instance";
+import { LndInstance } from "../lnd_instance";
 import { Ledger, LedgerKind } from "../ledger";
 import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
@@ -34,7 +35,10 @@ export class Actor {
         const actorConfig = new E2ETestActorConfig(
             await getPort(),
             await getPort(),
-            name
+            name,
+            await getPort(),
+            await getPort(),
+            await getPort()
         );
 
         const cndInstance = new CndInstance(
@@ -54,7 +58,7 @@ export class Actor {
             JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
         );
 
-        return new Actor(logger, cndInstance);
+        return new Actor(logger, cndInstance, logRoot, actorConfig);
     }
 
     public actors: Actors;
@@ -73,9 +77,13 @@ export class Actor {
     private readonly startingBalances: Map<AssetKind, BigNumber>;
     private readonly expectedBalanceChanges: Map<AssetKind, BigNumber>;
 
+    private lndInstance: LndInstance;
+
     private constructor(
         private readonly logger: Logger,
-        private readonly cndInstance: CndInstance
+        private readonly cndInstance: CndInstance,
+        private readonly logRoot: string,
+        private readonly actorConfig: E2ETestActorConfig
     ) {
         this.wallets = new Wallets({});
         const { address, port } = cndInstance.getConfigFile().http_api.socket;
@@ -484,6 +492,9 @@ export class Actor {
 
     public stop() {
         this.cndInstance.stop();
+        if (this.lndInstance && this.lndInstance.isRunning()) {
+            this.lndInstance.stop();
+        }
     }
 
     public async restart() {
@@ -516,6 +527,51 @@ export class Actor {
     public async whoAmI() {
         const entity = await this.swap.fetchDetails();
         return entity.properties.role;
+    }
+
+    private async dummy() {
+        await sleep(1);
+    }
+
+    public async startLnd() {
+        const bitcoind = global.bitcoind.getDataDir();
+        this.lndInstance = new LndInstance(
+            this.logger,
+            this.logRoot,
+            this.actorConfig,
+            bitcoind
+        );
+        await this.lndInstance.start();
+    }
+
+    public async fundLnd() {
+        await sleep(1);
+    }
+
+    public async connectLnd(other: Actor) {
+        await other.dummy();
+    }
+
+    public async openChannel(other: Actor) {
+        await other.dummy();
+    }
+
+    public async addInvoice(other: Actor) {
+        await other.dummy();
+        return "an invoice";
+    }
+
+    public async sendPayment(invoice: string) {
+        console.log("got invoice: %s", invoice);
+        await sleep(1);
+    }
+
+    public async assertChannelBalanceSender() {
+        await sleep(1);
+    }
+
+    public async assertChannelBalanceReceiver() {
+        await sleep(1);
     }
 
     private async waitForAlphaExpiry() {
