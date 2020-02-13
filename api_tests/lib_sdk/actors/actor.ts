@@ -273,7 +273,7 @@ export class Actor {
         response.data.payload.amount = amount * 1.01;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+        this.logger.debug("Overfunded swap %s in %s", this.swap.self, txid);
     }
 
     public async underfund() {
@@ -285,7 +285,7 @@ export class Actor {
         response.data.payload.amount = amount * 0.01;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+        this.logger.debug("Underfunded swap %s in %s", this.swap.self, txid);
     }
 
     public async refund() {
@@ -345,6 +345,23 @@ export class Actor {
                 await this.actors.bob.assertAlphaRedeemed();
                 break;
         }
+    }
+
+    public async redeemWithHighFee() {
+        const response = await this.swap.tryExecuteAction("redeem", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        response.data.bitcoinFeePerWU = 100000000;
+
+        await this.swap.doLedgerAction(response.data);
+
+        await this.assertAlphaRemainsInFunded();
+
+        this.logger.debug(
+            "Did not redeem swap %s because of high fee.",
+            this.swap.self
+        );
     }
 
     public async currentSwapIsAccepted() {
@@ -437,6 +454,11 @@ export class Actor {
     }
 
     public async assertAlphaFunded() {
+        await this.assertLedgerState("alpha_ledger", "FUNDED");
+    }
+
+    public async assertAlphaRemainsInFunded() {
+        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("alpha_ledger", "FUNDED");
     }
 
