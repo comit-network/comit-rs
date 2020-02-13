@@ -25,6 +25,7 @@ use crate::{
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use futures::sync::oneshot;
+use impl_template::impl_template;
 use libp2p::{Multiaddr, PeerId};
 use libp2p_comit::frame::Response;
 use std::sync::Arc;
@@ -102,198 +103,94 @@ where
     }
 }
 
+#[impl_template]
 #[async_trait::async_trait]
-impl HtlcFunded<bitcoin::Mainnet, asset::Bitcoin> for Facade {
-    async fn htlc_funded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Mainnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Mainnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<bitcoin::Mainnet, asset::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcDeployed<bitcoin::Mainnet, asset::Bitcoin> for Facade {
-    async fn htlc_deployed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Mainnet, asset::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<bitcoin::Mainnet>> {
-        self.bitcoin_connector
-            .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRedeemed<bitcoin::Mainnet, asset::Bitcoin> for Facade {
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Mainnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Mainnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<bitcoin::Mainnet>> {
-        self.bitcoin_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRefunded<bitcoin::Mainnet, asset::Bitcoin> for Facade {
-    async fn htlc_refunded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Mainnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Mainnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<bitcoin::Mainnet>> {
-        self.bitcoin_connector
-            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcFunded<bitcoin::Testnet, asset::Bitcoin> for Facade {
-    async fn htlc_funded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Testnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Testnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<bitcoin::Testnet, asset::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcDeployed<bitcoin::Testnet, asset::Bitcoin> for Facade {
-    async fn htlc_deployed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Testnet, asset::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<bitcoin::Testnet>> {
-        self.bitcoin_connector
-            .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRedeemed<bitcoin::Testnet, asset::Bitcoin> for Facade {
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Testnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Testnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<bitcoin::Testnet>> {
-        self.bitcoin_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRefunded<bitcoin::Testnet, asset::Bitcoin> for Facade {
-    async fn htlc_refunded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Testnet, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Testnet>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<bitcoin::Testnet>> {
-        self.bitcoin_connector
-            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcFunded<bitcoin::Regtest, asset::Bitcoin> for Facade {
-    async fn htlc_funded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Regtest, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Regtest>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<bitcoin::Regtest, asset::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcDeployed<bitcoin::Regtest, asset::Bitcoin> for Facade {
-    async fn htlc_deployed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Regtest, asset::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<bitcoin::Regtest>> {
-        self.bitcoin_connector
-            .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRedeemed<bitcoin::Regtest, asset::Bitcoin> for Facade {
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Regtest, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Regtest>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<bitcoin::Regtest>> {
-        self.bitcoin_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl HtlcRefunded<bitcoin::Regtest, asset::Bitcoin> for Facade {
-    async fn htlc_refunded(
-        &self,
-        htlc_params: HtlcParams<bitcoin::Regtest, asset::Bitcoin>,
-        htlc_deployment: &Deployed<bitcoin::Regtest>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<bitcoin::Regtest>> {
-        self.bitcoin_connector
-            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[async_trait::async_trait]
-impl<A> HtlcFunded<Ethereum, A> for Facade
-where
-    A: Asset + Send + Sync + 'static,
-    ethereum::Cache<Web3Connector>: HtlcFunded<Ethereum, A>,
+impl HtlcFunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asset::Bitcoin>
+    for Facade
 {
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
+        htlc_deployment: &Deployed<__TYPE0__>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Funded<__TYPE0__, asset::Bitcoin>> {
+        self.bitcoin_connector
+            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
+            .await
+    }
+}
+
+#[impl_template]
+#[async_trait::async_trait]
+impl HtlcDeployed<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asset::Bitcoin>
+    for Facade
+{
+    async fn htlc_deployed(
+        &self,
+        htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Deployed<__TYPE0__>> {
+        self.bitcoin_connector
+            .htlc_deployed(htlc_params, start_of_swap)
+            .await
+    }
+}
+
+#[impl_template]
+#[async_trait::async_trait]
+impl HtlcRedeemed<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asset::Bitcoin>
+    for Facade
+{
+    async fn htlc_redeemed(
+        &self,
+        htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
+        htlc_deployment: &Deployed<__TYPE0__>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Redeemed<__TYPE0__>> {
+        self.bitcoin_connector
+            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
+            .await
+    }
+}
+
+#[impl_template]
+#[async_trait::async_trait]
+impl HtlcRefunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asset::Bitcoin>
+    for Facade
+{
+    async fn htlc_refunded(
+        &self,
+        htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
+        htlc_deployment: &Deployed<__TYPE0__>,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Refunded<__TYPE0__>> {
+        self.bitcoin_connector
+            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
+            .await
+    }
+}
+
+#[impl_template]
+#[async_trait::async_trait]
+impl HtlcFunded<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
+    async fn htlc_funded(
+        &self,
+        htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         htlc_deployment: &Deployed<Ethereum>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Ethereum, A>> {
+    ) -> anyhow::Result<Funded<Ethereum, __TYPE0__>> {
         self.ethereum_connector
             .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
             .await
     }
 }
 
+#[impl_template]
 #[async_trait::async_trait]
-impl<A> HtlcDeployed<Ethereum, A> for Facade
-where
-    A: Asset + Send + Sync + 'static,
-    ethereum::Cache<Web3Connector>: HtlcDeployed<Ethereum, A>,
-{
+impl HtlcDeployed<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Ethereum>> {
         self.ethereum_connector
@@ -302,15 +199,12 @@ where
     }
 }
 
+#[impl_template]
 #[async_trait::async_trait]
-impl<A> HtlcRedeemed<Ethereum, A> for Facade
-where
-    A: Asset + Send + Sync + 'static,
-    ethereum::Cache<Web3Connector>: HtlcRedeemed<Ethereum, A>,
-{
+impl HtlcRedeemed<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_redeemed(
         &self,
-        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         htlc_deployment: &Deployed<Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Ethereum>> {
@@ -320,15 +214,12 @@ where
     }
 }
 
+#[impl_template]
 #[async_trait::async_trait]
-impl<A> HtlcRefunded<Ethereum, A> for Facade
-where
-    A: Asset + Send + Sync + 'static,
-    ethereum::Cache<Web3Connector>: HtlcRefunded<Ethereum, A>,
-{
+impl HtlcRefunded<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_refunded(
         &self,
-        htlc_params: HtlcParams<Ethereum, A>,
+        htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         htlc_deployment: &Deployed<Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Ethereum>> {

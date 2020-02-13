@@ -16,6 +16,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;
+use impl_template::impl_template;
 use libp2p::{self, PeerId};
 
 /// Save swap to database.
@@ -74,11 +75,25 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
+impl
+    Save<
+        Request<
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+        >,
+    > for Sqlite
+{
     async fn save(
         &self,
-        message: Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>,
+        message: Request<__TYPE0__, Ethereum, asset::Bitcoin, asset::Ether>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -96,97 +111,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Eth
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
-            ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: Text(alpha_asset.into()),
-            ether_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            bitcoin_expiry: U32(alpha_expiry.into()),
-            ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_asset,
-            beta_ledger,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
-            ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: Text(alpha_asset.into()),
-            ether_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            bitcoin_expiry: U32(alpha_expiry.into()),
-            ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_ether_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_asset,
-            beta_ledger,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
+            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
@@ -226,11 +151,25 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
+impl
+    Save<
+        Request<
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+        >,
+    > for Sqlite
+{
     async fn save(
         &self,
-        message: Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>,
+        message: Request<__TYPE0__, Ethereum, asset::Bitcoin, asset::Erc20>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -248,99 +187,7 @@ impl Save<Request<ledger::bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
-            ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: Text(alpha_asset.into()),
-            erc20_amount: Text(beta_asset.quantity.into()),
-            erc20_token_contract: Text(beta_asset.token_contract.into()),
-            hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            bitcoin_expiry: U32(alpha_expiry.into()),
-            ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<ledger::bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_asset,
-            beta_ledger,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
-            ethereum_chain_id: U32(beta_ledger.chain_id.into()),
-            bitcoin_amount: Text(alpha_asset.into()),
-            erc20_amount: Text(beta_asset.quantity.into()),
-            erc20_token_contract: Text(beta_asset.token_contract.into()),
-            hash_function: Text(hash_function),
-            bitcoin_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            ethereum_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            bitcoin_expiry: U32(alpha_expiry.into()),
-            ethereum_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<ledger::bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_asset,
-            beta_ledger,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
+            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             erc20_amount: Text(beta_asset.quantity.into()),
@@ -380,11 +227,25 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin>> for Sqlite {
+impl
+    Save<
+        Request<
+            Ethereum,
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+            asset::Ether,
+            asset::Bitcoin,
+        >,
+    > for Sqlite
+{
     async fn save(
         &self,
-        message: Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitcoin>,
+        message: Request<Ethereum, __TYPE0__, asset::Ether, asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -402,97 +263,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Ether, asset::Bitco
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
-            ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            ether_amount: Text(alpha_asset.into()),
-            bitcoin_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            ethereum_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            ethereum_expiry: U32(alpha_expiry.into()),
-            bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<Ethereum, ledger::bitcoin::Testnet, asset::Ether, asset::Bitcoin>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_ledger,
-            alpha_asset,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
-            ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            ether_amount: Text(alpha_asset.into()),
-            bitcoin_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            ethereum_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            ethereum_expiry: U32(alpha_expiry.into()),
-            bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_ether_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<Ethereum, ledger::bitcoin::Mainnet, asset::Ether, asset::Bitcoin>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_ledger,
-            alpha_asset,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
-            swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
+            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -532,11 +303,25 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin>> for Sqlite {
+impl
+    Save<
+        Request<
+            Ethereum,
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+            asset::Erc20,
+            asset::Bitcoin,
+        >,
+    > for Sqlite
+{
     async fn save(
         &self,
-        message: Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitcoin>,
+        message: Request<Ethereum, __TYPE0__, asset::Erc20, asset::Bitcoin>,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -555,99 +340,7 @@ impl Save<Request<Ethereum, ledger::bitcoin::Regtest, asset::Erc20, asset::Bitco
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Regtest)),
-            erc20_amount: Text(alpha_asset.quantity.into()),
-            erc20_token_contract: Text(alpha_asset.token_contract.into()),
-            bitcoin_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            ethereum_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            ethereum_expiry: U32(alpha_expiry.into()),
-            bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<Ethereum, ledger::bitcoin::Testnet, asset::Erc20, asset::Bitcoin>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_ledger,
-            alpha_asset,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
-            swap_id: Text(swap_id),
-            ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Testnet)),
-            erc20_amount: Text(alpha_asset.quantity.into()),
-            erc20_token_contract: Text(alpha_asset.token_contract.into()),
-            bitcoin_amount: Text(beta_asset.into()),
-            hash_function: Text(hash_function),
-            ethereum_refund_identity: Text(alpha_ledger_refund_identity.into()),
-            bitcoin_redeem_identity: Text(beta_ledger_redeem_identity.into()),
-            ethereum_expiry: U32(alpha_expiry.into()),
-            bitcoin_expiry: U32(beta_expiry.into()),
-            secret_hash: Text(secret_hash),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages::table)
-                .values(&insertable)
-                .execute(connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Request<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>> for Sqlite {
-    async fn save(
-        &self,
-        message: Request<Ethereum, ledger::bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>,
-    ) -> anyhow::Result<()> {
-        let Request {
-            swap_id,
-            alpha_ledger,
-            alpha_asset,
-            beta_asset,
-            hash_function,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-            ..
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
-            swap_id: Text(swap_id),
-            ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(ledger::bitcoin::Mainnet)),
+            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
             erc20_amount: Text(alpha_asset.quantity.into()),
             erc20_token_contract: Text(alpha_asset.token_contract.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -678,70 +371,21 @@ struct InsertableEthereumBitcoinAcceptMessage {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Accept<Ethereum, ledger::bitcoin::Regtest>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<Ethereum, ledger::bitcoin::Regtest>,
-    ) -> anyhow::Result<()> {
-        let Accept {
-            swap_id,
-            alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity,
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinAcceptMessage {
-            swap_id: Text(swap_id),
-            ethereum_redeem_identity: Text(alpha_ledger_redeem_identity.into()),
-            bitcoin_refund_identity: Text(beta_ledger_refund_identity.into()),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages::table)
-                .values(&insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Accept<Ethereum, ledger::bitcoin::Testnet>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<Ethereum, ledger::bitcoin::Testnet>,
-    ) -> anyhow::Result<()> {
-        let Accept {
-            swap_id,
-            alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity,
-        } = message;
-
-        let insertable = InsertableEthereumBitcoinAcceptMessage {
-            swap_id: Text(swap_id),
-            ethereum_redeem_identity: Text(alpha_ledger_redeem_identity.into()),
-            bitcoin_refund_identity: Text(beta_ledger_refund_identity.into()),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_ethereum_bitcoin_accept_messages::table)
-                .values(&insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Accept<Ethereum, ledger::bitcoin::Mainnet>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<Ethereum, ledger::bitcoin::Mainnet>,
-    ) -> anyhow::Result<()> {
+impl
+    Save<
+        Accept<
+            Ethereum,
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+        >,
+    > for Sqlite
+{
+    async fn save(&self, message: Accept<Ethereum, __TYPE0__>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -773,70 +417,21 @@ struct InsertableBitcoinEthereumAcceptMessage {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
+#[impl_template]
 #[async_trait]
-impl Save<Accept<ledger::bitcoin::Regtest, Ethereum>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<ledger::bitcoin::Regtest, Ethereum>,
-    ) -> anyhow::Result<()> {
-        let Accept {
-            swap_id,
-            alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity,
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumAcceptMessage {
-            swap_id: Text(swap_id),
-            bitcoin_redeem_identity: Text(alpha_ledger_redeem_identity.into()),
-            ethereum_refund_identity: Text(beta_ledger_refund_identity.into()),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
-                .values(&insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Accept<ledger::bitcoin::Testnet, Ethereum>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<ledger::bitcoin::Testnet, Ethereum>,
-    ) -> anyhow::Result<()> {
-        let Accept {
-            swap_id,
-            alpha_ledger_redeem_identity,
-            beta_ledger_refund_identity,
-        } = message;
-
-        let insertable = InsertableBitcoinEthereumAcceptMessage {
-            swap_id: Text(swap_id),
-            bitcoin_redeem_identity: Text(alpha_ledger_redeem_identity.into()),
-            ethereum_refund_identity: Text(beta_ledger_refund_identity.into()),
-        };
-
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(rfc003_bitcoin_ethereum_accept_messages::table)
-                .values(&insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<Accept<ledger::bitcoin::Mainnet, Ethereum>> for Sqlite {
-    async fn save(
-        &self,
-        message: Accept<ledger::bitcoin::Mainnet, Ethereum>,
-    ) -> anyhow::Result<()> {
+impl
+    Save<
+        Accept<
+            ((
+                ledger::bitcoin::Mainnet,
+                ledger::bitcoin::Testnet,
+                ledger::bitcoin::Regtest,
+            )),
+            Ethereum,
+        >,
+    > for Sqlite
+{
+    async fn save(&self, message: Accept<__TYPE0__, Ethereum>) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
