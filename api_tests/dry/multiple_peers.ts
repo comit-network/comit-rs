@@ -4,11 +4,12 @@ import { ethers } from "ethers";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import { Actor } from "../lib/actor";
 import "../lib/setup_chai";
+import { LedgerKind } from "../lib_sdk/ledger";
 
 (async () => {
     const alpha = {
         ledger: {
-            name: "bitcoin",
+            name: LedgerKind.Bitcoin,
             network: "regtest",
         },
         asset: {
@@ -23,7 +24,7 @@ import "../lib/setup_chai";
 
     const beta = {
         ledger: {
-            name: "ethereum",
+            name: LedgerKind.Ethereum,
             chain_id: 17,
         },
         asset: {
