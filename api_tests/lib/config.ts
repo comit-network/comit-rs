@@ -20,7 +20,9 @@ export class E2ETestActorConfig {
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: string
+        public readonly name: string,
+        public readonly lndP2pPort: number,
+        public readonly lndRpcPort: number
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -67,9 +69,27 @@ interface BitcoinConnector {
     network: string;
 }
 
-export const ALICE_CONFIG = new E2ETestActorConfig(8000, 9938, "alice");
-export const BOB_CONFIG = new E2ETestActorConfig(8010, 9939, "bob");
-export const CHARLIE_CONFIG = new E2ETestActorConfig(8020, 8021, "charlie");
+export const ALICE_CONFIG = new E2ETestActorConfig(
+    8000,
+    9938,
+    "alice",
+    59736,
+    50009
+);
+export const BOB_CONFIG = new E2ETestActorConfig(
+    8010,
+    9939,
+    "bob",
+    59737,
+    50010
+);
+export const CHARLIE_CONFIG = new E2ETestActorConfig(
+    8020,
+    8021,
+    "charlie",
+    59738,
+    50011
+);
 
 function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
     const config: LedgerConnectors = {};

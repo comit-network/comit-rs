@@ -41,9 +41,9 @@ If you wish to directly contribute to the code, please make pull requests agains
 Refer to [GitHub documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature.
 You can also find more details in the [Open Source Guides](https://opensource.guide/how-to-contribute/#opening-a-pull-request).
 
-**Before** committing, always run `cargo make format` (or `cargo make js-format` for JavaScript) or your change will be rejected by the CI.
+**Before** committing, always run `make format` or your change will be rejected by the CI.
 
-To ensure you have not made any breaking changes, run `cargo make all`.
+To ensure you have not made any breaking changes, run `make all`.
 
 When creating commits, please follow these commit guidelines: https://chris.beams.io/posts/git-commit/.
 

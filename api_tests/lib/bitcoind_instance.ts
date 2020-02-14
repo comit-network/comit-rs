@@ -1,15 +1,13 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import tmp from "tmp";
-import { promisify } from "util";
 import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
-
-const openAsync = promisify(fs.open);
+import * as path from "path";
+import { openAsync, mkdirAsync, writeFileAsync } from "../lib_sdk/utils";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
-    private dbDir: any;
+    private dataDir: string;
     private username: string;
     private password: string;
 
@@ -17,7 +15,9 @@ export class BitcoindInstance implements LedgerInstance {
         private readonly projectRoot: string,
         private readonly logDir: string,
         public readonly p2pPort: number,
-        public readonly rpcPort: number
+        public readonly rpcPort: number,
+        public readonly zmqPubRawBlockPort: number,
+        public readonly zmqPubRawTxPort: number
     ) {}
 
     public async start() {
@@ -26,41 +26,29 @@ export class BitcoindInstance implements LedgerInstance {
             : this.projectRoot +
               "/blockchain_nodes/bitcoin/bitcoin-0.17.0/bin/bitcoind";
 
-        this.dbDir = tmp.dirSync();
+        this.dataDir = path.join(this.logDir, "bitcoind");
+        await mkdirAsync(this.dataDir, "755");
+        await this.createConfigFile(this.dataDir);
 
-        this.process = spawn(
-            bin,
-            [
-                `-datadir=${this.dbDir.name}`,
-                "-regtest",
-                "-server",
-                "-printtoconsole",
-                `-bind=0.0.0.0:${this.p2pPort}`,
-                `-rpcbind=0.0.0.0:${this.rpcPort}`,
-                "-rpcallowip=0.0.0.0/0",
-                "-nodebug",
-                "-acceptnonstdtxn=0",
-                "-rest",
+        const log = this.logPath();
+        this.process = spawn(bin, [`-datadir=${this.dataDir}`], {
+            cwd: this.projectRoot,
+            stdio: [
+                "ignore", // stdin
+                await openAsync(log, "w"), // stdout
+                await openAsync(log, "w"), // stderr
             ],
-            {
-                cwd: this.projectRoot,
-                stdio: [
-                    "ignore", // stdin
-                    await openAsync(this.logDir + "/bitcoind.log", "w"), // stdout
-                    await openAsync(this.logDir + "/bitcoind.log", "w"), // stderr
-                ],
-            }
-        );
+        });
 
         this.process.on("exit", (code: number, signal: number) => {
             console.log(`bitcoind exited with ${code || "signal " + signal}`);
         });
 
-        const logReader = new LogReader(this.logDir + "/bitcoind.log");
+        const logReader = new LogReader(this.logPath());
         await logReader.waitForLogMessage("Wallet completed loading");
 
         const result = fs.readFileSync(
-            `${this.dbDir.name}/regtest/.cookie`,
+            path.join(this.dataDir, "regtest", ".cookie"),
             "utf8"
         );
         const [username, password] = result.split(":");
@@ -75,7 +63,32 @@ export class BitcoindInstance implements LedgerInstance {
         this.process.kill("SIGINT");
     }
 
+    private logPath() {
+        return path.join(this.dataDir, "bitcoind.log");
+    }
+
+    public getDataDir() {
+        return this.dataDir;
+    }
+
     public getUsernamePassword() {
         return { username: this.username, password: this.password };
+    }
+
+    private async createConfigFile(dataDir: string) {
+        const output = `regtest=1
+server=1
+printtoconsole=1
+bind=0.0.0.0:${this.p2pPort}
+rpcbind=0.0.0.0:${this.rpcPort}
+rpcallowip=0.0.0.0/0
+nodebug=1
+rest=1
+acceptnonstdtxn=0
+zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
+zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
+`;
+        const config = path.join(dataDir, "bitcoin.conf");
+        await writeFileAsync(config, output);
     }
 }
