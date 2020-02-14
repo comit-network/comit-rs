@@ -3,7 +3,6 @@ pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
-mod ethereum_network;
 mod problem;
 mod swap_resource;
 
@@ -289,7 +288,6 @@ impl From<bitcoin::Network> for BitcoinLedgerParams {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EthereumLedgerParams {
     chain_id: Option<ChainId>,
-    network: Option<ethereum_network::Network>,
 }
 
 /// The actual enum that is used by serde to deserialize the `alpha_asset` and
@@ -365,17 +363,9 @@ impl TryFrom<EthereumLedgerParams> for ledger::Ethereum {
     fn try_from(params: EthereumLedgerParams) -> Result<Self, Self::Error> {
         let chain_id = match params {
             EthereumLedgerParams {
-                network: Some(network),
-                ..
-            } => network.into(),
-            EthereumLedgerParams {
                 chain_id: Some(chain_id),
-                ..
             } => chain_id,
-            EthereumLedgerParams {
-                network: None,
-                chain_id: None,
-            } => return Err(InvalidEthereumLedgerParams),
+            EthereumLedgerParams { chain_id: None } => return Err(InvalidEthereumLedgerParams),
         };
 
         Ok(Self { chain_id })
@@ -387,7 +377,6 @@ impl From<ledger::Ethereum> for EthereumLedgerParams {
         let chain_id = ethereum.chain_id;
 
         Self {
-            network: chain_id.try_into().ok(),
             chain_id: Some(chain_id),
         }
     }
@@ -578,9 +567,9 @@ mod tests {
         ];
 
         let expected = &[
-            r#"{"name":"ethereum","chain_id":1,"network":"mainnet"}"#,
-            r#"{"name":"ethereum","chain_id":3,"network":"ropsten"}"#,
-            r#"{"name":"ethereum","chain_id":17,"network":"regtest"}"#,
+            r#"{"name":"ethereum","chain_id":1}"#,
+            r#"{"name":"ethereum","chain_id":3}"#,
+            r#"{"name":"ethereum","chain_id":17}"#,
         ];
 
         let actual = input

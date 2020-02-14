@@ -1,8 +1,6 @@
 use crate::{
     asset,
-    http_api::{
-        ethereum_network, problem, Http, MissingQueryParameters, UnexpectedQueryParameters,
-    },
+    http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -16,7 +14,7 @@ use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
 use http_api_problem::HttpApiProblem;
 use serde::{Deserialize, Serialize};
-use std::convert::{Infallible, TryInto};
+use std::convert::Infallible;
 use warp::http::StatusCode;
 
 pub trait ToSirenAction {
@@ -37,7 +35,6 @@ pub enum ActionExecutionParameters {
     None {},
 }
 
-/// `network` field here for backward compatibility, to be removed with #1580
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "kebab-case")]
 #[serde(tag = "type", content = "payload")]
@@ -57,7 +54,6 @@ pub enum ActionResponseBody {
         data: crate::ethereum::Bytes,
         amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
-        network: ethereum_network::Network,
         chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
@@ -66,7 +62,6 @@ pub enum ActionResponseBody {
         data: Option<crate::ethereum::Bytes>,
         gas_limit: crate::ethereum::U256,
         chain_id: ledger::ethereum::ChainId,
-        network: ethereum_network::Network,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
@@ -247,7 +242,6 @@ impl IntoResponsePayload for ethereum::DeployContract {
                 amount,
                 gas_limit,
                 chain_id,
-                network: chain_id.try_into()?,
             }),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
                 action: "ethereum::ContractDeploy",
@@ -281,7 +275,6 @@ impl IntoResponsePayload for ethereum::CallContract {
                 data,
                 gas_limit,
                 chain_id,
-                network: chain_id.try_into()?,
                 min_block_timestamp,
             }),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
@@ -354,13 +347,12 @@ mod test {
             data: None,
             gas_limit: U256::from(1),
             chain_id,
-            network: chain_id.try_into().unwrap(),
             min_block_timestamp: None,
         };
         let serialized = serde_json::to_string(&contract).unwrap();
         assert_eq!(
             serialized,
-            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","chain_id":3,"network":"ropsten"}}"#
+            r#"{"type":"ethereum-call-contract","payload":{"contract_address":"0x0a81e8be41b21f651a71aab1a85c6813b8bbccf8","gas_limit":"0x1","chain_id":3}}"#
         );
     }
 
