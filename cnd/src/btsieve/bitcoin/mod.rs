@@ -10,7 +10,6 @@ pub use self::{
 use crate::btsieve::{BlockByHash, LatestBlock, Predates};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
-    hashes::sha256d,
     BitcoinHash,
 };
 use chrono::NaiveDateTime;
@@ -25,7 +24,7 @@ pub async fn matching_transaction<C>(
 ) -> anyhow::Result<bitcoin::Transaction>
 where
     C: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = sha256d::Hash>
+        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>
         + Clone,
 {
     // Verify that we can successfully connect to the blockchain connector and check
@@ -40,7 +39,7 @@ where
     // back up the blockchain until 'start_of_swap' i.e., look back in the
     // past.
 
-    let mut prev_blockhashes: HashSet<sha256d::Hash> = HashSet::new();
+    let mut prev_blockhashes: HashSet<bitcoin::BlockHash> = HashSet::new();
     let mut missing_block_futures: Vec<_> = Vec::new();
 
     let mut oldest_block: Option<bitcoin::Block> = Some(latest_block.clone());

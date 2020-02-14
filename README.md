@@ -1,25 +1,35 @@
-# COMIT-rs
+<a href="https://comit.network">
+<img src="logo.svg" height="120px">
+</a>
+
+---
+
+[COMIT](https://comit.network) is an open protocol facilitating cross-blockchain applications.
+For example, with [COMIT](https://comit.network) you can exchange Bitcoin for Ether or any ERC20 token directly with another person.
+
+This repository contains the implementation of the comit-network daemon (`cnd`), which is the reference implementation of the protocol written in Rust. 
+
+If you wish to do an atomic swap on your machine or to integrate COMIT into an application (e.g. a DEX) please take a look at the [Getting Started section](https://comit.network/docs/getting-started/create-comit-app/) of the COMIT documentation.
+If you have any questions, feel free to [reach out to the team in our Gitter chat](https://gitter.im/comit-network/community)!
 
 [![CircleCI](https://circleci.com/gh/comit-network/comit-rs.svg?style=svg)](https://circleci.com/gh/comit-network/comit-rs)
 [![Safety Dance](https://img.shields.io/badge/unsafe-forbidden-success.svg)](https://github.com/rust-secure-code/safety-dance/)
 [![Bors enabled](https://bors.tech/images/badge_small.svg)](https://app.bors.tech/repositories/20717)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg)](https://www.gnu.org/licenses/gpl-3.0)
 [![Gitter chat](https://badges.gitter.im/gitterHQ/gitter.png)](https://gitter.im/comit-network/community)
 
-COMIT is an open protocol facilitating trustless cross-blockchain applications.
-This is a reference implementation for the COMIT protocol. 
+# comit-rs
 
-## DISCLAIMER: This is not mainnet ready!
-
-- Extensive testing on mainnet from our side still remains to be done
-- Several features for achieving production-ready robustness are still under works
-- Once we consider comit-rs production ready, we will release version 1.0.0
+The Rust reference implementation of the COMIT protocol (comit-rs) implements atomic swaps using constructs like Hash Time-Locked Contracts (HTLCs) to keep your funds safe at any time.
 
 ## Structure
 
 This repository is a cargo workspace:
 
 - `cnd`: implementation of the comit-network daemon
-- `libp2p-comit`: implementation of the comit messaging protocol on top of libp2p
+- `libp2p-comit`: implementation of the comit messaging protocol on top of [libp2p](https://github.com/libp2p/rust-libp2p)
+
+`cnd` is [released](https://github.com/comit-network/comit-rs/releases) as binary including `libp2p-comit`.
 
 ## Setup build environment
 

@@ -13,6 +13,8 @@ import { sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { HarnessGlobal } from "../../lib/util";
+import { Entity } from "../../gen/siren";
+import { SwapDetails } from "comit-sdk/dist/src/cnd";
 
 declare var global: HarnessGlobal;
 
@@ -59,7 +61,7 @@ export class Actor {
     public wallets: Wallets;
 
     private comitClient: ComitClient;
-    private readonly cnd: Cnd;
+    readonly cnd: Cnd;
     private swap: Swap;
 
     private alphaLedger: Ledger;
@@ -177,6 +179,8 @@ export class Actor {
             this.swap.self
         );
         this.logger.debug("Created new swap at %s", this.swap.self);
+
+        return this.swap;
     }
 
     public async accept() {
@@ -238,6 +242,25 @@ export class Actor {
                 }
                 await this.actors.bob.assertBetaFunded();
                 break;
+        }
+    }
+
+    public async fundLowGas(hexGasLimit: string) {
+        const response = await this.swap.tryExecuteAction("fund", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
+        response.data.payload.gas_limit = hexGasLimit;
+        const txid = await this.swap.doLedgerAction(response.data);
+        this.logger.debug(
+            "Deployed with low gas swap %s in %s",
+            this.swap.self,
+            txid
+        );
+
+        const status = await this.wallets.ethereum.getTransactionStatus(txid);
+        if (status !== 0) {
+            throw new Error("Deploy with low gas transaction was successful.");
         }
     }
 
@@ -446,10 +469,12 @@ export class Actor {
     }
 
     public async assertAlphaNotDeployed() {
+        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("alpha_ledger", "NOT_DEPLOYED");
     }
 
     public async assertBetaNotDeployed() {
+        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("beta_ledger", "NOT_DEPLOYED");
     }
 
@@ -657,6 +682,45 @@ export class Actor {
         );
 
         return defaultBetaAssetKind;
+    }
+
+    public cndHttpApiUrl() {
+        const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${cndSocket.address}:${cndSocket.port}`;
+    }
+
+    public async pollCndUntil(
+        location: string,
+        predicate: (body: Entity) => boolean
+    ): Promise<Entity> {
+        const response = await this.cnd.fetch(location);
+
+        expect(response).to.have.status(200);
+
+        if (predicate(response.data)) {
+            return response.data;
+        } else {
+            await sleep(500);
+
+            return this.pollCndUntil(location, predicate);
+        }
+    }
+
+    public async pollSwapDetails(
+        swapUrl: string,
+        iteration: number = 0
+    ): Promise<SwapDetails> {
+        if (iteration > 5) {
+            throw new Error(`Could not retrieve Swap ${swapUrl}`);
+        }
+        iteration++;
+
+        try {
+            return (await this.cnd.fetch<SwapDetails>(swapUrl)).data;
+        } catch (error) {
+            await sleep(1000);
+            return await this.pollSwapDetails(swapUrl, iteration);
+        }
     }
 }
 

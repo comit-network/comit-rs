@@ -41,6 +41,35 @@ impl FromWei<U256> for Erc20Quantity {
     }
 }
 
+impl From<Erc20Quantity> for blockchain_contracts::ethereum::TokenQuantity {
+    fn from(quantity: Erc20Quantity) -> Self {
+        if quantity > Erc20Quantity::max_value() {
+            unreachable!(
+                "Somehow an overflowed Erc20Quantity was initiated, there is a bug to fix"
+            );
+        }
+
+        let mut buf = [0u8; 32];
+        let vec = quantity.0.to_bytes_be();
+
+        if vec.len() > 32 {
+            unreachable!("There is already an `unreachable!` for that few lines above")
+        }
+        if vec.len() < 32 {
+            let mut full_len_vec = Vec::new();
+            let delta = 32 - vec.len();
+            full_len_vec.resize(delta, 0);
+            full_len_vec.extend_from_slice(&vec);
+            buf.copy_from_slice(&full_len_vec);
+        } else {
+            buf.copy_from_slice(&vec);
+        }
+
+        // TokenQuantity stores a Big Endian Byte Array
+        blockchain_contracts::ethereum::TokenQuantity(buf)
+    }
+}
+
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -231,5 +260,59 @@ mod tests {
             "115792089237316195423570985008687907853269984665640564039457584007913129639936",
         ); // This is Erc20Quantity::max_value() + 1
         assert_eq!(res, Err(Error::Overflow))
+    }
+
+    mod blockchain_contracts_test {
+        use super::*;
+        use blockchain_contracts::ethereum::TokenQuantity;
+
+        #[test]
+        fn given_small_erc20_quantity_convert_to_token_quantity() {
+            let erc20 = Erc20Quantity::from_wei(1u32);
+            let token = TokenQuantity::from(erc20);
+            assert_eq!(token.0, [
+                0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+                0, 0, 0, 1
+            ]);
+        }
+
+        #[test]
+        fn given_32_bytes_long_erc20_quantity_convert_to_token_quantity() {
+            let token = TokenQuantity::from(Erc20Quantity::max_value());
+            assert_eq!(token.0, [
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX,
+                std::u8::MAX
+            ]);
+        }
     }
 }

@@ -47,7 +47,7 @@ impl From<bitcoin::util::key::PublicKey> for PublicKey {
 }
 
 impl FromStr for PublicKey {
-    type Err = bitcoin::consensus::encode::Error;
+    type Err = bitcoin::util::key::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         Ok(bitcoin::PublicKey::from_str(s)?.into())

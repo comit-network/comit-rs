@@ -17,7 +17,15 @@ impl FundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
     type FundActionOutput = DeployContract;
 
     fn fund_action(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self::FundActionOutput {
-        htlc_params.into()
+        let htlc = EtherHtlc::from(htlc_params.clone());
+        let gas_limit = EtherHtlc::deploy_tx_gas_limit();
+
+        DeployContract {
+            data: htlc.into(),
+            amount: htlc_params.asset.clone(),
+            gas_limit: gas_limit.into(),
+            chain_id: htlc_params.ledger.chain_id,
+        }
     }
 }
 impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
@@ -29,12 +37,12 @@ impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         _secret_source: &dyn DeriveIdentities,
         _fund_transaction: &Transaction,
     ) -> Self::RefundActionOutput {
-        let gas_limit = EtherHtlc::tx_gas_limit();
+        let gas_limit = EtherHtlc::refund_tx_gas_limit();
 
         CallContract {
             to: htlc_location,
             data: None,
-            gas_limit,
+            gas_limit: gas_limit.into(),
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: Some(htlc_params.expiry),
         }
@@ -50,12 +58,12 @@ impl RedeemAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         secret: Secret,
     ) -> Self::RedeemActionOutput {
         let data = Bytes::from(secret.as_raw_secret().to_vec());
-        let gas_limit = EtherHtlc::tx_gas_limit();
+        let gas_limit = EtherHtlc::redeem_tx_gas_limit();
 
         CallContract {
             to: htlc_location,
             data: Some(data),
-            gas_limit,
+            gas_limit: gas_limit.into(),
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: None,
         }

@@ -61,10 +61,10 @@
   resolved "https://registry.yarnpkg.com/@types/cookiejar/-/cookiejar-2.1.1.tgz#90b68446364baf9efd8e8349bb36bd3852b75b80"
   integrity sha512-aRnpPa7ysx3aNW60hTiCtLHlQaIFsXFCgQlpakNgDNVFzbtusSY8PwjAQgRWfSk0ekNoBjO51eQRB6upA9uuyw==
 
-"@types/dockerode@^2.5.21":
-  version "2.5.21"
-  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.21.tgz#4051b21bba6fa251ac638340ac88a3bf836c58de"
-  integrity sha512-Y9kVV7Umw0SAOsGVp06VGjlAiZbjALNhDIw69NeWNEqfI++7nQijzjWsepOkUjKHr5CrJWgK4v++6a+Ms0G/6A==
+"@types/dockerode@^2.5.22":
+  version "2.5.22"
+  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.22.tgz#356e90491bf532556d9fbe4863690a0dfb8ec127"
+  integrity sha512-YIHpziPXJ3Gowv5pnaWRv1zzTxaF32Jf9vy/h4OT9WH7xvnxX6kvM0utLzf8dI4Urx/f7SOHJnmPJqr2S7bbSw==
   dependencies:
     "@types/node" "*"
 
@@ -2036,10 +2036,10 @@ log-symbols@2.2.0:
   dependencies:
     chalk "^2.0.1"
 
-log4js@*, log4js@^6.1.1:
-  version "6.1.1"
-  resolved "https://registry.yarnpkg.com/log4js/-/log4js-6.1.1.tgz#cac96a09ff7e1b83f2598996a8517719e451a3d7"
-  integrity sha512-ZIhVqJrwWTIwEvSU08w4L18OTe2ikKpv9D7DbeastwaQTp2hz7bnVtjQMzha804aEBE0ohe78lpruQnnB04VNQ==
+log4js@*, log4js@^6.1.2:
+  version "6.1.2"
+  resolved "https://registry.yarnpkg.com/log4js/-/log4js-6.1.2.tgz#04688e1f4b8080c127b7dccb0db1c759cbb25dc4"
+  integrity sha512-knS4Y30pC1e0n7rfx3VxcLOdBCsEo0o6/C7PVTGxdVK+5b1TYOSGQPn9FDcrhkoQBV29qwmA2mtkznPAQKnxQg==
   dependencies:
     date-format "^3.0.0"
     debug "^4.1.1"
@@ -2241,10 +2241,10 @@ ms@^2.1.1:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
 
-multiaddr@^7.2.1:
-  version "7.2.1"
-  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.2.1.tgz#f660e346dc6db1995c01aad87d6be43bf3c13ca6"
-  integrity sha512-iJ372ZXoyw1xmRh3Cawej5l17TTs72jGHDjUHCDl16s3UFkkPQkWj90BDF8hw8xnBIG/JB3RAyHhkWKiuNfM5g==
+multiaddr@^7.3.0:
+  version "7.3.0"
+  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.3.0.tgz#277c3a897338ba502f4dd76abf0f9b934684a683"
+  integrity sha512-HlV0oMy5dq+vV1t5hFL8T559j7cdgODnCQEXqDATL7oZyN6hWKJOZ4XE45LkdVJc7/A4cCLZmVg7RCBjj0wfyQ==
   dependencies:
     bs58 "^4.0.1"
     cids "~0.7.1"
@@ -2678,10 +2678,10 @@ rimraf@^2.6.3:
   dependencies:
     glob "^7.1.3"
 
-rimraf@^3.0.1:
-  version "3.0.1"
-  resolved "https://registry.yarnpkg.com/rimraf/-/rimraf-3.0.1.tgz#48d3d4cb46c80d388ab26cd61b1b466ae9ae225a"
-  integrity sha512-IQ4ikL8SjBiEDZfk+DFVwqRK8md24RWMEJkdSlgNLkyyAImcjf8SWvU1qFMDOb4igBClbTQ/ugPqXcRwdFTxZw==
+rimraf@^3.0.2:
+  version "3.0.2"
+  resolved "https://registry.yarnpkg.com/rimraf/-/rimraf-3.0.2.tgz#f1a5402ba6220ad52cc1282bac1ae3aa49fd061a"
+  integrity sha512-JZkJMZkAGFFPP2YqXZXPbMlMBgsxzE8ILs4lMIX/2o0L9UBw9O/Y3o6wFw/i9YLapcUJWwqbi3kdxIPdC62TIA==
   dependencies:
     glob "^7.1.3"
 
@@ -3048,10 +3048,10 @@ tempfile@*:
     temp-dir "^2.0.0"
     uuid "^3.3.2"
 
-testcontainers@^2.3.1:
-  version "2.3.1"
-  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.3.1.tgz#893ca1551add2a97a542bed780193418da985e50"
-  integrity sha512-BGhUXqgTfsGtshsyiu69/Zn3d9No2gt+XID9GR9MqrkJupNQbgSUSpGTb+yR3PiwqTZiC45DjKZJ+dB+Tk3fUw==
+testcontainers@^2.3.2:
+  version "2.3.2"
+  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.3.2.tgz#a89df77325f1e263fc25e13f88e5846efd40cbf8"
+  integrity sha512-DCpqyErmPbcYkeu+KZL/1Q8IAkRImrBo2ohqDqp111Gw76QpXhYl6ADWBRnWLR091/ocjk290RLIUV5O5YWL1A==
   dependencies:
     byline "^5.0.0"
     debug "^4.1.1"
