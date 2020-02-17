@@ -1139,9 +1139,33 @@ checksum = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 
 [[package]]
 name = "genawaiter"
-version = "0.2.2"
+version = "0.99.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1236259ce812baf9e1d1e316724e0fec341ce788f038aa543f813dfe78e12d32"
+checksum = "5925e16c789ba34ab406805ff31697bbbb4940b5b775dbef68de01c86a9885dc"
+dependencies = [
+ "genawaiter-macro",
+ "genawaiter-proc-macro",
+ "proc-macro-hack",
+]
+
+[[package]]
+name = "genawaiter-macro"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "38ff54ca4f4fcef6cb56438c6ad11ae2c8b63f3a75e5c178f30a8a90febe7b77"
+
+[[package]]
+name = "genawaiter-proc-macro"
+version = "0.99.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1669545204667df0b83daad9f6686e29ed8a4907c1eb965de5c9e43878082813"
+dependencies = [
+ "proc-macro-error",
+ "proc-macro-hack",
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.14",
+]
 
 [[package]]
 name = "generic-array"
