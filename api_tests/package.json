@@ -46,7 +46,7 @@
         "chai-subset": "^1.6.0",
         "comit-sdk": "^0.10.1",
         "commander": "^4.1.1",
-        "ethers": "^4.0.44",
+        "ethers": "^4.0.45",
         "get-port": "^5.1.1",
         "glob": "^7.1.6",
         "json-schema-to-typescript": "^8.0.1",
