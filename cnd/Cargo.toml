@@ -22,7 +22,7 @@ ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
 futures-core = { version = "0.3", features = ["compat", "async-await"], default-features = false, package = "futures" }
-genawaiter = "0.2"
+genawaiter = "0.99"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 impl-template = "1.0.0-alpha"
