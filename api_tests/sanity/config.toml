@@ -1,2 +1,2 @@
-ledgers = ["bitcoin"]
+ledgers = ["bitcoin", "lightning"]
 actors = ["alice", "bob"]

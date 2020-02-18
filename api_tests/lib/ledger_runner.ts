@@ -64,6 +64,13 @@ export class LedgerRunner {
                         instance: await instance.start(),
                     };
                 }
+                case "lightning": {
+                    return {
+                        ledger,
+                        // lnd will be started by the actor
+                        // And hopefully it'll be stopped too :)
+                    };
+                }
                 default: {
                     throw new Error(`Ledgerrunner does not support ${ledger}`);
                 }
@@ -107,11 +114,13 @@ export class LedgerRunner {
     public async stopLedgers() {
         const ledgers = Object.entries(this.runningLedgers);
 
-        const promises = ledgers.map(async ([ledger, container]) => {
+        const promises = ledgers.map(async ([ledger, ledgerInstance]) => {
             console.log(`Stopping ledger ${ledger}`);
 
             clearInterval(this.blockTimers[ledger]);
-            await container.stop();
+            if (ledgerInstance) {
+                await ledgerInstance.stop();
+            }
             delete this.runningLedgers[ledger];
         });
 

@@ -4,12 +4,16 @@ import { Asset } from "comit-sdk";
 import { sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
+import { LightningWallet } from "./lightning";
+import { E2ETestActorConfig } from "../../lib/config";
+import { Logger } from "log4js";
 
 declare var global: HarnessGlobal;
 
 interface AllWallets {
     bitcoin?: BitcoinWallet;
     ethereum?: EthereumWallet;
+    lightning?: LightningWallet;
 }
 
 export interface Wallet {
@@ -30,6 +34,10 @@ export class Wallets {
         return this.getWalletForLedger("ethereum");
     }
 
+    get lightning(): LightningWallet {
+        return this.getWalletForLedger("lightning");
+    }
+
     public getWalletForLedger<K extends keyof AllWallets>(
         name: K
     ): AllWallets[K] {
@@ -42,7 +50,12 @@ export class Wallets {
         return wallet;
     }
 
-    public async initializeForLedger<K extends keyof AllWallets>(name: K) {
+    public async initializeForLedger<K extends keyof AllWallets>(
+        name: K,
+        logger: Logger,
+        logDir: string,
+        actorConfig: E2ETestActorConfig
+    ) {
         switch (name) {
             case "ethereum":
                 this.wallets.ethereum = new EthereumWallet(
@@ -50,8 +63,23 @@ export class Wallets {
                 );
                 break;
             case "bitcoin":
-                this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                    global.ledgerConfigs.bitcoin
+                if (!this.wallets.bitcoin) {
+                    this.wallets.bitcoin = await BitcoinWallet.newInstance(
+                        global.ledgerConfigs.bitcoin
+                    );
+                }
+                break;
+            case "lightning":
+                if (!this.wallets.bitcoin) {
+                    this.wallets.bitcoin = await BitcoinWallet.newInstance(
+                        global.ledgerConfigs.bitcoin
+                    );
+                }
+                this.wallets.lightning = await LightningWallet.newInstance(
+                    this.wallets.bitcoin,
+                    logger,
+                    logDir,
+                    actorConfig
                 );
                 break;
         }
