@@ -59,20 +59,10 @@ uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1.0.2"
 warp = { version = "0.2", default-features = false }
 
-# These versions need to be "in sync".
-# web3 0.8 gives us primitive-types 0.3.0
-# primitive-types 0.3.0 with the "rlp" feature gives us "rlp" version 0.4.2
 [dependencies.web3]
 default-features = false
 features = ["http"]
 version = "0.8"
-
-[dependencies.primitive-types]
-features = ["rlp"]
-version = "0.3.0"
-
-[dependencies.rlp]
-version = "0.4.2"
 
 [dev-dependencies]
 base64 = "0.11"
