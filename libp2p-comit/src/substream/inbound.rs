@@ -6,7 +6,7 @@ use crate::{
     Frame, FrameType, IntoFrame,
 };
 use futures::sync::oneshot;
-use libp2p_swarm::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 use tokio::prelude::*;
 

@@ -3,7 +3,7 @@ use crate::{
     protocol::Frames,
     ComitHandlerEvent,
 };
-use libp2p_swarm::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 use std::collections::{HashMap, HashSet};
 
 pub mod inbound;

@@ -12,8 +12,10 @@ use futures::{
     Async, Future,
 };
 use handler::Error;
-use libp2p_core::{ConnectedPoint, Multiaddr, PeerId};
-use libp2p_swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters};
+use libp2p::{
+    core::{ConnectedPoint, Multiaddr, PeerId},
+    swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters},
+};
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
     marker::PhantomData,

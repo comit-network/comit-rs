@@ -4,7 +4,7 @@ use crate::{
     ComitHandler, ComitHandlerEvent, Frame, PendingInboundRequest,
 };
 use futures::{Future, Stream};
-use libp2p_swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
+use libp2p::swarm::{ProtocolsHandler, ProtocolsHandlerEvent};
 use multistream_select::{Negotiated, Version};
 use std::collections::{HashMap, HashSet};
 use tokio::{

@@ -31,7 +31,7 @@ pub use self::{
     protocol::{ComitProtocolConfig, Frames},
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
-use libp2p_swarm::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 
 pub type ComitHandlerEvent =
     ProtocolsHandlerEvent<ComitProtocolConfig, ProtocolOutboundOpenInfo, ProtocolOutEvent>;
