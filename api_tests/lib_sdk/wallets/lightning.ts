@@ -5,6 +5,8 @@ import { Lnd } from "../lnd";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
+import { sleep } from "../utils";
+import { CreateInvoiceResponse } from "ln-service";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
@@ -17,13 +19,14 @@ export class LightningWallet implements Wallet {
         const lnd = new Lnd(logger, logDir, actorConfig, bitcoindDataDir);
         await lnd.start();
 
-        return new LightningWallet(lnd, bitcoinWallet);
+        return new LightningWallet(lnd, logger, bitcoinWallet);
     }
 
     public MaximumFee = 0;
 
     private constructor(
         public readonly inner: Lnd,
+        private readonly logger: Logger,
         private readonly bitcoinWallet: BitcoinWallet
     ) {}
 
@@ -64,10 +67,7 @@ export class LightningWallet implements Wallet {
         }
 
         const chainBalance = await this.inner.getChainBalance();
-        console.log("chainBalance", chainBalance);
-
         const channelBalance = await this.inner.getChannelBalance();
-        console.log("channelBalance", channelBalance);
 
         return new BigNumber(chainBalance).plus(channelBalance);
     }
@@ -81,5 +81,79 @@ export class LightningWallet implements Wallet {
 
     public addPeer(toWallet: LightningWallet) {
         return this.inner.addPeer(toWallet.inner);
+    }
+
+    public getPeers() {
+        return this.inner.getPeers();
+    }
+
+    public getChannels() {
+        return this.inner.getChannels();
+    }
+
+    public async openChannel(toWallet: LightningWallet, quantity: number) {
+        // First, need to check everyone is sync'd to the chain
+
+        let thisIsSynced = (await this.inner.getWalletInfo())
+            .is_synced_to_chain;
+        let toIsSynced = (await toWallet.inner.getWalletInfo())
+            .is_synced_to_chain;
+
+        while (!thisIsSynced || !toIsSynced) {
+            this.logger.info(
+                `One of the lnd node is not yet synced, waiting. this: ${thisIsSynced}, to: ${toIsSynced}`
+            );
+            await sleep(500);
+
+            thisIsSynced = (await this.inner.getWalletInfo())
+                .is_synced_to_chain;
+            toIsSynced = (await toWallet.inner.getWalletInfo())
+                .is_synced_to_chain;
+        }
+
+        const {
+            transaction_id,
+            transaction_vout,
+        } = await this.inner.openChannel(toWallet.inner, quantity);
+        this.logger.debug("Channel opened, waiting for confirmations");
+
+        await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
+    }
+
+    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
+        return this.inner.createInvoice(sats);
+    }
+
+    public pay(invoice: CreateInvoiceResponse) {
+        return this.inner.pay(invoice.request);
+    }
+
+    public async assertInvoiceSettled(invoice: CreateInvoiceResponse) {
+        const resp = await this.inner.getInvoice(invoice.id);
+        if (resp.is_confirmed && resp.tokens === invoice.tokens) {
+            return;
+        } else {
+            throw new Error(
+                `Invoices ${invoice.id} is not settled; confirmed: ${resp.is_confirmed}. Tokens: ${resp.tokens}/${invoice.tokens}`
+            );
+        }
+    }
+
+    private async pollUntilChannelIsOpen(
+        transactionId: string,
+        transactionVout: number
+    ): Promise<void> {
+        const channels = await this.getChannels();
+        for (const channel of channels) {
+            this.logger.debug("Found a channel:", channel);
+            if (
+                channel.transaction_id === transactionId &&
+                channel.transaction_vout === transactionVout
+            ) {
+                return;
+            }
+        }
+        await sleep(500);
+        return this.pollUntilChannelIsOpen(transactionId, transactionVout);
     }
 }

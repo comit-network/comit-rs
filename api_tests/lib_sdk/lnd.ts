@@ -3,11 +3,18 @@ import * as fs from "fs";
 import { E2ETestActorConfig } from "../lib/config";
 import { waitUntilFileExists } from "./utils";
 import * as path from "path";
-import lnService, { AuthenticatedLndGrpc, Peer } from "ln-service";
+import lnService, {
+    AuthenticatedLndGrpc,
+    Channel,
+    CreateInvoiceResponse,
+    GetInvoiceResponse,
+    PayResponse,
+    Peer,
+    WalletInfo,
+} from "ln-service";
 import { Logger } from "log4js";
 import { LogReader } from "../lib/log_reader";
 import { mkdirAsync, writeFileAsync } from "./utils";
-import { sleep } from "./utils";
 import getPort from "get-port";
 
 export class Lnd {
@@ -92,9 +99,7 @@ export class Lnd {
             "LNWL: Done catching up block hashes"
         );
 
-        const info = await lnService.getWalletInfo({
-            lnd: this.authenticatedLndGrpc,
-        });
+        const info = await this.getWalletInfo();
         this.publicKey = info.public_key;
         this.logger.info("Lnd is ready:", this.publicKey);
     }
@@ -135,8 +140,10 @@ export class Lnd {
         return "127.0.0.1:" + this.actorConfig.lndP2pPort;
     }
 
-    private async dummy() {
-        await sleep(1);
+    public async getWalletInfo(): Promise<WalletInfo> {
+        return lnService.getWalletInfo({
+            lnd: this.authenticatedLndGrpc,
+        });
     }
 
     public async createChainAddress(): Promise<string> {
@@ -182,31 +189,49 @@ export class Lnd {
         ).peers;
     }
 
-    public async openChannel(other: Lnd) {
-        await other.dummy();
+    public async getChannels(): Promise<Channel[]> {
+        return (
+            await lnService.getChannels({
+                lnd: this.authenticatedLndGrpc,
+            })
+        ).channels;
     }
 
-    public async addInvoice(other: Lnd) {
-        await other.dummy();
-        return "an invoice";
+    public async openChannel(peer: Lnd, sats: number) {
+        this.logger.debug(
+            `${this.publicKey} is opening a channel with ${peer.publicKey}; quantity: ${sats}`
+        );
+        return lnService.openChannel({
+            lnd: this.authenticatedLndGrpc,
+            partner_public_key: peer.publicKey,
+            min_confirmations: 1,
+            local_tokens: sats,
+        });
     }
 
-    public async sendPayment(invoice: string) {
-        console.log("got invoice: %s", invoice);
-        await sleep(1);
+    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
+        this.logger.debug(
+            `${this.publicKey} is creating an invoice; quantity: ${sats}`
+        );
+        return lnService.createInvoice({
+            lnd: this.authenticatedLndGrpc,
+            tokens: sats,
+        });
     }
 
-    public async assertChannelBalanceSender() {
-        await sleep(1);
+    public pay(invoice: string): Promise<PayResponse> {
+        console.log("Paying invoice: %s", invoice);
+        return lnService.pay({
+            lnd: this.authenticatedLndGrpc,
+            request: invoice,
+        });
     }
 
-    public async assertChannelBalanceReceiver() {
-        await sleep(1);
-    }
-
-    public async assertInvoiceSettled(invoice: string) {
-        console.log("got invoice: %s", invoice);
-        await sleep(1);
+    public async getInvoice(id: string): Promise<GetInvoiceResponse> {
+        return lnService.getInvoice({
+            lnd: this.authenticatedLndGrpc,
+            id,
+        });
     }
 
     private async createConfigFile(lndDir: string) {
