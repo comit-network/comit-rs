@@ -115,8 +115,8 @@ export class LightningWallet implements Wallet {
         await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
     }
 
-    public createInvoice(quantity: number): Promise<CreateInvoiceResponse> {
-        return this.inner.createInvoice(quantity);
+    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
+        return this.inner.createInvoice(sats);
     }
 
     public pay(invoice: CreateInvoiceResponse) {

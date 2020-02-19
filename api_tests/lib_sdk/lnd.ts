@@ -196,25 +196,25 @@ export class Lnd {
         ).channels;
     }
 
-    public async openChannel(peer: Lnd, quantity: number) {
+    public async openChannel(peer: Lnd, sats: number) {
         this.logger.debug(
-            `${this.publicKey} is opening a channel with ${peer.publicKey}; quantity: ${quantity}`
+            `${this.publicKey} is opening a channel with ${peer.publicKey}; quantity: ${sats}`
         );
         return lnService.openChannel({
             lnd: this.authenticatedLndGrpc,
             partner_public_key: peer.publicKey,
             min_confirmations: 1,
-            local_tokens: quantity,
+            local_tokens: sats,
         });
     }
 
-    public createInvoice(quantity: number): Promise<CreateInvoiceResponse> {
+    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
         this.logger.debug(
-            `${this.publicKey} is creating an invoice; quantity: ${quantity}`
+            `${this.publicKey} is creating an invoice; quantity: ${sats}`
         );
         return lnService.createInvoice({
             lnd: this.authenticatedLndGrpc,
-            tokens: quantity,
+            tokens: sats,
         });
     }
 
