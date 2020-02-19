@@ -200,7 +200,7 @@ declare module "ln-service" {
         is_including_private_channels?: boolean;
         lnd: AuthenticatedLndGrpc;
         log?: any; // Required when WSS is passed
-        secret?: string; // hex
+        secret?: string; // Hex
         tokens: number;
         wss?: any; // Web Socket Server Object
     }
@@ -250,12 +250,10 @@ declare module "ln-service" {
         pathfinding_timeout?: number; // Time to Spend Finding a Route (ms)
         request?: string; // BOLT 11 Payment Request
         tokens?: number;
-        wss?: any; // <Web Socket Server Object
+        wss?: any; // Web Socket Server Object
     }
 
-    export function pay(
-        params: PayParams
-    ): Promise<{
+    interface PayResponse {
         fee: number;
         fee_mtokens: string;
         hops: {
@@ -273,7 +271,9 @@ declare module "ln-service" {
         safe_fee: number; // Payment Forwarding Fee Rounded Up Tokens
         safe_tokens: number; // Payment Tokens Rounded Up
         tokens: number;
-    }>;
+    }
+
+    export function pay(params: PayParams): Promise<PayResponse>;
 
     interface GetInvoiceParams {
         id: string; // Hex

@@ -8,6 +8,7 @@ import lnService, {
     Channel,
     CreateInvoiceResponse,
     GetInvoiceResponse,
+    PayResponse,
     Peer,
     WalletInfo,
 } from "ln-service";
@@ -218,7 +219,7 @@ export class Lnd {
         });
     }
 
-    public pay(invoice: string) {
+    public pay(invoice: string): Promise<PayResponse> {
         console.log("Paying invoice: %s", invoice);
         return lnService.pay({
             lnd: this.authenticatedLndGrpc,
