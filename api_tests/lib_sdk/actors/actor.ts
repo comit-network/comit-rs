@@ -57,7 +57,7 @@ export class Actor {
             JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
         );
 
-        return new Actor(actorConfig, logger, logRoot, cndInstance);
+        return new Actor(logger, cndInstance, logRoot, actorConfig);
     }
 
     public actors: Actors;
@@ -79,10 +79,10 @@ export class Actor {
     public lnd: Lnd;
 
     private constructor(
-        private readonly config: E2ETestActorConfig,
         private readonly logger: Logger,
+        private readonly cndInstance: CndInstance,
         private readonly logRoot: string,
-        private readonly cndInstance: CndInstance
+        private readonly config: E2ETestActorConfig
     ) {
         this.wallets = new Wallets({});
         const { address, port } = cndInstance.getConfigFile().http_api.socket;
