@@ -63,20 +63,15 @@ export class Wallets {
                 );
                 break;
             case "bitcoin":
-                if (!this.wallets.bitcoin) {
-                    this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                        global.ledgerConfigs.bitcoin
-                    );
-                }
+                this.wallets.bitcoin = await BitcoinWallet.newInstance(
+                    global.ledgerConfigs.bitcoin
+                );
                 break;
             case "lightning":
-                if (!this.wallets.bitcoin) {
-                    this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                        global.ledgerConfigs.bitcoin
-                    );
-                }
                 this.wallets.lightning = await LightningWallet.newInstance(
-                    this.wallets.bitcoin,
+                    await BitcoinWallet.newInstance(
+                        global.ledgerConfigs.bitcoin
+                    ),
                     logger,
                     logDir,
                     global.ledgerConfigs.bitcoin.dataDir,
