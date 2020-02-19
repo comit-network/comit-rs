@@ -6,7 +6,7 @@ import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
-import { Invoice } from "ln-service";
+import { CreateInvoiceResponse } from "ln-service";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
@@ -115,8 +115,23 @@ export class LightningWallet implements Wallet {
         await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
     }
 
-    public createInvoice(quantity: number): Promise<Invoice> {
+    public createInvoice(quantity: number): Promise<CreateInvoiceResponse> {
         return this.inner.createInvoice(quantity);
+    }
+
+    public pay(invoice: CreateInvoiceResponse) {
+        return this.inner.pay(invoice.request);
+    }
+
+    public async assertInvoiceSettled(invoice: CreateInvoiceResponse) {
+        const resp = await this.inner.getInvoice(invoice.id);
+        if (resp.is_confirmed && resp.tokens === invoice.tokens) {
+            return;
+        } else {
+            throw new Error(
+                `Invoices ${invoice.id} is not settled; confirmed: ${resp.is_confirmed}. Tokens: ${resp.tokens}/${invoice.tokens}`
+            );
+        }
     }
 
     private async pollUntilChannelIsOpen(

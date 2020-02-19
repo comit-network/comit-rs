@@ -6,14 +6,14 @@ import * as path from "path";
 import lnService, {
     AuthenticatedLndGrpc,
     Channel,
-    Invoice,
+    CreateInvoiceResponse,
+    GetInvoiceResponse,
     Peer,
     WalletInfo,
 } from "ln-service";
 import { Logger } from "log4js";
 import { LogReader } from "../lib/log_reader";
 import { mkdirAsync, writeFileAsync } from "./utils";
-import { sleep } from "./utils";
 import getPort from "get-port";
 
 export class Lnd {
@@ -208,7 +208,7 @@ export class Lnd {
         });
     }
 
-    public async createInvoice(quantity: number): Promise<Invoice> {
+    public createInvoice(quantity: number): Promise<CreateInvoiceResponse> {
         this.logger.debug(
             `${this.publicKey} is creating an invoice; quantity: ${quantity}`
         );
@@ -218,22 +218,19 @@ export class Lnd {
         });
     }
 
-    public async sendPayment(invoice: string) {
-        console.log("got invoice: %s", invoice);
-        await sleep(1);
+    public pay(invoice: string) {
+        console.log("Paying invoice: %s", invoice);
+        return lnService.pay({
+            lnd: this.authenticatedLndGrpc,
+            request: invoice,
+        });
     }
 
-    public async assertChannelBalanceSender() {
-        await sleep(1);
-    }
-
-    public async assertChannelBalanceReceiver() {
-        await sleep(1);
-    }
-
-    public async assertInvoiceSettled(invoice: string) {
-        console.log("got invoice: %s", invoice);
-        await sleep(1);
+    public async getInvoice(id: string): Promise<GetInvoiceResponse> {
+        return lnService.getInvoice({
+            lnd: this.authenticatedLndGrpc,
+            id,
+        });
     }
 
     private async createConfigFile(lndDir: string) {

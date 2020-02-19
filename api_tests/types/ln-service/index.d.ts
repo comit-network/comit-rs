@@ -205,7 +205,7 @@ declare module "ln-service" {
         wss?: any; // Web Socket Server Object
     }
 
-    interface Invoice {
+    interface CreateInvoiceResponse {
         chain_address?: string;
         created_at: string; // ISO 8601 Date
         description: string;
@@ -217,5 +217,108 @@ declare module "ln-service" {
 
     export function createInvoice(
         params: CreateInvoiceParams
-    ): Promise<Invoice>;
+    ): Promise<CreateInvoiceResponse>;
+
+    interface Route {
+        fee: number; // Total Fee
+        fee_mtokens: string;
+        hops: {
+            channel: string;
+            channel_capacity: number;
+            fee: number;
+            fee_mtokens: string;
+            forward: number;
+            forward_mtokens: string;
+            public_key?: string; // hex
+            timeout: number; // Block heigh
+        }[];
+    }
+
+    interface PayParams {
+        lnd: AuthenticatedLndGrpc;
+        log?: any; // Required if wss is set
+        max_fee?: number;
+        max_timeout_height?: number;
+        outgoing_channel?: string;
+        path?: {
+            id: string; // Hex
+            routes: Route[];
+            mtokens: string;
+            timeout: number; // Block Height Expiration
+            tokens: number;
+        };
+        pathfinding_timeout?: number; // Time to Spend Finding a Route (ms)
+        request?: string; // BOLT 11 Payment Request
+        tokens?: number;
+        wss?: any; // <Web Socket Server Object
+    }
+
+    export function pay(
+        params: PayParams
+    ): Promise<{
+        fee: number;
+        fee_mtokens: string;
+        hops: {
+            channel: string;
+            channel_capacity: number;
+            fee_mtokens: string; // Hop Forward Fee Millitokens
+            forward_mtokens: string; // Hop Forwarded Millitokens
+            timeout: number; // Hop CLTV Expiry Block Height
+        }[];
+        id: string; // Hex
+        is_confirmed: boolean;
+        is_outgoing: boolean;
+        mtokens: string;
+        secret: string; // Hex
+        safe_fee: number; // Payment Forwarding Fee Rounded Up Tokens
+        safe_tokens: number; // Payment Tokens Rounded Up
+        tokens: number;
+    }>;
+
+    interface GetInvoiceParams {
+        id: string; // Hex
+        lnd: AuthenticatedLndGrpc;
+    }
+
+    interface GetInvoiceResponse {
+        chain_address: string;
+        confirmed_at?: string; // ISO 8601 Date
+        created_at: string; // ISO 8601 Date
+        description: string;
+        description_hash?: string; // Hex
+        expires_at: string; // ISO 8601 Date
+        features: ChainFeature[];
+        id: string;
+        is_canceled?: boolean;
+        is_confirmed: boolean;
+        is_held?: boolean;
+        is_outgoing: boolean;
+        is_private: boolean;
+        is_push?: boolean;
+        payments: {
+            confirmed_at?: string; // ISO 8601 Date
+            created_at: string; // ISO 8601 Date
+            created_height: number; // Block Height
+            in_channel: string;
+            is_canceled: boolean;
+            is_confirmed: boolean;
+            is_held: boolean;
+            messages: {
+                type: string;
+                value: string; // Raw Value Hex
+            }[];
+            mtokens: string; // Incoming Payment Millitokens
+            pending_index?: number;
+            tokens: number;
+        }[];
+        received: number;
+        received_mtokens: string;
+        request?: string; // Bolt 11 Invoice String>
+        secret: string; // Hex
+        tokens: number;
+    }
+
+    export function getInvoice(
+        params: GetInvoiceParams
+    ): Promise<GetInvoiceResponse>;
 }
