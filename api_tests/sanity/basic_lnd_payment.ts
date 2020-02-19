@@ -5,11 +5,9 @@ import { expect } from "chai";
 
 setTimeout(function() {
     twoActorTest("sanity-lnd-alice-pays-bob", async function({ alice, bob }) {
-        await alice.sendRequestOnLightningRoute(
-            LedgerKind.Lightning,
-            AssetKind.Bitcoin,
-            LedgerKind.Bitcoin,
-            AssetKind.Bitcoin
+        await alice.sendRequest(
+            { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
+            { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
         );
 
         const alicePeers = await alice.wallets
