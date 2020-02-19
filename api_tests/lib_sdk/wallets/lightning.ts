@@ -66,10 +66,7 @@ export class LightningWallet implements Wallet {
         }
 
         const chainBalance = await this.inner.getChainBalance();
-        console.log("chainBalance", chainBalance);
-
         const channelBalance = await this.inner.getChannelBalance();
-        console.log("channelBalance", channelBalance);
 
         return new BigNumber(chainBalance).plus(channelBalance);
     }
