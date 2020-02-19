@@ -163,9 +163,9 @@ export class Lnd {
 
     public addPeer(peer: Lnd): Promise<void> {
         this.logger.debug(
-            `Connecting ${this.publicKey}@${this.getGrpcSocket()} to ${
+            `Connecting ${this.publicKey}@${this.getLightningSocket()} to ${
                 peer.publicKey
-            }@${peer.getGrpcSocket()}`
+            }@${peer.getLightningSocket()}`
         );
         return lnService.addPeer({
             lnd: this.authenticatedLndGrpc,
