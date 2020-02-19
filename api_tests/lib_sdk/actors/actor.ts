@@ -202,14 +202,14 @@ export class Actor {
                 const quantity = parseInt(this.alphaAsset.quantity, 10);
                 await thisLightningWallet.openChannel(
                     toLightningWallet,
-                    quantity
+                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
                 );
             } else {
                 // Beta Ledger is lightning so Bob will be sending assets over lightning
                 const quantity = parseInt(this.betaAsset.quantity, 10);
                 await toLightningWallet.openChannel(
                     thisLightningWallet,
-                    quantity
+                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
                 );
             }
         }
