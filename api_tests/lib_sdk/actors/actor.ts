@@ -280,7 +280,7 @@ export class Actor {
         response.data.payload.amount = amount * 1.01;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+        this.logger.debug("Overfunded swap %s in %s", this.swap.self, txid);
     }
 
     public async underfund() {
@@ -292,7 +292,7 @@ export class Actor {
         response.data.payload.amount = amount * 0.01;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
+        this.logger.debug("Underfunded swap %s in %s", this.swap.self, txid);
     }
 
     public async refund() {
@@ -352,6 +352,16 @@ export class Actor {
                 await this.actors.bob.assertAlphaRedeemed();
                 break;
         }
+    }
+
+    public async redeemWithHighFee() {
+        // Hack the bitcoin fee per WU returned by the wallet
+        this.wallets.bitcoin.inner.getFee = () => "100000000";
+
+        return this.swap.tryExecuteAction("redeem", {
+            maxTimeoutSecs: 10,
+            tryIntervalSecs: 1,
+        });
     }
 
     public async currentSwapIsAccepted() {
