@@ -177,9 +177,30 @@ export class Actor {
 
         if (isLightning) {
             this.logger.debug(`Initialising lightning for ${this.config.name}`);
-            await this.wallets
-                .getWalletForLedger("lightning")
-                .addPeer(to.wallets.getWalletForLedger("lightning"));
+            const thisLightningWallet = this.wallets.getWalletForLedger(
+                "lightning"
+            );
+            const toLightningWallet = to.wallets.getWalletForLedger(
+                "lightning"
+            );
+
+            await thisLightningWallet.addPeer(toLightningWallet);
+
+            if (this.alphaLedger.name === "lightning") {
+                // Alpha Ledger is lightning so Alice will be sending assets over lightning
+                const quantity = parseInt(this.alphaAsset.quantity, 10);
+                await thisLightningWallet.openChannel(
+                    toLightningWallet,
+                    quantity
+                );
+            } else {
+                // Beta Ledger is lightning so Bob will be sending assets over lightning
+                const quantity = parseInt(this.betaAsset.quantity, 10);
+                await toLightningWallet.openChannel(
+                    thisLightningWallet,
+                    quantity
+                );
+            }
         }
 
         this.expectedBalanceChanges.set(
@@ -855,7 +876,7 @@ function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
         case AssetKind.Bitcoin: {
             return {
                 name: AssetKind.Bitcoin,
-                quantity: "100000000",
+                quantity: "10000000",
             };
         }
         case AssetKind.Ether: {

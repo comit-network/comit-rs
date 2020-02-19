@@ -82,4 +82,8 @@ export class LightningWallet implements Wallet {
     public addPeer(toWallet: LightningWallet) {
         return this.inner.addPeer(toWallet.inner);
     }
+
+    public openChannel(toWallet: LightningWallet, quantity: number) {
+        return this.inner.openChannel(toWallet.inner, quantity);
+    }
 }

@@ -190,8 +190,16 @@ export class Lnd {
         ).channels;
     }
 
-    public async openChannel(other: Lnd) {
-        await other.dummy();
+    public async openChannel(peer: Lnd, quantity: number) {
+        this.logger.debug(
+            `${this.publicKey} is opening a channel with ${peer.publicKey}; quantity: ${quantity}`
+        );
+        return lnService.openChannel({
+            lnd: this.authenticatedLndGrpc,
+            partner_public_key: peer.publicKey,
+            min_confirmations: 1,
+            local_tokens: quantity,
+        });
     }
 
     public async addInvoice(other: Lnd) {

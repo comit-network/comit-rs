@@ -159,14 +159,35 @@ declare module "ln-service" {
     }
 
     interface GetChannelsParams {
-        is_active?: boolean; // false
-        is_offline?: boolean; // false
-        is_private?: boolean; // false
-        is_public?: boolean; // false
+        is_active?: boolean; // Defaults to false
+        is_offline?: boolean; // Defaults to false
+        is_private?: boolean; // Defaults to false
+        is_public?: boolean; // Defaults to false
         lnd: AuthenticatedLndGrpc;
     }
 
     export function getChannels(
         params: GetChannelsParams
     ): Promise<{ channels: Channel[] }>;
+
+    interface OpenChannelParams {
+        chain_fee_tokens_per_vbyte?: number;
+        cooperative_close_address?: string;
+        give_tokens?: number;
+        is_private?: boolean; // Defaults to false
+        lnd: AuthenticatedLndGrpc;
+        local_tokens: number;
+        min_confirmations?: number;
+        min_htlc_mtokens?: string;
+        partner_public_key: string;
+        partner_csv_delay?: number;
+        partner_socket?: string;
+    }
+
+    export function openChannel(
+        params: OpenChannelParams
+    ): Promise<{
+        transaction_id: string;
+        transaction_vout: number;
+    }>;
 }
