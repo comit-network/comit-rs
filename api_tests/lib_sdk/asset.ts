@@ -1,5 +1,5 @@
 import { Asset as AssetSdk } from "comit-sdk";
-import { LedgerKind } from "./ledger";
+import {LedgerKind} from "./ledgers/ledger";
 
 export interface Asset extends AssetSdk {
     name: AssetKind;

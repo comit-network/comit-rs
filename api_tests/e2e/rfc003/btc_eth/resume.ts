@@ -1,6 +1,6 @@
-import { sleep } from "../../../lib/util";
 import { twoActorTest } from "../../../lib_sdk/actor_test";
 import { AssetKind } from "../../../lib_sdk/asset";
+import { sleep } from "../../../lib_sdk/utils";
 
 setTimeout(function() {
     twoActorTest("rfc003-btc-eth-resume-alice-down-bob-funds", async function({

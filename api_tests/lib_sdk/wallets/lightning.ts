@@ -1,12 +1,12 @@
 import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
 import BigNumber from "bignumber.js";
-import { Lnd } from "../lnd";
 import { Logger } from "log4js";
-import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import { CreateInvoiceResponse } from "ln-service";
+import {E2ETestActorConfig} from "../ledgers/config";
+import {Lnd} from "../ledgers/lnd";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(

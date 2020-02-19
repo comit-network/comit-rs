@@ -4,6 +4,19 @@ import { SwapRequest } from "comit-sdk";
 import * as fs from "fs";
 import { promisify } from "util";
 
+/// This is needed to use the global variable in TypeScript
+import Global = NodeJS.Global;
+import { LedgerConfig } from "./ledgers/ledger_runner";
+
+export interface HarnessGlobal extends Global {
+    ledgerConfigs: LedgerConfig;
+    testRoot: string;
+    projectRoot: string;
+    logRoot: string;
+    verbose: boolean;
+    tokenContract: string;
+}
+
 export const unlinkAsync = promisify(fs.unlink);
 export const existsAsync = promisify(fs.exists);
 export const openAsync = promisify(fs.open);

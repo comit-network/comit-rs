@@ -4,7 +4,7 @@
 import { twoActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../lib/setup_chai";
+import "../lib_sdk/setup_chai";
 import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { Actor } from "../lib_sdk/actors/actor";

@@ -1,6 +1,6 @@
 import { twoActorTest } from "../lib_sdk/actor_test";
-import { LedgerKind } from "../lib_sdk/ledger";
 import { AssetKind } from "../lib_sdk/asset";
+import {LedgerKind} from "../lib_sdk/ledgers/ledger";
 
 setTimeout(function() {
     twoActorTest("sanity-lnd-alice-pays-bob", async function({ alice, bob }) {

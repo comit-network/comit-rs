@@ -3,10 +3,9 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
-import { CndConfigFile, E2ETestActorConfig } from "../lib/config";
-import { LedgerConfig } from "../lib/ledger_runner";
-import { sleep } from "../lib/util";
-import { HarnessGlobal } from "../lib/util";
+import { CndConfigFile, E2ETestActorConfig } from "../ledgers/config";
+import { LedgerConfig } from "../ledgers/ledger_runner";
+import { HarnessGlobal, sleep } from "../utils";
 
 declare var global: HarnessGlobal;
 

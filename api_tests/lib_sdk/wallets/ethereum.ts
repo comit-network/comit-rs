@@ -2,12 +2,11 @@ import { BigNumber, EthereumWallet as EthereumWalletSdk } from "comit-sdk";
 import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
-import { EthereumNodeConfig } from "../../lib/ethereum";
 import { pollUntilMinted, Wallet } from "./index";
-import { HarnessGlobal } from "../../lib/util";
 import { TransactionRequest } from "ethers/providers";
 import * as fs from "fs";
-import { sleep } from "../utils";
+import { HarnessGlobal, sleep } from "../utils";
+import { EthereumNodeConfig } from "../ledgers/ethereum";
 
 declare var global: HarnessGlobal;
 

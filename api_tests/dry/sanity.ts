@@ -1,7 +1,7 @@
 // These are stateless tests -- they don't require any state of the cnd and they don't change it
 // They are mostly about checking invalid request responses
 import "chai/register-should";
-import "../lib/setup_chai";
+import "../lib_sdk/setup_chai";
 import { oneActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
 import { Entity, Link } from "../gen/siren";

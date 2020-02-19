@@ -4,7 +4,7 @@
 import { twoActorTest } from "../lib_sdk/actor_test";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../lib/setup_chai";
+import "../lib_sdk/setup_chai";
 import { Actor } from "../lib_sdk/actors/actor";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";

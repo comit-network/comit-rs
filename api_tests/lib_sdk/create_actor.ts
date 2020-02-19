@@ -1,6 +1,6 @@
 import { configure } from "log4js";
-import { HarnessGlobal } from "../lib/util";
 import { Actor } from "./actors/actor";
+import { HarnessGlobal } from "./utils";
 
 declare var global: HarnessGlobal;
 
