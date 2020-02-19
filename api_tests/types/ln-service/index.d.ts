@@ -123,4 +123,50 @@ declare module "ln-service" {
     ): Promise<{
         peers: Peer[];
     }>;
+
+    interface Payment {
+        id: string;
+        is_outgoing: boolean;
+        timeout: number;
+        tokens: number;
+    }
+
+    interface Channel {
+        capacity: number;
+        commit_transaction_fee: number;
+        commit_transaction_weight: number;
+        cooperative_close_address?: string;
+        id: string;
+        is_active: boolean;
+        is_closing: boolean;
+        is_opening: boolean;
+        is_partner_initiated: boolean;
+        is_private: boolean;
+        is_static_remote_key: boolean;
+        local_balance: number;
+        local_reserve: number;
+        partner_public_key: string;
+        pending_payments: Payment[];
+        received: number;
+        remote_balance: number;
+        remote_reserve: number;
+        sent: number;
+        time_offline: number;
+        time_online: number;
+        transaction_id: string;
+        transaction_vout: number;
+        unsettled_balance: number;
+    }
+
+    interface GetChannelsParams {
+        is_active?: boolean; // false
+        is_offline?: boolean; // false
+        is_private?: boolean; // false
+        is_public?: boolean; // false
+        lnd: AuthenticatedLndGrpc;
+    }
+
+    export function getChannels(
+        params: GetChannelsParams
+    ): Promise<{ channels: Channel[] }>;
 }

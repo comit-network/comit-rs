@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { E2ETestActorConfig } from "../lib/config";
 import { waitUntilFileExists } from "./utils";
 import * as path from "path";
-import lnService, { AuthenticatedLndGrpc, Peer } from "ln-service";
+import lnService, { AuthenticatedLndGrpc, Channel, Peer } from "ln-service";
 import { Logger } from "log4js";
 import { LogReader } from "../lib/log_reader";
 import { mkdirAsync, writeFileAsync } from "./utils";
@@ -180,6 +180,14 @@ export class Lnd {
                 lnd: this.authenticatedLndGrpc,
             })
         ).peers;
+    }
+
+    public async getChannels(): Promise<Channel[]> {
+        return (
+            await lnService.getChannels({
+                lnd: this.authenticatedLndGrpc,
+            })
+        ).channels;
     }
 
     public async openChannel(other: Lnd) {

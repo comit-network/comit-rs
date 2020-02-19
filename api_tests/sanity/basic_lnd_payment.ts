@@ -20,6 +20,16 @@ setTimeout(function() {
             .inner.getPeers();
         expect(bobPeers.length).to.equal(1);
 
+        const aliceChannels = await alice.wallets
+            .getWalletForLedger("lightning")
+            .inner.getChannels();
+        expect(aliceChannels.length).to.equal(1);
+
+        const bobChannels = await bob.wallets
+            .getWalletForLedger("lightning")
+            .inner.getChannels();
+        expect(bobChannels.length).to.equal(1);
+
         // const invoice = await bob.lnd.addInvoice(alice.lnd); // Parameter might need to be `alice`?
         // await alice.lnd.sendPayment(invoice);
         //
