@@ -5,6 +5,7 @@ import { Lnd } from "../lnd";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
+import { sleep } from "../utils";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
@@ -17,13 +18,14 @@ export class LightningWallet implements Wallet {
         const lnd = new Lnd(logger, logDir, actorConfig, bitcoindDataDir);
         await lnd.start();
 
-        return new LightningWallet(lnd, bitcoinWallet);
+        return new LightningWallet(lnd, logger, bitcoinWallet);
     }
 
     public MaximumFee = 0;
 
     private constructor(
         public readonly inner: Lnd,
+        private readonly logger: Logger,
         private readonly bitcoinWallet: BitcoinWallet
     ) {}
 
@@ -83,7 +85,39 @@ export class LightningWallet implements Wallet {
         return this.inner.addPeer(toWallet.inner);
     }
 
-    public openChannel(toWallet: LightningWallet, quantity: number) {
-        return this.inner.openChannel(toWallet.inner, quantity);
+    public getPeers() {
+        return this.inner.getPeers();
+    }
+
+    public getChannels() {
+        return this.inner.getChannels();
+    }
+
+    public async openChannel(toWallet: LightningWallet, quantity: number) {
+        const {
+            transaction_id,
+            transaction_vout,
+        } = await this.inner.openChannel(toWallet.inner, quantity);
+        this.logger.debug("Channel opened, waiting for confirmations");
+
+        await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
+    }
+
+    private async pollUntilChannelIsOpen(
+        transactionId: string,
+        transactionVout: number
+    ): Promise<void> {
+        const channels = await this.getChannels();
+        for (const channel of channels) {
+            this.logger.debug("Found a channel:", channel);
+            if (
+                channel.transaction_id === transactionId &&
+                channel.transaction_vout === transactionVout
+            ) {
+                return;
+            }
+        }
+        await sleep(500);
+        return this.pollUntilChannelIsOpen(transactionId, transactionVout);
     }
 }

@@ -12,22 +12,22 @@ setTimeout(function() {
 
         const alicePeers = await alice.wallets
             .getWalletForLedger("lightning")
-            .inner.getPeers();
+            .getPeers();
         expect(alicePeers.length).to.equal(1);
 
         const bobPeers = await bob.wallets
             .getWalletForLedger("lightning")
-            .inner.getPeers();
+            .getPeers();
         expect(bobPeers.length).to.equal(1);
 
         const aliceChannels = await alice.wallets
             .getWalletForLedger("lightning")
-            .inner.getChannels();
+            .getChannels();
         expect(aliceChannels.length).to.equal(1);
 
         const bobChannels = await bob.wallets
             .getWalletForLedger("lightning")
-            .inner.getChannels();
+            .getChannels();
         expect(bobChannels.length).to.equal(1);
 
         // const invoice = await bob.lnd.addInvoice(alice.lnd); // Parameter might need to be `alice`?
