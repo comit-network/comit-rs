@@ -6,6 +6,7 @@ import * as path from "path";
 import lnService, {
     AuthenticatedLndGrpc,
     Channel,
+    Invoice,
     Peer,
     WalletInfo,
 } from "ln-service";
@@ -138,10 +139,6 @@ export class Lnd {
         return "127.0.0.1:" + this.actorConfig.lndP2pPort;
     }
 
-    private async dummy() {
-        await sleep(1);
-    }
-
     public async getWalletInfo(): Promise<WalletInfo> {
         return lnService.getWalletInfo({
             lnd: this.authenticatedLndGrpc,
@@ -211,9 +208,14 @@ export class Lnd {
         });
     }
 
-    public async addInvoice(other: Lnd) {
-        await other.dummy();
-        return "an invoice";
+    public async createInvoice(quantity: number): Promise<Invoice> {
+        this.logger.debug(
+            `${this.publicKey} is creating an invoice; quantity: ${quantity}`
+        );
+        return lnService.createInvoice({
+            lnd: this.authenticatedLndGrpc,
+            tokens: quantity,
+        });
     }
 
     public async sendPayment(invoice: string) {

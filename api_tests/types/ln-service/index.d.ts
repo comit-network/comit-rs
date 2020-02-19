@@ -190,4 +190,32 @@ declare module "ln-service" {
         transaction_id: string;
         transaction_vout: number;
     }>;
+
+    interface CreateInvoiceParams {
+        cltv_delta?: number;
+        description?: string;
+        expires_at?: string; // ISO 8601
+        is_fallback_included?: boolean;
+        is_fallback_nested?: boolean;
+        is_including_private_channels?: boolean;
+        lnd: AuthenticatedLndGrpc;
+        log?: any; // Required when WSS is passed
+        secret?: string; // hex
+        tokens: number;
+        wss?: any; // Web Socket Server Object
+    }
+
+    interface Invoice {
+        chain_address?: string;
+        created_at: string; // ISO 8601 Date
+        description: string;
+        id: string;
+        request: string; // BOLT 11 Encoded Payment Request String
+        secret: string; // Hex
+        tokens: number;
+    }
+
+    export function createInvoice(
+        params: CreateInvoiceParams
+    ): Promise<Invoice>;
 }

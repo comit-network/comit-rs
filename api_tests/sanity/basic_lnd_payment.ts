@@ -30,7 +30,8 @@ setTimeout(function() {
             .getChannels();
         expect(bobChannels.length).to.equal(1);
 
-        // const invoice = await bob.lnd.addInvoice(alice.lnd); // Parameter might need to be `alice`?
+        const invoice = await bob.wallets.lightning.createInvoice(20000);
+        expect(invoice.request).to.be.a("string");
         // await alice.lnd.sendPayment(invoice);
         //
         // await alice.lnd.assertInvoiceSettled(invoice);

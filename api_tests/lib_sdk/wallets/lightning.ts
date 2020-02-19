@@ -6,6 +6,7 @@ import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
+import { Invoice } from "ln-service";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
@@ -112,6 +113,10 @@ export class LightningWallet implements Wallet {
         this.logger.debug("Channel opened, waiting for confirmations");
 
         await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
+    }
+
+    public createInvoice(quantity: number): Promise<Invoice> {
+        return this.inner.createInvoice(quantity);
     }
 
     private async pollUntilChannelIsOpen(
