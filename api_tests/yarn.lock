@@ -161,10 +161,10 @@
   resolved "https://registry.yarnpkg.com/@types/cookiejar/-/cookiejar-2.1.1.tgz#90b68446364baf9efd8e8349bb36bd3852b75b80"
   integrity sha512-aRnpPa7ysx3aNW60hTiCtLHlQaIFsXFCgQlpakNgDNVFzbtusSY8PwjAQgRWfSk0ekNoBjO51eQRB6upA9uuyw==
 
-"@types/dockerode@^2.5.22":
-  version "2.5.22"
-  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.22.tgz#356e90491bf532556d9fbe4863690a0dfb8ec127"
-  integrity sha512-YIHpziPXJ3Gowv5pnaWRv1zzTxaF32Jf9vy/h4OT9WH7xvnxX6kvM0utLzf8dI4Urx/f7SOHJnmPJqr2S7bbSw==
+"@types/dockerode@^2.5.23":
+  version "2.5.23"
+  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.23.tgz#bc67175e68b766fdee3c9f123dc1d486314dd3f2"
+  integrity sha512-Q9t0uUs8zaGwiVi1hUCwLDe9X47m+nhX2P22gS7Z2HyoVjK3BE9j2YcKNPLNM/ehjVCv85jPA8trBUjiTjpJfw==
   dependencies:
     "@types/node" "*"
 
@@ -219,15 +219,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.12.18.tgz#1d3ca764718915584fcd9f6344621b7672665c67"
   integrity sha512-fh+pAqt4xRzPfqA6eh3Z2y6fyZavRIumvjhaCL753+TVkGKGhpPeyrJG2JftD0T9q4GF00KjefsQ+PQNDdWQaQ==
 
-"@types/node@^10.1.0":
+"@types/node@^10.1.0", "@types/node@^10.14":
   version "10.17.15"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.17.15.tgz#bfff4e23e9e70be6eec450419d51e18de1daf8e7"
   integrity sha512-daFGV9GSs6USfPgxceDA8nlSe48XrVCJfDeYm7eokxq/ye7iuOH87hKXgMtEAVLFapkczbZsx868PMDT1Y0a6A==
-
-"@types/node@^10.14":
-  version "10.14.8"
-  resolved "https://registry.yarnpkg.com/@types/node/-/node-10.14.8.tgz#fe444203ecef1162348cd6deb76c62477b2cc6e9"
-  integrity sha512-I4+DbJEhLEg4/vIy/2gkWDvXBOOtPKV9EnLhYjMoqxcRW+TTZtUftkHktz/a8suoD5mUL7m6ReLrkPvSsCQQmw==
 
 "@types/prettier@^1.16.1":
   version "1.18.2"
