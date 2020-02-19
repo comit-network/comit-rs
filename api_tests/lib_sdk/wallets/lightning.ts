@@ -91,6 +91,20 @@ export class LightningWallet implements Wallet {
     }
 
     public async openChannel(toWallet: LightningWallet, quantity: number) {
+        // First, need to check everyone is sync'd to the chain
+
+        const thisIsSynced = (await this.inner.getWalletInfo())
+            .is_synced_to_chain;
+        const toIsSynced = (await toWallet.inner.getWalletInfo())
+            .is_synced_to_chain;
+
+        while (!thisIsSynced || !toIsSynced) {
+            this.logger.info(
+                `One of the lnd node is not yet synced, waiting. this: ${thisIsSynced}, to: ${toIsSynced}`
+            );
+            await sleep(500);
+        }
+
         const {
             transaction_id,
             transaction_vout,

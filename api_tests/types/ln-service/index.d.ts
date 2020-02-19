@@ -61,9 +61,7 @@ declare module "ln-service" {
         type: string;
     }
 
-    export function getWalletInfo(
-        params: DefaultParams
-    ): Promise<{
+    interface WalletInfo {
         active_channels_count: number;
         alias: string;
         chains: string[];
@@ -76,7 +74,9 @@ declare module "ln-service" {
         peers_count: number;
         pending_channels_count: number;
         public_key: string;
-    }>;
+    }
+
+    export function getWalletInfo(params: DefaultParams): Promise<WalletInfo>;
 
     interface CreateChainAddressParams {
         format: "np2wpkh" | "p2wpkh";

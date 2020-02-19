@@ -3,7 +3,12 @@ import * as fs from "fs";
 import { E2ETestActorConfig } from "../lib/config";
 import { waitUntilFileExists } from "./utils";
 import * as path from "path";
-import lnService, { AuthenticatedLndGrpc, Channel, Peer } from "ln-service";
+import lnService, {
+    AuthenticatedLndGrpc,
+    Channel,
+    Peer,
+    WalletInfo,
+} from "ln-service";
 import { Logger } from "log4js";
 import { LogReader } from "../lib/log_reader";
 import { mkdirAsync, writeFileAsync } from "./utils";
@@ -92,9 +97,7 @@ export class Lnd {
             "LNWL: Done catching up block hashes"
         );
 
-        const info = await lnService.getWalletInfo({
-            lnd: this.authenticatedLndGrpc,
-        });
+        const info = await this.getWalletInfo();
         this.publicKey = info.public_key;
         this.logger.info("Lnd is ready:", this.publicKey);
     }
@@ -137,6 +140,12 @@ export class Lnd {
 
     private async dummy() {
         await sleep(1);
+    }
+
+    public async getWalletInfo(): Promise<WalletInfo> {
+        return lnService.getWalletInfo({
+            lnd: this.authenticatedLndGrpc,
+        });
     }
 
     public async createChainAddress(): Promise<string> {
