@@ -2,22 +2,18 @@ import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
 import BigNumber from "bignumber.js";
 import { Lnd } from "../lnd";
-import { HarnessGlobal } from "../../lib/util";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { BitcoinWallet } from "./bitcoin";
-
-declare var global: HarnessGlobal;
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
         bitcoinWallet: BitcoinWallet,
         logger: Logger,
         logDir: string,
+        bitcoindDataDir: string,
         actorConfig: E2ETestActorConfig
     ) {
-        const bitcoindDataDir = global.bitcoind.getDataDir();
-
         const lnd = new Lnd(logger, logDir, actorConfig, bitcoindDataDir);
         await lnd.start();
 

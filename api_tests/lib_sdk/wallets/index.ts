@@ -79,6 +79,7 @@ export class Wallets {
                     this.wallets.bitcoin,
                     logger,
                     logDir,
+                    global.ledgerConfigs.bitcoin.dataDir,
                     actorConfig
                 );
                 break;
