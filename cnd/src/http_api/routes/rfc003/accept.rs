@@ -1,4 +1,5 @@
 use crate::{
+    ethereum,
     http_api::action::ListRequiredFields,
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
@@ -13,8 +14,8 @@ use crate::{
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone, Debug)]
-pub struct OnlyRedeem<L: Ledger> {
-    pub alpha_ledger_redeem_identity: L::Identity,
+pub struct OnlyRedeem<I> {
+    pub alpha_ledger_redeem_identity: I,
 }
 
 impl ListRequiredFields for Accept<Ethereum, bitcoin::Mainnet> {
@@ -45,7 +46,7 @@ fn ethereum_bitcoin_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<Ethereum> {
+impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<ethereum::Address> {
     fn into_accept_message(
         self,
         id: SwapId,
