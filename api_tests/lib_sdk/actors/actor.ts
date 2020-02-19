@@ -176,6 +176,7 @@ export class Actor {
             this.betaLedger.name === "lightning";
 
         if (isLightning) {
+            this.logger.debug(`Initialising lightning for ${this.config.name}`);
             await this.wallets
                 .getWalletForLedger("lightning")
                 .addPeer(to.wallets.getWalletForLedger("lightning"));
@@ -190,38 +191,37 @@ export class Actor {
             new BigNumber(to.alphaAsset.quantity)
         );
 
-        if (!isLightning) {
-            const comitClient: ComitClient = this.getComitClient();
-
-            const payload = {
-                alpha_ledger: this.alphaLedger,
-                beta_ledger: this.betaLedger,
-                alpha_asset: this.alphaAsset,
-                beta_asset: this.betaAsset,
-                peer: {
-                    peer_id: await to.cnd.getPeerId(),
-                    address_hint: await to.cnd
-                        .getPeerListenAddresses()
-                        .then(addresses => addresses[0]),
-                },
-                ...(await this.additionalIdentities(
-                    alphaAssetKind,
-                    betaAssetKind
-                )),
-                ...defaultExpiryTimes(),
-            };
-
-            this.swap = await comitClient.sendSwap(payload);
-            to.swap = new Swap(
-                to.wallets.bitcoin.inner,
-                to.wallets.ethereum.inner,
-                to.cnd,
-                this.swap.self
-            );
-            this.logger.debug("Created new swap at %s", this.swap.self);
-
-            return this.swap;
+        if (isLightning) {
+            this.logger.debug("Using lightning routes on cnd REST API");
+            return;
         }
+        const comitClient: ComitClient = this.getComitClient();
+
+        const payload = {
+            alpha_ledger: this.alphaLedger,
+            beta_ledger: this.betaLedger,
+            alpha_asset: this.alphaAsset,
+            beta_asset: this.betaAsset,
+            peer: {
+                peer_id: await to.cnd.getPeerId(),
+                address_hint: await to.cnd
+                    .getPeerListenAddresses()
+                    .then(addresses => addresses[0]),
+            },
+            ...(await this.additionalIdentities(alphaAssetKind, betaAssetKind)),
+            ...defaultExpiryTimes(),
+        };
+
+        this.swap = await comitClient.sendSwap(payload);
+        to.swap = new Swap(
+            to.wallets.bitcoin.inner,
+            to.wallets.ethereum.inner,
+            to.cnd,
+            this.swap.self
+        );
+        this.logger.debug("Created new swap at %s", this.swap.self);
+
+        return this.swap;
     }
 
     public async accept() {
@@ -660,14 +660,10 @@ export class Actor {
     }
 
     private async initializeDependencies() {
-        let lightning = false;
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
-            if (ledgerName === "lightning") {
-                lightning = true;
-            }
             await this.wallets.initializeForLedger(
                 ledgerName,
                 this.logger,
@@ -676,9 +672,10 @@ export class Actor {
             );
         }
 
-        // Once `ComitClient` can be built with lightning, this hack should
-        // be removed and ComitClient built with the wallets available
-        if (!lightning) {
+        if (
+            this.alphaLedger.name !== "lightning" &&
+            this.betaLedger.name !== "lightning"
+        ) {
             this.comitClient = new ComitClient(
                 this.wallets.getWalletForLedger("bitcoin").inner,
                 this.wallets.getWalletForLedger("ethereum").inner,
