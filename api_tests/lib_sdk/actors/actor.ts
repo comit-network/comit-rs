@@ -6,7 +6,7 @@ import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../../lib/config";
 import { LedgerConfig } from "../../lib/ledger_runner";
 import "../../lib/setup_chai";
-import { Asset, AssetKind } from "../asset";
+import { Asset, AssetKind, toKey, toKind } from "../asset";
 import { CndInstance } from "../cnd_instance";
 import { Lnd } from "../lnd";
 import { Ledger, LedgerKind } from "../ledger";
@@ -73,8 +73,8 @@ export class Actor {
     private betaLedger: Ledger;
     private betaAsset: Asset;
 
-    private readonly startingBalances: Map<AssetKind, BigNumber>;
-    private readonly expectedBalanceChanges: Map<AssetKind, BigNumber>;
+    private readonly startingBalances: Map<string, BigNumber>;
+    private readonly expectedBalanceChanges: Map<string, BigNumber>;
 
     public lnd: Lnd;
 
@@ -115,7 +115,10 @@ export class Actor {
         }
 
         this.alphaLedger = defaultLedgerDescriptionForLedger(alphaLedgerKind);
-        this.alphaAsset = defaultAssetDescriptionForAsset(alphaAssetKind);
+        this.alphaAsset = defaultAssetDescription(
+            alphaAssetKind,
+            alphaLedgerKind
+        );
         to.alphaLedger = this.alphaLedger;
         to.alphaAsset = this.alphaAsset;
 
@@ -144,7 +147,7 @@ export class Actor {
         }
 
         this.betaLedger = defaultLedgerDescriptionForLedger(betaLedgerKind);
-        this.betaAsset = defaultAssetDescriptionForAsset(betaAssetKind);
+        this.betaAsset = defaultAssetDescription(betaAssetKind, betaLedgerKind);
         to.betaLedger = this.betaLedger;
         to.betaAsset = this.betaAsset;
 
@@ -164,10 +167,18 @@ export class Actor {
 
         await this.setStartingBalance([
             this.alphaAsset,
-            { name: this.betaAsset.name, quantity: "0" },
+            {
+                name: this.betaAsset.name,
+                ledger: this.betaLedger.name,
+                quantity: "0",
+            },
         ]);
         await to.setStartingBalance([
-            { name: to.alphaAsset.name, quantity: "0" },
+            {
+                name: to.alphaAsset.name,
+                ledger: this.alphaLedger.name,
+                quantity: "0",
+            },
             to.betaAsset,
         ]);
 
@@ -204,11 +215,11 @@ export class Actor {
         }
 
         this.expectedBalanceChanges.set(
-            betaAssetKind,
+            toKey(this.betaAsset),
             new BigNumber(this.betaAsset.quantity)
         );
         to.expectedBalanceChanges.set(
-            alphaAssetKind,
+            toKey(this.alphaAsset),
             new BigNumber(to.alphaAsset.quantity)
         );
 
@@ -443,27 +454,27 @@ export class Actor {
         }
 
         for (const [
-            assetKind,
+            assetKey,
             expectedBalanceChange,
         ] of this.expectedBalanceChanges.entries()) {
             this.logger.debug(
                 "Checking that %s balance changed by %d",
-                assetKind,
+                assetKey,
                 expectedBalanceChange
             );
 
-            const wallet = this.wallets[
-                defaultLedgerDescriptionForAsset(assetKind).name
-            ];
+            const { asset, ledger } = toKind(assetKey);
+
+            const wallet = this.wallets[ledger];
             const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKind)
+                this.startingBalances.get(assetKey)
             ).plus(expectedBalanceChange);
             const maximumFee = wallet.MaximumFee;
 
             const balanceInclFees = expectedBalance.minus(maximumFee);
 
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescriptionForAsset(assetKind)
+                defaultAssetDescription(asset, ledger)
             );
 
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
@@ -478,22 +489,22 @@ export class Actor {
     public async assertRefunded() {
         this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
 
-        for (const [assetKind] of this.startingBalances.entries()) {
-            const wallet = this.wallets[
-                defaultLedgerDescriptionForAsset(assetKind).name
-            ];
+        for (const [assetKey] of this.startingBalances.entries()) {
+            const { asset, ledger } = toKind(assetKey);
+
+            const wallet = this.wallets[ledger];
             const maximumFee = wallet.MaximumFee;
 
             this.logger.debug(
                 "Checking that %s balance changed by max %d (MaximumFee)",
-                assetKind,
+                assetKey,
                 maximumFee
             );
             const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKind)
+                this.startingBalances.get(assetKey)
             );
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescriptionForAsset(assetKind)
+                defaultAssetDescription(asset, ledger)
             );
             const balanceInclFees = expectedBalance.minus(maximumFee);
             expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
@@ -726,11 +737,11 @@ export class Actor {
     private async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
             if (parseFloat(asset.quantity) === 0) {
-                this.startingBalances.set(asset.name, new BigNumber(0));
+                this.startingBalances.set(toKey(asset), new BigNumber(0));
                 continue;
             }
 
-            const ledger = defaultLedgerDescriptionForAsset(asset.name);
+            const ledger = defaultLedgerDescriptionForLedger(asset.ledger);
             const ledgerName = ledger.name;
 
             this.logger.debug("Minting %s on %s", asset.name, ledgerName);
@@ -745,7 +756,7 @@ export class Actor {
                 asset.name,
                 balance.toString()
             );
-            this.startingBalances.set(asset.name, balance);
+            this.startingBalances.set(toKey(asset), balance);
         }
     }
 
@@ -867,27 +878,26 @@ function defaultLedgerDescriptionForLedger(ledger: LedgerKind): Ledger {
     }
 }
 
-function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
-    return defaultLedgerDescriptionForLedger(defaultLedgerKindForAsset(asset));
-}
-
-function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {
+function defaultAssetDescription(asset: AssetKind, ledger: LedgerKind): Asset {
     switch (asset) {
         case AssetKind.Bitcoin: {
             return {
                 name: AssetKind.Bitcoin,
+                ledger,
                 quantity: "10000000",
             };
         }
         case AssetKind.Ether: {
             return {
                 name: AssetKind.Ether,
+                ledger,
                 quantity: parseEther("10").toString(),
             };
         }
         case AssetKind.Erc20: {
             return {
                 name: AssetKind.Erc20,
+                ledger,
                 quantity: parseEther("100").toString(),
                 token_contract: global.tokenContract,
             };
