@@ -82,7 +82,7 @@ export class Actor {
         private readonly logger: Logger,
         private readonly cndInstance: CndInstance,
         private readonly logRoot: string,
-        private readonly actorConfig: E2ETestActorConfig
+        private readonly config: E2ETestActorConfig
     ) {
         this.wallets = new Wallets({});
         const { address, port } = cndInstance.getConfigFile().http_api.socket;
@@ -93,49 +93,68 @@ export class Actor {
     }
 
     public async sendRequest(
-        maybeAlphaAssetKind?: AssetKind,
-        maybeBetaAssetKind?: AssetKind
+        maybeAlpha?: AssetKind | { ledger: LedgerKind; asset: AssetKind },
+        maybeBeta?: AssetKind | { ledger: LedgerKind; asset: AssetKind }
     ) {
-        const alphaAssetKind = maybeAlphaAssetKind
-            ? maybeAlphaAssetKind
-            : this.defaultAlphaAssetKind();
-        const betaAssetKind = maybeBetaAssetKind
-            ? maybeBetaAssetKind
-            : this.defaultBetaAssetKind();
+        this.logger.info("Sending swap request");
 
         // By default, we will send the swap request to bob
         const to = this.actors.bob;
 
-        this.logger.info("Sending swap request");
+        let alphaAssetKind: AssetKind;
+        let alphaLedgerKind: LedgerKind;
+        if (!maybeAlpha) {
+            alphaAssetKind = this.defaultAlphaAssetKind();
+            alphaLedgerKind = this.defaultAlphaLedgerKind();
+        } else if (typeof maybeAlpha === "string") {
+            alphaAssetKind = maybeAlpha;
+            alphaLedgerKind = defaultLedgerKindForAsset(alphaAssetKind);
+        } else {
+            alphaAssetKind = maybeAlpha.asset;
+            alphaLedgerKind = maybeAlpha.ledger;
+        }
 
-        this.alphaLedger = defaultLedgerDescriptionForAsset(alphaAssetKind);
+        this.alphaLedger = defaultLedgerDescriptionForLedger(alphaLedgerKind);
         this.alphaAsset = defaultAssetDescriptionForAsset(alphaAssetKind);
         to.alphaLedger = this.alphaLedger;
         to.alphaAsset = this.alphaAsset;
 
         this.logger.debug(
-            "Derived %o from asset %s",
+            "Derived Alpha Ledger %o from %s",
             this.alphaLedger,
-            alphaAssetKind
+            alphaLedgerKind
         );
         this.logger.debug(
-            "Derived %o from asset %s",
+            "Derived Alpha Asset %o from %s",
             this.alphaAsset,
             alphaAssetKind
         );
 
-        this.betaLedger = defaultLedgerDescriptionForAsset(betaAssetKind);
+        let betaAssetKind;
+        let betaLedgerKind;
+        if (!maybeBeta) {
+            betaAssetKind = this.defaultBetaAssetKind();
+            betaLedgerKind = this.defaultBetaLedgerKind();
+        } else if (typeof maybeBeta === "string") {
+            betaAssetKind = maybeBeta;
+            betaLedgerKind = defaultLedgerKindForAsset(betaAssetKind);
+        } else {
+            betaAssetKind = maybeBeta.asset;
+            betaLedgerKind = maybeBeta.ledger;
+        }
+
+        this.betaLedger = defaultLedgerDescriptionForLedger(betaLedgerKind);
         this.betaAsset = defaultAssetDescriptionForAsset(betaAssetKind);
         to.betaLedger = this.betaLedger;
         to.betaAsset = this.betaAsset;
 
         this.logger.debug(
-            "Derived %o from asset %s",
+            "Derived Beta Ledger %o from %s",
             this.betaLedger,
-            betaAssetKind
+            betaLedgerKind
         );
         this.logger.debug(
-            "Derived %o from asset %s",
+            "Derived Beta Asset %o from %s",
             this.betaAsset,
             betaAssetKind
         );
@@ -152,6 +171,17 @@ export class Actor {
             to.betaAsset,
         ]);
 
+        const isLightning =
+            this.alphaLedger.name === "lightning" ||
+            this.betaLedger.name === "lightning";
+
+        if (isLightning) {
+            this.logger.debug(`Initialising lightning for ${this.config.name}`);
+            await this.wallets
+                .getWalletForLedger("lightning")
+                .addPeer(to.wallets.getWalletForLedger("lightning"));
+        }
+
         this.expectedBalanceChanges.set(
             betaAssetKind,
             new BigNumber(this.betaAsset.quantity)
@@ -161,6 +191,10 @@ export class Actor {
             new BigNumber(to.alphaAsset.quantity)
         );
 
+        if (isLightning) {
+            this.logger.debug("Using lightning routes on cnd REST API");
+            return;
+        }
         const comitClient: ComitClient = this.getComitClient();
 
         const payload = {
@@ -538,17 +572,6 @@ export class Actor {
         return entity.properties.role;
     }
 
-    public async startLnd() {
-        const bitcoind = global.bitcoind.getDataDir();
-        this.lnd = new Lnd(
-            this.logger,
-            this.logRoot,
-            this.actorConfig,
-            bitcoind
-        );
-        await this.lnd.start();
-    }
-
     private async waitForAlphaExpiry() {
         const swapDetails = await this.swap.fetchDetails();
 
@@ -651,14 +674,24 @@ export class Actor {
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
-            await this.wallets.initializeForLedger(ledgerName);
+            await this.wallets.initializeForLedger(
+                ledgerName,
+                this.logger,
+                this.logRoot,
+                this.config
+            );
         }
 
-        this.comitClient = new ComitClient(
-            this.wallets.getWalletForLedger("bitcoin").inner,
-            this.wallets.getWalletForLedger("ethereum").inner,
-            this.cnd
-        );
+        if (
+            this.alphaLedger.name !== "lightning" &&
+            this.betaLedger.name !== "lightning"
+        ) {
+            this.comitClient = new ComitClient(
+                this.wallets.getWalletForLedger("bitcoin").inner,
+                this.wallets.getWalletForLedger("ethereum").inner,
+                this.cnd
+            );
+        }
     }
 
     private getComitClient(): ComitClient {
@@ -698,21 +731,41 @@ export class Actor {
     private defaultAlphaAssetKind() {
         const defaultAlphaAssetKind = AssetKind.Bitcoin;
         this.logger.info(
-            "AssetKind for alpha ledger not specified, defaulting to %s",
+            "AssetKind for alpha asset not specified, defaulting to %s",
             defaultAlphaAssetKind
         );
 
         return defaultAlphaAssetKind;
     }
 
+    private defaultAlphaLedgerKind() {
+        const defaultAlphaLedgerKind = LedgerKind.Bitcoin;
+        this.logger.info(
+            "LedgerKind for alpha ledger not specified, defaulting to %s",
+            defaultAlphaLedgerKind
+        );
+
+        return defaultAlphaLedgerKind;
+    }
+
     private defaultBetaAssetKind() {
         const defaultBetaAssetKind = AssetKind.Ether;
         this.logger.info(
-            "AssetKind for beta ledger not specified, defaulting to %s",
+            "AssetKind for beta asset not specified, defaulting to %s",
             defaultBetaAssetKind
         );
 
         return defaultBetaAssetKind;
+    }
+
+    private defaultBetaLedgerKind() {
+        const defaultBetaLedgerKind = LedgerKind.Ethereum;
+        this.logger.info(
+            "LedgerKind for beta ledger not specified, defaulting to %s",
+            defaultBetaLedgerKind
+        );
+
+        return defaultBetaLedgerKind;
     }
 
     public cndHttpApiUrl() {
@@ -755,27 +808,46 @@ export class Actor {
     }
 }
 
-function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
+function defaultLedgerKindForAsset(asset: AssetKind): LedgerKind {
     switch (asset) {
-        case AssetKind.Bitcoin: {
+        case AssetKind.Bitcoin:
+            return LedgerKind.Bitcoin;
+        case AssetKind.Ether:
+            return LedgerKind.Ethereum;
+        case AssetKind.Erc20:
+            return LedgerKind.Ethereum;
+    }
+}
+
+/**
+ * WIP as the cnd REST API routes for lightning are not yet defined.
+ * @param ledger
+ * @returns The ledger formatted as needed for the request body to cnd HTTP API on the lightning route.
+ */
+function defaultLedgerDescriptionForLedger(ledger: LedgerKind): Ledger {
+    switch (ledger) {
+        case LedgerKind.Lightning: {
+            return {
+                name: LedgerKind.Lightning,
+            };
+        }
+        case LedgerKind.Bitcoin: {
             return {
                 name: LedgerKind.Bitcoin,
                 network: "regtest",
             };
         }
-        case AssetKind.Ether: {
-            return {
-                name: LedgerKind.Ethereum,
-                chain_id: 17,
-            };
-        }
-        case AssetKind.Erc20: {
+        case LedgerKind.Ethereum: {
             return {
                 name: LedgerKind.Ethereum,
                 chain_id: 17,
             };
         }
     }
+}
+
+function defaultLedgerDescriptionForAsset(asset: AssetKind): Ledger {
+    return defaultLedgerDescriptionForLedger(defaultLedgerKindForAsset(asset));
 }
 
 function defaultAssetDescriptionForAsset(asset: AssetKind): Asset {

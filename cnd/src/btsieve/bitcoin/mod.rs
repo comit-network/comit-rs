@@ -27,7 +27,7 @@ where
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>
         + Clone,
 {
-    // Verify that we can successfully connect to the blockchain connector and check
+    // Verify that we can successfully addPeer to the blockchain connector and check
     // if the transaction is in the latest block.
     let latest_block = blockchain_connector.latest_block().compat().await?;
     if let Some(transaction) = check_block_against_pattern(&latest_block.clone(), &pattern) {

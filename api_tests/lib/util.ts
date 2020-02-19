@@ -25,7 +25,6 @@ export function seconds_until(time: number): number {
 
 /// This is needed to use the global variable in TypeScript
 import Global = NodeJS.Global;
-import { BitcoindInstance } from "./bitcoind_instance";
 
 export interface HarnessGlobal extends Global {
     ledgerConfigs: LedgerConfig;
@@ -34,5 +33,4 @@ export interface HarnessGlobal extends Global {
     logRoot: string;
     verbose: boolean;
     tokenContract: string;
-    bitcoind: BitcoindInstance;
 }

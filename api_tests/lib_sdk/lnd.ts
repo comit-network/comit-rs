@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { E2ETestActorConfig } from "../lib/config";
 import { waitUntilFileExists } from "./utils";
 import * as path from "path";
-import lnService from "ln-service";
+import lnService, { AuthenticatedLndGrpc, Peer } from "ln-service";
 import { Logger } from "log4js";
 import { LogReader } from "../lib/log_reader";
 import { mkdirAsync, writeFileAsync } from "./utils";
@@ -13,7 +13,8 @@ import getPort from "get-port";
 export class Lnd {
     private process: ChildProcess;
     private lndDir: string;
-    private grpc: any;
+    public authenticatedLndGrpc: AuthenticatedLndGrpc;
+    private publicKey?: string;
 
     constructor(
         private readonly logger: Logger,
@@ -85,14 +86,17 @@ export class Lnd {
             socket: this.getGrpcSocket(),
         });
 
-        this.grpc = lnd;
+        this.authenticatedLndGrpc = lnd;
         this.logger.debug("Waiting for lnd to catch up with blocks");
         await this.logReader().waitForLogMessage(
             "LNWL: Done catching up block hashes"
         );
 
-        const info = await lnService.getWalletInfo({ lnd: this.grpc });
-        this.logger.info("Lnd is ready:", info.public_key);
+        const info = await lnService.getWalletInfo({
+            lnd: this.authenticatedLndGrpc,
+        });
+        this.publicKey = info.public_key;
+        this.logger.info("Lnd is ready:", this.publicKey);
     }
 
     public stop() {
@@ -127,16 +131,55 @@ export class Lnd {
         return "127.0.0.1:" + this.actorConfig.lndRpcPort;
     }
 
+    public getLightningSocket() {
+        return "127.0.0.1:" + this.actorConfig.lndP2pPort;
+    }
+
     private async dummy() {
         await sleep(1);
     }
 
-    public async fund() {
-        await sleep(1);
+    public async createChainAddress(): Promise<string> {
+        const response = await lnService.createChainAddress({
+            format: "np2wpkh",
+            lnd: this.authenticatedLndGrpc,
+        });
+        return response.address;
     }
 
-    public async connect(other: Lnd) {
-        await other.dummy();
+    public async getChainBalance(): Promise<number> {
+        return (
+            await lnService.getChainBalance({ lnd: this.authenticatedLndGrpc })
+        ).chain_balance;
+    }
+
+    public async getChannelBalance(): Promise<number> {
+        return (
+            await lnService.getChannelBalance({
+                lnd: this.authenticatedLndGrpc,
+            })
+        ).channel_balance;
+    }
+
+    public addPeer(peer: Lnd): Promise<void> {
+        this.logger.debug(
+            `Connecting ${this.publicKey}@${this.getLightningSocket()} to ${
+                peer.publicKey
+            }@${peer.getLightningSocket()}`
+        );
+        return lnService.addPeer({
+            lnd: this.authenticatedLndGrpc,
+            public_key: peer.publicKey,
+            socket: peer.getLightningSocket(),
+        });
+    }
+
+    public async getPeers(): Promise<Peer[]> {
+        return (
+            await lnService.getPeers({
+                lnd: this.authenticatedLndGrpc,
+            })
+        ).peers;
     }
 
     public async openChannel(other: Lnd) {

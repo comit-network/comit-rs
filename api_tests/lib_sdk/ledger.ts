@@ -8,4 +8,5 @@ export interface Ledger extends LedgerSdk {
 export enum LedgerKind {
     Bitcoin = "bitcoin",
     Ethereum = "ethereum",
+    Lightning = "lightning",
 }

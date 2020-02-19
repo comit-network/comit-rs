@@ -47,7 +47,6 @@ export class LedgerRunner {
                         await getPort({ port: 28332 }),
                         await getPort({ port: 28333 })
                     );
-                    global.bitcoind = instance;
                     return {
                         ledger,
                         instance: await instance.start(),
@@ -107,11 +106,11 @@ export class LedgerRunner {
     public async stopLedgers() {
         const ledgers = Object.entries(this.runningLedgers);
 
-        const promises = ledgers.map(async ([ledger, container]) => {
+        const promises = ledgers.map(async ([ledger, ledgerInstance]) => {
             console.log(`Stopping ledger ${ledger}`);
 
             clearInterval(this.blockTimers[ledger]);
-            await container.stop();
+            await ledgerInstance.stop();
             delete this.runningLedgers[ledger];
         });
 
@@ -138,6 +137,7 @@ export class LedgerRunner {
                 p2pPort: instance.p2pPort,
                 username,
                 password,
+                dataDir: instance.getDataDir(),
             };
         } else {
             return Promise.reject("bitcoin not yet started");

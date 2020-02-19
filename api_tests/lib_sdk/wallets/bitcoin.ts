@@ -37,6 +37,23 @@ export class BitcoinWallet implements Wallet {
         private readonly bitcoinRpcClient: BitcoinRpcClient
     ) {}
 
+    public async mintToAddress(
+        minimumExpectedBalance: BigNumber,
+        toAddress: string
+    ): Promise<void> {
+        const blockHeight = await this.bitcoinRpcClient.getBlockCount();
+        if (blockHeight < 101) {
+            throw new Error(
+                "unable to mint bitcoin, coinbase transactions are not yet spendable"
+            );
+        }
+
+        await this.bitcoinRpcClient.sendToAddress(
+            toAddress,
+            toBitcoin(minimumExpectedBalance.times(2).toString()) // make sure we have at least twice as much
+        );
+    }
+
     public async mint(asset: Asset): Promise<void> {
         if (asset.name !== "bitcoin") {
             throw new Error(
@@ -50,17 +67,7 @@ export class BitcoinWallet implements Wallet {
 
         const minimumExpectedBalance = new BigNumber(asset.quantity);
 
-        const blockHeight = await this.bitcoinRpcClient.getBlockCount();
-        if (blockHeight < 101) {
-            throw new Error(
-                "unable to mint bitcoin, coinbase transactions are not yet spendable"
-            );
-        }
-
-        await this.bitcoinRpcClient.sendToAddress(
-            await this.address(),
-            toBitcoin(minimumExpectedBalance.times(2).toString()) // make sure we have at least twice as much
-        );
+        await this.mintToAddress(minimumExpectedBalance, await this.address());
 
         await pollUntilMinted(
             this,

@@ -22,6 +22,7 @@ export interface BitcoinNodeConfig {
     host: string;
     rpcPort: number;
     p2pPort: number;
+    dataDir: string;
 }
 
 interface Utxo {
