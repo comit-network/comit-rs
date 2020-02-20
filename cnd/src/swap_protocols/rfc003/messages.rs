@@ -50,9 +50,9 @@ pub struct Decline {
 
 /// Body of the rfc003 request message
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-pub struct RequestBody<AL: Ledger, BL: Ledger> {
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
+pub struct RequestBody<AI, BI> {
+    pub alpha_ledger_refund_identity: AI,
+    pub beta_ledger_redeem_identity: BI,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
