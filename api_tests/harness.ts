@@ -207,4 +207,7 @@ function expandGlob(paths: string[]): string[] {
 
 const args = commander.args;
 const testFiles = expandGlob(args);
+
+// We don't have a choice here regarding floating promises, because this is the top level file, we just want to execute it
+// tslint:disable-next-line:no-floating-promises
 runTests(testFiles);
