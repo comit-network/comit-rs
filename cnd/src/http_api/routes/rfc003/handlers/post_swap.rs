@@ -37,8 +37,8 @@ where
     AA: Asset,
     BA: Asset,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA>
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
+        + HtlcFunded<AL, AA, AL::Transaction>
+        + HtlcFunded<BL, BA, BL::Transaction>
         + HtlcDeployed<AL, AA>
         + HtlcDeployed<BL, BA>
         + HtlcRedeemed<AL, AA>

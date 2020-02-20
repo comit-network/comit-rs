@@ -51,7 +51,7 @@ pub enum LedgerState<L: Ledger, A: Asset> {
 }
 
 impl<L: Ledger, A: Asset> LedgerState<L, A> {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed<L>) {
+    pub fn transition_to_deployed(&mut self, deployed: Deployed<L::Transaction, L::HtlcLocation>) {
         let Deployed {
             transaction,
             location,
@@ -68,7 +68,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_funded(&mut self, funded: Funded<L, A>) {
+    pub fn transition_to_funded(&mut self, funded: Funded<L::Transaction, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -87,7 +87,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L, A>) {
+    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L::Transaction, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -106,7 +106,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L>) {
+    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L::Transaction>) {
         let Redeemed {
             transaction,
             secret,
@@ -132,7 +132,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_refunded(&mut self, refunded: Refunded<L>) {
+    pub fn transition_to_refunded(&mut self, refunded: Refunded<L::Transaction>) {
         let Refunded { transaction } = refunded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {

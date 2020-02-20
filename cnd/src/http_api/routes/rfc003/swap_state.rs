@@ -8,15 +8,13 @@ use crate::{
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-#[serde(
-    bound = "Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
-             Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
-             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
-)]
-pub struct SwapState<AL: Ledger, BL: Ledger> {
-    pub communication: SwapCommunication<AL::Identity, BL::Identity>,
-    pub alpha_ledger: LedgerState<AL::HtlcLocation, AL::Transaction>,
-    pub beta_ledger: LedgerState<BL::HtlcLocation, BL::Transaction>,
+#[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize,\
+             Http<AH>: Serialize, Http<BH>: Serialize,\
+             Http<AT>: Serialize, Http<BT>: Serialize")]
+pub struct SwapState<AI, BI, AH, BH, AT, BT> {
+    pub communication: SwapCommunication<AI, BI>,
+    pub alpha_ledger: LedgerState<AH, AT>,
+    pub beta_ledger: LedgerState<BH, BT>,
 }
 
 #[derive(Debug, Serialize)]
