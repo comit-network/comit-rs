@@ -1,7 +1,6 @@
-use crate::config::{file, Bitcoin, Data, Ethereum, File, Network, Socket};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Network, Parity, Socket};
 use anyhow::Context;
 use log::LevelFilter;
-use reqwest::Url;
 use std::net::{IpAddr, Ipv4Addr};
 
 /// This structs represents the settings as they are used through out the code.
@@ -18,6 +17,53 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+}
+
+fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
+    match bitcoin {
+        None => Bitcoin::default(),
+        Some(bitcoin) => {
+            let node_url = match bitcoin.bitcoind {
+                Some(bitcoind) => bitcoind.node_url,
+                None => match bitcoin.network {
+                    bitcoin::Network::Bitcoin => "http://localhost:8332"
+                        .parse()
+                        .expect("to be valid static string"),
+                    bitcoin::Network::Testnet => "http://localhost:18332"
+                        .parse()
+                        .expect("to be valid static string"),
+                    bitcoin::Network::Regtest => "http://localhost:18443"
+                        .parse()
+                        .expect("to be valid static string"),
+                },
+            };
+            Bitcoin {
+                network: bitcoin.network,
+                bitcoind: Bitcoind { node_url },
+            }
+        }
+    }
+}
+
+fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
+    match ethereum {
+        None => Ethereum::default(),
+        Some(ethereum) => {
+            let node_url = match ethereum.parity {
+                None => {
+                    // default is always localhost:8545
+                    "http://localhost:8545"
+                        .parse()
+                        .expect("to be valid static string")
+                }
+                Some(parity) => parity.node_url,
+            };
+            Ethereum {
+                chain_id: ethereum.chain_id,
+                parity: Parity { node_url },
+            }
+        }
+    }
 }
 
 impl From<Settings> for File {
@@ -47,8 +93,8 @@ impl From<Settings> for File {
             logging: Some(file::Logging {
                 level: Some(level.into()),
             }),
-            bitcoin: Some(bitcoin),
-            ethereum: Some(ethereum),
+            bitcoin: Some(bitcoin.into()),
+            ethereum: Some(ethereum.into()),
         }
     }
 }
@@ -157,15 +203,8 @@ impl Settings {
                     },
                 }
             },
-            bitcoin: bitcoin.unwrap_or_else(|| Bitcoin {
-                network: bitcoin::Network::Regtest,
-                node_url: Url::parse("http://localhost:18443")
-                    .expect("static string to be a valid url"),
-            }),
-            ethereum: ethereum.unwrap_or_else(|| Ethereum {
-                node_url: Url::parse("http://localhost:8545")
-                    .expect("static string to be a valid url"),
-            }),
+            bitcoin: derive_url_bitcoin(bitcoin),
+            ethereum: derive_url_ethereum(ethereum),
         })
     }
 }
@@ -174,7 +213,7 @@ impl Settings {
 mod tests {
 
     use super::*;
-    use crate::config::file;
+    use crate::{config::file, swap_protocols::ledger::ethereum};
     use spectral::prelude::*;
     use std::net::{IpAddr, Ipv4Addr};
 
@@ -256,5 +295,102 @@ mod tests {
             .is_equal_to(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             })
+    }
+
+    #[test]
+    fn bitcoin_defaults() {
+        let config_file = File { ..File::default() };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.bitcoin)
+            .is_equal_to(Bitcoin {
+                network: bitcoin::Network::Regtest,
+                bitcoind: Bitcoind {
+                    node_url: "http://localhost:18443".parse().unwrap(),
+                },
+            })
+    }
+
+    #[test]
+    fn bitcoin_defaults_network_only() {
+        let defaults = vec![
+            (bitcoin::Network::Bitcoin, "http://localhost:8332"),
+            (bitcoin::Network::Testnet, "http://localhost:18332"),
+            (bitcoin::Network::Regtest, "http://localhost:18443"),
+        ];
+
+        for (network, url) in defaults {
+            let config_file = File {
+                bitcoin: Some(file::Bitcoin {
+                    network,
+                    bitcoind: None,
+                }),
+                ..File::default()
+            };
+
+            let settings = Settings::from_config_file_and_defaults(config_file);
+
+            assert_that(&settings)
+                .is_ok()
+                .map(|settings| &settings.bitcoin)
+                .is_equal_to(Bitcoin {
+                    network,
+                    bitcoind: Bitcoind {
+                        node_url: url.parse().unwrap(),
+                    },
+                })
+        }
+    }
+
+    #[test]
+    fn ethereum_defaults() {
+        let config_file = File { ..File::default() };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.ethereum)
+            .is_equal_to(Ethereum {
+                chain_id: ethereum::ChainId::regtest(),
+                parity: Parity {
+                    node_url: "http://localhost:8545".parse().unwrap(),
+                },
+            })
+    }
+
+    #[test]
+    fn ethereum_defaults_chain_id_only() {
+        let defaults = vec![
+            (ethereum::ChainId::mainnet(), "http://localhost:8545"),
+            (ethereum::ChainId::ropsten(), "http://localhost:8545"),
+            (ethereum::ChainId::regtest(), "http://localhost:8545"),
+        ];
+
+        for (chain_id, url) in defaults {
+            let ethereum = Some(file::Ethereum {
+                chain_id,
+                parity: None,
+            });
+            let config_file = File {
+                ethereum,
+                ..File::default()
+            };
+
+            let settings = Settings::from_config_file_and_defaults(config_file);
+
+            assert_that(&settings)
+                .is_ok()
+                .map(|settings| &settings.ethereum)
+                .is_equal_to(Ethereum {
+                    chain_id,
+                    parity: Parity {
+                        node_url: url.parse().unwrap(),
+                    },
+                })
+        }
     }
 }

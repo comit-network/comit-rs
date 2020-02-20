@@ -1,6 +1,10 @@
-use crate::config::{Bitcoin, Data, Ethereum, Network, Socket};
+use crate::{
+    config::{Bitcoind, Data, Network, Parity, Socket},
+    swap_protocols::ledger::ethereum,
+};
 use config as config_rs;
 use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 use std::{ffi::OsStr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
@@ -16,6 +20,19 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Bitcoin {
+    #[serde(with = "crate::config::serde_bitcoin_network")]
+    pub network: bitcoin::Network,
+    pub bitcoind: Option<Bitcoind>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Ethereum {
+    pub chain_id: ethereum::ChainId,
+    pub parity: Option<Parity>,
 }
 
 impl File {
@@ -112,7 +129,11 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::config::Settings;
+    use crate::{
+        config::{Bitcoind, Parity, Settings},
+        swap_protocols::ledger::ethereum,
+    };
+    use reqwest::Url;
     use spectral::prelude::*;
     use std::{
         net::{IpAddr, Ipv4Addr},
@@ -182,11 +203,16 @@ dir = "/tmp/comit/"
 level = "Debug"
 
 [bitcoin]
-network = "mainnet"
-node_url = "http://example.com/"
+network = "regtest"
+
+[bitcoin.bitcoind]
+node_url = "http://localhost:18443/"
 
 [ethereum]
-node_url = "http://example.com/"
+chain_id = 17
+
+[ethereum.parity]
+node_url = "http://localhost:8545/"
 "#;
 
         let file = File {
@@ -209,11 +235,16 @@ node_url = "http://example.com/"
                 level: Some(Level::Debug),
             }),
             bitcoin: Some(Bitcoin {
-                network: bitcoin::Network::Bitcoin,
-                node_url: "http://example.com".parse().unwrap(),
+                network: bitcoin::Network::Regtest,
+                bitcoind: Some(Bitcoind {
+                    node_url: "http://localhost:18443".parse().unwrap(),
+                }),
             }),
             ethereum: Some(Ethereum {
-                node_url: "http://example.com".parse().unwrap(),
+                chain_id: ethereum::ChainId::regtest(),
+                parity: Some(Parity {
+                    node_url: "http://localhost:8545".parse().unwrap(),
+                }),
             }),
         };
 
@@ -236,5 +267,105 @@ node_url = "http://example.com/"
         let file = toml::from_str::<File>(&serialized).unwrap();
 
         assert_eq!(file, file_with_effective_settings)
+    }
+
+    #[test]
+    fn bitcoin_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            network = "mainnet"
+            [bitcoind]
+            node_url = "http://example.com:8332"
+            "#,
+            r#"
+            network = "testnet"
+            [bitcoind]
+            node_url = "http://example.com:18332"
+            "#,
+            r#"
+            network = "regtest"
+            [bitcoind]
+            node_url = "http://example.com:18443"
+            "#,
+        ];
+
+        let expected = vec![
+            Bitcoin {
+                network: bitcoin::Network::Bitcoin,
+                bitcoind: Some(Bitcoind {
+                    node_url: Url::parse("http://example.com:8332").unwrap(),
+                }),
+            },
+            Bitcoin {
+                network: bitcoin::Network::Testnet,
+                bitcoind: Some(Bitcoind {
+                    node_url: Url::parse("http://example.com:18332").unwrap(),
+                }),
+            },
+            Bitcoin {
+                network: bitcoin::Network::Regtest,
+                bitcoind: Some(Bitcoind {
+                    node_url: Url::parse("http://example.com:18443").unwrap(),
+                }),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn ethereum_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            chain_id = 17
+            [parity]
+            node_url = "http://example.com:8545"
+            "#,
+            r#"
+            chain_id = 3
+            [parity]
+            node_url = "http://example.com:8545"
+            "#,
+            r#"
+            chain_id = 1
+            [parity]
+            node_url = "http://example.com:8545"
+            "#,
+        ];
+
+        let expected = vec![
+            Ethereum {
+                chain_id: ethereum::ChainId::regtest(),
+                parity: Some(Parity {
+                    node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+            },
+            Ethereum {
+                chain_id: ethereum::ChainId::ropsten(),
+                parity: Some(Parity {
+                    node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+            },
+            Ethereum {
+                chain_id: ethereum::ChainId::mainnet(),
+                parity: Some(Parity {
+                    node_url: Url::parse("http://example.com:8545").unwrap(),
+                }),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Ethereum>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
     }
 }
