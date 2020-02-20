@@ -1,6 +1,6 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { E2ETestActorConfig } from "./config";
+import { E2ETestActorConfig } from "../config";
 import { mkdirAsync, waitUntilFileExists, writeFileAsync } from "../utils";
 import * as path from "path";
 import lnService, {

@@ -3,8 +3,6 @@ import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
 import * as fs from "fs";
 import { promisify } from "util";
-
-/// This is needed to use the global variable in TypeScript
 import Global = NodeJS.Global;
 import { LedgerConfig } from "./ledgers/ledger_runner";
 

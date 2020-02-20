@@ -3,7 +3,7 @@ import { BigNumber, Cnd, ComitClient, Swap } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
-import { E2ETestActorConfig } from "../ledgers/config";
+import { E2ETestActorConfig } from "../config";
 import { LedgerConfig } from "../ledgers/ledger_runner";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";

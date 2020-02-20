@@ -3,7 +3,7 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
-import { CndConfigFile, E2ETestActorConfig } from "../ledgers/config";
+import { CndConfigFile, E2ETestActorConfig } from "../config";
 import { LedgerConfig } from "../ledgers/ledger_runner";
 import { HarnessGlobal, sleep } from "../utils";
 
