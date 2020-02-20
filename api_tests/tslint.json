@@ -19,7 +19,8 @@
         "promise-function-async": true,
         "no-floating-promises": true,
         "await-promise": true,
-        "no-promise-as-boolean": true
+        "no-promise-as-boolean": true,
+        "no-return-await": true
     },
     "rulesDirectory": []
 }
