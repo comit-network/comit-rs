@@ -15,6 +15,7 @@ import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
 import { SwapDetails } from "comit-sdk/dist/src/cnd";
+import { CreateInvoiceResponse } from "ln-service";
 
 declare var global: HarnessGlobal;
 
@@ -836,6 +837,18 @@ export class Actor {
             await sleep(1000);
             return await this.pollSwapDetails(swapUrl, iteration);
         }
+    }
+
+    public async createLnInvoice(sats: number) {
+        return this.wallets.lightning.createInvoice(sats);
+    }
+
+    public async payLnInvoice(invoice: CreateInvoiceResponse) {
+        return this.wallets.lightning.pay(invoice);
+    }
+
+    public async assertLnInvoiceSettled(invoice: CreateInvoiceResponse) {
+        await this.wallets.lightning.assertInvoiceSettled(invoice);
     }
 }
 

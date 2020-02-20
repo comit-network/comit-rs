@@ -8,9 +8,9 @@ setTimeout(function() {
             { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
             { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
         );
-        const invoice = await bob.wallets.lightning.createInvoice(20000);
-        await alice.wallets.lightning.pay(invoice);
-        await bob.wallets.lightning.assertInvoiceSettled(invoice);
+        const invoice = await bob.createLnInvoice(20000);
+        await alice.payLnInvoice(invoice);
+        await bob.assertLnInvoiceSettled(invoice);
     });
 
     run();
