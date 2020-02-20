@@ -5,8 +5,8 @@ import { Logger } from "log4js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import { CreateInvoiceResponse } from "ln-service";
-import {E2ETestActorConfig} from "../ledgers/config";
-import {Lnd} from "../ledgers/lnd";
+import { E2ETestActorConfig } from "../ledgers/config";
+import { Lnd } from "../ledgers/lnd";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(

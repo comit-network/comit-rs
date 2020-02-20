@@ -5,7 +5,7 @@ import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
-import {E2ETestActorConfig} from "../ledgers/config";
+import { E2ETestActorConfig } from "../ledgers/config";
 
 declare var global: HarnessGlobal;
 

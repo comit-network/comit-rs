@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import { E2ETestActorConfig } from "./config";
-import {mkdirAsync, waitUntilFileExists, writeFileAsync} from "../utils";
+import { mkdirAsync, waitUntilFileExists, writeFileAsync } from "../utils";
 import * as path from "path";
 import lnService, {
     AuthenticatedLndGrpc,
@@ -14,7 +14,7 @@ import lnService, {
 } from "ln-service";
 import { Logger } from "log4js";
 import getPort from "get-port";
-import {LogReader} from "./log_reader";
+import { LogReader } from "./log_reader";
 
 export class Lnd {
     private process: ChildProcess;

@@ -1,12 +1,12 @@
 // These are stateless tests -- they don't require any state of the cnd and they don't change it
 // They are mostly about checking invalid request responses
 // These test do not use the sdk so that we can test edge cases
-import { threeActorTest } from "../lib_sdk/actor_test";
+import { threeActorTest } from "../lib/actor_test";
 import { expect } from "chai";
 import "chai/register-should";
-import "../lib_sdk/setup_chai";
+import "../lib/setup_chai";
 import { SwapDetails } from "comit-sdk/dist/src/cnd";
-import { createDefaultSwapRequest } from "../lib_sdk/utils";
+import { createDefaultSwapRequest } from "../lib/utils";
 
 interface MatchInterface {
     id: string;

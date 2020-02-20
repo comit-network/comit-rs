@@ -1,4 +1,4 @@
-///<reference path="./lib_sdk/wallets/satoshi_bitcoin.d.ts"/>
+///<reference path="./lib/wallets/satoshi_bitcoin.d.ts"/>
 
 import { parse } from "@iarna/toml";
 import { execSync } from "child_process";
@@ -9,9 +9,9 @@ import Mocha from "mocha";
 import path from "path";
 import readline from "readline-promise";
 import rimraf from "rimraf";
-import { CndRunner } from "./lib_sdk/cnd/cnd_runner";
-import { LedgerRunner } from "./lib_sdk/ledgers/ledger_runner";
-import { HarnessGlobal } from "./lib_sdk/utils";
+import { CndRunner } from "./lib/cnd/cnd_runner";
+import { LedgerRunner } from "./lib/ledgers/ledger_runner";
+import { HarnessGlobal } from "./lib/utils";
 
 const rlp = readline.createInterface({
     input: process.stdin,

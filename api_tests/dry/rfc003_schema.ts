@@ -1,15 +1,15 @@
 // These are stateless tests -- they don't require any state of the cnd and they don't change it
 // They are mostly about checking invalid request responses
 // These test do not use the sdk so that we can test edge cases
-import { twoActorTest } from "../lib_sdk/actor_test";
+import { twoActorTest } from "../lib/actor_test";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../lib_sdk/setup_chai";
-import { Actor } from "../lib_sdk/actors/actor";
+import "../lib/setup_chai";
+import { Actor } from "../lib/actors/actor";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../gen/siren";
 import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-import { createDefaultSwapRequest } from "../lib_sdk/utils";
+import { createDefaultSwapRequest } from "../lib/utils";
 
 async function assertValidSirenDocument(
     swapsEntity: Entity,
