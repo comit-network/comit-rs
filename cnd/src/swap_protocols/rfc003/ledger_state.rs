@@ -2,7 +2,6 @@ use crate::{
     asset::Asset,
     swap_protocols::rfc003::{
         events::{Deployed, Funded, Redeemed, Refunded},
-        ledger::Ledger,
         Secret,
     },
 };
@@ -15,43 +14,43 @@ use strum_macros::EnumDiscriminants;
     derive(Serialize, Display),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
-pub enum LedgerState<L: Ledger, A> {
+pub enum LedgerState<T, H, A> {
     NotDeployed,
     Deployed {
-        htlc_location: L::HtlcLocation,
-        deploy_transaction: L::Transaction,
+        htlc_location: H,
+        deploy_transaction: T,
     },
     Funded {
-        htlc_location: L::HtlcLocation,
-        deploy_transaction: L::Transaction,
-        fund_transaction: L::Transaction,
+        htlc_location: H,
+        deploy_transaction: T,
+        fund_transaction: T,
         asset: A,
     },
     Redeemed {
-        htlc_location: L::HtlcLocation,
-        deploy_transaction: L::Transaction,
-        fund_transaction: L::Transaction,
-        redeem_transaction: L::Transaction,
+        htlc_location: H,
+        deploy_transaction: T,
+        fund_transaction: T,
+        redeem_transaction: T,
         asset: A,
         secret: Secret,
     },
     Refunded {
-        htlc_location: L::HtlcLocation,
-        deploy_transaction: L::Transaction,
-        fund_transaction: L::Transaction,
-        refund_transaction: L::Transaction,
+        htlc_location: H,
+        deploy_transaction: T,
+        fund_transaction: T,
+        refund_transaction: T,
         asset: A,
     },
     IncorrectlyFunded {
-        htlc_location: L::HtlcLocation,
-        deploy_transaction: L::Transaction,
-        fund_transaction: L::Transaction,
+        htlc_location: H,
+        deploy_transaction: T,
+        fund_transaction: T,
         asset: A,
     },
 }
 
-impl<L: Ledger, A: Asset> LedgerState<L, A> {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed<L::Transaction, L::HtlcLocation>) {
+impl<T, H, A: Asset> LedgerState<T, H, A> {
+    pub fn transition_to_deployed(&mut self, deployed: Deployed<T, H>) {
         let Deployed {
             transaction,
             location,
@@ -68,7 +67,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_funded(&mut self, funded: Funded<L::Transaction, A>) {
+    pub fn transition_to_funded(&mut self, funded: Funded<T, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -87,7 +86,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L::Transaction, A>) {
+    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<T, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -106,7 +105,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L::Transaction>) {
+    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<T>) {
         let Redeemed {
             transaction,
             secret,
@@ -132,7 +131,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_refunded(&mut self, refunded: Refunded<L::Transaction>) {
+    pub fn transition_to_refunded(&mut self, refunded: Refunded<T>) {
         let Refunded { transaction } = refunded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
