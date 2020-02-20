@@ -21,7 +21,8 @@
         "await-promise": true,
         "no-promise-as-boolean": true,
         "no-return-await": true,
-        "no-string-throw": true
+        "no-string-throw": true,
+        "radix": true
     },
     "rulesDirectory": []
 }
