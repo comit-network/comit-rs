@@ -30,7 +30,11 @@ use schema::{
     rfc003_ethereum_bitcoin_ether_bitcoin_request_messages,
 };
 
-pub type AcceptedSwap<AL, BL, AA, BA> = (Request<AL, BL, AA, BA>, Accept<AL, BL>, NaiveDateTime);
+pub type AcceptedSwap<AL, BL, AA, BA> = (
+    Request<AL, BL, AA, BA>,
+    Accept<<AL as Ledger>::Identity, <BL as Ledger>::Identity>,
+    NaiveDateTime,
+);
 
 #[async_trait]
 pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {

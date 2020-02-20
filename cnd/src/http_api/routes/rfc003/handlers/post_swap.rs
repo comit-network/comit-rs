@@ -31,7 +31,10 @@ async fn initiate_request<AL, BL, AA, BA>(
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
+    Sqlite: Save<Request<AL, BL, AA, BA>>
+        + Save<Accept<AL::Identity, BL::Identity>>
+        + Save<Swap>
+        + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,

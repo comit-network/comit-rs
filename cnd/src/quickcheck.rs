@@ -268,18 +268,18 @@ where
     }
 }
 
-impl<AL, BL> Arbitrary for Quickcheck<Accept<AL, BL>>
+impl<AI, BI> Arbitrary for Quickcheck<Accept<AI, BI>>
 where
-    AL: Ledger,
-    BL: Ledger,
-    Quickcheck<AL::Identity>: Arbitrary,
-    Quickcheck<BL::Identity>: Arbitrary,
+    AI: Copy + Clone + Send,
+    BI: Copy + Clone + Send,
+    Quickcheck<AI>: Arbitrary,
+    Quickcheck<BI>: Arbitrary,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Accept {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<AL::Identity>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<BL::Identity>::arbitrary(g),
+            alpha_ledger_redeem_identity: *Quickcheck::<AI>::arbitrary(g),
+            beta_ledger_refund_identity: *Quickcheck::<BI>::arbitrary(g),
         })
     }
 }

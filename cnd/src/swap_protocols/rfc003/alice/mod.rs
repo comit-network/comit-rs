@@ -35,7 +35,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn accepted(
         request: messages::Request<AL, BL, AA, BA>,
-        response: messages::Accept<AL, BL>,
+        response: messages::Accept<AL::Identity, BL::Identity>,
         secret_source: SwapSeed,
     ) -> Self {
         Self {

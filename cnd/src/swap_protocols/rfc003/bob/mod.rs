@@ -42,7 +42,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
-        response: Accept<AL, BL>,
+        response: Accept<AL::Identity, BL::Identity>,
         secret_source: impl DeriveIdentities,
     ) -> Self {
         Self {

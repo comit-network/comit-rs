@@ -371,21 +371,12 @@ struct InsertableEthereumBitcoinAcceptMessage {
     bitcoin_refund_identity: Text<bitcoin::PublicKey>,
 }
 
-#[impl_template]
 #[async_trait]
-impl
-    Save<
-        Accept<
-            Ethereum,
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
-        >,
-    > for Sqlite
-{
-    async fn save(&self, message: Accept<Ethereum, __TYPE0__>) -> anyhow::Result<()> {
+impl Save<Accept<crate::ethereum::Address, crate::bitcoin::PublicKey>> for Sqlite {
+    async fn save(
+        &self,
+        message: Accept<crate::ethereum::Address, crate::bitcoin::PublicKey>,
+    ) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
@@ -417,21 +408,12 @@ struct InsertableBitcoinEthereumAcceptMessage {
     ethereum_refund_identity: Text<EthereumAddress>,
 }
 
-#[impl_template]
 #[async_trait]
-impl
-    Save<
-        Accept<
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
-            Ethereum,
-        >,
-    > for Sqlite
-{
-    async fn save(&self, message: Accept<__TYPE0__, Ethereum>) -> anyhow::Result<()> {
+impl Save<Accept<crate::bitcoin::PublicKey, crate::ethereum::Address>> for Sqlite {
+    async fn save(
+        &self,
+        message: Accept<crate::bitcoin::PublicKey, crate::ethereum::Address>,
+    ) -> anyhow::Result<()> {
         let Accept {
             swap_id,
             alpha_ledger_redeem_identity,
