@@ -1,10 +1,10 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
-import { promisify } from "util";
 import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
-import { sleep } from "./util";
+import { promisify } from "util";
+import { sleep } from "../utils";
 
 const openAsync = promisify(fs.open);
 

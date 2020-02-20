@@ -1,5 +1,5 @@
-import { twoActorTest } from "../../../lib_sdk/actor_test";
-import { AssetKind } from "../../../lib_sdk/asset";
+import { twoActorTest } from "../../../lib/actor_test";
+import { AssetKind } from "../../../lib/asset";
 
 setTimeout(function() {
     twoActorTest(

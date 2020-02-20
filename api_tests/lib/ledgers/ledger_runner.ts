@@ -2,10 +2,10 @@ import getPort from "get-port";
 import * as bitcoin from "./bitcoin";
 import { BitcoinNodeConfig } from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
-import { EthereumNodeConfig } from "./ethereum";
 import { ParityInstance } from "./parity_instance";
-import { HarnessGlobal } from "./util";
-import { EthereumWallet } from "../lib_sdk/wallets/ethereum";
+import { EthereumWallet } from "../wallets/ethereum";
+import { HarnessGlobal } from "../utils";
+import { EthereumNodeConfig } from "./ethereum";
 
 declare var global: HarnessGlobal;
 

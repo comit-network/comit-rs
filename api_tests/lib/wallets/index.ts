@@ -1,12 +1,11 @@
 import { BigNumber } from "comit-sdk";
-import { HarnessGlobal } from "../../lib/util";
 import { Asset } from "comit-sdk";
-import { sleep } from "../utils";
+import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
-import { E2ETestActorConfig } from "../../lib/config";
 import { Logger } from "log4js";
+import { E2ETestActorConfig } from "../config";
 
 declare var global: HarnessGlobal;
 

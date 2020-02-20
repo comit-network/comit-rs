@@ -1,9 +1,8 @@
 import * as path from "path";
-import { CndInstance } from "../lib_sdk/cnd_instance";
-import { existsAsync, unlinkAsync } from "../lib_sdk/utils";
-import { CND_CONFIGS } from "./config";
-import { LedgerConfig } from "./ledger_runner";
-import { HarnessGlobal } from "./util";
+import { CndInstance } from "./cnd_instance";
+import { existsAsync, HarnessGlobal, unlinkAsync } from "../utils";
+import { CND_CONFIGS } from "../config";
+import { LedgerConfig } from "../ledgers/ledger_runner";
 
 declare var global: HarnessGlobal;
 

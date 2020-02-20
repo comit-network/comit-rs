@@ -3,7 +3,7 @@ import * as fs from "fs";
 import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import * as path from "path";
-import { openAsync, mkdirAsync, writeFileAsync } from "../lib_sdk/utils";
+import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;

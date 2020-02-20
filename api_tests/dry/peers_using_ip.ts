@@ -1,13 +1,12 @@
 // These are stateless tests -- they don't require any state of the cnd and they don't change it
 // They are mostly about checking invalid request responses
 // These test do not use the sdk so that we can test edge cases
-import { threeActorTest, twoActorTest } from "../lib_sdk/actor_test";
+import { threeActorTest, twoActorTest } from "../lib/actor_test";
 import "chai/register-should";
 import "../lib/setup_chai";
 import { expect, request } from "chai";
-import { Actor } from "../lib_sdk/actors/actor";
-import { sleep } from "../lib/util";
-import { createDefaultSwapRequest } from "../lib_sdk/utils";
+import { Actor } from "../lib/actors/actor";
+import { createDefaultSwapRequest, sleep } from "../lib/utils";
 
 async function assertNoPeersAvailable(actor: Actor, message: string) {
     const peersResponse = await request(actor.cndHttpApiUrl()).get("/peers");
