@@ -219,7 +219,7 @@ export class Lnd {
     }
 
     public pay(invoice: string): Promise<PayResponse> {
-        console.log("Paying invoice: %s", invoice);
+        this.logger.debug("Paying invoice: %s", invoice);
         return lnService.pay({
             lnd: this.authenticatedLndGrpc,
             request: invoice,

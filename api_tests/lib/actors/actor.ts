@@ -837,6 +837,21 @@ export class Actor {
             return await this.pollSwapDetails(swapUrl, iteration);
         }
     }
+
+    public async createLnInvoice(sats: number) {
+        return this.wallets.lightning.createInvoice(sats);
+    }
+
+    public async payLnInvoice(request: string) {
+        return this.wallets.lightning.pay(request);
+    }
+
+    public async assertLnInvoiceSettled(id: string) {
+        const resp = await this.wallets.lightning.getInvoice(id);
+        if (!resp.is_confirmed) {
+            throw new Error(`Invoice ${id} is not confirmed}`);
+        }
+    }
 }
 
 function defaultLedgerKindForAsset(asset: AssetKind): LedgerKind {

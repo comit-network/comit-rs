@@ -4,7 +4,7 @@ import BigNumber from "bignumber.js";
 import { Logger } from "log4js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
-import { CreateInvoiceResponse } from "ln-service";
+import { GetInvoiceResponse } from "ln-service";
 import { E2ETestActorConfig } from "../config";
 import { Lnd } from "../ledgers/lnd";
 
@@ -120,23 +120,27 @@ export class LightningWallet implements Wallet {
         await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
     }
 
-    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
-        return this.inner.createInvoice(sats);
+    public async createInvoice(
+        sats: number
+    ): Promise<{ id: string; request: string }> {
+        const response = await this.inner.createInvoice(sats);
+        return {
+            id: response.id,
+            request: response.request,
+        };
     }
 
-    public pay(invoice: CreateInvoiceResponse) {
-        return this.inner.pay(invoice.request);
+    /**
+     * Pay a payment-request
+     *
+     * @param request A BOLT11-encoded payment request
+     */
+    public pay(request: string) {
+        return this.inner.pay(request);
     }
 
-    public async assertInvoiceSettled(invoice: CreateInvoiceResponse) {
-        const resp = await this.inner.getInvoice(invoice.id);
-        if (resp.is_confirmed && resp.tokens === invoice.tokens) {
-            return;
-        } else {
-            throw new Error(
-                `Invoices ${invoice.id} is not settled; confirmed: ${resp.is_confirmed}. Tokens: ${resp.tokens}/${invoice.tokens}`
-            );
-        }
+    public async getInvoice(id: string): Promise<GetInvoiceResponse> {
+        return this.inner.getInvoice(id);
     }
 
     private async pollUntilChannelIsOpen(
