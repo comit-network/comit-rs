@@ -15,7 +15,7 @@ setTimeout(function() {
 
         const responsePromise = alice.redeemWithHighFee();
 
-        await expect(responsePromise).to.be.rejected;
+        return expect(responsePromise).to.be.rejected;
     });
 
     run();

@@ -110,7 +110,7 @@ export class LedgerRunner {
             console.log(`Stopping ledger ${ledger}`);
 
             clearInterval(this.blockTimers[ledger]);
-            await ledgerInstance.stop();
+            ledgerInstance.stop();
             delete this.runningLedgers[ledger];
         });
 
