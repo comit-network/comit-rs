@@ -5,7 +5,10 @@ pull_request_rules:
       - "status-failure=ci/circleci: debug-build-test"
     actions:
       comment:
-        message: "@comit-network/rust-devs The build on this dependency update is broken and needs attention."
+        message: "The build on this dependency update is broken and needs attention."
+      request_reviews:
+        teams:
+          - "@comit-network/rust-devs"
   - name: instruct bors to merge dependabot PRs with passing tests
     conditions:
       - "author=dependabot-preview[bot]"
