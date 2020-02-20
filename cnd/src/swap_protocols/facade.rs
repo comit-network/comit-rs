@@ -115,7 +115,7 @@ impl
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
-        htlc_deployment: &Deployed<__TYPE0__>,
+        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<::bitcoin::Transaction, asset::Bitcoin>> {
         self.bitcoin_connector
@@ -133,7 +133,7 @@ impl HtlcDeployed<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asse
         &self,
         htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<__TYPE0__>> {
+    ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
         self.bitcoin_connector
             .htlc_deployed(htlc_params, start_of_swap)
             .await
@@ -148,7 +148,7 @@ impl HtlcRedeemed<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asse
     async fn htlc_redeemed(
         &self,
         htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
-        htlc_deployment: &Deployed<__TYPE0__>,
+        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<__TYPE0__>> {
         self.bitcoin_connector
@@ -165,7 +165,7 @@ impl HtlcRefunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asse
     async fn htlc_refunded(
         &self,
         htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
-        htlc_deployment: &Deployed<__TYPE0__>,
+        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<__TYPE0__>> {
         self.bitcoin_connector
@@ -180,7 +180,7 @@ impl HtlcFunded<Ethereum, ((asset::Ether, asset::Erc20)), crate::ethereum::Trans
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
-        htlc_deployment: &Deployed<Ethereum>,
+        htlc_deployment: &Deployed<crate::ethereum::Transaction, crate::ethereum::Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<crate::ethereum::Transaction, __TYPE0__>> {
         self.ethereum_connector
@@ -196,7 +196,7 @@ impl HtlcDeployed<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
         &self,
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<Ethereum>> {
+    ) -> anyhow::Result<Deployed<crate::ethereum::Transaction, crate::ethereum::Address>> {
         self.ethereum_connector
             .htlc_deployed(htlc_params, start_of_swap)
             .await
@@ -209,7 +209,7 @@ impl HtlcRedeemed<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_redeemed(
         &self,
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
-        htlc_deployment: &Deployed<Ethereum>,
+        htlc_deployment: &Deployed<crate::ethereum::Transaction, crate::ethereum::Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Ethereum>> {
         self.ethereum_connector
@@ -224,7 +224,7 @@ impl HtlcRefunded<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_refunded(
         &self,
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
-        htlc_deployment: &Deployed<Ethereum>,
+        htlc_deployment: &Deployed<crate::ethereum::Transaction, crate::ethereum::Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Ethereum>> {
         self.ethereum_connector

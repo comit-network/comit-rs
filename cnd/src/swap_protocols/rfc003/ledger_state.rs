@@ -51,7 +51,7 @@ pub enum LedgerState<L: Ledger, A: Asset> {
 }
 
 impl<L: Ledger, A: Asset> LedgerState<L, A> {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed<L>) {
+    pub fn transition_to_deployed(&mut self, deployed: Deployed<L::Transaction, L::HtlcLocation>) {
         let Deployed {
             transaction,
             location,

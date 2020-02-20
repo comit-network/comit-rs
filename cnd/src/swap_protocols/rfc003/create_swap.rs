@@ -299,12 +299,12 @@ where
     AA: Asset,
     BA: Asset,
 {
-    AlphaDeployed(Deployed<AL>),
+    AlphaDeployed(Deployed<AL::Transaction, AL::HtlcLocation>),
     AlphaFunded(Funded<AL::Transaction, AA>),
     AlphaRedeemed(Redeemed<AL>),
     AlphaRefunded(Refunded<AL>),
 
-    BetaDeployed(Deployed<BL>),
+    BetaDeployed(Deployed<BL::Transaction, BL::HtlcLocation>),
     BetaFunded(Funded<BL::Transaction, BA>),
     BetaRedeemed(Redeemed<BL>),
     BetaRefunded(Refunded<BL>),
