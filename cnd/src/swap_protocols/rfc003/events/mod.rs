@@ -16,8 +16,8 @@ pub struct Funded<T, A: Asset> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Redeemed<L: Ledger> {
-    pub transaction: L::Transaction,
+pub struct Redeemed<T> {
+    pub transaction: T,
     pub secret: Secret,
 }
 
@@ -58,7 +58,7 @@ pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<L>>;
+    ) -> anyhow::Result<Redeemed<L::Transaction>>;
 }
 
 #[async_trait::async_trait]

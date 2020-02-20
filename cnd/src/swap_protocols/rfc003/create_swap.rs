@@ -301,12 +301,12 @@ where
 {
     AlphaDeployed(Deployed<AL::Transaction, AL::HtlcLocation>),
     AlphaFunded(Funded<AL::Transaction, AA>),
-    AlphaRedeemed(Redeemed<AL>),
+    AlphaRedeemed(Redeemed<AL::Transaction>),
     AlphaRefunded(Refunded<AL::Transaction>),
 
     BetaDeployed(Deployed<BL::Transaction, BL::HtlcLocation>),
     BetaFunded(Funded<BL::Transaction, BA>),
-    BetaRedeemed(Redeemed<BL>),
+    BetaRedeemed(Redeemed<BL::Transaction>),
     BetaRefunded(Refunded<BL::Transaction>),
 }
 

@@ -106,7 +106,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L>) {
+    pub fn transition_to_redeemed(&mut self, redeemed: Redeemed<L::Transaction>) {
         let Redeemed {
             transaction,
             secret,

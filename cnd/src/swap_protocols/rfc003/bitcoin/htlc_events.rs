@@ -83,7 +83,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRedeemed<Bitcoin, asset::
         htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<Bitcoin>> {
+    ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: None,

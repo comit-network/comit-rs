@@ -78,7 +78,7 @@ impl HtlcRedeemed<Ethereum, asset::Ether> for Cache<Web3Connector> {
         htlc_params: HtlcParams<Ethereum, asset::Ether>,
         htlc_deployment: &Deployed<ethereum::Transaction, ethereum::Address>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<Ethereum>> {
+    ) -> anyhow::Result<Redeemed<ethereum::Transaction>> {
         htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
     }
 }
@@ -104,7 +104,7 @@ async fn htlc_redeemed<A: Asset>(
     _htlc_params: HtlcParams<Ethereum, A>,
     htlc_deployment: &Deployed<ethereum::Transaction, ethereum::Address>,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<Redeemed<Ethereum>> {
+) -> anyhow::Result<Redeemed<ethereum::Transaction>> {
     let pattern = TransactionPattern {
         from_address: None,
         to_address: None,
@@ -255,7 +255,7 @@ mod erc20 {
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<ethereum::Transaction, ethereum::Address>,
             start_of_swap: NaiveDateTime,
-        ) -> anyhow::Result<Redeemed<Ethereum>> {
+        ) -> anyhow::Result<Redeemed<ethereum::Transaction>> {
             htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
         }
     }
