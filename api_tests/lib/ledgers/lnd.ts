@@ -49,7 +49,7 @@ export class Lnd {
         this.process.on("exit", (code: number, signal: number) => {
             this.logger.debug(
                 `cnd ${this.actorConfig.name} exited with ${code ||
-                    "signal " + signal}`
+                    `signal ${signal}`}`
             );
         });
 
@@ -132,11 +132,11 @@ export class Lnd {
     }
 
     public getGrpcSocket() {
-        return "127.0.0.1:" + this.actorConfig.lndRpcPort;
+        return `127.0.0.1:${this.actorConfig.lndRpcPort}`;
     }
 
     public getLightningSocket() {
-        return "127.0.0.1:" + this.actorConfig.lndP2pPort;
+        return `127.0.0.1:${this.actorConfig.lndP2pPort}`;
     }
 
     public async getWalletInfo(): Promise<WalletInfo> {

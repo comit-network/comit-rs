@@ -22,7 +22,8 @@
         "no-promise-as-boolean": true,
         "no-return-await": true,
         "no-string-throw": true,
-        "radix": true
+        "radix": true,
+        "restrict-plus-operands": true
     },
     "rulesDirectory": []
 }
