@@ -834,7 +834,7 @@ export class Actor {
             return (await this.cnd.fetch<SwapDetails>(swapUrl)).data;
         } catch (error) {
             await sleep(1000);
-            return await this.pollSwapDetails(swapUrl, iteration);
+            return this.pollSwapDetails(swapUrl, iteration);
         }
     }
 

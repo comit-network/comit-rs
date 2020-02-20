@@ -32,7 +32,7 @@ export async function timeout<T>(ms: number, promise: Promise<T>): Promise<T> {
     const timeout = new Promise<T>((_, reject) => {
         const id = setTimeout(() => {
             clearTimeout(id);
-            reject(new Error("timed out after " + ms + "ms"));
+            reject(new Error(`timed out after ${ms}ms`));
         }, ms);
     });
 

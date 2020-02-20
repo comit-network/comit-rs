@@ -46,7 +46,7 @@ export class ParityInstance implements LedgerInstance {
         );
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(`parity exited with ${code || "signal " + signal}`);
+            console.log(`parity exited with ${code || `signal ${signal}`}`);
         });
         const logReader = new LogReader(this.logDir + "/parity.log");
         await logReader.waitForLogMessage("Public node URL:");

@@ -49,7 +49,7 @@ export class Lnd {
         this.process.on("exit", (code: number, signal: number) => {
             this.logger.debug(
                 `cnd ${this.actorConfig.name} exited with ${code ||
-                    "signal " + signal}`
+                    `signal ${signal}`}`
             );
         });
 
@@ -132,11 +132,11 @@ export class Lnd {
     }
 
     public getGrpcSocket() {
-        return "127.0.0.1:" + this.actorConfig.lndRpcPort;
+        return `127.0.0.1:${this.actorConfig.lndRpcPort}`;
     }
 
     public getLightningSocket() {
-        return "127.0.0.1:" + this.actorConfig.lndP2pPort;
+        return `127.0.0.1:${this.actorConfig.lndP2pPort}`;
     }
 
     public async getWalletInfo(): Promise<WalletInfo> {
@@ -167,7 +167,7 @@ export class Lnd {
         ).channel_balance;
     }
 
-    public addPeer(peer: Lnd): Promise<void> {
+    public async addPeer(peer: Lnd): Promise<void> {
         this.logger.debug(
             `Connecting ${this.publicKey}@${this.getLightningSocket()} to ${
                 peer.publicKey
@@ -208,7 +208,7 @@ export class Lnd {
         });
     }
 
-    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
+    public async createInvoice(sats: number): Promise<CreateInvoiceResponse> {
         this.logger.debug(
             `${this.publicKey} is creating an invoice; quantity: ${sats}`
         );
@@ -218,7 +218,7 @@ export class Lnd {
         });
     }
 
-    public pay(invoice: string): Promise<PayResponse> {
+    public async pay(invoice: string): Promise<PayResponse> {
         this.logger.debug("Paying invoice: %s", invoice);
         return lnService.pay({
             lnd: this.authenticatedLndGrpc,

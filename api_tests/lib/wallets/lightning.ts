@@ -79,15 +79,15 @@ export class LightningWallet implements Wallet {
         );
     }
 
-    public addPeer(toWallet: LightningWallet) {
+    public async addPeer(toWallet: LightningWallet) {
         return this.inner.addPeer(toWallet.inner);
     }
 
-    public getPeers() {
+    public async getPeers() {
         return this.inner.getPeers();
     }
 
-    public getChannels() {
+    public async getChannels() {
         return this.inner.getChannels();
     }
 
@@ -135,7 +135,7 @@ export class LightningWallet implements Wallet {
      *
      * @param request A BOLT11-encoded payment request
      */
-    public pay(request: string) {
+    public async pay(request: string) {
         return this.inner.pay(request);
     }
 

@@ -69,7 +69,7 @@ export class CndInstance {
             if (global.verbose) {
                 console.log(
                     `cnd ${this.actorConfig.name} exited with ${code ||
-                        "signal " + signal}`
+                        `signal ${signal}`}`
                 );
             }
         });

@@ -41,7 +41,7 @@ export class BitcoindInstance implements LedgerInstance {
         });
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(`bitcoind exited with ${code || "signal " + signal}`);
+            console.log(`bitcoind exited with ${code || `signal ${signal}`}`);
         });
 
         const logReader = new LogReader(this.logPath());
