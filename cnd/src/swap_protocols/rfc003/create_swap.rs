@@ -94,7 +94,7 @@ pub async fn create_swap<D, A: ActorState>(
 async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
-    htlc_params: HtlcParams<AL, AA>,
+    htlc_params: HtlcParams<AL, AA, AL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
@@ -141,7 +141,7 @@ where
 async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEvent<AL, BL, AA, BA>>,
-    htlc_params: HtlcParams<BL, BA>,
+    htlc_params: HtlcParams<BL, BA, BL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
@@ -183,16 +183,16 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct HtlcParams<L: Ledger, A: Asset> {
+pub struct HtlcParams<L: Ledger, A: Asset, I> {
     pub asset: A,
     pub ledger: L,
-    pub redeem_identity: L::Identity,
-    pub refund_identity: L::Identity,
+    pub redeem_identity: I,
+    pub refund_identity: I,
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
-impl<L: Ledger, A: Asset> HtlcParams<L, A> {
+impl<L: Ledger, A: Asset> HtlcParams<L, A, L::Identity> {
     pub fn new_alpha_params<BL: Ledger, BA: Asset>(
         request: &rfc003::Request<L, BL, A, BA>,
         accept_response: &rfc003::Accept<L::Identity, BL::Identity>,
@@ -265,7 +265,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
         }
     }
 
-    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA> {
+    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA, AL::Identity> {
         HtlcParams {
             asset: self.alpha_asset.clone(),
             ledger: self.alpha_ledger,
@@ -276,7 +276,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
         }
     }
 
-    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA> {
+    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA, BL::Identity> {
         HtlcParams {
             asset: self.beta_asset.clone(),
             ledger: self.beta_ledger,

@@ -10,7 +10,9 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::erc20_htlc::Erc20Htlc;
 
-pub fn deploy_action(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> DeployContract {
+pub fn deploy_action(
+    htlc_params: HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>,
+) -> DeployContract {
     let chain_id = htlc_params.ledger.chain_id;
     let htlc = Erc20Htlc::from(htlc_params);
     let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
@@ -24,7 +26,7 @@ pub fn deploy_action(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> DeployC
 }
 
 pub fn fund_action(
-    htlc_params: HtlcParams<Ethereum, asset::Erc20>,
+    htlc_params: HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>,
     to_erc20_contract: crate::ethereum::Address,
     beta_htlc_location: crate::ethereum::Address,
 ) -> CallContract {

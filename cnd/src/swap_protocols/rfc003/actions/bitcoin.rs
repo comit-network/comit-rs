@@ -18,7 +18,9 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin
 {
     type FundActionOutput = SendToAddress;
 
-    fn fund_action(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self::FundActionOutput {
+    fn fund_action(
+        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+    ) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
         SendToAddress {
@@ -35,7 +37,7 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitco
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &Transaction,
@@ -59,7 +61,7 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RedeemAction<B, asset::Bitco
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin>,
+        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
