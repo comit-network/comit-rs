@@ -59,7 +59,19 @@ impl StateStore for Facade {
         self.state_store.get(key)
     }
 
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapEvent<A::AL, A::BL, A::AA, A::BA>) {
+    #[allow(clippy::type_complexity)]
+    fn update<A: ActorState>(
+        &self,
+        key: &SwapId,
+        update: SwapEvent<
+            <<A as ActorState>::AL as Ledger>::HtlcLocation,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::HtlcLocation,
+            <<A as ActorState>::BL as Ledger>::Transaction,
+            A::AA,
+            A::BA,
+        >,
+    ) {
         self.state_store.update::<A>(key, update)
     }
 }
