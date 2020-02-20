@@ -183,7 +183,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct HtlcParams<L: Ledger, A: Asset, I> {
+pub struct HtlcParams<L, A: Asset, I> {
     pub asset: A,
     pub ledger: L,
     pub redeem_identity: I,
