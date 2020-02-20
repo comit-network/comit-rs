@@ -15,7 +15,6 @@ import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
 import { SwapDetails } from "comit-sdk/dist/src/cnd";
-import { CreateInvoiceResponse } from "ln-service";
 
 declare var global: HarnessGlobal;
 
@@ -843,12 +842,15 @@ export class Actor {
         return this.wallets.lightning.createInvoice(sats);
     }
 
-    public async payLnInvoice(invoice: CreateInvoiceResponse) {
-        return this.wallets.lightning.pay(invoice);
+    public async payLnInvoice(request: string) {
+        return this.wallets.lightning.pay(request);
     }
 
-    public async assertLnInvoiceSettled(invoice: CreateInvoiceResponse) {
-        await this.wallets.lightning.assertInvoiceSettled(invoice);
+    public async assertLnInvoiceSettled(id: string) {
+        const resp = await this.wallets.lightning.getInvoice(id);
+        if (!resp.is_confirmed) {
+            throw new Error(`Invoice ${id} is not confirmed}`);
+        }
     }
 }
 
