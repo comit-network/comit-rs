@@ -51,7 +51,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }
@@ -65,7 +66,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }
@@ -79,7 +81,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }
@@ -101,7 +104,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }
@@ -115,7 +119,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }
@@ -129,7 +134,8 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
-                    type AcceptBody = crate::http_api::routes::rfc003::accept::OnlyRefund<BL>;
+                    type AcceptBody =
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
 
                     _match_role!(role, $fn)
                 }

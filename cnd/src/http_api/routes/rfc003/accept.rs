@@ -6,7 +6,7 @@ use crate::{
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
-            DeriveIdentities, Ledger,
+            DeriveIdentities,
         },
         SwapId,
     },
@@ -65,8 +65,8 @@ impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<ethereum::Addr
 }
 
 #[derive(Deserialize, Clone, Debug)]
-pub struct OnlyRefund<L: Ledger> {
-    pub beta_ledger_refund_identity: L::Identity,
+pub struct OnlyRefund<I> {
+    pub beta_ledger_refund_identity: I,
 }
 
 impl ListRequiredFields for Accept<bitcoin::Mainnet, Ethereum> {
@@ -97,7 +97,7 @@ fn bitcoin_ethereum_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<Ethereum> {
+impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<ethereum::Address> {
     fn into_accept_message(
         self,
         id: SwapId,
