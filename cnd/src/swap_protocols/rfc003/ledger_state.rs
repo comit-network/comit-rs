@@ -15,7 +15,7 @@ use strum_macros::EnumDiscriminants;
     derive(Serialize, Display),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
-pub enum LedgerState<L: Ledger, A: Asset> {
+pub enum LedgerState<L: Ledger, A> {
     NotDeployed,
     Deployed {
         htlc_location: L::HtlcLocation,
