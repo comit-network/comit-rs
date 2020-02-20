@@ -125,7 +125,14 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             role: swap.role.to_string(),
             counterparty: Http(swap.counterparty),
             state: match include_state {
-                IncludeState::Yes => Some(SwapState::<AL, BL> {
+                IncludeState::Yes => Some(SwapState::<
+                    <AL as Ledger>::Identity,
+                    <BL as Ledger>::Identity,
+                    <AL as Ledger>::HtlcLocation,
+                    <BL as Ledger>::HtlcLocation,
+                    <AL as Ledger>::Transaction,
+                    <BL as Ledger>::Transaction,
+                > {
                     communication,
                     alpha_ledger,
                     beta_ledger,
