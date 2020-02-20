@@ -20,15 +20,15 @@ use anyhow::Context;
 use chrono::NaiveDateTime;
 
 #[async_trait::async_trait]
-impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bitcoin>
-    for Cache<BitcoindConnector>
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network>
+    HtlcFunded<Bitcoin, asset::Bitcoin, ::bitcoin::Transaction> for Cache<BitcoindConnector>
 {
     async fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<Bitcoin>,
         _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Bitcoin, asset::Bitcoin>> {
+    ) -> anyhow::Result<Funded<::bitcoin::Transaction, asset::Bitcoin>> {
         let tx = &htlc_deployment.transaction;
         let asset =
             asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);

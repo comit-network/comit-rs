@@ -3,6 +3,7 @@ use crate::{
     btsieve::ethereum::{
         matching_transaction, Cache, Event, Topic, TransactionPattern, Web3Connector,
     },
+    ethereum,
     ethereum::{Address, CalculateContractAddress, Transaction, TransactionAndReceipt, H256},
     swap_protocols::{
         ledger::Ethereum,
@@ -28,13 +29,13 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcFunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
+impl HtlcFunded<Ethereum, asset::Ether, ethereum::Transaction> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Ethereum, asset::Ether>,
         deploy_transaction: &Deployed<Ethereum>,
         _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<Ethereum, asset::Ether>> {
+    ) -> anyhow::Result<Funded<ethereum::Transaction, asset::Ether>> {
         Ok(Funded {
             transaction: deploy_transaction.transaction.clone(),
             asset: asset::Ether::from_wei(deploy_transaction.transaction.value),
@@ -171,13 +172,13 @@ mod erc20 {
     use asset::ethereum::FromWei;
 
     #[async_trait::async_trait]
-    impl HtlcFunded<Ethereum, asset::Erc20> for Cache<Web3Connector> {
+    impl HtlcFunded<Ethereum, asset::Erc20, ethereum::Transaction> for Cache<Web3Connector> {
         async fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,
             htlc_deployment: &Deployed<Ethereum>,
             start_of_swap: NaiveDateTime,
-        ) -> anyhow::Result<Funded<Ethereum, asset::Erc20>> {
+        ) -> anyhow::Result<Funded<ethereum::Transaction, asset::Erc20>> {
             let connector = self.clone();
             let events = Some(vec![Event {
                 address: Some(htlc_params.asset.token_contract),

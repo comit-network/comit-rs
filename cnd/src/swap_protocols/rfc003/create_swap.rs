@@ -39,8 +39,8 @@ pub async fn create_swap<D, A: ActorState>(
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
 ) where
     D: StateStore
-        + HtlcFunded<A::AL, A::AA>
-        + HtlcFunded<A::BL, A::BA>
+        + HtlcFunded<A::AL, A::AA, <<A as ActorState>::AL as Ledger>::Transaction>
+        + HtlcFunded<A::BL, A::BA, <<A as ActorState>::BL as Ledger>::Transaction>
         + HtlcDeployed<A::AL, A::AA>
         + HtlcDeployed<A::BL, A::BA>
         + HtlcRedeemed<A::AL, A::AA>
@@ -102,7 +102,10 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
+    D: HtlcFunded<AL, AA, <AL as Ledger>::Transaction>
+        + HtlcDeployed<AL, AA>
+        + HtlcRedeemed<AL, AA>
+        + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -149,7 +152,10 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
-    D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
+    D: HtlcFunded<BL, BA, BL::Transaction>
+        + HtlcDeployed<BL, BA>
+        + HtlcRedeemed<BL, BA>
+        + HtlcRefunded<BL, BA>,
 {
     let deployed = dependencies
         .htlc_deployed(htlc_params.clone(), start_of_swap)
@@ -294,12 +300,12 @@ where
     BA: Asset,
 {
     AlphaDeployed(Deployed<AL>),
-    AlphaFunded(Funded<AL, AA>),
+    AlphaFunded(Funded<AL::Transaction, AA>),
     AlphaRedeemed(Redeemed<AL>),
     AlphaRefunded(Refunded<AL>),
 
     BetaDeployed(Deployed<BL>),
-    BetaFunded(Funded<BL, BA>),
+    BetaFunded(Funded<BL::Transaction, BA>),
     BetaRedeemed(Redeemed<BL>),
     BetaRefunded(Refunded<BL>),
 }

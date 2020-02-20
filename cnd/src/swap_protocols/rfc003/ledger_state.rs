@@ -68,7 +68,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_funded(&mut self, funded: Funded<L, A>) {
+    pub fn transition_to_funded(&mut self, funded: Funded<L::Transaction, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -87,7 +87,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L, A>) {
+    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<L::Transaction, A>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {

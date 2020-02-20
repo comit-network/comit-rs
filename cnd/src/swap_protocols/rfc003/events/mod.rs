@@ -10,8 +10,8 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Funded<L: Ledger, A: Asset> {
-    pub transaction: L::Transaction,
+pub struct Funded<T, A: Asset> {
+    pub transaction: T,
     pub asset: A,
 }
 
@@ -33,13 +33,13 @@ pub struct Refunded<L: Ledger> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcFunded<L: Ledger, A: Asset, T>: Send + Sync + Sized + 'static {
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
         htlc_deployment: &Deployed<L>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<L, A>>;
+    ) -> anyhow::Result<Funded<T, A>>;
 }
 
 #[async_trait::async_trait]
