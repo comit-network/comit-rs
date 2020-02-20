@@ -368,7 +368,6 @@ pub async fn handle_post_swap(
             );
             initiate_request(dependencies, id, peer, request).await?;
         }
-
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
             beta_ledger: HttpLedger::BitcoinRegtest,
