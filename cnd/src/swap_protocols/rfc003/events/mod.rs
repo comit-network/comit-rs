@@ -10,7 +10,7 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Funded<T, A: Asset> {
+pub struct Funded<T, A> {
     pub transaction: T,
     pub asset: A,
 }
