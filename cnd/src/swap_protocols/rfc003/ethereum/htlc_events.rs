@@ -29,7 +29,7 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcFunded<Ethereum, asset::Ether, ethereum::Transaction> for Cache<Web3Connector> {
+impl HtlcFunded<Ethereum, asset::Ether> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
         _htlc_params: HtlcParams<Ethereum, asset::Ether>,
@@ -172,7 +172,7 @@ mod erc20 {
     use asset::ethereum::FromWei;
 
     #[async_trait::async_trait]
-    impl HtlcFunded<Ethereum, asset::Erc20, ethereum::Transaction> for Cache<Web3Connector> {
+    impl HtlcFunded<Ethereum, asset::Erc20> for Cache<Web3Connector> {
         async fn htlc_funded(
             &self,
             htlc_params: HtlcParams<Ethereum, asset::Erc20>,

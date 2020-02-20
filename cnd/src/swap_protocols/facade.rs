@@ -105,12 +105,8 @@ where
 
 #[impl_template]
 #[async_trait::async_trait]
-impl
-    HtlcFunded<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        asset::Bitcoin,
-        ::bitcoin::Transaction,
-    > for Facade
+impl HtlcFunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asset::Bitcoin>
+    for Facade
 {
     async fn htlc_funded(
         &self,
@@ -176,7 +172,7 @@ impl HtlcRefunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asse
 
 #[impl_template]
 #[async_trait::async_trait]
-impl HtlcFunded<Ethereum, ((asset::Ether, asset::Erc20)), crate::ethereum::Transaction> for Facade {
+impl HtlcFunded<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
