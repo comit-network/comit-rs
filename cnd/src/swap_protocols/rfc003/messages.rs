@@ -66,9 +66,9 @@ pub enum Decision {
 
 /// Body of the rfc003 accept message
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
-    pub beta_ledger_refund_identity: BL::Identity,
-    pub alpha_ledger_redeem_identity: AL::Identity,
+pub struct AcceptResponseBody<AI, BI> {
+    pub beta_ledger_refund_identity: BI,
+    pub alpha_ledger_redeem_identity: AI,
 }
 
 /// Body of the rfc003 decline message

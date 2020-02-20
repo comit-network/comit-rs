@@ -26,6 +26,7 @@ use crate::{
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
+use serde::Serialize;
 use std::{
     fmt::{self, Debug, Display},
     string::ToString,
@@ -72,7 +73,7 @@ pub async fn handle_action(
 
                 tracing::trace!("received accept action: {}", swap_id);
 
-                let response = rfc003_accept_response::<AL, BL>(accept_message);
+                let response = rfc003_accept_response(accept_message);
                 channel.send(response).map_err(|_| {
                     anyhow::anyhow!(
                         "failed to send response through channel for swap {}",
@@ -180,9 +181,11 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     }
 }
 
-fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
-    message: rfc003::messages::Accept<AL::Identity, BL::Identity>,
-) -> Response {
+fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
+where
+    AI: Serialize,
+    BI: Serialize,
+{
     Response::empty()
         .with_header(
             "decision",
@@ -191,7 +194,7 @@ fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
                 .expect("Decision should not fail to serialize"),
         )
         .with_body(
-            serde_json::to_value(rfc003::messages::AcceptResponseBody::<AL, BL> {
+            serde_json::to_value(rfc003::messages::AcceptResponseBody::<AI, BI> {
                 beta_ledger_refund_identity: message.beta_ledger_refund_identity,
                 alpha_ledger_redeem_identity: message.alpha_ledger_redeem_identity,
             })

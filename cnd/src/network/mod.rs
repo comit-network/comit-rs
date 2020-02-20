@@ -763,9 +763,10 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AL, BL>>(
-                            response.body().clone(),
-                        ) {
+                        match serde_json::from_value::<
+                            rfc003::messages::AcceptResponseBody<AL::Identity, BL::Identity>,
+                        >(response.body().clone())
+                        {
                             Ok(body) => Ok(Ok(rfc003::Accept {
                                 swap_id: id,
                                 beta_ledger_refund_identity: body.beta_ledger_refund_identity,
