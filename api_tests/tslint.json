@@ -15,7 +15,8 @@
         "no-reference": false,
         "no-namespace": false,
         "only-arrow-functions": false,
-        "file-name-casing": [true, "snake-case"]
+        "file-name-casing": [true, "snake-case"],
+        "promise-function-async": true
     },
     "rulesDirectory": []
 }

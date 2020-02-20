@@ -76,7 +76,7 @@ export class BitcoinWallet implements Wallet {
         );
     }
 
-    public address(): Promise<string> {
+    public async address(): Promise<string> {
         return this.inner.getAddress();
     }
 

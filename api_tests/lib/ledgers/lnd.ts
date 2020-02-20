@@ -167,7 +167,7 @@ export class Lnd {
         ).channel_balance;
     }
 
-    public addPeer(peer: Lnd): Promise<void> {
+    public async addPeer(peer: Lnd): Promise<void> {
         this.logger.debug(
             `Connecting ${this.publicKey}@${this.getLightningSocket()} to ${
                 peer.publicKey
@@ -208,7 +208,7 @@ export class Lnd {
         });
     }
 
-    public createInvoice(sats: number): Promise<CreateInvoiceResponse> {
+    public async createInvoice(sats: number): Promise<CreateInvoiceResponse> {
         this.logger.debug(
             `${this.publicKey} is creating an invoice; quantity: ${sats}`
         );
@@ -218,7 +218,7 @@ export class Lnd {
         });
     }
 
-    public pay(invoice: string): Promise<PayResponse> {
+    public async pay(invoice: string): Promise<PayResponse> {
         this.logger.debug("Paying invoice: %s", invoice);
         return lnService.pay({
             lnd: this.authenticatedLndGrpc,
