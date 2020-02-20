@@ -91,11 +91,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunicatio
     }
 }
 
-impl<T, H, A: Asset> From<rfc003::LedgerState<T, H, A>> for LedgerState<H, T>
+impl<H, T, A: Asset> From<rfc003::LedgerState<H, T, A>> for LedgerState<H, T>
 where
-    rfc003::LedgerState<T, H, A>: Clone,
+    rfc003::LedgerState<H, T, A>: Clone,
 {
-    fn from(ledger_state: rfc003::LedgerState<T, H, A>) -> Self {
+    fn from(ledger_state: rfc003::LedgerState<H, T, A>) -> Self {
         use self::rfc003::LedgerState::*;
         let status = ledger_state.clone().into();
         match ledger_state {

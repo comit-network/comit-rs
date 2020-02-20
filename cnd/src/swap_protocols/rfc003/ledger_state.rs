@@ -14,7 +14,7 @@ use strum_macros::EnumDiscriminants;
     derive(Serialize, Display),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
-pub enum LedgerState<T, H, A> {
+pub enum LedgerState<H, T, A> {
     NotDeployed,
     Deployed {
         htlc_location: H,
@@ -49,7 +49,7 @@ pub enum LedgerState<T, H, A> {
     },
 }
 
-impl<T, H, A: Asset> LedgerState<T, H, A> {
+impl<T, H, A: Asset> LedgerState<H, T, A> {
     pub fn transition_to_deployed(&mut self, deployed: Deployed<T, H>) {
         let Deployed {
             transaction,

@@ -16,15 +16,15 @@ pub trait ActorState: Debug + Clone + Send + Sync + 'static {
     fn alpha_ledger_mut(
         &mut self,
     ) -> &mut LedgerState<
-        <Self::AL as Ledger>::Transaction,
         <Self::AL as Ledger>::HtlcLocation,
+        <Self::AL as Ledger>::Transaction,
         Self::AA,
     >;
     fn beta_ledger_mut(
         &mut self,
     ) -> &mut LedgerState<
-        <Self::BL as Ledger>::Transaction,
         <Self::BL as Ledger>::HtlcLocation,
+        <Self::BL as Ledger>::Transaction,
         Self::BA,
     >;
 
