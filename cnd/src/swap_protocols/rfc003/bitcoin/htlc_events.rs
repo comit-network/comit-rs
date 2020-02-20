@@ -113,7 +113,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRefunded<Bitcoin, asset::
         _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<Bitcoin>> {
+    ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: None,

@@ -167,7 +167,7 @@ impl HtlcRefunded<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)), asse
         htlc_params: HtlcParams<__TYPE0__, asset::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<__TYPE0__>> {
+    ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
         self.bitcoin_connector
             .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
             .await
@@ -226,7 +226,7 @@ impl HtlcRefunded<Ethereum, ((asset::Ether, asset::Erc20))> for Facade {
         htlc_params: HtlcParams<Ethereum, __TYPE0__>,
         htlc_deployment: &Deployed<crate::ethereum::Transaction, crate::ethereum::Address>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<Ethereum>> {
+    ) -> anyhow::Result<Refunded<crate::ethereum::Transaction>> {
         self.ethereum_connector
             .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
             .await

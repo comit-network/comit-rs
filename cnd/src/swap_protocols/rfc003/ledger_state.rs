@@ -132,7 +132,7 @@ impl<L: Ledger, A: Asset> LedgerState<L, A> {
         }
     }
 
-    pub fn transition_to_refunded(&mut self, refunded: Refunded<L>) {
+    pub fn transition_to_refunded(&mut self, refunded: Refunded<L::Transaction>) {
         let Refunded { transaction } = refunded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {

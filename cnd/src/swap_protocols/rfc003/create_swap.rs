@@ -302,12 +302,12 @@ where
     AlphaDeployed(Deployed<AL::Transaction, AL::HtlcLocation>),
     AlphaFunded(Funded<AL::Transaction, AA>),
     AlphaRedeemed(Redeemed<AL>),
-    AlphaRefunded(Refunded<AL>),
+    AlphaRefunded(Refunded<AL::Transaction>),
 
     BetaDeployed(Deployed<BL::Transaction, BL::HtlcLocation>),
     BetaFunded(Funded<BL::Transaction, BA>),
     BetaRedeemed(Redeemed<BL>),
-    BetaRefunded(Refunded<BL>),
+    BetaRefunded(Refunded<BL::Transaction>),
 }
 
 #[cfg(test)]
