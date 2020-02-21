@@ -32,10 +32,10 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
 /// This does _not_ represent the actual network message, that is why it also
 /// does not implement Serialize.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Accept<AL: Ledger, BL: Ledger> {
+pub struct Accept<AI, BI> {
     pub swap_id: SwapId,
-    pub beta_ledger_refund_identity: BL::Identity,
-    pub alpha_ledger_redeem_identity: AL::Identity,
+    pub beta_ledger_refund_identity: BI,
+    pub alpha_ledger_redeem_identity: AI,
 }
 
 /// High-level message that represents declining a Swap request
@@ -50,9 +50,9 @@ pub struct Decline {
 
 /// Body of the rfc003 request message
 #[derive(Debug, Deserialize, PartialEq, Serialize)]
-pub struct RequestBody<AL: Ledger, BL: Ledger> {
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
+pub struct RequestBody<AI, BI> {
+    pub alpha_ledger_refund_identity: AI,
+    pub beta_ledger_redeem_identity: BI,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
@@ -66,9 +66,9 @@ pub enum Decision {
 
 /// Body of the rfc003 accept message
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
-pub struct AcceptResponseBody<AL: Ledger, BL: Ledger> {
-    pub beta_ledger_refund_identity: BL::Identity,
-    pub alpha_ledger_redeem_identity: AL::Identity,
+pub struct AcceptResponseBody<AI, BI> {
+    pub beta_ledger_refund_identity: BI,
+    pub alpha_ledger_redeem_identity: AI,
 }
 
 /// Body of the rfc003 decline message
@@ -88,12 +88,12 @@ pub enum SwapDeclineReason {
     BadJsonField,
 }
 
-pub trait IntoAcceptMessage<AL: Ledger, BL: Ledger> {
+pub trait IntoAcceptMessage<AI, BI> {
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> Accept<AL, BL>;
+    ) -> Accept<AI, BI>;
 }
 
 #[cfg(test)]

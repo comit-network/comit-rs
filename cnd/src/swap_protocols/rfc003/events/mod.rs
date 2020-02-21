@@ -33,13 +33,13 @@ pub struct Refunded<T> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L: Ledger, A: Asset, T>: Send + Sync + Sized + 'static {
+pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<T, L::HtlcLocation>,
+        htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<T, A>>;
+    ) -> anyhow::Result<Funded<L::Transaction, A>>;
 }
 
 #[async_trait::async_trait]

@@ -13,8 +13,20 @@ pub trait ActorState: Debug + Clone + Send + Sync + 'static {
     fn expected_alpha_asset(&self) -> Self::AA;
     fn expected_beta_asset(&self) -> Self::BA;
 
-    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<Self::AL, Self::AA>;
-    fn beta_ledger_mut(&mut self) -> &mut LedgerState<Self::BL, Self::BA>;
+    fn alpha_ledger_mut(
+        &mut self,
+    ) -> &mut LedgerState<
+        <Self::AL as Ledger>::HtlcLocation,
+        <Self::AL as Ledger>::Transaction,
+        Self::AA,
+    >;
+    fn beta_ledger_mut(
+        &mut self,
+    ) -> &mut LedgerState<
+        <Self::BL as Ledger>::HtlcLocation,
+        <Self::BL as Ledger>::Transaction,
+        Self::BA,
+    >;
 
     /// Returns true if the current swap failed at some stage.
     fn swap_failed(&self) -> bool;

@@ -31,14 +31,17 @@ async fn initiate_request<AL, BL, AA, BA>(
     swap_request: rfc003::Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    Sqlite: Save<Request<AL, BL, AA, BA>> + Save<Accept<AL, BL>> + Save<Swap> + Save<Decline>,
+    Sqlite: Save<Request<AL, BL, AA, BA>>
+        + Save<Accept<AL::Identity, BL::Identity>>
+        + Save<Swap>
+        + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Asset,
     BA: Asset,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA>
-        + HtlcFunded<AL, AA, AL::Transaction>
-        + HtlcFunded<BL, BA, BL::Transaction>
+        + HtlcFunded<AL, AA>
+        + HtlcFunded<BL, BA>
         + HtlcDeployed<AL, AA>
         + HtlcDeployed<BL, BA>
         + HtlcRedeemed<AL, AA>
@@ -365,7 +368,6 @@ pub async fn handle_post_swap(
             );
             initiate_request(dependencies, id, peer, request).await?;
         }
-
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
             beta_ledger: HttpLedger::BitcoinRegtest,

@@ -19,8 +19,8 @@ pub type ResponseSender<AL: Ledger, BL: Ledger> =
 #[derivative(Debug)]
 pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
-    pub alpha_ledger_state: LedgerState<AL, AA>,
-    pub beta_ledger_state: LedgerState<BL, BA>,
+    pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
+    pub beta_ledger_state: LedgerState<BL::HtlcLocation, BL::Transaction, BA>,
     #[derivative(Debug = "ignore")]
     pub secret_source: Arc<dyn DeriveIdentities>,
     pub failed: bool, // Gets set on any error during the execution of a swap.
@@ -42,7 +42,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
 
     pub fn accepted(
         request: Request<AL, BL, AA, BA>,
-        response: Accept<AL, BL>,
+        response: Accept<AL::Identity, BL::Identity>,
         secret_source: impl DeriveIdentities,
     ) -> Self {
         Self {
@@ -91,11 +91,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, 
         self.swap_communication.request().beta_asset.clone()
     }
 
-    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL, AA> {
+    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL::HtlcLocation, AL::Transaction, AA> {
         &mut self.alpha_ledger_state
     }
 
-    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL, BA> {
+    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL::HtlcLocation, BL::Transaction, BA> {
         &mut self.beta_ledger_state
     }
 

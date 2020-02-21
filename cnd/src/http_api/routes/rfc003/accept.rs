@@ -46,12 +46,14 @@ fn ethereum_bitcoin_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<ethereum::Address> {
+impl IntoAcceptMessage<ethereum::Address, crate::bitcoin::PublicKey>
+    for OnlyRedeem<ethereum::Address>
+{
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<Ethereum, bitcoin::Regtest> {
+    ) -> messages::Accept<ethereum::Address, crate::bitcoin::PublicKey> {
         let beta_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_refund_identity(),
@@ -97,12 +99,14 @@ fn bitcoin_ethereum_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<ethereum::Address> {
+impl IntoAcceptMessage<crate::bitcoin::PublicKey, crate::ethereum::Address>
+    for OnlyRefund<ethereum::Address>
+{
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<bitcoin::Regtest, Ethereum> {
+    ) -> messages::Accept<crate::bitcoin::PublicKey, crate::ethereum::Address> {
         let alpha_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_redeem_identity(),

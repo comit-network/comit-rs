@@ -23,8 +23,8 @@ where
     D: StateStore
         + Clone
         + DeriveSwapSeed
-        + HtlcFunded<AL, AA, AL::Transaction>
-        + HtlcFunded<BL, BA, BL::Transaction>
+        + HtlcFunded<AL, AA>
+        + HtlcFunded<BL, BA>
         + HtlcDeployed<AL, AA>
         + HtlcDeployed<BL, BA>
         + HtlcRedeemed<AL, AA>

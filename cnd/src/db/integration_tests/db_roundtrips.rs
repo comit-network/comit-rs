@@ -8,7 +8,7 @@ use crate::{
     quickcheck::Quickcheck,
     swap_protocols::{
         ledger::Ethereum,
-        rfc003::{Accept, Request},
+        rfc003::{Accept, Ledger, Request},
     },
 };
 use std::path::Path;
@@ -22,7 +22,7 @@ macro_rules! db_roundtrip_test {
             fn [<roundtrip_test_ $alpha_ledger _ $beta_ledger _ $alpha_asset _ $beta_asset>]() {
                 fn prop(swap: Quickcheck<Swap>,
                         request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
-                        accept: Quickcheck<Accept<$alpha_ledger, $beta_ledger>>,
+                        accept: Quickcheck<Accept<<$alpha_ledger as Ledger>::Identity, <$beta_ledger as Ledger>::Identity>>,
                 ) -> anyhow::Result<bool> {
 
                     // unpack the swap from the generic newtype
@@ -72,7 +72,7 @@ macro_rules! db_roundtrip_test {
                 quickcheck::quickcheck(prop as fn(
                     Quickcheck<Swap>,
                     Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
-                    Quickcheck<Accept<$alpha_ledger, $beta_ledger>>,
+                    Quickcheck<Accept<<$alpha_ledger as Ledger>::Identity, <$beta_ledger as Ledger>::Identity>>,
                 ) -> anyhow::Result<bool>);
             }
         }

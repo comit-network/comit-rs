@@ -763,9 +763,10 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AL, BL>>(
-                            response.body().clone(),
-                        ) {
+                        match serde_json::from_value::<
+                            rfc003::messages::AcceptResponseBody<AL::Identity, BL::Identity>,
+                        >(response.body().clone())
+                        {
                             Ok(body) => Ok(Ok(rfc003::Accept {
                                 swap_id: id,
                                 beta_ledger_refund_identity: body.beta_ledger_refund_identity,
@@ -851,7 +852,7 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::messages::RequestBody<AL, BL>,
+    body: rfc003::messages::RequestBody<AL::Identity, BL::Identity>,
 ) -> rfc003::Request<AL, BL, AA, BA> {
     rfc003::Request::<AL, BL, AA, BA> {
         swap_id: id,
@@ -886,8 +887,8 @@ fn build_outbound_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA:
         .with_header("beta_asset", request.beta_asset.into().to_header()?)
         .with_header("protocol", protocol.to_header()?)
         .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
-            AL,
-            BL,
+            AL::Identity,
+            BL::Identity,
         > {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,

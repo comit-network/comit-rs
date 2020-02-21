@@ -20,8 +20,8 @@ use anyhow::Context;
 use chrono::NaiveDateTime;
 
 #[async_trait::async_trait]
-impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network>
-    HtlcFunded<Bitcoin, asset::Bitcoin, ::bitcoin::Transaction> for Cache<BitcoindConnector>
+impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bitcoin>
+    for Cache<BitcoindConnector>
 {
     async fn htlc_funded(
         &self,

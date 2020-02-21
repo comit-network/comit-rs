@@ -30,7 +30,8 @@ use crate::{asset::Asset, seed::SwapSeed};
 use ::bitcoin::secp256k1::SecretKey;
 
 /// Swap request response as received from peer node acting as Bob.
-pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
+pub type Response<AL, BL> =
+    Result<Accept<<AL as Ledger>::Identity, <BL as Ledger>::Identity>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
@@ -39,7 +40,7 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
     Accepted {
         request: Request<AL, BL, AA, BA>,
-        response: Accept<AL, BL>,
+        response: Accept<AL::Identity, BL::Identity>,
     },
     Declined {
         request: Request<AL, BL, AA, BA>,
