@@ -22,6 +22,8 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
+use serde::{de::DeserializeOwned, Serialize};
+use std::{fmt::Debug, hash::Hash};
 
 /// Returns a future that tracks the swap negotiated from the given request and
 /// accept response on both ledgers.
@@ -239,10 +241,8 @@ impl<L: Ledger, A: Asset> HtlcParams<L, A, L::Identity> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OngoingSwap<AL, BL, AA, BA>
+pub struct OngoingSwap<AL, BL, AI, BI, AA, BA>
 where
-    AL: Ledger,
-    BL: Ledger,
     AA: Asset,
     BA: Asset,
 {
@@ -251,20 +251,45 @@ where
     pub alpha_asset: AA,
     pub beta_asset: BA,
     pub hash_function: HashFunction,
-    pub alpha_ledger_redeem_identity: AL::Identity,
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
-    pub beta_ledger_refund_identity: BL::Identity,
+    pub alpha_ledger_redeem_identity: AI,
+    pub alpha_ledger_refund_identity: AI,
+    pub beta_ledger_redeem_identity: BI,
+    pub beta_ledger_refund_identity: BI,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
-    pub fn new(
-        request: Request<AL, BL, AA, BA>,
-        accept: Accept<AL::Identity, BL::Identity>,
-    ) -> Self {
+impl<AL, BL, AI, BI, AA, BA> OngoingSwap<AL, BL, AI, BI, AA, BA>
+where
+    AL: Ledger<Identity = AI>,
+    BL: Ledger<Identity = BI>,
+    AI: Clone
+        + Copy
+        + Debug
+        + Send
+        + Sync
+        + PartialEq
+        + Eq
+        + Hash
+        + 'static
+        + Serialize
+        + DeserializeOwned,
+    BI: Clone
+        + Copy
+        + Debug
+        + Send
+        + Sync
+        + PartialEq
+        + Eq
+        + Hash
+        + 'static
+        + Serialize
+        + DeserializeOwned,
+    AA: Asset,
+    BA: Asset,
+{
+    pub fn new(request: Request<AL, BL, AA, BA>, accept: Accept<AI, BI>) -> Self {
         OngoingSwap {
             alpha_ledger: request.alpha_ledger,
             beta_ledger: request.beta_ledger,
@@ -281,7 +306,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
         }
     }
 
-    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA, AL::Identity> {
+    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA, AI> {
         HtlcParams {
             asset: self.alpha_asset.clone(),
             ledger: self.alpha_ledger,
@@ -292,7 +317,7 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
         }
     }
 
-    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA, BL::Identity> {
+    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA, BI> {
         HtlcParams {
             asset: self.beta_asset.clone(),
             ledger: self.beta_ledger,
