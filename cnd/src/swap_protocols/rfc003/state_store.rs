@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    rfc003::{create_swap::SwapEvent, ActorState},
+    rfc003::{create_swap::SwapEvent, ActorState, Ledger},
     swap_id::SwapId,
 };
 use std::{any::Any, cmp::Ordering, collections::HashMap, sync::Mutex};
@@ -10,10 +10,22 @@ pub enum Error {
     InvalidType,
 }
 
+#[allow(clippy::type_complexity)]
 pub trait StateStore: Send + Sync + 'static {
     fn insert<A: ActorState>(&self, key: SwapId, value: A);
     fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error>;
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapEvent<A::AL, A::BL, A::AA, A::BA>);
+    fn update<A: ActorState>(
+        &self,
+        key: &SwapId,
+        update: SwapEvent<
+            <<A as ActorState>::AL as Ledger>::HtlcLocation,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::HtlcLocation,
+            <<A as ActorState>::BL as Ledger>::Transaction,
+            A::AA,
+            A::BA,
+        >,
+    );
 }
 
 #[derive(Default, Debug)]
@@ -38,7 +50,19 @@ impl StateStore for InMemoryStateStore {
         }
     }
 
-    fn update<A: ActorState>(&self, key: &SwapId, event: SwapEvent<A::AL, A::BL, A::AA, A::BA>) {
+    #[allow(clippy::type_complexity)]
+    fn update<A: ActorState>(
+        &self,
+        key: &SwapId,
+        event: SwapEvent<
+            <<A as ActorState>::AL as Ledger>::HtlcLocation,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::HtlcLocation,
+            <<A as ActorState>::BL as Ledger>::Transaction,
+            A::AA,
+            A::BA,
+        >,
+    ) {
         let mut actor_state = match self.get::<A>(key) {
             Ok(Some(actor_state)) => actor_state,
             Ok(None) => {

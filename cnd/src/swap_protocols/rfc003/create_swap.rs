@@ -59,8 +59,18 @@ pub async fn create_swap<D, A: ActorState>(
         let dependencies = dependencies.clone();
         |co| async move {
             future::try_join(
-                watch_alpha_ledger(&dependencies, &co, swap.alpha_htlc_params(), at),
-                watch_beta_ledger(&dependencies, &co, swap.beta_htlc_params(), at),
+                watch_alpha_ledger::<_, A::AL, _, A::BL, _>(
+                    &dependencies,
+                    &co,
+                    swap.alpha_htlc_params(),
+                    at,
+                ),
+                watch_beta_ledger::<_, A::AL, _, A::BL, _>(
+                    &dependencies,
+                    &co,
+                    swap.beta_htlc_params(),
+                    at,
+                ),
             )
             .await
         }
@@ -93,7 +103,7 @@ pub async fn create_swap<D, A: ActorState>(
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
-    co: &Co<SwapEvent<AL, BL, AA, BA>>,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<AL, AA, AL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
@@ -140,7 +150,7 @@ where
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
-    co: &Co<SwapEvent<AL, BL, AA, BA>>,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<BL, BA, BL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
@@ -288,35 +298,44 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
     }
 }
 
+pub type SwapEventOnLedger<AL, BL, AA, BA> = SwapEvent<
+    <AL as Ledger>::HtlcLocation,
+    <AL as Ledger>::Transaction,
+    <BL as Ledger>::HtlcLocation,
+    <BL as Ledger>::Transaction,
+    AA,
+    BA,
+>;
+
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent<AL, BL, AA, BA>
+pub enum SwapEvent<AH, AT, BH, BT, AA, BA>
 where
-    AL: Ledger,
-    BL: Ledger,
     AA: Asset,
     BA: Asset,
 {
-    AlphaDeployed(Deployed<AL::Transaction, AL::HtlcLocation>),
-    AlphaFunded(Funded<AL::Transaction, AA>),
-    AlphaRedeemed(Redeemed<AL::Transaction>),
-    AlphaRefunded(Refunded<AL::Transaction>),
+    AlphaDeployed(Deployed<AT, AH>),
+    AlphaFunded(Funded<AT, AA>),
+    AlphaRedeemed(Redeemed<AT>),
+    AlphaRefunded(Refunded<AT>),
 
-    BetaDeployed(Deployed<BL::Transaction, BL::HtlcLocation>),
-    BetaFunded(Funded<BL::Transaction, BA>),
-    BetaRedeemed(Redeemed<BL::Transaction>),
-    BetaRefunded(Refunded<BL::Transaction>),
+    BetaDeployed(Deployed<BT, BH>),
+    BetaFunded(Funded<BT, BA>),
+    BetaRedeemed(Redeemed<BT>),
+    BetaRefunded(Refunded<BT>),
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{asset, ethereum, swap_protocols::ledger};
+    use crate::{asset, ethereum};
 
     #[test]
     fn swap_event_should_render_to_nice_string() {
         let event = SwapEvent::<
-            ledger::bitcoin::Mainnet,
-            ledger::Ethereum,
+            ::bitcoin::OutPoint,
+            ::bitcoin::Transaction,
+            crate::ethereum::Address,
+            crate::ethereum::Transaction,
             asset::Bitcoin,
             asset::Ether,
         >::BetaDeployed(Deployed {

@@ -11,7 +11,7 @@ use crate::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             self,
-            create_swap::{HtlcParams, SwapEvent},
+            create_swap::{HtlcParams, SwapEventOnLedger},
             events::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
@@ -59,7 +59,11 @@ impl StateStore for Facade {
         self.state_store.get(key)
     }
 
-    fn update<A: ActorState>(&self, key: &SwapId, update: SwapEvent<A::AL, A::BL, A::AA, A::BA>) {
+    fn update<A: ActorState>(
+        &self,
+        key: &SwapId,
+        update: SwapEventOnLedger<<A as ActorState>::AL, <A as ActorState>::BL, A::AA, A::BA>,
+    ) {
         self.state_store.update::<A>(key, update)
     }
 }
