@@ -717,11 +717,13 @@ export class Actor {
             this.alphaLedger.name !== "lightning" &&
             this.betaLedger.name !== "lightning"
         ) {
-            this.comitClient = new ComitClient(
-                this.wallets.getWalletForLedger("bitcoin").inner,
-                this.wallets.getWalletForLedger("ethereum").inner,
-                this.cnd
-            );
+            this.comitClient = new ComitClient(this.cnd)
+                .withBitcoinWallet(
+                    this.wallets.getWalletForLedger("bitcoin").inner
+                )
+                .withEthereumWallet(
+                    this.wallets.getWalletForLedger("ethereum").inner
+                );
         }
     }
 
