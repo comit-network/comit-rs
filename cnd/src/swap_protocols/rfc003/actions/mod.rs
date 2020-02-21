@@ -53,11 +53,11 @@ pub trait RedeemAction<L: Ledger, A: Asset> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Accept<AL: Ledger, BL: Ledger> {
+pub struct Accept<AL, BL> {
     phantom_data: PhantomData<(AL, BL)>,
 }
 
-impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
+impl<AL, BL> Accept<AL, BL> {
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,
@@ -66,11 +66,11 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Decline<AL: Ledger, BL: Ledger> {
+pub struct Decline<AL, BL> {
     phantom_data: PhantomData<(AL, BL)>,
 }
 
-impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
+impl<AL, BL> Decline<AL, BL> {
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,
