@@ -101,12 +101,9 @@ pub async fn create_swap<D, A: ActorState>(
 /// Returns a future that waits for events on alpha ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-#[allow(clippy::type_complexity)]
 async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
-    co: &Co<
-        SwapEvent<AL::HtlcLocation, AL::Transaction, BL::HtlcLocation, BL::Transaction, AA, BA>,
-    >,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<AL, AA, AL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
@@ -151,12 +148,9 @@ where
 /// Returns a future that waits for events on beta ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-#[allow(clippy::type_complexity)]
 async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
-    co: &Co<
-        SwapEvent<AL::HtlcLocation, AL::Transaction, BL::HtlcLocation, BL::Transaction, AA, BA>,
-    >,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
     htlc_params: HtlcParams<BL, BA, BL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
@@ -303,6 +297,15 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> OngoingSwap<AL, BL, AA, BA> {
         }
     }
 }
+
+pub type SwapEventOnLedger<AL, BL, AA, BA> = SwapEvent<
+    <AL as Ledger>::HtlcLocation,
+    <AL as Ledger>::Transaction,
+    <BL as Ledger>::HtlcLocation,
+    <BL as Ledger>::Transaction,
+    AA,
+    BA,
+>;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum SwapEvent<AH, AT, BH, BT, AA, BA>
