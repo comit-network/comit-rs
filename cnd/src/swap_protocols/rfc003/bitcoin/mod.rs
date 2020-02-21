@@ -20,8 +20,10 @@ impl<B: ledger::Bitcoin> Ledger for B {
     type Transaction = Transaction;
 }
 
-impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin>> for BitcoinHtlc {
-    fn from(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self {
+impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>>
+    for BitcoinHtlc
+{
+    fn from(htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
         let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
 
@@ -37,7 +39,9 @@ impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin>> for BitcoinHtlc {
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> HtlcParams<B, asset::Bitcoin> {
+impl<B: ledger::Bitcoin + ledger::bitcoin::Network>
+    HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>
+{
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(B::network())
     }

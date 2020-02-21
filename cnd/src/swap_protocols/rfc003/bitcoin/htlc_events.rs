@@ -25,7 +25,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bi
 {
     async fn htlc_funded(
         &self,
-        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<::bitcoin::Transaction, asset::Bitcoin>> {
@@ -46,7 +46,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcDeployed<Bitcoin, asset::
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin, crate::bitcoin::PublicKey>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
         let connector = self.clone();
@@ -80,7 +80,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRedeemed<Bitcoin, asset::
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        htlc_params: HtlcParams<Bitcoin, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
@@ -110,7 +110,7 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRefunded<Bitcoin, asset::
 {
     async fn htlc_refunded(
         &self,
-        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin>,
+        _htlc_params: HtlcParams<Bitcoin, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {

@@ -46,8 +46,8 @@ impl Ledger for Ethereum {
     type Transaction = Transaction;
 }
 
-impl From<HtlcParams<Ethereum, asset::Ether>> for EtherHtlc {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>> for EtherHtlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>) -> Self {
         let refund_address =
             blockchain_contracts::ethereum::Address(htlc_params.refund_identity.into());
         let redeem_address =
@@ -62,14 +62,14 @@ impl From<HtlcParams<Ethereum, asset::Ether>> for EtherHtlc {
     }
 }
 
-impl HtlcParams<Ethereum, asset::Ether> {
+impl HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address> {
     pub fn bytecode(&self) -> Bytes {
         EtherHtlc::from(self.clone()).into()
     }
 }
 
-impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>> for Erc20Htlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>) -> Self {
         let refund_address =
             blockchain_contracts::ethereum::Address(htlc_params.refund_identity.into());
         let redeem_address =
@@ -88,7 +88,7 @@ impl From<HtlcParams<Ethereum, asset::Erc20>> for Erc20Htlc {
     }
 }
 
-impl HtlcParams<Ethereum, asset::Erc20> {
+impl HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address> {
     pub fn bytecode(self) -> Bytes {
         Erc20Htlc::from(self).into()
     }
