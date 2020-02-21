@@ -1,10 +1,10 @@
-use crate::{
-    handler::{Error, ProtocolOutEvent},
-    protocol::Frames,
-    ComitHandlerEvent,
-};
+use crate::{handler::Error, protocol::Frames, ComitHandlerEvent};
 use libp2p::swarm::ProtocolsHandlerEvent;
-use std::collections::{HashMap, HashSet};
+use std::{
+    collections::{HashMap, HashSet},
+    pin::Pin,
+    task::Context,
+};
 
 pub mod inbound;
 pub mod outbound;
@@ -18,7 +18,11 @@ pub struct Advanced<S> {
 }
 
 pub trait Advance: Sized {
-    fn advance(self, known_headers: &HashMap<String, HashSet<String>>) -> Advanced<Self>;
+    fn advance(
+        self,
+        known_headers: &HashMap<String, HashSet<String>>,
+        cx: &mut Context<'_>,
+    ) -> Advanced<Self>;
 }
 
 impl<S> Advanced<S> {
@@ -38,20 +42,16 @@ impl<S> Advanced<S> {
 }
 
 impl<S: CloseStream> Advanced<S> {
-    fn error<E: Into<Error>>(stream: Frames<S::TSubstream>, error: E) -> Self {
+    fn error<E: Into<Error>>(stream: Pin<Box<Frames>>, error: E) -> Self {
         let error = error.into();
 
         Self {
             new_state: Some(S::close(stream)),
-            event: Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
-                error,
-            ))),
+            event: Some(ProtocolsHandlerEvent::Close(error)),
         }
     }
 }
 
 pub trait CloseStream: Sized {
-    type TSubstream;
-
-    fn close(stream: Frames<Self::TSubstream>) -> Self;
+    fn close(stream: Pin<Box<Frames>>) -> Self;
 }

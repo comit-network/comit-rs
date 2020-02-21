@@ -1,26 +1,22 @@
 use crate::{
     frame::{OutboundRequest, Response},
     handler::{
-        self, InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent,
-        ProtocolOutEvent,
+        InboundMessage, OutboundMessage, PendingInboundResponse, ProtocolInEvent, ProtocolOutEvent,
     },
     ComitHandler, PendingInboundRequest, PendingOutboundRequest,
 };
 use futures::{
-    stream::Stream,
-    sync::mpsc::{self, UnboundedReceiver, UnboundedSender},
-    Async, Future,
+    channel::mpsc::{self, UnboundedReceiver, UnboundedSender},
+    Future, StreamExt, TryFutureExt,
 };
-use handler::Error;
 use libp2p::{
     core::{ConnectedPoint, Multiaddr, PeerId},
     swarm::{NetworkBehaviour, NetworkBehaviourAction, PollParameters},
 };
 use std::{
     collections::{hash_map::Entry, HashMap, HashSet},
-    marker::PhantomData,
+    task::{Context, Poll},
 };
-use tokio::prelude::{AsyncRead, AsyncWrite};
 
 #[derive(Debug)]
 enum ConnectionState {
@@ -45,9 +41,7 @@ pub enum BehaviourOutEvent {
 
 /// Network behaviour that handles the COMIT messaging protocol.
 #[derive(Debug)]
-pub struct Comit<TSubstream> {
-    marker: PhantomData<TSubstream>,
-
+pub struct Comit {
     events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
     events: UnboundedReceiver<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
 
@@ -55,14 +49,13 @@ pub struct Comit<TSubstream> {
     connections: HashMap<PeerId, ConnectionState>,
 }
 
-impl<TSubstream> Comit<TSubstream> {
+impl Comit {
     pub fn new(known_request_headers: HashMap<String, HashSet<String>>) -> Self {
-        let (sender, receiver) = mpsc::unbounded();
+        let (events_sender, events) = mpsc::unbounded();
 
         Self {
-            marker: PhantomData,
-            events_sender: sender,
-            events: receiver,
+            events_sender,
+            events,
             known_request_headers,
             connections: HashMap::new(),
         }
@@ -72,9 +65,9 @@ impl<TSubstream> Comit<TSubstream> {
         &mut self,
         dial_information: (PeerId, Option<Multiaddr>),
         request: OutboundRequest,
-    ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+    ) -> impl Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
         let (peer_id, address_hint) = dial_information;
-        let (sender, receiver) = futures::oneshot();
+        let (sender, receiver) = futures::channel::oneshot::channel();
 
         let request = PendingOutboundRequest {
             request,
@@ -129,11 +122,11 @@ impl<TSubstream> Comit<TSubstream> {
             }
         }
 
-        Box::new(receiver.map_err(|_| {
+        receiver.map_err(|_| {
             tracing::warn!(
                 "Sender of response future was unexpectedly dropped before response was received."
             )
-        }))
+        })
     }
 
     pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
@@ -152,11 +145,8 @@ impl<TSubstream> Comit<TSubstream> {
     }
 }
 
-impl<TSubstream> NetworkBehaviour for Comit<TSubstream>
-where
-    TSubstream: AsyncRead + AsyncWrite,
-{
-    type ProtocolsHandler = ComitHandler<TSubstream>;
+impl NetworkBehaviour for Comit {
+    type ProtocolsHandler = ComitHandler;
     type OutEvent = BehaviourOutEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
@@ -264,70 +254,16 @@ where
             })) => {
                 let _ = channel.send(response);
             }
-            ProtocolOutEvent::Error(e) => log_error(e, peer),
         }
     }
 
     fn poll(
         &mut self,
+        cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
-    ) -> Async<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>> {
+    ) -> Poll<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>> {
         self.events
-            .poll()
-            .expect("unbounded channel can never fail")
+            .poll_next_unpin(cx)
             .map(|item| item.expect("unbounded channel never ends"))
-    }
-}
-
-// tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
-#[allow(clippy::cognitive_complexity)]
-fn log_error(err: Error, peer: PeerId) {
-    use tracing::error;
-
-    match err {
-        Error::MalformedJson(error) => {
-            error!("failure in communication with {}: {:?}", peer, error);
-        }
-        Error::DroppedResponseSender(_) => {
-            // The `oneshot::Sender` is the only way to send a RESPONSE as an answer to the
-            // SWAP REQUEST. A dropped `Sender` therefore is either a bug in
-            // the application or the application consciously does not want to answer the
-            // SWAP REQUEST. In either way, we should signal this to the remote peer by
-            // closing the substream.
-            error!(
-                "user dropped `oneshot::Sender` for response, closing substream with peer {}",
-                peer
-            );
-        }
-        Error::UnknownMandatoryHeader(error) => {
-            error!(
-                "received frame with unexpected mandatory header from {}, {:?}",
-                peer, error
-            );
-        }
-        Error::UnknownRequestType(error) => {
-            error!(
-                "received frame with unknown request type from {}, {:?}",
-                peer, error
-            );
-        }
-        Error::UnknownFrameType => {
-            error!("received frame with unknown type from {}", peer);
-        }
-        Error::UnexpectedFrame(frame) => {
-            error!(
-                "received unexpected frame of type from {}, {:?}",
-                peer, frame
-            );
-        }
-        Error::MalformedFrame(error) => {
-            error!("received malformed frame from {}, {:?}", peer, error);
-        }
-        Error::UnexpectedEOF => {
-            error!(
-                "substream with {} unexpectedly ended while waiting for messages",
-                peer
-            );
-        }
     }
 }

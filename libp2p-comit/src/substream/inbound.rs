@@ -5,50 +5,52 @@ use crate::{
     substream::{Advance, Advanced, CloseStream},
     Frame, FrameType, IntoFrame,
 };
-use futures::sync::oneshot;
+use futures::{channel::oneshot, task::Poll, Future, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
-use std::collections::{HashMap, HashSet};
-use tokio::prelude::*;
+use std::{
+    collections::{HashMap, HashSet},
+    pin::Pin,
+    task::Context,
+};
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
 /// States of an inbound substream i.e. from peer node to us.
-pub enum State<TSubstream> {
+pub enum State {
     /// Waiting for a request from the remote.
-    WaitingMessage { stream: Frames<TSubstream> },
+    WaitingMessage { stream: Pin<Box<Frames>> },
     /// Waiting for the user to send the response back to us.
     WaitingUser {
-        receiver: oneshot::Receiver<Response>,
-        stream: Frames<TSubstream>,
+        receiver: Pin<Box<oneshot::Receiver<Response>>>,
+        stream: Pin<Box<Frames>>,
     },
     /// Waiting to send an answer back to the remote.
     WaitingSend {
         msg: Frame,
-        stream: Frames<TSubstream>,
+        stream: Pin<Box<Frames>>,
     },
     /// Waiting to flush an answer back to the remote.
-    WaitingFlush { stream: Frames<TSubstream> },
+    WaitingFlush { stream: Pin<Box<Frames>> },
     /// The substream is being closed.
-    WaitingClose { stream: Frames<TSubstream> },
+    WaitingClose { stream: Pin<Box<Frames>> },
 }
 
-impl<TSubstream> CloseStream for State<TSubstream> {
-    type TSubstream = TSubstream;
-
-    fn close(stream: Frames<Self::TSubstream>) -> Self {
+impl CloseStream for State {
+    fn close(stream: Pin<Box<Frames>>) -> Self {
         State::WaitingClose { stream }
     }
 }
 
-impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
+impl Advance for State {
     fn advance(
         self,
         known_headers: &HashMap<String, HashSet<String>>,
-    ) -> Advanced<State<TSubstream>> {
+        cx: &mut Context<'_>,
+    ) -> Advanced<State> {
         use self::State::*;
         match self {
-            WaitingMessage { mut stream } => match stream.poll() {
-                Ok(Async::Ready(Some(frame))) => match frame.frame_type {
+            WaitingMessage { mut stream } => match stream.as_mut().poll_next(cx) {
+                Poll::Ready(Some(Ok(frame))) => match frame.frame_type {
                     FrameType::Request => {
                         let request =
                             serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
@@ -72,7 +74,10 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                             Ok(request) => {
                                 let (sender, receiver) = oneshot::channel();
                                 Advanced {
-                                    new_state: Some(WaitingUser { receiver, stream }),
+                                    new_state: Some(WaitingUser {
+                                        receiver: Box::pin(receiver),
+                                        stream,
+                                    }),
                                     event: Some(ProtocolsHandlerEvent::Custom(
                                         ProtocolOutEvent::Message(InboundMessage::Request(
                                             PendingInboundRequest {
@@ -91,38 +96,37 @@ impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
                     }
                     FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
                 },
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingMessage { stream }),
-                Ok(Async::Ready(None)) => Advanced::error(stream, handler::Error::UnexpectedEOF),
-                Err(error) => Advanced::error(stream, error),
+                Poll::Ready(Some(Err(error))) => {
+                    Advanced::error(stream, handler::Error::MalformedJson(error))
+                }
+                Poll::Pending => Advanced::transition_to(WaitingMessage { stream }),
+                Poll::Ready(None) => Advanced::error(stream, handler::Error::UnexpectedEOF),
             },
             WaitingUser {
                 mut receiver,
                 stream,
-            } => match receiver.poll() {
-                Ok(Async::Ready(response)) => WaitingSend {
+            } => match receiver.as_mut().poll(cx) {
+                Poll::Ready(Ok(response)) => WaitingSend {
                     msg: response.into_frame(),
                     stream,
                 }
-                .advance(known_headers),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingUser { receiver, stream }),
+                .advance(known_headers, cx),
+                Poll::Pending => Advanced::transition_to(WaitingUser { receiver, stream }),
+                Poll::Ready(Err(error)) => Advanced::error(stream, error),
+            },
+            WaitingSend { msg, mut stream } => match stream.as_mut().start_send(msg) {
+                Ok(()) => WaitingFlush { stream }.advance(known_headers, cx),
                 Err(error) => Advanced::error(stream, error),
             },
-            WaitingSend { msg, mut stream } => match stream.start_send(msg) {
-                Ok(AsyncSink::Ready) => WaitingFlush { stream }.advance(known_headers),
-                Ok(AsyncSink::NotReady(msg)) => {
-                    Advanced::transition_to(WaitingSend { msg, stream })
-                }
-                Err(error) => Advanced::error(stream, error),
+            WaitingFlush { mut stream } => match stream.as_mut().poll_flush(cx) {
+                Poll::Ready(Ok(())) => Advanced::transition_to(WaitingClose { stream }),
+                Poll::Ready(Err(error)) => Advanced::error(stream, error),
+                Poll::Pending => Advanced::transition_to(WaitingFlush { stream }),
             },
-            WaitingFlush { mut stream } => match stream.poll_complete() {
-                Ok(Async::Ready(_)) => Advanced::transition_to(WaitingClose { stream }),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush { stream }),
-                Err(error) => Advanced::error(stream, error),
-            },
-            WaitingClose { mut stream } => match stream.close() {
-                Ok(Async::Ready(_)) => Advanced::end(),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingClose { stream }),
-                Err(error) => Advanced::error(stream, error),
+            WaitingClose { mut stream } => match stream.as_mut().poll_close(cx) {
+                Poll::Ready(Ok(())) => Advanced::end(),
+                Poll::Pending => Advanced::transition_to(WaitingClose { stream }),
+                Poll::Ready(Err(error)) => Advanced::error(stream, error),
             },
         }
     }

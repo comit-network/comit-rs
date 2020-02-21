@@ -24,7 +24,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures::sync::oneshot;
+use futures_core::channel::oneshot::Sender;
 use impl_template::impl_template;
 use libp2p::{Multiaddr, PeerId};
 use libp2p_comit::frame::Response;
