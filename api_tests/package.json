@@ -26,7 +26,7 @@
         "@types/glob": "^7.1.1",
         "@types/log4js": "^2.3.5",
         "@types/mocha": "^7.0.1",
-        "@types/node": "^10.14",
+        "@types/node": "^13.7",
         "@types/rimraf": "^2.0.3",
         "@types/scrypt": "^6.0.0",
         "@types/tail": "^2.0.0",
