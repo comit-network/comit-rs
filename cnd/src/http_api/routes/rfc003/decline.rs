@@ -1,6 +1,6 @@
 use crate::{
     http_api::action::ListRequiredFields,
-    swap_protocols::rfc003::{actions::Decline, messages::SwapDeclineReason, Ledger},
+    swap_protocols::rfc003::{actions::Decline, messages::SwapDeclineReason},
 };
 use serde::Deserialize;
 
@@ -9,7 +9,7 @@ pub struct DeclineBody {
     pub reason: Option<HttpApiSwapDeclineReason>,
 }
 
-impl<AL: Ledger, BL: Ledger> ListRequiredFields for Decline<AL, BL> {
+impl<AL, BL> ListRequiredFields for Decline<AL, BL> {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![siren::Field {
             name: "reason".to_owned(),
