@@ -60,13 +60,22 @@ interface LedgerConnectors {
     ethereum?: EthereumConnector;
 }
 
+interface Parity {
+    node_url: string;
+}
+
 interface EthereumConnector {
+    chain_id: number;
+    parity: Parity;
+}
+
+interface Bitcoind {
     node_url: string;
 }
 
 interface BitcoinConnector {
-    node_url: string;
     network: string;
+    bitcoind: Bitcoind;
 }
 
 export const ALICE_CONFIG = new E2ETestActorConfig(
@@ -107,14 +116,19 @@ function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
 
 function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     return {
-        node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+        bitcoind: {
+            node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+        },
         network: nodeConfig.network,
     };
 }
 
 function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
     return {
-        node_url: nodeConfig.rpc_url,
+        chain_id: 17,
+        parity: {
+            node_url: nodeConfig.rpc_url,
+        },
     };
 }
 
