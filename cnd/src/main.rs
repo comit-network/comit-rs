@@ -24,7 +24,6 @@ use cnd::{
     seed::RootSeed,
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
-use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
@@ -96,12 +95,7 @@ fn main() -> anyhow::Result<()> {
         db: database,
     };
 
-    runtime.block_on(
-        load_swaps::load_swaps_from_database(deps.clone())
-            .boxed()
-            .compat(),
-    )?;
-
+    runtime.block_on_std(load_swaps::load_swaps_from_database(deps.clone()))?;
     runtime.spawn_std(spawn_warp_instance(settings, deps));
 
     // Block the current thread.
