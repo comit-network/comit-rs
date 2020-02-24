@@ -1,6 +1,6 @@
 use chrono::offset::Utc;
 use cnd::{
-    btsieve::ethereum::{matching_transaction, TransactionPattern, Web3Connector},
+    btsieve::ethereum::{matching_transaction_and_receipt, Web3Connector},
     ethereum::{TransactionRequest, U256},
 };
 use futures_core::compat::Future01CompatExt;
@@ -19,7 +19,7 @@ use web3::{
 /// from the parity dev account. Afterwards we verify that the tx hash of
 /// the sent tx equals the one that we found through btsieve.
 #[tokio::test]
-async fn ethereum_transaction_pattern_e2e_test() {
+async fn ethereum_transaction_matching_smoke_test() {
     let cli = clients::Cli::default();
     let container = cli.run(images::parity_parity::ParityEthereum::default());
     let start_of_swap = Utc::now().naive_local();
@@ -73,28 +73,17 @@ async fn ethereum_transaction_pattern_e2e_test() {
         .await
         .expect("failed to send money to address");
 
-    let pattern = TransactionPattern {
-        from_address: None,
-        to_address: Some(target_address),
-        is_contract_creation: None,
-        transaction_data: None,
-        transaction_data_length: None,
-        events: None,
-    };
-    let matched_transaction = tokio::time::timeout(
+    let (matched_transaction, _receipt) = tokio::time::timeout(
         Duration::from_secs(5),
-        matching_transaction(connector, pattern, start_of_swap),
+        matching_transaction_and_receipt(connector, start_of_swap, |transaction| {
+            transaction.to == Some(target_address)
+        }),
     )
     .await
-    .expect("failed to timeout");
+    .expect("failed to timeout")
+    .expect("failed to get the actual transaction and receipt");
 
-    assert_eq!(
-        matched_transaction
-            .expect("failed to get funding transaction")
-            .transaction
-            .hash,
-        transaction
-    )
+    assert_eq!(matched_transaction.hash, transaction)
 }
 
 pub fn new_web3_client<D: Docker, E: Image>(
