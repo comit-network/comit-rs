@@ -17,6 +17,7 @@ use crate::{
     },
 };
 use chrono::NaiveDateTime;
+use tracing_futures::Instrument;
 
 lazy_static::lazy_static! {
     static ref REDEEM_LOG_MSG: H256 = blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG.parse().expect("to be valid hex");
@@ -49,7 +50,9 @@ impl HtlcDeployed<Ethereum, Ether> for Cache<Web3Connector> {
     ) -> anyhow::Result<Deployed<Transaction, Address>> {
         let connector = self.clone();
         let (transaction, location) =
-            matching_create_contract(connector, start_of_swap, htlc_params.bytecode()).await?;
+            matching_create_contract(connector, start_of_swap, htlc_params.bytecode())
+                .instrument(tracing::info_span!("htlc_deployed"))
+                .await?;
 
         Ok(Deployed {
             transaction,
@@ -93,7 +96,9 @@ async fn htlc_redeemed<A: Asset>(
         topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
     };
 
-    let (transaction, log) = matching_event(connector, start_of_swap, event, "redeemed").await?;
+    let (transaction, log) = matching_event(connector, start_of_swap, event)
+        .instrument(tracing::info_span!("htlc_redeemed"))
+        .await?;
 
     let log_data = log.data.0.as_ref();
     let secret =
@@ -116,7 +121,9 @@ async fn htlc_refunded<A: Asset>(
         topics: vec![Some(Topic(*REFUND_LOG_MSG))],
     };
 
-    let (transaction, _) = matching_event(connector, start_of_swap, event, "refunded").await?;
+    let (transaction, _) = matching_event(connector, start_of_swap, event)
+        .instrument(tracing::info_span!("htlc_refunded"))
+        .await?;
 
     Ok(Refunded { transaction })
 }
@@ -140,7 +147,9 @@ impl HtlcFunded<Ethereum, Erc20> for Cache<Web3Connector> {
             ],
         };
 
-        let (transaction, log) = matching_event(connector, start_of_swap, event, "funded").await?;
+        let (transaction, log) = matching_event(connector, start_of_swap, event)
+            .instrument(tracing::info_span!("htlc_funded"))
+            .await?;
 
         let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
         let asset = Erc20::new(log.address, quantity);
@@ -159,7 +168,9 @@ impl HtlcDeployed<Ethereum, Erc20> for Cache<Web3Connector> {
         let connector = self.clone();
 
         let (transaction, location) =
-            matching_create_contract(connector, start_of_swap, htlc_params.bytecode()).await?;
+            matching_create_contract(connector, start_of_swap, htlc_params.bytecode())
+                .instrument(tracing::info_span!("htlc_deployed"))
+                .await?;
 
         Ok(Deployed {
             transaction,
@@ -176,7 +187,9 @@ impl HtlcRedeemed<Ethereum, Erc20> for Cache<Web3Connector> {
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Transaction>> {
-        htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap).await
+        htlc_redeemed(self.clone(), htlc_params, htlc_deployment, start_of_swap)
+            .instrument(tracing::info_span!("htlc_redeemed"))
+            .await
     }
 }
 

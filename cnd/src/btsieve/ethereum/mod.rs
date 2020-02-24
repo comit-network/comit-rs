@@ -51,7 +51,6 @@ pub async fn matching_event<C>(
     blockchain_connector: C,
     start_of_swap: NaiveDateTime,
     event: Event,
-    action: &'static str,
 ) -> anyhow::Result<(Transaction, Log)>
 where
     C: LatestBlock<Block = Option<Block>>
@@ -63,23 +62,7 @@ where
         blockchain_connector.clone(),
         start_of_swap,
         event.topics.clone(),
-        action,
-        |receipt| {
-            if event_exists_in_receipt(&event, &receipt) {
-                let log_msg = &event.topics[0].unwrap().0;
-                let log = receipt
-                    .logs
-                    .into_iter()
-                    .find(|log| log.topics.contains(log_msg))
-                    .ok_or_else(|| {
-                        anyhow::anyhow!("Fund transaction receipt must contain transfer event")
-                    })?;
-
-                return Ok(Some(log));
-            }
-
-            Ok(None)
-        },
+        |receipt| find_log_for_event_in_receipt(&event, receipt),
     )
     .await
 }
@@ -102,22 +85,22 @@ where
     Ok(receipt)
 }
 
-fn event_exists_in_receipt(event: &Event, receipt: &TransactionReceipt) -> bool {
+fn find_log_for_event_in_receipt(event: &Event, receipt: TransactionReceipt) -> Option<Log> {
     match event {
-        Event { topics, .. } if topics.is_empty() => false,
-        Event { address, topics } => receipt.logs.iter().any(|tx_log| {
-            if address != &tx_log.address {
+        Event { topics, .. } if topics.is_empty() => None,
+        Event { address, topics } => receipt.logs.into_iter().find(|log| {
+            if address != &log.address {
                 return false;
             }
 
-            if tx_log.topics.len() == topics.len() {
-                tx_log.topics.iter().enumerate().all(|(index, tx_topic)| {
-                    let topic = &topics[index];
-                    topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
-                })
-            } else {
-                false
+            if log.topics.len() != topics.len() {
+                return false;
             }
+
+            log.topics.iter().enumerate().all(|(index, tx_topic)| {
+                let topic = &topics[index];
+                topic.as_ref().map_or(true, |topic| tx_topic == &topic.0)
+            })
         }),
     }
 }
@@ -173,7 +156,6 @@ async fn matching_transaction_and_log<C, F>(
     connector: C,
     start_of_swap: NaiveDateTime,
     topics: Vec<Option<Topic>>,
-    action: &str,
     matcher: F,
 ) -> anyhow::Result<(Transaction, Log)>
 where
@@ -181,7 +163,7 @@ where
         + BlockByHash<Block = Option<Block>, BlockHash = Hash>
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
-    F: Fn(TransactionReceipt) -> anyhow::Result<Option<Log>>,
+    F: Fn(TransactionReceipt) -> Option<Log>,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
@@ -204,34 +186,32 @@ where
                 });
                 if !maybe_contains_transaction {
                     tracing::trace!(
-                        "bloom filter indicates that block does not contain {} transaction:
+                        "bloom filter indicates that block does not contain transaction:
                 {:x}",
-                        action,
                         block_hash,
                     );
                     continue;
                 }
 
                 tracing::trace!(
-                    "bloom filter indicates that we should check the block for {} transactions: {:x}",
-                    action,
+                    "bloom filter indicates that we should check the block for transactions: {:x}",
                     block_hash,
                 );
                 for transaction in block.transactions.into_iter() {
                     let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
-                    if let Some(log) = matcher(receipt.clone())? {
-                        if !receipt.transaction_status_ok() {
+                    let status_is_ok = receipt.transaction_status_ok();
+                    if let Some(log) = matcher(receipt) {
+                        if !status_is_ok {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
                             tracing::warn!(
-                                "{} transaction matched {:x} but status was NOT OK",
-                                action,
+                                "transaction matched {:x} but status was NOT OK",
                                 transaction.hash,
                             );
                             continue;
                         }
-                        tracing::trace!("{} transaction matched {:x}", action, transaction.hash,);
-                        return Ok((transaction.clone(), log));
+                        tracing::trace!("transaction matched {:x}", transaction.hash,);
+                        return Ok((transaction, log));
                     }
                 }
             }
