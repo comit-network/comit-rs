@@ -19,8 +19,6 @@ mod behaviour;
 pub mod handler;
 mod protocol;
 mod substream;
-#[cfg(test)]
-pub mod test_harness;
 
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
@@ -31,10 +29,14 @@ pub use self::{
     protocol::{ComitProtocolConfig, Frames},
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
-use libp2p_swarm::ProtocolsHandlerEvent;
+use libp2p::swarm::ProtocolsHandlerEvent;
 
-pub type ComitHandlerEvent =
-    ProtocolsHandlerEvent<ComitProtocolConfig, ProtocolOutboundOpenInfo, ProtocolOutEvent>;
+pub type ComitHandlerEvent = ProtocolsHandlerEvent<
+    ComitProtocolConfig,
+    ProtocolOutboundOpenInfo,
+    ProtocolOutEvent,
+    handler::Error,
+>;
 
 pub trait IntoFrame<F> {
     fn into_frame(self) -> F;

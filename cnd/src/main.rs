@@ -24,7 +24,6 @@ use cnd::{
     seed::RootSeed,
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
-use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
 use std::{net::SocketAddr, process, sync::Arc};
 use structopt::StructOpt;
@@ -58,9 +57,9 @@ fn main() -> anyhow::Result<()> {
 
     const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
-        let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
+        let config::Bitcoin { network, bitcoind } = settings.clone().bitcoin;
         bitcoin::Cache::new(
-            BitcoindConnector::new(node_url, network)?,
+            BitcoindConnector::new(bitcoind.node_url, network)?,
             BITCOIN_BLOCK_CACHE_CAPACITY,
         )
     };
@@ -68,7 +67,7 @@ fn main() -> anyhow::Result<()> {
     const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
     const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
     let ethereum_connector = ethereum::Cache::new(
-        Web3Connector::new(settings.clone().ethereum.node_url),
+        Web3Connector::new(settings.clone().ethereum.parity.node_url),
         ETHEREUM_BLOCK_CACHE_CAPACITY,
         ETHEREUM_RECEIPT_CACHE_CAPACITY,
     );
@@ -96,12 +95,7 @@ fn main() -> anyhow::Result<()> {
         db: database,
     };
 
-    runtime.block_on(
-        load_swaps::load_swaps_from_database(deps.clone())
-            .boxed()
-            .compat(),
-    )?;
-
+    runtime.block_on_std(load_swaps::load_swaps_from_database(deps.clone()))?;
     runtime.spawn_std(spawn_warp_instance(settings, deps));
 
     // Block the current thread.

@@ -5,122 +5,128 @@ use crate::{
     substream::{Advance, Advanced, CloseStream},
     Frame, FrameType,
 };
-use futures::sync::oneshot;
-use libp2p_swarm::ProtocolsHandlerEvent;
-use std::collections::{HashMap, HashSet};
-use tokio::prelude::*;
+use futures::{channel::oneshot, Sink, Stream};
+use libp2p::swarm::ProtocolsHandlerEvent;
+use std::{
+    collections::{HashMap, HashSet},
+    pin::Pin,
+    task::{Context, Poll},
+};
 
 #[derive(strum_macros::Display)]
 #[allow(missing_debug_implementations)]
 /// States of an outbound substream i.e. from us to peer node.
-pub enum State<TSubstream> {
+pub enum State {
     /// Waiting to send a message to the remote.
     WaitingSend {
         frame: Frame,
         response_sender: oneshot::Sender<Response>,
-        stream: Frames<TSubstream>,
+        stream: Pin<Box<Frames>>,
     },
     /// Waiting to flush the substream so that the data arrives at the remote.
     WaitingFlush {
         response_sender: oneshot::Sender<Response>,
-        stream: Frames<TSubstream>,
+        stream: Pin<Box<Frames>>,
     },
     /// Waiting for the answer to our message.
     WaitingAnswer {
         response_sender: oneshot::Sender<Response>,
-        stream: Frames<TSubstream>,
+        stream: Pin<Box<Frames>>,
     },
     /// The substream is being closed.
-    WaitingClose { stream: Frames<TSubstream> },
+    WaitingClose { stream: Pin<Box<Frames>> },
 }
 
-impl<TSubstream> CloseStream for State<TSubstream> {
-    type TSubstream = TSubstream;
-
-    fn close(stream: Frames<Self::TSubstream>) -> Self {
+impl CloseStream for State {
+    fn close(stream: Pin<Box<Frames>>) -> Self {
         State::WaitingClose { stream }
     }
 }
 
-impl<TSubstream: AsyncRead + AsyncWrite> Advance for State<TSubstream> {
+impl Advance for State {
     fn advance(
         self,
         known_headers: &HashMap<String, HashSet<String>>,
-    ) -> Advanced<State<TSubstream>> {
+        cx: &mut Context<'_>,
+    ) -> Advanced<State> {
         use self::State::*;
+
         match self {
             WaitingSend {
                 frame,
                 response_sender,
                 mut stream,
-            } => match stream.start_send(frame) {
-                Ok(AsyncSink::Ready) => WaitingFlush {
+            } => match stream.as_mut().start_send(frame) {
+                Ok(()) => WaitingFlush {
                     response_sender,
                     stream,
                 }
-                .advance(known_headers),
-                Ok(AsyncSink::NotReady(frame)) => Advanced::transition_to(WaitingSend {
-                    frame,
-                    response_sender,
-                    stream,
-                }),
+                .advance(known_headers, cx),
                 Err(error) => Advanced::error(stream, error),
             },
             WaitingFlush {
                 response_sender,
                 mut stream,
-            } => match stream.poll_complete() {
-                Ok(Async::Ready(_)) => WaitingAnswer {
+            } => match stream.as_mut().poll_flush(cx) {
+                Poll::Ready(Ok(())) => WaitingAnswer {
                     response_sender,
                     stream,
                 }
-                .advance(&known_headers),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingFlush {
+                .advance(&known_headers, cx),
+                Poll::Pending => Advanced::transition_to(WaitingFlush {
                     response_sender,
                     stream,
                 }),
-                Err(error) => Advanced::error(stream, error),
+                Poll::Ready(Err(error)) => Advanced::error(stream, error),
             },
             WaitingAnswer {
                 response_sender,
                 mut stream,
-            } => match stream.poll() {
-                Ok(Async::Ready(Some(frame))) => match frame.frame_type {
-                    FrameType::Response => {
-                        let event = serde_json::from_value(frame.payload)
-                            .map(|response| {
-                                ProtocolOutEvent::Message(InboundMessage::Response(
-                                    PendingInboundResponse {
-                                        response,
-                                        channel: response_sender,
-                                    },
-                                ))
-                            })
-                            .map_err(handler::Error::MalformedFrame)
-                            .unwrap_or_else(ProtocolOutEvent::Error);
+            } => match stream.as_mut().poll_next(cx) {
+                Poll::Ready(Some(Ok(frame))) => {
+                    let response = match frame.frame_type {
+                        FrameType::Response => serde_json::from_value(frame.payload),
+                        FrameType::Request => {
+                            return Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
+                        }
+                        FrameType::Unknown => {
+                            return Advanced::error(stream, handler::Error::UnknownFrameType)
+                        }
+                    };
 
-                        Advanced {
-                            new_state: Some(WaitingClose { stream }),
-                            event: Some(ProtocolsHandlerEvent::Custom(event)),
+                    match response {
+                        Ok(response) => {
+                            let event = ProtocolOutEvent::Message(InboundMessage::Response(
+                                PendingInboundResponse {
+                                    response,
+                                    channel: response_sender,
+                                },
+                            ));
+
+                            Advanced {
+                                new_state: Some(WaitingClose { stream }),
+                                event: Some(ProtocolsHandlerEvent::Custom(event)),
+                            }
+                        }
+                        Err(error) => {
+                            Advanced::error(stream, handler::Error::MalformedFrame(error))
                         }
                     }
-                    FrameType::Request => {
-                        Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
-                    }
-                    FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
-                },
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingAnswer {
+                }
+                Poll::Ready(Some(Err(error))) => {
+                    Advanced::error(stream, handler::Error::MalformedJson(error))
+                }
+                Poll::Pending => Advanced::transition_to(WaitingAnswer {
                     response_sender,
                     stream,
                 }),
-                Ok(Async::Ready(None)) => Advanced::error(stream, handler::Error::UnexpectedEOF),
-                Err(error) => Advanced::error(stream, error),
+                Poll::Ready(None) => Advanced::error(stream, handler::Error::UnexpectedEOF),
             },
 
-            WaitingClose { mut stream } => match stream.close() {
-                Ok(Async::Ready(_)) => Advanced::end(),
-                Ok(Async::NotReady) => Advanced::transition_to(WaitingClose { stream }),
-                Err(error) => Advanced::error(stream, error),
+            WaitingClose { mut stream } => match stream.as_mut().poll_close(cx) {
+                Poll::Ready(Ok(())) => Advanced::end(),
+                Poll::Pending => Advanced::transition_to(WaitingClose { stream }),
+                Poll::Ready(Err(error)) => Advanced::error(stream, error),
             },
         }
     }

@@ -1,7 +1,7 @@
 use crate::Frame;
 use bytes::BytesMut;
+use futures_codec::{Decoder, Encoder};
 use std::io;
-use tokio_codec::{Decoder, Encoder};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
