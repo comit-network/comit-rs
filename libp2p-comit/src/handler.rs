@@ -1,43 +1,35 @@
 use crate::{
-    frame::{
-        self, JsonFrameCodec, OutboundRequest, Response, UnknownMandatoryHeaders,
-        ValidatedInboundRequest,
-    },
+    frame::{self, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest},
     protocol::ComitProtocolConfig,
     substream::{self, Advance, Advanced},
-    ComitHandlerEvent, Frame, IntoFrame,
+    ComitHandlerEvent, Frame, Frames, IntoFrame,
 };
 use futures::{
-    sync::oneshot::{self, Canceled},
-    task::Task,
-    Async, Poll,
+    channel::oneshot::{self, Canceled},
+    task::{Poll, Waker},
 };
-use libp2p_core::Negotiated;
-use libp2p_swarm::{
+use libp2p::swarm::{
     KeepAlive, ProtocolsHandler, ProtocolsHandlerEvent, ProtocolsHandlerUpgrErr, SubstreamProtocol,
 };
 use std::{
     collections::{HashMap, HashSet},
     convert::Infallible,
     fmt::Display,
-};
-use tokio::{
-    codec::Framed,
-    prelude::{AsyncRead, AsyncWrite},
+    task::Context,
 };
 
 #[derive(derivative::Derivative)]
 #[derivative(Debug)]
-pub struct ComitHandler<TSubstream> {
+pub struct ComitHandler {
     #[derivative(Debug = "ignore")]
-    inbound_substreams: Vec<substream::inbound::State<TSubstream>>,
+    inbound_substreams: Vec<substream::inbound::State>,
     #[derivative(Debug = "ignore")]
-    outbound_substreams: Vec<substream::outbound::State<TSubstream>>,
+    outbound_substreams: Vec<substream::outbound::State>,
 
     to_send: Vec<PendingOutboundRequest>,
 
     #[derivative(Debug = "ignore")]
-    current_task: Option<Task>,
+    current_task: Option<Waker>,
 
     known_headers: HashMap<String, HashSet<String>>,
 }
@@ -68,7 +60,7 @@ impl From<Canceled> for Error {
     }
 }
 
-impl<TSubstream> ComitHandler<TSubstream> {
+impl ComitHandler {
     pub fn new(known_headers: HashMap<String, HashSet<String>>) -> Self {
         Self {
             known_headers,
@@ -116,7 +108,6 @@ pub enum ProtocolOutboundOpenInfo {
 #[derive(Debug)]
 pub enum ProtocolOutEvent {
     Message(InboundMessage),
-    Error(Error),
 }
 
 #[derive(Debug)]
@@ -130,11 +121,10 @@ pub enum OutboundMessage {
     Request(PendingOutboundRequest),
 }
 
-impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubstream> {
+impl ProtocolsHandler for ComitHandler {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
-    type Error = frame::CodecError;
-    type Substream = TSubstream;
+    type Error = Error;
     type InboundProtocol = ComitProtocolConfig;
     type OutboundProtocol = ComitProtocolConfig;
     type OutboundOpenInfo = ProtocolOutboundOpenInfo;
@@ -143,21 +133,20 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
         SubstreamProtocol::new(ComitProtocolConfig {})
     }
 
-    fn inject_fully_negotiated_inbound(
-        &mut self,
-        stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
-    ) {
+    fn inject_fully_negotiated_inbound(&mut self, stream: Frames) {
         self.inbound_substreams
-            .push(substream::inbound::State::WaitingMessage { stream });
+            .push(substream::inbound::State::WaitingMessage {
+                stream: Box::pin(stream),
+            });
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+        if let Some(waker) = self.current_task.take() {
+            waker.wake()
         }
     }
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        stream: Framed<Negotiated<TSubstream>, JsonFrameCodec>,
+        stream: Frames,
         outbound_open_info: Self::OutboundOpenInfo,
     ) {
         match outbound_open_info {
@@ -168,13 +157,13 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
                     .push(substream::outbound::State::WaitingSend {
                         frame: request.into_frame(),
                         response_sender: channel,
-                        stream,
+                        stream: Box::pin(stream),
                     });
             }
         }
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+        if let Some(waker) = self.current_task.take() {
+            waker.wake()
         }
     }
 
@@ -185,8 +174,8 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
             }
         }
 
-        if let Some(task) = &self.current_task {
-            task.notify()
+        if let Some(waker) = self.current_task.take() {
+            waker.wake()
         }
     }
 
@@ -201,41 +190,43 @@ impl<TSubstream: AsyncRead + AsyncWrite> ProtocolsHandler for ComitHandler<TSubs
         KeepAlive::Yes
     }
 
-    fn poll(&mut self) -> Poll<ComitHandlerEvent, Self::Error> {
+    fn poll(&mut self, cx: &mut Context<'_>) -> Poll<ComitHandlerEvent> {
         if let Some(request) = self.to_send.pop() {
-            return Ok(Async::Ready(
-                ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                    protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
-                    info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
-                },
-            ));
+            return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
+                protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
+                info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
+            });
         }
 
-        if let Some(result) = poll_substreams(&mut self.outbound_substreams, &self.known_headers) {
+        if let Some(result) =
+            poll_substreams(&mut self.outbound_substreams, &self.known_headers, cx)
+        {
             return result;
         }
 
-        if let Some(result) = poll_substreams(&mut self.inbound_substreams, &self.known_headers) {
+        if let Some(result) = poll_substreams(&mut self.inbound_substreams, &self.known_headers, cx)
+        {
             return result;
         }
 
-        self.current_task = Some(futures::task::current());
+        self.current_task = Some(cx.waker().clone());
 
-        Ok(Async::NotReady)
+        Poll::Pending
     }
 }
 
 fn poll_substreams<S: Display + Advance>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
-) -> Option<Poll<ComitHandlerEvent, frame::CodecError>> {
+    cx: &mut Context<'_>,
+) -> Option<Poll<ComitHandlerEvent>> {
     // We remove each element from `substreams` one by one and add them back.
     for n in (0..substreams.len()).rev() {
         let substream_state = substreams.swap_remove(n);
 
         let log_message = format!("transition from {}", substream_state);
 
-        let Advanced { new_state, event } = substream_state.advance(known_headers);
+        let Advanced { new_state, event } = substream_state.advance(known_headers, cx);
 
         if let Some(new_state) = new_state {
             tracing::trace!("{} to {}", log_message, new_state);
@@ -243,400 +234,8 @@ fn poll_substreams<S: Display + Advance>(
         }
 
         if let Some(event) = event {
-            return Some(Ok(Async::Ready(event)));
+            return Some(Poll::Ready(event));
         }
     }
     None
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::{
-        frame::{Header, JsonFrameCodec, OutboundRequest, Response},
-        test_harness::{
-            request_with_no_headers, setup_substream, setup_substream_with_json_codec,
-            IntoEventStream, IntoFutureWithResponse, WaitForFrame,
-        },
-    };
-    use futures::{Future, Sink, Stream};
-    use libp2p_swarm::ProtocolsHandlerEvent;
-    use spectral::prelude::*;
-    use tokio::codec::LinesCodec;
-
-    #[test]
-    fn given_an_inbound_request_handler_sends_response() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given an inbound substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // and we receive a request
-        let send = dialer.send(OutboundRequest::new("PING").into_frame());
-        let dialer = runtime.block_on(send).unwrap();
-
-        // and we provide an answer
-        let future = handler.into_future_with_response(
-            Response::empty().with_header("decision", Header::with_str_value("declined")),
-        );
-        runtime.spawn(future);
-
-        // then we send the response back to the dialer
-        let response = runtime.block_on(dialer.wait_for_frame());
-
-        assert_that(&response).is_ok().is_some().is_equal_to(
-            Response::empty()
-                .with_header("decision", Header::with_str_value("declined"))
-                .into_frame(),
-        );
-    }
-
-    #[test]
-    fn given_inbound_substream_when_unknown_request_should_emit_unknown_request_type() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = ComitHandler::new(HashMap::new());
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer.send(OutboundRequest::new("PING").into_frame());
-        let _ = runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(
-                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnknownRequestType(_))),
-            )
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_request_with_unknown_headers_should_emit_unknown_mandatory_headers(
-    ) {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime.block_on(setup_substream_with_json_codec()).unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer.send(
-            OutboundRequest::new("PING")
-                .with_header(
-                    "foo",
-                    Header::with_str_value("foo")
-                        .with_parameter("bar", "foobar")
-                        .unwrap(),
-                )
-                .into_frame(),
-        );
-        let _ = runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(
-                ProtocolsHandlerEvent::Custom(
-                    ProtocolOutEvent::Error(Error::UnknownMandatoryHeader(_)),
-                ),
-            )
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_request_without_type_should_emit_malformed_frame() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                LinesCodec::new(),
-                JsonFrameCodec::default(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer
-            .send(r#"{"type": "REQUEST", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedFrame(_))))
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_request_without_header_and_body_should_emit_request() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                LinesCodec::new(),
-                JsonFrameCodec::default(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer
-            .send(r#"{"type": "REQUEST", "payload":{"type": "PING", "foo": "bar"}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(
-                ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Message(InboundMessage::Request(_))),
-            )
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_response_should_emit_unexpected_frame() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                LinesCodec::new(),
-                JsonFrameCodec::default(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer
-            .send(r#"{"type": "RESPONSE", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnexpectedFrame(_))))
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                LinesCodec::new(),
-                JsonFrameCodec::default(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer
-            .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
-                Error::UnknownFrameType
-            )))
-        )
-    }
-
-    #[test]
-    fn given_inbound_substream_when_invalid_json_should_emit_malformed_json() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                LinesCodec::new(),
-                JsonFrameCodec::default(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given a substream
-        handler.inject_fully_negotiated_inbound(listener);
-
-        // when receiving a request
-        let send = dialer
-            .send(r#"invlid json"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        runtime.block_on(send).unwrap();
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedJson(_))))
-        )
-    }
-
-    #[test]
-    fn given_an_outbound_request_when_frame_with_unknown_type_should_emit_unknown_frame_type() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                JsonFrameCodec::default(),
-                LinesCodec::new(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given an outbound substream
-        let (sender, _receiver) = oneshot::channel();
-        handler.inject_fully_negotiated_outbound(
-            dialer,
-            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
-                request: OutboundRequest::new("PING"),
-                channel: sender,
-            })),
-        );
-
-        // when receiving a frame with unknown type
-        let send = listener
-            .send(r#"{"type": "FOOBAR", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        let _ = runtime.spawn(send);
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(
-                Error::UnknownFrameType
-            )))
-        )
-    }
-
-    #[test]
-    fn given_an_outbound_request_when_request_should_emit_unexpected_frame() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                JsonFrameCodec::default(),
-                LinesCodec::new(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given an outbound substream
-        let (sender, _receiver) = oneshot::channel();
-        handler.inject_fully_negotiated_outbound(
-            dialer,
-            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
-                request: OutboundRequest::new("PING"),
-                channel: sender,
-            })),
-        );
-
-        // when receiving a known type (REQUEST) that is unexpected
-        let send = listener
-            .send(r#"{"type": "REQUEST", "payload":{}}"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        let _ = runtime.spawn(send);
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::UnexpectedFrame(_))))
-        )
-    }
-
-    #[test]
-    fn given_an_outbound_request_when_invalid_json_should_emit_malformed_json() {
-        let mut runtime = tokio::runtime::Runtime::new().unwrap();
-        let (dialer, listener) = runtime
-            .block_on(setup_substream(
-                JsonFrameCodec::default(),
-                LinesCodec::new(),
-            ))
-            .unwrap();
-        let mut handler = ComitHandler::new(request_with_no_headers("PING"));
-
-        // given an outbound substream
-        let (sender, _receiver) = oneshot::channel();
-        handler.inject_fully_negotiated_outbound(
-            dialer,
-            ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(PendingOutboundRequest {
-                request: OutboundRequest::new("PING"),
-                channel: sender,
-            })),
-        );
-
-        // when receiving invalid json
-        let send = listener
-            .send(r#"invalid json"#.to_owned())
-            .map(|_| ())
-            .map_err(|_| ());
-        let _ = runtime.spawn(send);
-
-        let events = runtime
-            .block_on(handler.into_event_stream().take(1).collect())
-            .unwrap();
-
-        // then
-        matches::assert_matches!(
-            events.get(0),
-            Some(ProtocolsHandlerEvent::Custom(ProtocolOutEvent::Error(Error::MalformedJson(_))))
-        )
-    }
 }

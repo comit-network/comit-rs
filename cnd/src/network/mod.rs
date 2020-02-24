@@ -22,27 +22,24 @@ use crate::{
     },
 };
 use async_trait::async_trait;
-use futures::{
-    future::Future,
-    stream::Stream,
-    sync::oneshot::{self, Sender},
+use futures_core::{
+    channel::oneshot::{self, Sender},
+    stream::StreamExt,
+    Future as _,
 };
-use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use libp2p::{
-    core::{
-        either::{EitherError, EitherOutput},
-        muxing::{StreamMuxerBox, SubstreamRef},
-    },
+    core::either::{EitherError, EitherOutput},
     identity::{self, ed25519},
     mdns::Mdns,
     swarm::{
         protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect,
-        NetworkBehaviourEventProcess,
+        NetworkBehaviourEventProcess, SwarmBuilder,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
-    frame::{self, CodecError, OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{self, OutboundRequest, Response, ValidatedInboundRequest},
+    handler,
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
@@ -50,8 +47,9 @@ use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
     io,
-    sync::{Arc, Mutex},
+    sync::Arc,
 };
+use tokio::sync::Mutex;
 use tokio_compat::runtime::{Runtime, TaskExecutor};
 
 #[derive(Clone, derivative::Derivative)]
@@ -62,15 +60,11 @@ pub struct Swarm {
     swarm: Arc<
         Mutex<
             ExpandedSwarm<
-                ComitTransport,
-                ComitNode<SubstreamRef<Arc<StreamMuxerBox>>>,
+                ComitNode,
                 EitherOutput<ProtocolInEvent, void::Void>,
                 EitherOutput<ProtocolOutEvent, void::Void>,
-                IntoProtocolsHandlerSelect<
-                    ComitHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
-                    DummyProtocolsHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
-                >,
-                EitherError<CodecError, void::Void>,
+                IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
+                EitherError<handler::Error, void::Void>,
             >,
         >,
     >,
@@ -91,7 +85,7 @@ impl Swarm {
         let local_peer_id = PeerId::from(local_key_pair.clone().public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
-        let transport = transport::build_comit_transport(local_key_pair);
+        let transport = transport::build_comit_transport(local_key_pair)?;
         let behaviour = ComitNode::new(
             bitcoin_connector.clone(),
             ethereum_connector.clone(),
@@ -100,7 +94,13 @@ impl Swarm {
             database.clone(),
             runtime.executor(),
         )?;
-        let mut swarm = libp2p::Swarm::new(transport, behaviour, local_peer_id.clone());
+
+        let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
+            .executor_fn({
+                let executor = runtime.executor();
+                move |task| executor.spawn_std(task)
+            })
+            .build();
 
         for addr in settings.network.listen.clone() {
             libp2p::Swarm::listen_on(&mut swarm, addr)
@@ -109,16 +109,17 @@ impl Swarm {
 
         let swarm = Arc::new(Mutex::new(swarm));
 
-        let swarm_worker = futures::stream::poll_fn({
+        runtime.spawn_std({
             let swarm = swarm.clone();
-            move || swarm.lock().unwrap().poll()
-        })
-        .for_each(|_| Ok(()))
-        .map_err(|e| {
-            tracing::error!("failed with {:?}", e);
-        });
 
-        runtime.spawn(swarm_worker);
+            futures_core::future::poll_fn(move |cx| loop {
+                let mutex = swarm.lock();
+                futures_core::pin_mut!(mutex);
+
+                let mut guard = futures_core::ready!(mutex.poll(cx));
+                futures_core::ready!(guard.poll_next_unpin(cx));
+            })
+        });
 
         Ok(Self {
             swarm,
@@ -135,9 +136,9 @@ fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
-pub struct ComitNode<TSubstream> {
-    comit: Comit<TSubstream>,
-    mdns: Mdns<TSubstream>,
+pub struct ComitNode {
+    comit: Comit,
+    mdns: Mdns,
 
     #[behaviour(ignore)]
     pub bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
@@ -187,7 +188,7 @@ pub struct Reason {
     pub value: SwapDeclineReason,
 }
 
-impl<TSubstream> ComitNode<TSubstream> {
+impl ComitNode {
     pub fn new(
         bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
         ethereum_connector: ethereum::Cache<Web3Connector>,
@@ -224,7 +225,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         &mut self,
         peer_id: DialInformation,
         request: OutboundRequest,
-    ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+    ) -> impl futures_core::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
@@ -669,7 +670,7 @@ impl ComitPeers for Swarm {
     async fn comit_peers(
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        let mut swarm = self.swarm.lock().unwrap();
+        let mut swarm = self.swarm.lock().await;
         Box::new(swarm.comit.connected_peers())
     }
 }
@@ -684,7 +685,7 @@ pub trait ListenAddresses {
 #[async_trait]
 impl ListenAddresses for Swarm {
     async fn listen_addresses(&self) -> Vec<Multiaddr> {
-        let swarm = self.swarm.lock().unwrap();
+        let swarm = self.swarm.lock().await;
 
         libp2p::Swarm::listeners(&swarm)
             .chain(libp2p::Swarm::external_addresses(&swarm))
@@ -697,14 +698,14 @@ impl ListenAddresses for Swarm {
 #[async_trait]
 #[ambassador::delegatable_trait]
 pub trait PendingRequestFor {
-    async fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
+    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>>;
 }
 
 #[async_trait]
 impl PendingRequestFor for Swarm {
     async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        let swarm = self.swarm.lock().unwrap();
-        let mut response_channels = swarm.response_channels.lock().unwrap();
+        let swarm = self.swarm.lock().await;
+        let mut response_channels = swarm.response_channels.lock().await;
         response_channels.remove(&swap)
     }
 }
@@ -731,7 +732,7 @@ impl SendRequest for Swarm {
             .expect("constructing a frame::OutoingRequest should never fail!");
 
         let result = {
-            let mut guard = self.swarm.lock().unwrap();
+            let mut guard = self.swarm.lock().await;
             let swarm = &mut *guard;
 
             tracing::debug!(
@@ -740,9 +741,7 @@ impl SendRequest for Swarm {
                 id,
             );
 
-            swarm
-                .send_request(dial_information.clone(), request)
-                .compat()
+            swarm.send_request(dial_information.clone(), request)
         }
         .await;
 
@@ -803,45 +802,34 @@ impl SendRequest for Swarm {
     }
 }
 
-impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<TSubstream> {
+impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
                 let PendingInboundRequest { request, channel } = request;
 
-                self.task_executor.spawn(
-                    handle_request(
-                        self.db.clone(),
-                        self.seed,
-                        self.state_store.clone(),
-                        peer_id,
-                        request,
-                    )
-                    .boxed()
-                    .compat()
-                    .then({
-                        let response_channels = self.response_channels.clone();
+                let response_channels = self.response_channels.clone();
+                let db = self.db.clone();
+                let state_store = self.state_store.clone();
+                let seed = self.seed;
 
-                        move |result| {
-                            match result {
-                                Ok(id) => {
-                                    let mut response_channels = response_channels.lock().unwrap();
-                                    response_channels.insert(id, channel);
-                                }
-                                Err(response) => channel.send(response).unwrap_or_else(|_| {
-                                    tracing::debug!("failed to send response through channel")
-                                }),
-                            }
-                            Ok(())
+                self.task_executor.spawn_std(async move {
+                    match handle_request(db, seed, state_store, peer_id, request).await {
+                        Ok(id) => {
+                            let mut response_channels = response_channels.lock().await;
+                            response_channels.insert(id, channel);
                         }
-                    }),
-                );
+                        Err(response) => channel.send(response).unwrap_or_else(|_| {
+                            tracing::debug!("failed to send response through channel")
+                        }),
+                    }
+                })
             }
         }
     }
 }
 
-impl<TSubstream> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode<TSubstream> {
+impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 

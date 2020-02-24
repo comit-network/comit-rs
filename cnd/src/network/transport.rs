@@ -30,11 +30,11 @@ pub type ComitTransport = Boxed<
 /// - DNS name resolution
 /// - authentication via secio
 /// - multiplexing via yamux or mplex
-pub fn build_comit_transport(keypair: identity::Keypair) -> ComitTransport {
+pub fn build_comit_transport(keypair: identity::Keypair) -> anyhow::Result<ComitTransport> {
     let transport = TcpConfig::new().nodelay(true);
-    let transport = DnsConfig::new(transport);
+    let transport = DnsConfig::new(transport)?;
 
-    transport
+    let transport = transport
         .upgrade(Version::V1)
         .authenticate(SecioConfig::new(keypair))
         .multiplex(SelectUpgrade::new(
@@ -43,5 +43,7 @@ pub fn build_comit_transport(keypair: identity::Keypair) -> ComitTransport {
         ))
         .map(|(peer, muxer), _| (peer, StreamMuxerBox::new(muxer)))
         .timeout(Duration::from_secs(20))
-        .boxed()
+        .boxed();
+
+    Ok(transport)
 }
