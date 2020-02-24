@@ -20,7 +20,7 @@ use std::collections::HashSet;
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
 
-pub async fn matching_create_contract<C>(
+pub async fn watch_for_contract_creation<C>(
     blockchain_connector: C,
     start_of_swap: NaiveDateTime,
     bytecode: Bytes,
@@ -45,7 +45,7 @@ where
     }
 }
 
-pub async fn matching_event<C>(
+pub async fn watch_for_event<C>(
     blockchain_connector: C,
     start_of_swap: NaiveDateTime,
     event: Event,

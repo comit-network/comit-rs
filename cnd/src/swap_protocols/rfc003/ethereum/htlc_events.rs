@@ -1,7 +1,7 @@
 use crate::{
     asset::{ethereum::FromWei, Erc20, Erc20Quantity, Ether},
     btsieve::ethereum::{
-        matching_create_contract, matching_event, Cache, Event, Topic, Web3Connector,
+        watch_for_contract_creation, watch_for_event, Cache, Event, Topic, Web3Connector,
     },
     ethereum::{Address, Transaction, H256, U256},
     swap_protocols::{
@@ -50,7 +50,7 @@ impl HtlcDeployed<Ethereum, Ether> for Cache<Web3Connector> {
     ) -> anyhow::Result<Deployed<Transaction, Address>> {
         let connector = self.clone();
         let (transaction, location) =
-            matching_create_contract(connector, start_of_swap, htlc_params.bytecode())
+            watch_for_contract_creation(connector, start_of_swap, htlc_params.bytecode())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -75,7 +75,7 @@ impl HtlcRedeemed<Ethereum, Ether> for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
-        let (transaction, log) = matching_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_redeemed"))
             .await?;
 
@@ -104,7 +104,7 @@ impl HtlcRefunded<Ethereum, Ether> for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REFUND_LOG_MSG))],
         };
 
-        let (transaction, _) = matching_event(connector, start_of_swap, event)
+        let (transaction, _) = watch_for_event(connector, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_refunded"))
             .await?;
 
@@ -131,7 +131,7 @@ impl HtlcFunded<Ethereum, Erc20> for Cache<Web3Connector> {
             ],
         };
 
-        let (transaction, log) = matching_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_funded"))
             .await?;
 
@@ -152,7 +152,7 @@ impl HtlcDeployed<Ethereum, Erc20> for Cache<Web3Connector> {
         let connector = self.clone();
 
         let (transaction, location) =
-            matching_create_contract(connector, start_of_swap, htlc_params.bytecode())
+            watch_for_contract_creation(connector, start_of_swap, htlc_params.bytecode())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -177,7 +177,7 @@ impl HtlcRedeemed<Ethereum, Erc20> for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
-        let (transaction, log) = matching_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_redeemed"))
             .await?;
 
@@ -206,7 +206,7 @@ impl HtlcRefunded<Ethereum, Erc20> for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REFUND_LOG_MSG))],
         };
 
-        let (transaction, _) = matching_event(connector, start_of_swap, event)
+        let (transaction, _) = watch_for_event(connector, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_refunded"))
             .await?;
 
