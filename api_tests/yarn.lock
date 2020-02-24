@@ -3801,10 +3801,10 @@ tempfile@*:
     temp-dir "^2.0.0"
     uuid "^3.3.2"
 
-testcontainers@^2.4.0:
-  version "2.4.0"
-  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.4.0.tgz#a6b9c42a5a2bf5045e041aa97ca28eec37d7baad"
-  integrity sha512-/dbHkUGqwYIEipdp2L/fZ34xCZv09CoVd5lXDsr0rjgwns+Qy4GVZf+IGUxQWFtovoYSwsfN2IH0XChtjWWvXA==
+testcontainers@^2.5.0:
+  version "2.5.0"
+  resolved "https://registry.yarnpkg.com/testcontainers/-/testcontainers-2.5.0.tgz#d63280229bbc5e3bb91f5a1a815b2ec078bfcaed"
+  integrity sha512-s50hX6WeF3VCKTPlr3Z8WEPsO6414naZ3akJBfF6reoVSaLy9xQVK8E7/FD9gz/yC5brLRUqGK/Ub+DkZUUnJQ==
   dependencies:
     byline "^5.0.0"
     debug "^4.1.1"
