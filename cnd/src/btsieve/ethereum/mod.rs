@@ -142,9 +142,8 @@ where
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
-            // result is actually the never type and has not been changed since this
-            // line was written. The never type can never be constructed, so we cannot
-            // reach this line never anyway.
+            // result is actually the never type and has not been changed since this line was
+            // written. The never type can never be constructed, so we can never reach this line.
             GeneratorState::Complete(Ok(never)) => match never {},
         }
     }
@@ -215,9 +214,8 @@ where
             }
             GeneratorState::Complete(Err(e)) => return Err(e),
             // By matching against the never type explicitly, we assert that the `Ok` value of the
-            // result is actually the never type and has not been changed since this
-            // line was written. The never type can never be constructed, so we cannot
-            // reach this line never anyway.
+            // result is actually the never type and has not been changed since this line was
+            // written. The never type can never be constructed, so we can never reach this line.
             GeneratorState::Complete(Ok(never)) => match never {},
         }
     }
