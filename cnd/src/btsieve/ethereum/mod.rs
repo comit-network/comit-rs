@@ -4,7 +4,7 @@ mod web3_connector;
 pub use self::{cache::Cache, web3_connector::Web3Connector};
 use crate::{
     btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
-    ethereum::{Address, Bytes, Log, Transaction, TransactionReceipt, H256, U256},
+    ethereum::{Address, Bytes, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256},
     Never,
 };
 use anyhow;
@@ -19,8 +19,6 @@ use std::collections::HashSet;
 
 type Hash = H256;
 type Block = crate::ethereum::Block<Transaction>;
-
-pub const TRANSACTION_STATUS_OK: u32 = 1;
 
 pub async fn matching_create_contract<C>(
     blockchain_connector: C,
@@ -128,7 +126,7 @@ where
                 for transaction in block.transactions.into_iter() {
                     if matcher(transaction.clone()) {
                         let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
-                        if !receipt.transaction_status_ok() {
+                        if !receipt.is_status_ok() {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
                             tracing::warn!(
@@ -199,7 +197,7 @@ where
                 );
                 for transaction in block.transactions.into_iter() {
                     let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
-                    let status_is_ok = receipt.transaction_status_ok();
+                    let status_is_ok = receipt.is_status_ok();
                     if let Some(log) = matcher(receipt) {
                         if !status_is_ok {
                             // This can be caused by a failed attempt to complete an action,
@@ -398,15 +396,4 @@ pub struct Event {
     pub address: Address,
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub topics: Vec<Option<Topic>>,
-}
-
-trait TransactionStatusOk {
-    fn transaction_status_ok(&self) -> bool;
-}
-
-impl TransactionStatusOk for TransactionReceipt {
-    fn transaction_status_ok(&self) -> bool {
-        const TRANSACTION_STATUS_OK: u32 = 1;
-        self.status == Some(TRANSACTION_STATUS_OK.into())
-    }
 }
