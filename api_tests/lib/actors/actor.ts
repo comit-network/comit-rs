@@ -1,5 +1,5 @@
 import { expect } from "chai";
-import { BigNumber, Cnd, ComitClient, Swap } from "comit-sdk";
+import { BigNumber, Cnd, ComitClient, LedgerAction, Swap } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
@@ -14,7 +14,7 @@ import { HarnessGlobal, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
-import { SwapDetails } from "comit-sdk/dist/src/cnd";
+import { SwapDetails } from "comit-sdk/dist/src/cnd/cnd";
 
 declare var global: HarnessGlobal;
 
@@ -318,10 +318,13 @@ export class Actor {
     }
 
     public async fundLowGas(hexGasLimit: string) {
-        const response = await this.swap.tryExecuteAction("fund", {
-            maxTimeoutSecs: 10,
-            tryIntervalSecs: 1,
-        });
+        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
+            "fund",
+            {
+                maxTimeoutSecs: 10,
+                tryIntervalSecs: 1,
+            }
+        );
         response.data.payload.gas_limit = hexGasLimit;
         const txid = await this.swap.doLedgerAction(response.data);
         this.logger.debug(
@@ -337,10 +340,13 @@ export class Actor {
     }
 
     public async overfund() {
-        const response = await this.swap.tryExecuteAction("fund", {
-            maxTimeoutSecs: 10,
-            tryIntervalSecs: 1,
-        });
+        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
+            "fund",
+            {
+                maxTimeoutSecs: 10,
+                tryIntervalSecs: 1,
+            }
+        );
         const amount = response.data.payload.amount;
         response.data.payload.amount = amount * 1.01;
 
@@ -349,10 +355,13 @@ export class Actor {
     }
 
     public async underfund() {
-        const response = await this.swap.tryExecuteAction("fund", {
-            maxTimeoutSecs: 10,
-            tryIntervalSecs: 1,
-        });
+        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
+            "fund",
+            {
+                maxTimeoutSecs: 10,
+                tryIntervalSecs: 1,
+            }
+        );
         const amount = response.data.payload.amount;
         response.data.payload.amount = amount * 0.01;
 
@@ -423,7 +432,7 @@ export class Actor {
         // Hack the bitcoin fee per WU returned by the wallet
         this.wallets.bitcoin.inner.getFee = () => "100000000";
 
-        return this.swap.tryExecuteAction("redeem", {
+        return this.swap.tryExecuteSirenAction<LedgerAction>("redeem", {
             maxTimeoutSecs: 10,
             tryIntervalSecs: 1,
         });
