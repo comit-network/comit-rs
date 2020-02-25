@@ -16,6 +16,7 @@ use crate::{
             self, bob,
             messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
+            Ledger,
         },
         HashFunction, Role, SwapId, SwapProtocol,
     },
@@ -628,8 +629,8 @@ async fn insert_state_for_bob<AL, BL, AA, BA, DB>(
     swap_request: Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
-    AL: rfc003::Ledger,
-    BL: rfc003::Ledger,
+    AL: Ledger,
+    BL: Ledger,
     AA: Asset,
     BA: Asset,
     DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
@@ -722,8 +723,8 @@ pub trait SendRequest {
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<rfc003::Response<AL, BL>, RequestError>
     where
-        AL: rfc003::Ledger,
-        BL: rfc003::Ledger,
+        AL: Ledger,
+        BL: Ledger,
         AA: Asset,
         BA: Asset;
 }
@@ -736,8 +737,8 @@ impl SendRequest for Swarm {
         request: rfc003::Request<AL, BL, AA, BA>,
     ) -> Result<rfc003::Response<AL, BL>, RequestError>
     where
-        AL: rfc003::Ledger,
-        BL: rfc003::Ledger,
+        AL: Ledger,
+        BL: Ledger,
         AA: Asset,
         BA: Asset,
     {
@@ -857,8 +858,8 @@ fn rfc003_swap_request<AL, BL, AA, BA>(
     body: rfc003::messages::RequestBody<AL::Identity, BL::Identity>,
 ) -> rfc003::Request<AL, BL, AA, BA>
 where
-    AL: rfc003::Ledger,
-    BL: rfc003::Ledger,
+    AL: Ledger,
+    BL: Ledger,
     AA: Asset,
     BA: Asset,
 {
@@ -881,8 +882,8 @@ fn build_outbound_request<AL, BL, AA, BA>(
     request: rfc003::Request<AL, BL, AA, BA>,
 ) -> Result<frame::OutboundRequest, serde_json::Error>
 where
-    AL: rfc003::Ledger,
-    BL: rfc003::Ledger,
+    AL: Ledger,
+    BL: Ledger,
     AA: Asset,
     BA: Asset,
 {
