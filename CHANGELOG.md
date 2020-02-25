@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking config changes**: cnd config has changed. Bitcoin and Ethereum has 2 optional fields specifically for the connector (i.e. bitcoind and parity). If provided, the network (for bitcoin) and chain_id (for ethereum) are mandatory. If the url was not provided, a default aiming at localhost will be derived. If no connectors were provided, defaults will be provided. For a full example config run: `cnd --dump-config`.
+
 ## 0.6.0 - 2020-02-13
 
 ### Fixed
