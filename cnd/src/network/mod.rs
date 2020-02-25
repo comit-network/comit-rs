@@ -16,7 +16,6 @@ use crate::{
             self, bob,
             messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
-            Ledger,
         },
         HashFunction, Role, SwapId, SwapProtocol,
     },
@@ -621,7 +620,7 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
@@ -629,6 +628,10 @@ async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
     swap_request: Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
+    AL: rfc003::Ledger,
+    BL: rfc003::Ledger,
+    AA: Asset,
+    BA: Asset,
     DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
 {
     let id = swap_request.swap_id;
@@ -713,20 +716,31 @@ impl PendingRequestFor for Swarm {
 /// Send swap request to connected peer.
 #[async_trait]
 pub trait SendRequest {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA>(
         &self,
         peer_identity: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError>;
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+    where
+        AL: rfc003::Ledger,
+        BL: rfc003::Ledger,
+        AA: Asset,
+        BA: Asset;
 }
 
 #[async_trait]
 impl SendRequest for Swarm {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA>(
         &self,
         dial_information: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+    where
+        AL: rfc003::Ledger,
+        BL: rfc003::Ledger,
+        AA: Asset,
+        BA: Asset,
+    {
         let id = request.swap_id;
         let request = build_outbound_request(request)
             .expect("constructing a frame::OutoingRequest should never fail!");
@@ -833,7 +847,7 @@ impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
-fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+fn rfc003_swap_request<AL, BL, AA, BA>(
     id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,
@@ -841,7 +855,13 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     beta_asset: BA,
     hash_function: HashFunction,
     body: rfc003::messages::RequestBody<AL::Identity, BL::Identity>,
-) -> rfc003::Request<AL, BL, AA, BA> {
+) -> rfc003::Request<AL, BL, AA, BA>
+where
+    AL: rfc003::Ledger,
+    BL: rfc003::Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     rfc003::Request::<AL, BL, AA, BA> {
         swap_id: id,
         alpha_asset,
@@ -857,9 +877,15 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
     }
 }
 
-fn build_outbound_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+fn build_outbound_request<AL, BL, AA, BA>(
     request: rfc003::Request<AL, BL, AA, BA>,
-) -> Result<frame::OutboundRequest, serde_json::Error> {
+) -> Result<frame::OutboundRequest, serde_json::Error>
+where
+    AL: rfc003::Ledger,
+    BL: rfc003::Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
     let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
     let alpha_expiry = request.alpha_expiry;
