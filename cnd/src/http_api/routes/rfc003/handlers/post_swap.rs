@@ -21,8 +21,9 @@ use crate::{
 };
 use anyhow::Context;
 use futures_core::future::TryFutureExt;
+use libp2p_comit::frame::OutboundRequest;
 use serde::{Deserialize, Serialize};
-use std::str::FromStr;
+use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
 async fn initiate_request<AL, BL, AA, BA>(
     dependencies: Facade,
@@ -39,6 +40,8 @@ where
     BL: Ledger,
     AA: Asset,
     BA: Asset,
+    rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+    <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA>
         + HtlcFunded<AL, AA>
         + HtlcFunded<BL, BA>

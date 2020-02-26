@@ -1,12 +1,20 @@
 use crate::{
-    asset::Asset,
+    asset::{self, Asset, AssetKind},
+    bitcoin::PublicKey,
+    comit_api::LedgerKind,
+    ethereum::Address,
+    libp2p_comit_ext::ToHeader,
     swap_protocols::{
+        ledger::{bitcoin, Ethereum},
         rfc003::{DeriveIdentities, Ledger, SecretHash},
-        HashFunction, SwapId,
+        HashFunction, SwapId, SwapProtocol,
     },
     timestamp::Timestamp,
 };
+use anyhow;
+use libp2p_comit::frame::OutboundRequest;
 use serde::{Deserialize, Serialize};
+use std::convert::TryFrom;
 
 /// High-level message that represents a Swap request to another party
 ///
@@ -25,6 +33,330 @@ pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
+}
+
+impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinMainnet.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Ether(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinTestnet.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Ether(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinRegtest.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Ether(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinMainnet.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Erc20(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinTestnet.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Erc20(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::BitcoinRegtest.to_header()?;
+        let beta_ledger = LedgerKind::Ethereum(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::Bitcoin(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Erc20(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinMainnet.to_header()?;
+        let alpha_asset = AssetKind::Ether(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinTestnet.to_header()?;
+        let alpha_asset = AssetKind::Ether(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("beta_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinRegtest.to_header()?;
+        let alpha_asset = AssetKind::Ether(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinMainnet.to_header()?;
+        let alpha_asset = AssetKind::Erc20(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinTestnet.to_header()?;
+        let alpha_asset = AssetKind::Erc20(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl TryFrom<Request<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>>
+    for OutboundRequest
+{
+    type Error = anyhow::Error;
+
+    fn try_from(
+        request: Request<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>,
+    ) -> anyhow::Result<Self> {
+        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::BitcoinRegtest.to_header()?;
+        let alpha_asset = AssetKind::Erc20(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::Bitcoin(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
 }
 
 /// High-level message that represents accepting a Swap request
@@ -56,6 +388,24 @@ pub struct RequestBody<AI, BI> {
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
+}
+
+impl<AL, BL, AA, BA> From<Request<AL, BL, AA, BA>> for RequestBody<AL::Identity, BL::Identity>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
+    fn from(request: Request<AL, BL, AA, BA>) -> Self {
+        RequestBody {
+            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: request.beta_ledger_redeem_identity,
+            alpha_expiry: request.alpha_expiry,
+            beta_expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Copy, Clone)]

@@ -38,14 +38,15 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
-    frame::{self, OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{OutboundRequest, Response, ValidatedInboundRequest},
     handler,
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Display,
+    convert::TryInto,
+    fmt::{Debug, Display},
     io,
     sync::Arc,
 };
@@ -726,7 +727,9 @@ pub trait SendRequest {
         AL: Ledger,
         BL: Ledger,
         AA: Asset,
-        BA: Asset;
+        BA: Asset,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug;
 }
 
 #[async_trait]
@@ -741,9 +744,12 @@ impl SendRequest for Swarm {
         BL: Ledger,
         AA: Asset,
         BA: Asset,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
     {
         let id = request.swap_id;
-        let request = build_outbound_request(request)
+        let request = request
+            .try_into()
             .expect("constructing a frame::OutoingRequest should never fail!");
 
         let result = {
@@ -876,39 +882,4 @@ where
         beta_expiry: body.beta_expiry,
         secret_hash: body.secret_hash,
     }
-}
-
-fn build_outbound_request<AL, BL, AA, BA>(
-    request: rfc003::Request<AL, BL, AA, BA>,
-) -> Result<frame::OutboundRequest, serde_json::Error>
-where
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-{
-    let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
-    let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
-    let alpha_expiry = request.alpha_expiry;
-    let beta_expiry = request.beta_expiry;
-    let secret_hash = request.secret_hash;
-    let protocol = SwapProtocol::Rfc003(request.hash_function);
-
-    Ok(frame::OutboundRequest::new("SWAP")
-        .with_header("id", request.swap_id.to_header()?)
-        .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
-        .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
-        .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
-        .with_header("beta_asset", request.beta_asset.into().to_header()?)
-        .with_header("protocol", protocol.to_header()?)
-        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
-            AL::Identity,
-            BL::Identity,
-        > {
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-        })?))
 }
