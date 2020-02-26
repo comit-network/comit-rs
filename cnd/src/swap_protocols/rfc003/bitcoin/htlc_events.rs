@@ -1,7 +1,7 @@
 use crate::{
     asset,
     btsieve::bitcoin::{
-        matching_transaction, BitcoindConnector, Cache, TransactionExt, TransactionPattern,
+        watch_for_transaction, watch_for_transaction_and_outpoint, BitcoindConnector, Cache,
     },
     swap_protocols::{
         ledger::bitcoin,
@@ -18,6 +18,7 @@ use crate::{
 use ::bitcoin::OutPoint;
 use anyhow::Context;
 use chrono::NaiveDateTime;
+use tracing_futures::Instrument;
 
 #[async_trait::async_trait]
 impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcFunded<Bitcoin, asset::Bitcoin>
@@ -50,25 +51,17 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcDeployed<Bitcoin, asset::
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
         let connector = self.clone();
-        let pattern = TransactionPattern {
-            to_address: Some(htlc_params.compute_address()),
-            from_outpoint: None,
-            unlock_script: None,
-        };
 
-        let transaction = matching_transaction(connector, pattern, start_of_swap)
-            .await
-            .context("failed to find transaction to deploy htlc")?;
-
-        let (vout, _txout) = transaction
-            .find_output(&htlc_params.compute_address())
-            .expect("Deployment transaction must contain outpoint described in pattern");
+        let (transaction, out_point) = watch_for_transaction_and_outpoint(
+            connector,
+            start_of_swap,
+            htlc_params.compute_address(),
+        )
+        .instrument(tracing::info_span!("htlc_deployed"))
+        .await?;
 
         Ok(Deployed {
-            location: OutPoint {
-                txid: transaction.txid(),
-                vout,
-            },
+            location: out_point,
             transaction,
         })
     }
@@ -85,15 +78,16 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRedeemed<Bitcoin, asset::
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
         let connector = self.clone();
-        let pattern = TransactionPattern {
-            to_address: None,
-            from_outpoint: Some(htlc_deployment.location),
-            unlock_script: Some(vec![vec![1u8]]),
-        };
 
-        let transaction = matching_transaction(connector, pattern, start_of_swap)
-            .await
-            .context("failed to find transaction to redeem from htlc")?;
+        let transaction = watch_for_transaction(
+            connector,
+            start_of_swap,
+            htlc_deployment.location,
+            vec![vec![1u8]],
+        )
+        .instrument(tracing::info_span!("htlc_redeemed"))
+        .await?;
+
         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
             .expect("Redeem transaction must contain secret");
 
@@ -115,14 +109,15 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRefunded<Bitcoin, asset::
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
         let connector = self.clone();
-        let pattern = TransactionPattern {
-            to_address: None,
-            from_outpoint: Some(htlc_deployment.location),
-            unlock_script: Some(vec![vec![]]),
-        };
-        let transaction = matching_transaction(connector, pattern, start_of_swap)
-            .await
-            .context("failed to find transaction to refund from htlc")?;
+
+        let transaction = watch_for_transaction(
+            connector,
+            start_of_swap,
+            htlc_deployment.location,
+            vec![vec![]],
+        )
+        .instrument(tracing::info_span!("htlc_refunded"))
+        .await?;
 
         Ok(Refunded { transaction })
     }

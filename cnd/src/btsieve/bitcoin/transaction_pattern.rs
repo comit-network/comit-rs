@@ -17,6 +17,8 @@ pub struct TransactionPattern {
 impl TransactionPattern {
     /// Does matching based on patterns in self.  If all fields are None any
     /// transaction matches i.e., returns true.
+    ///
+    //TODO: Decide if this can just be removed
     pub fn matches(&self, transaction: &Transaction) -> bool {
         match self {
             Self {
