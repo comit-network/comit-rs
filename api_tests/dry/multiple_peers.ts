@@ -24,7 +24,7 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
 
 setTimeout(async function() {
     threeActorTest(
-        "[Alice] Should be able to send a swap request to Bob and Charlie",
+        "alice-sends-swap-request-to-bob-and-charlie",
         async function({ alice, bob, charlie }) {
             // Alice send swap request to Bob
             const aliceToBobSwapUrl = await alice.cnd.postSwap(

@@ -22,39 +22,39 @@ async function assertSwapsInProgress(actor: Actor, message: string) {
 }
 
 setTimeout(async function() {
-    twoActorTest(
-        "[Alice] Should be able to make first swap request via HTTP api",
-        async function({ alice, bob }) {
-            // setup
+    twoActorTest("alice-can-make-default-swap-request", async function({
+        alice,
+        bob,
+    }) {
+        // setup
 
-            // Alice should be able to send two swap requests to Bob
-            await alice.cnd.postSwap({
-                ...(await createDefaultSwapRequest(bob)),
-                alpha_asset: {
-                    name: DEFAULT_ALPHA.asset.name,
-                    quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
-                },
-            });
-            await alice.cnd.postSwap({
-                ...(await createDefaultSwapRequest(bob)),
-                alpha_asset: {
-                    name: DEFAULT_ALPHA.asset.name,
-                    quantity: DEFAULT_ALPHA.asset.quantity.stingy,
-                },
-            });
+        // Alice should be able to send two swap requests to Bob
+        await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
+            },
+        });
+        await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.stingy,
+            },
+        });
 
-            await assertSwapsInProgress(
-                alice,
-                "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
-            );
-            await assertSwapsInProgress(
-                bob,
-                "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
-            );
-        }
-    );
+        await assertSwapsInProgress(
+            alice,
+            "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
+        );
+        await assertSwapsInProgress(
+            bob,
+            "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
+        );
+    });
 
-    twoActorTest("[Bob] Decline one swap", async function({ alice, bob }) {
+    twoActorTest("bob-can-decline-swap", async function({ alice, bob }) {
         // Alice should be able to send two swap requests to Bob
         const aliceReasonableSwap = await alice.cnd.postSwap({
             ...(await createDefaultSwapRequest(bob)),
