@@ -12,9 +12,13 @@ pub enum Error {
 
 #[allow(clippy::type_complexity)]
 pub trait StateStore: Send + Sync + 'static {
-    fn insert<A: ActorState>(&self, key: SwapId, value: A);
-    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error>;
-    fn update<A: ActorState>(
+    fn insert<A>(&self, key: SwapId, value: A)
+    where
+        A: ActorState;
+    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
+    where
+        A: ActorState;
+    fn update<A>(
         &self,
         key: &SwapId,
         update: SwapEvent<
@@ -25,7 +29,8 @@ pub trait StateStore: Send + Sync + 'static {
             A::AA,
             A::BA,
         >,
-    );
+    ) where
+        A: ActorState;
 }
 
 #[derive(Default, Debug)]
@@ -34,12 +39,18 @@ pub struct InMemoryStateStore {
 }
 
 impl StateStore for InMemoryStateStore {
-    fn insert<A: ActorState>(&self, key: SwapId, value: A) {
+    fn insert<A>(&self, key: SwapId, value: A)
+    where
+        A: ActorState,
+    {
         let mut states = self.states.lock().unwrap();
         states.insert(key, Box::new(value));
     }
 
-    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, Error> {
+    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
+    where
+        A: ActorState,
+    {
         let states = self.states.lock().unwrap();
         match states.get(key) {
             Some(state) => match state.downcast_ref::<A>() {
@@ -51,7 +62,7 @@ impl StateStore for InMemoryStateStore {
     }
 
     #[allow(clippy::type_complexity)]
-    fn update<A: ActorState>(
+    fn update<A>(
         &self,
         key: &SwapId,
         event: SwapEvent<
@@ -62,7 +73,9 @@ impl StateStore for InMemoryStateStore {
             A::AA,
             A::BA,
         >,
-    ) {
+    ) where
+        A: ActorState,
+    {
         let mut actor_state = match self.get::<A>(key) {
             Ok(Some(actor_state)) => actor_state,
             Ok(None) => {

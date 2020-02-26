@@ -99,7 +99,10 @@ impl RootSeed {
         self.0.sha256_with_seed(slices)
     }
 
-    pub fn new_random<R: Rng>(mut rand: R) -> Result<RootSeed, rand::Error> {
+    pub fn new_random<R>(mut rand: R) -> Result<RootSeed, rand::Error>
+    where
+        R: Rng,
+    {
         let mut arr = [0u8; SEED_LENGTH];
         rand.try_fill(&mut arr[..])?;
         Ok(RootSeed(Seed(arr)))
@@ -107,17 +110,21 @@ impl RootSeed {
 
     /// Read the seed from the default location if it exists, otherwise
     /// generate a random seed and write it to the default location.
-    pub fn from_default_dir_or_generate<R: Rng>(rand: R) -> Result<RootSeed, Error> {
+    pub fn from_default_dir_or_generate<R>(rand: R) -> Result<RootSeed, Error>
+    where
+        R: Rng,
+    {
         let path = default_seed_path()?;
         RootSeed::from_dir_or_generate(&path, rand)
     }
 
     /// Read the seed from the directory if it exists, otherwise
     /// generate a random seed and write it to that location.
-    pub fn from_dir_or_generate<D: AsRef<OsStr>, R: Rng>(
-        data_dir: D,
-        rand: R,
-    ) -> Result<RootSeed, Error> {
+    pub fn from_dir_or_generate<D, R>(data_dir: D, rand: R) -> Result<RootSeed, Error>
+    where
+        D: AsRef<OsStr>,
+        R: Rng,
+    {
         let dir = Path::new(&data_dir);
         let path = seed_path_from_dir(dir);
 
@@ -133,7 +140,10 @@ impl RootSeed {
         Ok(random_seed)
     }
 
-    fn from_file<D: AsRef<OsStr>>(seed_file: D) -> Result<RootSeed, Error> {
+    fn from_file<D>(seed_file: D) -> Result<RootSeed, Error>
+    where
+        D: AsRef<OsStr>,
+    {
         let file = Path::new(&seed_file);
         let contents = fs::read_to_string(file)?;
         let pem = pem::parse(contents)?;

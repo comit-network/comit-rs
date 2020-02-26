@@ -14,14 +14,18 @@ use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 pub use self::htlc_events::*;
 use crate::{asset, bitcoin::PublicKey};
 
-impl<B: ledger::Bitcoin> Ledger for B {
+impl<B> Ledger for B
+where
+    B: ledger::Bitcoin,
+{
     type HtlcLocation = OutPoint;
     type Identity = PublicKey;
     type Transaction = Transaction;
 }
 
-impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>>
-    for BitcoinHtlc
+impl<B> From<HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>> for BitcoinHtlc
+where
+    B: ledger::Bitcoin,
 {
     fn from(htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
@@ -39,8 +43,9 @@ impl<B: ledger::Bitcoin> From<HtlcParams<B, asset::Bitcoin, crate::bitcoin::Publ
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network>
-    HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>
+impl<B> HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(B::network())

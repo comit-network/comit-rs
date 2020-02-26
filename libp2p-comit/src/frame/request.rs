@@ -37,13 +37,19 @@ impl ValidatedInboundRequest {
         self.inner.headers.take(key)
     }
 
-    pub fn take_body_as<B: DeserializeOwned>(self) -> Result<B, serde_json::Error> {
+    pub fn take_body_as<B>(self) -> Result<B, serde_json::Error>
+    where
+        B: DeserializeOwned,
+    {
         self.inner.take_body_as()
     }
 }
 
 impl OutboundRequest {
-    pub fn new<T: Into<String>>(request_type: T) -> Self {
+    pub fn new<T>(request_type: T) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
             inner: Request {
                 request_type: request_type.into(),
@@ -135,7 +141,10 @@ struct Request {
 }
 
 impl Request {
-    pub fn take_body_as<B: DeserializeOwned>(self) -> Result<B, serde_json::Error> {
+    pub fn take_body_as<B>(self) -> Result<B, serde_json::Error>
+    where
+        B: DeserializeOwned,
+    {
         B::deserialize(self.body)
     }
 }

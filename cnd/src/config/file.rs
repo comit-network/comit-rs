@@ -47,7 +47,10 @@ impl File {
         }
     }
 
-    pub fn read<D: AsRef<OsStr>>(config_file: D) -> Result<Self, config_rs::ConfigError> {
+    pub fn read<D>(config_file: D) -> Result<Self, config_rs::ConfigError>
+    where
+        D: AsRef<OsStr>,
+    {
         let config_file = Path::new(&config_file);
 
         let mut config = config_rs::Config::new();

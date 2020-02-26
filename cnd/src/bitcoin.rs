@@ -17,10 +17,13 @@ use std::{fmt, str::FromStr};
 pub struct PublicKey(bitcoin::PublicKey);
 
 impl PublicKey {
-    pub fn from_secret_key<C: secp256k1::Signing>(
+    pub fn from_secret_key<C>(
         secp: &secp256k1::Secp256k1<C>,
         secret_key: &secp256k1::SecretKey,
-    ) -> Self {
+    ) -> Self
+    where
+        C: secp256k1::Signing,
+    {
         secp256k1::PublicKey::from_secret_key(secp, secret_key).into()
     }
 }

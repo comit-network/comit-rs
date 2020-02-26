@@ -13,7 +13,13 @@ use derivative::Derivative;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug, PartialEq)]
-pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub struct State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
     pub beta_ledger_state: LedgerState<BL::HtlcLocation, BL::Transaction, BA>,
@@ -22,7 +28,13 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub failed: bool,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub fn proposed(request: messages::Request<AL, BL, AA, BA>, secret_source: SwapSeed) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
@@ -66,7 +78,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     }
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     type AL = AL;
     type BL = BL;
     type AA = AA;

@@ -51,19 +51,27 @@ pub struct Facade {
 }
 
 impl StateStore for Facade {
-    fn insert<A: ActorState>(&self, key: SwapId, value: A) {
+    fn insert<A>(&self, key: SwapId, value: A)
+    where
+        A: ActorState,
+    {
         self.state_store.insert(key, value)
     }
 
-    fn get<A: ActorState>(&self, key: &SwapId) -> Result<Option<A>, state_store::Error> {
+    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, state_store::Error>
+    where
+        A: ActorState,
+    {
         self.state_store.get(key)
     }
 
-    fn update<A: ActorState>(
+    fn update<A>(
         &self,
         key: &SwapId,
         update: SwapEventOnLedger<<A as ActorState>::AL, <A as ActorState>::BL, A::AA, A::BA>,
-    ) {
+    ) where
+        A: ActorState,
+    {
         self.state_store.update::<A>(key, update)
     }
 }

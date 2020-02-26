@@ -41,8 +41,14 @@ impl<S> Advanced<S> {
     }
 }
 
-impl<S: CloseStream> Advanced<S> {
-    fn error<E: Into<Error>>(stream: Pin<Box<Frames>>, error: E) -> Self {
+impl<S> Advanced<S>
+where
+    S: CloseStream,
+{
+    fn error<E>(stream: Pin<Box<Frames>>, error: E) -> Self
+    where
+        E: Into<Error>,
+    {
         let error = error.into();
 
         Self {

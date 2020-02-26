@@ -85,13 +85,16 @@ pub enum OnFail {
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
-pub fn build_rfc003_siren_entity<S: StateStore>(
+pub fn build_rfc003_siren_entity<S>(
     state_store: &S,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
     on_fail: OnFail,
-) -> anyhow::Result<siren::Entity> {
+) -> anyhow::Result<siren::Entity>
+where
+    S: StateStore,
+{
     let id = swap.swap_id;
 
     with_swap_types!(types, {

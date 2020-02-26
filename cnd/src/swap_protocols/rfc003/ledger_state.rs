@@ -49,7 +49,10 @@ pub enum LedgerState<H, T, A> {
     },
 }
 
-impl<T, H, A: Asset> LedgerState<H, T, A> {
+impl<T, H, A> LedgerState<H, T, A>
+where
+    A: Asset,
+{
     pub fn transition_to_deployed(&mut self, deployed: Deployed<T, H>) {
         let Deployed {
             transaction,

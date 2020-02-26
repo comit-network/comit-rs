@@ -33,7 +33,11 @@ pub struct Refunded<T> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcFunded<L, A>: Send + Sync + Sized + 'static
+where
+    L: Ledger,
+    A: Asset,
+{
     async fn htlc_funded(
         &self,
         htlc_params: HtlcParams<L, A, L::Identity>,
@@ -43,7 +47,11 @@ pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcDeployed<L, A>: Send + Sync + Sized + 'static
+where
+    L: Ledger,
+    A: Asset,
+{
     async fn htlc_deployed(
         &self,
         htlc_params: HtlcParams<L, A, L::Identity>,
@@ -52,7 +60,11 @@ pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcRedeemed<L, A>: Send + Sync + Sized + 'static
+where
+    L: Ledger,
+    A: Asset,
+{
     async fn htlc_redeemed(
         &self,
         htlc_params: HtlcParams<L, A, L::Identity>,
@@ -62,7 +74,11 @@ pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRefunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcRefunded<L, A>: Send + Sync + Sized + 'static
+where
+    L: Ledger,
+    A: Asset,
+{
     async fn htlc_refunded(
         &self,
         htlc_params: HtlcParams<L, A, L::Identity>,
