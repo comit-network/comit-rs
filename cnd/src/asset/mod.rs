@@ -6,15 +6,9 @@ pub use self::{
 };
 use crate::asset;
 use derivative::Derivative;
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
+use std::fmt::Debug;
 
-pub trait Asset:
-    Clone + Debug + Display + Send + Sync + 'static + PartialEq + Eq + Hash + Ord
-{
-}
+pub trait Asset: Clone + Debug + Send + Sync + 'static + Ord {}
 
 impl Asset for Bitcoin {}
 
