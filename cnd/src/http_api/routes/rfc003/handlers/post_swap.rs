@@ -42,6 +42,7 @@ where
     BA: Asset,
     rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
     <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
+    rfc003::Request<AL, BL, AA, BA>: Clone,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA>
         + HtlcFunded<AL, AA>
         + HtlcFunded<BL, BA>
@@ -81,7 +82,7 @@ where
                 Err(decline) => {
                     tracing::info!("Swap declined: {}", decline.swap_id);
                     let state = State::declined(swap_request.clone(), decline, seed);
-                    StateStore::insert(&dependencies, id, state.clone());
+                    StateStore::insert(&dependencies, id, state);
                     Save::save(&dependencies, decline).await?;
                 }
             };

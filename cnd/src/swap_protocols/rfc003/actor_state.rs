@@ -3,14 +3,14 @@ use crate::{
     swap_protocols::rfc003::{ledger_state::LedgerState, Ledger},
 };
 
-pub trait ActorState: Clone + Send + Sync + 'static {
+pub trait ActorState: Send + Sync + 'static {
     type AL: Ledger;
     type BL: Ledger;
     type AA: Asset;
     type BA: Asset;
 
-    fn expected_alpha_asset(&self) -> Self::AA;
-    fn expected_beta_asset(&self) -> Self::BA;
+    fn expected_alpha_asset(&self) -> &Self::AA;
+    fn expected_beta_asset(&self) -> &Self::BA;
 
     fn alpha_ledger_mut(
         &mut self,

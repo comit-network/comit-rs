@@ -7,7 +7,7 @@ pub use self::{
 use crate::asset;
 use derivative::Derivative;
 
-pub trait Asset: Clone + Send + Sync + 'static + Ord {}
+pub trait Asset: Send + Sync + 'static + Ord {}
 
 impl Asset for Bitcoin {}
 

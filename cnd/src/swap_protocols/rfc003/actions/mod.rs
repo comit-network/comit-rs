@@ -31,7 +31,7 @@ where
 {
     type FundActionOutput;
 
-    fn fund_action(htlc_params: HtlcParams<L, A, L::Identity>) -> Self::FundActionOutput;
+    fn fund_action(htlc_params: HtlcParams<'_, L, A, L::Identity>) -> Self::FundActionOutput;
 }
 
 pub trait RefundAction<L, A>
@@ -42,7 +42,7 @@ where
     type RefundActionOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: HtlcParams<'_, L, A, L::Identity>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &L::Transaction,
@@ -57,7 +57,7 @@ where
     type RedeemActionOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: HtlcParams<'_, L, A, L::Identity>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,

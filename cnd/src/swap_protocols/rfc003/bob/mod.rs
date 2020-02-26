@@ -83,11 +83,11 @@ where
         }
     }
 
-    pub fn request(&self) -> Request<AL, BL, AA, BA> {
+    pub fn request(&self) -> &Request<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request, .. }
-            | SwapCommunication::Declined { request, .. } => request.clone(),
+            | SwapCommunication::Declined { request, .. } => request,
         }
     }
 }
@@ -104,12 +104,12 @@ where
     type AA = AA;
     type BA = BA;
 
-    fn expected_alpha_asset(&self) -> Self::AA {
-        self.swap_communication.request().alpha_asset.clone()
+    fn expected_alpha_asset(&self) -> &Self::AA {
+        &self.swap_communication.request().alpha_asset
     }
 
-    fn expected_beta_asset(&self) -> Self::BA {
-        self.swap_communication.request().beta_asset.clone()
+    fn expected_beta_asset(&self) -> &Self::BA {
+        &self.swap_communication.request().beta_asset
     }
 
     fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL::HtlcLocation, AL::Transaction, AA> {

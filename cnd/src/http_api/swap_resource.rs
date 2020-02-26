@@ -111,7 +111,7 @@ where
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
         let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-        let parameters = SwapParameters::from(state.clone().request());
+        let parameters = SwapParameters::from(state.request().clone());
         let actions = state.actions();
 
         let status = SwapStatus::new(

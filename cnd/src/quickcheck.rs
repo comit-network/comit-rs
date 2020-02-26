@@ -250,6 +250,7 @@ where
     Quickcheck<BA>: Arbitrary,
     Quickcheck<AL::Identity>: Arbitrary,
     Quickcheck<BL::Identity>: Arbitrary,
+    Request<AL, BL, AA, BA>: Clone,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {

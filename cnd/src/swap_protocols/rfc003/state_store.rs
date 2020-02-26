@@ -17,7 +17,7 @@ pub trait StateStore: Send + Sync + 'static {
         A: ActorState;
     fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
     where
-        A: ActorState;
+        A: ActorState + Clone;
     fn update<A>(
         &self,
         key: &SwapId,
@@ -49,7 +49,7 @@ impl StateStore for InMemoryStateStore {
 
     fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
     where
-        A: ActorState,
+        A: ActorState + Clone,
     {
         let states = self.states.lock().unwrap();
         match states.get(key) {
@@ -76,14 +76,14 @@ impl StateStore for InMemoryStateStore {
     ) where
         A: ActorState,
     {
-        let mut actor_state = match self.get::<A>(key) {
-            Ok(Some(actor_state)) => actor_state,
-            Ok(None) => {
+        let mut states = self.states.lock().unwrap();
+        let actor_state = match states
+            .get_mut(key)
+            .and_then(|state| state.downcast_mut::<A>())
+        {
+            Some(state) => state,
+            None => {
                 tracing::warn!("Value not found for key {}", key);
-                return;
-            }
-            Err(_invalid_type) => {
-                tracing::warn!("Attempted to get state with wrong type for key {}", key);
                 return;
             }
         };
@@ -134,8 +134,6 @@ impl StateStore for InMemoryStateStore {
                 .beta_ledger_mut()
                 .transition_to_refunded(refunded),
         }
-
-        self.insert(key.clone(), actor_state)
     }
 }
 
@@ -198,6 +196,6 @@ mod tests {
         let res = state_store
             .get::<alice::State<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>(&id)
             .unwrap();
-        assert_that(&res).contains_value(state);
+        assert_that(&res).contains_value(&state);
     }
 }

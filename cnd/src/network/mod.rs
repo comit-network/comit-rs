@@ -635,6 +635,7 @@ where
     AA: Asset,
     BA: Asset,
     DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
+    Request<AL, BL, AA, BA>: Clone,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);

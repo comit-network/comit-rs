@@ -40,7 +40,7 @@ where
 {
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<L::Transaction, A>>;
@@ -54,7 +54,7 @@ where
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<L::Transaction, L::HtlcLocation>>;
 }
@@ -67,7 +67,7 @@ where
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<L::Transaction>>;
@@ -81,7 +81,7 @@ where
 {
     async fn htlc_refunded(
         &self,
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<L::Transaction>>;
