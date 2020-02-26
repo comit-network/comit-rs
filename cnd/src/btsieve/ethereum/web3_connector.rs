@@ -195,7 +195,10 @@ impl ReceiptByHash for Web3Connector {
     }
 }
 
-fn serialize<T: Serialize>(t: T) -> anyhow::Result<serde_json::Value> {
+fn serialize<T>(t: T) -> anyhow::Result<serde_json::Value>
+where
+    T: Serialize,
+{
     let value = serde_json::to_value(t).context("failed to serialize parameter")?;
 
     Ok(value)

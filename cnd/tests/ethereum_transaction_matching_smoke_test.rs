@@ -86,9 +86,11 @@ async fn ethereum_transaction_matching_smoke_test() {
     assert_eq!(matched_transaction.hash, transaction)
 }
 
-pub fn new_web3_client<D: Docker, E: Image>(
-    container: &Container<'_, D, E>,
-) -> (EventLoopHandle, Web3<Http>) {
+pub fn new_web3_client<D, E>(container: &Container<'_, D, E>) -> (EventLoopHandle, Web3<Http>)
+where
+    D: Docker,
+    E: Image,
+{
     let port = container.get_host_port(8545).unwrap();
     let endpoint = format!("http://localhost:{}", port);
 

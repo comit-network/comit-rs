@@ -24,13 +24,21 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
-pub trait FundAction<L: Ledger, A: Asset> {
+pub trait FundAction<L, A>
+where
+    L: Ledger,
+    A: Asset,
+{
     type FundActionOutput;
 
     fn fund_action(htlc_params: HtlcParams<L, A, L::Identity>) -> Self::FundActionOutput;
 }
 
-pub trait RefundAction<L: Ledger, A: Asset> {
+pub trait RefundAction<L, A>
+where
+    L: Ledger,
+    A: Asset,
+{
     type RefundActionOutput;
 
     fn refund_action(
@@ -41,7 +49,11 @@ pub trait RefundAction<L: Ledger, A: Asset> {
     ) -> Self::RefundActionOutput;
 }
 
-pub trait RedeemAction<L: Ledger, A: Asset> {
+pub trait RedeemAction<L, A>
+where
+    L: Ledger,
+    A: Asset,
+{
     type RedeemActionOutput;
 
     fn redeem_action(

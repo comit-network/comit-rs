@@ -31,10 +31,10 @@ where
 
 // This is the API serde expects, can't do much about the trivial copy :(
 #[allow(clippy::trivially_copy_pass_by_ref)]
-pub fn serialize<S: Serializer>(
-    value: &bitcoin::Network,
-    serializer: S,
-) -> Result<S::Ok, S::Error> {
+pub fn serialize<S>(value: &bitcoin::Network, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
     serializer.serialize_str(match value {
         bitcoin::Network::Bitcoin => "mainnet",
         bitcoin::Network::Testnet => "testnet",

@@ -13,8 +13,9 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> FundAction<B, asset::Bitcoin> for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
     type FundActionOutput = SendToAddress;
 
@@ -31,8 +32,9 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> RefundAction<B, asset::Bitcoin> for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
     type RefundActionOutput = SpendOutput;
 
@@ -55,8 +57,9 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitco
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RedeemAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> RedeemAction<B, asset::Bitcoin> for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
     type RedeemActionOutput = SpendOutput;
 

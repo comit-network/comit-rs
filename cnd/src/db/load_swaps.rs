@@ -37,7 +37,13 @@ pub type AcceptedSwap<AL, BL, AA, BA> = (
 );
 
 #[async_trait]
-pub trait LoadAcceptedSwap<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub trait LoadAcceptedSwap<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     async fn load_accepted_swap(
         &self,
         swap_id: &SwapId,

@@ -146,10 +146,13 @@ fn check_block_against_pattern<'b>(
     })
 }
 
-pub async fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
+pub async fn bitcoin_http_request_for_hex_encoded_object<T>(
     request_url: Url,
     client: Client,
-) -> anyhow::Result<T> {
+) -> anyhow::Result<T>
+where
+    T: Decodable,
+{
     let response_text = client.get(request_url).send().await?.text().await?;
     let decoded_response = decode_response(response_text)?;
 
@@ -168,7 +171,10 @@ pub enum Error {
     Deserialization(#[from] bitcoin::consensus::encode::Error),
 }
 
-pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> {
+pub fn decode_response<T>(response_text: String) -> Result<T, Error>
+where
+    T: Decodable,
+{
     let bytes = hex::decode(response_text.trim()).map_err(Error::Hex)?;
     deserialize(bytes.as_slice()).map_err(Error::Deserialization)
 }

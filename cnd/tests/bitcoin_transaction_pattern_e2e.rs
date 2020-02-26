@@ -74,9 +74,12 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     )
 }
 
-pub fn new_bitcoincore_client<D: Docker>(
+pub fn new_bitcoincore_client<D>(
     container: &Container<'_, D, BitcoinCore>,
-) -> bitcoincore_rpc::Client {
+) -> bitcoincore_rpc::Client
+where
+    D: Docker,
+{
     let port = container.get_host_port(18443).unwrap();
     let auth = container.image().auth();
 

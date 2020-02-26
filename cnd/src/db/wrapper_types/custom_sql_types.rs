@@ -27,7 +27,10 @@ where
     String: ToSql<sql_types::Text, DB>,
     T: fmt::Display + fmt::Debug,
 {
-    fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+    fn to_sql<W>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result
+    where
+        W: std::io::Write,
+    {
         let s = self.0.to_string();
         s.to_sql(out)
     }
@@ -58,7 +61,10 @@ where
     DB: Backend,
     i64: ToSql<sql_types::BigInt, DB>,
 {
-    fn to_sql<W: std::io::Write>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result {
+    fn to_sql<W>(&self, out: &mut Output<'_, W, DB>) -> serialize::Result
+    where
+        W: std::io::Write,
+    {
         let number = i64::try_from(self.0).expect("every u32 fits into a i64");
 
         number.to_sql(out)

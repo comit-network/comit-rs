@@ -215,11 +215,14 @@ impl ProtocolsHandler for ComitHandler {
     }
 }
 
-fn poll_substreams<S: Display + Advance>(
+fn poll_substreams<S>(
     substreams: &mut Vec<S>,
     known_headers: &HashMap<String, HashSet<String>>,
     cx: &mut Context<'_>,
-) -> Option<Poll<ComitHandlerEvent>> {
+) -> Option<Poll<ComitHandlerEvent>>
+where
+    S: Display + Advance,
+{
     // We remove each element from `substreams` one by one and add them back.
     for n in (0..substreams.len()).rev() {
         let substream_state = substreams.swap_remove(n);
