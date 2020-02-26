@@ -12,7 +12,7 @@ use std::{
 };
 
 pub trait Asset:
-    Clone + Debug + Display + Send + Sync + 'static + PartialEq + Eq + Hash + Into<AssetKind> + Ord
+    Clone + Debug + Display + Send + Sync + 'static + PartialEq + Eq + Hash + Ord
 {
 }
 
