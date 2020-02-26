@@ -65,3 +65,15 @@ pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
+
+// `warp::reply::Json` is used as a return type to please the compiler
+// until proper logic is implemented
+#[allow(clippy::needless_pass_by_value)]
+pub async fn post_lightning_route() -> Result<warp::reply::Json, Rejection> {
+    tracing::error!("Lightning routes are not yet supported");
+    Err(warp::reject::custom(
+        HttpApiProblem::new("Route not yet supported.")
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail("This route is not yet supported."),
+    ))
+}

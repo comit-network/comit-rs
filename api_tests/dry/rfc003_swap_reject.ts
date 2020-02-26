@@ -9,6 +9,7 @@ import { EmbeddedRepresentationSubEntity } from "../gen/siren";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { Actor } from "../lib/actors/actor";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../lib/utils";
+import { Action } from "comit-sdk";
 
 async function assertSwapsInProgress(actor: Actor, message: string) {
     const res = await request(actor.cndHttpApiUrl()).get("/swaps");
@@ -92,9 +93,9 @@ setTimeout(async function() {
 
             /// Decline the swap
             const decline = bobSwapDetails.actions.find(
-                action => action.name === "decline"
+                (action: Action) => action.name === "decline"
             );
-            const declineRes = await bob.cnd.executeAction(decline);
+            const declineRes = await bob.cnd.executeSirenAction(decline);
 
             declineRes.should.have.status(200);
             expect(
