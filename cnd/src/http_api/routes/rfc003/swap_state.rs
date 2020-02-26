@@ -51,8 +51,13 @@ pub enum SwapCommunicationState {
     Declined,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
+impl<AL, BL, AA, BA> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
     for SwapCommunication<AL::Identity, BL::Identity>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
 {
     fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use rfc003::SwapCommunication::*;

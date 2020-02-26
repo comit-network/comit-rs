@@ -34,7 +34,13 @@ pub type Response<AL, BL> =
     Result<Accept<<AL as Ledger>::Identity, <BL as Ledger>::Identity>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub enum SwapCommunication<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     Proposed {
         request: Request<AL, BL, AA, BA>,
     },
@@ -48,7 +54,13 @@ pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     },
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapCommunication<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA> SwapCommunication<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub fn request(&self) -> &Request<AL, BL, AA, BA> {
         match self {
             SwapCommunication::Accepted { request, .. } => request,

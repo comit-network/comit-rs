@@ -13,7 +13,13 @@ use serde::{Deserialize, Serialize};
 /// This does _not_ represent the actual network message, that is why it also
 /// does not implement Serialize.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Request<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub struct Request<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub swap_id: SwapId,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,

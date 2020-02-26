@@ -14,12 +14,16 @@ use crate::{
 };
 
 #[allow(clippy::cognitive_complexity)]
-pub fn init_accepted_swap<D, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+pub fn init_accepted_swap<D, AL, BL, AA, BA>(
     dependencies: &D,
     accepted: AcceptedSwap<AL, BL, AA, BA>,
     role: Role,
 ) -> anyhow::Result<()>
 where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
     D: StateStore
         + Clone
         + DeriveSwapSeed

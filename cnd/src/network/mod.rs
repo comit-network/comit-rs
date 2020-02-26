@@ -621,7 +621,7 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
@@ -629,6 +629,10 @@ async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
     swap_request: Request<AL, BL, AA, BA>,
 ) -> anyhow::Result<()>
 where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
     DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
 {
     let id = swap_request.swap_id;

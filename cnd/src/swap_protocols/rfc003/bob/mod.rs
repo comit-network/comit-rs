@@ -17,7 +17,13 @@ pub type ResponseSender<AL: Ledger, BL: Ledger> =
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
-pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub struct State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
     pub beta_ledger_state: LedgerState<BL::HtlcLocation, BL::Transaction, BA>,
@@ -26,7 +32,13 @@ pub struct State<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
     pub failed: bool, // Gets set on any error during the execution of a swap.
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     pub fn proposed(
         request: Request<AL, BL, AA, BA>,
         secret_source: impl DeriveIdentities,
@@ -77,7 +89,13 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> State<AL, BL, AA, BA> {
     }
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> ActorState for State<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
+where
+    AL: Ledger,
+    BL: Ledger,
+    AA: Asset,
+    BA: Asset,
+{
     type AL = AL;
     type BL = BL;
     type AA = AA;
