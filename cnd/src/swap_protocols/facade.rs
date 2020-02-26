@@ -27,8 +27,8 @@ use chrono::NaiveDateTime;
 use futures_core::channel::oneshot::Sender;
 use impl_template::impl_template;
 use libp2p::{Multiaddr, PeerId};
-use libp2p_comit::frame::Response;
-use std::sync::Arc;
+use libp2p_comit::frame::{OutboundRequest, Response};
+use std::{convert::TryInto, fmt::Debug, sync::Arc};
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
@@ -70,11 +70,19 @@ impl StateStore for Facade {
 
 #[async_trait]
 impl SendRequest for Facade {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA>(
         &self,
         peer_identity: DialInformation,
         request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
+    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+    where
+        AL: Ledger,
+        BL: Ledger,
+        AA: Asset,
+        BA: Asset,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
+    {
         self.swarm.send_request(peer_identity, request).await
     }
 }

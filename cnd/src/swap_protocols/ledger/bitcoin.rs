@@ -10,7 +10,7 @@ pub struct Testnet;
 pub struct Regtest;
 
 pub trait Bitcoin:
-    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + Into<LedgerKind> + 'static
+    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + 'static
 {
 }
 
