@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, Network, Parity, Socket},
+    config::{Bitcoind, Data, Lnd, Network, Parity, Socket},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
@@ -20,6 +20,7 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+    pub lnd: Option<Lnd>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -44,6 +45,7 @@ impl File {
             logging: Option::None,
             bitcoin: Option::None,
             ethereum: Option::None,
+            lnd: Option::None,
         }
     }
 
@@ -213,6 +215,13 @@ chain_id = 17
 
 [ethereum.parity]
 node_url = "http://localhost:8545/"
+
+[lnd]
+macaroon = "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
+
+[lnd.http_rpc_socket]
+address = "127.0.0.1"
+port = 443
 "#;
 
         let file = File {
@@ -245,6 +254,15 @@ node_url = "http://localhost:8545/"
                 parity: Some(Parity {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
+            }),
+            lnd: Some(Lnd {
+                http_rpc_socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                    port: 443,
+                },
+                macaroon: Some(PathBuf::from(
+                    "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
+                )),
             }),
         };
 
@@ -364,6 +382,36 @@ node_url = "http://localhost:8545/"
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Ethereum>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn lnd_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            macaroon = "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
+            [http_rpc_socket]
+            address = "127.0.0.1"
+            port = 443
+            "#,
+        ];
+
+        let expected = vec![Lnd {
+            http_rpc_socket: Socket {
+                address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                port: 443,
+            },
+            macaroon: Some(PathBuf::from(
+                "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
+            )),
+        }];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

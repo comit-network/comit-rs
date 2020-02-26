@@ -5,7 +5,10 @@ pub mod settings;
 use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
-use std::{net::IpAddr, path::PathBuf};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    path::PathBuf,
+};
 
 pub use self::{file::File, settings::Settings};
 use reqwest::Url;
@@ -89,6 +92,28 @@ impl Default for Ethereum {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Parity {
     pub node_url: reqwest::Url,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lnd {
+    pub http_rpc_socket: Socket,
+    pub macaroon: Option<PathBuf>,
+}
+
+impl Default for Lnd {
+    fn default() -> Self {
+        Self {
+            http_rpc_socket: default_lnd_http_rpc_socket(),
+            macaroon: None,
+        }
+    }
+}
+
+fn default_lnd_http_rpc_socket() -> Socket {
+    Socket {
+        address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+        port: 443,
+    }
 }
 
 #[cfg(test)]

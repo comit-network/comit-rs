@@ -1,4 +1,4 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Network, Parity, Socket};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Lnd, Network, Parity, Socket};
 use anyhow::Context;
 use log::LevelFilter;
 use std::net::{IpAddr, Ipv4Addr};
@@ -17,6 +17,7 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+    pub lnd: Option<Lnd>,
 }
 
 fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
@@ -75,6 +76,7 @@ impl From<Settings> for File {
             logging: Logging { level },
             bitcoin,
             ethereum,
+            lnd,
         } = settings;
 
         File {
@@ -95,6 +97,13 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
+            lnd: match lnd {
+                None => None,
+                Some(lnd) => Some(Lnd {
+                    http_rpc_socket: lnd.http_rpc_socket,
+                    macaroon: lnd.macaroon,
+                }),
+            },
         }
     }
 }
@@ -153,6 +162,7 @@ impl Settings {
             logging,
             bitcoin,
             ethereum,
+            lnd,
         } = config_file;
 
         Ok(Self {
@@ -205,6 +215,13 @@ impl Settings {
             },
             bitcoin: derive_url_bitcoin(bitcoin),
             ethereum: derive_url_ethereum(ethereum),
+            lnd: match lnd {
+                None => None,
+                Some(lnd) => Some(Lnd {
+                    http_rpc_socket: lnd.http_rpc_socket,
+                    macaroon: lnd.macaroon,
+                }),
+            },
         })
     }
 }
@@ -392,5 +409,47 @@ mod tests {
                     },
                 })
         }
+    }
+
+    #[test]
+    fn http_lnd_section_defaults_to_none() {
+        let config_file = File {
+            lnd: None,
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lnd)
+            .is_equal_to(None)
+    }
+
+    #[test]
+    fn http_lnd_section_defaults_macaroon_to_none() {
+        let config_file = File {
+            lnd: Some(Lnd {
+                http_rpc_socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                    port: 443,
+                },
+                macaroon: None,
+            }),
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lnd)
+            .is_equal_to(Some(Lnd {
+                macaroon: None,
+                http_rpc_socket: Socket {
+                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
+                    port: 443,
+                },
+            }))
     }
 }
