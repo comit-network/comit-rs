@@ -51,7 +51,10 @@ pub mod timestamp;
 
 use anyhow::Context;
 use directories::ProjectDirs;
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -76,6 +79,18 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
 // OSX: /Users/<user>/Library/Application Support/comit/
 pub fn data_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
+
+/// Returns the LND data directory: $LND_DIR if it is set or else "~/.lnd".
+pub fn lnd_data_dir() -> PathBuf {
+    match env::var("LND_DIR") {
+        Ok(dir) => PathBuf::from(dir),
+        Err(_) => {
+            // Just unwrap, if we don't have $HOME we are hosed anyway.
+            let home = dirs::home_dir().unwrap();
+            home.join(".lnd")
+        }
+    }
 }
 
 pub type Never = std::convert::Infallible;

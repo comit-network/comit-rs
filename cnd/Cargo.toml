@@ -18,6 +18,7 @@ derivative = "1"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 directories = "2.0"
+dirs = "2.0"
 ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }

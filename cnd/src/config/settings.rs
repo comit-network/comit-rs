@@ -1,7 +1,10 @@
 use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Lnd, Network, Parity, Socket};
 use anyhow::Context;
 use log::LevelFilter;
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    net::{IpAddr, Ipv4Addr},
+    path::PathBuf,
+};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -223,6 +226,43 @@ impl Settings {
                 }),
             },
         })
+    }
+
+    // move the logic to get lnd_data_dir and cnd_data_dir outside
+    // pass them in
+
+    pub fn user_configured_macaroon_path(&self) -> Option<PathBuf> {
+        if let Some(lnd) = &self.lnd {
+            if let Some(macaroon) = &lnd.macaroon {
+                if macaroon.exists() {
+                    return Some(macaroon.clone());
+                }
+            }
+        }
+        None
+    }
+
+    pub fn locate_macaroon(&self, cnd_data_dir: PathBuf, lnd_data_dir: PathBuf) -> Option<PathBuf> {
+        const MACAROON: &str = "readonly.macaroon";
+
+        let macaroon = cnd_data_dir.join(MACAROON);
+        if macaroon.exists() {
+            return Some(macaroon);
+        }
+
+        // Is there a macaroon in the lnd network directory
+        let network = self.bitcoin.network;
+        let macaroon = lnd_data_dir
+            .join("data")
+            .join("chain")
+            .join("bitcoin")
+            .join(&format!("{}", network))
+            .join(MACAROON);
+        if macaroon.exists() {
+            return Some(macaroon);
+        }
+
+        None
     }
 }
 
