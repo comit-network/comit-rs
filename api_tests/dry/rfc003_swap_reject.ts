@@ -22,110 +22,106 @@ async function assertSwapsInProgress(actor: Actor, message: string) {
 }
 
 setTimeout(async function() {
-    describe("SWAP request DECLINED", () => {
-        twoActorTest(
-            "[Alice] Should be able to make first swap request via HTTP api",
-            async function({ alice, bob }) {
-                // setup
+    twoActorTest("alice-can-make-default-swap-request", async function({
+        alice,
+        bob,
+    }) {
+        // setup
 
-                // Alice should be able to send two swap requests to Bob
-                await alice.cnd.postSwap({
-                    ...(await createDefaultSwapRequest(bob)),
-                    alpha_asset: {
-                        name: DEFAULT_ALPHA.asset.name,
-                        quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
-                    },
-                });
-                await alice.cnd.postSwap({
-                    ...(await createDefaultSwapRequest(bob)),
-                    alpha_asset: {
-                        name: DEFAULT_ALPHA.asset.name,
-                        quantity: DEFAULT_ALPHA.asset.quantity.stingy,
-                    },
-                });
+        // Alice should be able to send two swap requests to Bob
+        await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
+            },
+        });
+        await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.stingy,
+            },
+        });
 
-                await assertSwapsInProgress(
-                    alice,
-                    "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
-                );
-                await assertSwapsInProgress(
-                    bob,
-                    "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
-                );
-            }
+        await assertSwapsInProgress(
+            alice,
+            "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
+        );
+        await assertSwapsInProgress(
+            bob,
+            "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
+        );
+    });
+
+    twoActorTest("bob-can-decline-swap", async function({ alice, bob }) {
+        // Alice should be able to send two swap requests to Bob
+        const aliceReasonableSwap = await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
+            },
+        });
+
+        const aliceStingySwap = await alice.cnd.postSwap({
+            ...(await createDefaultSwapRequest(bob)),
+            alpha_asset: {
+                name: DEFAULT_ALPHA.asset.name,
+                quantity: DEFAULT_ALPHA.asset.quantity.stingy,
+            },
+        });
+
+        const bobSwapDetails = await bob.pollSwapDetails(aliceStingySwap);
+
+        expect(
+            bobSwapDetails.properties,
+            "[Bob] Has the RFC-003 parameters when GETing the swap"
+        ).jsonSchema(swapPropertiesJsonSchema);
+        expect(
+            bobSwapDetails.actions,
+            "[Bob] Has the accept and decline actions when GETing the swap"
+        ).containSubset([
+            {
+                name: "accept",
+            },
+            {
+                name: "decline",
+            },
+        ]);
+
+        /// Decline the swap
+        const decline = bobSwapDetails.actions.find(
+            (action: Action) => action.name === "decline"
+        );
+        const declineRes = await bob.cnd.executeSirenAction(decline);
+
+        declineRes.should.have.status(200);
+        expect(
+            await bob.pollCndUntil(
+                aliceStingySwap,
+                entity =>
+                    entity.properties.state.communication.status === "DECLINED"
+            ),
+            "[Bob] Should be in the Declined State after declining a swap request providing a reason"
+        ).to.exist;
+
+        const aliceReasonableSwapDetails = await alice.pollSwapDetails(
+            aliceReasonableSwap
+        );
+        const aliceStingySwapDetails = await alice.pollSwapDetails(
+            aliceStingySwap
         );
 
-        twoActorTest("[Bob] Decline one swap", async function({ alice, bob }) {
-            // Alice should be able to send two swap requests to Bob
-            const aliceReasonableSwap = await alice.cnd.postSwap({
-                ...(await createDefaultSwapRequest(bob)),
-                alpha_asset: {
-                    name: DEFAULT_ALPHA.asset.name,
-                    quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
-                },
-            });
+        expect(
+            aliceStingySwapDetails.properties.state.communication.status,
+            "[Alice] Should be in the Declined State after Bob declines a swap"
+        ).to.eq("DECLINED");
 
-            const aliceStingySwap = await alice.cnd.postSwap({
-                ...(await createDefaultSwapRequest(bob)),
-                alpha_asset: {
-                    name: DEFAULT_ALPHA.asset.name,
-                    quantity: DEFAULT_ALPHA.asset.quantity.stingy,
-                },
-            });
-
-            const bobSwapDetails = await bob.pollSwapDetails(aliceStingySwap);
-
-            expect(
-                bobSwapDetails.properties,
-                "[Bob] Has the RFC-003 parameters when GETing the swap"
-            ).jsonSchema(swapPropertiesJsonSchema);
-            expect(
-                bobSwapDetails.actions,
-                "[Bob] Has the accept and decline actions when GETing the swap"
-            ).containSubset([
-                {
-                    name: "accept",
-                },
-                {
-                    name: "decline",
-                },
-            ]);
-
-            /// Decline the swap
-            const decline = bobSwapDetails.actions.find(
-                (action: Action) => action.name === "decline"
-            );
-            const declineRes = await bob.cnd.executeSirenAction(decline);
-
-            declineRes.should.have.status(200);
-            expect(
-                await bob.pollCndUntil(
-                    aliceStingySwap,
-                    entity =>
-                        entity.properties.state.communication.status ===
-                        "DECLINED"
-                ),
-                "[Bob] Should be in the Declined State after declining a swap request providing a reason"
-            ).to.exist;
-
-            const aliceReasonableSwapDetails = await alice.pollSwapDetails(
-                aliceReasonableSwap
-            );
-            const aliceStingySwapDetails = await alice.pollSwapDetails(
-                aliceStingySwap
-            );
-
-            expect(
-                aliceStingySwapDetails.properties.state.communication.status,
-                "[Alice] Should be in the Declined State after Bob declines a swap"
-            ).to.eq("DECLINED");
-
-            expect(
-                aliceReasonableSwapDetails.properties.state.communication
-                    .status,
-                "[Alice] Should be in the SENT State for the other swap request"
-            ).to.eq("SENT");
-        });
+        expect(
+            aliceReasonableSwapDetails.properties.state.communication.status,
+            "[Alice] Should be in the SENT State for the other swap request"
+        ).to.eq("SENT");
     });
 
     run();
