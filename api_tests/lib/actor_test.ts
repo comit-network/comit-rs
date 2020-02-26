@@ -11,6 +11,13 @@ function nActorTest(
     actorNames: ["alice", "bob", "charlie"] | ["alice", "bob"] | ["alice"],
     testFn: (actors: Actors) => Promise<void>
 ) {
+    if (!name.match(/[A-z0-9\-]+/)) {
+        // We use the test name as a file name for the log and hence need to restrict it.
+        throw new Error(
+            `Testname '${name}' is invalid. Only A-z, 0-9 and dashes are allowed.`
+        );
+    }
+
     it(name, async function() {
         this.timeout(100_000); // absurd timeout. we have our own one further down
         const actors = await createActors(`${name}.log`, actorNames);
