@@ -6,9 +6,8 @@ pub use self::{
 };
 use crate::asset;
 use derivative::Derivative;
-use std::fmt::Debug;
 
-pub trait Asset: Clone + Debug + Send + Sync + 'static + Ord {}
+pub trait Asset: Clone + Send + Sync + 'static + Ord {}
 
 impl Asset for Bitcoin {}
 

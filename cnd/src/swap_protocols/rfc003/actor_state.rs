@@ -2,9 +2,8 @@ use crate::{
     asset::Asset,
     swap_protocols::rfc003::{ledger_state::LedgerState, Ledger},
 };
-use std::fmt::Debug;
 
-pub trait ActorState: Debug + Clone + Send + Sync + 'static {
+pub trait ActorState: Clone + Send + Sync + 'static {
     type AL: Ledger;
     type BL: Ledger;
     type AA: Asset;
