@@ -161,10 +161,10 @@
   resolved "https://registry.yarnpkg.com/@types/cookiejar/-/cookiejar-2.1.1.tgz#90b68446364baf9efd8e8349bb36bd3852b75b80"
   integrity sha512-aRnpPa7ysx3aNW60hTiCtLHlQaIFsXFCgQlpakNgDNVFzbtusSY8PwjAQgRWfSk0ekNoBjO51eQRB6upA9uuyw==
 
-"@types/dockerode@^2.5.23":
-  version "2.5.23"
-  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.23.tgz#bc67175e68b766fdee3c9f123dc1d486314dd3f2"
-  integrity sha512-Q9t0uUs8zaGwiVi1hUCwLDe9X47m+nhX2P22gS7Z2HyoVjK3BE9j2YcKNPLNM/ehjVCv85jPA8trBUjiTjpJfw==
+"@types/dockerode@^2.5.24":
+  version "2.5.24"
+  resolved "https://registry.yarnpkg.com/@types/dockerode/-/dockerode-2.5.24.tgz#702fb8827b260ec28e2702d7e2848bf24ec1ff25"
+  integrity sha512-2iwkmqjc6viw40KnAcyLW1sp9mptb6CPARvpRQDAzKsf0y6dphK0qzgouLiI2gaoNB0iiumZGd2nduGypKk9Aw==
   dependencies:
     "@types/node" "*"
 
