@@ -1,9 +1,9 @@
 pub mod bitcoin_helper;
 
-use bitcoin::Address;
+use bitcoin::{Address, BitcoinHash};
 use bitcoin_helper::BitcoinConnectorMock;
-use chrono::offset::Utc;
-use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
+use chrono::{offset::Utc, NaiveDateTime};
+use cnd::btsieve::bitcoin::watch_for_created_outpoint;
 use std::str::FromStr;
 
 #[tokio::test]
@@ -22,23 +22,25 @@ async fn find_transaction_missed_previous_latest_block() {
         ],
     );
 
-    let pattern = TransactionPattern {
-        to_address: Some(
-            Address::from_str(
-                include_str!(
-                    "test_data/bitcoin/find_transaction_missed_previous_latest_block/address"
-                )
+    let block1: bitcoin::Block = include_hex!(
+        "./test_data/bitcoin/find_transaction_missed_previous_latest_block/block1.hex"
+    );
+
+    // set the start of the swap to one second after the first block,
+    // otherwise we run into the problem, that we try to fetch blocks prior to the
+    // first one
+    let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
+    let (expected_transaction, _out_point) = watch_for_created_outpoint(
+        connector,
+        start_of_swap,
+        Address::from_str(
+            include_str!("test_data/bitcoin/find_transaction_missed_previous_latest_block/address")
                 .trim(),
-            )
-            .unwrap(),
-        ),
-        from_outpoint: None,
-        unlock_script: None,
-    };
-    let start_of_swap = Utc::now().naive_local();
-    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
-        .await
-        .unwrap();
+        )
+        .unwrap(),
+    )
+    .await
+    .unwrap();
 
     assert_eq!(
         expected_transaction,
@@ -67,23 +69,27 @@ async fn find_transaction_missed_previous_latest_block_with_big_gap() {
         ],
     );
 
-    let pattern = TransactionPattern {
-        to_address: Some(
-            Address::from_str(
-                include_str!(
-                    "test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/address"
-                )
-                .trim(),
-            )
-            .unwrap(),
-        ),
-        from_outpoint: None,
-        unlock_script: None,
-    };
-    let start_of_swap = Utc::now().naive_local();
-    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
-        .await
-        .unwrap();
+    let block1: bitcoin::Block = include_hex!(
+        "./test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/block1.hex"
+    );
+
+    // set the start of the swap to one second after the first block,
+    // otherwise we run into the problem, that we try to fetch blocks prior to the
+    // first one
+    let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
+    let (expected_transaction, _out_point) = watch_for_created_outpoint(
+        connector,
+        start_of_swap,
+        Address::from_str(
+            include_str!(
+            "test_data/bitcoin/find_transaction_missed_previous_latest_block_with_big_gap/address"
+        )
+            .trim(),
+        )
+        .unwrap(),
+    )
+    .await
+    .unwrap();
 
     assert_eq!(
         expected_transaction,
@@ -108,23 +114,18 @@ async fn find_transaction_if_blockchain_reorganisation() {
         ],
     );
 
-    let pattern = TransactionPattern {
-        to_address: Some(
-            Address::from_str(
-                include_str!(
-                    "test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address"
-                )
-                .trim(),
-            )
-            .unwrap(),
-        ),
-        from_outpoint: None,
-        unlock_script: None,
-    };
     let start_of_swap = Utc::now().naive_local();
-    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
-        .await
-        .unwrap();
+    let (expected_transaction, _out_point) = watch_for_created_outpoint(
+        connector,
+        start_of_swap,
+        Address::from_str(
+            include_str!("test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address")
+                .trim(),
+        )
+        .unwrap(),
+    )
+    .await
+    .unwrap();
 
     assert_eq!(
         expected_transaction,
@@ -152,21 +153,14 @@ async fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
         ],
     );
 
-    let pattern = TransactionPattern {
-        to_address: Some(
-            Address::from_str(
-                include_str!(
-                    "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
-                ).trim()
-                ,
-            )
-                .unwrap(),
-        ),
-        from_outpoint: None,
-        unlock_script: None,
-    };
     let start_of_swap = Utc::now().naive_local();
-    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
+    let (expected_transaction, _out_point) = watch_for_created_outpoint(connector, start_of_swap, Address::from_str(
+        include_str!(
+            "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
+        ).trim()
+        ,
+    )
+        .unwrap(),)
         .await
         .unwrap();
 
