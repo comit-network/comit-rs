@@ -183,8 +183,7 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
 
 fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
 where
-    AI: Serialize,
-    BI: Serialize,
+    rfc003::messages::AcceptResponseBody<AI, BI>: Serialize,
 {
     Response::empty()
         .with_header(

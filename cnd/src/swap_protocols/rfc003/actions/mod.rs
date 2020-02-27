@@ -2,10 +2,7 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
-};
+use crate::swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret};
 use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
@@ -27,7 +24,6 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
 pub trait FundAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type FundActionOutput;
 
@@ -37,7 +33,6 @@ where
 pub trait RefundAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type RefundActionOutput;
 
@@ -52,7 +47,6 @@ where
 pub trait RedeemAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type RedeemActionOutput;
 

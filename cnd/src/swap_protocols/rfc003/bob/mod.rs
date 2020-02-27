@@ -1,11 +1,8 @@
 pub mod actions;
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{
-        self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
-        Decline, DeriveIdentities, SwapCommunication,
-    },
+use crate::swap_protocols::rfc003::{
+    self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
+    Decline, DeriveIdentities, SwapCommunication,
 };
 use derivative::Derivative;
 use futures::sync::oneshot;
@@ -24,8 +21,6 @@ pub struct State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
@@ -39,8 +34,6 @@ impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn proposed(
         request: Request<AL, BL, AA, BA>,
@@ -96,8 +89,8 @@ impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
+    AA: 'static,
+    BA: 'static,
 {
     type AL = AL;
     type BL = BL;

@@ -1,6 +1,5 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
-    asset::Asset,
     http_api::{Http, SwapStatus},
     swap_protocols::rfc003::{self, Ledger, SecretHash},
     timestamp::Timestamp,
@@ -56,8 +55,6 @@ impl<AL, BL, AA, BA> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA>) -> Self {
         use rfc003::SwapCommunication::*;
@@ -99,7 +96,6 @@ where
 impl<H, T, A> From<rfc003::LedgerState<H, T, A>> for LedgerState<H, T>
 where
     rfc003::LedgerState<H, T, A>: Clone,
-    A: Asset,
 {
     fn from(ledger_state: rfc003::LedgerState<H, T, A>) -> Self {
         use self::rfc003::LedgerState::*;

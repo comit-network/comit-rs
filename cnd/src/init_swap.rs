@@ -1,5 +1,4 @@
 use crate::{
-    asset::Asset,
     db::AcceptedSwap,
     seed::DeriveSwapSeed,
     swap_protocols::{
@@ -33,8 +32,8 @@ where
         + HtlcRefunded<BL, BA>,
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
+    AA: Ord + Send + Sync + 'static,
+    BA: Ord + Send + Sync + 'static,
     Request<AL, BL, AA, BA>: Clone,
 {
     let (request, accept, _) = &accepted;

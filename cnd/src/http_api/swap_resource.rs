@@ -1,7 +1,6 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    asset::Asset,
     db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
@@ -58,8 +57,6 @@ where
     HttpAsset: From<BA>,
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
         Self {

@@ -1,9 +1,6 @@
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{
-        events::{Deployed, Funded, Redeemed, Refunded},
-        Secret,
-    },
+use crate::swap_protocols::rfc003::{
+    events::{Deployed, Funded, Redeemed, Refunded},
+    Secret,
 };
 use serde::Serialize;
 use strum_macros::EnumDiscriminants;
@@ -49,10 +46,7 @@ pub enum LedgerState<H, T, A> {
     },
 }
 
-impl<T, H, A> LedgerState<H, T, A>
-where
-    A: Asset,
-{
+impl<T, H, A> LedgerState<H, T, A> {
     pub fn transition_to_deployed(&mut self, deployed: Deployed<T, H>) {
         let Deployed {
             transaction,

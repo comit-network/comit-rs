@@ -14,7 +14,7 @@ pub enum Error {
 pub trait StateStore: Send + Sync + 'static {
     fn insert<A>(&self, key: SwapId, value: A)
     where
-        A: ActorState;
+        A: ActorState + Send + 'static;
     fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
     where
         A: ActorState + Clone;
@@ -30,7 +30,9 @@ pub trait StateStore: Send + Sync + 'static {
             A::BA,
         >,
     ) where
-        A: ActorState;
+        A: ActorState,
+        A::AA: Ord,
+        A::BA: Ord;
 }
 
 #[derive(Default, Debug)]
@@ -41,7 +43,7 @@ pub struct InMemoryStateStore {
 impl StateStore for InMemoryStateStore {
     fn insert<A>(&self, key: SwapId, value: A)
     where
-        A: ActorState,
+        A: ActorState + Send,
     {
         let mut states = self.states.lock().unwrap();
         states.insert(key, Box::new(value));
@@ -75,6 +77,8 @@ impl StateStore for InMemoryStateStore {
         >,
     ) where
         A: ActorState,
+        A::AA: Ord,
+        A::BA: Ord,
     {
         let mut states = self.states.lock().unwrap();
         let actor_state = match states

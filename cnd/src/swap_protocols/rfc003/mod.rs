@@ -26,7 +26,7 @@ pub use self::{
 
 pub use self::messages::{Accept, Decline, Request};
 
-use crate::{asset::Asset, seed::SwapSeed};
+use crate::seed::SwapSeed;
 use ::bitcoin::secp256k1::SecretKey;
 
 /// Swap request response as received from peer node acting as Bob.
@@ -38,8 +38,6 @@ pub enum SwapCommunication<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     Proposed {
         request: Request<AL, BL, AA, BA>,
@@ -58,8 +56,6 @@ impl<AL, BL, AA, BA> SwapCommunication<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn request(&self) -> &Request<AL, BL, AA, BA> {
         match self {

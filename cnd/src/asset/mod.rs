@@ -7,14 +7,6 @@ pub use self::{
 use crate::asset;
 use derivative::Derivative;
 
-pub trait Asset: Send + Sync + 'static + Ord {}
-
-impl Asset for Bitcoin {}
-
-impl Asset for Ether {}
-
-impl Asset for Erc20 {}
-
 #[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]
 pub enum AssetKind {

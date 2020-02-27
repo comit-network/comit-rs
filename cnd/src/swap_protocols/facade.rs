@@ -1,5 +1,5 @@
 use crate::{
-    asset::{self, Asset},
+    asset::{self},
     btsieve::{self, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     network::{
@@ -53,7 +53,7 @@ pub struct Facade {
 impl StateStore for Facade {
     fn insert<A>(&self, key: SwapId, value: A)
     where
-        A: ActorState,
+        A: ActorState + Send,
     {
         self.state_store.insert(key, value)
     }
@@ -71,6 +71,8 @@ impl StateStore for Facade {
         update: SwapEventOnLedger<<A as ActorState>::AL, <A as ActorState>::BL, A::AA, A::BA>,
     ) where
         A: ActorState,
+        A::AA: Ord,
+        A::BA: Ord,
     {
         self.state_store.update::<A>(key, update)
     }
@@ -86,9 +88,7 @@ impl SendRequest for Facade {
     where
         AL: Ledger,
         BL: Ledger,
-        AA: Asset,
-        BA: Asset,
-        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Send + 'static,
         <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
     {
         self.swarm.send_request(peer_identity, request).await
@@ -98,11 +98,10 @@ impl SendRequest for Facade {
 #[async_trait]
 impl<AL, BL, AA, BA> LoadAcceptedSwap<AL, BL, AA, BA> for Facade
 where
-    AL: Ledger + Send + 'static,
-    BL: Ledger + Send + 'static,
-    AA: Asset + Send + 'static,
-    BA: Asset + Send + 'static,
+    AL: Ledger,
+    BL: Ledger,
     Sqlite: LoadAcceptedSwap<AL, BL, AA, BA>,
+    AcceptedSwap<AL, BL, AA, BA>: Send + 'static,
 {
     async fn load_accepted_swap(
         &self,

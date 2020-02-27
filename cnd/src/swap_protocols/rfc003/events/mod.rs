@@ -2,10 +2,7 @@
 // see: https://github.com/rust-lang/rust/issues/21903
 #![allow(type_alias_bounds)]
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
-};
+use crate::swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
@@ -36,7 +33,6 @@ pub struct Refunded<T> {
 pub trait HtlcFunded<L, A>: Send + Sync + Sized + 'static
 where
     L: Ledger,
-    A: Asset,
 {
     async fn htlc_funded(
         &self,
@@ -50,7 +46,6 @@ where
 pub trait HtlcDeployed<L, A>: Send + Sync + Sized + 'static
 where
     L: Ledger,
-    A: Asset,
 {
     async fn htlc_deployed(
         &self,
@@ -63,7 +58,6 @@ where
 pub trait HtlcRedeemed<L, A>: Send + Sync + Sized + 'static
 where
     L: Ledger,
-    A: Asset,
 {
     async fn htlc_redeemed(
         &self,
@@ -77,7 +71,6 @@ where
 pub trait HtlcRefunded<L, A>: Send + Sync + Sized + 'static
 where
     L: Ledger,
-    A: Asset,
 {
     async fn htlc_refunded(
         &self,

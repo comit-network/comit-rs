@@ -1,13 +1,10 @@
-use crate::{
-    asset::Asset,
-    swap_protocols::{
-        actions::Actions,
-        rfc003::{
-            actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-            bob,
-            create_swap::HtlcParams,
-            Ledger, LedgerState, SwapCommunication,
-        },
+use crate::swap_protocols::{
+    actions::Actions,
+    rfc003::{
+        actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+        bob,
+        create_swap::HtlcParams,
+        Ledger, LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
@@ -16,8 +13,6 @@ impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     (BL, BA): FundAction<BL, BA> + RefundAction<BL, BA>,
     (AL, AA): RedeemAction<AL, AA>,
 {

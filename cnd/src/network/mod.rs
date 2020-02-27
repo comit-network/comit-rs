@@ -3,7 +3,7 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::{Asset, AssetKind},
+    asset::AssetKind,
     btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
     comit_api::LedgerKind,
     config::Settings,
@@ -632,8 +632,8 @@ async fn insert_state_for_bob<AL, BL, AA, BA, DB>(
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
+    AA: Send + 'static,
+    BA: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
     Request<AL, BL, AA, BA>: Clone,
 {
@@ -727,9 +727,7 @@ pub trait SendRequest {
     where
         AL: Ledger,
         BL: Ledger,
-        AA: Asset,
-        BA: Asset,
-        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Send + 'static,
         <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug;
 }
 
@@ -743,9 +741,7 @@ impl SendRequest for Swarm {
     where
         AL: Ledger,
         BL: Ledger,
-        AA: Asset,
-        BA: Asset,
-        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Send + 'static,
         <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
     {
         let id = request.swap_id;
@@ -867,8 +863,6 @@ fn rfc003_swap_request<AL, BL, AA, BA>(
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     rfc003::Request::<AL, BL, AA, BA> {
         swap_id: id,

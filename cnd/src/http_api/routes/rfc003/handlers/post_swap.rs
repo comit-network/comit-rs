@@ -1,5 +1,4 @@
 use crate::{
-    asset::Asset,
     db::{LoadAcceptedSwap, Save, Sqlite, Swap},
     ethereum,
     http_api::{HttpAsset, HttpLedger},
@@ -9,8 +8,7 @@ use crate::{
     swap_protocols::{
         ledger::{self},
         rfc003::{
-            self,
-            alice::State,
+            self, alice,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
             Accept, Decline, DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
@@ -38,11 +36,10 @@ where
         + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-    rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest>,
+    AA: Ord + Send + Sync + 'static,
+    BA: Ord + Send + Sync + 'static,
+    rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Clone,
     <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
-    rfc003::Request<AL, BL, AA, BA>: Clone,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA>
         + HtlcFunded<AL, AA>
         + HtlcFunded<BL, BA>
@@ -61,7 +58,7 @@ where
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
 
-    let state = State::proposed(swap_request.clone(), seed);
+    let state = alice::State::proposed(swap_request.clone(), seed);
     StateStore::insert(&dependencies, id, state);
 
     let future = {
@@ -81,7 +78,7 @@ where
                 }
                 Err(decline) => {
                     tracing::info!("Swap declined: {}", decline.swap_id);
-                    let state = State::declined(swap_request.clone(), decline, seed);
+                    let state = alice::State::declined(swap_request.clone(), decline, seed);
                     StateStore::insert(&dependencies, id, state);
                     Save::save(&dependencies, decline).await?;
                 }
@@ -425,8 +422,6 @@ fn new_request<AL, BL, AA, BA>(
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     rfc003::Request {
         swap_id: id,

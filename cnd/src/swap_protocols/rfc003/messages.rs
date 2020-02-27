@@ -1,5 +1,5 @@
 use crate::{
-    asset::{self, Asset, AssetKind},
+    asset::{self, AssetKind},
     bitcoin::PublicKey,
     comit_api::LedgerKind,
     ethereum::Address,
@@ -25,8 +25,6 @@ pub struct Request<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub swap_id: SwapId,
     pub alpha_ledger: AL,
@@ -400,8 +398,6 @@ impl<AL, BL, AA, BA> From<Request<AL, BL, AA, BA>> for RequestBody<AL::Identity,
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     fn from(request: Request<AL, BL, AA, BA>) -> Self {
         RequestBody {

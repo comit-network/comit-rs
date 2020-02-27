@@ -1,5 +1,4 @@
 use crate::{
-    asset::Asset,
     db::AcceptedSwap,
     swap_protocols::{
         rfc003::{
@@ -34,10 +33,8 @@ use genawaiter::{
 ///
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
-pub async fn create_swap<D, A: ActorState>(
-    dependencies: D,
-    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
-) where
+pub async fn create_swap<D, A>(dependencies: D, accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>)
+where
     D: StateStore
         + HtlcFunded<A::AL, A::AA>
         + HtlcFunded<A::BL, A::BA>
@@ -48,6 +45,9 @@ pub async fn create_swap<D, A: ActorState>(
         + HtlcRefunded<A::AL, A::AA>
         + HtlcRefunded<A::BL, A::BA>
         + Clone,
+    A::AA: Ord,
+    A::BA: Ord,
+    A: ActorState,
 {
     let (request, accept, at) = accepted;
 
@@ -110,8 +110,6 @@ async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
@@ -157,8 +155,6 @@ async fn watch_beta_ledger<D, AL, AA, BL, BA>(
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
 {
     let deployed = dependencies
@@ -193,10 +189,7 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct HtlcParams<'a, L, A, I>
-where
-    A: Asset,
-{
+pub struct HtlcParams<'a, L, A, I> {
     pub asset: &'a A,
     pub ledger: &'a L,
     pub redeem_identity: &'a I,
@@ -208,7 +201,6 @@ where
 impl<'a, L, A> HtlcParams<'a, L, A, L::Identity>
 where
     L: Ledger,
-    A: Asset,
 {
     pub fn new_alpha_params<BL, BA>(
         request: &'a rfc003::Request<L, BL, A, BA>,
@@ -216,7 +208,6 @@ where
     ) -> Self
     where
         BL: Ledger,
-        BA: Asset,
     {
         HtlcParams {
             asset: &request.alpha_asset,
@@ -234,7 +225,6 @@ where
     ) -> Self
     where
         AL: Ledger,
-        AA: Asset,
     {
         HtlcParams {
             asset: &request.beta_asset,
@@ -252,8 +242,6 @@ pub struct OngoingSwap<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
@@ -273,8 +261,6 @@ impl<AL, BL, AA, BA> OngoingSwap<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn new(
         request: Request<AL, BL, AA, BA>,
@@ -329,11 +315,7 @@ pub type SwapEventOnLedger<AL, BL, AA, BA> = SwapEvent<
 >;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent<AH, AT, BH, BT, AA, BA>
-where
-    AA: Asset,
-    BA: Asset,
-{
+pub enum SwapEvent<AH, AT, BH, BT, AA, BA> {
     AlphaDeployed(Deployed<AT, AH>),
     AlphaFunded(Funded<AT, AA>),
     AlphaRedeemed(Redeemed<AT>),

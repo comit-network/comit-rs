@@ -1,13 +1,10 @@
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{ledger_state::LedgerState, Ledger},
-};
+use crate::swap_protocols::rfc003::{ledger_state::LedgerState, Ledger};
 
-pub trait ActorState: Send + 'static {
+pub trait ActorState: 'static {
     type AL: Ledger;
     type BL: Ledger;
-    type AA: Asset;
-    type BA: Asset;
+    type AA;
+    type BA;
 
     fn expected_alpha_asset(&self) -> &Self::AA;
     fn expected_beta_asset(&self) -> &Self::BA;
