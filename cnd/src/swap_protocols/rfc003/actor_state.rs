@@ -3,7 +3,7 @@ use crate::{
     swap_protocols::rfc003::{ledger_state::LedgerState, Ledger},
 };
 
-pub trait ActorState: Send + Sync + 'static {
+pub trait ActorState: Send + 'static {
     type AL: Ledger;
     type BL: Ledger;
     type AA: Asset;

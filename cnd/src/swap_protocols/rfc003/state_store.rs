@@ -35,7 +35,7 @@ pub trait StateStore: Send + Sync + 'static {
 
 #[derive(Default, Debug)]
 pub struct InMemoryStateStore {
-    states: Mutex<HashMap<SwapId, Box<dyn Any + Send + Sync>>>,
+    states: Mutex<HashMap<SwapId, Box<dyn Any + Send>>>,
 }
 
 impl StateStore for InMemoryStateStore {
