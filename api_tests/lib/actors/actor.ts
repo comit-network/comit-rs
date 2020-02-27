@@ -1,5 +1,12 @@
 import { expect } from "chai";
-import { BigNumber, Cnd, ComitClient, LedgerAction, Swap } from "comit-sdk";
+import {
+    BigNumber,
+    Cnd,
+    ComitClient,
+    LedgerAction,
+    Swap,
+    SwapDetails,
+} from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
@@ -8,13 +15,12 @@ import { LedgerConfig } from "../ledgers/ledger_runner";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
-import { Lnd } from "../ledgers/lnd";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { HarnessGlobal, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
-import { SwapDetails } from "comit-sdk/dist/src/cnd/cnd";
+import { LndInstance } from "../ledgers/lnd_instance";
 
 declare var global: HarnessGlobal;
 
@@ -75,7 +81,7 @@ export class Actor {
     private readonly startingBalances: Map<string, BigNumber>;
     private readonly expectedBalanceChanges: Map<string, BigNumber>;
 
-    public lnd: Lnd;
+    public lndInstance: LndInstance;
 
     private constructor(
         private readonly logger: Logger,
@@ -194,7 +200,7 @@ export class Actor {
                 "lightning"
             );
 
-            await thisLightningWallet.addPeer(toLightningWallet);
+            await thisLightningWallet.connectPeer(toLightningWallet);
 
             if (this.alphaLedger.name === "lightning") {
                 // Alpha Ledger is lightning so Alice will be sending assets over lightning
@@ -244,12 +250,10 @@ export class Actor {
         };
 
         this.swap = await comitClient.sendSwap(payload);
-        to.swap = new Swap(
-            to.wallets.bitcoin.inner,
-            to.wallets.ethereum.inner,
-            to.cnd,
-            this.swap.self
-        );
+        to.swap = new Swap(to.cnd, this.swap.self, {
+            bitcoinWallet: to.wallets.bitcoin.inner,
+            ethereumWallet: to.wallets.ethereum.inner,
+        });
         this.logger.debug("Created new swap at %s", this.swap.self);
 
         return this.swap;
@@ -574,9 +578,10 @@ export class Actor {
     }
 
     public stop() {
+        this.logger.debug("Stopping actor");
         this.cndInstance.stop();
-        if (this.lnd && this.lnd.isRunning()) {
-            this.lnd.stop();
+        if (this.lndInstance && this.lndInstance.isRunning()) {
+            this.lndInstance.stop();
         }
     }
 
@@ -710,22 +715,40 @@ export class Actor {
     }
 
     private async initializeDependencies() {
+        const lightningNeeded =
+            this.alphaLedger.name === "lightning" ||
+            this.betaLedger.name === "lightning";
+
+        if (lightningNeeded) {
+            this.lndInstance = new LndInstance(
+                this.logger,
+                this.logRoot,
+                this.config,
+                global.ledgerConfigs.bitcoin.dataDir
+            );
+            await this.lndInstance.start();
+        }
+
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
+            let lnd;
+            if (this.lndInstance) {
+                lnd = {
+                    lnd: this.lndInstance.lnd,
+                    lndP2pHost: this.lndInstance.getLightningHost(),
+                    lndP2pPort: this.lndInstance.getLightningPort(),
+                };
+            }
             await this.wallets.initializeForLedger(
                 ledgerName,
                 this.logger,
-                this.logRoot,
-                this.config
+                lnd
             );
         }
 
-        if (
-            this.alphaLedger.name !== "lightning" &&
-            this.betaLedger.name !== "lightning"
-        ) {
+        if (!lightningNeeded) {
             this.comitClient = new ComitClient(this.cnd)
                 .withBitcoinWallet(
                     this.wallets.getWalletForLedger("bitcoin").inner
@@ -849,18 +872,24 @@ export class Actor {
         }
     }
 
-    public async createLnInvoice(sats: number) {
-        return this.wallets.lightning.createInvoice(sats);
+    public async createLnInvoice(sats: string) {
+        this.logger.debug(`Creating invoice for ${sats} sats`);
+        return this.wallets.lightning.addInvoice(sats);
     }
 
-    public async payLnInvoice(request: string) {
-        return this.wallets.lightning.pay(request);
+    public async payLnInvoice(request: string): Promise<void> {
+        this.logger.debug(`Paying invoice with request ${request}`);
+        await this.wallets.lightning.pay(request);
     }
 
-    public async assertLnInvoiceSettled(id: string) {
-        const resp = await this.wallets.lightning.getInvoice(id);
-        if (!resp.is_confirmed) {
-            throw new Error(`Invoice ${id} is not confirmed}`);
+    public async assertLnInvoiceSettled(secretHash: string) {
+        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
+        this.logger.debug(
+            `Checking if invoice is settled, status is: ${resp.state}`
+        );
+        if (resp.state !== 1) {
+            // This is InvoiceState.SETTLED from lnd-async. Hardcoding value until type definition is sorted.
+            throw new Error(`Invoice ${secretHash} is not confirmed}`);
         }
     }
 }

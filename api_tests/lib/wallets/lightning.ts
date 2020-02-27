@@ -4,28 +4,30 @@ import BigNumber from "bignumber.js";
 import { Logger } from "log4js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
-import { GetInvoiceResponse } from "ln-service";
-import { E2ETestActorConfig } from "../config";
-import { Lnd } from "../ledgers/lnd";
+import {
+    LightningWallet as LightningWalletSdk,
+    Lnd,
+    Outpoint,
+} from "comit-sdk";
+import { AddressType } from "@radar/lnrpc";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
         bitcoinWallet: BitcoinWallet,
         logger: Logger,
-        logDir: string,
-        bitcoindDataDir: string,
-        actorConfig: E2ETestActorConfig
+        lnd: Lnd,
+        lndp2pHost: string,
+        lndp2pPort: number
     ) {
-        const lnd = new Lnd(logger, logDir, actorConfig, bitcoindDataDir);
-        await lnd.start();
+        const inner = new LightningWalletSdk(lnd, lndp2pHost, lndp2pPort);
 
-        return new LightningWallet(lnd, logger, bitcoinWallet);
+        return new LightningWallet(inner, logger, bitcoinWallet);
     }
 
     public MaximumFee = 0;
 
     private constructor(
-        public readonly inner: Lnd,
+        public readonly inner: LightningWalletSdk,
         private readonly logger: Logger,
         private readonly bitcoinWallet: BitcoinWallet
     ) {}
@@ -33,15 +35,17 @@ export class LightningWallet implements Wallet {
     public async mint(asset: Asset): Promise<void> {
         if (asset.name !== "bitcoin") {
             throw new Error(
-                `Cannot mint asset ${asset.name} with BitcoinWallet`
+                `Cannot mint asset ${asset.name} with LightningWallet`
             );
         }
 
         const startingBalance = new BigNumber(
             await this.getBalanceByAsset(asset)
         );
+        this.logger.debug("starting: ", startingBalance.toString());
 
         const minimumExpectedBalance = new BigNumber(asset.quantity);
+        this.logger.debug("min expected: ", minimumExpectedBalance.toString());
 
         await this.bitcoinWallet.mintToAddress(
             minimumExpectedBalance,
@@ -56,48 +60,52 @@ export class LightningWallet implements Wallet {
     }
 
     public async address(): Promise<string> {
-        return this.inner.createChainAddress();
+        return this.inner.newAddress(AddressType.NESTED_PUBKEY_HASH);
     }
 
     public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
         if (asset.name !== "bitcoin") {
             throw new Error(
-                `Cannot read balance for asset ${asset.name} with LndWallet`
+                `Cannot read balance for asset ${asset.name} with LightningdWallet`
             );
         }
 
-        const chainBalance = await this.inner.getChainBalance();
-        const channelBalance = await this.inner.getChannelBalance();
-
-        return new BigNumber(chainBalance).plus(channelBalance);
+        const walletBalance = await this.inner.confirmedWalletBalance();
+        const channelBalance = await this.inner.confirmedChannelBalance();
+        return new BigNumber(walletBalance ? walletBalance : 0).plus(
+            channelBalance ? channelBalance : 0
+        );
     }
 
-    // This functions does not have its place on a Wallet
+    // This function does not have its place on a Wallet
     public async getBlockchainTime(): Promise<number> {
         throw new Error(
             "getBlockchainTime should not be called for LightningWallet"
         );
     }
 
-    public async addPeer(toWallet: LightningWallet) {
-        return this.inner.addPeer(toWallet.inner);
+    public async connectPeer(toWallet: LightningWallet) {
+        const pubkey = await toWallet.inner.getPubkey();
+        const host = toWallet.inner.getLndP2pSocket();
+        return this.inner.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
     }
 
-    public async getPeers() {
-        return this.inner.getPeers();
+    public async listPeers() {
+        return this.inner.lnd.lnrpc.listPeers();
     }
 
     public async getChannels() {
-        return this.inner.getChannels();
+        const listChannelsResponse = await this.inner.lnd.lnrpc.listChannels();
+        this.logger.debug(listChannelsResponse);
+        return listChannelsResponse.channels;
     }
 
+    // @ts-ignore
     public async openChannel(toWallet: LightningWallet, quantity: number) {
         // First, need to check everyone is sync'd to the chain
 
-        let thisIsSynced = (await this.inner.getWalletInfo())
-            .is_synced_to_chain;
-        let toIsSynced = (await toWallet.inner.getWalletInfo())
-            .is_synced_to_chain;
+        let thisIsSynced = (await this.inner.getInfo()).syncedToChain;
+        let toIsSynced = (await toWallet.inner.getInfo()).syncedToChain;
 
         while (!thisIsSynced || !toIsSynced) {
             this.logger.info(
@@ -105,29 +113,30 @@ export class LightningWallet implements Wallet {
             );
             await sleep(500);
 
-            thisIsSynced = (await this.inner.getWalletInfo())
-                .is_synced_to_chain;
-            toIsSynced = (await toWallet.inner.getWalletInfo())
-                .is_synced_to_chain;
+            thisIsSynced = (await this.inner.getInfo()).syncedToChain;
+            toIsSynced = (await toWallet.inner.getInfo()).syncedToChain;
         }
 
-        const {
-            transaction_id,
-            transaction_vout,
-        } = await this.inner.openChannel(toWallet.inner, quantity);
+        const outpoint = await this.inner.openChannel(
+            await toWallet.inner.getPubkey(),
+            quantity
+        );
         this.logger.debug("Channel opened, waiting for confirmations");
 
-        await this.pollUntilChannelIsOpen(transaction_id, transaction_vout);
+        await this.pollUntilChannelIsOpen(outpoint);
     }
 
-    public async createInvoice(
-        sats: number
-    ): Promise<{ id: string; request: string }> {
-        const response = await this.inner.createInvoice(sats);
-        return {
-            id: response.id,
-            request: response.request,
-        };
+    /**
+     * Adds an invoice.
+     * @param sats
+     */
+    public async addInvoice(
+        sats: string
+    ): Promise<{
+        rHash: string;
+        paymentRequest: string;
+    }> {
+        return this.inner.addInvoice(sats);
     }
 
     /**
@@ -136,28 +145,26 @@ export class LightningWallet implements Wallet {
      * @param request A BOLT11-encoded payment request
      */
     public async pay(request: string) {
-        return this.inner.pay(request);
+        return this.inner.sendPaymentWithRequest(request);
     }
 
-    public async getInvoice(id: string): Promise<GetInvoiceResponse> {
-        return this.inner.getInvoice(id);
+    public async lookupInvoice(secretHash: string) {
+        return this.inner.lookupInvoice(secretHash);
     }
 
-    private async pollUntilChannelIsOpen(
-        transactionId: string,
-        transactionVout: number
-    ): Promise<void> {
+    private async pollUntilChannelIsOpen(outpoint: Outpoint): Promise<void> {
+        const { txId, vout } = outpoint;
         const channels = await this.getChannels();
-        for (const channel of channels) {
-            this.logger.debug("Found a channel:", channel);
-            if (
-                channel.transaction_id === transactionId &&
-                channel.transaction_vout === transactionVout
-            ) {
-                return;
+        if (channels) {
+            for (const channel of channels) {
+                this.logger.debug(`Looking for channel ${txId}:${vout}`);
+                this.logger.debug("Found a channel:", channel);
+                if (channel.channelPoint === `${txId}:${vout}`) {
+                    return;
+                }
             }
         }
         await sleep(500);
-        return this.pollUntilChannelIsOpen(transactionId, transactionVout);
+        return this.pollUntilChannelIsOpen(outpoint);
     }
 }

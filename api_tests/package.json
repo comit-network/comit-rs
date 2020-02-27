@@ -17,6 +17,7 @@
     "license": "ISC",
     "dependencies": {
         "@iarna/toml": "^2.2.3",
+        "@radar/lnrpc": "^0.9.0-beta",
         "@types/bitcoinjs-lib": "^5.0.0",
         "@types/chai": "^4.2.10",
         "@types/chai-as-promised": "^7.1.2",

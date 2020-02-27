@@ -1,11 +1,10 @@
-import { BigNumber } from "comit-sdk";
+import { BigNumber, Lnd } from "comit-sdk";
 import { Asset } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
-import { E2ETestActorConfig } from "../config";
 
 declare var global: HarnessGlobal;
 
@@ -52,8 +51,7 @@ export class Wallets {
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
         logger: Logger,
-        logDir: string,
-        actorConfig: E2ETestActorConfig
+        lnd: { lnd: Lnd; lndP2pHost: string; lndP2pPort: number } | undefined
     ) {
         switch (name) {
             case "ethereum":
@@ -67,14 +65,19 @@ export class Wallets {
                 );
                 break;
             case "lightning":
+                if (!lnd) {
+                    throw new Error(
+                        "Lnd is needed to instantiate lightning wallet."
+                    );
+                }
                 this.wallets.lightning = await LightningWallet.newInstance(
                     await BitcoinWallet.newInstance(
                         global.ledgerConfigs.bitcoin
                     ),
                     logger,
-                    logDir,
-                    global.ledgerConfigs.bitcoin.dataDir,
-                    actorConfig
+                    lnd.lnd,
+                    lnd.lndP2pHost,
+                    lnd.lndP2pPort
                 );
                 break;
         }

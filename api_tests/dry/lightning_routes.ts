@@ -10,7 +10,7 @@ setTimeout(async function() {
         oneActorTest(
             "lightning-routes-post-eth-lnbtc-return-400",
             async function({ alice }) {
-                const promise = alice.cnd.postHanEthereumEtherHalightLightningBitcoin();
+                const promise = alice.cnd.createHanEthereumEtherHalightLightningBitcoin();
                 return expect(promise).to.eventually.be.rejected.then(error => {
                     expect(error).to.have.property(
                         "message",
@@ -23,7 +23,7 @@ setTimeout(async function() {
         oneActorTest(
             "lightning-routes-post-erc20-lnbtc-return-400",
             async function({ alice }) {
-                const promise = alice.cnd.postHerc20EthereumErc20HalightLightningBitcoin();
+                const promise = alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin();
                 return expect(promise).to.eventually.be.rejected.then(error => {
                     expect(error).to.have.property(
                         "message",
@@ -36,7 +36,7 @@ setTimeout(async function() {
         oneActorTest(
             "lightning-routes-post-lnbtc-eth-return-400",
             async function({ alice }) {
-                const promise = alice.cnd.postHalightLightningBitcoinHanEthereumEther();
+                const promise = alice.cnd.createHalightLightningBitcoinHanEthereumEther();
                 return expect(promise).to.eventually.be.rejected.then(error => {
                     expect(error).to.have.property(
                         "message",
@@ -49,7 +49,7 @@ setTimeout(async function() {
         oneActorTest(
             "lightning-routes-post-lnbtc-erc20-return-400",
             async function({ alice }) {
-                const promise = alice.cnd.postHalightLightningBitcoinHerc20EthereumErc20();
+                const promise = alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20();
                 return expect(promise).to.eventually.be.rejected.then(error => {
                     expect(error).to.have.property(
                         "message",
