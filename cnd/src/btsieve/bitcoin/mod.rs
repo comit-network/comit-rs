@@ -1,30 +1,31 @@
 mod bitcoind_connector;
 mod cache;
 mod transaction_ext;
-mod transaction_pattern;
 
 pub use self::{
     bitcoind_connector::BitcoindConnector, cache::Cache, transaction_ext::TransactionExt,
-    transaction_pattern::TransactionPattern,
 };
-use crate::btsieve::{BlockByHash, LatestBlock, Predates};
-use crate::Never;
+use crate::{
+    btsieve::{BlockByHash, LatestBlock, Predates},
+    Never,
+};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     BitcoinHash, OutPoint,
 };
 use chrono::NaiveDateTime;
 use futures_core::compat::Future01CompatExt;
-use genawaiter::sync::{Co, Gen};
-use genawaiter::GeneratorState;
+use genawaiter::{
+    sync::{Co, Gen},
+    GeneratorState,
+};
 use reqwest::{Client, Url};
 use std::collections::HashSet;
 
 type Hash = bitcoin::BlockHash;
 type Block = bitcoin::Block;
 
-// TODO: reevaluate naming of function
-pub async fn watch_for_transaction<C>(
+pub async fn watch_for_spent_outpoint<C>(
     blockchain_connector: C,
     start_of_swap: NaiveDateTime,
     from_outpoint: OutPoint,
@@ -33,23 +34,15 @@ pub async fn watch_for_transaction<C>(
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    // TODO: Refactor later (get rid of TransactionPatterns)
-    let pattern = TransactionPattern {
-        to_address: None,
-        from_outpoint: Some(from_outpoint),
-        unlock_script: Some(unlock_script),
-    };
-
     let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        pattern.matches(&transaction)
+        transaction.spends_from_with(&from_outpoint, &unlock_script)
     })
     .await?;
 
     Ok(transaction)
 }
 
-// TODO: reevaluate naming of function
-pub async fn watch_for_transaction_and_outpoint<C>(
+pub async fn watch_for_created_outpoint<C>(
     blockchain_connector: C,
     start_of_swap: NaiveDateTime,
     compute_address: bitcoin::Address,
@@ -57,15 +50,8 @@ pub async fn watch_for_transaction_and_outpoint<C>(
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    // TODO: Refactor later (get rid of TransactionPatterns)
-    let pattern = TransactionPattern {
-        to_address: Some(compute_address.clone()),
-        from_outpoint: None,
-        unlock_script: None,
-    };
-
     let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        pattern.matches(&transaction)
+        transaction.spends_to(&compute_address)
     })
     .await?;
 
@@ -102,7 +88,7 @@ where
                 for transaction in block.txdata.into_iter() {
                     if matcher(transaction.clone()) {
                         tracing::trace!("transaction matched {:x}", transaction.txid());
-                        return Ok((transaction));
+                        return Ok(transaction);
                     }
                 }
             }

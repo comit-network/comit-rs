@@ -1,7 +1,7 @@
 use crate::{
     asset,
     btsieve::bitcoin::{
-        watch_for_transaction, watch_for_transaction_and_outpoint, BitcoindConnector, Cache,
+        watch_for_created_outpoint, watch_for_spent_outpoint, BitcoindConnector, Cache,
     },
     swap_protocols::{
         ledger::bitcoin,
@@ -15,8 +15,6 @@ use crate::{
         },
     },
 };
-use ::bitcoin::OutPoint;
-use anyhow::Context;
 use chrono::NaiveDateTime;
 use tracing_futures::Instrument;
 
@@ -52,13 +50,10 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcDeployed<Bitcoin, asset::
     ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
         let connector = self.clone();
 
-        let (transaction, out_point) = watch_for_transaction_and_outpoint(
-            connector,
-            start_of_swap,
-            htlc_params.compute_address(),
-        )
-        .instrument(tracing::info_span!("htlc_deployed"))
-        .await?;
+        let (transaction, out_point) =
+            watch_for_created_outpoint(connector, start_of_swap, htlc_params.compute_address())
+                .instrument(tracing::info_span!("htlc_deployed"))
+                .await?;
 
         Ok(Deployed {
             location: out_point,
@@ -79,14 +74,12 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRedeemed<Bitcoin, asset::
     ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
         let connector = self.clone();
 
-        let transaction = watch_for_transaction(
-            connector,
-            start_of_swap,
-            htlc_deployment.location,
-            vec![vec![1u8]],
-        )
-        .instrument(tracing::info_span!("htlc_redeemed"))
-        .await?;
+        let transaction =
+            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
+                vec![1u8],
+            ])
+            .instrument(tracing::info_span!("htlc_redeemed"))
+            .await?;
 
         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
             .expect("Redeem transaction must contain secret");
@@ -110,14 +103,12 @@ impl<Bitcoin: bitcoin::Bitcoin + bitcoin::Network> HtlcRefunded<Bitcoin, asset::
     ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
         let connector = self.clone();
 
-        let transaction = watch_for_transaction(
-            connector,
-            start_of_swap,
-            htlc_deployment.location,
-            vec![vec![]],
-        )
-        .instrument(tracing::info_span!("htlc_refunded"))
-        .await?;
+        let transaction =
+            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
+                vec![],
+            ])
+            .instrument(tracing::info_span!("htlc_refunded"))
+            .await?;
 
         Ok(Refunded { transaction })
     }
