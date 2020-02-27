@@ -1,6 +1,7 @@
 use crate::{
     asset,
-    ethereum::{Address as EthereumAddress, Bytes, Transaction},
+    ethereum::{Bytes, Transaction},
+    identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::Ethereum,
@@ -35,7 +36,7 @@ impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
 
     fn refund_action(
         htlc_params: HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>,
-        htlc_location: EthereumAddress,
+        htlc_location: identity::Ethereum,
         _secret_source: &dyn DeriveIdentities,
         _fund_transaction: &Transaction,
     ) -> Self::RefundActionOutput {
@@ -55,7 +56,7 @@ impl RedeemAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
 
     fn redeem_action(
         htlc_params: HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>,
-        htlc_location: EthereumAddress,
+        htlc_location: identity::Ethereum,
         _secret_source: &dyn DeriveIdentities,
         secret: Secret,
     ) -> Self::RedeemActionOutput {

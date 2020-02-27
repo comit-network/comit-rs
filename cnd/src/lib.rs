@@ -53,6 +53,19 @@ use anyhow::Context;
 use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
 
+/// Define domain specific terms using identity module so that we can refer to
+/// things in an ergonomic fashion e.g., `identity::Bitcoin`.
+pub mod identity {
+    pub use crate::{bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum};
+}
+
+/// Define domain specific terms using transaction module so that we can refer
+/// to things in an ergonomic fashion e.g., `transaction::Ethereum`.
+pub mod transaction {
+    pub use crate::ethereum::Transaction as Ethereum;
+    pub use bitcoin::Transaction as Bitcoin;
+}
+
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
         ::bitcoin::secp256k1::Secp256k1::new();
