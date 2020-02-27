@@ -14,11 +14,13 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 
-impl FundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
+impl FundAction<Ethereum, asset::Ether, identity::Ethereum>
+    for (Ethereum, asset::Ether, identity::Ethereum)
+{
     type FundActionOutput = DeployContract;
 
     fn fund_action(
-        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, crate::ethereum::Address>,
+        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, identity::Ethereum>,
     ) -> Self::FundActionOutput {
         let htlc = EtherHtlc::from(htlc_params.clone());
         let gas_limit = EtherHtlc::deploy_tx_gas_limit();
@@ -31,11 +33,13 @@ impl FundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         }
     }
 }
-impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
+impl RefundAction<Ethereum, asset::Ether, identity::Ethereum>
+    for (Ethereum, asset::Ether, identity::Ethereum)
+{
     type RefundActionOutput = CallContract;
 
     fn refund_action(
-        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, crate::ethereum::Address>,
+        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, identity::Ethereum>,
         htlc_location: identity::Ethereum,
         _secret_source: &dyn DeriveIdentities,
         _fund_transaction: &Transaction,
@@ -51,11 +55,13 @@ impl RefundAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
         }
     }
 }
-impl RedeemAction<Ethereum, asset::Ether> for (Ethereum, asset::Ether) {
+impl RedeemAction<Ethereum, asset::Ether, identity::Ethereum>
+    for (Ethereum, asset::Ether, identity::Ethereum)
+{
     type RedeemActionOutput = CallContract;
 
     fn redeem_action(
-        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, crate::ethereum::Address>,
+        htlc_params: HtlcParams<'_, Ethereum, asset::Ether, identity::Ethereum>,
         htlc_location: identity::Ethereum,
         _secret_source: &dyn DeriveIdentities,
         secret: Secret,

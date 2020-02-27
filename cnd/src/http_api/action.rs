@@ -1,6 +1,7 @@
 use crate::{
     asset,
     http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
+    identity,
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
@@ -57,7 +58,7 @@ pub enum ActionResponseBody {
         chain_id: ledger::ethereum::ChainId,
     },
     EthereumCallContract {
-        contract_address: crate::ethereum::Address,
+        contract_address: identity::Ethereum,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<crate::ethereum::Bytes>,
         gas_limit: crate::ethereum::U256,

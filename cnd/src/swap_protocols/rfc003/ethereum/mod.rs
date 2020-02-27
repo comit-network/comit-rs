@@ -42,7 +42,6 @@ impl From<Seconds> for Duration {
 
 impl Ledger for Ethereum {
     type HtlcLocation = Address;
-    type Identity = Address;
     type Transaction = Transaction;
 }
 

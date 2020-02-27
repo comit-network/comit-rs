@@ -81,9 +81,11 @@ pub async fn handle_action(
                     )
                 })?;
 
-                let accepted =
-                    LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &swap_id)
-                        .await?;
+                let accepted = LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(
+                    &dependencies,
+                    &swap_id,
+                )
+                .await?;
                 init_accepted_swap(&dependencies, accepted, types.role)?;
 
                 Ok(ActionResponseBody::None)

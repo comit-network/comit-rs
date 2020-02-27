@@ -12,12 +12,12 @@ use derivative::Derivative;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug, PartialEq)]
-pub struct State<AL, BL, AA, BA>
+pub struct State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
 {
-    pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
+    pub swap_communication: SwapCommunication<AL, BL, AA, BA, AI, BI>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
     pub beta_ledger_state: LedgerState<BL::HtlcLocation, BL::Transaction, BA>,
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
@@ -25,12 +25,15 @@ where
     pub failed: bool,
 }
 
-impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
+impl<AL, BL, AA, BA, AI, BI> State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
 {
-    pub fn proposed(request: messages::Request<AL, BL, AA, BA>, secret_source: SwapSeed) -> Self {
+    pub fn proposed(
+        request: messages::Request<AL, BL, AA, BA, AI, BI>,
+        secret_source: SwapSeed,
+    ) -> Self {
         Self {
             swap_communication: SwapCommunication::Proposed { request },
             alpha_ledger_state: LedgerState::NotDeployed,
@@ -41,8 +44,8 @@ where
     }
 
     pub fn accepted(
-        request: messages::Request<AL, BL, AA, BA>,
-        response: messages::Accept<AL::Identity, BL::Identity>,
+        request: messages::Request<AL, BL, AA, BA, AI, BI>,
+        response: messages::Accept<AI, BI>,
         secret_source: SwapSeed,
     ) -> Self {
         Self {
@@ -55,7 +58,7 @@ where
     }
 
     pub fn declined(
-        request: messages::Request<AL, BL, AA, BA>,
+        request: messages::Request<AL, BL, AA, BA, AI, BI>,
         response: messages::Decline,
         secret_source: SwapSeed,
     ) -> Self {
@@ -68,17 +71,19 @@ where
         }
     }
 
-    pub fn request(&self) -> &messages::Request<AL, BL, AA, BA> {
+    pub fn request(&self) -> &messages::Request<AL, BL, AA, BA, AI, BI> {
         self.swap_communication.request()
     }
 }
 
-impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
+impl<AL, BL, AA, BA, AI, BI> ActorState for State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
     AA: 'static,
     BA: 'static,
+    AI: 'static,
+    BI: 'static,
 {
     type AL = AL;
     type BL = BL;

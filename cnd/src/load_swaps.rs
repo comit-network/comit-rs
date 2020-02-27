@@ -17,7 +17,8 @@ pub async fn load_swaps_from_database(facade: Facade) -> anyhow::Result<()> {
 
         with_swap_types!(types, {
             let accepted =
-                LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&facade, &swap_id).await;
+                LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(&facade, &swap_id)
+                    .await;
 
             match accepted {
                 Ok(accepted) => {

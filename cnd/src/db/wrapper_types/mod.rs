@@ -1,4 +1,4 @@
-use crate::{asset, asset::Bitcoin, db::LedgerKind, ethereum, swap_protocols::ledger};
+use crate::{asset, asset::Bitcoin, db::LedgerKind, identity, swap_protocols::ledger};
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;
@@ -101,10 +101,10 @@ impl fmt::Display for Erc20Amount {
 /// Together with the `Text` sql type, this will store an ethereum address in
 /// hex encoding.
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct EthereumAddress(ethereum::Address);
+pub struct EthereumAddress(identity::Ethereum);
 
 impl FromStr for EthereumAddress {
-    type Err = <ethereum::Address as FromStr>::Err;
+    type Err = <identity::Ethereum as FromStr>::Err;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         s.parse().map(EthereumAddress)
@@ -117,14 +117,14 @@ impl fmt::Display for EthereumAddress {
     }
 }
 
-impl From<EthereumAddress> for ethereum::Address {
+impl From<EthereumAddress> for identity::Ethereum {
     fn from(address: EthereumAddress) -> Self {
         address.0
     }
 }
 
-impl From<ethereum::Address> for EthereumAddress {
-    fn from(address: ethereum::Address) -> Self {
+impl From<identity::Ethereum> for EthereumAddress {
+    fn from(address: identity::Ethereum) -> Self {
         EthereumAddress(address)
     }
 }

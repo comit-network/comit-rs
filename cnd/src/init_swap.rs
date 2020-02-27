@@ -13,28 +13,30 @@ use crate::{
 };
 
 #[allow(clippy::cognitive_complexity)]
-pub fn init_accepted_swap<D, AL, BL, AA, BA>(
+pub fn init_accepted_swap<D, AL, BL, AA, BA, AI, BI>(
     dependencies: &D,
-    accepted: AcceptedSwap<AL, BL, AA, BA>,
+    accepted: AcceptedSwap<AL, BL, AA, BA, AI, BI>,
     role: Role,
 ) -> anyhow::Result<()>
 where
     D: StateStore
         + Clone
         + DeriveSwapSeed
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
-        + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRedeemed<BL, BA>
-        + HtlcRefunded<AL, AA>
-        + HtlcRefunded<BL, BA>,
+        + HtlcFunded<AL, AA, AI>
+        + HtlcFunded<BL, BA, BI>
+        + HtlcDeployed<AL, AA, AI>
+        + HtlcDeployed<BL, BA, BI>
+        + HtlcRedeemed<AL, AA, AI>
+        + HtlcRedeemed<BL, BA, BI>
+        + HtlcRefunded<AL, AA, AI>
+        + HtlcRefunded<BL, BA, BI>,
     AL: Ledger,
     BL: Ledger,
     AA: Ord + Send + Sync + 'static,
     BA: Ord + Send + Sync + 'static,
-    Request<AL, BL, AA, BA>: Clone,
+    AI: Send + Sync + 'static + Clone,
+    BI: Send + Sync + 'static + Clone,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
     let (request, accept, _) = &accepted;
 
@@ -44,22 +46,26 @@ where
 
     match role {
         Role::Alice => {
-            let state = alice::State::accepted(request.clone(), *accept, seed);
+            let state = alice::State::accepted(request.clone(), accept.clone(), seed);
             StateStore::insert(dependencies, id, state);
 
-            tokio::task::spawn(create_swap::<D, alice::State<AL, BL, AA, BA>>(
-                dependencies.clone(),
-                accepted,
-            ));
+            tokio::task::spawn(
+                create_swap::<D, alice::State<AL, BL, AA, BA, AI, BI>, AI, BI>(
+                    dependencies.clone(),
+                    accepted,
+                ),
+            );
         }
         Role::Bob => {
-            let state = bob::State::accepted(request.clone(), *accept, seed);
+            let state = bob::State::accepted(request.clone(), accept.clone(), seed);
             StateStore::insert(dependencies, id, state);
 
-            tokio::task::spawn(create_swap::<D, bob::State<AL, BL, AA, BA>>(
-                dependencies.clone(),
-                accepted,
-            ));
+            tokio::task::spawn(
+                create_swap::<D, bob::State<AL, BL, AA, BA, AI, BI>, AI, BI>(
+                    dependencies.clone(),
+                    accepted,
+                ),
+            );
         }
     };
 

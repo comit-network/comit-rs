@@ -1,7 +1,7 @@
 use crate::{
     db::{LoadAcceptedSwap, Save, Sqlite, Swap},
-    ethereum,
     http_api::{HttpAsset, HttpLedger},
+    identity,
     init_swap::init_accepted_swap,
     network::{DialInformation, SendRequest},
     seed::DeriveSwapSeed,
@@ -20,35 +20,35 @@ use crate::{
 use anyhow::Context;
 use futures_core::future::TryFutureExt;
 use libp2p_comit::frame::OutboundRequest;
-use serde::{Deserialize, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
-async fn initiate_request<AL, BL, AA, BA>(
+async fn initiate_request<'de, AL, BL, AA, BA, AI, BI>(
     dependencies: Facade,
     id: SwapId,
     peer: DialInformation,
-    swap_request: rfc003::Request<AL, BL, AA, BA>,
+    swap_request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
-    Sqlite: Save<Request<AL, BL, AA, BA>>
-        + Save<Accept<AL::Identity, BL::Identity>>
-        + Save<Swap>
-        + Save<Decline>,
+    Sqlite:
+        Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Accept<AI, BI>> + Save<Swap> + Save<Decline>,
     AL: Ledger,
     BL: Ledger,
     AA: Ord + Send + Sync + 'static,
     BA: Ord + Send + Sync + 'static,
-    rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Clone,
-    <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
-    Facade: LoadAcceptedSwap<AL, BL, AA, BA>
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
-        + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRedeemed<BL, BA>
-        + HtlcRefunded<AL, AA>
-        + HtlcRefunded<BL, BA>,
+    AI: Send + Sync + 'static + DeserializeOwned + Clone,
+    BI: Send + Sync + 'static + DeserializeOwned + Clone,
+    rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Clone,
+    <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
+    Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
+        + HtlcFunded<AL, AA, AI>
+        + HtlcFunded<BL, BA, BI>
+        + HtlcDeployed<AL, AA, AI>
+        + HtlcDeployed<BL, BA, BI>
+        + HtlcRedeemed<AL, AA, AI>
+        + HtlcRedeemed<BL, BA, BI>
+        + HtlcRefunded<AL, AA, AI>
+        + HtlcRefunded<BL, BA, BI>,
 {
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
@@ -71,9 +71,11 @@ where
             match response {
                 Ok(accept) => {
                     Save::save(&dependencies, accept).await?;
-                    let accepted =
-                        LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &id)
-                            .await?;
+                    let accepted = LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(
+                        &dependencies,
+                        &id,
+                    )
+                    .await?;
                     init_accepted_swap(&dependencies, accepted, Role::Alice)?;
                 }
                 Err(decline) => {
@@ -408,7 +410,7 @@ pub async fn handle_post_swap(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn new_request<AL, BL, AA, BA>(
+fn new_request<AL, BL, AA, BA, AI, BI>(
     id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,
@@ -416,9 +418,9 @@ fn new_request<AL, BL, AA, BA>(
     beta_asset: BA,
     alpha_expiry: Option<Timestamp>,
     beta_expiry: Option<Timestamp>,
-    identities: Identities<AL::Identity, BL::Identity>,
+    identities: Identities<AI, BI>,
     secret_hash: SecretHash,
-) -> rfc003::Request<AL, BL, AA, BA>
+) -> rfc003::Request<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
@@ -479,15 +481,15 @@ struct SwapRequestBody {
 /// for now because those are always provided upfront.
 #[derive(Clone, Debug, Deserialize, PartialEq)]
 struct HttpIdentities {
-    alpha_ledger_refund_identity: Option<ethereum::Address>,
-    beta_ledger_redeem_identity: Option<ethereum::Address>,
+    alpha_ledger_refund_identity: Option<identity::Ethereum>,
+    beta_ledger_redeem_identity: Option<identity::Ethereum>,
 }
 
 impl HttpIdentities {
     fn into_bitcoin_ethereum_identities(
         self,
         secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<crate::bitcoin::PublicKey, ethereum::Address>> {
+    ) -> anyhow::Result<Identities<identity::Bitcoin, identity::Ethereum>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -508,7 +510,7 @@ impl HttpIdentities {
                 }
             };
 
-        let alpha_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
+        let alpha_ledger_refund_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_refund_identity(),
         );
@@ -522,7 +524,7 @@ impl HttpIdentities {
     fn into_ethereum_bitcoin_identities(
         self,
         secret_source: &dyn DeriveIdentities,
-    ) -> anyhow::Result<Identities<ethereum::Address, crate::bitcoin::PublicKey>> {
+    ) -> anyhow::Result<Identities<identity::Ethereum, identity::Bitcoin>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -543,7 +545,7 @@ impl HttpIdentities {
                 }
             };
 
-        let beta_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
+        let beta_ledger_redeem_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_redeem_identity(),
         );
@@ -577,7 +579,7 @@ pub struct MissingIdentity {
 #[error("{kind} was not a valid ethereum address")]
 pub struct InvalidEthereumAddress {
     kind: IdentityKind,
-    source: <ethereum::Address as FromStr>::Err,
+    source: <identity::Ethereum as FromStr>::Err,
 }
 
 #[derive(strum_macros::Display, Debug, Clone, Copy)]

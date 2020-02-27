@@ -1,9 +1,12 @@
 mod extract_secret;
 mod htlc_events;
 
-use crate::swap_protocols::{
-    ledger,
-    rfc003::{create_swap::HtlcParams, Ledger},
+use crate::{
+    asset, identity,
+    swap_protocols::{
+        ledger,
+        rfc003::{create_swap::HtlcParams, Ledger},
+    },
 };
 use ::bitcoin::{
     hashes::{hash160, Hash},
@@ -12,22 +15,20 @@ use ::bitcoin::{
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
-use crate::{asset, bitcoin::PublicKey};
 
 impl<B> Ledger for B
 where
     B: ledger::Bitcoin,
 {
     type HtlcLocation = OutPoint;
-    type Identity = PublicKey;
     type Transaction = Transaction;
 }
 
-impl<B> From<HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>> for BitcoinHtlc
+impl<B> From<HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>> for BitcoinHtlc
 where
     B: ledger::Bitcoin,
 {
-    fn from(htlc_params: HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>) -> Self {
+    fn from(htlc_params: HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(*htlc_params.refund_identity);
         let redeem_public_key = ::bitcoin::PublicKey::from(*htlc_params.redeem_identity);
 
@@ -43,7 +44,7 @@ where
     }
 }
 
-impl<B> HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>
+impl<B> HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {

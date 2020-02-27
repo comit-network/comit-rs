@@ -3,6 +3,7 @@ use crate::{
     asset::ethereum::FromWei,
     db::Swap,
     ethereum::Bytes,
+    identity,
     swap_protocols::{
         ledger,
         ledger::{bitcoin, ethereum::ChainId},
@@ -132,7 +133,7 @@ impl Arbitrary for Quickcheck<crate::asset::Erc20Quantity> {
 
 impl Arbitrary for Quickcheck<crate::asset::Erc20> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let token_contract = *Quickcheck::<crate::ethereum::Address>::arbitrary(g);
+        let token_contract = *Quickcheck::<identity::Ethereum>::arbitrary(g);
         let quantity = Quickcheck::<crate::asset::Erc20Quantity>::arbitrary(g).0;
         let erc20_token = crate::asset::Erc20 {
             token_contract,
@@ -149,25 +150,23 @@ impl Arbitrary for Quickcheck<HashFunction> {
     }
 }
 
-impl Arbitrary for Quickcheck<crate::bitcoin::PublicKey> {
+impl Arbitrary for Quickcheck<identity::Bitcoin> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
         let secret_key =
             secp256k1::SecretKey::from_slice(&bytes).expect("all bytes are a valid secret key");
-        let public_key = crate::bitcoin::PublicKey::from_secret_key(
-            &secp256k1::Secp256k1::signing_only(),
-            &secret_key,
-        );
+        let public_key =
+            identity::Bitcoin::from_secret_key(&secp256k1::Secp256k1::signing_only(), &secret_key);
 
         Quickcheck(public_key)
     }
 }
 
-impl Arbitrary for Quickcheck<crate::ethereum::Address> {
+impl Arbitrary for Quickcheck<identity::Ethereum> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 20]>::arbitrary(g);
 
-        Quickcheck(crate::ethereum::Address::from(bytes))
+        Quickcheck(identity::Ethereum::from(bytes))
     }
 }
 
@@ -238,17 +237,19 @@ impl Arbitrary for Quickcheck<ledger::Ethereum> {
     }
 }
 
-impl<AL, BL, AA, BA> Arbitrary for Quickcheck<Request<AL, BL, AA, BA>>
+impl<AL, BL, AA, BA, AI, BI> Arbitrary for Quickcheck<Request<AL, BL, AA, BA, AI, BI>>
 where
     AL: Ledger,
     BL: Ledger,
+    AI: Copy,
+    BI: Copy,
     Quickcheck<AL>: Arbitrary,
     Quickcheck<BL>: Arbitrary,
     Quickcheck<AA>: Arbitrary,
     Quickcheck<BA>: Arbitrary,
-    Quickcheck<AL::Identity>: Arbitrary,
-    Quickcheck<BL::Identity>: Arbitrary,
-    Request<AL, BL, AA, BA>: Clone + Send + 'static,
+    Quickcheck<AI>: Arbitrary,
+    Quickcheck<BI>: Arbitrary,
+    Request<AL, BL, AA, BA, AI, BI>: Clone + Send + 'static,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
@@ -258,8 +259,8 @@ where
             alpha_asset: Quickcheck::<AA>::arbitrary(g).0,
             beta_asset: Quickcheck::<BA>::arbitrary(g).0,
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<AL::Identity>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<BL::Identity>::arbitrary(g),
+            alpha_ledger_refund_identity: *Quickcheck::<AI>::arbitrary(g),
+            beta_ledger_redeem_identity: *Quickcheck::<BI>::arbitrary(g),
             alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),

@@ -30,34 +30,33 @@ use crate::seed::SwapSeed;
 use ::bitcoin::secp256k1::SecretKey;
 
 /// Swap request response as received from peer node acting as Bob.
-pub type Response<AL, BL> =
-    Result<Accept<<AL as Ledger>::Identity, <BL as Ledger>::Identity>, Decline>;
+pub type Response<AI, BI> = Result<Accept<AI, BI>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapCommunication<AL, BL, AA, BA>
+pub enum SwapCommunication<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
 {
     Proposed {
-        request: Request<AL, BL, AA, BA>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
     },
     Accepted {
-        request: Request<AL, BL, AA, BA>,
-        response: Accept<AL::Identity, BL::Identity>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
+        response: Accept<AI, BI>,
     },
     Declined {
-        request: Request<AL, BL, AA, BA>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
         response: Decline,
     },
 }
 
-impl<AL, BL, AA, BA> SwapCommunication<AL, BL, AA, BA>
+impl<AL, BL, AA, BA, AI, BI> SwapCommunication<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
 {
-    pub fn request(&self) -> &Request<AL, BL, AA, BA> {
+    pub fn request(&self) -> &Request<AL, BL, AA, BA, AI, BI> {
         match self {
             SwapCommunication::Accepted { request, .. } => request,
             SwapCommunication::Proposed { request } => request,

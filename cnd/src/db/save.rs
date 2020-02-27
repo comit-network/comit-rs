@@ -8,6 +8,7 @@ use crate::{
         },
         Sqlite, Swap,
     },
+    identity,
     swap_protocols::{
         ledger::{self, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash},
@@ -88,12 +89,21 @@ impl
             Ethereum,
             asset::Bitcoin,
             asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
         >,
     > for Sqlite
 {
     async fn save(
         &self,
-        message: Request<__TYPE0__, Ethereum, asset::Bitcoin, asset::Ether>,
+        message: Request<
+            __TYPE0__,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -164,12 +174,21 @@ impl
             Ethereum,
             asset::Bitcoin,
             asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
         >,
     > for Sqlite
 {
     async fn save(
         &self,
-        message: Request<__TYPE0__, Ethereum, asset::Bitcoin, asset::Erc20>,
+        message: Request<
+            __TYPE0__,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -240,12 +259,21 @@ impl
             )),
             asset::Ether,
             asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
         >,
     > for Sqlite
 {
     async fn save(
         &self,
-        message: Request<Ethereum, __TYPE0__, asset::Ether, asset::Bitcoin>,
+        message: Request<
+            Ethereum,
+            __TYPE0__,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -316,12 +344,21 @@ impl
             )),
             asset::Erc20,
             asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
         >,
     > for Sqlite
 {
     async fn save(
         &self,
-        message: Request<Ethereum, __TYPE0__, asset::Erc20, asset::Bitcoin>,
+        message: Request<
+            Ethereum,
+            __TYPE0__,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
@@ -372,10 +409,10 @@ struct InsertableEthereumBitcoinAcceptMessage {
 }
 
 #[async_trait]
-impl Save<Accept<crate::ethereum::Address, crate::bitcoin::PublicKey>> for Sqlite {
+impl Save<Accept<identity::Ethereum, identity::Bitcoin>> for Sqlite {
     async fn save(
         &self,
-        message: Accept<crate::ethereum::Address, crate::bitcoin::PublicKey>,
+        message: Accept<identity::Ethereum, identity::Bitcoin>,
     ) -> anyhow::Result<()> {
         let Accept {
             swap_id,
@@ -409,10 +446,10 @@ struct InsertableBitcoinEthereumAcceptMessage {
 }
 
 #[async_trait]
-impl Save<Accept<crate::bitcoin::PublicKey, crate::ethereum::Address>> for Sqlite {
+impl Save<Accept<identity::Bitcoin, identity::Ethereum>> for Sqlite {
     async fn save(
         &self,
-        message: Accept<crate::bitcoin::PublicKey, crate::ethereum::Address>,
+        message: Accept<identity::Bitcoin, identity::Ethereum>,
     ) -> anyhow::Result<()> {
         let Accept {
             swap_id,
