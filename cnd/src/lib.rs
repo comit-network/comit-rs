@@ -36,7 +36,6 @@ pub mod comit_api;
 pub mod config;
 pub mod ethereum;
 pub mod http_api;
-pub mod identity;
 pub mod init_swap;
 pub mod load_swaps;
 #[macro_use]
@@ -53,6 +52,12 @@ pub mod timestamp;
 use anyhow::Context;
 use directories::ProjectDirs;
 use std::path::{Path, PathBuf};
+
+/// Define domain specific terms using modules so that we can refer to things in
+/// an ergonomic fashion.
+pub mod identity {
+    pub use crate::{bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum};
+}
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
