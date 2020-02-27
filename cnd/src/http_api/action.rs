@@ -309,10 +309,7 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{
-        ethereum::{Address as EthereumAddress, U256},
-        swap_protocols::ledger::ethereum::ChainId,
-    };
+    use crate::{ethereum::U256, identity, swap_protocols::ledger::ethereum::ChainId};
     use bitcoin::Address as BitcoinAddress;
     use std::str::FromStr;
 
@@ -340,7 +337,8 @@ mod test {
 
     #[test]
     fn call_contract_serializes_correctly_to_json_with_none() {
-        let addr = EthereumAddress::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
+        let addr =
+            identity::Ethereum::from_str("0A81e8be41b21f651a71aaB1A85c6813b8bBcCf8").unwrap();
         let chain_id = ChainId::from(3);
         let contract = ActionResponseBody::EthereumCallContract {
             contract_address: addr,
