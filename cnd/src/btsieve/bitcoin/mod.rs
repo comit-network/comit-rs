@@ -116,27 +116,25 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     let block = connector.latest_block().compat().await?;
-    let blockhash = block.bitcoin_hash();
 
     // Look back in time until we get a block that predates start_of_swap.
     let mut seen_blocks = walk_back_until(
         predates_start_of_swap(start_of_swap),
         connector.clone(),
         co,
-        blockhash,
+        block,
     )
     .await?;
 
     // Look forward in time, but keep going back for missed blocks
     loop {
         let block = connector.latest_block().compat().await?;
-        let blockhash = block.bitcoin_hash();
 
         let missed_blocks = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
             connector.clone(),
             co,
-            blockhash,
+            block,
         )
         .await?;
 
@@ -156,14 +154,23 @@ async fn walk_back_until<C, P>(
     stop_condition: P,
     connector: C,
     co: &Co<Block>,
-    starting_blockhash: Hash,
+    block: Block,
 ) -> anyhow::Result<HashSet<Hash>>
 where
     C: BlockByHash<Block = Block, BlockHash = Hash>,
     P: Fn(&Block) -> anyhow::Result<bool>,
 {
     let mut seen_blocks: HashSet<Hash> = HashSet::new();
-    let mut blockhash = starting_blockhash;
+    let mut blockhash = block.bitcoin_hash();
+
+    co.yield_(block.clone()).await;
+    seen_blocks.insert(blockhash);
+
+    if stop_condition(&block)? {
+        return Ok(seen_blocks);
+    } else {
+        blockhash = block.header.prev_blockhash;
+    }
 
     loop {
         let block = connector.block_by_hash(blockhash).compat().await?;
