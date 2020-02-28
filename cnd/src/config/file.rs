@@ -217,7 +217,7 @@ chain_id = 17
 node_url = "http://localhost:8545/"
 
 [lnd]
-macaroon = "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
+macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
 
 [lnd.http_rpc_socket]
 address = "127.0.0.1"
@@ -261,7 +261,7 @@ port = 443
                     port: 443,
                 },
                 macaroon: Some(PathBuf::from(
-                    "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
+                    "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
                 )),
             }),
         };
@@ -391,7 +391,7 @@ port = 443
     fn lnd_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            macaroon = "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
+            macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
             [http_rpc_socket]
             address = "127.0.0.1"
             port = 443
@@ -404,7 +404,7 @@ port = 443
                 port: 443,
             },
             macaroon: Some(PathBuf::from(
-                "/home/jim/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
+                "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
             )),
         }];
 
