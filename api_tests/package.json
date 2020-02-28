@@ -52,7 +52,7 @@
         "json-schema-to-typescript": "^8.1.0",
         "ln-service": "^47.14.7",
         "log4js": "^6.1.2",
-        "mocha": "^7.0.1",
+        "mocha": "^7.1.0",
         "multiaddr": "^7.3.1",
         "pem-ts": "^2.0.0",
         "prettier": "^1.19.1",
