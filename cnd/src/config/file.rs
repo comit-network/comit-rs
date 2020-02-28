@@ -219,9 +219,9 @@ node_url = "http://localhost:8545/"
 [lnd]
 macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
 
-[lnd.http_rpc_socket]
+[lnd.rest_api_socket]
 address = "127.0.0.1"
-port = 443
+port = 8080
 "#;
 
         let file = File {
@@ -256,9 +256,9 @@ port = 443
                 }),
             }),
             lnd: Some(Lnd {
-                http_rpc_socket: Socket {
+                rest_api_socket: Socket {
                     address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                    port: 443,
+                    port: 8080,
                 },
                 macaroon: Some(PathBuf::from(
                     "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
@@ -392,16 +392,16 @@ port = 443
         let file_contents = vec![
             r#"
             macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
-            [http_rpc_socket]
+            [rest_api_socket]
             address = "127.0.0.1"
-            port = 443
+            port = 8080
             "#,
         ];
 
         let expected = vec![Lnd {
-            http_rpc_socket: Socket {
+            rest_api_socket: Socket {
                 address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                port: 443,
+                port: 8080,
             },
             macaroon: Some(PathBuf::from(
                 "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",

@@ -103,7 +103,7 @@ impl From<Settings> for File {
             lnd: match lnd {
                 None => None,
                 Some(lnd) => Some(Lnd {
-                    http_rpc_socket: lnd.http_rpc_socket,
+                    rest_api_socket: lnd.rest_api_socket,
                     macaroon: lnd.macaroon,
                 }),
             },
@@ -221,7 +221,7 @@ impl Settings {
             lnd: match lnd {
                 None => None,
                 Some(lnd) => Some(Lnd {
-                    http_rpc_socket: lnd.http_rpc_socket,
+                    rest_api_socket: lnd.rest_api_socket,
                     macaroon: lnd.macaroon,
                 }),
             },
@@ -470,9 +470,9 @@ mod tests {
     fn http_lnd_section_defaults_macaroon_to_none() {
         let config_file = File {
             lnd: Some(Lnd {
-                http_rpc_socket: Socket {
+                rest_api_socket: Socket {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 443,
+                    port: 8080,
                 },
                 macaroon: None,
             }),
@@ -486,9 +486,9 @@ mod tests {
             .map(|settings| &settings.lnd)
             .is_equal_to(Some(Lnd {
                 macaroon: None,
-                http_rpc_socket: Socket {
+                rest_api_socket: Socket {
                     address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 443,
+                    port: 8080,
                 },
             }))
     }

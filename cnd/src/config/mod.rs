@@ -96,20 +96,20 @@ pub struct Parity {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub http_rpc_socket: Socket,
+    pub rest_api_socket: Socket,
     pub macaroon: Option<PathBuf>,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            http_rpc_socket: default_lnd_http_rpc_socket(),
+            rest_api_socket: default_lnd_rest_api_socket(),
             macaroon: None,
         }
     }
 }
 
-fn default_lnd_http_rpc_socket() -> Socket {
+fn default_lnd_rest_api_socket() -> Socket {
     Socket {
         address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
         port: 443,
