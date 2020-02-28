@@ -1,0 +1,15 @@
+name: Ensure each commit in a PR passes the required checks
+
+on: pull_request
+
+jobs:
+  build_commits:
+    runs-on: ubuntu-latest
+    steps:
+      - name: List all commits of the PR
+        run: |
+          curl \
+            -H 'Accept: application/vnd.github.v3+json' \
+            -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            ${{ github.event.pull_request.commits_url }}
