@@ -59,13 +59,10 @@ where
         .find_output(&compute_address)
         .expect("Deployment transaction must contain outpoint described in pattern");
 
-    Ok((
-        transaction.clone(),
-        OutPoint {
-            txid: transaction.txid(),
-            vout,
-        },
-    ))
+    Ok((transaction.clone(), OutPoint {
+        txid: transaction.txid(),
+        vout,
+    }))
 }
 
 pub async fn matching_transaction<C, F>(
@@ -118,42 +115,32 @@ async fn find_relevant_blocks<C>(
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    let mut seen_blocks: HashSet<Hash> = HashSet::new();
-
     let block = connector.latest_block().compat().await?;
-    co.yield_(block.clone()).await;
-
     let blockhash = block.bitcoin_hash();
-    seen_blocks.insert(blockhash);
 
     // Look back in time until we get a block that predates start_of_swap.
-    let parent_hash = block.header.prev_blockhash;
-    walk_back_until(
+    let mut seen_blocks = walk_back_until(
         predates_start_of_swap(start_of_swap),
         connector.clone(),
         co,
-        parent_hash,
+        blockhash,
     )
     .await?;
 
+    // Look forward in time, but keep going back for missed blocks
     loop {
         let block = connector.latest_block().compat().await?;
-        co.yield_(block.clone()).await;
-
         let blockhash = block.bitcoin_hash();
-        seen_blocks.insert(blockhash);
 
-        // Look back along the blockchain for missing blocks.
-        let parent_hash = block.header.prev_blockhash;
-        if !seen_blocks.contains(&parent_hash) {
-            walk_back_until(
-                seen_block_or_predates_start_of_swap(seen_blocks.clone(), start_of_swap),
-                connector.clone(),
-                co,
-                parent_hash,
-            )
-            .await?;
-        }
+        let missed_blocks = walk_back_until(
+            seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
+            connector.clone(),
+            co,
+            blockhash,
+        )
+        .await?;
+
+        seen_blocks.extend(missed_blocks);
 
         // The duration of this timeout could/should depend on the network
         tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
@@ -163,28 +150,30 @@ where
 /// Walks the blockchain backwards from the given hash until the predicate given
 /// in `stop_condition` returns `true`.
 ///
-/// This functions yields all blocks as part of its process.
+/// This function yields all blocks as part of its process.
+/// This function returns the block-hashes of all visited blocks.
 async fn walk_back_until<C, P>(
     stop_condition: P,
     connector: C,
     co: &Co<Block>,
     starting_blockhash: Hash,
-) -> anyhow::Result<()>
+) -> anyhow::Result<HashSet<Hash>>
 where
     C: BlockByHash<Block = Block, BlockHash = Hash>,
     P: Fn(&Block) -> anyhow::Result<bool>,
 {
+    let mut seen_blocks: HashSet<Hash> = HashSet::new();
     let mut blockhash = starting_blockhash;
 
     loop {
         let block = connector.block_by_hash(blockhash).compat().await?;
-
         co.yield_(block.clone()).await;
+        seen_blocks.insert(blockhash);
 
         if stop_condition(&block)? {
-            return Ok(());
+            return Ok(seen_blocks);
         } else {
-            blockhash = block.header.prev_blockhash
+            blockhash = block.header.prev_blockhash;
         }
     }
 }
@@ -197,10 +186,10 @@ fn predates_start_of_swap(start_of_swap: NaiveDateTime) -> impl Fn(&Block) -> an
 
 /// Constructs a predicate that returns `true` if we have seen the given block
 /// or the block predates the start_of_swap timestamp.
-fn seen_block_or_predates_start_of_swap(
-    seen_blocks: HashSet<Hash>,
+fn seen_block_or_predates_start_of_swap<'sb>(
+    seen_blocks: &'sb HashSet<Hash>,
     start_of_swap: NaiveDateTime,
-) -> impl Fn(&Block) -> anyhow::Result<bool> {
+) -> impl Fn(&Block) -> anyhow::Result<bool> + 'sb {
     move |block: &Block| {
         let have_seen_block = seen_blocks.contains(&block.bitcoin_hash());
         let predates_start_of_swap = predates_start_of_swap(start_of_swap)(block)?;
