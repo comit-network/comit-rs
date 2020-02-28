@@ -1,5 +1,5 @@
 use crate::{
-    asset::{self, Asset},
+    asset::{self},
     swap_protocols::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
@@ -16,7 +16,6 @@ use std::convert::Infallible;
 impl<BL, BA> Actions for alice::State<Ethereum, BL, asset::Erc20, BA>
 where
     BL: Ledger,
-    BA: Asset,
     (BL, BA): RedeemAction<BL, BA>,
 {
     #[allow(clippy::type_complexity)]
@@ -74,7 +73,6 @@ where
 impl<AL, AA> Actions for alice::State<AL, Ethereum, AA, asset::Erc20>
 where
     AL: Ledger,
-    AA: Asset,
     (AL, AA): FundAction<AL, AA> + RefundAction<AL, AA>,
 {
     #[allow(clippy::type_complexity)]

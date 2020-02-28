@@ -1,5 +1,4 @@
 use crate::{
-    asset::Asset,
     db::AcceptedSwap,
     swap_protocols::{
         rfc003::{
@@ -34,10 +33,8 @@ use genawaiter::{
 ///
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
-pub async fn create_swap<D, A: ActorState>(
-    dependencies: D,
-    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>,
-) where
+pub async fn create_swap<D, A>(dependencies: D, accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA>)
+where
     D: StateStore
         + HtlcFunded<A::AL, A::AA>
         + HtlcFunded<A::BL, A::BA>
@@ -48,8 +45,11 @@ pub async fn create_swap<D, A: ActorState>(
         + HtlcRefunded<A::AL, A::AA>
         + HtlcRefunded<A::BL, A::BA>
         + Clone,
+    A::AA: Ord,
+    A::BA: Ord,
+    A: ActorState,
 {
-    let (request, accept, at) = accepted.clone();
+    let (request, accept, at) = accepted;
 
     let id = request.swap_id;
     let swap = OngoingSwap::new(request, accept);
@@ -104,29 +104,27 @@ pub async fn create_swap<D, A: ActorState>(
 async fn watch_alpha_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
-    htlc_params: HtlcParams<AL, AA, AL::Identity>,
+    htlc_params: HtlcParams<'_, AL, AA, AL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     D: HtlcFunded<AL, AA> + HtlcDeployed<AL, AA> + HtlcRedeemed<AL, AA> + HtlcRefunded<AL, AA>,
 {
     let deployed = dependencies
-        .htlc_deployed(htlc_params.clone(), start_of_swap)
+        .htlc_deployed(&htlc_params, start_of_swap)
         .await?;
     co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
 
     let funded = dependencies
-        .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
+        .htlc_funded(&htlc_params, &deployed, start_of_swap)
         .await?;
-    co.yield_(SwapEvent::AlphaFunded(funded.clone())).await;
+    co.yield_(SwapEvent::AlphaFunded(funded)).await;
 
-    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
+    let redeemed = dependencies.htlc_redeemed(&htlc_params, &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
+    let refunded = dependencies.htlc_refunded(&htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -151,29 +149,27 @@ where
 async fn watch_beta_ledger<D, AL, AA, BL, BA>(
     dependencies: &D,
     co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
-    htlc_params: HtlcParams<BL, BA, BL::Identity>,
+    htlc_params: HtlcParams<'_, BL, BA, BL::Identity>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     D: HtlcFunded<BL, BA> + HtlcDeployed<BL, BA> + HtlcRedeemed<BL, BA> + HtlcRefunded<BL, BA>,
 {
     let deployed = dependencies
-        .htlc_deployed(htlc_params.clone(), start_of_swap)
+        .htlc_deployed(&htlc_params, start_of_swap)
         .await?;
     co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
 
     let funded = dependencies
-        .htlc_funded(htlc_params.clone(), &deployed, start_of_swap)
+        .htlc_funded(&htlc_params, &deployed, start_of_swap)
         .await?;
-    co.yield_(SwapEvent::BetaFunded(funded.clone())).await;
+    co.yield_(SwapEvent::BetaFunded(funded)).await;
 
-    let redeemed = dependencies.htlc_redeemed(htlc_params.clone(), &deployed, start_of_swap);
+    let redeemed = dependencies.htlc_redeemed(&htlc_params, &deployed, start_of_swap);
 
-    let refunded = dependencies.htlc_refunded(htlc_params, &deployed, start_of_swap);
+    let refunded = dependencies.htlc_refunded(&htlc_params, &deployed, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -193,54 +189,48 @@ where
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct HtlcParams<L, A, I>
-where
-    A: Asset,
-{
-    pub asset: A,
-    pub ledger: L,
-    pub redeem_identity: I,
-    pub refund_identity: I,
+pub struct HtlcParams<'a, L, A, I> {
+    pub asset: &'a A,
+    pub ledger: &'a L,
+    pub redeem_identity: &'a I,
+    pub refund_identity: &'a I,
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
-impl<L, A> HtlcParams<L, A, L::Identity>
+impl<'a, L, A> HtlcParams<'a, L, A, L::Identity>
 where
     L: Ledger,
-    A: Asset,
 {
     pub fn new_alpha_params<BL, BA>(
-        request: &rfc003::Request<L, BL, A, BA>,
-        accept_response: &rfc003::Accept<L::Identity, BL::Identity>,
+        request: &'a rfc003::Request<L, BL, A, BA>,
+        accept_response: &'a rfc003::Accept<L::Identity, BL::Identity>,
     ) -> Self
     where
         BL: Ledger,
-        BA: Asset,
     {
         HtlcParams {
-            asset: request.alpha_asset.clone(),
-            ledger: request.alpha_ledger,
-            redeem_identity: accept_response.alpha_ledger_redeem_identity,
-            refund_identity: request.alpha_ledger_refund_identity,
+            asset: &request.alpha_asset,
+            ledger: &request.alpha_ledger,
+            redeem_identity: &accept_response.alpha_ledger_redeem_identity,
+            refund_identity: &request.alpha_ledger_refund_identity,
             expiry: request.alpha_expiry,
             secret_hash: request.secret_hash,
         }
     }
 
     pub fn new_beta_params<AL, AA>(
-        request: &rfc003::Request<AL, L, AA, A>,
-        accept_response: &rfc003::Accept<AL::Identity, L::Identity>,
+        request: &'a rfc003::Request<AL, L, AA, A>,
+        accept_response: &'a rfc003::Accept<AL::Identity, L::Identity>,
     ) -> Self
     where
         AL: Ledger,
-        AA: Asset,
     {
         HtlcParams {
-            asset: request.beta_asset.clone(),
-            ledger: request.beta_ledger,
-            redeem_identity: request.beta_ledger_redeem_identity,
-            refund_identity: accept_response.beta_ledger_refund_identity,
+            asset: &request.beta_asset,
+            ledger: &request.beta_ledger,
+            redeem_identity: &request.beta_ledger_redeem_identity,
+            refund_identity: &accept_response.beta_ledger_refund_identity,
             expiry: request.beta_expiry,
             secret_hash: request.secret_hash,
         }
@@ -252,8 +242,6 @@ pub struct OngoingSwap<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
@@ -273,8 +261,6 @@ impl<AL, BL, AA, BA> OngoingSwap<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn new(
         request: Request<AL, BL, AA, BA>,
@@ -296,23 +282,23 @@ where
         }
     }
 
-    pub fn alpha_htlc_params(&self) -> HtlcParams<AL, AA, AL::Identity> {
+    pub fn alpha_htlc_params(&self) -> HtlcParams<'_, AL, AA, AL::Identity> {
         HtlcParams {
-            asset: self.alpha_asset.clone(),
-            ledger: self.alpha_ledger,
-            redeem_identity: self.alpha_ledger_redeem_identity,
-            refund_identity: self.alpha_ledger_refund_identity,
+            asset: &self.alpha_asset,
+            ledger: &self.alpha_ledger,
+            redeem_identity: &self.alpha_ledger_redeem_identity,
+            refund_identity: &self.alpha_ledger_refund_identity,
             expiry: self.alpha_expiry,
             secret_hash: self.secret_hash,
         }
     }
 
-    pub fn beta_htlc_params(&self) -> HtlcParams<BL, BA, BL::Identity> {
+    pub fn beta_htlc_params(&self) -> HtlcParams<'_, BL, BA, BL::Identity> {
         HtlcParams {
-            asset: self.beta_asset.clone(),
-            ledger: self.beta_ledger,
-            redeem_identity: self.beta_ledger_redeem_identity,
-            refund_identity: self.beta_ledger_refund_identity,
+            asset: &self.beta_asset,
+            ledger: &self.beta_ledger,
+            redeem_identity: &self.beta_ledger_redeem_identity,
+            refund_identity: &self.beta_ledger_refund_identity,
             expiry: self.beta_expiry,
             secret_hash: self.secret_hash,
         }
@@ -329,11 +315,7 @@ pub type SwapEventOnLedger<AL, BL, AA, BA> = SwapEvent<
 >;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent<AH, AT, BH, BT, AA, BA>
-where
-    AA: Asset,
-    BA: Asset,
-{
+pub enum SwapEvent<AH, AT, BH, BT, AA, BA> {
     AlphaDeployed(Deployed<AT, AH>),
     AlphaFunded(Funded<AT, AA>),
     AlphaRedeemed(Redeemed<AT>),

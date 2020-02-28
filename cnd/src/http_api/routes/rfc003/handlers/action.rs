@@ -117,7 +117,7 @@ pub async fn handle_action(
 
                 let swap_request = state.request();
                 let seed = dependencies.derive_swap_seed(swap_id);
-                let state = State::declined(swap_request, decline_message, seed);
+                let state = State::declined(swap_request.clone(), decline_message, seed);
                 StateStore::insert(&dependencies, swap_id, state);
 
                 Ok(ActionResponseBody::None)
@@ -183,8 +183,7 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
 
 fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
 where
-    AI: Serialize,
-    BI: Serialize,
+    rfc003::messages::AcceptResponseBody<AI, BI>: Serialize,
 {
     Response::empty()
         .with_header(

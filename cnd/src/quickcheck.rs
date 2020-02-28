@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    asset::{ethereum::FromWei, Asset},
+    asset::ethereum::FromWei,
     db::Swap,
     ethereum::Bytes,
     swap_protocols::{
@@ -242,14 +242,13 @@ impl<AL, BL, AA, BA> Arbitrary for Quickcheck<Request<AL, BL, AA, BA>>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
     Quickcheck<AL>: Arbitrary,
     Quickcheck<BL>: Arbitrary,
     Quickcheck<AA>: Arbitrary,
     Quickcheck<BA>: Arbitrary,
     Quickcheck<AL::Identity>: Arbitrary,
     Quickcheck<BL::Identity>: Arbitrary,
+    Request<AL, BL, AA, BA>: Clone + Send + 'static,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {

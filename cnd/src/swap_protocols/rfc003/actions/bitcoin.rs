@@ -20,13 +20,13 @@ where
     type FundActionOutput = SendToAddress;
 
     fn fund_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        htlc_params: HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
     ) -> Self::FundActionOutput {
         let to = htlc_params.compute_address();
 
         SendToAddress {
             to,
-            amount: htlc_params.asset,
+            amount: *htlc_params.asset,
             network: B::network(),
         }
     }
@@ -39,7 +39,7 @@ where
     type RefundActionOutput = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        htlc_params: HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &Transaction,
@@ -64,7 +64,7 @@ where
     type RedeemActionOutput = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        htlc_params: HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
         htlc_location: OutPoint,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
@@ -74,7 +74,7 @@ where
         SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
-                htlc_params.asset.into(),
+                htlc_params.asset.clone().into(),
                 htlc.unlock_with_secret(
                     &*crate::SECP,
                     secret_source.derive_redeem_identity(),

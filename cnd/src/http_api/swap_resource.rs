@@ -1,7 +1,6 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    asset::Asset,
     db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
@@ -58,8 +57,6 @@ where
     HttpAsset: From<BA>,
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
         Self {
@@ -111,7 +108,7 @@ where
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
         let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-        let parameters = SwapParameters::from(state.clone().request());
+        let parameters = SwapParameters::from(state.request().clone());
         let actions = state.actions();
 
         let status = SwapStatus::new(

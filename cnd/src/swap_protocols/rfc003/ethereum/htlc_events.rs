@@ -30,7 +30,7 @@ lazy_static::lazy_static! {
 impl HtlcFunded<Ethereum, Ether> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
-        _htlc_params: HtlcParams<Ethereum, Ether, Address>,
+        _htlc_params: &HtlcParams<'_, Ethereum, Ether, Address>,
         deploy_transaction: &Deployed<Transaction, Address>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Transaction, Ether>> {
@@ -45,7 +45,7 @@ impl HtlcFunded<Ethereum, Ether> for Cache<Web3Connector> {
 impl HtlcDeployed<Ethereum, Ether> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Ethereum, Ether, Address>,
+        htlc_params: &HtlcParams<'_, Ethereum, Ether, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Transaction, Address>> {
         let connector = self.clone();
@@ -65,7 +65,7 @@ impl HtlcDeployed<Ethereum, Ether> for Cache<Web3Connector> {
 impl HtlcRedeemed<Ethereum, Ether> for Cache<Web3Connector> {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: HtlcParams<Ethereum, Ether, Address>,
+        _htlc_params: &HtlcParams<'_, Ethereum, Ether, Address>,
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Transaction>> {
@@ -94,7 +94,7 @@ impl HtlcRedeemed<Ethereum, Ether> for Cache<Web3Connector> {
 impl HtlcRefunded<Ethereum, Ether> for Cache<Web3Connector> {
     async fn htlc_refunded(
         &self,
-        _htlc_params: HtlcParams<Ethereum, Ether, Address>,
+        _htlc_params: &HtlcParams<'_, Ethereum, Ether, Address>,
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Transaction>> {
@@ -116,7 +116,7 @@ impl HtlcRefunded<Ethereum, Ether> for Cache<Web3Connector> {
 impl HtlcFunded<Ethereum, Erc20> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<Ethereum, Erc20, Address>,
+        htlc_params: &HtlcParams<'_, Ethereum, Erc20, Address>,
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Transaction, Erc20>> {
@@ -146,13 +146,13 @@ impl HtlcFunded<Ethereum, Erc20> for Cache<Web3Connector> {
 impl HtlcDeployed<Ethereum, Erc20> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<Ethereum, Erc20, Address>,
+        htlc_params: &HtlcParams<'_, Ethereum, Erc20, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Transaction, Address>> {
         let connector = self.clone();
 
         let (transaction, location) =
-            watch_for_contract_creation(connector, start_of_swap, htlc_params.bytecode())
+            watch_for_contract_creation(connector, start_of_swap, htlc_params.clone().bytecode())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -167,7 +167,7 @@ impl HtlcDeployed<Ethereum, Erc20> for Cache<Web3Connector> {
 impl HtlcRedeemed<Ethereum, Erc20> for Cache<Web3Connector> {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: HtlcParams<Ethereum, Erc20, Address>,
+        _htlc_params: &HtlcParams<'_, Ethereum, Erc20, Address>,
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Transaction>> {
@@ -196,7 +196,7 @@ impl HtlcRedeemed<Ethereum, Erc20> for Cache<Web3Connector> {
 impl HtlcRefunded<Ethereum, Erc20> for Cache<Web3Connector> {
     async fn htlc_refunded(
         &self,
-        _htlc_params: HtlcParams<Ethereum, Erc20, Address>,
+        _htlc_params: &HtlcParams<'_, Ethereum, Erc20, Address>,
         htlc_deployment: &Deployed<Transaction, Address>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Transaction>> {

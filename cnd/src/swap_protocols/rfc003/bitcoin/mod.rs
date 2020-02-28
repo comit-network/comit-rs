@@ -23,13 +23,13 @@ where
     type Transaction = Transaction;
 }
 
-impl<B> From<HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>> for BitcoinHtlc
+impl<B> From<HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>> for BitcoinHtlc
 where
     B: ledger::Bitcoin,
 {
-    fn from(htlc_params: HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>) -> Self {
-        let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
-        let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
+    fn from(htlc_params: HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>) -> Self {
+        let refund_public_key = ::bitcoin::PublicKey::from(*htlc_params.refund_identity);
+        let redeem_public_key = ::bitcoin::PublicKey::from(*htlc_params.redeem_identity);
 
         let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
         let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
@@ -43,7 +43,7 @@ where
     }
 }
 
-impl<B> HtlcParams<B, asset::Bitcoin, crate::bitcoin::PublicKey>
+impl<B> HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {

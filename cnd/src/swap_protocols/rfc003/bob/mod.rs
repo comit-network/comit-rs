@@ -1,11 +1,8 @@
 pub mod actions;
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{
-        self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
-        Decline, DeriveIdentities, SwapCommunication,
-    },
+use crate::swap_protocols::rfc003::{
+    self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
+    Decline, DeriveIdentities, SwapCommunication,
 };
 use derivative::Derivative;
 use futures::sync::oneshot;
@@ -24,8 +21,6 @@ pub struct State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
@@ -39,8 +34,6 @@ impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn proposed(
         request: Request<AL, BL, AA, BA>,
@@ -83,11 +76,11 @@ where
         }
     }
 
-    pub fn request(&self) -> Request<AL, BL, AA, BA> {
+    pub fn request(&self) -> &Request<AL, BL, AA, BA> {
         match &self.swap_communication {
             SwapCommunication::Accepted { request, .. }
             | SwapCommunication::Proposed { request, .. }
-            | SwapCommunication::Declined { request, .. } => request.clone(),
+            | SwapCommunication::Declined { request, .. } => request,
         }
     }
 }
@@ -96,20 +89,20 @@ impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
+    AA: 'static,
+    BA: 'static,
 {
     type AL = AL;
     type BL = BL;
     type AA = AA;
     type BA = BA;
 
-    fn expected_alpha_asset(&self) -> Self::AA {
-        self.swap_communication.request().alpha_asset.clone()
+    fn expected_alpha_asset(&self) -> &Self::AA {
+        &self.swap_communication.request().alpha_asset
     }
 
-    fn expected_beta_asset(&self) -> Self::BA {
-        self.swap_communication.request().beta_asset.clone()
+    fn expected_beta_asset(&self) -> &Self::BA {
+        &self.swap_communication.request().beta_asset
     }
 
     fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL::HtlcLocation, AL::Transaction, AA> {

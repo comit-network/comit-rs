@@ -3,7 +3,6 @@ mod actions;
 pub use self::actions::*;
 
 use crate::{
-    asset::Asset,
     seed::SwapSeed,
     swap_protocols::rfc003::{
         ledger::Ledger, ledger_state::LedgerState, messages, ActorState, SwapCommunication,
@@ -17,8 +16,6 @@ pub struct State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA>,
     pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
@@ -32,8 +29,6 @@ impl<AL, BL, AA, BA> State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
 {
     pub fn proposed(request: messages::Request<AL, BL, AA, BA>, secret_source: SwapSeed) -> Self {
         Self {
@@ -73,8 +68,8 @@ where
         }
     }
 
-    pub fn request(&self) -> messages::Request<AL, BL, AA, BA> {
-        self.swap_communication.request().clone()
+    pub fn request(&self) -> &messages::Request<AL, BL, AA, BA> {
+        self.swap_communication.request()
     }
 }
 
@@ -82,20 +77,20 @@ impl<AL, BL, AA, BA> ActorState for State<AL, BL, AA, BA>
 where
     AL: Ledger,
     BL: Ledger,
-    AA: Asset,
-    BA: Asset,
+    AA: 'static,
+    BA: 'static,
 {
     type AL = AL;
     type BL = BL;
     type AA = AA;
     type BA = BA;
 
-    fn expected_alpha_asset(&self) -> Self::AA {
-        self.swap_communication.request().alpha_asset.clone()
+    fn expected_alpha_asset(&self) -> &Self::AA {
+        &self.swap_communication.request().alpha_asset
     }
 
-    fn expected_beta_asset(&self) -> Self::BA {
-        self.swap_communication.request().beta_asset.clone()
+    fn expected_beta_asset(&self) -> &Self::BA {
+        &self.swap_communication.request().beta_asset
     }
 
     fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL::HtlcLocation, AL::Transaction, AA> {

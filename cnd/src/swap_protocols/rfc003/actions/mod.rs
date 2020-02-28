@@ -2,10 +2,7 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
-};
+use crate::swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret};
 use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
@@ -27,22 +24,20 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
 pub trait FundAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type FundActionOutput;
 
-    fn fund_action(htlc_params: HtlcParams<L, A, L::Identity>) -> Self::FundActionOutput;
+    fn fund_action(htlc_params: HtlcParams<'_, L, A, L::Identity>) -> Self::FundActionOutput;
 }
 
 pub trait RefundAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type RefundActionOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: HtlcParams<'_, L, A, L::Identity>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         fund_transaction: &L::Transaction,
@@ -52,12 +47,11 @@ where
 pub trait RedeemAction<L, A>
 where
     L: Ledger,
-    A: Asset,
 {
     type RedeemActionOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<L, A, L::Identity>,
+        htlc_params: HtlcParams<'_, L, A, L::Identity>,
         htlc_location: L::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
