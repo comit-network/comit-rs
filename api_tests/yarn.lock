@@ -422,6 +422,11 @@ async@3.1.1:
   resolved "https://registry.yarnpkg.com/async/-/async-3.1.1.tgz#dd3542db03de837979c9ebbca64ca01b06dc98df"
   integrity sha512-X5Dj8hK1pJNC2Wzo2Rcp9FBVdJMGRR/S7V+lH46s8GVFhtbo5O4Le5GECCF/8PISVdkUA6mMPvgz7qTTD1rf1g==
 
+async@3.2.0:
+  version "3.2.0"
+  resolved "https://registry.yarnpkg.com/async/-/async-3.2.0.tgz#b3a2685c5ebb641d3de02d161002c60fc9f85720"
+  integrity sha512-TR2mEZFVOj2pLStYxLht7TyfuRzaydfpxr3k9RpHIzMgw7A64dzsdqCxH1WJyQdoe8T10nDXd9wnEigmiuHIZw==
+
 asyncjs-util@1.1.3:
   version "1.1.3"
   resolved "https://registry.yarnpkg.com/asyncjs-util/-/asyncjs-util-1.1.3.tgz#514758a32a70fcde1eb092fe5b28b55d4315a732"
@@ -2133,6 +2138,18 @@ invert-kv@^1.0.0:
   resolved "https://registry.yarnpkg.com/invert-kv/-/invert-kv-1.0.0.tgz#104a8e4aaca6d3d8cd157a8ef8bfab2d7a3ffdb6"
   integrity sha1-EEqOSqym09jNFXqO+L+rLXo//bY=
 
+invoices@1.0.0:
+  version "1.0.0"
+  resolved "https://registry.yarnpkg.com/invoices/-/invoices-1.0.0.tgz#08368d96a7074bd29fa0459803cb727dc5600e74"
+  integrity sha512-blukVcU2sw3Vs6La0E4JHY/YNCpq3UyQXm2HR2WUtgMI0XzaZBOohVteja3FMXTO5BYFkV+OAs+1QQ5bybr5lA==
+  dependencies:
+    bech32 "1.1.3"
+    bitcoinjs-lib "5.1.7"
+    bn.js "5.1.1"
+    bolt07 "1.4.4"
+    bolt09 "0.0.1"
+    secp256k1 "4.0.0"
+
 ip-regex@^2.0.0, ip-regex@^2.1.0:
   version "2.1.0"
   resolved "https://registry.yarnpkg.com/ip-regex/-/ip-regex-2.1.0.tgz#fa78bf5d2e6913c911ce9f819ee5146bb6d844e9"
@@ -2208,11 +2225,6 @@ is-glob@^4.0.1, is-glob@~4.0.1:
   integrity sha512-5G0tKtBTFImOqDnLB2hG6Bp2qcKEFduo4tZu9MT/H6NQv/ghhy30o55ufafxJ/LdH79LLs2Kfrn85TLKyA7BUg==
   dependencies:
     is-extglob "^2.1.1"
-
-is-hex@1.1.3:
-  version "1.1.3"
-  resolved "https://registry.yarnpkg.com/is-hex/-/is-hex-1.1.3.tgz#440259c079681e0372e52156aa67a233c3975dee"
-  integrity sha1-RAJZwHloHgNy5SFWqmeiM8OXXe4=
 
 is-ip@^2.0.0:
   version "2.0.0"
@@ -2387,31 +2399,33 @@ lcid@^1.0.0:
   dependencies:
     invert-kv "^1.0.0"
 
-lightning@1.2.2:
-  version "1.2.2"
-  resolved "https://registry.yarnpkg.com/lightning/-/lightning-1.2.2.tgz#fed0c0aaf28ea245aa5902b39d1618f1bfaf6c58"
-  integrity sha512-u8rAca9NV2n4KWW8bXq3tzxmKCgr1n+6HQ2NS25+NTLm9qxTyBm5gA+IdOflAKICtYmQF0vP9/oiHJfz82rPCA==
+lightning@1.2.3:
+  version "1.2.3"
+  resolved "https://registry.yarnpkg.com/lightning/-/lightning-1.2.3.tgz#ce066848589f7f53f025bd74c083571f0eac68e8"
+  integrity sha512-wu2KDfB7+0Cd1pMGJhmTd3vbDRRUVlDP6II4rb7E4s8bQTZF6Vz3lYv53q5oUrmCBpIBwhG6qaHo3CnxwNZjpQ==
   dependencies:
     "@grpc/proto-loader" "0.5.3"
     async "3.1.1"
     asyncjs-util "1.1.3"
+    bn.js "5.1.1"
     body-parser "1.19.0"
+    bolt07 "1.4.4"
+    bolt09 "0.0.1"
     cbor "5.0.1"
     express "4.17.1"
     grpc "1.24.2"
+    invoices "1.0.0"
     is-base64 "1.0.0"
-    is-hex "1.1.3"
-    request "2.88.0"
 
-ln-service@^47.14.7:
-  version "47.14.7"
-  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.14.7.tgz#8097856730d05233c4103c7586e58a6987a22219"
-  integrity sha512-Vji4ptmIE9ESwtlwCZJxtbeRjRkiecB0cXUaWDK6T9de0e6AC3A6fMZpbG9UU34MRF5sLzAzqRckCF3rNoIqnQ==
+ln-service@^47.15.0:
+  version "47.15.0"
+  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.0.tgz#c693d1b8a97128f130816cbee740eb169d03f793"
+  integrity sha512-VI7v/TwUUysB3595IXOFKJ/9w7rD1YWc5HrIXVdFml5YfStMTIp9XW0Obl8x5Jp73ySpNuft3Ls3GT0q7F7daw==
   dependencies:
     "@alexbosworth/request" "2.88.3"
     "@datastructures-js/priority-queue" "1.0.2"
     "@grpc/proto-loader" "0.5.3"
-    async "3.1.1"
+    async "3.2.0"
     asyncjs-util "1.1.3"
     basicauth-middleware "3.1.0"
     bech32 "1.1.3"
@@ -2426,8 +2440,7 @@ ln-service@^47.14.7:
     express "4.17.1"
     grpc "1.24.2"
     is-base64 "1.0.0"
-    is-hex "1.1.3"
-    lightning "1.2.2"
+    lightning "1.2.3"
     lodash "4.17.15"
     macaroon "3.0.4"
     morgan "1.9.1"
@@ -3321,7 +3334,7 @@ readline-promise@^1.0.4:
   resolved "https://registry.yarnpkg.com/readline-promise/-/readline-promise-1.0.4.tgz#c22190438642da6fb99462cfbbfb6232b4edb9bd"
   integrity sha512-b6fycDK7CZWpVXbTl8qnW2jovXPduWKpZGyVZbjK/V4A9iiTU4gur+JEkjjgGKLiDZOftkRCT/dxGLG6hR9HyA==
 
-request@2.88.0, request@^2.53.0:
+request@^2.53.0:
   version "2.88.0"
   resolved "https://registry.yarnpkg.com/request/-/request-2.88.0.tgz#9c2fca4f7d35b592efe57c7f0a55e81052124fef"
   integrity sha512-NAqBSrijGLZdM0WZNsInLJpkJokL72XYjUpnB0iwsRgxh7dB6COrHnTBNwN0E+lHDAJzu7kLAkDeY08z2/A0hg==
