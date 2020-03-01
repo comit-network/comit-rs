@@ -6,7 +6,7 @@ use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
 use std::{
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
 
@@ -21,12 +21,6 @@ pub struct Data {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Network {
     pub listen: Vec<Multiaddr>,
-}
-
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Socket {
-    pub address: IpAddr,
-    pub port: u16,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -96,7 +90,7 @@ pub struct Parity {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub rest_api_socket: Socket,
+    pub rest_api_socket: SocketAddr,
     pub macaroon: Option<PathBuf>,
 }
 
@@ -109,11 +103,8 @@ impl Default for Lnd {
     }
 }
 
-fn default_lnd_rest_api_socket() -> Socket {
-    Socket {
-        address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-        port: 443,
-    }
+fn default_lnd_rest_api_socket() -> SocketAddr {
+    SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)
 }
 
 #[cfg(test)]

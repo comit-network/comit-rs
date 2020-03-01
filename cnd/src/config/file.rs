@@ -1,11 +1,11 @@
 use crate::{
-    config::{Bitcoind, Data, Lnd, Network, Parity, Socket},
+    config::{Bitcoind, Data, Lnd, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, net::SocketAddr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -99,7 +99,7 @@ impl From<Level> for LevelFilter {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct HttpApi {
-    pub socket: Socket,
+    pub socket: SocketAddr,
     pub cors: Option<Cors>,
 }
 
@@ -138,7 +138,7 @@ mod tests {
     use reqwest::Url;
     use spectral::prelude::*;
     use std::{
-        net::{IpAddr, Ipv4Addr},
+        net::{IpAddr, Ipv4Addr, SocketAddr},
         path::PathBuf,
     };
 
@@ -191,9 +191,8 @@ mod tests {
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 
-[http_api.socket]
-address = "127.0.0.1"
-port = 8000
+[http_api]
+socket = "127.0.0.1:8000"
 
 [http_api.cors]
 allowed_origins = "all"
@@ -217,11 +216,8 @@ chain_id = 17
 node_url = "http://localhost:8545/"
 
 [lnd]
+rest_api_socket = "127.0.0.1:8080"
 macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
-
-[lnd.rest_api_socket]
-address = "127.0.0.1"
-port = 8080
 "#;
 
         let file = File {
@@ -229,10 +225,7 @@ port = 8080
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
             http_api: Some(HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000),
                 cors: Some(Cors {
                     allowed_origins: AllowedOrigins::All(All::All),
                 }),
@@ -256,10 +249,7 @@ port = 8080
                 }),
             }),
             lnd: Some(Lnd {
-                rest_api_socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                    port: 8080,
-                },
+                rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
                 macaroon: Some(PathBuf::from(
                     "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
                 )),
@@ -392,17 +382,12 @@ port = 8080
         let file_contents = vec![
             r#"
             macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
-            [rest_api_socket]
-            address = "127.0.0.1"
-            port = 8080
+            rest_api_socket = "127.0.0.1:8080"
             "#,
         ];
 
         let expected = vec![Lnd {
-            rest_api_socket: Socket {
-                address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                port: 8080,
-            },
+            rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
             macaroon: Some(PathBuf::from(
                 "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
             )),

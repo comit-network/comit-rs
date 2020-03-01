@@ -1,8 +1,8 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Lnd, Network, Parity, Socket};
+use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Lnd, Network, Parity};
 use anyhow::Context;
 use log::LevelFilter;
 use std::{
-    net::{IpAddr, Ipv4Addr},
+    net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
 };
 
@@ -113,17 +113,14 @@ impl From<Settings> for File {
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HttpApi {
-    pub socket: Socket,
+    pub socket: SocketAddr,
     pub cors: Cors,
 }
 
 impl Default for HttpApi {
     fn default() -> Self {
         Self {
-            socket: Socket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8000,
-            },
+            socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
             cors: Cors::default(),
         }
     }
@@ -272,7 +269,7 @@ mod tests {
     use super::*;
     use crate::{config::file, swap_protocols::ledger::ethereum};
     use spectral::prelude::*;
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::net::IpAddr;
 
     #[test]
     fn logging_section_defaults_to_info() {
@@ -295,10 +292,7 @@ mod tests {
     fn cors_section_defaults_to_no_allowed_foreign_origins() {
         let config_file = File {
             http_api: Some(file::HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
                 cors: None,
             }),
             ..File::default()
@@ -327,10 +321,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.http_api)
             .is_equal_to(HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
                 cors: Cors {
                     allowed_origins: AllowedOrigins::None,
                 },
@@ -470,10 +461,7 @@ mod tests {
     fn http_lnd_section_defaults_macaroon_to_none() {
         let config_file = File {
             lnd: Some(Lnd {
-                rest_api_socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8080,
-                },
+                rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080),
                 macaroon: None,
             }),
             ..File::default()
@@ -486,10 +474,7 @@ mod tests {
             .map(|settings| &settings.lnd)
             .is_equal_to(Some(Lnd {
                 macaroon: None,
-                rest_api_socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8080,
-                },
+                rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080),
             }))
     }
 }
