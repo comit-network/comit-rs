@@ -10,17 +10,9 @@ workflows:
       - release-build-test:
           filters: # runs for "release/" branches and all tags.
             branches:
-              only: /^release.*$/
+              only: /^release\/*$/
             tags:
               only: /.*/
-      - publish-github-release:
-          requires:
-            - release-build-test
-          filters: # runs for no branches and only for X.Y.Z.
-            branches:
-              ignore: /.*/
-            tags:
-              only: /^\d+\.\d+\.\d+$/
 
 jobs:
   debug-build-test:
@@ -71,54 +63,6 @@ jobs:
           command: |
             export CND_BIN=~/comit/target/release/cnd
             make ci BUILD_ARGS='--release'
-      - store_artifacts:
-          path: api_tests/log
-      - run:
-          name: Consolidate release binaries
-          command: |
-            set -v
-            mkdir ~/artifacts
-            mv -v ~/comit/target/release/cnd ~/artifacts
-      - persist_to_workspace:
-          root: ~/artifacts
-          paths:
-            - cnd
-
-  publish-github-release:
-    working_directory: ~/comit
-    machine:
-      image: ubuntu-1604:201903-01
-    environment:
-      RUST_TEST_THREADS: "8"
-    steps:
-      - attach_workspace:
-          at: ~/artifacts
-      - checkout
-      - restore_caches
-      - install_rust
-      - install_node_devlibs
-      - print_current_versions
-      - setup_remote_docker
-      - run:
-          name: "Package & Publish Release on GitHub and Docker Hub"
-          command: |
-            set -v
-            VERSION=$(cargo pkgid -- cnd|cut -d# -f2)
-
-            # Let's abort if the git tag does not match the version in Cargo.toml as it would be fishy
-            test "${VERSION}" = "${CIRCLE_TAG}"
-
-            mkdir ~/package
-            cd ~/artifacts && tar czvf ~/package/comit-rs_${VERSION}_$(uname -s)_$(uname -m).tar.gz *
-            go get github.com/tcnksm/ghr
-            ls ~/package/
-            ghr -t ${GITHUB_TOKEN_FOR_RELEASES} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ~/package/
-
-            echo $DOCKER_HUB_TOKEN | docker login -u thomaseizinger --password-stdin
-
-            docker build . -t comitnetwork/cnd:${VERSION} -t comitnetwork/cnd:latest
-            docker push comitnetwork/cnd:${VERSION}
-            docker push comitnetwork/cnd:latest
 
 commands:
   install_node_devlibs:
