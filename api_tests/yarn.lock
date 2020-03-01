@@ -2733,10 +2733,10 @@ ms@^2.1.1:
   resolved "https://registry.yarnpkg.com/ms/-/ms-2.1.2.tgz#d09d1f357b443f493382a8eb3ccd183872ae6009"
   integrity sha512-sGkPx+VjMtmA6MX27oA4FBFELFCZZ4S4XqeGOXCv68tT+jb3vk/RyaKWP0PTKyWtmLSM0b+adUTEvbs1PEaH2w==
 
-multiaddr@^7.3.1:
-  version "7.3.1"
-  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.3.1.tgz#19d56719e0487917501b4711f832a962ca115ac4"
-  integrity sha512-Ddc0TczOdYDLGzW42+0XX5ngxfmnpQT5j8PTR2do5Gw2hGb41CWoabgm0SXsbUj1nMYyo7YGVjkS42Fcw4Xkmw==
+multiaddr@^7.4.0:
+  version "7.4.0"
+  resolved "https://registry.yarnpkg.com/multiaddr/-/multiaddr-7.4.0.tgz#29356287b2ee3c7f1a670a4d1d40990c12b06c08"
+  integrity sha512-SooWP6eVhfMdf8ftyTmstZhrwMm7CUk3T5yU6naTjJ2cwTekciBjOjG4Pa8Sy3p+U0trJmZuILkqxtJ0Zpm9vQ==
   dependencies:
     bs58 "^4.0.1"
     cids "~0.7.1"
