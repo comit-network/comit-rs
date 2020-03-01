@@ -89,22 +89,41 @@ pub struct Parity {
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lightning {
+    pub network: bitcoin::Network,
+    pub lnd: Option<Lnd>,
+}
+
+impl Default for Lightning {
+    fn default() -> Self {
+        Self {
+            network: bitcoin::Network::Regtest,
+            lnd: Some(Lnd::default()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub rest_api_socket: SocketAddr,
-    pub macaroon: Option<PathBuf>,
+    pub rest_api_socket: Option<SocketAddr>,
+    pub dir: Option<PathBuf>,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            rest_api_socket: default_lnd_rest_api_socket(),
-            macaroon: None,
+            rest_api_socket: Some(default_lnd_rest_api_socket()),
+            dir: Some(default_lnd_dir()),
         }
     }
 }
 
 fn default_lnd_rest_api_socket() -> SocketAddr {
     SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)
+}
+
+fn default_lnd_dir() -> PathBuf {
+    PathBuf::from("~/.lnd")
 }
 
 #[cfg(test)]
@@ -138,6 +157,88 @@ mod tests {
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Network>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn lnd_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            rest_api_socket = "127.0.0.1:8080"
+            dir = "~/.lnd"
+            "#,
+            r#"
+            rest_api_socket = "0.0.0.0:8080"
+            "#,
+            r#"
+            dir = "~/.cache/comit/lnd"
+            "#,
+        ];
+
+        let expected = vec![
+            Lnd {
+                rest_api_socket: Some(SocketAddr::new(
+                    IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                    8080,
+                )),
+                dir: Some(PathBuf::from("~/.lnd")),
+            },
+            Lnd {
+                rest_api_socket: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)),
+                dir: None,
+            },
+            Lnd {
+                rest_api_socket: None,
+                dir: Some(PathBuf::from("~/.cache/comit/lnd")),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn lightning_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            network = "regtest"
+            "#,
+            r#"
+            network = "regtest"
+            [lnd]
+            rest_api_socket = "127.0.0.1:8080"
+            dir = "~/.lnd"
+            "#,
+        ];
+
+        let expected = vec![
+            Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: None,
+            },
+            Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(SocketAddr::new(
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        8080,
+                    )),
+                    dir: Some(PathBuf::from("~/.lnd")),
+                }),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Lightning>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, Lnd, Network, Parity},
+    config::{Bitcoind, Data, Lightning, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
@@ -20,7 +20,7 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
-    pub lnd: Option<Lnd>,
+    pub lightning: Option<Lightning>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -45,7 +45,7 @@ impl File {
             logging: Option::None,
             bitcoin: Option::None,
             ethereum: Option::None,
-            lnd: Option::None,
+            lightning: Option::None,
         }
     }
 
@@ -132,7 +132,7 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::{
-        config::{Bitcoind, Parity, Settings},
+        config::{Bitcoind, Lnd, Parity, Settings},
         swap_protocols::ledger::ethereum,
     };
     use reqwest::Url;
@@ -215,11 +215,13 @@ chain_id = 17
 [ethereum.parity]
 node_url = "http://localhost:8545/"
 
-[lnd]
-rest_api_socket = "127.0.0.1:8080"
-macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
-"#;
+[lightning]
+network = "regtest"
 
+[lightning.lnd]
+rest_api_socket = "127.0.0.1:8080"
+dir = "~/.lnd"
+"#;
         let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
@@ -248,11 +250,15 @@ macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
             }),
-            lnd: Some(Lnd {
-                rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-                macaroon: Some(PathBuf::from(
-                    "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
-                )),
+            lightning: Some(Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(SocketAddr::new(
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        8080,
+                    )),
+                    dir: Some(PathBuf::from("~/.lnd")),
+                }),
             }),
         };
 
@@ -372,31 +378,6 @@ macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
             .into_iter()
             .map(toml::from_str)
             .collect::<Result<Vec<Ethereum>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
-    }
-
-    #[test]
-    fn lnd_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            macaroon = "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon"
-            rest_api_socket = "127.0.0.1:8080"
-            "#,
-        ];
-
-        let expected = vec![Lnd {
-            rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
-            macaroon: Some(PathBuf::from(
-                "~/.lnd/data/chain/bitcoin/simnet/readonly.macaroon",
-            )),
-        }];
-
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);
