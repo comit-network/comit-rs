@@ -43,7 +43,7 @@ serdebug = "1"
 sha2 = "0.8"
 siren = { version = "0.2", package = "siren-types" }
 structopt = "0.3"
-strum = "0.17"
+strum = "0.18"
 strum_macros = "0.17"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
