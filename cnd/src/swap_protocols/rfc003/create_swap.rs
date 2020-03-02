@@ -207,17 +207,11 @@ pub struct HtlcParams<'a, L, A, I> {
     pub secret_hash: SecretHash,
 }
 
-impl<'a, L, A, I> HtlcParams<'a, L, A, I>
-where
-    L: Ledger,
-{
+impl<'a, L, A, I> HtlcParams<'a, L, A, I> {
     pub fn new_alpha_params<BL, BA, BI>(
         request: &'a rfc003::Request<L, BL, A, BA, I, BI>,
         accept_response: &'a rfc003::Accept<I, BI>,
-    ) -> Self
-    where
-        BL: Ledger,
-    {
+    ) -> Self {
         HtlcParams {
             asset: &request.alpha_asset,
             ledger: &request.alpha_ledger,
@@ -231,10 +225,7 @@ where
     pub fn new_beta_params<AL, AA, AI>(
         request: &'a rfc003::Request<AL, L, AA, A, AI, I>,
         accept_response: &'a rfc003::Accept<AI, I>,
-    ) -> Self
-    where
-        AL: Ledger,
-    {
+    ) -> Self {
         HtlcParams {
             asset: &request.beta_asset,
             ledger: &request.beta_ledger,
@@ -247,11 +238,7 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct OngoingSwap<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub struct OngoingSwap<AL, BL, AA, BA, AI, BI> {
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
     pub alpha_asset: AA,
@@ -266,11 +253,7 @@ where
     pub secret_hash: SecretHash,
 }
 
-impl<AL, BL, AA, BA, AI, BI> OngoingSwap<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+impl<AL, BL, AA, BA, AI, BI> OngoingSwap<AL, BL, AA, BA, AI, BI> {
     pub fn new(request: Request<AL, BL, AA, BA, AI, BI>, accept: Accept<AI, BI>) -> Self {
         OngoingSwap {
             alpha_ledger: request.alpha_ledger,

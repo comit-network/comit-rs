@@ -18,7 +18,7 @@ use crate::{
                 Refunded,
             },
             state_store::{self, InMemoryStateStore, StateStore},
-            ActorState, Ledger,
+            ActorState,
         },
         SwapId,
     },
@@ -88,8 +88,6 @@ impl SendRequest for Facade {
         request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
     ) -> Result<rfc003::Response<AI, BI>, RequestError>
     where
-        AL: Ledger,
-        BL: Ledger,
         rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
         rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
         <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
@@ -101,8 +99,6 @@ impl SendRequest for Facade {
 #[async_trait]
 impl<AL, BL, AA, BA, AI, BI> LoadAcceptedSwap<AL, BL, AA, BA, AI, BI> for Facade
 where
-    AL: Ledger,
-    BL: Ledger,
     Sqlite: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>,
     AcceptedSwap<AL, BL, AA, BA, AI, BI>: Send + 'static,
 {

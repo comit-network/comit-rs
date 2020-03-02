@@ -1,19 +1,11 @@
 pub mod actions;
 
 use crate::swap_protocols::rfc003::{
-    self, ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState,
-    Decline, DeriveIdentities, SwapCommunication,
+    ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState, Decline,
+    DeriveIdentities, SwapCommunication,
 };
 use derivative::Derivative;
-use futures::sync::oneshot;
-use std::sync::{Arc, Mutex};
-
-#[allow(type_alias_bounds)]
-pub type ResponseSender<AL, BL>
-where
-    AL: Ledger,
-    BL: Ledger,
-= Arc<Mutex<Option<oneshot::Sender<rfc003::Response<AL, BL>>>>>;
+use std::sync::Arc;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]

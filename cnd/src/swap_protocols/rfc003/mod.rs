@@ -33,11 +33,7 @@ use ::bitcoin::secp256k1::SecretKey;
 pub type Response<AI, BI> = Result<Accept<AI, BI>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapCommunication<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub enum SwapCommunication<AL, BL, AA, BA, AI, BI> {
     Proposed {
         request: Request<AL, BL, AA, BA, AI, BI>,
     },
@@ -51,11 +47,7 @@ where
     },
 }
 
-impl<AL, BL, AA, BA, AI, BI> SwapCommunication<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+impl<AL, BL, AA, BA, AI, BI> SwapCommunication<AL, BL, AA, BA, AI, BI> {
     pub fn request(&self) -> &Request<AL, BL, AA, BA, AI, BI> {
         match self {
             SwapCommunication::Accepted { request, .. } => request,

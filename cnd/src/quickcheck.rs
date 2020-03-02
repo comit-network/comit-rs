@@ -7,7 +7,7 @@ use crate::{
     swap_protocols::{
         ledger,
         ledger::{bitcoin, ethereum::ChainId},
-        rfc003::{Accept, Ledger, Request, SecretHash},
+        rfc003::{Accept, Request, SecretHash},
         HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
@@ -239,10 +239,6 @@ impl Arbitrary for Quickcheck<ledger::Ethereum> {
 
 impl<AL, BL, AA, BA, AI, BI> Arbitrary for Quickcheck<Request<AL, BL, AA, BA, AI, BI>>
 where
-    AL: Ledger,
-    BL: Ledger,
-    AI: Copy,
-    BI: Copy,
     Quickcheck<AL>: Arbitrary,
     Quickcheck<BL>: Arbitrary,
     Quickcheck<AA>: Arbitrary,
@@ -254,13 +250,13 @@ where
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: *Quickcheck::<AL>::arbitrary(g),
-            beta_ledger: *Quickcheck::<BL>::arbitrary(g),
+            alpha_ledger: Quickcheck::<AL>::arbitrary(g).0,
+            beta_ledger: Quickcheck::<BL>::arbitrary(g).0,
             alpha_asset: Quickcheck::<AA>::arbitrary(g).0,
             beta_asset: Quickcheck::<BA>::arbitrary(g).0,
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<AI>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<BI>::arbitrary(g),
+            alpha_ledger_refund_identity: Quickcheck::<AI>::arbitrary(g).0,
+            beta_ledger_redeem_identity: Quickcheck::<BI>::arbitrary(g).0,
             alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),

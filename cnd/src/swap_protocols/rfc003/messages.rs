@@ -6,7 +6,7 @@ use crate::{
     libp2p_comit_ext::ToHeader,
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
-        rfc003::{DeriveIdentities, Ledger, SecretHash},
+        rfc003::{DeriveIdentities, SecretHash},
         HashFunction, SwapId, SwapProtocol,
     },
     timestamp::Timestamp,
@@ -21,11 +21,7 @@ use std::convert::TryFrom;
 /// This does _not_ represent the actual network message, that is why it also
 /// does not implement Serialize.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Request<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub struct Request<AL, BL, AA, BA, AI, BI> {
     pub swap_id: SwapId,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
@@ -598,11 +594,7 @@ pub struct RequestBody<AI, BI> {
     pub secret_hash: SecretHash,
 }
 
-impl<AL, BL, AA, BA, AI, BI> From<Request<AL, BL, AA, BA, AI, BI>> for RequestBody<AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+impl<AL, BL, AA, BA, AI, BI> From<Request<AL, BL, AA, BA, AI, BI>> for RequestBody<AI, BI> {
     fn from(request: Request<AL, BL, AA, BA, AI, BI>) -> Self {
         RequestBody {
             alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,

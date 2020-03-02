@@ -55,8 +55,6 @@ where
     HttpLedger: From<BL>,
     HttpAsset: From<AA>,
     HttpAsset: From<BA>,
-    AL: Ledger,
-    BL: Ledger,
 {
     fn from(request: rfc003::Request<AL, BL, AA, BA, AI, BI>) -> Self {
         Self {

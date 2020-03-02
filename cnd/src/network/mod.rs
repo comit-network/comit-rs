@@ -728,8 +728,6 @@ pub trait SendRequest {
         request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
     ) -> Result<rfc003::Response<AI, BI>, RequestError>
     where
-        AL: Ledger,
-        BL: Ledger,
         rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
         rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
         <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug;
@@ -743,8 +741,6 @@ impl SendRequest for Swarm {
         request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
     ) -> Result<rfc003::Response<AI, BI>, RequestError>
     where
-        AL: Ledger,
-        BL: Ledger,
         rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
         rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
         <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
@@ -863,12 +859,8 @@ fn rfc003_swap_request<AL, BL, AA, BA, AI, BI>(
     beta_asset: BA,
     hash_function: HashFunction,
     body: rfc003::messages::RequestBody<AI, BI>,
-) -> rfc003::Request<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
-    rfc003::Request::<AL, BL, AA, BA, AI, BI> {
+) -> rfc003::Request<AL, BL, AA, BA, AI, BI> {
+    rfc003::Request {
         swap_id: id,
         alpha_asset,
         beta_asset,

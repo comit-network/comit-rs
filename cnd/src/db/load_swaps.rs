@@ -13,7 +13,7 @@ use crate::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             messages::{Accept, Request},
-            Ledger, SecretHash,
+            SecretHash,
         },
         HashFunction, SwapId,
     },
@@ -38,11 +38,7 @@ pub type AcceptedSwap<AL, BL, AA, BA, AI, BI> = (
 );
 
 #[async_trait]
-pub trait LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub trait LoadAcceptedSwap<AL, BL, AA, BA, AI, BI> {
     async fn load_accepted_swap(
         &self,
         swap_id: &SwapId,
