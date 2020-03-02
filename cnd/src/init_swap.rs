@@ -6,7 +6,7 @@ use crate::{
             alice, bob, create_swap,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
-            Ledger, Request,
+            Accept, Ledger, Request,
         },
         Role,
     },
@@ -34,9 +34,10 @@ where
     BL: Ledger,
     AA: Ord + Send + Sync + 'static,
     BA: Ord + Send + Sync + 'static,
-    AI: Send + Sync + 'static + Clone,
-    BI: Send + Sync + 'static + Clone,
+    AI: Send + Sync + 'static,
+    BI: Send + Sync + 'static,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
+    Accept<AI, BI>: Copy,
 {
     let (request, accept, _) = &accepted;
 
@@ -46,7 +47,7 @@ where
 
     match role {
         Role::Alice => {
-            let state = alice::State::accepted(request.clone(), accept.clone(), seed);
+            let state = alice::State::accepted(request.clone(), *accept, seed);
             StateStore::insert(dependencies, id, state);
 
             tokio::task::spawn(
@@ -57,7 +58,7 @@ where
             );
         }
         Role::Bob => {
-            let state = bob::State::accepted(request.clone(), accept.clone(), seed);
+            let state = bob::State::accepted(request.clone(), *accept, seed);
             StateStore::insert(dependencies, id, state);
 
             tokio::task::spawn(

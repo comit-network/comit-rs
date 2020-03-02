@@ -36,8 +36,10 @@ where
     BL: Ledger,
     AA: Ord + Send + Sync + 'static,
     BA: Ord + Send + Sync + 'static,
-    AI: Send + Sync + 'static + DeserializeOwned + Clone,
-    BI: Send + Sync + 'static + DeserializeOwned + Clone,
+    AI: Send + Sync + 'static,
+    BI: Send + Sync + 'static,
+    rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
+    Accept<AI, BI>: Copy,
     rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Clone,
     <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
