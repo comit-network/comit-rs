@@ -15,7 +15,7 @@ export class LndInstance {
 
     constructor(
         private readonly logger: Logger,
-        private readonly logDir: string,
+        private readonly testLogDir: string,
         private readonly actorConfig: E2ETestActorConfig,
         private readonly bitcoindDataDir: string
     ) {}
@@ -25,7 +25,10 @@ export class LndInstance {
 
         this.logger.debug(`[${this.actorConfig.name}] using binary ${bin}`);
 
-        this.lndDir = path.join(this.logDir, "lnd-" + this.actorConfig.name);
+        this.lndDir = path.join(
+            this.testLogDir,
+            "lnd-" + this.actorConfig.name
+        );
         await mkdirAsync(this.lndDir, "755");
         await this.createConfigFile(this.lndDir);
 
