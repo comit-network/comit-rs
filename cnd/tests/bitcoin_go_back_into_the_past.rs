@@ -3,7 +3,7 @@ pub mod bitcoin_helper;
 use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
 use chrono::NaiveDateTime;
-use cnd::btsieve::bitcoin::watch_for_created_outpoint;
+use cnd::btsieve::bitcoin::{matching_transaction, TransactionPattern};
 use std::str::FromStr;
 
 #[tokio::test]
@@ -26,18 +26,22 @@ async fn find_transaction_go_back_into_the_past() {
         ],
     );
 
+    let pattern = TransactionPattern {
+        to_address: Some(
+            Address::from_str(
+                include_str!("test_data/bitcoin/find_transaction_go_back_into_the_past/address")
+                    .trim(),
+            )
+            .unwrap(),
+        ),
+        from_outpoint: None,
+        unlock_script: None,
+    };
     let start_of_swap =
         NaiveDateTime::from_timestamp(block1_with_transaction.header.time as i64, 0);
-    let (expected_transaction, _out_point) = watch_for_created_outpoint(
-        connector,
-        start_of_swap,
-        Address::from_str(
-            include_str!("test_data/bitcoin/find_transaction_go_back_into_the_past/address").trim(),
-        )
-        .unwrap(),
-    )
-    .await
-    .unwrap();
+    let expected_transaction = matching_transaction(connector, pattern, start_of_swap)
+        .await
+        .unwrap();
 
     assert_eq!(
         expected_transaction,
