@@ -21,16 +21,17 @@ use anyhow::Context;
 use chrono::NaiveDateTime;
 
 #[async_trait::async_trait]
-impl<B> HtlcFunded<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcFunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+    for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_funded(
         &self,
         _htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
+        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<transaction::Bitcoin, asset::Bitcoin>> {
+    ) -> anyhow::Result<Funded<asset::Bitcoin, transaction::Bitcoin>> {
         let tx = &htlc_deployment.transaction;
         let asset =
             asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
@@ -43,7 +44,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcDeployed<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcDeployed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+    for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
@@ -51,7 +53,7 @@ where
         &self,
         htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<transaction::Bitcoin, htlc_location::Bitcoin>> {
+    ) -> anyhow::Result<Deployed<htlc_location::Bitcoin, transaction::Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: Some(htlc_params.compute_address()),
@@ -78,14 +80,15 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRedeemed<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcRedeemed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+    for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_redeemed(
         &self,
         htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
+        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
         let connector = self.clone();
@@ -109,14 +112,15 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRefunded<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcRefunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+    for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_refunded(
         &self,
         _htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
+        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
         let connector = self.clone();

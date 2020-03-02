@@ -12,20 +12,20 @@ use derivative::Derivative;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug, PartialEq)]
-pub struct State<AL, BL, AA, BA, AI, BI>
+pub struct State<AL, BL, AA, BA, AH, BH, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
 {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA, AI, BI>,
-    pub alpha_ledger_state: LedgerState<AL::HtlcLocation, AL::Transaction, AA>,
-    pub beta_ledger_state: LedgerState<BL::HtlcLocation, BL::Transaction, BA>,
+    pub alpha_ledger_state: LedgerState<AA, AH, AL::Transaction>,
+    pub beta_ledger_state: LedgerState<BA, BH, BL::Transaction>,
     #[derivative(Debug = "ignore", PartialEq = "ignore")]
     pub secret_source: SwapSeed, // Used to derive identities and also to generate the secret.
     pub failed: bool,
 }
 
-impl<AL, BL, AA, BA, AI, BI> State<AL, BL, AA, BA, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI> State<AL, BL, AA, BA, AH, BH, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
@@ -76,7 +76,7 @@ where
     }
 }
 
-impl<AL, BL, AA, BA, AI, BI> ActorState for State<AL, BL, AA, BA, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI> ActorState for State<AL, BL, AA, BA, AH, BH, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
@@ -84,11 +84,15 @@ where
     BA: 'static,
     AI: 'static,
     BI: 'static,
+    AH: 'static,
+    BH: 'static,
 {
     type AL = AL;
     type BL = BL;
     type AA = AA;
     type BA = BA;
+    type AH = AH;
+    type BH = BH;
 
     fn expected_alpha_asset(&self) -> &Self::AA {
         &self.swap_communication.request().alpha_asset
@@ -98,11 +102,11 @@ where
         &self.swap_communication.request().beta_asset
     }
 
-    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AL::HtlcLocation, AL::Transaction, AA> {
+    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AA, AH, AL::Transaction> {
         &mut self.alpha_ledger_state
     }
 
-    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BL::HtlcLocation, BL::Transaction, BA> {
+    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BA, BH, BL::Transaction> {
         &mut self.beta_ledger_state
     }
 

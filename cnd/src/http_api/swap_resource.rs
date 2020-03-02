@@ -124,10 +124,10 @@ where
             counterparty: Http(swap.counterparty),
             state: match include_state {
                 IncludeState::Yes => Some(SwapState::<
+                    AH,
+                    BH,
                     AI,
                     BI,
-                    <AL as Ledger>::HtlcLocation,
-                    <BL as Ledger>::HtlcLocation,
                     <AL as Ledger>::Transaction,
                     <BL as Ledger>::Transaction,
                 > {

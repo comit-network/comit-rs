@@ -1,7 +1,7 @@
 use crate::{
     asset,
     ethereum::{Bytes, Transaction},
-    identity,
+    htlc_location, identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::Ethereum,
@@ -33,7 +33,7 @@ impl FundAction for (Ethereum, asset::Ether) {
 
 impl RefundAction for (Ethereum, asset::Ether) {
     type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
-    type HtlcLocation = identity::Ethereum;
+    type HtlcLocation = htlc_location::Ethereum;
     type FundTransaction = Transaction;
     type Output = CallContract;
 
@@ -57,7 +57,7 @@ impl RefundAction for (Ethereum, asset::Ether) {
 
 impl RedeemAction for (Ethereum, asset::Ether) {
     type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
-    type HtlcLocation = identity::Ethereum;
+    type HtlcLocation = htlc_location::Ethereum;
     type Output = CallContract;
 
     fn redeem_action(

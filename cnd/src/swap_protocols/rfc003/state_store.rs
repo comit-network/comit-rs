@@ -22,12 +22,12 @@ pub trait StateStore: Send + Sync + 'static {
         &self,
         key: &SwapId,
         update: SwapEvent<
-            <<A as ActorState>::AL as Ledger>::HtlcLocation,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::HtlcLocation,
-            <<A as ActorState>::BL as Ledger>::Transaction,
             A::AA,
             A::BA,
+            A::AH,
+            A::BH,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::Transaction,
         >,
     ) where
         A: ActorState,
@@ -68,12 +68,12 @@ impl StateStore for InMemoryStateStore {
         &self,
         key: &SwapId,
         event: SwapEvent<
-            <<A as ActorState>::AL as Ledger>::HtlcLocation,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::HtlcLocation,
-            <<A as ActorState>::BL as Ledger>::Transaction,
             A::AA,
             A::BA,
+            A::AH,
+            A::BH,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::Transaction,
         >,
     ) where
         A: ActorState,

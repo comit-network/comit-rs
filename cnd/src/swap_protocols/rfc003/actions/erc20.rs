@@ -1,7 +1,7 @@
 use crate::{
     asset,
     ethereum::Bytes,
-    identity,
+    htlc_location, identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::{ethereum::ChainId, Ethereum},
@@ -29,7 +29,7 @@ pub fn deploy_action(
 pub fn fund_action(
     htlc_params: HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
     to_erc20_contract: identity::Ethereum,
-    beta_htlc_location: identity::Ethereum,
+    beta_htlc_location: htlc_location::Ethereum,
 ) -> CallContract {
     let chain_id = htlc_params.ledger.chain_id;
     let gas_limit = Erc20Htlc::fund_tx_gas_limit();
@@ -50,7 +50,7 @@ pub fn fund_action(
 pub fn refund_action(
     chain_id: ChainId,
     expiry: Timestamp,
-    beta_htlc_location: identity::Ethereum,
+    beta_htlc_location: htlc_location::Ethereum,
 ) -> CallContract {
     let data = Bytes::default();
     let gas_limit = Erc20Htlc::refund_tx_gas_limit();
@@ -65,7 +65,7 @@ pub fn refund_action(
 }
 
 pub fn redeem_action(
-    alpha_htlc_location: identity::Ethereum,
+    alpha_htlc_location: htlc_location::Ethereum,
     secret: Secret,
     chain_id: ChainId,
 ) -> CallContract {

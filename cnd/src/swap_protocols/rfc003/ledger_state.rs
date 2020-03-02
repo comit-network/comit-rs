@@ -11,7 +11,7 @@ use strum_macros::EnumDiscriminants;
     derive(Serialize, Display),
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
-pub enum LedgerState<H, T, A> {
+pub enum LedgerState<A, H, T> {
     NotDeployed,
     Deployed {
         htlc_location: H,
@@ -46,8 +46,8 @@ pub enum LedgerState<H, T, A> {
     },
 }
 
-impl<T, H, A> LedgerState<H, T, A> {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed<T, H>) {
+impl<A, H, T> LedgerState<A, H, T> {
+    pub fn transition_to_deployed(&mut self, deployed: Deployed<H, T>) {
         let Deployed {
             transaction,
             location,
@@ -64,7 +64,7 @@ impl<T, H, A> LedgerState<H, T, A> {
         }
     }
 
-    pub fn transition_to_funded(&mut self, funded: Funded<T, A>) {
+    pub fn transition_to_funded(&mut self, funded: Funded<A, T>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {
@@ -83,7 +83,7 @@ impl<T, H, A> LedgerState<H, T, A> {
         }
     }
 
-    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<T, A>) {
+    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<A, T>) {
         let Funded { transaction, asset } = funded;
 
         match std::mem::replace(self, LedgerState::NotDeployed) {

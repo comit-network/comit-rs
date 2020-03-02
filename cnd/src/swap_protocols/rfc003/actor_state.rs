@@ -5,24 +5,18 @@ pub trait ActorState: 'static {
     type BL: Ledger;
     type AA;
     type BA;
+    type AH;
+    type BH;
 
     fn expected_alpha_asset(&self) -> &Self::AA;
     fn expected_beta_asset(&self) -> &Self::BA;
 
     fn alpha_ledger_mut(
         &mut self,
-    ) -> &mut LedgerState<
-        <Self::AL as Ledger>::HtlcLocation,
-        <Self::AL as Ledger>::Transaction,
-        Self::AA,
-    >;
+    ) -> &mut LedgerState<Self::AA, Self::AH, <Self::AL as Ledger>::Transaction>;
     fn beta_ledger_mut(
         &mut self,
-    ) -> &mut LedgerState<
-        <Self::BL as Ledger>::HtlcLocation,
-        <Self::BL as Ledger>::Transaction,
-        Self::BA,
-    >;
+    ) -> &mut LedgerState<Self::BA, Self::BH, <Self::BL as Ledger>::Transaction>;
 
     /// Returns true if the current swap failed at some stage.
     fn swap_failed(&self) -> bool;
