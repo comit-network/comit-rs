@@ -638,7 +638,7 @@ where
     AI: Send + 'static,
     BI: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
-    Request<AL, BL, AA, BA, AI, BI>: Send + 'static + Clone,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);
