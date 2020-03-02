@@ -234,16 +234,32 @@ impl Settings {
         })
     }
 
-    /// Locate the macaroon in known places, order is (using Linux as an
-    /// example):
-    ///
-    ///  1. ~/.local/share/comit/
-    ///  2. ~/.lnd/data/chain/bitcoin/regtest/
-    pub fn locate_macaroon_in_default_places(&self) -> Option<PathBuf> {
+    pub fn lnd_macaroon_path(&self) -> Option<PathBuf> {
+        let macaroon = "readonly.macaroon";
+        let dirs = self.lnd_known_location();
+        locate_file(dirs, macaroon)
+    }
+
+    pub fn lnd_tls_cert_path(&self) -> Option<PathBuf> {
+        let cert = "tls.cert";
+        let dirs = self.lnd_known_location();
+        locate_file(dirs, cert)
+    }
+
+    pub fn lnd_tls_key_path(&self) -> Option<PathBuf> {
+        let key = "tls.key";
+        let dirs = self.lnd_known_location();
+        locate_file(dirs, key)
+    }
+
+    fn lnd_known_location(&self) -> Vec<PathBuf> {
         let mut v = vec![];
 
         if let Some(cnd_data_dir) = crate::data_dir() {
-            v.push(cnd_data_dir);
+            // We want to use generic terms for like `tls.cert` for lnd files
+            // so put them all in a directory.
+            let lnd_dir = cnd_data_dir.join("lnd");
+            v.push(lnd_dir);
         }
 
         if let Some(lnd_dir) = crate::lnd_dir() {
@@ -256,16 +272,14 @@ impl Settings {
                     .join(&network),
             );
         }
-
-        locate_macaroon(v)
+        v
     }
 }
 
-/// Looks sequentially in `dirs` for a well known macaroon file.
-fn locate_macaroon(dirs: Vec<PathBuf>) -> Option<PathBuf> {
-    const MACAROON: &str = "readonly.macaroon";
-    let macaroon = dirs.iter().find(|dir| dir.join(MACAROON).exists());
-    macaroon.cloned()
+/// Looks sequentially in `dirs` for `file`.
+fn locate_file(dirs: Vec<PathBuf>, file: &str) -> Option<PathBuf> {
+    let path = dirs.iter().find(|dir| dir.join(file).exists());
+    path.cloned()
 }
 
 #[cfg(test)]
