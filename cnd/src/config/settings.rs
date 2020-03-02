@@ -234,14 +234,11 @@ impl Settings {
         })
     }
 
-    /// Order is (using Linux as an example):
+    /// Locate the macaroon in known places, order is (using Linux as an
+    /// example):
     ///
     ///  1. ~/.local/share/comit/
-    ///  2. ~/.local/share/comit/lnd/
-    ///  3. ~/.lnd/
-    ///  4. ~/.lnd/data/chain/bitcoin/regtest/
-    ///
-    /// Replace `~/.lnd` with the application directory for you OS.
+    ///  2. ~/.lnd/data/chain/bitcoin/regtest/
     pub fn locate_macaroon_in_default_places(&self) -> Option<PathBuf> {
         let mut v = vec![];
 
@@ -262,15 +259,15 @@ impl Settings {
             );
         }
 
-        self.locate_macaroon(v)
+        locate_macaroon(v)
     }
+}
 
-    /// Looks sequentially in `dirs` for a well known macaroon file.
-    pub fn locate_macaroon(&self, dirs: Vec<PathBuf>) -> Option<PathBuf> {
-        const MACAROON: &str = "readonly.macaroon";
-        let macaroon = dirs.iter().find(|dir| dir.join(MACAROON).exists());
-        macaroon.cloned()
-    }
+/// Looks sequentially in `dirs` for a well known macaroon file.
+fn locate_macaroon(dirs: Vec<PathBuf>) -> Option<PathBuf> {
+    const MACAROON: &str = "readonly.macaroon";
+    let macaroon = dirs.iter().find(|dir| dir.join(MACAROON).exists());
+    macaroon.cloned()
 }
 
 #[cfg(test)]
