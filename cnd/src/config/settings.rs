@@ -243,7 +243,7 @@ impl Settings {
         let mut v = vec![];
 
         if let Some(cnd_data_dir) = crate::data_dir() {
-            v.push(cnd_data_dir.clone());
+            v.push(cnd_data_dir);
         }
 
         if let Some(lnd_dir) = crate::lnd_dir() {
