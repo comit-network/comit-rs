@@ -50,7 +50,7 @@ pub mod swap_protocols;
 pub mod timestamp;
 
 use anyhow::Context;
-use directories::ProjectDirs;
+use directories::{ProjectDirs, UserDirs};
 use std::{
     env,
     path::{Path, PathBuf},
@@ -81,18 +81,25 @@ pub fn data_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
+/// Returns `/Users/[username]/Library/Application Support/Lnd/`.
+/// exists.
 #[cfg(target_os = "macos")]
-static LND_DIR_STEM: &str = "Lnd";
-#[cfg(target_os = "linux")]
-static LND_DIR_STEM: &str = ".lnd";
+fn lnd_default_dir() -> Option<PathBuf> {
+    ProjectDirs::from("", "", "Lnd").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
 
-/// Returns the LND data directory: $LND_DIR if it is set or else "~/.lnd".
+/// Returns `~/.lnd` if $HOME exists.
+#[cfg(target_os = "linux")]
+fn lnd_default_dir() -> Option<PathBuf> {
+    UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+}
+
+/// Returns the directory used by lnd.
 pub fn lnd_dir() -> Option<PathBuf> {
-    match env::var("LND_DIR") {
-        Ok(dir) => Some(PathBuf::from(dir)),
-        Err(_) => ProjectDirs::from("", "", LND_DIR_STEM)
-            .map(|proj_dirs| proj_dirs.data_dir().to_path_buf()),
+    if let Ok(dir) = env::var("LND_DIR") {
+        return Some(PathBuf::from(dir));
     }
+    lnd_default_dir()
 }
 
 pub type Never = std::convert::Infallible;

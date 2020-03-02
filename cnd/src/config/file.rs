@@ -220,7 +220,6 @@ network = "regtest"
 
 [lightning.lnd]
 rest_api_socket = "127.0.0.1:8080"
-dir = "~/.lnd"
 "#;
         let file = File {
             network: Some(Network {
@@ -257,7 +256,7 @@ dir = "~/.lnd"
                         IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
                         8080,
                     )),
-                    dir: Some(PathBuf::from("~/.lnd")),
+                    dir: None,
                 }),
             }),
         };

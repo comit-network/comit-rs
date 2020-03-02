@@ -13,6 +13,10 @@ use std::{
 pub use self::{file::File, settings::Settings};
 use reqwest::Url;
 
+lazy_static::lazy_static! {
+    pub static ref LND_SOCKET: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+}
+
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
     pub dir: PathBuf,
@@ -112,14 +116,10 @@ pub struct Lnd {
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            rest_api_socket: Some(default_lnd_rest_api_socket()),
+            rest_api_socket: Some(*LND_SOCKET),
             dir: Some(default_lnd_dir()),
         }
     }
-}
-
-fn default_lnd_rest_api_socket() -> SocketAddr {
-    SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)
 }
 
 fn default_lnd_dir() -> PathBuf {
@@ -170,23 +170,17 @@ mod tests {
             dir = "~/.lnd"
             "#,
             r#"
-            rest_api_socket = "0.0.0.0:8080"
+            rest_api_socket = "127.0.0.1:8080"
             "#,
             r#"
-            dir = "~/.cache/comit/lnd"
+            dir = "~/.local/share/comit/lnd"
             "#,
         ];
 
         let expected = vec![
+            Lnd::default(),
             Lnd {
-                rest_api_socket: Some(SocketAddr::new(
-                    IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                    8080,
-                )),
-                dir: Some(PathBuf::from("~/.lnd")),
-            },
-            Lnd {
-                rest_api_socket: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)),
+                rest_api_socket: Some(*LND_SOCKET),
                 dir: None,
             },
             Lnd {
@@ -226,10 +220,7 @@ mod tests {
             Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(
-                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                        8080,
-                    )),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: Some(PathBuf::from("~/.lnd")),
                 }),
             },

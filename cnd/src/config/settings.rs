@@ -1,6 +1,6 @@
 use crate::config::{
-    default_lnd_dir, default_lnd_rest_api_socket, file, Bitcoin, Bitcoind, Data, Ethereum, File,
-    Lightning, Lnd, Network, Parity,
+    default_lnd_dir, file, Bitcoin, Bitcoind, Data, Ethereum, File, Lightning, Lnd, Network,
+    Parity, LND_SOCKET,
 };
 use anyhow::Context;
 use log::LevelFilter;
@@ -225,9 +225,7 @@ impl Settings {
                     lnd: match lightning.lnd {
                         None => Some(Lnd::default()),
                         Some(lnd) => Some(Lnd {
-                            rest_api_socket: lnd
-                                .rest_api_socket
-                                .or_else(|| Some(default_lnd_rest_api_socket())),
+                            rest_api_socket: lnd.rest_api_socket.or_else(|| Some(*LND_SOCKET)),
                             dir: lnd.dir.or_else(|| Some(default_lnd_dir())),
                         }),
                     },
@@ -469,7 +467,7 @@ mod tests {
             .is_equal_to(Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: Some(PathBuf::from("~/.lnd")),
                 }),
             })
@@ -493,7 +491,7 @@ mod tests {
             .is_equal_to(Lightning {
                 network: bitcoin::Network::Bitcoin,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: Some(PathBuf::from("~/.lnd")),
                 }),
             })
@@ -505,10 +503,7 @@ mod tests {
             lightning: Some(Lightning {
                 network: bitcoin::Network::Bitcoin,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(
-                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                        8080,
-                    )),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: None,
                 }),
             }),
@@ -523,10 +518,7 @@ mod tests {
             .is_equal_to(Lightning {
                 network: bitcoin::Network::Bitcoin,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(
-                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                        8080,
-                    )),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: Some(PathBuf::from("~/.lnd")),
                 }),
             })
@@ -553,7 +545,7 @@ mod tests {
             .is_equal_to(Lightning {
                 network: bitcoin::Network::Bitcoin,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8080)),
+                    rest_api_socket: Some(*LND_SOCKET),
                     dir: Some(PathBuf::from("~/.cache/comit/lnd")),
                 }),
             })
