@@ -1,5 +1,6 @@
 use crate::{
     asset::{self},
+    identity,
     swap_protocols::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
@@ -13,10 +14,10 @@ use crate::{
 };
 use std::convert::Infallible;
 
-impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, asset::Erc20>
+impl<AL, AA, AI> Actions for bob::State<AL, Ethereum, AA, asset::Erc20, AI, identity::Ethereum>
 where
     AL: Ledger,
-    (AL, AA): RedeemAction<AL, AA>,
+    (AL, AA): RedeemAction<AL, AA, AI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -24,7 +25,7 @@ where
         Decline<AL, Ethereum>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
+        <(AL, AA) as RedeemAction<AL, AA, AI>>::RedeemActionOutput,
         ethereum::CallContract,
     >;
 
@@ -82,19 +83,19 @@ where
     }
 }
 
-impl<BL, BA> Actions for bob::State<Ethereum, BL, asset::Erc20, BA>
+impl<BL, BA, BI> Actions for bob::State<Ethereum, BL, asset::Erc20, BA, identity::Ethereum, BI>
 where
     BL: Ledger,
-    (BL, BA): FundAction<BL, BA> + RefundAction<BL, BA>,
+    (BL, BA): FundAction<BL, BA, BI> + RefundAction<BL, BA, BI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         Infallible,
-        <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
+        <(BL, BA) as FundAction<BL, BA, BI>>::FundActionOutput,
         ethereum::CallContract,
-        <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
+        <(BL, BA) as RefundAction<BL, BA, BI>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {

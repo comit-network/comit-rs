@@ -9,21 +9,21 @@ use crate::swap_protocols::{
 };
 use std::convert::Infallible;
 
-impl<AL, BL, AA, BA> Actions for alice::State<AL, BL, AA, BA>
+impl<AL, BL, AA, BA, AI, BI> Actions for alice::State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
-    (AL, AA): FundAction<AL, AA> + RefundAction<AL, AA>,
-    (BL, BA): RedeemAction<BL, BA>,
+    (AL, AA): FundAction<AL, AA, AI> + RefundAction<AL, AA, AI>,
+    (BL, BA): RedeemAction<BL, BA, BI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<BL, BL>,
         Infallible,
-        <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
-        <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
-        <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,
+        <(AL, AA) as FundAction<AL, AA, AI>>::FundActionOutput,
+        <(BL, BA) as RedeemAction<BL, BA, BI>>::RedeemActionOutput,
+        <(AL, AA) as RefundAction<AL, AA, AI>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {

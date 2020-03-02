@@ -49,16 +49,14 @@ pub enum SwapStatus {
     InternalFailure,
 }
 
-impl<AL, BL, AA, BA> From<rfc003::Request<AL, BL, AA, BA>> for SwapParameters
+impl<AL, BL, AA, BA, AI, BI> From<rfc003::Request<AL, BL, AA, BA, AI, BI>> for SwapParameters
 where
     HttpLedger: From<AL>,
     HttpLedger: From<BL>,
     HttpAsset: From<AA>,
     HttpAsset: From<BA>,
-    AL: Ledger,
-    BL: Ledger,
 {
-    fn from(request: rfc003::Request<AL, BL, AA, BA>) -> Self {
+    fn from(request: rfc003::Request<AL, BL, AA, BA, AI, BI>) -> Self {
         Self {
             alpha_ledger: HttpLedger::from(request.alpha_ledger),
             alpha_asset: HttpAsset::from(request.alpha_asset),
@@ -126,8 +124,8 @@ where
             counterparty: Http(swap.counterparty),
             state: match include_state {
                 IncludeState::Yes => Some(SwapState::<
-                    <AL as Ledger>::Identity,
-                    <BL as Ledger>::Identity,
+                    AI,
+                    BI,
                     <AL as Ledger>::HtlcLocation,
                     <BL as Ledger>::HtlcLocation,
                     <AL as Ledger>::Transaction,

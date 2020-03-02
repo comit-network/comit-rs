@@ -9,12 +9,12 @@ macro_rules! _match_role {
         match $role {
             Role::Alice => {
                 #[allow(dead_code)]
-                type ROLE = alice::State<AL, BL, AA, BA>;
+                type ROLE = alice::State<AL, BL, AA, BA, AI, BI>;
                 $fn
             }
             Role::Bob => {
                 #[allow(dead_code)]
-                type ROLE = bob::State<AL, BL, AA, BA>;
+                type ROLE = bob::State<AL, BL, AA, BA, AI, BI>;
                 $fn
             }
         }
@@ -27,7 +27,7 @@ macro_rules! with_swap_types {
         use crate::{
             asset,
             db::{AssetKind, BitcoinLedgerKind, LedgerKind, SwapTypes},
-            ethereum,
+            identity,
             swap_protocols::ledger::{bitcoin, Ethereum},
         };
         let swap_types: SwapTypes = $swap_types;
@@ -51,8 +51,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -66,8 +70,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -81,8 +89,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Ether;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -104,8 +116,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -119,8 +135,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -134,8 +154,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Erc20;
                     #[allow(dead_code)]
+                    type AI = identity::Bitcoin;
+                    #[allow(dead_code)]
+                    type BI = identity::Ethereum;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -158,8 +182,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -173,8 +201,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -188,8 +220,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -211,8 +247,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -226,8 +266,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }
@@ -241,8 +285,12 @@ macro_rules! with_swap_types {
                     #[allow(dead_code)]
                     type BA = asset::Bitcoin;
                     #[allow(dead_code)]
+                    type AI = identity::Ethereum;
+                    #[allow(dead_code)]
+                    type BI = identity::Bitcoin;
+                    #[allow(dead_code)]
                     type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<ethereum::Address>;
+                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
                     _match_role!(role, $fn)
                 }

@@ -5,24 +5,25 @@ use crate::{
         swap_types::{DetermineTypes, SwapTypes},
         AssetKind, BitcoinLedgerKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
     },
+    identity,
     quickcheck::Quickcheck,
     swap_protocols::{
         ledger::Ethereum,
-        rfc003::{Accept, Ledger, Request},
+        rfc003::{Accept, Request},
     },
 };
 use std::path::Path;
 
 use crate::swap_protocols::ledger::bitcoin::{Mainnet, Regtest, Testnet};
 macro_rules! db_roundtrip_test {
-    ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $expected_swap_types_fn:expr) => {
+    ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $alpha_identity:ident, $beta_identity:ident, $expected_swap_types_fn:expr) => {
         paste::item! {
             #[test]
             #[allow(non_snake_case, clippy::redundant_closure_call)]
             fn [<roundtrip_test_ $alpha_ledger _ $beta_ledger _ $alpha_asset _ $beta_asset>]() {
                 fn prop(swap: Quickcheck<Swap>,
-                        request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
-                        accept: Quickcheck<Accept<<$alpha_ledger as Ledger>::Identity, <$beta_ledger as Ledger>::Identity>>,
+                        request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
+                        accept: Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool> {
 
                     // unpack the swap from the generic newtype
@@ -71,65 +72,120 @@ macro_rules! db_roundtrip_test {
 
                 quickcheck::quickcheck(prop as fn(
                     Quickcheck<Swap>,
-                    Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>,
-                    Quickcheck<Accept<<$alpha_ledger as Ledger>::Identity, <$beta_ledger as Ledger>::Identity>>,
+                    Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
+                    Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool>);
             }
         }
     };
 }
 
-db_roundtrip_test!(Regtest, Ethereum, BitcoinAsset, Ether, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
-        beta_ledger: LedgerKind::Ethereum,
-        alpha_asset: AssetKind::Bitcoin,
-        beta_asset: AssetKind::Ether,
-        role,
+// do_roundtrip_test! does not seem to like being called with `::` in an ident.
+use identity::{Bitcoin as BitcoinIdentity, Ethereum as EthereumIdentity};
+
+db_roundtrip_test!(
+    Mainnet,
+    Ethereum,
+    BitcoinAsset,
+    Ether,
+    BitcoinIdentity,
+    EthereumIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Ether,
+            role,
+        }
     }
-});
-db_roundtrip_test!(Testnet, Ethereum, BitcoinAsset, Ether, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
-        beta_ledger: LedgerKind::Ethereum,
-        alpha_asset: AssetKind::Bitcoin,
-        beta_asset: AssetKind::Ether,
-        role,
+);
+
+db_roundtrip_test!(
+    Testnet,
+    Ethereum,
+    BitcoinAsset,
+    Ether,
+    BitcoinIdentity,
+    EthereumIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Ether,
+            role,
+        }
     }
-});
-db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Ether, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
-        beta_ledger: LedgerKind::Ethereum,
-        alpha_asset: AssetKind::Bitcoin,
-        beta_asset: AssetKind::Ether,
-        role,
+);
+
+db_roundtrip_test!(
+    Regtest,
+    Ethereum,
+    BitcoinAsset,
+    Ether,
+    BitcoinIdentity,
+    EthereumIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Ether,
+            role,
+        }
     }
-});
-db_roundtrip_test!(Ethereum, Mainnet, Ether, BitcoinAsset, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Ethereum,
-        beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
-        alpha_asset: AssetKind::Ether,
-        beta_asset: AssetKind::Bitcoin,
-        role,
+);
+
+db_roundtrip_test!(
+    Mainnet,
+    Ethereum,
+    BitcoinAsset,
+    Erc20,
+    BitcoinIdentity,
+    EthereumIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Ethereum,
+            alpha_asset: AssetKind::Bitcoin,
+            beta_asset: AssetKind::Erc20,
+            role,
+        }
     }
-});
-db_roundtrip_test!(Mainnet, Ethereum, BitcoinAsset, Erc20, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
-        beta_ledger: LedgerKind::Ethereum,
-        alpha_asset: AssetKind::Bitcoin,
-        beta_asset: AssetKind::Erc20,
-        role,
+);
+
+db_roundtrip_test!(
+    Ethereum,
+    Mainnet,
+    Ether,
+    BitcoinAsset,
+    EthereumIdentity,
+    BitcoinIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Ethereum,
+            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_asset: AssetKind::Ether,
+            beta_asset: AssetKind::Bitcoin,
+            role,
+        }
     }
-});
-db_roundtrip_test!(Ethereum, Mainnet, Erc20, BitcoinAsset, |role| {
-    SwapTypes {
-        alpha_ledger: LedgerKind::Ethereum,
-        beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
-        alpha_asset: AssetKind::Erc20,
-        beta_asset: AssetKind::Bitcoin,
-        role,
+);
+db_roundtrip_test!(
+    Ethereum,
+    Mainnet,
+    Erc20,
+    BitcoinAsset,
+    EthereumIdentity,
+    BitcoinIdentity,
+    |role| {
+        SwapTypes {
+            alpha_ledger: LedgerKind::Ethereum,
+            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_asset: AssetKind::Erc20,
+            beta_asset: AssetKind::Bitcoin,
+            role,
+        }
     }
-});
+);

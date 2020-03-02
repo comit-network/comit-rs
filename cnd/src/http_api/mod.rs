@@ -14,7 +14,7 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, ethereum,
+    asset, identity,
     network::DialInformation,
     swap_protocols::{
         ledger::{self, ethereum::ChainId},
@@ -85,7 +85,7 @@ impl Serialize for Http<crate::ethereum::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::bitcoin::PublicKey> {
+impl Serialize for Http<identity::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -318,7 +318,7 @@ pub struct EtherAssetParams {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Erc20AssetParams {
     quantity: asset::Erc20Quantity,
-    token_contract: ethereum::Address,
+    token_contract: identity::Ethereum,
 }
 
 impl TryFrom<HttpLedgerParams> for HttpLedger {

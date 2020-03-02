@@ -30,51 +30,51 @@ pub struct Refunded<T> {
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L, A>: Send + Sync + Sized + 'static
+pub trait HtlcFunded<L, A, I>: Send + Sync + Sized + 'static
 where
     L: Ledger,
 {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, I>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<L::Transaction, A>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcDeployed<L, A>: Send + Sync + Sized + 'static
+pub trait HtlcDeployed<L, A, I>: Send + Sync + Sized + 'static
 where
     L: Ledger,
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, I>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<L::Transaction, L::HtlcLocation>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRedeemed<L, A>: Send + Sync + Sized + 'static
+pub trait HtlcRedeemed<L, A, I>: Send + Sync + Sized + 'static
 where
     L: Ledger,
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, I>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<L::Transaction>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRefunded<L, A>: Send + Sync + Sized + 'static
+pub trait HtlcRefunded<L, A, I>: Send + Sync + Sized + 'static
 where
     L: Ledger,
 {
     async fn htlc_refunded(
         &self,
-        htlc_params: &HtlcParams<'_, L, A, L::Identity>,
+        htlc_params: &HtlcParams<'_, L, A, I>,
         htlc_deployment: &Deployed<L::Transaction, L::HtlcLocation>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<L::Transaction>>;

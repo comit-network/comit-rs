@@ -8,11 +8,12 @@ use crate::{
         },
         Sqlite,
     },
+    identity,
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             messages::{Accept, Request},
-            Ledger, SecretHash,
+            SecretHash,
         },
         HashFunction, SwapId,
     },
@@ -30,22 +31,18 @@ use schema::{
     rfc003_ethereum_bitcoin_ether_bitcoin_request_messages,
 };
 
-pub type AcceptedSwap<AL, BL, AA, BA> = (
-    Request<AL, BL, AA, BA>,
-    Accept<<AL as Ledger>::Identity, <BL as Ledger>::Identity>,
+pub type AcceptedSwap<AL, BL, AA, BA, AI, BI> = (
+    Request<AL, BL, AA, BA, AI, BI>,
+    Accept<AI, BI>,
     NaiveDateTime,
 );
 
 #[async_trait]
-pub trait LoadAcceptedSwap<AL, BL, AA, BA>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub trait LoadAcceptedSwap<AL, BL, AA, BA, AI, BI> {
     async fn load_accepted_swap(
         &self,
         swap_id: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA>>;
+    ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA, AI, BI>>;
 }
 
 diesel::allow_tables_to_appear_in_same_query!(
@@ -95,6 +92,8 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
         Ethereum,
         asset::Bitcoin,
         asset::Ether,
+        identity::Bitcoin,
+        identity::Ethereum,
     >
 {
     fn from(record: BitcoinEthereumBitcoinEtherAcceptedSwap) -> Self {
@@ -132,12 +131,23 @@ impl
         Ethereum,
         asset::Bitcoin,
         asset::Ether,
+        identity::Bitcoin,
+        identity::Ethereum,
     > for Sqlite
 {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<__TYPE0__, Ethereum, asset::Bitcoin, asset::Ether>> {
+    ) -> anyhow::Result<
+        AcceptedSwap<
+            __TYPE0__,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
@@ -205,6 +215,8 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
         ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
         asset::Ether,
         asset::Bitcoin,
+        identity::Ethereum,
+        identity::Bitcoin,
     >
 {
     fn from(record: EthereumBitcoinEtherBitcoinAcceptedSwap) -> Self {
@@ -242,12 +254,23 @@ impl
         ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
         asset::Ether,
         asset::Bitcoin,
+        identity::Ethereum,
+        identity::Bitcoin,
     > for Sqlite
 {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, __TYPE0__, asset::Ether, asset::Bitcoin>> {
+    ) -> anyhow::Result<
+        AcceptedSwap<
+            Ethereum,
+            __TYPE0__,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
@@ -316,6 +339,8 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
         Ethereum,
         asset::Bitcoin,
         asset::Erc20,
+        identity::Bitcoin,
+        identity::Ethereum,
     >
 {
     fn from(record: BitcoinEthereumBitcoinErc20AcceptedSwap) -> Self {
@@ -356,12 +381,23 @@ impl
         Ethereum,
         asset::Bitcoin,
         asset::Erc20,
+        identity::Bitcoin,
+        identity::Ethereum,
     > for Sqlite
 {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<__TYPE0__, Ethereum, asset::Bitcoin, asset::Erc20>> {
+    ) -> anyhow::Result<
+        AcceptedSwap<
+            __TYPE0__,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > {
         use schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
@@ -431,6 +467,8 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
         ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
         asset::Erc20,
         asset::Bitcoin,
+        identity::Ethereum,
+        identity::Bitcoin,
     >
 {
     fn from(record: EthereumBitcoinErc20BitcoinAcceptedSwap) -> Self {
@@ -471,12 +509,23 @@ impl
         ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
         asset::Erc20,
         asset::Bitcoin,
+        identity::Ethereum,
+        identity::Bitcoin,
     > for Sqlite
 {
     async fn load_accepted_swap(
         &self,
         key: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<Ethereum, __TYPE0__, asset::Erc20, asset::Bitcoin>> {
+    ) -> anyhow::Result<
+        AcceptedSwap<
+            Ethereum,
+            __TYPE0__,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > {
         use schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,

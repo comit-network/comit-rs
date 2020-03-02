@@ -2,11 +2,11 @@ use crate::{
     asset::{self, AssetKind},
     bitcoin::PublicKey,
     comit_api::LedgerKind,
-    ethereum::Address,
+    identity,
     libp2p_comit_ext::ToHeader,
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
-        rfc003::{DeriveIdentities, Ledger, SecretHash},
+        rfc003::{DeriveIdentities, SecretHash},
         HashFunction, SwapId, SwapProtocol,
     },
     timestamp::Timestamp,
@@ -21,33 +21,46 @@ use std::convert::TryFrom;
 /// This does _not_ represent the actual network message, that is why it also
 /// does not implement Serialize.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
-pub struct Request<AL, BL, AA, BA>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub struct Request<AL, BL, AA, BA, AI, BI> {
     pub swap_id: SwapId,
     pub alpha_ledger: AL,
     pub beta_ledger: BL,
     pub alpha_asset: AA,
     pub beta_asset: BA,
     pub hash_function: HashFunction,
-    pub alpha_ledger_refund_identity: AL::Identity,
-    pub beta_ledger_redeem_identity: BL::Identity,
+    pub alpha_ledger_refund_identity: AI,
+    pub beta_ledger_redeem_identity: BI,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
 
-impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Mainnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>,
+        request: Request<
+            bitcoin::Mainnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Bitcoin, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinMainnet.to_header()?;
@@ -66,15 +79,32 @@ impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Ether>>
     }
 }
 
-impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Testnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>,
+        request: Request<
+            bitcoin::Testnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<PublicKey, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinTestnet.to_header()?;
@@ -93,15 +123,32 @@ impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Ether>>
     }
 }
 
-impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Regtest,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>,
+        request: Request<
+            bitcoin::Regtest,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<PublicKey, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinRegtest.to_header()?;
@@ -120,15 +167,32 @@ impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>
     }
 }
 
-impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Mainnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>,
+        request: Request<
+            bitcoin::Mainnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<PublicKey, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinMainnet.to_header()?;
@@ -147,15 +211,32 @@ impl TryFrom<Request<bitcoin::Mainnet, Ethereum, asset::Bitcoin, asset::Erc20>>
     }
 }
 
-impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Testnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>,
+        request: Request<
+            bitcoin::Testnet,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<PublicKey, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinTestnet.to_header()?;
@@ -174,15 +255,32 @@ impl TryFrom<Request<bitcoin::Testnet, Ethereum, asset::Bitcoin, asset::Erc20>>
     }
 }
 
-impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            bitcoin::Regtest,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>,
+        request: Request<
+            bitcoin::Regtest,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Erc20,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<PublicKey, Address> = RequestBody::from(request.clone());
+        let request_body: RequestBody<PublicKey, identity::Ethereum> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::BitcoinRegtest.to_header()?;
@@ -201,15 +299,32 @@ impl TryFrom<Request<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Erc20>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Mainnet,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Mainnet,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -228,15 +343,32 @@ impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Ether, asset::Bitcoin>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Testnet,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Testnet,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -255,15 +387,32 @@ impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Ether, asset::Bitcoin>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Regtest,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Regtest,
+            asset::Ether,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -282,15 +431,32 @@ impl TryFrom<Request<Ethereum, bitcoin::Regtest, asset::Ether, asset::Bitcoin>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Mainnet,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Mainnet,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -309,15 +475,32 @@ impl TryFrom<Request<Ethereum, bitcoin::Mainnet, asset::Erc20, asset::Bitcoin>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Testnet,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Testnet,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -336,15 +519,32 @@ impl TryFrom<Request<Ethereum, bitcoin::Testnet, asset::Erc20, asset::Bitcoin>>
     }
 }
 
-impl TryFrom<Request<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>>
-    for OutboundRequest
+impl
+    TryFrom<
+        Request<
+            Ethereum,
+            bitcoin::Regtest,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
+    > for OutboundRequest
 {
     type Error = anyhow::Error;
 
     fn try_from(
-        request: Request<Ethereum, bitcoin::Regtest, asset::Erc20, asset::Bitcoin>,
+        request: Request<
+            Ethereum,
+            bitcoin::Regtest,
+            asset::Erc20,
+            asset::Bitcoin,
+            identity::Ethereum,
+            identity::Bitcoin,
+        >,
     ) -> anyhow::Result<Self> {
-        let request_body: RequestBody<Address, PublicKey> = RequestBody::from(request.clone());
+        let request_body: RequestBody<identity::Ethereum, PublicKey> =
+            RequestBody::from(request.clone());
         let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
 
         let alpha_ledger = LedgerKind::Ethereum(request.alpha_ledger).to_header()?;
@@ -394,12 +594,8 @@ pub struct RequestBody<AI, BI> {
     pub secret_hash: SecretHash,
 }
 
-impl<AL, BL, AA, BA> From<Request<AL, BL, AA, BA>> for RequestBody<AL::Identity, BL::Identity>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
-    fn from(request: Request<AL, BL, AA, BA>) -> Self {
+impl<AL, BL, AA, BA, AI, BI> From<Request<AL, BL, AA, BA, AI, BI>> for RequestBody<AI, BI> {
+    fn from(request: Request<AL, BL, AA, BA, AI, BI>) -> Self {
         RequestBody {
             alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
             beta_ledger_redeem_identity: request.beta_ledger_redeem_identity,

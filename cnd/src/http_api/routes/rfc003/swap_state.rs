@@ -1,7 +1,7 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
     http_api::{Http, SwapStatus},
-    swap_protocols::rfc003::{self, Ledger, SecretHash},
+    swap_protocols::rfc003::{self, SecretHash},
     timestamp::Timestamp,
 };
 use serde::Serialize;
@@ -50,13 +50,10 @@ pub enum SwapCommunicationState {
     Declined,
 }
 
-impl<AL, BL, AA, BA> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication<AL::Identity, BL::Identity>
-where
-    AL: Ledger,
-    BL: Ledger,
+impl<AL, BL, AA, BA, AI, BI> From<rfc003::SwapCommunication<AL, BL, AA, BA, AI, BI>>
+    for SwapCommunication<AI, BI>
 {
-    fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA>) -> Self {
+    fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA, AI, BI>) -> Self {
         use rfc003::SwapCommunication::*;
         match communication {
             Proposed { request } => Self {

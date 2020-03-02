@@ -43,6 +43,7 @@ use libp2p_comit::{
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
+use serde::de::DeserializeOwned;
 use std::{
     collections::{HashMap, HashSet},
     convert::TryInto,
@@ -622,20 +623,22 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL, BL, AA, BA, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, AI, BI, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
     counterparty: PeerId,
-    swap_request: Request<AL, BL, AA, BA>,
+    swap_request: Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
     AA: Send + 'static,
     BA: Send + 'static,
-    DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
-    Request<AL, BL, AA, BA>: Clone,
+    AI: Send + 'static,
+    BI: Send + 'static,
+    DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);
@@ -719,30 +722,28 @@ impl PendingRequestFor for Swarm {
 /// Send swap request to connected peer.
 #[async_trait]
 pub trait SendRequest {
-    async fn send_request<AL, BL, AA, BA>(
+    async fn send_request<AL, BL, AA, BA, AI, BI>(
         &self,
         peer_identity: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+        request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
+    ) -> Result<rfc003::Response<AI, BI>, RequestError>
     where
-        AL: Ledger,
-        BL: Ledger,
-        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Send + 'static,
-        <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug;
+        rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
+        rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
+        <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug;
 }
 
 #[async_trait]
 impl SendRequest for Swarm {
-    async fn send_request<AL, BL, AA, BA>(
+    async fn send_request<AL, BL, AA, BA, AI, BI>(
         &self,
         dial_information: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError>
+        request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
+    ) -> Result<rfc003::Response<AI, BI>, RequestError>
     where
-        AL: Ledger,
-        BL: Ledger,
-        rfc003::Request<AL, BL, AA, BA>: TryInto<OutboundRequest> + Send + 'static,
-        <rfc003::Request<AL, BL, AA, BA> as TryInto<OutboundRequest>>::Error: Debug,
+        rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
+        rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
+        <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
     {
         let id = request.swap_id;
         let request = request
@@ -780,10 +781,9 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<
-                            rfc003::messages::AcceptResponseBody<AL::Identity, BL::Identity>,
-                        >(response.body().clone())
-                        {
+                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AI, BI>>(
+                            response.body().clone(),
+                        ) {
                             Ok(body) => Ok(Ok(rfc003::Accept {
                                 swap_id: id,
                                 beta_ledger_refund_identity: body.beta_ledger_refund_identity,
@@ -851,20 +851,16 @@ impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
-fn rfc003_swap_request<AL, BL, AA, BA>(
+fn rfc003_swap_request<AL, BL, AA, BA, AI, BI>(
     id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::messages::RequestBody<AL::Identity, BL::Identity>,
-) -> rfc003::Request<AL, BL, AA, BA>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
-    rfc003::Request::<AL, BL, AA, BA> {
+    body: rfc003::messages::RequestBody<AI, BI>,
+) -> rfc003::Request<AL, BL, AA, BA, AI, BI> {
+    rfc003::Request {
         swap_id: id,
         alpha_asset,
         beta_asset,

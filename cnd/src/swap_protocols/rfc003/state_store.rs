@@ -148,6 +148,7 @@ mod tests {
         asset,
         asset::ethereum::FromWei,
         ethereum::Address,
+        identity,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
             ledger::{bitcoin, Ethereum},
@@ -191,14 +192,24 @@ mod tests {
         let secret_source = seed.derive_swap_seed(id);
         let state = alice::State::accepted(request, accept, secret_source);
 
-        state_store
-            .insert::<alice::State<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>(
-                id,
-                state.clone(),
-            );
+        state_store.insert::<alice::State<
+            bitcoin::Regtest,
+            Ethereum,
+            asset::Bitcoin,
+            asset::Ether,
+            identity::Bitcoin,
+            identity::Ethereum,
+        >>(id, state.clone());
 
         let res = state_store
-            .get::<alice::State<bitcoin::Regtest, Ethereum, asset::Bitcoin, asset::Ether>>(&id)
+            .get::<alice::State<
+                bitcoin::Regtest,
+                Ethereum,
+                asset::Bitcoin,
+                asset::Ether,
+                identity::Bitcoin,
+                identity::Ethereum,
+            >>(&id)
             .unwrap();
         assert_that(&res).contains_value(&state);
     }

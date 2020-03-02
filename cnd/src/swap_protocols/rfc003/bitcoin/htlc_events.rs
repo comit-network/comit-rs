@@ -3,6 +3,7 @@ use crate::{
     btsieve::bitcoin::{
         matching_transaction, BitcoindConnector, Cache, TransactionExt, TransactionPattern,
     },
+    identity,
     swap_protocols::{
         ledger::bitcoin,
         rfc003::{
@@ -20,13 +21,13 @@ use anyhow::Context;
 use chrono::NaiveDateTime;
 
 #[async_trait::async_trait]
-impl<B> HtlcFunded<B, asset::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcFunded<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_funded(
         &self,
-        _htlc_params: &HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        _htlc_params: &HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<::bitcoin::Transaction, asset::Bitcoin>> {
@@ -42,13 +43,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcDeployed<B, asset::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcDeployed<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        htlc_params: &HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
         let connector = self.clone();
@@ -77,13 +78,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRedeemed<B, asset::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcRedeemed<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        htlc_params: &HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
@@ -108,13 +109,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRefunded<B, asset::Bitcoin> for Cache<BitcoindConnector>
+impl<B> HtlcRefunded<B, asset::Bitcoin, identity::Bitcoin> for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
 {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<'_, B, asset::Bitcoin, crate::bitcoin::PublicKey>,
+        _htlc_params: &HtlcParams<'_, B, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
