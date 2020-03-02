@@ -84,8 +84,8 @@ export class Actor {
         private readonly config: E2ETestActorConfig
     ) {
         this.wallets = new Wallets({});
-        const { address, port } = cndInstance.getConfigFile().http_api.socket;
-        this.cnd = new Cnd(`http://${address}:${port}`);
+        const socket = cndInstance.getConfigFile().http_api.socket;
+        this.cnd = new Cnd(`http://${socket}`);
 
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();
@@ -802,8 +802,8 @@ export class Actor {
     }
 
     public cndHttpApiUrl() {
-        const cndSocket = this.cndInstance.getConfigFile().http_api.socket;
-        return `http://${cndSocket.address}:${cndSocket.port}`;
+        const socket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${socket}`;
     }
 
     public async pollCndUntil(
