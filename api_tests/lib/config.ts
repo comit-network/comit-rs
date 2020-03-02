@@ -11,7 +11,7 @@ export interface CndConfigFile {
 }
 
 export interface HttpApi {
-    socket: { address: string; port: number };
+    socket: string;
 }
 
 export class E2ETestActorConfig {
@@ -36,10 +36,7 @@ export class E2ETestActorConfig {
     public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
         return {
             http_api: {
-                socket: {
-                    address: "0.0.0.0",
-                    port: this.httpApiPort,
-                },
+                socket: `0.0.0.0:${this.httpApiPort}`,
             },
             data: {
                 dir: this.data,

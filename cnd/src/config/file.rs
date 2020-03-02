@@ -1,11 +1,11 @@
 use crate::{
-    config::{Bitcoind, Data, Network, Parity, Socket},
+    config::{Bitcoind, Data, Lightning, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{ffi::OsStr, path::Path};
+use std::{ffi::OsStr, net::SocketAddr, path::Path};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -20,6 +20,7 @@ pub struct File {
     pub logging: Option<Logging>,
     pub bitcoin: Option<Bitcoin>,
     pub ethereum: Option<Ethereum>,
+    pub lightning: Option<Lightning>,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -44,6 +45,7 @@ impl File {
             logging: Option::None,
             bitcoin: Option::None,
             ethereum: Option::None,
+            lightning: Option::None,
         }
     }
 
@@ -100,7 +102,7 @@ impl From<Level> for LevelFilter {
 
 #[derive(Clone, Debug, serde::Serialize, serde::Deserialize, PartialEq)]
 pub struct HttpApi {
-    pub socket: Socket,
+    pub socket: SocketAddr,
     pub cors: Option<Cors>,
 }
 
@@ -133,13 +135,13 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::{
-        config::{Bitcoind, Parity, Settings},
+        config::{Bitcoind, Lnd, Parity, Settings},
         swap_protocols::ledger::ethereum,
     };
     use reqwest::Url;
     use spectral::prelude::*;
     use std::{
-        net::{IpAddr, Ipv4Addr},
+        net::{IpAddr, Ipv4Addr, SocketAddr},
         path::PathBuf,
     };
 
@@ -192,9 +194,8 @@ mod tests {
 [network]
 listen = ["/ip4/0.0.0.0/tcp/9939"]
 
-[http_api.socket]
-address = "127.0.0.1"
-port = 8000
+[http_api]
+socket = "127.0.0.1:8000"
 
 [http_api.cors]
 allowed_origins = "all"
@@ -216,17 +217,19 @@ chain_id = 17
 
 [ethereum.parity]
 node_url = "http://localhost:8545/"
-"#;
 
+[lightning]
+network = "regtest"
+
+[lightning.lnd]
+rest_api_socket = "127.0.0.1:8080"
+"#;
         let file = File {
             network: Some(Network {
                 listen: vec!["/ip4/0.0.0.0/tcp/9939".parse().unwrap()],
             }),
             http_api: Some(HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8000),
                 cors: Some(Cors {
                     allowed_origins: AllowedOrigins::All(All::All),
                 }),
@@ -247,6 +250,16 @@ node_url = "http://localhost:8545/"
                 chain_id: ethereum::ChainId::regtest(),
                 parity: Some(Parity {
                     node_url: "http://localhost:8545".parse().unwrap(),
+                }),
+            }),
+            lightning: Some(Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(SocketAddr::new(
+                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
+                        8080,
+                    )),
+                    dir: None,
                 }),
             }),
         };

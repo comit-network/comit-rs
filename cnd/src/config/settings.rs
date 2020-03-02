@@ -1,7 +1,13 @@
-use crate::config::{file, Bitcoin, Bitcoind, Data, Ethereum, File, Network, Parity, Socket};
+use crate::config::{
+    default_lnd_dir, file, Bitcoin, Bitcoind, Data, Ethereum, File, Lightning, Lnd, Network,
+    Parity, LND_SOCKET,
+};
 use anyhow::Context;
 use log::LevelFilter;
-use std::net::{IpAddr, Ipv4Addr};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::PathBuf,
+};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -17,6 +23,7 @@ pub struct Settings {
     pub logging: Logging,
     pub bitcoin: Bitcoin,
     pub ethereum: Ethereum,
+    pub lightning: Lightning,
 }
 
 fn derive_url_bitcoin(bitcoin: Option<file::Bitcoin>) -> Bitcoin {
@@ -75,6 +82,7 @@ impl From<Settings> for File {
             logging: Logging { level },
             bitcoin,
             ethereum,
+            lightning,
         } = settings;
 
         File {
@@ -95,23 +103,27 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
+            lightning: Some(Lightning {
+                network: lightning.network,
+                lnd: lightning.lnd.map(|lnd| Lnd {
+                    rest_api_socket: lnd.rest_api_socket,
+                    dir: lnd.dir,
+                }),
+            }),
         }
     }
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct HttpApi {
-    pub socket: Socket,
+    pub socket: SocketAddr,
     pub cors: Cors,
 }
 
 impl Default for HttpApi {
     fn default() -> Self {
         Self {
-            socket: Socket {
-                address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                port: 8000,
-            },
+            socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
             cors: Cors::default(),
         }
     }
@@ -153,6 +165,7 @@ impl Settings {
             logging,
             bitcoin,
             ethereum,
+            lightning,
         } = config_file;
 
         Ok(Self {
@@ -205,8 +218,54 @@ impl Settings {
             },
             bitcoin: derive_url_bitcoin(bitcoin),
             ethereum: derive_url_ethereum(ethereum),
+            lightning: match lightning {
+                None => Lightning::default(),
+                Some(lightning) => Lightning {
+                    network: lightning.network,
+                    lnd: match lightning.lnd {
+                        None => Some(Lnd::default()),
+                        Some(lnd) => Some(Lnd {
+                            rest_api_socket: lnd.rest_api_socket.or_else(|| Some(*LND_SOCKET)),
+                            dir: lnd.dir.or_else(|| Some(default_lnd_dir())),
+                        }),
+                    },
+                },
+            },
         })
     }
+
+    /// Locate the macaroon in known places, order is (using Linux as an
+    /// example):
+    ///
+    ///  1. ~/.local/share/comit/
+    ///  2. ~/.lnd/data/chain/bitcoin/regtest/
+    pub fn locate_macaroon_in_default_places(&self) -> Option<PathBuf> {
+        let mut v = vec![];
+
+        if let Some(cnd_data_dir) = crate::data_dir() {
+            v.push(cnd_data_dir);
+        }
+
+        if let Some(lnd_dir) = crate::lnd_dir() {
+            let network = format!("{}", self.lightning.network);
+            v.push(
+                lnd_dir
+                    .join("data")
+                    .join("chain")
+                    .join("bitcoin")
+                    .join(&network),
+            );
+        }
+
+        locate_macaroon(v)
+    }
+}
+
+/// Looks sequentially in `dirs` for a well known macaroon file.
+fn locate_macaroon(dirs: Vec<PathBuf>) -> Option<PathBuf> {
+    const MACAROON: &str = "readonly.macaroon";
+    let macaroon = dirs.iter().find(|dir| dir.join(MACAROON).exists());
+    macaroon.cloned()
 }
 
 #[cfg(test)]
@@ -215,7 +274,7 @@ mod tests {
     use super::*;
     use crate::{config::file, swap_protocols::ledger::ethereum};
     use spectral::prelude::*;
-    use std::net::{IpAddr, Ipv4Addr};
+    use std::{net::IpAddr, path::PathBuf};
 
     #[test]
     fn logging_section_defaults_to_info() {
@@ -238,10 +297,7 @@ mod tests {
     fn cors_section_defaults_to_no_allowed_foreign_origins() {
         let config_file = File {
             http_api: Some(file::HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
                 cors: None,
             }),
             ..File::default()
@@ -270,10 +326,7 @@ mod tests {
             .is_ok()
             .map(|settings| &settings.http_api)
             .is_equal_to(HttpApi {
-                socket: Socket {
-                    address: IpAddr::V4(Ipv4Addr::UNSPECIFIED),
-                    port: 8000,
-                },
+                socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), 8000),
                 cors: Cors {
                     allowed_origins: AllowedOrigins::None,
                 },
@@ -392,5 +445,98 @@ mod tests {
                     },
                 })
         }
+    }
+
+    #[test]
+    fn lightning_section_defaults() {
+        let config_file = File {
+            lightning: None,
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lightning)
+            .is_equal_to(Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(*LND_SOCKET),
+                    dir: Some(crate::lnd_default_dir().unwrap()),
+                }),
+            })
+    }
+
+    #[test]
+    fn lightning_lnd_section_defaults() {
+        let config_file = File {
+            lightning: Some(Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: None,
+            }),
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lightning)
+            .is_equal_to(Lightning::default())
+    }
+
+    #[test]
+    fn lnd_dir_defaults() {
+        let config_file = File {
+            lightning: Some(Lightning {
+                network: bitcoin::Network::Bitcoin,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(*LND_SOCKET),
+                    dir: None,
+                }),
+            }),
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lightning)
+            .is_equal_to(Lightning {
+                network: bitcoin::Network::Bitcoin,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(*LND_SOCKET),
+                    dir: Some(crate::lnd_default_dir().unwrap()),
+                }),
+            })
+    }
+
+    #[test]
+    fn lnd_rest_api_socket_defaults() {
+        let config_file = File {
+            lightning: Some(Lightning {
+                network: bitcoin::Network::Bitcoin,
+                lnd: Some(Lnd {
+                    rest_api_socket: None,
+                    dir: Some(PathBuf::from("~/.cache/comit/lnd")),
+                }),
+            }),
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings)
+            .is_ok()
+            .map(|settings| &settings.lightning)
+            .is_equal_to(Lightning {
+                network: bitcoin::Network::Bitcoin,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(*LND_SOCKET),
+                    dir: Some(PathBuf::from("~/.cache/comit/lnd")),
+                }),
+            })
     }
 }

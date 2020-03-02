@@ -25,7 +25,7 @@ use cnd::{
     swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
 };
 use rand::rngs::OsRng;
-use std::{net::SocketAddr, process, sync::Arc};
+use std::{process, sync::Arc};
 use structopt::StructOpt;
 use tokio_compat::runtime;
 
@@ -117,10 +117,7 @@ fn version() {
 async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
     let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
 
-    let listen_addr = SocketAddr::new(
-        settings.http_api.socket.address,
-        settings.http_api.socket.port,
-    );
+    let listen_addr = settings.http_api.socket;
 
     tracing::info!("Starting HTTP server on {}", listen_addr);
 

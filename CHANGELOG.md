@@ -30,6 +30,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - Added persistent storage to cnd, now we save swaps to an Sqlite database when they are requested and accepted.
+- Use stdlib `SocketAddr` as base for HTTP API config option.
 
 ## [0.4.0] - 2019-11-26
 
