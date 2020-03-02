@@ -508,7 +508,7 @@ mod tests {
                 network: bitcoin::Network::Bitcoin,
                 lnd: Some(Lnd {
                     rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(crate::lnd_default_dir()),
+                    dir: Some(crate::lnd_default_dir().unwrap()),
                 }),
             })
     }
