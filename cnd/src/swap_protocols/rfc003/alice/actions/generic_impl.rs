@@ -13,17 +13,26 @@ impl<AL, BL, AA, BA, AI, BI> Actions for alice::State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
-    (AL, AA): FundAction<AL, AA, AI> + RefundAction<AL, AA, AI>,
-    (BL, BA): RedeemAction<BL, BA, BI>,
+    AA: Clone,
+    AI: Clone,
+    BA: Clone,
+    BI: Clone,
+    (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
+        + RefundAction<
+            HtlcParams = HtlcParams<AL, AA, AI>,
+            HtlcLocation = AL::HtlcLocation,
+            FundTransaction = AL::Transaction,
+        >,
+    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BL::HtlcLocation>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<BL, BL>,
         Infallible,
-        <(AL, AA) as FundAction<AL, AA, AI>>::FundActionOutput,
-        <(BL, BA) as RedeemAction<BL, BA, BI>>::RedeemActionOutput,
-        <(AL, AA) as RefundAction<AL, AA, AI>>::RefundActionOutput,
+        <(AL, AA) as FundAction>::Output,
+        <(BL, BA) as RedeemAction>::Output,
+        <(AL, AA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {

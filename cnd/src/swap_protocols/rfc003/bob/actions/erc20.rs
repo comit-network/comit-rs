@@ -17,7 +17,9 @@ use std::convert::Infallible;
 impl<AL, AA, AI> Actions for bob::State<AL, Ethereum, AA, asset::Erc20, AI, identity::Ethereum>
 where
     AL: Ledger,
-    (AL, AA): RedeemAction<AL, AA, AI>,
+    AA: Clone,
+    AI: Clone,
+    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AL::HtlcLocation>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -25,7 +27,7 @@ where
         Decline<AL, Ethereum>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(AL, AA) as RedeemAction<AL, AA, AI>>::RedeemActionOutput,
+        <(AL, AA) as RedeemAction>::Output,
         ethereum::CallContract,
     >;
 
@@ -55,7 +57,7 @@ where
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source, // Derive identities with this.
-                    *secret,              /* Bob uses the secret learned from Alice's redeem
+                    *secret,              /* Bob uses the secret learned from Aliceredeem
                                            * action. */
                 ))]
             }
@@ -86,16 +88,23 @@ where
 impl<BL, BA, BI> Actions for bob::State<Ethereum, BL, asset::Erc20, BA, identity::Ethereum, BI>
 where
     BL: Ledger,
-    (BL, BA): FundAction<BL, BA, BI> + RefundAction<BL, BA, BI>,
+    BA: Clone,
+    BI: Clone,
+    (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
+        + RefundAction<
+            HtlcParams = HtlcParams<BL, BA, BI>,
+            HtlcLocation = BL::HtlcLocation,
+            FundTransaction = BL::Transaction,
+        >,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         Infallible,
-        <(BL, BA) as FundAction<BL, BA, BI>>::FundActionOutput,
+        <(BL, BA) as FundAction>::Output,
         ethereum::CallContract,
-        <(BL, BA) as RefundAction<BL, BA, BI>>::RefundActionOutput,
+        <(BL, BA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {

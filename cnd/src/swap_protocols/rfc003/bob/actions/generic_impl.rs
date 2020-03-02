@@ -13,17 +13,26 @@ impl<AL, BL, AA, BA, AI, BI> Actions for bob::State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
-    (BL, BA): FundAction<BL, BA, BI> + RefundAction<BL, BA, BI>,
-    (AL, AA): RedeemAction<AL, AA, AI>,
+    AA: Clone,
+    BA: Clone,
+    AI: Clone,
+    BI: Clone,
+    (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
+        + RefundAction<
+            HtlcParams = HtlcParams<BL, BA, BI>,
+            HtlcLocation = BL::HtlcLocation,
+            FundTransaction = BL::Transaction,
+        >,
+    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AL::HtlcLocation>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<AL, BL>,
         Infallible,
-        <(BL, BA) as FundAction<BL, BA, BI>>::FundActionOutput,
-        <(AL, AA) as RedeemAction<AL, AA, AI>>::RedeemActionOutput,
-        <(BL, BA) as RefundAction<BL, BA, BI>>::RefundActionOutput,
+        <(BL, BA) as FundAction>::Output,
+        <(AL, AA) as RedeemAction>::Output,
+        <(BL, BA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -51,7 +60,7 @@ where
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source, // Derive identities with this.
-                    *secret,              /* Bob uses the secret learned from Alice's redeem
+                    *secret,              /* Bob uses the secret learned from Alice redeem
                                            * action. */
                 ))]
             }

@@ -31,7 +31,7 @@ lazy_static::lazy_static! {
 impl HtlcFunded<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
-        _htlc_params: &HtlcParams<'_, Ethereum, Ether, identity::Ethereum>,
+        _htlc_params: &HtlcParams<Ethereum, Ether, identity::Ethereum>,
         deploy_transaction: &Deployed<Transaction, identity::Ethereum>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Transaction, Ether>> {
@@ -46,7 +46,7 @@ impl HtlcFunded<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> {
 impl HtlcDeployed<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<'_, Ethereum, Ether, identity::Ethereum>,
+        htlc_params: &HtlcParams<Ethereum, Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Transaction, identity::Ethereum>> {
         let connector = self.clone();
@@ -66,7 +66,7 @@ impl HtlcDeployed<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> 
 impl HtlcRedeemed<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: &HtlcParams<'_, Ethereum, Ether, identity::Ethereum>,
+        _htlc_params: &HtlcParams<Ethereum, Ether, identity::Ethereum>,
         htlc_deployment: &Deployed<Transaction, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Transaction>> {
@@ -95,7 +95,7 @@ impl HtlcRedeemed<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> 
 impl HtlcRefunded<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<'_, Ethereum, Ether, identity::Ethereum>,
+        _htlc_params: &HtlcParams<Ethereum, Ether, identity::Ethereum>,
         htlc_deployment: &Deployed<Transaction, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Transaction>> {
@@ -117,7 +117,7 @@ impl HtlcRefunded<Ethereum, Ether, identity::Ethereum> for Cache<Web3Connector> 
 impl HtlcFunded<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<'_, Ethereum, Erc20, identity::Ethereum>,
+        htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<Transaction, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<Transaction, Erc20>> {
@@ -147,7 +147,7 @@ impl HtlcFunded<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> {
 impl HtlcDeployed<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<'_, Ethereum, Erc20, identity::Ethereum>,
+        htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<Transaction, identity::Ethereum>> {
         let connector = self.clone();
@@ -168,7 +168,7 @@ impl HtlcDeployed<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> 
 impl HtlcRedeemed<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: &HtlcParams<'_, Ethereum, Erc20, identity::Ethereum>,
+        _htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<Transaction, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<Transaction>> {
@@ -197,7 +197,7 @@ impl HtlcRedeemed<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> 
 impl HtlcRefunded<Ethereum, Erc20, identity::Ethereum> for Cache<Web3Connector> {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<'_, Ethereum, Erc20, identity::Ethereum>,
+        _htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<Transaction, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<Transaction>> {

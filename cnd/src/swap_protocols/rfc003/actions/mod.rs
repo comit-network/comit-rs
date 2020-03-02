@@ -2,7 +2,7 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret};
+use crate::swap_protocols::rfc003::{DeriveIdentities, Secret};
 use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
@@ -21,38 +21,38 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
-pub trait FundAction<L, A, I> {
-    type FundActionOutput;
+pub trait FundAction {
+    type HtlcParams;
+    type Output;
 
-    fn fund_action(htlc_params: HtlcParams<'_, L, A, I>) -> Self::FundActionOutput;
+    fn fund_action(htlc_params: Self::HtlcParams) -> Self::Output;
 }
 
-pub trait RefundAction<L, A, I>
-where
-    L: Ledger,
-{
-    type RefundActionOutput;
+pub trait RefundAction {
+    type HtlcParams;
+    type HtlcLocation;
+    type FundTransaction;
+    type Output;
 
     fn refund_action(
-        htlc_params: HtlcParams<'_, L, A, I>,
-        htlc_location: L::HtlcLocation,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
-        fund_transaction: &L::Transaction,
-    ) -> Self::RefundActionOutput;
+        fund_transaction: &Self::FundTransaction,
+    ) -> Self::Output;
 }
 
-pub trait RedeemAction<L, A, I>
-where
-    L: Ledger,
-{
-    type RedeemActionOutput;
+pub trait RedeemAction {
+    type HtlcParams;
+    type HtlcLocation;
+    type Output;
 
     fn redeem_action(
-        htlc_params: HtlcParams<'_, L, A, I>,
-        htlc_location: L::HtlcLocation,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
-    ) -> Self::RedeemActionOutput;
+    ) -> Self::Output;
 }
 
 #[derive(Clone, Debug, Default)]
