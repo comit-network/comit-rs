@@ -474,7 +474,7 @@ mod tests {
     fn lightning_lnd_section_defaults() {
         let config_file = File {
             lightning: Some(Lightning {
-                network: bitcoin::Network::Bitcoin,
+                network: bitcoin::Network::Regtest,
                 lnd: None,
             }),
             ..File::default()

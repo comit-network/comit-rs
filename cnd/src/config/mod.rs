@@ -123,7 +123,8 @@ impl Default for Lnd {
 }
 
 fn default_lnd_dir() -> PathBuf {
-    PathBuf::from("~/.lnd")
+    // Only fails if we don't have a home directory.
+    crate::lnd_dir().unwrap()
 }
 
 #[cfg(test)]
@@ -167,7 +168,7 @@ mod tests {
         let file_contents = vec![
             r#"
             rest_api_socket = "127.0.0.1:8080"
-            dir = "~/.lnd"
+            dir = "~/.local/share/comit/lnd"
             "#,
             r#"
             rest_api_socket = "127.0.0.1:8080"
@@ -178,14 +179,17 @@ mod tests {
         ];
 
         let expected = vec![
-            Lnd::default(),
+            Lnd {
+                rest_api_socket: Some(*LND_SOCKET),
+                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
+            },
             Lnd {
                 rest_api_socket: Some(*LND_SOCKET),
                 dir: None,
             },
             Lnd {
                 rest_api_socket: None,
-                dir: Some(PathBuf::from("~/.cache/comit/lnd")),
+                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
             },
         ];
 
