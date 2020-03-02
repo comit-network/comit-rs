@@ -238,8 +238,8 @@ impl Settings {
 
     /// Order is (using Linux as an example):
     ///
-    ///  1. ~/.config/comit/
-    ///  2. ~/.config/comit/lnd/
+    ///  1. ~/.local/share/comit/
+    ///  2. ~/.local/share/comit/lnd/
     ///  3. ~/.lnd/
     ///  4. ~/.lnd/data/chain/bitcoin/regtest/
     ///
