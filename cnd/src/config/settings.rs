@@ -236,53 +236,42 @@ impl Settings {
         })
     }
 
-    /// Looks in well known places for an LND macaroon.
     /// Order is (using Linux as an example):
     ///
-    ///  1. ~/.config/comit/readonly.macaroon
-    ///  2. ~/.config/comit/lnd/readonly.macaroon
-    ///  3. ~/.lnd/readonly.macaroon
-    ///  4. ~/.lnd/data/chain/bitcoin/regtest/readonly.macaroon
+    ///  1. ~/.config/comit/
+    ///  2. ~/.config/comit/lnd/
+    ///  3. ~/.lnd/
+    ///  4. ~/.lnd/data/chain/bitcoin/regtest/
     ///
     /// Replace `~/.lnd` with the application directory for you OS.
-    pub fn locate_macaroon(&self) -> Option<PathBuf> {
+    pub fn locate_macaroon_in_default_places(&self) -> Option<PathBuf> {
+        let mut v = vec![];
+
+        if let Some(cnd_data_dir) = crate::data_dir() {
+            v.push(cnd_data_dir.clone());
+            v.push(cnd_data_dir.join("lnd"));
+        }
+
+        if let Some(lnd_dir) = crate::lnd_dir() {
+            let network = format!("{}", self.lightning.network);
+            v.push(lnd_dir.clone());
+            v.push(
+                lnd_dir
+                    .join("data")
+                    .join("chain")
+                    .join("bitcoin")
+                    .join(&network),
+            );
+        }
+
+        self.locate_macaroon(v)
+    }
+
+    /// Looks sequentially in `dirs` for a well known macaroon file.
+    pub fn locate_macaroon(&self, dirs: Vec<PathBuf>) -> Option<PathBuf> {
         const MACAROON: &str = "readonly.macaroon";
-
-        // Is there a macaroon somewhere in the cnd data directory?
-
-        let cnd_data_dir = crate::data_dir().unwrap();
-
-        let macaroon = cnd_data_dir.join(MACAROON);
-        if macaroon.exists() {
-            return Some(macaroon);
-        }
-
-        let macaroon = cnd_data_dir.join("lnd").join(MACAROON);
-        if macaroon.exists() {
-            return Some(macaroon);
-        }
-
-        // Is there a macaroon in the lnd directory?
-
-        let lnd_dir = crate::lnd_dir().unwrap();
-
-        let macaroon = lnd_dir.join(MACAROON);
-        if macaroon.exists() {
-            return Some(macaroon);
-        }
-
-        let network = self.lightning.network;
-        let macaroon = lnd_dir
-            .join("data")
-            .join("chain")
-            .join("bitcoin")
-            .join(&format!("{}", network))
-            .join(MACAROON);
-        if macaroon.exists() {
-            return Some(macaroon);
-        }
-
-        None
+        let macaroon = dirs.iter().find(|dir| dir.join(MACAROON).exists());
+        macaroon.cloned()
     }
 }
 
