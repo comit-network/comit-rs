@@ -23,7 +23,7 @@ use libp2p_comit::frame::OutboundRequest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
-async fn initiate_request<'de, AL, BL, AA, BA, AI, BI>(
+async fn initiate_request<AL, BL, AA, BA, AI, BI>(
     dependencies: Facade,
     id: SwapId,
     peer: DialInformation,
