@@ -212,7 +212,7 @@ mod tests {
             network = "regtest"
             [lnd]
             rest_api_socket = "127.0.0.1:8080"
-            dir = "~/.lnd"
+            dir = "/path/to/lnd"
             "#,
         ];
 
@@ -225,7 +225,7 @@ mod tests {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
                     rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(PathBuf::from("~/.lnd")),
+                    dir: Some(PathBuf::from("/path/to/lnd")),
                 }),
             },
         ];
