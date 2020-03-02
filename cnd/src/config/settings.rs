@@ -244,12 +244,10 @@ impl Settings {
 
         if let Some(cnd_data_dir) = crate::data_dir() {
             v.push(cnd_data_dir.clone());
-            v.push(cnd_data_dir.join("lnd"));
         }
 
         if let Some(lnd_dir) = crate::lnd_dir() {
             let network = format!("{}", self.lightning.network);
-            v.push(lnd_dir.clone());
             v.push(
                 lnd_dir
                     .join("data")
