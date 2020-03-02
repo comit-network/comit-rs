@@ -123,8 +123,7 @@ impl Default for Lnd {
 }
 
 fn default_lnd_dir() -> PathBuf {
-    // Only fails if we don't have a home directory.
-    crate::lnd_dir().unwrap()
+    crate::lnd_dir().expect("no home directory")
 }
 
 #[cfg(test)]
