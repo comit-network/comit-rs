@@ -13,17 +13,17 @@ impl<AL, BL, AA, BA, AI, BI> Actions for bob::State<AL, BL, AA, BA, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
-    (BL, BA, BI): FundAction<BL, BA, BI> + RefundAction<BL, BA, BI>,
-    (AL, AA, AI): RedeemAction<AL, AA, AI>,
+    (BL, BA): FundAction<BL, BA, BI> + RefundAction<BL, BA, BI>,
+    (AL, AA): RedeemAction<AL, AA, AI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<AL, BL>,
         Infallible,
-        <(BL, BA, BI) as FundAction<BL, BA, BI>>::FundActionOutput,
-        <(AL, AA, AI) as RedeemAction<AL, AA, AI>>::RedeemActionOutput,
-        <(BL, BA, BI) as RefundAction<BL, BA, BI>>::RefundActionOutput,
+        <(BL, BA) as FundAction<BL, BA, BI>>::FundActionOutput,
+        <(AL, AA) as RedeemAction<AL, AA, AI>>::RedeemActionOutput,
+        <(BL, BA) as RefundAction<BL, BA, BI>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -47,7 +47,7 @@ where
         use self::LedgerState::*;
         let mut actions = match (alpha_state, beta_state) {
             (Funded { htlc_location, .. }, Redeemed { secret, .. }) => {
-                vec![Action::Redeem(<(AL, AA, AI)>::redeem_action(
+                vec![Action::Redeem(<(AL, AA)>::redeem_action(
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source, // Derive identities with this.
@@ -55,7 +55,7 @@ where
                                            * action. */
                 ))]
             }
-            (Funded { .. }, NotDeployed) => vec![Action::Fund(<(BL, BA, BI)>::fund_action(
+            (Funded { .. }, NotDeployed) => vec![Action::Fund(<(BL, BA)>::fund_action(
                 HtlcParams::new_beta_params(request, response),
             ))],
             _ => vec![],
@@ -72,7 +72,7 @@ where
             ..
         } = beta_state
         {
-            actions.push(Action::Refund(<(BL, BA, BI)>::refund_action(
+            actions.push(Action::Refund(<(BL, BA)>::refund_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &*self.secret_source,

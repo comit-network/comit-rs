@@ -14,9 +14,7 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 
-impl FundAction<Ethereum, asset::Ether, identity::Ethereum>
-    for (Ethereum, asset::Ether, identity::Ethereum)
-{
+impl FundAction<Ethereum, asset::Ether, identity::Ethereum> for (Ethereum, asset::Ether) {
     type FundActionOutput = DeployContract;
 
     fn fund_action(
@@ -33,9 +31,7 @@ impl FundAction<Ethereum, asset::Ether, identity::Ethereum>
         }
     }
 }
-impl RefundAction<Ethereum, asset::Ether, identity::Ethereum>
-    for (Ethereum, asset::Ether, identity::Ethereum)
-{
+impl RefundAction<Ethereum, asset::Ether, identity::Ethereum> for (Ethereum, asset::Ether) {
     type RefundActionOutput = CallContract;
 
     fn refund_action(
@@ -55,9 +51,7 @@ impl RefundAction<Ethereum, asset::Ether, identity::Ethereum>
         }
     }
 }
-impl RedeemAction<Ethereum, asset::Ether, identity::Ethereum>
-    for (Ethereum, asset::Ether, identity::Ethereum)
-{
+impl RedeemAction<Ethereum, asset::Ether, identity::Ethereum> for (Ethereum, asset::Ether) {
     type RedeemActionOutput = CallContract;
 
     fn redeem_action(

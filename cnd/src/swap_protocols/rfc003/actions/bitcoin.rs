@@ -13,7 +13,7 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B> FundAction<B, asset::Bitcoin, identity::Bitcoin> for (B, asset::Bitcoin, identity::Bitcoin)
+impl<B> FundAction<B, asset::Bitcoin, identity::Bitcoin> for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
@@ -32,8 +32,7 @@ where
     }
 }
 
-impl<B> RefundAction<B, asset::Bitcoin, identity::Bitcoin>
-    for (B, asset::Bitcoin, identity::Bitcoin)
+impl<B> RefundAction<B, asset::Bitcoin, identity::Bitcoin> for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
@@ -58,8 +57,7 @@ where
     }
 }
 
-impl<B> RedeemAction<B, asset::Bitcoin, identity::Bitcoin>
-    for (B, asset::Bitcoin, identity::Bitcoin)
+impl<B> RedeemAction<B, asset::Bitcoin, identity::Bitcoin> for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {

@@ -17,7 +17,7 @@ use std::convert::Infallible;
 impl<BL, BA, BI> Actions for alice::State<Ethereum, BL, asset::Erc20, BA, identity::Ethereum, BI>
 where
     BL: Ledger,
-    (BL, BA, BI): RedeemAction<BL, BA, BI>,
+    (BL, BA): RedeemAction<BL, BA, BI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -25,7 +25,7 @@ where
         Decline<Ethereum, BL>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(BL, BA, BI) as RedeemAction<BL, BA, BI>>::RedeemActionOutput,
+        <(BL, BA) as RedeemAction<BL, BA, BI>>::RedeemActionOutput,
         ethereum::CallContract,
     >;
 
@@ -60,7 +60,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(Action::Redeem(<(BL, BA, BI)>::redeem_action(
+            actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source, // Derive identities with this.
@@ -74,16 +74,16 @@ where
 impl<AL, AA, AI> Actions for alice::State<AL, Ethereum, AA, asset::Erc20, AI, identity::Ethereum>
 where
     AL: Ledger,
-    (AL, AA, AI): FundAction<AL, AA, AI> + RefundAction<AL, AA, AI>,
+    (AL, AA): FundAction<AL, AA, AI> + RefundAction<AL, AA, AI>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         Infallible,
-        <(AL, AA, AI) as FundAction<AL, AA, AI>>::FundActionOutput,
+        <(AL, AA) as FundAction<AL, AA, AI>>::FundActionOutput,
         ethereum::CallContract,
-        <(AL, AA, AI) as RefundAction<AL, AA, AI>>::RefundActionOutput,
+        <(AL, AA) as RefundAction<AL, AA, AI>>::RefundActionOutput,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -100,14 +100,14 @@ where
         use self::LedgerState::*;
 
         let mut actions = match alpha_state {
-            NotDeployed => vec![Action::Fund(<(AL, AA, AI)>::fund_action(
+            NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
             Funded {
                 htlc_location,
                 fund_transaction,
                 ..
-            } => vec![Action::Refund(<(AL, AA, AI)>::refund_action(
+            } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source,
