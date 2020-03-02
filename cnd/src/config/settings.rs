@@ -485,13 +485,7 @@ mod tests {
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning {
-                network: bitcoin::Network::Bitcoin,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(PathBuf::from("~/.lnd")),
-                }),
-            })
+            .is_equal_to(Lightning::default())
     }
 
     #[test]
