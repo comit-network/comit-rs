@@ -10,6 +10,7 @@ use crate::{
         ledger, SwapId,
     },
     timestamp::Timestamp,
+    transaction,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;
@@ -71,7 +72,7 @@ pub enum ActionResponseBody {
 
 impl ActionResponseBody {
     fn bitcoin_broadcast_signed_transaction(
-        transaction: &bitcoin::Transaction,
+        transaction: &transaction::Bitcoin,
         network: bitcoin::Network,
     ) -> Self {
         let min_median_block_time = if transaction.lock_time == 0 {

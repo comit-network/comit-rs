@@ -11,6 +11,7 @@ use crate::{
         HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
+    transaction,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},
@@ -186,9 +187,9 @@ impl Arbitrary for Quickcheck<crate::ethereum::H256> {
     }
 }
 
-impl Arbitrary for Quickcheck<crate::ethereum::Transaction> {
+impl Arbitrary for Quickcheck<transaction::Ethereum> {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        Quickcheck(crate::ethereum::Transaction {
+        Quickcheck(transaction::Ethereum {
             hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
             nonce: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
             block_hash: Option::<Quickcheck<crate::ethereum::H256>>::arbitrary(g).map(|i| i.0),

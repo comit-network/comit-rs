@@ -3,6 +3,7 @@ pub mod htlc_events;
 use crate::{
     asset,
     ethereum::{Address, Bytes, Transaction},
+    identity,
     swap_protocols::{
         ledger::Ethereum,
         rfc003::{create_swap::HtlcParams, Ledger},
@@ -45,8 +46,8 @@ impl Ledger for Ethereum {
     type Transaction = Transaction;
 }
 
-impl From<HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>> for EtherHtlc {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Ether, identity::Ethereum>> for EtherHtlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Ether, identity::Ethereum>) -> Self {
         let refund_address = blockchain_contracts::ethereum::Address(htlc_params.refund_identity.0);
         let redeem_address = blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.0);
 
@@ -59,14 +60,14 @@ impl From<HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address>> for Ethe
     }
 }
 
-impl HtlcParams<Ethereum, asset::Ether, crate::ethereum::Address> {
+impl HtlcParams<Ethereum, asset::Ether, identity::Ethereum> {
     pub fn bytecode(&self) -> Bytes {
         EtherHtlc::from(self.clone()).into()
     }
 }
 
-impl From<HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>> for Erc20Htlc {
-    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>) -> Self {
+impl From<HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>> for Erc20Htlc {
+    fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>) -> Self {
         let refund_address = blockchain_contracts::ethereum::Address(htlc_params.refund_identity.0);
         let redeem_address = blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.0);
         let token_contract_address =
@@ -83,7 +84,7 @@ impl From<HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address>> for Erc2
     }
 }
 
-impl HtlcParams<Ethereum, asset::Erc20, crate::ethereum::Address> {
+impl HtlcParams<Ethereum, asset::Erc20, identity::Ethereum> {
     pub fn bytecode(self) -> Bytes {
         Erc20Htlc::from(self).into()
     }
