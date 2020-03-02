@@ -84,13 +84,13 @@ pub fn data_dir() -> Option<PathBuf> {
 /// Returns `/Users/[username]/Library/Application Support/Lnd/`.
 /// exists.
 #[cfg(target_os = "macos")]
-fn lnd_default_dir() -> Option<PathBuf> {
+pub fn lnd_default_dir() -> Option<PathBuf> {
     ProjectDirs::from("", "", "Lnd").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
 /// Returns `~/.lnd` if $HOME exists.
 #[cfg(target_os = "linux")]
-fn lnd_default_dir() -> Option<PathBuf> {
+pub fn lnd_default_dir() -> Option<PathBuf> {
     UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
 }
 
