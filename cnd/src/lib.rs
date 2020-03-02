@@ -85,8 +85,6 @@ pub fn data_dir() -> Option<PathBuf> {
 static LND_DIR_STEM: &str = "Lnd";
 #[cfg(target_os = "linux")]
 static LND_DIR_STEM: &str = ".lnd";
-#[cfg(target_os = "windows")]
-static LND_DIR_STEM: &str = "Lnd";
 
 /// Returns the LND data directory: $LND_DIR if it is set or else "~/.lnd".
 pub fn lnd_dir() -> Option<PathBuf> {
