@@ -1,7 +1,6 @@
 import { twoActorTest } from "../lib/actor_test";
 import { AssetKind } from "../lib/asset";
 import { LedgerKind } from "../lib/ledgers/ledger";
-import { sleep } from "../lib/utils";
 import { expect } from "chai";
 
 setTimeout(function() {
@@ -24,9 +23,8 @@ setTimeout(function() {
                 secretHash,
                 finalCltvDelta
             );
-            await sleep(1000); // Should actually check on bob side if the payment is available
 
-            await bob.lnSettleInvoice(secret);
+            await bob.lnSettleInvoice(secret, secretHash);
 
             const pay = await paymentPromise;
             expect(pay.paymentPreimage.toString("hex")).equals(secret);

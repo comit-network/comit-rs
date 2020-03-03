@@ -929,9 +929,15 @@ export class Actor {
         return resp;
     }
 
-    public async lnSettleInvoice(secret: string) {
-        this.logger.debug("LN: Settle Invoice", secret);
-        await this.wallets.lightning.inner.settleInvoice(secret);
+    public async lnSettleInvoice(secret: string, secretHash: string) {
+        try {
+            await this.lnAssertInvoiceAccepted(secretHash);
+            this.logger.debug("LN: Settle Invoice", secret, secretHash);
+            await this.wallets.lightning.inner.settleInvoice(secret);
+        } catch {
+            await sleep(100);
+            await this.lnSettleInvoice(secret, secretHash);
+        }
     }
 
     public async lnCreateInvoice(sats: string) {
@@ -946,11 +952,19 @@ export class Actor {
 
     public async lnAssertInvoiceSettled(secretHash: string) {
         const resp = await this.wallets.lightning.lookupInvoice(secretHash);
-        this.logger.debug(
-            `Checking if invoice is settled, status is: ${resp.state}`
-        );
         if (resp.state !== InvoiceState.SETTLED) {
-            throw new Error(`Invoice ${secretHash} is not confirmed}`);
+            throw new Error(
+                `Invoice ${secretHash} is not settled, status is ${resp.state}`
+            );
+        }
+    }
+
+    public async lnAssertInvoiceAccepted(secretHash: string) {
+        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
+        if (resp.state !== InvoiceState.ACCEPTED) {
+            throw new Error(
+                `Invoice ${secretHash} is not accepted, status is ${resp.state}`
+            );
         }
     }
 }
