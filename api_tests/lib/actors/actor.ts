@@ -22,6 +22,7 @@ import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
 import { LndInstance } from "../ledgers/lnd_instance";
 import { sha256 } from "js-sha256";
+import { InvoiceState } from "@radar/lnrpc";
 
 declare var global: HarnessGlobal;
 
@@ -947,8 +948,7 @@ export class Actor {
         this.logger.debug(
             `Checking if invoice is settled, status is: ${resp.state}`
         );
-        if (resp.state !== 1) {
-            // This is InvoiceState.SETTLED from lnd-async. Hardcoding value until type definition is sorted.
+        if (resp.state !== InvoiceState.SETTLED) {
             throw new Error(`Invoice ${secretHash} is not confirmed}`);
         }
     }
