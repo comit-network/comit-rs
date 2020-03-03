@@ -14,12 +14,13 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, identity,
+    asset, htlc_location, identity,
     network::DialInformation,
     swap_protocols::{
         ledger::{self, ethereum::ChainId},
         SwapId, SwapProtocol,
     },
+    transaction,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
@@ -67,7 +68,7 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
     }
 }
 
-impl Serialize for Http<bitcoin::Transaction> {
+impl Serialize for Http<transaction::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -76,7 +77,7 @@ impl Serialize for Http<bitcoin::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::ethereum::Transaction> {
+impl Serialize for Http<transaction::Ethereum> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -95,7 +96,7 @@ impl Serialize for Http<identity::Bitcoin> {
     }
 }
 
-impl_serialize_type_with_fields!(bitcoin::OutPoint { "txid" => txid, "vout" => vout });
+impl_serialize_type_with_fields!(htlc_location::Bitcoin { "txid" => txid, "vout" => vout });
 impl_serialize_http!(crate::ethereum::H160);
 impl_serialize_http!(SwapId);
 
@@ -500,6 +501,7 @@ mod tests {
             ledger::{bitcoin, ethereum, Ethereum},
             HashFunction, SwapId, SwapProtocol,
         },
+        transaction,
     };
     use ::bitcoin::{
         hashes::{hex::FromHex, sha256d},
@@ -583,7 +585,7 @@ mod tests {
 
     #[test]
     fn http_transaction_serializes_correctly_to_json() {
-        let bitcoin_tx = ::bitcoin::Transaction {
+        let bitcoin_tx = transaction::Bitcoin {
             version: 1,
             lock_time: 0,
             input: vec![TxIn {
@@ -594,9 +596,9 @@ mod tests {
             }],
             output: vec![],
         };
-        let ethereum_tx = crate::ethereum::Transaction {
+        let ethereum_tx = transaction::Ethereum {
             hash: H256::repeat_byte(1),
-            ..crate::ethereum::Transaction::default()
+            ..transaction::Ethereum::default()
         };
 
         let bitcoin_tx = Http(bitcoin_tx);

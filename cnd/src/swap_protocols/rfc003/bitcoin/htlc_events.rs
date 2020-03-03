@@ -3,7 +3,7 @@ use crate::{
     btsieve::bitcoin::{
         matching_transaction, BitcoindConnector, Cache, TransactionExt, TransactionPattern,
     },
-    identity,
+    htlc_location, identity,
     swap_protocols::{
         ledger::bitcoin,
         rfc003::{
@@ -15,8 +15,8 @@ use crate::{
             },
         },
     },
+    transaction,
 };
-use ::bitcoin::OutPoint;
 use anyhow::Context;
 use chrono::NaiveDateTime;
 
@@ -28,9 +28,9 @@ where
     async fn htlc_funded(
         &self,
         _htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
+        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
         _start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<::bitcoin::Transaction, asset::Bitcoin>> {
+    ) -> anyhow::Result<Funded<transaction::Bitcoin, asset::Bitcoin>> {
         let tx = &htlc_deployment.transaction;
         let asset =
             asset::Bitcoin::from_sat(tx.output[htlc_deployment.location.vout as usize].value);
@@ -51,7 +51,7 @@ where
         &self,
         htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>> {
+    ) -> anyhow::Result<Deployed<transaction::Bitcoin, htlc_location::Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: Some(htlc_params.compute_address()),
@@ -68,7 +68,7 @@ where
             .expect("Deployment transaction must contain outpoint described in pattern");
 
         Ok(Deployed {
-            location: OutPoint {
+            location: htlc_location::Bitcoin {
                 txid: transaction.txid(),
                 vout,
             },
@@ -85,9 +85,9 @@ where
     async fn htlc_redeemed(
         &self,
         htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
+        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<::bitcoin::Transaction>> {
+    ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: None,
@@ -116,9 +116,9 @@ where
     async fn htlc_refunded(
         &self,
         _htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<::bitcoin::Transaction, ::bitcoin::OutPoint>,
+        htlc_deployment: &Deployed<transaction::Bitcoin, htlc_location::Bitcoin>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<::bitcoin::Transaction>> {
+    ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
         let connector = self.clone();
         let pattern = TransactionPattern {
             to_address: None,

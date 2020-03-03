@@ -7,7 +7,10 @@ pub use self::{
     bitcoind_connector::BitcoindConnector, cache::Cache, transaction_ext::TransactionExt,
     transaction_pattern::TransactionPattern,
 };
-use crate::btsieve::{BlockByHash, LatestBlock, Predates};
+use crate::{
+    btsieve::{BlockByHash, LatestBlock, Predates},
+    transaction,
+};
 use bitcoin::{
     consensus::{encode::deserialize, Decodable},
     BitcoinHash,
@@ -21,7 +24,7 @@ pub async fn matching_transaction<C>(
     mut blockchain_connector: C,
     pattern: TransactionPattern,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<bitcoin::Transaction>
+) -> anyhow::Result<transaction::Bitcoin>
 where
     C: LatestBlock<Block = bitcoin::Block>
         + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>
@@ -131,7 +134,7 @@ where
 fn check_block_against_pattern<'b>(
     block: &'b bitcoin::Block,
     pattern: &TransactionPattern,
-) -> Option<&'b bitcoin::Transaction> {
+) -> Option<&'b transaction::Bitcoin> {
     block.txdata.iter().find(|transaction| {
         let result = pattern.matches(transaction);
 
@@ -200,7 +203,7 @@ mod tests {
         let transaction = r#"02000000014135047eff77c95bce4955f630bc3e334690d31517176dbc23e9345493c48ecf000000004847304402200da78118d6970bca6f152a6ca81fa8c4dde856680eb6564edb329ce1808207c402203b3b4890dd203cc4c9361bbbeb7ebce70110d4b07f411208b2540b10373755ba01feffffff02644024180100000017a9142464790f3a3fddb132691fac9fd02549cdc09ff48700a3e1110000000017a914c40a2c4fd9dcad5e1694a41ca46d337eb59369d78765000000
 "#.to_owned();
 
-        let bytes = decode_response::<bitcoin::Transaction>(transaction);
+        let bytes = decode_response::<transaction::Bitcoin>(transaction);
 
         assert_that(&bytes).is_ok();
     }

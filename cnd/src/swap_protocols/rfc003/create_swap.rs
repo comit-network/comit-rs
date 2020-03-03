@@ -342,15 +342,15 @@ pub enum SwapEvent<AH, AT, BH, BT, AA, BA> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{asset, ethereum, identity};
+    use crate::{asset, ethereum, htlc_location, identity, transaction};
 
     #[test]
     fn swap_event_should_render_to_nice_string() {
         let event = SwapEvent::<
-            ::bitcoin::OutPoint,
-            ::bitcoin::Transaction,
+            htlc_location::Bitcoin,
+            transaction::Bitcoin,
             identity::Ethereum,
-            crate::ethereum::Transaction,
+            transaction::Ethereum,
             asset::Bitcoin,
             asset::Ether,
         >::BetaDeployed(Deployed {
