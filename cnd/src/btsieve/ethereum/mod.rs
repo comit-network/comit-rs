@@ -4,12 +4,13 @@ mod web3_connector;
 pub use self::{cache::Cache, web3_connector::Web3Connector};
 use crate::{
     btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
-    ethereum::{Address, Bytes, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256},
+    ethereum::{
+        Address, Bytes, Input, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256,
+    },
     Never,
 };
 use anyhow;
 use chrono::NaiveDateTime;
-use ethbloom::Input;
 use futures_core::compat::Future01CompatExt;
 use genawaiter::{
     sync::{Co, Gen},
@@ -18,7 +19,7 @@ use genawaiter::{
 use std::collections::HashSet;
 
 type Hash = H256;
-type Block = crate::ethereum::Block<Transaction>;
+type Block = crate::ethereum::Block;
 
 pub async fn watch_for_contract_creation<C>(
     blockchain_connector: C,

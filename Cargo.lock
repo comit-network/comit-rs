@@ -545,6 +545,7 @@ dependencies = [
  "num 0.2.1",
  "paste",
  "pem",
+ "primitive-types",
  "quickcheck",
  "rand 0.7.3",
  "regex",

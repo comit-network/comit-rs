@@ -9,7 +9,7 @@ use ethereum_helper::EthereumConnectorMock;
 
 #[tokio::test]
 async fn find_transaction_go_back_into_the_past() {
-    let block1_with_transaction: Block<Transaction> = include_json_test_data!(
+    let block1_with_transaction: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_go_back_into_the_past/block1_with_transaction.json"
     );
     let want_transaction: Transaction = include_json_test_data!(

@@ -1,7 +1,7 @@
 use chrono::offset::Utc;
 use cnd::{
     btsieve::ethereum::{matching_transaction_and_receipt, Web3Connector},
-    ethereum::{TransactionRequest, U256},
+    ethereum::U256,
 };
 use futures_core::compat::Future01CompatExt;
 use reqwest::Url;
@@ -9,6 +9,7 @@ use std::time::Duration;
 use testcontainers::*;
 use web3::{
     transports::{EventLoopHandle, Http},
+    types::TransactionRequest,
     Web3,
 };
 

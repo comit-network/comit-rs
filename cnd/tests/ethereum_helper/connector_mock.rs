@@ -1,6 +1,6 @@
 use cnd::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
-    ethereum::{Block, Transaction, TransactionReceipt, H256},
+    ethereum::{Block, TransactionReceipt, H256},
 };
 use futures::{future::IntoFuture, Future};
 use std::{
@@ -10,8 +10,8 @@ use std::{
 
 #[derive(Clone)]
 pub struct EthereumConnectorMock {
-    all_blocks: HashMap<H256, Block<Transaction>>,
-    latest_blocks: Vec<Block<Transaction>>,
+    all_blocks: HashMap<H256, Block>,
+    latest_blocks: Vec<Block>,
     receipts: HashMap<H256, TransactionReceipt>,
     latest_time_return_block: Instant,
     current_latest_block_index: usize,
@@ -19,8 +19,8 @@ pub struct EthereumConnectorMock {
 
 impl EthereumConnectorMock {
     pub fn new(
-        latest_blocks: impl IntoIterator<Item = Block<Transaction>>,
-        all_blocks: impl IntoIterator<Item = Block<Transaction>>,
+        latest_blocks: impl IntoIterator<Item = Block>,
+        all_blocks: impl IntoIterator<Item = Block>,
         receipts: Vec<(H256, TransactionReceipt)>,
     ) -> Self {
         let all_blocks = all_blocks
@@ -43,7 +43,7 @@ impl EthereumConnectorMock {
 }
 
 impl LatestBlock for EthereumConnectorMock {
-    type Block = Option<Block<Transaction>>;
+    type Block = Option<Block>;
     type BlockHash = H256;
 
     fn latest_block(
@@ -69,7 +69,7 @@ impl LatestBlock for EthereumConnectorMock {
 }
 
 impl BlockByHash for EthereumConnectorMock {
-    type Block = Option<Block<Transaction>>;
+    type Block = Option<Block>;
     type BlockHash = H256;
 
     fn block_by_hash(
