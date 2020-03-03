@@ -20,12 +20,14 @@ diesel_migrations = "1.4.0"
 directories = "2.0"
 ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
+fixed-hash = { version = "0.5", default-features = false }
 futures = { version = "0.1" }
 futures-core = { version = "0.3", features = ["compat", "async-await"], default-features = false, package = "futures" }
 genawaiter = "0.99"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 impl-template = "1.0.0-alpha"
+impl-serde = { version = "0.3.0", default-features = false }
 lazy_static = "1"
 libp2p = { version = "0.16" }
 libp2p-comit = { path = "../libp2p-comit" }
@@ -35,6 +37,7 @@ lru = "0.4.3"
 num = "0.2"
 paste = "0.1"
 pem = "0.7"
+primitive-types = { version = "0.6", features = ["serde"] }
 rand = "0.7"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
 serde = { version = "1", features = ["derive"] }
@@ -59,7 +62,6 @@ url = { version = "2", features = ["serde"] }
 uuid = { version = "0.8", features = ["serde", "v4"] }
 void = "1.0.2"
 warp = { version = "0.2", default-features = false }
-web3 = { version = "0.8", default-features = false, features = ["http"] }
 
 [dev-dependencies]
 base64 = "0.11"
@@ -71,3 +73,4 @@ serde_urlencoded = "0.6"
 spectral = { version = "0.6", default-features = false }
 tempfile = "3.1.0"
 testcontainers = "0.8"
+web3 = { version = "0.10", default-features = false, features = ["http"] }

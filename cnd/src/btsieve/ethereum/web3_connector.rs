@@ -1,7 +1,7 @@
 use crate::{
     btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
-    ethereum::{BlockId, BlockNumber},
-    transaction,
+    ethereum::{BlockNumber},
+    transaction
 };
 use anyhow::Context;
 use futures::Future;
@@ -26,7 +26,7 @@ impl Web3Connector {
 }
 
 impl LatestBlock for Web3Connector {
-    type Block = Option<crate::ethereum::Block<transaction::Ethereum>>;
+    type Block = Option<crate::ethereum::Block>;
     type BlockHash = crate::ethereum::H256;
 
     fn latest_block(
@@ -37,7 +37,7 @@ impl LatestBlock for Web3Connector {
 
         let future = async move {
             let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
-                serialize(BlockId::Number(BlockNumber::Latest))?,
+                serialize(BlockNumber::Latest)?,
                 serialize(true)?,
             ]);
 
@@ -46,7 +46,7 @@ impl LatestBlock for Web3Connector {
                 .json(&request)
                 .send()
                 .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block<transaction::Ethereum>>>()
+                .json::<JsonRpcResponse<crate::ethereum::Block>>()
                 .await?;
 
             let block = match response {
@@ -102,7 +102,7 @@ enum JsonRpcResponse<T> {
 }
 
 impl BlockByHash for Web3Connector {
-    type Block = Option<crate::ethereum::Block<transaction::Ethereum>>;
+    type Block = Option<crate::ethereum::Block>;
     type BlockHash = crate::ethereum::H256;
 
     fn block_by_hash(
@@ -123,7 +123,7 @@ impl BlockByHash for Web3Connector {
                 .json(&request)
                 .send()
                 .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block<transaction::Ethereum>>>()
+                .json::<JsonRpcResponse<crate::ethereum::Block>>()
                 .await?;
 
             let block = match response {

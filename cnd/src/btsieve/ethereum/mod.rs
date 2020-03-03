@@ -4,12 +4,11 @@ mod web3_connector;
 pub use self::{cache::Cache, web3_connector::Web3Connector};
 use crate::{
     btsieve::{BlockByHash, LatestBlock, Predates, ReceiptByHash},
-    ethereum::{Address, Bytes, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256},
+    ethereum::{Address, Bytes, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256, Input},
     Never,
 };
 use anyhow;
 use chrono::NaiveDateTime;
-use ethbloom::Input;
 use futures_core::compat::Future01CompatExt;
 use genawaiter::{
     sync::{Co, Gen},
@@ -18,7 +17,7 @@ use genawaiter::{
 use std::collections::HashSet;
 
 type Hash = H256;
-type Block = crate::ethereum::Block<Transaction>;
+type Block = crate::ethereum::Block;
 
 pub async fn watch_for_contract_creation<C>(
     blockchain_connector: C,
@@ -370,23 +369,23 @@ pub struct Topic(pub H256);
 /// ```rust, ignore
 /// 
 /// Event {
-///     address: "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59",
-///     topics: [
-///         None,
-///         Some("0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59"),
+/// 	address: "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59",
+/// 	topics: [
+/// 	    None,
+/// 	    Some("0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59"),
 ///         None,
 ///     ],
 /// }
 ///
 /// Log: {
-///     address: "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59",
-///     data: "0x123",
-///     topics: [
-///         "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
-///         "0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59",
-///         "0x000000000000000000000000d51ecee7414c4445534f74208538683702cbb3e4",
-///     ]
-///     ...  // Other data omitted
+/// 	address: "0xe46FB33e4DB653De84cB0E0E8b810A6c4cD39d59",
+/// 	data: "0x123",
+/// 	topics: [
+/// 	    "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef",
+/// 	    "0x000000000000000000000000e46fb33e4db653de84cb0e0e8b810a6c4cd39d59",
+/// 	    "0x000000000000000000000000d51ecee7414c4445534f74208538683702cbb3e4",
+/// 	]
+/// 	...  // Other data omitted
 /// }
 /// ```
 #[derive(Clone, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]

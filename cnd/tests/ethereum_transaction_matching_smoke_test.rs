@@ -1,7 +1,7 @@
 use chrono::offset::Utc;
 use cnd::{
     btsieve::ethereum::{matching_transaction_and_receipt, Web3Connector},
-    ethereum::{TransactionRequest, U256},
+    ethereum::{U256},
 };
 use futures_core::compat::Future01CompatExt;
 use reqwest::Url;
@@ -10,6 +10,7 @@ use testcontainers::*;
 use web3::{
     transports::{EventLoopHandle, Http},
     Web3,
+    types::TransactionRequest
 };
 
 /// A very basic e2e test that verifies that we glued all our code together

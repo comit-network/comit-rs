@@ -40,7 +40,7 @@ async fn find_transaction_missed_previous_latest_block_single_block_gap() {
         ],
         vec![(want_transaction.hash, want_receipt.clone())],
     );
-    let block2: Block<Transaction> = include_json_test_data!(
+    let block2: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
     let start_of_swap = NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0);
@@ -94,7 +94,7 @@ async fn find_transaction_missed_previous_latest_block_two_block_gap() {
         ],
         vec![(want_transaction.hash, want_receipt.clone())],
     );
-    let block2: Block<Transaction> = include_json_test_data!(
+    let block2: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_missed_previous_latest_block/block2.json"
     );
     let start_of_swap = NaiveDateTime::from_timestamp(block2.timestamp.as_u32() as i64, 0);
