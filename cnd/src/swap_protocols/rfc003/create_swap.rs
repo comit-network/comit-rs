@@ -324,6 +324,16 @@ where
 pub type SwapEventOnLedger<AL, BL, AA, BA, AH, BH> =
     SwapEvent<AA, BA, AH, BH, <AL as Ledger>::Transaction, <BL as Ledger>::Transaction>;
 
+// Needed to satisfy clippy, this goes away once Ledger::Transaction is gone.
+pub type ReplacementSwapEventOnLedger<A> = SwapEvent<
+    <A as ActorState>::AA,
+    <A as ActorState>::BA,
+    <A as ActorState>::AH,
+    <A as ActorState>::BH,
+    <<A as ActorState>::AL as Ledger>::Transaction,
+    <<A as ActorState>::BL as Ledger>::Transaction,
+>;
+
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum SwapEvent<AA, BA, AH, BH, AT, BT> {
     AlphaDeployed(Deployed<AH, AT>),

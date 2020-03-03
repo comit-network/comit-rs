@@ -148,7 +148,7 @@ mod tests {
         asset,
         asset::ethereum::FromWei,
         ethereum::Address,
-        identity,
+        htlc_location, identity,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
             ledger::{bitcoin, Ethereum},
@@ -197,6 +197,8 @@ mod tests {
             Ethereum,
             asset::Bitcoin,
             asset::Ether,
+            htlc_location::Bitcoin,
+            htlc_location::Ethereum,
             identity::Bitcoin,
             identity::Ethereum,
         >>(id, state.clone());
@@ -207,6 +209,8 @@ mod tests {
                 Ethereum,
                 asset::Bitcoin,
                 asset::Ether,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
                 identity::Bitcoin,
                 identity::Ethereum,
             >>(&id)
