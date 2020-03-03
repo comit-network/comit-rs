@@ -68,7 +68,7 @@ where
             .expect("Deployment transaction must contain outpoint described in pattern");
 
         Ok(Deployed {
-            location: ::bitcoin::OutPoint {
+            location: htlc_location::Bitcoin {
                 txid: transaction.txid(),
                 vout,
             },
