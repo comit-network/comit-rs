@@ -44,7 +44,7 @@ sha2 = "0.8"
 siren = { version = "0.2", package = "siren-types" }
 structopt = "0.3"
 strum = "0.18"
-strum_macros = "0.17"
+strum_macros = "0.18"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 tokio = { version = "0.2", features = ["rt-core", "time", "macros", "sync"] }
