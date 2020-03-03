@@ -16,10 +16,14 @@ export class LightningWallet implements Wallet {
         bitcoinWallet: BitcoinWallet,
         logger: Logger,
         lnd: Lnd,
-        lndp2pHost: string,
-        lndp2pPort: number
+        lndp2pSocket: string
     ) {
-        const inner = new LightningWalletSdk(lnd, lndp2pHost, lndp2pPort);
+        const inner = await LightningWalletSdk.newInstance(
+            lnd.config.tls,
+            lnd.config.macaroonPath,
+            lnd.config.server,
+            lndp2pSocket
+        );
 
         return new LightningWallet(inner, logger, bitcoinWallet);
     }
@@ -86,7 +90,7 @@ export class LightningWallet implements Wallet {
 
     public async connectPeer(toWallet: LightningWallet) {
         const pubkey = await toWallet.inner.getPubkey();
-        const host = toWallet.inner.getLndP2pSocket();
+        const host = toWallet.inner.p2pSocket;
         return this.inner.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
     }
 
@@ -96,7 +100,6 @@ export class LightningWallet implements Wallet {
 
     public async getChannels() {
         const listChannelsResponse = await this.inner.lnd.lnrpc.listChannels();
-        this.logger.debug(listChannelsResponse);
         return listChannelsResponse.channels;
     }
 

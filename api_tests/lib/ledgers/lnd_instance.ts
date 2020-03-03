@@ -150,7 +150,7 @@ export class LndInstance {
         // We don't use REST but want a random port so we don't get used port errors.
         const restPort = await getPort();
         const output = `[Application Options]
-debuglevel=debug
+debuglevel=trace
 
 ; peer to peer port
 listen=127.0.0.1:${this.actorConfig.lndP2pPort}

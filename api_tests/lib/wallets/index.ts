@@ -51,7 +51,7 @@ export class Wallets {
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
         logger: Logger,
-        lnd: { lnd: Lnd; lndP2pHost: string; lndP2pPort: number } | undefined
+        lnd: { lnd: Lnd; lndP2pSocket: string } | undefined
     ) {
         switch (name) {
             case "ethereum":
@@ -76,8 +76,7 @@ export class Wallets {
                     ),
                     logger,
                     lnd.lnd,
-                    lnd.lndP2pHost,
-                    lnd.lndP2pPort
+                    lnd.lndP2pSocket
                 );
                 break;
         }

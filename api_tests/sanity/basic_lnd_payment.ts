@@ -9,7 +9,7 @@ setTimeout(function() {
             { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
         );
         const { rHash, paymentRequest } = await bob.createLnInvoice("20000");
-        await alice.payLnInvoice(paymentRequest);
+        await alice.payLnInvoiceWithRequest(paymentRequest);
         await bob.assertLnInvoiceSettled(rHash);
     });
 

@@ -21,6 +21,7 @@ import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
 import { LndInstance } from "../ledgers/lnd_instance";
+import { sha256 } from "js-sha256";
 
 declare var global: HarnessGlobal;
 
@@ -737,8 +738,7 @@ export class Actor {
             if (this.lndInstance) {
                 lnd = {
                     lnd: this.lndInstance.lnd,
-                    lndP2pHost: this.lndInstance.getLightningHost(),
-                    lndP2pPort: this.lndInstance.getLightningPort(),
+                    lndP2pSocket: this.lndInstance.getLightningSocket(),
                 };
             }
             await this.wallets.initializeForLedger(
@@ -872,12 +872,72 @@ export class Actor {
         }
     }
 
+    public lnCreateSha256Secret(): { secret: string; secretHash: string } {
+        const secretBuf = Buffer.alloc(32);
+        for (let i = 0; i < secretBuf.length; i++) {
+            secretBuf[i] = Math.floor(Math.random() * 255);
+        }
+
+        const secretHash = sha256(secretBuf);
+        const secret = secretBuf.toString("hex");
+        this.logger.debug(`LN: secret: ${secret}, secretHash: ${secretHash}`);
+        return { secret, secretHash };
+    }
+
+    public async lnCreateHoldInvoice(
+        sats: string,
+        secretHash: string,
+        expiry: number
+    ): Promise<void> {
+        this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
+        const resp = await this.wallets.lightning.inner.addHoldInvoice(
+            sats,
+            secretHash,
+            expiry,
+            "test hold invoice"
+        );
+        this.logger.debug("LN: Create Hold Response:", resp);
+    }
+
+    public async lnSendPayment(
+        to: Actor,
+        satAmount: string,
+        secretHash: string,
+        finalCltvDelta: number
+    ) {
+        const toPubkey = await to.wallets.lightning.inner.getPubkey();
+        this.logger.debug(
+            "LN: Send Payment -",
+            "to:",
+            toPubkey,
+            "; amt:",
+            satAmount,
+            "; hash:",
+            secretHash,
+            "; finalCltvDelta: ",
+            finalCltvDelta
+        );
+        const resp = await this.wallets.lightning.inner.sendPayment(
+            toPubkey,
+            satAmount,
+            secretHash,
+            finalCltvDelta
+        );
+        this.logger.debug("LN: Send Payment Response:", resp);
+        return resp;
+    }
+
+    public async lnSettleInvoice(secret: string) {
+        this.logger.debug("LN: Settle Invoice", secret);
+        await this.wallets.lightning.inner.settleInvoice(secret);
+    }
+
     public async createLnInvoice(sats: string) {
         this.logger.debug(`Creating invoice for ${sats} sats`);
         return this.wallets.lightning.addInvoice(sats);
     }
 
-    public async payLnInvoice(request: string): Promise<void> {
+    public async payLnInvoiceWithRequest(request: string): Promise<void> {
         this.logger.debug(`Paying invoice with request ${request}`);
         await this.wallets.lightning.pay(request);
     }
