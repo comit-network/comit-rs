@@ -6,7 +6,6 @@ use crate::{
     network::{DialInformation, SendRequest},
     seed::DeriveSwapSeed,
     swap_protocols::{
-        ledger::{self},
         rfc003::{
             self, alice,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
@@ -110,7 +109,7 @@ pub async fn handle_post_swap(
 
     match body {
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinMainnet,
+            alpha_ledger: HttpLedger::BitcoinMainnet(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Ether(beta_asset),
@@ -122,7 +121,7 @@ pub async fn handle_post_swap(
             let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
-                ledger::bitcoin::Mainnet,
+                alpha_ledger,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -134,7 +133,7 @@ pub async fn handle_post_swap(
             initiate_request(dependencies, id, peer, request).await?;
         }
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinTestnet,
+            alpha_ledger: HttpLedger::BitcoinTestnet(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Ether(beta_asset),
@@ -146,7 +145,7 @@ pub async fn handle_post_swap(
             let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
-                ledger::bitcoin::Testnet,
+                alpha_ledger,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -158,7 +157,7 @@ pub async fn handle_post_swap(
             initiate_request(dependencies, id, peer, request).await?;
         }
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinRegtest,
+            alpha_ledger: HttpLedger::BitcoinRegtest(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Ether(beta_asset),
@@ -170,7 +169,7 @@ pub async fn handle_post_swap(
             let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
-                ledger::bitcoin::Regtest,
+                alpha_ledger,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -183,7 +182,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinMainnet,
+            beta_ledger: HttpLedger::BitcoinMainnet(beta_ledger),
             alpha_asset: HttpAsset::Ether(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -195,7 +194,7 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Mainnet,
+                beta_ledger,
                 alpha_asset,
                 beta_asset,
                 alpha_expiry,
@@ -207,7 +206,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinTestnet,
+            beta_ledger: HttpLedger::BitcoinTestnet(beta_ledger),
             alpha_asset: HttpAsset::Ether(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -219,7 +218,7 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Testnet,
+                beta_ledger,
                 alpha_asset,
                 beta_asset,
                 alpha_expiry,
@@ -231,7 +230,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinRegtest,
+            beta_ledger: HttpLedger::BitcoinRegtest(beta_ledger),
             alpha_asset: HttpAsset::Ether(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -243,30 +242,6 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Regtest,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request(dependencies, id, peer, request).await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinMainnet,
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Erc20(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                ledger::bitcoin::Mainnet,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -278,7 +253,7 @@ pub async fn handle_post_swap(
             initiate_request(dependencies, id, peer, request).await?;
         }
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinTestnet,
+            alpha_ledger: HttpLedger::BitcoinMainnet(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Erc20(beta_asset),
@@ -290,7 +265,7 @@ pub async fn handle_post_swap(
             let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
-                ledger::bitcoin::Testnet,
+                alpha_ledger,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -302,7 +277,7 @@ pub async fn handle_post_swap(
             initiate_request(dependencies, id, peer, request).await?;
         }
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinRegtest,
+            alpha_ledger: HttpLedger::BitcoinTestnet(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Erc20(beta_asset),
@@ -314,7 +289,31 @@ pub async fn handle_post_swap(
             let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
             let request = new_request(
                 id,
-                ledger::bitcoin::Regtest,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request(dependencies, id, peer, request).await?;
+        }
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::BitcoinRegtest(alpha_ledger),
+            beta_ledger: HttpLedger::Ethereum(beta_ledger),
+            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
+            beta_asset: HttpAsset::Erc20(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
                 beta_ledger,
                 alpha_asset,
                 beta_asset,
@@ -327,7 +326,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinMainnet,
+            beta_ledger: HttpLedger::BitcoinMainnet(beta_ledger),
             alpha_asset: HttpAsset::Erc20(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -339,7 +338,7 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Mainnet,
+                beta_ledger,
                 alpha_asset,
                 beta_asset,
                 alpha_expiry,
@@ -351,7 +350,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinTestnet,
+            beta_ledger: HttpLedger::BitcoinTestnet(beta_ledger),
             alpha_asset: HttpAsset::Erc20(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -363,7 +362,7 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Testnet,
+                beta_ledger,
                 alpha_asset,
                 beta_asset,
                 alpha_expiry,
@@ -375,7 +374,7 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinRegtest,
+            beta_ledger: HttpLedger::BitcoinRegtest(beta_ledger),
             alpha_asset: HttpAsset::Erc20(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
@@ -387,7 +386,7 @@ pub async fn handle_post_swap(
             let request = new_request(
                 id,
                 alpha_ledger,
-                ledger::bitcoin::Regtest,
+                beta_ledger,
                 alpha_asset,
                 beta_asset,
                 alpha_expiry,
@@ -602,7 +601,10 @@ fn default_beta_expiry() -> Timestamp {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{network::DialInformation, swap_protocols::ledger::ethereum::ChainId};
+    use crate::{
+        network::DialInformation,
+        swap_protocols::{ledger, ledger::ethereum::ChainId},
+    };
     use spectral::prelude::*;
 
     #[test]
