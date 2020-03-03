@@ -17,7 +17,6 @@ use crate::{
     },
     transaction,
 };
-use anyhow::Context;
 use chrono::NaiveDateTime;
 use tracing_futures::Instrument;
 
@@ -83,14 +82,12 @@ where
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
         let connector = self.clone();
 
-        let transaction = watch_for_spent_outpoint(
-            connector,
-            start_of_swap,
-            htlc_deployment.location,
-            vec![vec![1u8]],
-        )
-        .instrument(tracing::info_span!("htlc_redeemed"))
-        .await?;
+        let transaction =
+            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
+                vec![1u8],
+            ])
+            .instrument(tracing::info_span!("htlc_redeemed"))
+            .await?;
 
         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
             .expect("Redeem transaction must contain secret");
@@ -116,14 +113,12 @@ where
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
         let connector = self.clone();
 
-        let transaction = watch_for_spent_outpoint(
-            connector,
-            start_of_swap,
-            htlc_deployment.location,
-            vec![vec![]],
-        )
-        .instrument(tracing::info_span!("htlc_refunded"))
-        .await?;
+        let transaction =
+            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
+                vec![],
+            ])
+            .instrument(tracing::info_span!("htlc_refunded"))
+            .await?;
 
         Ok(Refunded { transaction })
     }

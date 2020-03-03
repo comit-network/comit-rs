@@ -1,6 +1,6 @@
 pub mod bitcoin_helper;
 
-use bitcoin::{Address, BitcoinHash};
+use bitcoin::Address;
 use bitcoin_helper::BitcoinConnectorMock;
 use chrono::{offset::Utc, NaiveDateTime};
 use cnd::btsieve::bitcoin::watch_for_created_outpoint;
