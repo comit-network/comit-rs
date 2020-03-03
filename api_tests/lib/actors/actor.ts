@@ -873,6 +873,7 @@ export class Actor {
         }
     }
 
+    /// This is to be removed once cnd supports lightning
     public lnCreateSha256Secret(): { secret: string; secretHash: string } {
         const secretBuf = Buffer.alloc(32);
         for (let i = 0; i < secretBuf.length; i++) {
