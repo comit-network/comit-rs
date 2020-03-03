@@ -49,7 +49,7 @@ Please see `cnd --help` for help with command line options.
 
 1. Install `docker`,
 2. Install `node` (check the version required in api_tests/package.json) & `yarn`,
-3. Install `lnd` v0.9.0-beta (optional), this is only needed to run lnd e2e tests,
+3. Install `lnd` v0.9.0-beta (optional) using `make tags=invoicesrpc && make tags=invoicesrpc install`, this is only needed to run lnd e2e tests,
 4. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
    
 ## Testing
