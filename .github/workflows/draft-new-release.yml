@@ -41,19 +41,19 @@ jobs:
           version: ${{ env.RELEASE_VERSION }}
           manifest: cnd/Cargo.toml
 
-      - name: Commit changelog and manifest files
-        id: make-commit
-        run: |
-          git add CHANGELOG.md cnd/Cargo.toml
-          git commit --message "Prepare release ${{ env.RELEASE_VERSION }}"
-
-          echo "::set-output name=commit::$(git rev-parse HEAD)"
-
       - name: Update Cargo.lock
         uses: actions-rs/cargo@v1
         with:
           command: update
           args: --package cnd
+
+      - name: Commit changelog and manifest files
+        id: make-commit
+        run: |
+          git add CHANGELOG.md cnd/Cargo.toml Cargo.lock
+          git commit --message "Prepare release ${{ env.RELEASE_VERSION }}"
+
+          echo "::set-output name=commit::$(git rev-parse HEAD)"
 
       - name: Push new branch
         run: git push origin release/${{ env.RELEASE_VERSION }}
