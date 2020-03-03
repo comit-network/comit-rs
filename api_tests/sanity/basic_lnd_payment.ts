@@ -8,9 +8,9 @@ setTimeout(function() {
             { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
             { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
         );
-        const { rHash, paymentRequest } = await bob.createLnInvoice("20000");
-        await alice.payLnInvoiceWithRequest(paymentRequest);
-        await bob.assertLnInvoiceSettled(rHash);
+        const { rHash, paymentRequest } = await bob.lnCreateInvoice("20000");
+        await alice.lnPayInvoiceWithRequest(paymentRequest);
+        await bob.lnAssertInvoiceSettled(rHash);
     });
 
     run();

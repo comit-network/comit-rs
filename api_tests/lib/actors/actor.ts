@@ -934,17 +934,17 @@ export class Actor {
         await this.wallets.lightning.inner.settleInvoice(secret);
     }
 
-    public async createLnInvoice(sats: string) {
+    public async lnCreateInvoice(sats: string) {
         this.logger.debug(`Creating invoice for ${sats} sats`);
         return this.wallets.lightning.addInvoice(sats);
     }
 
-    public async payLnInvoiceWithRequest(request: string): Promise<void> {
+    public async lnPayInvoiceWithRequest(request: string): Promise<void> {
         this.logger.debug(`Paying invoice with request ${request}`);
         await this.wallets.lightning.pay(request);
     }
 
-    public async assertLnInvoiceSettled(secretHash: string) {
+    public async lnAssertInvoiceSettled(secretHash: string) {
         const resp = await this.wallets.lightning.lookupInvoice(secretHash);
         this.logger.debug(
             `Checking if invoice is settled, status is: ${resp.state}`

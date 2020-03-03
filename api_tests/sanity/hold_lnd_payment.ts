@@ -31,7 +31,7 @@ setTimeout(function() {
             const pay = await paymentPromise;
             expect(pay.paymentPreimage.toString("hex")).equals(secret);
 
-            await bob.assertLnInvoiceSettled(secretHash);
+            await bob.lnAssertInvoiceSettled(secretHash);
         }
     );
 
