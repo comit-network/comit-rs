@@ -26,17 +26,13 @@ use serde_json::{self, Value as JsonValue};
 pub use self::{
     behaviour::{BehaviourOutEvent, Comit},
     handler::{ComitHandler, PendingInboundRequest, PendingOutboundRequest},
-    protocol::{ComitProtocolConfig, Frames},
+    protocol::{Config, Frames},
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
 use libp2p::swarm::ProtocolsHandlerEvent;
 
-pub type ComitHandlerEvent = ProtocolsHandlerEvent<
-    ComitProtocolConfig,
-    ProtocolOutboundOpenInfo,
-    ProtocolOutEvent,
-    handler::Error,
->;
+pub type ComitHandlerEvent =
+    ProtocolsHandlerEvent<Config, ProtocolOutboundOpenInfo, ProtocolOutEvent, handler::Error>;
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {

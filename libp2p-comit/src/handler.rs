@@ -1,6 +1,6 @@
 use crate::{
     frame::{self, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest},
-    protocol::ComitProtocolConfig,
+    protocol::Config,
     substream::{self, Advance, Advanced},
     ComitHandlerEvent, Frame, Frames,
 };
@@ -119,12 +119,12 @@ impl ProtocolsHandler for ComitHandler {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
     type Error = Error;
-    type InboundProtocol = ComitProtocolConfig;
-    type OutboundProtocol = ComitProtocolConfig;
+    type InboundProtocol = Config;
+    type OutboundProtocol = Config;
     type OutboundOpenInfo = ProtocolOutboundOpenInfo;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
-        SubstreamProtocol::new(ComitProtocolConfig {})
+        SubstreamProtocol::new(Config {})
     }
 
     fn inject_fully_negotiated_inbound(&mut self, stream: Frames) {
@@ -187,7 +187,7 @@ impl ProtocolsHandler for ComitHandler {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<ComitHandlerEvent> {
         if let Some(request) = self.to_send.pop() {
             return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
+                protocol: SubstreamProtocol::new(Config {}),
                 info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
             });
         }
