@@ -56,13 +56,13 @@ where
     ) -> anyhow::Result<Deployed<htlc_location::Bitcoin, transaction::Bitcoin>> {
         let connector = self.clone();
 
-        let (transaction, out_point) =
+        let (transaction, location) =
             watch_for_created_outpoint(connector, start_of_swap, htlc_params.compute_address())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
         Ok(Deployed {
-            location: out_point,
+            location,
             transaction,
         })
     }
