@@ -21,10 +21,6 @@ export class LndInstance {
     ) {}
 
     public async start() {
-        const bin = process.env.LND_BIN ? process.env.LND_BIN : "lnd";
-
-        this.logger.debug(`Using binary ${bin}`);
-
         this.lndDir = path.join(
             this.testLogDir,
             "lnd-" + this.actorConfig.name
@@ -32,15 +28,7 @@ export class LndInstance {
         await mkdirAsync(this.lndDir, "755");
         await this.createConfigFile();
 
-        this.process = spawn(bin, ["--lnddir", this.lndDir], {
-            stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
-        });
-
-        this.logger.debug(`Process spawned LND with PID ${this.process.pid}`);
-
-        this.process.on("exit", (code: number, signal: number) => {
-            this.logger.debug(`lnd exited with ${code || `signal ${signal}`}`);
-        });
+        this.execBinary();
 
         this.logger.debug("Waiting for lnd log file to exist:", this.logPath());
         await waitUntilFileExists(this.logPath());
@@ -50,21 +38,11 @@ export class LndInstance {
             "RPCS: password RPC server listening"
         );
 
-        {
-            const config = {
-                server: this.getGrpcSocket(),
-                tls: this.tlsCertPath(),
-            };
-            this.logger.debug("Instantiating lnd connection:", config);
-            const lnd = await Lnd.init(config);
-
-            const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({});
-            const walletPassword = Buffer.from("password", "utf8");
-            await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
-        }
+        await this.initWallet();
 
         this.logger.debug("Waiting for lnd unlocked RPC server");
         await this.logReader().waitForLogMessage("RPCS: RPC server listening");
+
         this.logger.debug(
             "Waiting for admin macaroon file to exist:",
             this.adminMacaroonPath()
@@ -76,6 +54,39 @@ export class LndInstance {
             "LNWL: Done catching up block hashes"
         );
 
+        await this.initAuthenticatedLndConnection();
+
+        this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
+        this.logger.info("lnd is ready:", this.publicKey);
+    }
+
+    private execBinary() {
+        const bin = process.env.LND_BIN ? process.env.LND_BIN : "lnd";
+        this.logger.debug(`Using binary ${bin}`);
+        this.process = spawn(bin, ["--lnddir", this.lndDir], {
+            stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
+        });
+        this.logger.debug(`Process spawned LND with PID ${this.process.pid}`);
+
+        this.process.on("exit", (code: number, signal: number) => {
+            this.logger.debug(`lnd exited with ${code || `signal ${signal}`}`);
+        });
+    }
+
+    private async initWallet() {
+        const config = {
+            server: this.getGrpcSocket(),
+            tls: this.tlsCertPath(),
+        };
+        this.logger.debug("Instantiating lnd connection:", config);
+        const lnd = await Lnd.init(config);
+
+        const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({});
+        const walletPassword = Buffer.from("password", "utf8");
+        await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
+    }
+
+    private async initAuthenticatedLndConnection() {
         const config = {
             server: this.getGrpcSocket(),
             tls: this.tlsCertPath(),
@@ -83,9 +94,6 @@ export class LndInstance {
         };
         this.logger.debug("Instantiating lnd connection:", config);
         this.lnd = await Lnd.init(config);
-
-        this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
-        this.logger.info("lnd is ready:", this.publicKey);
     }
 
     public stop() {
