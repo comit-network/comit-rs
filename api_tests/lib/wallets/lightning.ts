@@ -161,8 +161,8 @@ export class LightningWallet implements Wallet {
         if (channels) {
             for (const channel of channels) {
                 this.logger.debug(`Looking for channel ${txId}:${vout}`);
-                this.logger.debug("Found a channel:", channel);
                 if (channel.channelPoint === `${txId}:${vout}`) {
+                    this.logger.debug("Found a channel:", channel);
                     return;
                 }
             }
