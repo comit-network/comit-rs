@@ -1,2 +1,0 @@
-ledgers = ["bitcoin", "ethereum"]
-actors = ["alice", "bob"]

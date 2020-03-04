@@ -1,11 +1,12 @@
 import { configure } from "log4js";
 import { Actor } from "./actors/actor";
 import { HarnessGlobal } from "./utils";
+import path from "path";
 
 declare var global: HarnessGlobal;
 
 export async function createActor(
-    logFileName: string,
+    testFolderName: string,
     name: string
 ): Promise<Actor> {
     const loggerFactory = (whoAmI: string) =>
@@ -13,7 +14,7 @@ export async function createActor(
             appenders: {
                 file: {
                     type: "file",
-                    filename: "log/tests/" + logFileName.replace(/\//g, "_"),
+                    filename: path.join(testFolderName, "test.log"),
                 },
             },
             categories: {
@@ -21,13 +22,11 @@ export async function createActor(
             },
         }).getLogger(whoAmI);
 
-    const actor = await Actor.newInstance(
+    return Actor.newInstance(
         loggerFactory,
         name,
         global.ledgerConfigs,
         global.projectRoot,
-        global.logRoot
+        testFolderName
     );
-
-    return actor;
 }

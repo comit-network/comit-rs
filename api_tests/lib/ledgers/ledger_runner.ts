@@ -7,8 +7,6 @@ import { EthereumWallet } from "../wallets/ethereum";
 import { HarnessGlobal } from "../utils";
 import { EthereumNodeConfig } from "./ethereum";
 
-declare var global: HarnessGlobal;
-
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
@@ -25,15 +23,19 @@ export class LedgerRunner {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string
+        private readonly logDir: string,
+        private harnessGlobal: HarnessGlobal
     ) {
         this.runningLedgers = {};
         this.blockTimers = {};
     }
 
-    public async ensureLedgersRunning(ledgers: string[]) {
+    public async ensureLedgersRunning(
+        ledgers: string[]
+    ): Promise<LedgerConfig> {
         const toBeStarted = ledgers.filter(name => !this.runningLedgers[name]);
 
+        const returnValue: LedgerConfig = {};
         const promises = toBeStarted.map(async ledger => {
             console.log(`Starting ledger ${ledger}`);
 
@@ -75,32 +77,45 @@ export class LedgerRunner {
             this.runningLedgers[ledger] = instance;
 
             if (ledger === "bitcoin") {
-                if (global.verbose) {
+                if (this.harnessGlobal.verbose) {
                     console.log(
                         "Bitcoin: initialization after ledger is running."
                     );
                 }
                 bitcoin.init(await this.getBitcoinClientConfig());
                 await bitcoin.ensureFunding();
-                this.blockTimers.bitcoin = global.setInterval(async () => {
-                    await bitcoin.generate();
-                }, 1000);
+                this.blockTimers.bitcoin = this.harnessGlobal.setInterval(
+                    async () => {
+                        await bitcoin.generate();
+                    },
+                    1000
+                );
+                returnValue.bitcoin = await this.getBitcoinClientConfig().catch(
+                    () => undefined
+                );
             }
 
             if (ledger === "ethereum") {
-                const ethereumConfig = await this.getEthereumNodeConfig();
-                const erc20Wallet = new EthereumWallet(ethereumConfig);
-                global.tokenContract = await erc20Wallet.deployErc20TokenContract(
-                    global.projectRoot
+                const ethereumNodeUrl = await this.getEthereumNodeUrl().catch(
+                    () => undefined
                 );
-                if (global.verbose) {
+                const erc20Wallet = new EthereumWallet(ethereumNodeUrl);
+                returnValue.ethereum = {
+                    rpc_url: ethereumNodeUrl,
+                    tokenContract: await erc20Wallet.deployErc20TokenContract(
+                        this.projectRoot
+                    ),
+                };
+                if (this.harnessGlobal.verbose) {
                     console.log(
                         "Ethereum: deployed Erc20 contract at %s",
-                        global.tokenContract
+                        returnValue.ethereum.tokenContract
                     );
                 }
             }
         }
+
+        return returnValue;
     }
 
     public async stopLedgers() {
@@ -115,13 +130,6 @@ export class LedgerRunner {
         });
 
         await Promise.all(promises);
-    }
-
-    public async getLedgerConfig(): Promise<LedgerConfig> {
-        return {
-            bitcoin: await this.getBitcoinClientConfig().catch(() => undefined),
-            ethereum: await this.getEthereumNodeConfig().catch(() => undefined),
-        };
     }
 
     private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {
@@ -144,13 +152,11 @@ export class LedgerRunner {
         }
     }
 
-    private async getEthereumNodeConfig(): Promise<EthereumNodeConfig> {
+    private async getEthereumNodeUrl(): Promise<string> {
         const instance = this.runningLedgers.ethereum as ParityInstance;
 
         if (instance) {
-            return {
-                rpc_url: `http://localhost:${instance.rpcPort}`,
-            };
+            return `http://localhost:${instance.rpcPort}`;
         } else {
             return Promise.reject("ethereum not yet started");
         }
