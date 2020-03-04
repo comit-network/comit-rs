@@ -1,7 +1,3 @@
-// This is fine because we're using associated types
-// see: https://github.com/rust-lang/rust/issues/21903
-#![allow(type_alias_bounds)]
-
 use crate::swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};

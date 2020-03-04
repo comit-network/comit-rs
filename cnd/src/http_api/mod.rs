@@ -17,7 +17,7 @@ use crate::{
     asset, htlc_location, identity,
     network::DialInformation,
     swap_protocols::{
-        ledger::{self, ethereum::ChainId},
+        ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
         SwapId, SwapProtocol,
     },
     transaction,
@@ -240,9 +240,9 @@ impl<'de> Deserialize<'de> for DialInformation {
 #[serde(try_from = "HttpLedgerParams")]
 #[serde(into = "HttpLedgerParams")]
 pub enum HttpLedger {
-    BitcoinMainnet,
-    BitcoinTestnet,
-    BitcoinRegtest,
+    BitcoinMainnet(ledger::bitcoin::Mainnet),
+    BitcoinTestnet(ledger::bitcoin::Testnet),
+    BitcoinRegtest(ledger::bitcoin::Regtest),
     Ethereum(ledger::Ethereum),
 }
 
@@ -278,10 +278,10 @@ pub struct BitcoinLedgerParams {
     network: Http<bitcoin::Network>,
 }
 
-impl From<bitcoin::Network> for BitcoinLedgerParams {
-    fn from(network: bitcoin::Network) -> Self {
+impl<B: Bitcoin + Network> From<B> for BitcoinLedgerParams {
+    fn from(_: B) -> Self {
         BitcoinLedgerParams {
-            network: Http(network),
+            network: Http(B::network()),
         }
     }
 }
@@ -328,9 +328,9 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
     fn try_from(params: HttpLedgerParams) -> Result<Self, Self::Error> {
         Ok(match params {
             HttpLedgerParams::Bitcoin(BitcoinLedgerParams { network }) => match *network {
-                bitcoin::Network::Bitcoin => HttpLedger::BitcoinMainnet,
-                bitcoin::Network::Testnet => HttpLedger::BitcoinTestnet,
-                bitcoin::Network::Regtest => HttpLedger::BitcoinRegtest,
+                bitcoin::Network::Bitcoin => HttpLedger::BitcoinMainnet(ledger::bitcoin::Mainnet),
+                bitcoin::Network::Testnet => HttpLedger::BitcoinTestnet(ledger::bitcoin::Testnet),
+                bitcoin::Network::Regtest => HttpLedger::BitcoinRegtest(ledger::bitcoin::Regtest),
             },
             HttpLedgerParams::Ethereum(params) => HttpLedger::Ethereum(params.try_into()?),
         })
@@ -340,15 +340,9 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
 impl From<HttpLedger> for HttpLedgerParams {
     fn from(ledger: HttpLedger) -> Self {
         match ledger {
-            HttpLedger::BitcoinMainnet => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Bitcoin.into())
-            }
-            HttpLedger::BitcoinTestnet => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Testnet.into())
-            }
-            HttpLedger::BitcoinRegtest => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Regtest.into())
-            }
+            HttpLedger::BitcoinMainnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
+            HttpLedger::BitcoinTestnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
+            HttpLedger::BitcoinRegtest(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
             HttpLedger::Ethereum(ledger) => HttpLedgerParams::Ethereum(ledger.into()),
         }
     }
@@ -448,20 +442,20 @@ impl From<asset::Erc20> for Erc20AssetParams {
 }
 
 impl From<ledger::bitcoin::Mainnet> for HttpLedger {
-    fn from(_: ledger::bitcoin::Mainnet) -> Self {
-        HttpLedger::BitcoinMainnet
+    fn from(ledger: ledger::bitcoin::Mainnet) -> Self {
+        HttpLedger::BitcoinMainnet(ledger)
     }
 }
 
 impl From<ledger::bitcoin::Testnet> for HttpLedger {
-    fn from(_: ledger::bitcoin::Testnet) -> Self {
-        HttpLedger::BitcoinTestnet
+    fn from(ledger: ledger::bitcoin::Testnet) -> Self {
+        HttpLedger::BitcoinTestnet(ledger)
     }
 }
 
 impl From<ledger::bitcoin::Regtest> for HttpLedger {
-    fn from(_: ledger::bitcoin::Regtest) -> Self {
-        HttpLedger::BitcoinRegtest
+    fn from(ledger: ledger::bitcoin::Regtest) -> Self {
+        HttpLedger::BitcoinRegtest(ledger)
     }
 }
 
