@@ -136,9 +136,7 @@ commands:
             # We don't want the target folder to blow up over time, hence we only download the cache if it exactly matches `Cargo.lock`
       - restore_cache:
           keys:
-            - yarn-packages-v1-{{ .Branch }}-{{ checksum "api_tests/yarn.lock" }}
-            - yarn-packages-v1-{{ .Branch }}-
-            - yarn-packages-v1-
+            - yarn-packages-v1-{{ checksum "api_tests/yarn.lock" }}
   save_caches:
     steps:
       - save_cache:
@@ -157,4 +155,4 @@ commands:
           paths:
             - ~/.cache/yarn
             - api_tests/node_modules
-          key: yarn-packages-v1-{{ .Branch }}-{{ checksum "api_tests/yarn.lock" }}
+          key: yarn-packages-v1-{{ checksum "api_tests/yarn.lock" }}
