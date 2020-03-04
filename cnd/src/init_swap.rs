@@ -3,7 +3,8 @@ use crate::{
     seed::DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
-            alice, bob, create_swap,
+            alice, bob, create_alpha_watcher,
+            create_swap::create_beta_watcher,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
             Accept, Ledger, Request,
@@ -53,7 +54,14 @@ where
                 alice::State::accepted(request.clone(), *accept, seed);
             StateStore::insert(dependencies, id, state);
 
-            tokio::task::spawn(create_swap::<
+            tokio::task::spawn(create_alpha_watcher::<
+                D,
+                alice::State<AL, BL, AA, BA, AH, BH, AI, BI>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted.clone()));
+
+            tokio::task::spawn(create_beta_watcher::<
                 D,
                 alice::State<AL, BL, AA, BA, AH, BH, AI, BI>,
                 AI,
@@ -65,7 +73,14 @@ where
                 bob::State::accepted(request.clone(), *accept, seed);
             StateStore::insert(dependencies, id, state);
 
-            tokio::task::spawn(create_swap::<
+            tokio::task::spawn(create_alpha_watcher::<
+                D,
+                bob::State<AL, BL, AA, BA, AH, BH, AI, BI>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted.clone()));
+
+            tokio::task::spawn(create_beta_watcher::<
                 D,
                 bob::State<AL, BL, AA, BA, AH, BH, AI, BI>,
                 AI,

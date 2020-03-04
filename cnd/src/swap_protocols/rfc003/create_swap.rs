@@ -23,7 +23,7 @@ use genawaiter::{
 };
 
 /// Returns a future that tracks the swap negotiated from the given request and
-/// accept response on both ledgers.
+/// accept response on alpha ledger.
 ///
 /// The current implementation is naive in the sense that it does not take into
 /// account situations where it is clear that no more events will happen even
@@ -33,7 +33,7 @@ use genawaiter::{
 ///
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
-pub async fn create_swap<D, A, AI, BI>(
+pub async fn create_alpha_watcher<D, A, AI, BI>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
@@ -67,19 +67,88 @@ pub async fn create_swap<D, A, AI, BI>(
     let mut generator = Gen::new({
         let dependencies = dependencies.clone();
         |co| async move {
-            future::try_join(
-                watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
-                    &dependencies,
-                    &co,
-                    swap.alpha_htlc_params(),
-                    at,
-                ),
-                watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
-                    &dependencies,
-                    &co,
-                    swap.beta_htlc_params(),
-                    at,
-                ),
+            watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
+                &dependencies,
+                &co,
+                swap.alpha_htlc_params(),
+                at,
+            )
+            .await
+        }
+    });
+
+    loop {
+        // wait for events to be emitted as the generator executes
+        match generator.async_resume().await {
+            // every event that is yielded is passed on
+            GeneratorState::Yielded(event) => {
+                tracing::info!("swap {} yielded event {}", id, event);
+                dependencies.update::<A>(&id, event);
+            }
+            // the generator stopped executing, this means there are no more events that can be
+            // watched.
+            GeneratorState::Complete(Ok(_)) => {
+                tracing::info!("swap {} finished", id);
+                return;
+            }
+            GeneratorState::Complete(Err(e)) => {
+                tracing::error!("swap {} failed with {:?}", id, e);
+                return;
+            }
+        }
+    }
+}
+
+/// Returns a future that tracks the swap negotiated from the given request and
+/// accept response on beta ledger.
+///
+/// The current implementation is naive in the sense that it does not take into
+/// account situations where it is clear that no more events will happen even
+/// though in theory, there could. For example:
+/// - alpha funded
+/// - alpha refunded
+///
+/// It is highly unlikely for Bob to fund the HTLC now, yet the current
+/// implementation is still waiting for that.
+pub async fn create_beta_watcher<D, A, AI, BI>(
+    dependencies: D,
+    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
+) where
+    D: StateStore
+        + HtlcFunded<A::AL, A::AA, A::AH, AI>
+        + HtlcFunded<A::BL, A::BA, A::BH, BI>
+        + HtlcDeployed<A::AL, A::AA, A::AH, AI>
+        + HtlcDeployed<A::BL, A::BA, A::BH, BI>
+        + HtlcRedeemed<A::AL, A::AA, A::AH, AI>
+        + HtlcRedeemed<A::BL, A::BA, A::BH, BI>
+        + HtlcRefunded<A::AL, A::AA, A::AH, AI>
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI>
+        + Clone,
+    A::AL: Clone,
+    A::BL: Clone,
+    A::AA: Ord + Clone,
+    A::BA: Ord + Clone,
+    A::AH: Clone,
+    A::BH: Clone,
+    AI: Clone,
+    BI: Clone,
+    A: ActorState,
+    AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
+{
+    let (request, accept, at) = accepted.clone();
+
+    let id = request.swap_id;
+    let swap = OngoingSwap::new(request, accept);
+
+    // construct a generator that watches alpha and beta ledger concurrently
+    let mut generator = Gen::new({
+        let dependencies = dependencies.clone();
+        |co| async move {
+            watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
+                &dependencies,
+                &co,
+                swap.beta_htlc_params(),
+                at,
             )
             .await
         }

@@ -18,7 +18,7 @@ mod secret;
 
 pub use self::{
     actor_state::ActorState,
-    create_swap::create_swap,
+    create_swap::create_alpha_watcher,
     ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
