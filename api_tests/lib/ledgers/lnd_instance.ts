@@ -30,7 +30,7 @@ export class LndInstance {
             "lnd-" + this.actorConfig.name
         );
         await mkdirAsync(this.lndDir, "755");
-        await this.createConfigFile(this.lndDir);
+        await this.createConfigFile();
 
         this.process = spawn(bin, ["--lnddir", this.lndDir], {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
@@ -141,7 +141,7 @@ export class LndInstance {
         return this.actorConfig.lndP2pPort;
     }
 
-    private async createConfigFile(lndDir: string) {
+    private async createConfigFile() {
         // We don't use REST but want a random port so we don't get used port errors.
         const restPort = await getPort();
         const output = `[Application Options]
@@ -169,7 +169,7 @@ bitcoin.node=bitcoind
 
 bitcoind.dir=${this.bitcoindDataDir}
 `;
-        const config = path.join(lndDir, "lnd.conf");
+        const config = path.join(this.lndDir, "lnd.conf");
         await writeFileAsync(config, output);
     }
 
