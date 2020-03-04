@@ -8,6 +8,7 @@ use crate::{
     comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
+    htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
@@ -29,7 +30,7 @@ use futures_core::{
 };
 use libp2p::{
     core::either::{EitherError, EitherOutput},
-    identity::{self, ed25519},
+    identity::{ed25519, Keypair},
     mdns::Mdns,
     swarm::{
         protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect,
@@ -130,10 +131,10 @@ impl Swarm {
     }
 }
 
-fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
+fn derive_key_pair(seed: &RootSeed) -> Keypair {
     let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
-    identity::Keypair::Ed25519(key.into())
+    Keypair::Ed25519(key.into())
 }
 
 #[derive(NetworkBehaviour)]
@@ -280,12 +281,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -306,12 +313,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -332,12 +345,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -358,12 +377,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -384,12 +409,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -410,12 +441,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -436,12 +473,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -463,12 +506,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -490,12 +539,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -517,12 +572,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -543,12 +604,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -569,12 +636,18 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -623,7 +696,7 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL, BL, AA, BA, AI, BI, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
@@ -637,6 +710,8 @@ where
     BA: Send + 'static,
     AI: Send + 'static,
     BI: Send + 'static,
+    AH: Send + 'static,
+    BH: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
@@ -646,7 +721,7 @@ where
     Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
-    let state = bob::State::proposed(swap_request.clone(), seed);
+    let state = bob::State::<_, _, _, _, AH, BH, _, _>::proposed(swap_request.clone(), seed);
     state_store.insert(id, state);
 
     Ok(())

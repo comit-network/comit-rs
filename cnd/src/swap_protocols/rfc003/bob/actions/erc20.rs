@@ -1,6 +1,6 @@
 use crate::{
     asset::{self},
-    identity,
+    htlc_location, identity,
     swap_protocols::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
@@ -14,12 +14,23 @@ use crate::{
 };
 use std::convert::Infallible;
 
-impl<AL, AA, AI> Actions for bob::State<AL, Ethereum, AA, asset::Erc20, AI, identity::Ethereum>
+impl<AL, AA, AI, AH> Actions
+    for bob::State<
+        AL,
+        Ethereum,
+        AA,
+        asset::Erc20,
+        AH,
+        htlc_location::Ethereum,
+        AI,
+        identity::Ethereum,
+    >
 where
     AL: Ledger,
     AA: Clone,
+    AH: Clone,
     AI: Clone,
-    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AL::HtlcLocation>,
+    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -85,15 +96,26 @@ where
     }
 }
 
-impl<BL, BA, BI> Actions for bob::State<Ethereum, BL, asset::Erc20, BA, identity::Ethereum, BI>
+impl<BL, BA, BI, BH> Actions
+    for bob::State<
+        Ethereum,
+        BL,
+        asset::Erc20,
+        BA,
+        htlc_location::Ethereum,
+        BH,
+        identity::Ethereum,
+        BI,
+    >
 where
     BL: Ledger,
     BA: Clone,
+    BH: Clone,
     BI: Clone,
     (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
         + RefundAction<
             HtlcParams = HtlcParams<BL, BA, BI>,
-            HtlcLocation = BL::HtlcLocation,
+            HtlcLocation = BH,
             FundTransaction = BL::Transaction,
         >,
 {

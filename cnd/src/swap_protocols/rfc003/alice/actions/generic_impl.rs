@@ -9,21 +9,23 @@ use crate::swap_protocols::{
 };
 use std::convert::Infallible;
 
-impl<AL, BL, AA, BA, AI, BI> Actions for alice::State<AL, BL, AA, BA, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI> Actions for alice::State<AL, BL, AA, BA, AH, BH, AI, BI>
 where
     AL: Ledger,
     BL: Ledger,
     AA: Clone,
-    AI: Clone,
     BA: Clone,
+    AH: Clone,
+    BH: Clone,
+    AI: Clone,
     BI: Clone,
     (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
         + RefundAction<
             HtlcParams = HtlcParams<AL, AA, AI>,
-            HtlcLocation = AL::HtlcLocation,
+            HtlcLocation = AH,
             FundTransaction = AL::Transaction,
         >,
-    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BL::HtlcLocation>,
+    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<

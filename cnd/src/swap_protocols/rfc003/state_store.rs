@@ -22,12 +22,12 @@ pub trait StateStore: Send + Sync + 'static {
         &self,
         key: &SwapId,
         update: SwapEvent<
-            <<A as ActorState>::AL as Ledger>::HtlcLocation,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::HtlcLocation,
-            <<A as ActorState>::BL as Ledger>::Transaction,
             A::AA,
             A::BA,
+            A::AH,
+            A::BH,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::Transaction,
         >,
     ) where
         A: ActorState,
@@ -68,12 +68,12 @@ impl StateStore for InMemoryStateStore {
         &self,
         key: &SwapId,
         event: SwapEvent<
-            <<A as ActorState>::AL as Ledger>::HtlcLocation,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::HtlcLocation,
-            <<A as ActorState>::BL as Ledger>::Transaction,
             A::AA,
             A::BA,
+            A::AH,
+            A::BH,
+            <<A as ActorState>::AL as Ledger>::Transaction,
+            <<A as ActorState>::BL as Ledger>::Transaction,
         >,
     ) where
         A: ActorState,
@@ -148,7 +148,7 @@ mod tests {
         asset,
         asset::ethereum::FromWei,
         ethereum::Address,
-        identity,
+        htlc_location, identity,
         seed::{DeriveSwapSeed, RootSeed},
         swap_protocols::{
             ledger::{bitcoin, Ethereum},
@@ -197,6 +197,8 @@ mod tests {
             Ethereum,
             asset::Bitcoin,
             asset::Ether,
+            htlc_location::Bitcoin,
+            htlc_location::Ethereum,
             identity::Bitcoin,
             identity::Ethereum,
         >>(id, state.clone());
@@ -207,6 +209,8 @@ mod tests {
                 Ethereum,
                 asset::Bitcoin,
                 asset::Ether,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
                 identity::Bitcoin,
                 identity::Ethereum,
             >>(&id)

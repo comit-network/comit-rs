@@ -86,7 +86,11 @@ pub async fn handle_action(
                     &swap_id,
                 )
                 .await?;
-                init_accepted_swap(&dependencies, accepted, types.role)?;
+                init_accepted_swap::<_, _, _, _, _, AH, BH, _, _>(
+                    &dependencies,
+                    accepted,
+                    types.role,
+                )?;
 
                 Ok(ActionResponseBody::None)
             }
@@ -119,7 +123,11 @@ pub async fn handle_action(
 
                 let swap_request = state.request();
                 let seed = dependencies.derive_swap_seed(swap_id);
-                let state = State::declined(swap_request.clone(), decline_message, seed);
+                let state = State::<AL, BL, AA, BA, AH, BH, AI, BI>::declined(
+                    swap_request.clone(),
+                    decline_message,
+                    seed,
+                );
                 StateStore::insert(&dependencies, swap_id, state);
 
                 Ok(ActionResponseBody::None)

@@ -10,7 +10,7 @@ use crate::{
 };
 use ::bitcoin::{
     hashes::{hash160, Hash},
-    Address, OutPoint, Transaction,
+    Address, Transaction,
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
@@ -20,7 +20,6 @@ impl<B> Ledger for B
 where
     B: ledger::Bitcoin,
 {
-    type HtlcLocation = OutPoint;
     type Transaction = Transaction;
 }
 

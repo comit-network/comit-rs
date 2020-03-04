@@ -7,10 +7,10 @@ use crate::{
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-#[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize,\
-             Http<AH>: Serialize, Http<BH>: Serialize,\
-             Http<AT>: Serialize, Http<BT>: Serialize")]
-pub struct SwapState<AI, BI, AH, BH, AT, BT> {
+#[serde(bound = "Http<AH>: Serialize, Http<BH>: Serialize,\
+                 Http<AI>: Serialize, Http<BI>: Serialize,\
+                 Http<AT>: Serialize, Http<BT>: Serialize")]
+pub struct SwapState<AH, BH, AI, BI, AT, BT> {
     pub communication: SwapCommunication<AI, BI>,
     pub alpha_ledger: LedgerState<AH, AT>,
     pub beta_ledger: LedgerState<BH, BT>,
@@ -90,11 +90,11 @@ impl<AL, BL, AA, BA, AI, BI> From<rfc003::SwapCommunication<AL, BL, AA, BA, AI, 
     }
 }
 
-impl<H, T, A> From<rfc003::LedgerState<H, T, A>> for LedgerState<H, T>
+impl<H, T, A> From<rfc003::LedgerState<A, H, T>> for LedgerState<H, T>
 where
-    rfc003::LedgerState<H, T, A>: Clone,
+    rfc003::LedgerState<A, H, T>: Clone,
 {
-    fn from(ledger_state: rfc003::LedgerState<H, T, A>) -> Self {
+    fn from(ledger_state: rfc003::LedgerState<A, H, T>) -> Self {
         use self::rfc003::LedgerState::*;
         let status = ledger_state.clone().into();
         match ledger_state {

@@ -38,19 +38,21 @@ pub async fn create_swap<D, A, AI, BI>(
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
     D: StateStore
-        + HtlcFunded<A::AL, A::AA, AI>
-        + HtlcFunded<A::BL, A::BA, BI>
-        + HtlcDeployed<A::AL, A::AA, AI>
-        + HtlcDeployed<A::BL, A::BA, BI>
-        + HtlcRedeemed<A::AL, A::AA, AI>
-        + HtlcRedeemed<A::BL, A::BA, BI>
-        + HtlcRefunded<A::AL, A::AA, AI>
-        + HtlcRefunded<A::BL, A::BA, BI>
+        + HtlcFunded<A::AL, A::AA, A::AH, AI>
+        + HtlcFunded<A::BL, A::BA, A::BH, BI>
+        + HtlcDeployed<A::AL, A::AA, A::AH, AI>
+        + HtlcDeployed<A::BL, A::BA, A::BH, BI>
+        + HtlcRedeemed<A::AL, A::AA, A::AH, AI>
+        + HtlcRedeemed<A::BL, A::BA, A::BH, BI>
+        + HtlcRefunded<A::AL, A::AA, A::AH, AI>
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI>
         + Clone,
-    A::AA: Ord + Clone,
-    A::BA: Ord + Clone,
     A::AL: Clone,
     A::BL: Clone,
+    A::AA: Ord + Clone,
+    A::BA: Ord + Clone,
+    A::AH: Clone,
+    A::BH: Clone,
     AI: Clone,
     BI: Clone,
     A: ActorState,
@@ -66,13 +68,13 @@ pub async fn create_swap<D, A, AI, BI>(
         let dependencies = dependencies.clone();
         |co| async move {
             future::try_join(
-                watch_alpha_ledger::<_, A::AL, A::BL, _, _, AI, BI>(
+                watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
                     &dependencies,
                     &co,
                     swap.alpha_htlc_params(),
                     at,
                 ),
-                watch_beta_ledger::<_, A::AL, A::BL, _, _, AI, BI>(
+                watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
                     &dependencies,
                     &co,
                     swap.beta_htlc_params(),
@@ -108,19 +110,20 @@ pub async fn create_swap<D, A, AI, BI>(
 /// Returns a future that waits for events on alpha ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_alpha_ledger<D, AL, BL, AA, BA, AI, BI>(
+async fn watch_alpha_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI>(
     dependencies: &D,
-    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA, AH, BH>>,
     htlc_params: HtlcParams<AL, AA, AI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
-    D: HtlcFunded<AL, AA, AI>
-        + HtlcDeployed<AL, AA, AI>
-        + HtlcRedeemed<AL, AA, AI>
-        + HtlcRefunded<AL, AA, AI>,
+    D: HtlcFunded<AL, AA, AH, AI>
+        + HtlcDeployed<AL, AA, AH, AI>
+        + HtlcRedeemed<AL, AA, AH, AI>
+        + HtlcRefunded<AL, AA, AH, AI>,
+    Deployed<AH, AL::Transaction>: Clone,
 {
     let deployed = dependencies
         .htlc_deployed(&htlc_params, start_of_swap)
@@ -156,19 +159,20 @@ where
 /// Returns a future that waits for events on beta ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_beta_ledger<D, AL, BL, AA, BA, AI, BI>(
+async fn watch_beta_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI>(
     dependencies: &D,
-    co: &Co<SwapEventOnLedger<AL, BL, AA, BA>>,
+    co: &Co<SwapEventOnLedger<AL, BL, AA, BA, AH, BH>>,
     htlc_params: HtlcParams<BL, BA, BI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
     AL: Ledger,
     BL: Ledger,
-    D: HtlcFunded<BL, BA, BI>
-        + HtlcDeployed<BL, BA, BI>
-        + HtlcRedeemed<BL, BA, BI>
-        + HtlcRefunded<BL, BA, BI>,
+    D: HtlcFunded<BL, BA, BH, BI>
+        + HtlcDeployed<BL, BA, BH, BI>
+        + HtlcRedeemed<BL, BA, BH, BI>
+        + HtlcRefunded<BL, BA, BH, BI>,
+    Deployed<BH, BL::Transaction>: Clone,
 {
     let deployed = dependencies
         .htlc_deployed(&htlc_params, start_of_swap)
@@ -317,24 +321,28 @@ where
     }
 }
 
-pub type SwapEventOnLedger<AL, BL, AA, BA> = SwapEvent<
-    <AL as Ledger>::HtlcLocation,
-    <AL as Ledger>::Transaction,
-    <BL as Ledger>::HtlcLocation,
-    <BL as Ledger>::Transaction,
-    AA,
-    BA,
+pub type SwapEventOnLedger<AL, BL, AA, BA, AH, BH> =
+    SwapEvent<AA, BA, AH, BH, <AL as Ledger>::Transaction, <BL as Ledger>::Transaction>;
+
+// Needed to satisfy clippy, this goes away once Ledger::Transaction is gone.
+pub type ReplacementSwapEventOnLedger<A> = SwapEvent<
+    <A as ActorState>::AA,
+    <A as ActorState>::BA,
+    <A as ActorState>::AH,
+    <A as ActorState>::BH,
+    <<A as ActorState>::AL as Ledger>::Transaction,
+    <<A as ActorState>::BL as Ledger>::Transaction,
 >;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent<AH, AT, BH, BT, AA, BA> {
-    AlphaDeployed(Deployed<AT, AH>),
-    AlphaFunded(Funded<AT, AA>),
+pub enum SwapEvent<AA, BA, AH, BH, AT, BT> {
+    AlphaDeployed(Deployed<AH, AT>),
+    AlphaFunded(Funded<AA, AT>),
     AlphaRedeemed(Redeemed<AT>),
     AlphaRefunded(Refunded<AT>),
 
-    BetaDeployed(Deployed<BT, BH>),
-    BetaFunded(Funded<BT, BA>),
+    BetaDeployed(Deployed<BH, BT>),
+    BetaFunded(Funded<BA, BT>),
     BetaRedeemed(Redeemed<BT>),
     BetaRefunded(Refunded<BT>),
 }
@@ -342,20 +350,20 @@ pub enum SwapEvent<AH, AT, BH, BT, AA, BA> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{asset, ethereum, htlc_location, identity, transaction};
+    use crate::{asset, htlc_location, transaction};
 
     #[test]
     fn swap_event_should_render_to_nice_string() {
         let event = SwapEvent::<
-            htlc_location::Bitcoin,
-            transaction::Bitcoin,
-            identity::Ethereum,
-            transaction::Ethereum,
             asset::Bitcoin,
             asset::Ether,
+            htlc_location::Bitcoin,
+            htlc_location::Ethereum,
+            transaction::Bitcoin,
+            transaction::Ethereum,
         >::BetaDeployed(Deployed {
-            transaction: ethereum::Transaction::default(),
-            location: identity::Ethereum::default(),
+            location: htlc_location::Ethereum::default(),
+            transaction: transaction::Ethereum::default(),
         });
 
         let formatted = format!("{}", event);
