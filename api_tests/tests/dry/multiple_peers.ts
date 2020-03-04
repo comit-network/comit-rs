@@ -1,12 +1,11 @@
-// These are stateless tests -- they don't require any state of the cnd and they don't change it
-// They are mostly about checking invalid request responses
-// These test do not use the sdk so that we can test edge cases
-import { threeActorTest } from "../lib/actor_test";
+/**
+ * @logDir multiple_peers
+ */
+
+import { threeActorTest } from "../../lib/actor_test";
+import { createDefaultSwapRequest } from "../../lib/utils";
 import { expect } from "chai";
-import "chai/register-should";
-import "../lib/setup_chai";
 import { SwapDetails } from "comit-sdk";
-import { createDefaultSwapRequest } from "../lib/utils";
 
 interface MatchInterface {
     id: string;
@@ -22,10 +21,12 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
     };
 }
 
-setTimeout(async function() {
-    threeActorTest(
-        "alice-sends-swap-request-to-bob-and-charlie",
-        async function({ alice, bob, charlie }) {
+// ******************************************** //
+// Multiple peers                               //
+// ******************************************** //
+describe("Multiple peers tests", () => {
+    it("alice-sends-swap-request-to-bob-and-charlie", async function() {
+        await threeActorTest(async function({ alice, bob, charlie }) {
             // Alice send swap request to Bob
             const aliceToBobSwapUrl = await alice.cnd.postSwap(
                 await createDefaultSwapRequest(bob)
@@ -71,8 +72,6 @@ setTimeout(async function() {
                 toMatch(bobSwapDetails),
                 toMatch(charlieSwapDetails),
             ]);
-        }
-    );
-
-    run();
-}, 0);
+        });
+    });
+});

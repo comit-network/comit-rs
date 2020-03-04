@@ -3,16 +3,20 @@ import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
 import * as fs from "fs";
 import { promisify } from "util";
-import Global = NodeJS.Global;
+import { Global } from "@jest/types";
 import { LedgerConfig } from "./ledgers/ledger_runner";
+import rimraf from "rimraf";
+import { Mutex } from "async-mutex";
+import { exec } from "child_process";
 
-export interface HarnessGlobal extends Global {
+export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
     testRoot: string;
     projectRoot: string;
     logRoot: string;
     verbose: boolean;
     tokenContract: string;
+    parityAccountMutex: Mutex;
 }
 
 export const unlinkAsync = promisify(fs.unlink);
@@ -20,6 +24,8 @@ export const existsAsync = promisify(fs.exists);
 export const openAsync = promisify(fs.open);
 export const mkdirAsync = promisify(fs.mkdir);
 export const writeFileAsync = promisify(fs.writeFile);
+export const rimrafAsync = promisify(rimraf);
+export const execAsync = promisify(exec);
 
 export async function sleep(time: number) {
     return new Promise(res => {

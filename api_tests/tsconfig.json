@@ -5,12 +5,15 @@
         "allowSyntheticDefaultImports": true,
         "noImplicitAny": true,
         "lib": ["es5", "es2015", "es2017", "es6", "dom"],
-        "noEmit": true,
+        "noEmit": false,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "resolveJsonModule": true,
+        "sourceMap": true,
         "skipLibCheck": true,
         "esModuleInterop": true,
+        "outDir": "dist",
         "typeRoots": ["./node_modules/@types", "./types"]
-    }
+    },
+    "exclude": ["dry", "e2e", "sanity"]
 }
