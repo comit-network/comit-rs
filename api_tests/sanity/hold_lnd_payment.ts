@@ -13,10 +13,15 @@ setTimeout(function() {
             );
 
             const satAmount = "10000";
-            const finalCltvDelta = 40; // This MUST be 40 to match Bob's invoice. Further investigation needed.
+            const finalCltvDelta = 10;
 
             const { secret, secretHash } = bob.lnCreateSha256Secret();
-            await bob.lnCreateHoldInvoice(satAmount, secretHash, 3600);
+            await bob.lnCreateHoldInvoice(
+                satAmount,
+                secretHash,
+                3600,
+                finalCltvDelta
+            );
             const paymentPromise = alice.lnSendPayment(
                 bob,
                 satAmount,

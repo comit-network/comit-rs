@@ -889,14 +889,15 @@ export class Actor {
     public async lnCreateHoldInvoice(
         sats: string,
         secretHash: string,
-        expiry: number
+        expiry: number,
+        cltvExpiry: number
     ): Promise<void> {
         this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
         const resp = await this.wallets.lightning.inner.addHoldInvoice(
             sats,
             secretHash,
             expiry,
-            "test hold invoice"
+            cltvExpiry
         );
         this.logger.debug("LN: Create Hold Response:", resp);
     }

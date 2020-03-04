@@ -25,6 +25,8 @@ export class LightningWallet implements Wallet {
             lndp2pSocket
         );
 
+        logger.debug("lnd getinfo:", await inner.lnd.lnrpc.getInfo());
+
         return new LightningWallet(inner, logger, bitcoinWallet);
     }
 
