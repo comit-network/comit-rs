@@ -1,7 +1,10 @@
 mod cache;
 mod web3_connector;
 
-pub use self::{cache::Cache, web3_connector::Web3Connector};
+pub use self::{
+    cache::Cache,
+    web3_connector::{net_version, Web3Connector},
+};
 use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,

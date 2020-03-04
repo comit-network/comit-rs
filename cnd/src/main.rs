@@ -19,7 +19,11 @@ use cnd::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    config::{self, Settings},
+    config::{
+        self,
+        validation::{NetworkValidationResult, ConfigValidationError, validate_bitcoin_network, validate_ethereum_chain_id},
+        Settings,
+    },
     db::Sqlite,
     http_api::route_factory,
     load_swaps,
@@ -69,6 +73,11 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
+    match runtime.block_on(validate_bitcoin_network(&bitcoin_connector.connector, settings.bitcoin.network)) {
+        Ok(result) => handle_invalid_network_validation(result)?,
+        Err(err) =>  tracing::warn!("Failed to connect to Bitcoin node while validating config: {}", err),
+    };
+
     const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
     const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
     let ethereum_connector = Arc::new(ethereum::Cache::new(
@@ -76,6 +85,11 @@ fn main() -> anyhow::Result<()> {
         ETHEREUM_BLOCK_CACHE_CAPACITY,
         ETHEREUM_RECEIPT_CACHE_CAPACITY,
     ));
+
+    match runtime.block_on(validate_ethereum_chain_id(&ethereum_connector.connector, settings.ethereum.chain_id)) {
+        Ok(result) => handle_invalid_network_validation(result)?,
+        Err(err) => tracing::warn!("Failed to connect to Ethereum node while validating config: {}", err),
+    };
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
@@ -161,4 +175,14 @@ fn dump_config(settings: Settings) -> anyhow::Result<()> {
     let serialized = toml::to_string(&file)?;
     println!("{}", serialized);
     Ok(())
+}
+
+/// Throws an error if the connected connected blockchain network is invalid
+fn handle_invalid_network_validation<T: std::fmt::Debug>(validation: NetworkValidationResult<T>) -> anyhow::Result<(), ConfigValidationError<T>> {
+    match validation {
+        NetworkValidationResult::Invalid { connected_network: connected, specified_network: specified } => {
+            Err(ConfigValidationError::ConnectedNetworkDoesNotMatchSpecified { connected_network: connected, specified_network: specified })
+        },
+        NetworkValidationResult::Valid => Ok(())
+    }
 }

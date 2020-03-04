@@ -1,9 +1,14 @@
 mod bitcoind_connector;
 mod cache;
 
-pub use self::{bitcoind_connector::BitcoindConnector, cache::Cache};
-use crate::btsieve::{
-    find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+pub use self::{
+    bitcoind_connector::{chain_info, BitcoindConnector, ChainInfo},
+    cache::Cache,
+};
+use crate::{
+    btsieve::{
+        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+    },
 };
 use bitcoin::{
     blockdata::script::Instruction,

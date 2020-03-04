@@ -3,6 +3,7 @@ use crate::{
     ethereum::{TransactionReceipt, H256},
     jsonrpc,
 };
+use crate::swap_protocols::ledger::ethereum::ChainId;
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -74,4 +75,17 @@ impl ReceiptByHash for Web3Connector {
 
         Ok(receipt)
     }
+}
+
+pub async fn net_version(conn: &Web3Connector) -> Result<crate::swap_protocols::ledger::ethereum::ChainId, anyhow::Error> {
+    let empty_params: Vec<()> = vec![];
+
+    let chain_id: ChainId = conn
+        .client
+        .send::<Vec<()>, crate::swap_protocols::ledger::ethereum::ChainId>(jsonrpc::Request::new("net_version", empty_params))
+        .await?;
+
+    tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
+
+    Ok(chain_id)
 }
