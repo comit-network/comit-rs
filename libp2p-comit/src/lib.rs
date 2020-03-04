@@ -41,13 +41,13 @@ pub type ComitHandlerEvent = ProtocolsHandlerEvent<
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
     #[serde(rename = "type")]
-    pub frame_type: FrameType,
+    pub kind: FrameKind,
     pub payload: JsonValue,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
-pub enum FrameType {
+pub enum FrameKind {
     Request,
     Response,
 
@@ -58,10 +58,7 @@ pub enum FrameType {
 }
 
 impl Frame {
-    pub fn new(frame_type: FrameType, payload: JsonValue) -> Self {
-        Self {
-            frame_type,
-            payload,
-        }
+    pub fn new(kind: FrameKind, payload: JsonValue) -> Self {
+        Self { kind, payload }
     }
 }

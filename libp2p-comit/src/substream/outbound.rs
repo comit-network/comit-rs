@@ -3,7 +3,7 @@ use crate::{
     handler::{self, InboundMessage, PendingInboundResponse, ProtocolOutEvent},
     protocol::Frames,
     substream::{Advance, Advanced, CloseStream},
-    Frame, FrameType,
+    Frame, FrameKind,
 };
 use futures::{channel::oneshot, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
@@ -84,13 +84,13 @@ impl Advance for State {
                 mut stream,
             } => match stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(Ok(frame))) => {
-                    let response = match frame.frame_type {
-                        FrameType::Response => serde_json::from_value(frame.payload),
-                        FrameType::Request => {
+                    let response = match frame.kind {
+                        FrameKind::Response => serde_json::from_value(frame.payload),
+                        FrameKind::Request => {
                             return Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
                         }
-                        FrameType::Unknown => {
-                            return Advanced::error(stream, handler::Error::UnknownFrameType)
+                        FrameKind::Unknown => {
+                            return Advanced::error(stream, handler::Error::UnknownFrameKind)
                         }
                     };
 

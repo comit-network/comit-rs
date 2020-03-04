@@ -45,7 +45,7 @@ pub enum Error {
     #[error("unknown request type: {0}")]
     UnknownRequestType(String),
     #[error("unknown frame type")]
-    UnknownFrameType,
+    UnknownFrameKind,
     #[error("unexpected frame")]
     UnexpectedFrame(Frame),
     #[error("malformed frame")]
