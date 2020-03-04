@@ -1,5 +1,12 @@
 import { expect } from "chai";
-import { BigNumber, Cnd, ComitClient, LedgerAction, Swap } from "comit-sdk";
+import {
+    BigNumber,
+    Cnd,
+    ComitClient,
+    LedgerAction,
+    Swap,
+    SwapDetails,
+} from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
@@ -8,13 +15,14 @@ import { LedgerConfig } from "../ledgers/ledger_runner";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
-import { Lnd } from "../ledgers/lnd";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { HarnessGlobal, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
-import { SwapDetails } from "comit-sdk/dist/src/cnd/cnd";
+import { LndInstance } from "../ledgers/lnd_instance";
+import { sha256 } from "js-sha256";
+import { InvoiceState } from "@radar/lnrpc";
 
 declare var global: HarnessGlobal;
 
@@ -75,7 +83,7 @@ export class Actor {
     private readonly startingBalances: Map<string, BigNumber>;
     private readonly expectedBalanceChanges: Map<string, BigNumber>;
 
-    public lnd: Lnd;
+    public lndInstance: LndInstance;
 
     private constructor(
         private readonly logger: Logger,
@@ -194,7 +202,7 @@ export class Actor {
                 "lightning"
             );
 
-            await thisLightningWallet.addPeer(toLightningWallet);
+            await thisLightningWallet.connectPeer(toLightningWallet);
 
             if (this.alphaLedger.name === "lightning") {
                 // Alpha Ledger is lightning so Alice will be sending assets over lightning
@@ -244,12 +252,10 @@ export class Actor {
         };
 
         this.swap = await comitClient.sendSwap(payload);
-        to.swap = new Swap(
-            to.wallets.bitcoin.inner,
-            to.wallets.ethereum.inner,
-            to.cnd,
-            this.swap.self
-        );
+        to.swap = new Swap(to.cnd, this.swap.self, {
+            bitcoinWallet: to.wallets.bitcoin.inner,
+            ethereumWallet: to.wallets.ethereum.inner,
+        });
         this.logger.debug("Created new swap at %s", this.swap.self);
 
         return this.swap;
@@ -574,9 +580,10 @@ export class Actor {
     }
 
     public stop() {
+        this.logger.debug("Stopping actor");
         this.cndInstance.stop();
-        if (this.lnd && this.lnd.isRunning()) {
-            this.lnd.stop();
+        if (this.lndInstance && this.lndInstance.isRunning()) {
+            this.lndInstance.stop();
         }
     }
 
@@ -710,22 +717,39 @@ export class Actor {
     }
 
     private async initializeDependencies() {
+        const lightningNeeded =
+            this.alphaLedger.name === "lightning" ||
+            this.betaLedger.name === "lightning";
+
+        if (lightningNeeded) {
+            this.lndInstance = new LndInstance(
+                this.logger,
+                this.logRoot,
+                this.config,
+                global.ledgerConfigs.bitcoin.dataDir
+            );
+            await this.lndInstance.start();
+        }
+
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
+            let lnd;
+            if (this.lndInstance) {
+                lnd = {
+                    lnd: this.lndInstance.lnd,
+                    lndP2pSocket: this.lndInstance.getLightningSocket(),
+                };
+            }
             await this.wallets.initializeForLedger(
                 ledgerName,
                 this.logger,
-                this.logRoot,
-                this.config
+                lnd
             );
         }
 
-        if (
-            this.alphaLedger.name !== "lightning" &&
-            this.betaLedger.name !== "lightning"
-        ) {
+        if (!lightningNeeded) {
             this.comitClient = new ComitClient(this.cnd)
                 .withBitcoinWallet(
                     this.wallets.getWalletForLedger("bitcoin").inner
@@ -849,18 +873,107 @@ export class Actor {
         }
     }
 
-    public async createLnInvoice(sats: number) {
-        return this.wallets.lightning.createInvoice(sats);
+    /// This is to be removed once cnd supports lightning
+    public lnCreateSha256Secret(): { secret: string; secretHash: string } {
+        const secretBuf = Buffer.alloc(32);
+        for (let i = 0; i < secretBuf.length; i++) {
+            secretBuf[i] = Math.floor(Math.random() * 255);
+        }
+
+        const secretHash = sha256(secretBuf);
+        const secret = secretBuf.toString("hex");
+        this.logger.debug(`LN: secret: ${secret}, secretHash: ${secretHash}`);
+        return { secret, secretHash };
     }
 
-    public async payLnInvoice(request: string) {
-        return this.wallets.lightning.pay(request);
+    public async lnCreateHoldInvoice(
+        sats: string,
+        secretHash: string,
+        expiry: number
+    ): Promise<void> {
+        this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
+        const resp = await this.wallets.lightning.inner.addHoldInvoice(
+            sats,
+            secretHash,
+            expiry,
+            "test hold invoice"
+        );
+        this.logger.debug("LN: Create Hold Response:", resp);
     }
 
-    public async assertLnInvoiceSettled(id: string) {
-        const resp = await this.wallets.lightning.getInvoice(id);
-        if (!resp.is_confirmed) {
-            throw new Error(`Invoice ${id} is not confirmed}`);
+    public async lnSendPayment(
+        to: Actor,
+        satAmount: string,
+        secretHash: string,
+        finalCltvDelta: number
+    ) {
+        const toPubkey = await to.wallets.lightning.inner.getPubkey();
+        this.logger.debug(
+            "LN: Send Payment -",
+            "to:",
+            toPubkey,
+            "; amt:",
+            satAmount,
+            "; hash:",
+            secretHash,
+            "; finalCltvDelta: ",
+            finalCltvDelta
+        );
+        const resp = await this.wallets.lightning.inner.sendPayment(
+            toPubkey,
+            satAmount,
+            secretHash,
+            finalCltvDelta
+        );
+        this.logger.debug("LN: Send Payment Response:", resp);
+        return resp;
+    }
+
+    /** Settles the invoice once it is `accepted`.
+     *
+     * When the other party sends the payment, the invoice status changes
+     * from `open` to `accepted`. Hence, we check first if the invoice is accepted
+     * with `lnAssertInvoiceAccepted`. If it throws, then we sleep 100ms and recursively
+     * call `lnSettleInvoice` (this function).
+     * If `lnAssertInvoiceAccepted` does not throw then it means the payment has been received
+     * and we proceed with the settlement.
+     */
+    public async lnSettleInvoice(secret: string, secretHash: string) {
+        try {
+            await this.lnAssertInvoiceAccepted(secretHash);
+            this.logger.debug("LN: Settle Invoice", secret, secretHash);
+            await this.wallets.lightning.inner.settleInvoice(secret);
+        } catch {
+            await sleep(100);
+            await this.lnSettleInvoice(secret, secretHash);
+        }
+    }
+
+    public async lnCreateInvoice(sats: string) {
+        this.logger.debug(`Creating invoice for ${sats} sats`);
+        return this.wallets.lightning.addInvoice(sats);
+    }
+
+    public async lnPayInvoiceWithRequest(request: string): Promise<void> {
+        this.logger.debug(`Paying invoice with request ${request}`);
+        await this.wallets.lightning.pay(request);
+    }
+
+    public async lnAssertInvoiceSettled(secretHash: string) {
+        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
+        if (resp.state !== InvoiceState.SETTLED) {
+            throw new Error(
+                `Invoice ${secretHash} is not settled, status is ${resp.state}`
+            );
+        }
+    }
+
+    public async lnAssertInvoiceAccepted(secretHash: string) {
+        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
+        if (resp.state !== InvoiceState.ACCEPTED) {
+            throw new Error(
+                `Invoice ${secretHash} is not accepted, status is ${resp.state}`
+            );
         }
     }
 }

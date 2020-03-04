@@ -9,6 +9,7 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "resolveJsonModule": true,
+        "skipLibCheck": true,
         "sourceMap": true,
         "esModuleInterop": true,
         "outDir": "dist",
