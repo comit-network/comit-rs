@@ -39,7 +39,7 @@ pub enum Error {
     #[error("malformed frame: ")]
     MalformedJson(#[from] frame::CodecError),
     #[error("dropped response: {0}")]
-    DroppedResponseSender(Canceled),
+    DroppedResponseSender(#[from] Canceled),
     #[error("unknown mandatory header: {0:?}")]
     UnknownMandatoryHeader(UnknownMandatoryHeaders),
     #[error("unknown request type: {0}")]
@@ -52,12 +52,6 @@ pub enum Error {
     MalformedFrame(#[from] serde_json::Error),
     #[error("unexpected EOF")]
     UnexpectedEOF,
-}
-
-impl From<Canceled> for Error {
-    fn from(e: Canceled) -> Self {
-        Error::DroppedResponseSender(e)
-    }
 }
 
 impl ComitHandler {
