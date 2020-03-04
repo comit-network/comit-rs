@@ -929,6 +929,15 @@ export class Actor {
         return resp;
     }
 
+    /** Settles the invoice once it is `accepted`.
+     *
+     * When the other party sends the payment, the invoice status changes
+     * from `open` to `accepted`. Hence, we check first if the invoice is accepted
+     * with `lnAssertInvoiceAccepted`. If it throws, then we sleep 100ms and recursively
+     * call `lnSettleInvoice` (this function).
+     * If `lnAssertInvoiceAccepted` does not throw then it means the payment has been received
+     * and we proceed with the settlement.
+     */
     public async lnSettleInvoice(secret: string, secretHash: string) {
         try {
             await this.lnAssertInvoiceAccepted(secretHash);
