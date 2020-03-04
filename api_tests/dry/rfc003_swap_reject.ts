@@ -29,14 +29,15 @@ setTimeout(async function() {
         // setup
 
         // Alice should be able to send two swap requests to Bob
-        await alice.cnd.postSwap({
+        const url1 = await alice.cnd.postSwap({
             ...(await createDefaultSwapRequest(bob)),
             alpha_asset: {
                 name: DEFAULT_ALPHA.asset.name,
                 quantity: DEFAULT_ALPHA.asset.quantity.reasonable,
             },
         });
-        await alice.cnd.postSwap({
+
+        const url2 = await alice.cnd.postSwap({
             ...(await createDefaultSwapRequest(bob)),
             alpha_asset: {
                 name: DEFAULT_ALPHA.asset.name,
@@ -48,6 +49,11 @@ setTimeout(async function() {
             alice,
             "[Alice] Shows the swaps as IN_PROGRESS in GET /swaps"
         );
+
+        // make sure bob processed the swaps fully
+        await bob.pollSwapDetails(url1);
+        await bob.pollSwapDetails(url2);
+
         await assertSwapsInProgress(
             bob,
             "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
