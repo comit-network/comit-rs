@@ -5,7 +5,7 @@ import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
 import { LedgerConfig } from "../ledgers/ledger_runner";
-import { HarnessGlobal } from "../utils";
+import { HarnessGlobal, sleep } from "../utils";
 import path from "path";
 import { LogReader } from "../ledgers/log_reader";
 
@@ -77,6 +77,9 @@ export class CndInstance {
 
         const logReader = new LogReader(logFile);
         await logReader.waitForLogMessage("Starting HTTP server on");
+
+        // we emit the log _before_ we start the http server, let's make sure it actually starts up
+        await sleep(1000);
     }
 
     public stop() {
