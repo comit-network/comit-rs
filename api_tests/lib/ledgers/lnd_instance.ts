@@ -23,7 +23,7 @@ export class LndInstance {
     public async start() {
         const bin = process.env.LND_BIN ? process.env.LND_BIN : "lnd";
 
-        this.logger.debug(`[${this.actorConfig.name}] using binary ${bin}`);
+        this.logger.debug(`Using binary ${bin}`);
 
         this.lndDir = path.join(
             this.testLogDir,
@@ -36,15 +36,10 @@ export class LndInstance {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
         });
 
-        this.logger.debug(
-            `[${this.actorConfig.name}] process spawned LND with PID ${this.process.pid}`
-        );
+        this.logger.debug(`Process spawned LND with PID ${this.process.pid}`);
 
         this.process.on("exit", (code: number, signal: number) => {
-            this.logger.debug(
-                `cnd ${this.actorConfig.name} exited with ${code ||
-                    `signal ${signal}`}`
-            );
+            this.logger.debug(`lnd exited with ${code || `signal ${signal}`}`);
         });
 
         this.logger.debug("Waiting for lnd log file to exist:", this.logPath());
