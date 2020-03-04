@@ -3,12 +3,12 @@ import { Actor } from "./actors/actor";
 import { createActor } from "./create_actor";
 
 export async function createActors(
-    logFileName: string,
+    logFilePath: string,
     actorNames: string[]
 ): Promise<Actors> {
     const actorsMap = new Map<string, Actor>();
     for (const name of actorNames) {
-        actorsMap.set(name, await createActor(logFileName, name));
+        actorsMap.set(name, await createActor(logFilePath, name));
     }
 
     const actors = new Actors(actorsMap);

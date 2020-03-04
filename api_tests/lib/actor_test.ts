@@ -20,7 +20,7 @@ function nActorTest(
 
     it(name, async function() {
         this.timeout(100_000); // absurd timeout. we have our own one further down
-        const actors = await createActors(`${name}.log`, actorNames);
+        const actors = await createActors(name, actorNames);
 
         try {
             await timeout(60000, testFn(actors));

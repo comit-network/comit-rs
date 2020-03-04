@@ -5,7 +5,7 @@ import { threeActorTest } from "../lib/actor_test";
 import { expect } from "chai";
 import "chai/register-should";
 import "../lib/setup_chai";
-import { SwapDetails } from "comit-sdk/dist/src/cnd/cnd";
+import { SwapDetails } from "comit-sdk";
 import { createDefaultSwapRequest } from "../lib/utils";
 
 interface MatchInterface {
