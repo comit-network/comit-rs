@@ -59,10 +59,8 @@ where
         .find_output(&compute_address)
         .expect("Deployment transaction must contain outpoint described in pattern");
 
-    Ok((transaction.clone(), OutPoint {
-        txid: transaction.txid(),
-        vout,
-    }))
+    let txid = transaction.txid();
+    Ok((transaction, OutPoint { txid, vout }))
 }
 
 pub async fn matching_transaction<C, F>(
