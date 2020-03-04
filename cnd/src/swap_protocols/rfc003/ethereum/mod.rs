@@ -2,12 +2,9 @@ pub mod htlc_events;
 
 use crate::{
     asset,
-    ethereum::{Bytes, Transaction},
+    ethereum::Bytes,
     identity,
-    swap_protocols::{
-        ledger::Ethereum,
-        rfc003::{create_swap::HtlcParams, Ledger},
-    },
+    swap_protocols::{ledger::Ethereum, rfc003::create_swap::HtlcParams},
 };
 use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
 use serde::{Deserialize, Serialize};
@@ -39,10 +36,6 @@ impl From<Seconds> for Duration {
     fn from(seconds: Seconds) -> Duration {
         Duration::from_secs(seconds.0)
     }
-}
-
-impl Ledger for Ethereum {
-    type Transaction = Transaction;
 }
 
 impl From<HtlcParams<Ethereum, asset::Ether, identity::Ethereum>> for EtherHtlc {

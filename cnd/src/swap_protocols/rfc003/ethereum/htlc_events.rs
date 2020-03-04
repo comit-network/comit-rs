@@ -30,8 +30,14 @@ lazy_static::lazy_static! {
 }
 
 #[async_trait::async_trait]
-impl HtlcFunded<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcFunded<
+        Ethereum,
+        asset::Ether,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_funded(
         &self,
@@ -47,8 +53,14 @@ impl HtlcFunded<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Ether
 }
 
 #[async_trait::async_trait]
-impl HtlcDeployed<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcDeployed<
+        Ethereum,
+        asset::Ether,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_deployed(
         &self,
@@ -69,8 +81,14 @@ impl HtlcDeployed<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Eth
 }
 
 #[async_trait::async_trait]
-impl HtlcRedeemed<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcRedeemed<
+        Ethereum,
+        asset::Ether,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_redeemed(
         &self,
@@ -100,8 +118,14 @@ impl HtlcRedeemed<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Eth
 }
 
 #[async_trait::async_trait]
-impl HtlcRefunded<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcRefunded<
+        Ethereum,
+        asset::Ether,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_refunded(
         &self,
@@ -124,8 +148,14 @@ impl HtlcRefunded<Ethereum, asset::Ether, htlc_location::Ethereum, identity::Eth
 }
 
 #[async_trait::async_trait]
-impl HtlcFunded<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcFunded<
+        Ethereum,
+        asset::Erc20,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_funded(
         &self,
@@ -156,8 +186,14 @@ impl HtlcFunded<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Ether
 }
 
 #[async_trait::async_trait]
-impl HtlcDeployed<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcDeployed<
+        Ethereum,
+        asset::Erc20,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_deployed(
         &self,
@@ -179,8 +215,14 @@ impl HtlcDeployed<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Eth
 }
 
 #[async_trait::async_trait]
-impl HtlcRedeemed<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcRedeemed<
+        Ethereum,
+        asset::Erc20,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_redeemed(
         &self,
@@ -210,8 +252,14 @@ impl HtlcRedeemed<Ethereum, asset::Erc20, htlc_location::Ethereum, identity::Eth
 }
 
 #[async_trait::async_trait]
-impl HtlcRefunded<Ethereum, Erc20, htlc_location::Ethereum, identity::Ethereum>
-    for Cache<Web3Connector>
+impl
+    HtlcRefunded<
+        Ethereum,
+        Erc20,
+        htlc_location::Ethereum,
+        identity::Ethereum,
+        transaction::Ethereum,
+    > for Cache<Web3Connector>
 {
     async fn htlc_refunded(
         &self,

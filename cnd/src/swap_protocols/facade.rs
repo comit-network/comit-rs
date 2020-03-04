@@ -12,7 +12,7 @@ use crate::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             self,
-            create_swap::{HtlcParams, ReplacementSwapEventOnLedger},
+            create_swap::{HtlcParams, SwapEventOnLedger},
             events::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
@@ -68,7 +68,7 @@ impl StateStore for Facade {
         self.state_store.get(key)
     }
 
-    fn update<A>(&self, key: &SwapId, update: ReplacementSwapEventOnLedger<A>)
+    fn update<A>(&self, key: &SwapId, update: SwapEventOnLedger<A>)
     where
         A: ActorState,
         A::AA: Ord,
@@ -127,6 +127,7 @@ impl
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
+        transaction::Bitcoin,
     > for Facade
 {
     async fn htlc_funded(
@@ -149,6 +150,7 @@ impl
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
+        transaction::Bitcoin,
     > for Facade
 {
     async fn htlc_deployed(
@@ -170,6 +172,7 @@ impl
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
+        transaction::Bitcoin,
     > for Facade
 {
     async fn htlc_redeemed(
@@ -192,6 +195,7 @@ impl
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
+        transaction::Bitcoin,
     > for Facade
 {
     async fn htlc_refunded(
@@ -214,6 +218,7 @@ impl
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
+        transaction::Ethereum,
     > for Facade
 {
     async fn htlc_funded(
@@ -236,6 +241,7 @@ impl
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
+        transaction::Ethereum,
     > for Facade
 {
     async fn htlc_deployed(
@@ -257,6 +263,7 @@ impl
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
+        transaction::Ethereum,
     > for Facade
 {
     async fn htlc_redeemed(
@@ -279,6 +286,7 @@ impl
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
+        transaction::Ethereum,
     > for Facade
 {
     async fn htlc_refunded(

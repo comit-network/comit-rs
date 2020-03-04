@@ -3,25 +3,15 @@ mod htlc_events;
 
 use crate::{
     asset, identity,
-    swap_protocols::{
-        ledger,
-        rfc003::{create_swap::HtlcParams, Ledger},
-    },
+    swap_protocols::{ledger, rfc003::create_swap::HtlcParams},
 };
 use ::bitcoin::{
     hashes::{hash160, Hash},
-    Address, Transaction,
+    Address,
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 
 pub use self::htlc_events::*;
-
-impl<B> Ledger for B
-where
-    B: ledger::Bitcoin,
-{
-    type Transaction = Transaction;
-}
 
 impl<B> From<HtlcParams<B, asset::Bitcoin, identity::Bitcoin>> for BitcoinHtlc
 where

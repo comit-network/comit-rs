@@ -8,13 +8,14 @@ use crate::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             alice,
             create_swap::HtlcParams,
-            DeriveSecret, Ledger, LedgerState, SwapCommunication,
+            DeriveSecret, LedgerState, SwapCommunication,
         },
     },
+    transaction,
 };
 use std::convert::Infallible;
 
-impl<BL, BA, BH, BI> Actions
+impl<BL, BA, BH, BI, BT> Actions
     for alice::State<
         Ethereum,
         BL,
@@ -24,12 +25,15 @@ impl<BL, BA, BH, BI> Actions
         BH,
         identity::Ethereum,
         BI,
+        transaction::Ethereum,
+        BT,
     >
 where
-    BL: Ledger,
+    BL: Clone,
     BA: Clone,
     BH: Clone,
     BI: Clone,
+    BT: Clone,
     (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]
@@ -84,7 +88,7 @@ where
     }
 }
 
-impl<AL, AA, AH, AI> Actions
+impl<AL, AA, AH, AI, AT> Actions
     for alice::State<
         AL,
         Ethereum,
@@ -94,18 +98,17 @@ impl<AL, AA, AH, AI> Actions
         htlc_location::Ethereum,
         AI,
         identity::Ethereum,
+        AT,
+        transaction::Ethereum,
     >
 where
-    AL: Ledger,
+    AL: Clone,
     AA: Clone,
     AH: Copy,
     AI: Clone,
+    AT: Clone,
     (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
-        + RefundAction<
-            HtlcParams = HtlcParams<AL, AA, AI>,
-            HtlcLocation = AH,
-            FundTransaction = AL::Transaction,
-        >,
+        + RefundAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH, FundTransaction = AT>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<

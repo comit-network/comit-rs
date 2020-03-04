@@ -17,10 +17,10 @@ use crate::{
             self, bob,
             messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
-            Ledger,
         },
         HashFunction, Role, SwapId, SwapProtocol,
     },
+    transaction,
 };
 use async_trait::async_trait;
 use futures_core::{
@@ -290,6 +290,8 @@ async fn handle_request(
                                 htlc_location::Ethereum,
                                 _,
                                 _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -322,6 +324,8 @@ async fn handle_request(
                                 htlc_location::Ethereum,
                                 _,
                                 _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -354,6 +358,8 @@ async fn handle_request(
                                 htlc_location::Ethereum,
                                 _,
                                 _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -386,6 +392,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -418,6 +426,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -450,6 +460,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -482,6 +494,8 @@ async fn handle_request(
                                 htlc_location::Ethereum,
                                 _,
                                 _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -515,6 +529,8 @@ async fn handle_request(
                                 htlc_location::Ethereum,
                                 _,
                                 _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -548,6 +564,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -581,6 +599,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -613,6 +633,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -645,6 +667,8 @@ async fn handle_request(
                                 htlc_location::Bitcoin,
                                 _,
                                 _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
                                 _,
                             >(
                                 db.clone(), seed, state_store.clone(), counterparty, request
@@ -696,7 +720,7 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
@@ -704,14 +728,16 @@ async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, DB>(
     swap_request: Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
-    AL: Ledger,
-    BL: Ledger,
+    AL: Send + 'static,
+    BL: Send + 'static,
     AA: Send + 'static,
     BA: Send + 'static,
-    AI: Send + 'static,
-    BI: Send + 'static,
     AH: Send + 'static,
     BH: Send + 'static,
+    AI: Send + 'static,
+    BI: Send + 'static,
+    AT: Send + 'static,
+    BT: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
@@ -721,7 +747,8 @@ where
     Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
-    let state = bob::State::<_, _, _, _, AH, BH, _, _>::proposed(swap_request.clone(), seed);
+    let state =
+        bob::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
     state_store.insert(id, state);
 
     Ok(())

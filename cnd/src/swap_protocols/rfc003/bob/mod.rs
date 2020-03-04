@@ -1,32 +1,24 @@
 pub mod actions;
 
 use crate::swap_protocols::rfc003::{
-    ledger::Ledger, ledger_state::LedgerState, messages::Request, Accept, ActorState, Decline,
-    DeriveIdentities, SwapCommunication,
+    ledger_state::LedgerState, messages::Request, Accept, ActorState, Decline, DeriveIdentities,
+    SwapCommunication,
 };
 use derivative::Derivative;
 use std::sync::Arc;
 
 #[derive(Clone, Derivative)]
 #[derivative(Debug)]
-pub struct State<AL, BL, AA, BA, AH, BH, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+pub struct State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> {
     pub swap_communication: SwapCommunication<AL, BL, AA, BA, AI, BI>,
-    pub alpha_ledger_state: LedgerState<AA, AH, AL::Transaction>,
-    pub beta_ledger_state: LedgerState<BA, BH, BL::Transaction>,
+    pub alpha_ledger_state: LedgerState<AA, AH, AT>,
+    pub beta_ledger_state: LedgerState<BA, BH, BT>,
     #[derivative(Debug = "ignore")]
     pub secret_source: Arc<dyn DeriveIdentities>,
     pub failed: bool, // Gets set on any error during the execution of a swap.
 }
 
-impl<AL, BL, AA, BA, AH, BH, AI, BI> State<AL, BL, AA, BA, AH, BH, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> {
     pub fn proposed(
         request: Request<AL, BL, AA, BA, AI, BI>,
         secret_source: impl DeriveIdentities,
@@ -77,16 +69,19 @@ where
     }
 }
 
-impl<AL, BL, AA, BA, AH, BH, AI, BI> ActorState for State<AL, BL, AA, BA, AH, BH, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> ActorState
+    for State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>
 where
-    AL: Ledger,
-    BL: Ledger,
+    AL: 'static,
+    BL: 'static,
     AA: 'static,
     BA: 'static,
-    AI: 'static,
-    BI: 'static,
     AH: 'static,
     BH: 'static,
+    AI: 'static,
+    BI: 'static,
+    AT: 'static,
+    BT: 'static,
 {
     type AL = AL;
     type BL = BL;
@@ -94,6 +89,8 @@ where
     type BA = BA;
     type AH = AH;
     type BH = BH;
+    type AT = AT;
+    type BT = BT;
 
     fn expected_alpha_asset(&self) -> &Self::AA {
         &self.swap_communication.request().alpha_asset
@@ -103,11 +100,11 @@ where
         &self.swap_communication.request().beta_asset
     }
 
-    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AA, AH, AL::Transaction> {
+    fn alpha_ledger_mut(&mut self) -> &mut LedgerState<AA, AH, AT> {
         &mut self.alpha_ledger_state
     }
 
-    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BA, BH, BL::Transaction> {
+    fn beta_ledger_mut(&mut self) -> &mut LedgerState<BA, BH, BT> {
         &mut self.beta_ledger_state
     }
 

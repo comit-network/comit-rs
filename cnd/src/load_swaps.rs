@@ -22,7 +22,7 @@ pub async fn load_swaps_from_database(facade: Facade) -> anyhow::Result<()> {
 
             match accepted {
                 Ok(accepted) => {
-                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _>(
+                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
                         &facade, accepted, types.role,
                     )?;
                 }

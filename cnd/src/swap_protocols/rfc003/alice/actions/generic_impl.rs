@@ -4,27 +4,26 @@ use crate::swap_protocols::{
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         alice,
         create_swap::HtlcParams,
-        DeriveSecret, Ledger, LedgerState, SwapCommunication,
+        DeriveSecret, LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
 
-impl<AL, BL, AA, BA, AH, BH, AI, BI> Actions for alice::State<AL, BL, AA, BA, AH, BH, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> Actions
+    for alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>
 where
-    AL: Ledger,
-    BL: Ledger,
+    AL: Clone,
+    BL: Clone,
     AA: Clone,
     BA: Clone,
     AH: Clone,
     BH: Clone,
     AI: Clone,
     BI: Clone,
+    AT: Clone,
+    BT: Clone,
     (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
-        + RefundAction<
-            HtlcParams = HtlcParams<AL, AA, AI>,
-            HtlcLocation = AH,
-            FundTransaction = AL::Transaction,
-        >,
+        + RefundAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH, FundTransaction = AT>,
     (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]

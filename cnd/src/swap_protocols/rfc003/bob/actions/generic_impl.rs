@@ -4,27 +4,26 @@ use crate::swap_protocols::{
         actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
         bob,
         create_swap::HtlcParams,
-        Ledger, LedgerState, SwapCommunication,
+        LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
 
-impl<AL, BL, AA, BA, AH, BH, AI, BI> Actions for bob::State<AL, BL, AA, BA, AH, BH, AI, BI>
+impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> Actions
+    for bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>
 where
-    AL: Ledger,
-    BL: Ledger,
+    AL: Clone,
+    BL: Clone,
     AA: Clone,
     BA: Clone,
     AH: Clone,
     BH: Clone,
     AI: Clone,
     BI: Clone,
+    AT: Clone,
+    BT: Clone,
     (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
-        + RefundAction<
-            HtlcParams = HtlcParams<BL, BA, BI>,
-            HtlcLocation = BH,
-            FundTransaction = BL::Transaction,
-        >,
+        + RefundAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH, FundTransaction = BT>,
     (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH>,
 {
     #[allow(clippy::type_complexity)]

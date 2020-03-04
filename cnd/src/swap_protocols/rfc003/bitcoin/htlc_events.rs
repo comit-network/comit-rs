@@ -21,7 +21,8 @@ use chrono::NaiveDateTime;
 use tracing_futures::Instrument;
 
 #[async_trait::async_trait]
-impl<B> HtlcFunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+impl<B>
+    HtlcFunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin, transaction::Bitcoin>
     for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
@@ -44,7 +45,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcDeployed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+impl<B>
+    HtlcDeployed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin, transaction::Bitcoin>
     for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
@@ -69,7 +71,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRedeemed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+impl<B>
+    HtlcRedeemed<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin, transaction::Bitcoin>
     for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,
@@ -100,7 +103,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<B> HtlcRefunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin>
+impl<B>
+    HtlcRefunded<B, asset::Bitcoin, htlc_location::Bitcoin, identity::Bitcoin, transaction::Bitcoin>
     for Cache<BitcoindConnector>
 where
     B: bitcoin::Bitcoin + bitcoin::Network,

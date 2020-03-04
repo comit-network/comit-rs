@@ -10,7 +10,7 @@ use crate::{
     },
     swap_protocols::{
         actions::Actions,
-        rfc003::{self, state_store::StateStore, ActorState, Ledger},
+        rfc003::{self, state_store::StateStore, ActorState},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -123,14 +123,7 @@ where
             role: swap.role.to_string(),
             counterparty: Http(swap.counterparty),
             state: match include_state {
-                IncludeState::Yes => Some(SwapState::<
-                    AH,
-                    BH,
-                    AI,
-                    BI,
-                    <AL as Ledger>::Transaction,
-                    <BL as Ledger>::Transaction,
-                > {
+                IncludeState::Yes => Some(SwapState::<AH, BH, AI, BI, AT, BT> {
                     communication,
                     alpha_ledger,
                     beta_ledger,

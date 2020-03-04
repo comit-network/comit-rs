@@ -86,7 +86,7 @@ pub async fn handle_action(
                     &swap_id,
                 )
                 .await?;
-                init_accepted_swap::<_, _, _, _, _, AH, BH, _, _>(
+                init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
                     &dependencies,
                     accepted,
                     types.role,
@@ -123,7 +123,7 @@ pub async fn handle_action(
 
                 let swap_request = state.request();
                 let seed = dependencies.derive_swap_seed(swap_id);
-                let state = State::<AL, BL, AA, BA, AH, BH, AI, BI>::declined(
+                let state = State::<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>::declined(
                     swap_request.clone(),
                     decline_message,
                     seed,
