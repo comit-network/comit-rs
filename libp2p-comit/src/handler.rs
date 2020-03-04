@@ -1,8 +1,8 @@
 use crate::{
     frame::{self, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest},
-    protocol::ComitProtocolConfig,
+    protocol::Config,
     substream::{self, Advance, Advanced},
-    ComitHandlerEvent, Frame, Frames, IntoFrame,
+    ComitHandlerEvent, Frame, Frames,
 };
 use futures::{
     channel::oneshot::{self, Canceled},
@@ -39,25 +39,19 @@ pub enum Error {
     #[error("malformed frame: ")]
     MalformedJson(#[from] frame::CodecError),
     #[error("dropped response: {0}")]
-    DroppedResponseSender(Canceled),
+    DroppedResponseSender(#[from] Canceled),
     #[error("unknown mandatory header: {0:?}")]
     UnknownMandatoryHeader(UnknownMandatoryHeaders),
     #[error("unknown request type: {0}")]
     UnknownRequestType(String),
     #[error("unknown frame type")]
-    UnknownFrameType,
+    UnknownFrameKind,
     #[error("unexpected frame")]
     UnexpectedFrame(Frame),
     #[error("malformed frame")]
     MalformedFrame(#[from] serde_json::Error),
     #[error("unexpected EOF")]
     UnexpectedEOF,
-}
-
-impl From<Canceled> for Error {
-    fn from(e: Canceled) -> Self {
-        Error::DroppedResponseSender(e)
-    }
 }
 
 impl ComitHandler {
@@ -125,12 +119,12 @@ impl ProtocolsHandler for ComitHandler {
     type InEvent = ProtocolInEvent;
     type OutEvent = ProtocolOutEvent;
     type Error = Error;
-    type InboundProtocol = ComitProtocolConfig;
-    type OutboundProtocol = ComitProtocolConfig;
+    type InboundProtocol = Config;
+    type OutboundProtocol = Config;
     type OutboundOpenInfo = ProtocolOutboundOpenInfo;
 
     fn listen_protocol(&self) -> SubstreamProtocol<Self::InboundProtocol> {
-        SubstreamProtocol::new(ComitProtocolConfig {})
+        SubstreamProtocol::new(Config {})
     }
 
     fn inject_fully_negotiated_inbound(&mut self, stream: Frames) {
@@ -155,7 +149,7 @@ impl ProtocolsHandler for ComitHandler {
             )) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingSend {
-                        frame: request.into_frame(),
+                        frame: request.into(),
                         response_sender: channel,
                         stream: Box::pin(stream),
                     });
@@ -193,7 +187,7 @@ impl ProtocolsHandler for ComitHandler {
     fn poll(&mut self, cx: &mut Context<'_>) -> Poll<ComitHandlerEvent> {
         if let Some(request) = self.to_send.pop() {
             return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                protocol: SubstreamProtocol::new(ComitProtocolConfig {}),
+                protocol: SubstreamProtocol::new(Config {}),
                 info: ProtocolOutboundOpenInfo::Message(OutboundMessage::Request(request)),
             });
         }

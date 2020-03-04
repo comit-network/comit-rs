@@ -26,32 +26,24 @@ use serde_json::{self, Value as JsonValue};
 pub use self::{
     behaviour::{BehaviourOutEvent, Comit},
     handler::{ComitHandler, PendingInboundRequest, PendingOutboundRequest},
-    protocol::{ComitProtocolConfig, Frames},
+    protocol::{Config, Frames},
 };
 use crate::handler::{ProtocolOutEvent, ProtocolOutboundOpenInfo};
 use libp2p::swarm::ProtocolsHandlerEvent;
 
-pub type ComitHandlerEvent = ProtocolsHandlerEvent<
-    ComitProtocolConfig,
-    ProtocolOutboundOpenInfo,
-    ProtocolOutEvent,
-    handler::Error,
->;
-
-pub trait IntoFrame<F> {
-    fn into_frame(self) -> F;
-}
+pub type ComitHandlerEvent =
+    ProtocolsHandlerEvent<Config, ProtocolOutboundOpenInfo, ProtocolOutEvent, handler::Error>;
 
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
     #[serde(rename = "type")]
-    pub frame_type: FrameType,
+    pub kind: FrameKind,
     pub payload: JsonValue,
 }
 
 #[derive(Deserialize, Serialize, PartialEq, Debug, Clone, Copy)]
 #[serde(rename_all = "UPPERCASE")]
-pub enum FrameType {
+pub enum FrameKind {
     Request,
     Response,
 
@@ -62,10 +54,7 @@ pub enum FrameType {
 }
 
 impl Frame {
-    pub fn new(frame_type: FrameType, payload: JsonValue) -> Self {
-        Self {
-            frame_type,
-            payload,
-        }
+    pub fn new(kind: FrameKind, payload: JsonValue) -> Self {
+        Self { kind, payload }
     }
 }

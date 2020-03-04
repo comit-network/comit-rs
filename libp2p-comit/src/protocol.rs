@@ -10,9 +10,9 @@ use std::{convert::Infallible, iter};
 pub type Frames = Framed<NegotiatedSubstream, JsonFrameCodec>;
 
 #[derive(Clone, Copy, Debug)]
-pub struct ComitProtocolConfig {}
+pub struct Config {}
 
-impl UpgradeInfo for ComitProtocolConfig {
+impl UpgradeInfo for Config {
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
@@ -21,7 +21,7 @@ impl UpgradeInfo for ComitProtocolConfig {
     }
 }
 
-impl InboundUpgrade<NegotiatedSubstream> for ComitProtocolConfig {
+impl InboundUpgrade<NegotiatedSubstream> for Config {
     type Output = Frames;
     type Error = Infallible;
     type Future = future::Ready<Result<Self::Output, Infallible>>;
@@ -35,7 +35,7 @@ impl InboundUpgrade<NegotiatedSubstream> for ComitProtocolConfig {
     }
 }
 
-impl OutboundUpgrade<NegotiatedSubstream> for ComitProtocolConfig {
+impl OutboundUpgrade<NegotiatedSubstream> for Config {
     type Output = Frames;
     type Error = Infallible;
     type Future = future::Ready<Result<Self::Output, Infallible>>;

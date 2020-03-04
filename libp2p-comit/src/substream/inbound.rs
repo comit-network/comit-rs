@@ -3,7 +3,7 @@ use crate::{
     handler::{self, InboundMessage, PendingInboundRequest, ProtocolOutEvent},
     protocol::Frames,
     substream::{Advance, Advanced, CloseStream},
-    Frame, FrameType, IntoFrame,
+    Frame, FrameKind,
 };
 use futures::{channel::oneshot, task::Poll, Future, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
@@ -50,8 +50,8 @@ impl Advance for State {
         use self::State::*;
         match self {
             WaitingMessage { mut stream } => match stream.as_mut().poll_next(cx) {
-                Poll::Ready(Some(Ok(frame))) => match frame.frame_type {
-                    FrameType::Request => {
+                Poll::Ready(Some(Ok(frame))) => match frame.kind {
+                    FrameKind::Request => {
                         let request =
                             serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
                                 .map_err(handler::Error::MalformedFrame)
@@ -91,10 +91,10 @@ impl Advance for State {
                             Err(error) => Advanced::error(stream, error),
                         }
                     }
-                    FrameType::Response => {
+                    FrameKind::Response => {
                         Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
                     }
-                    FrameType::Unknown => Advanced::error(stream, handler::Error::UnknownFrameType),
+                    FrameKind::Unknown => Advanced::error(stream, handler::Error::UnknownFrameKind),
                 },
                 Poll::Ready(Some(Err(error))) => {
                     Advanced::error(stream, handler::Error::MalformedJson(error))
@@ -107,7 +107,7 @@ impl Advance for State {
                 stream,
             } => match receiver.as_mut().poll(cx) {
                 Poll::Ready(Ok(response)) => WaitingSend {
-                    msg: response.into_frame(),
+                    msg: response.into(),
                     stream,
                 }
                 .advance(known_headers, cx),
