@@ -151,10 +151,13 @@ impl Request {
 
 impl From<OutboundRequest> for Frame {
     fn from(r: OutboundRequest) -> Frame {
-        // Serializing Request should never fail because its members are just Strings
-        // and JsonValues
-        let payload = serde_json::to_value(r).unwrap();
-
+        let payload = serialize(r);
         Frame::new(FrameKind::Request, payload)
     }
+}
+
+fn serialize(r: OutboundRequest) -> JsonValue {
+    // Serializing and OutboundRequest should never fail because its
+    // members are just Strings and JsonValues.
+    serde_json::to_value(r).unwrap()
 }

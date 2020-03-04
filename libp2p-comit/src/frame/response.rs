@@ -49,10 +49,13 @@ impl Response {
 
 impl From<Response> for Frame {
     fn from(r: Response) -> Frame {
-        // Serializing Response should never fail because its members are just Strings
-        // and JsonValues
-        let payload = serde_json::to_value(r).unwrap();
-
+        let payload = serialize(r);
         Frame::new(FrameKind::Response, payload)
     }
+}
+
+fn serialize(r: Response) -> JsonValue {
+    // Serializing and Response should never fail because its
+    // members are just Strings and JsonValues.
+    serde_json::to_value(r).unwrap()
 }
