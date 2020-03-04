@@ -1,6 +1,6 @@
 use crate::{
     frame::header::{Header, Headers},
-    Frame, FrameType, IntoFrame,
+    Frame, FrameType,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
@@ -47,11 +47,11 @@ impl Response {
     }
 }
 
-impl IntoFrame<Frame> for Response {
-    fn into_frame(self) -> Frame {
+impl From<Response> for Frame {
+    fn from(r: Response) -> Frame {
         // Serializing Response should never fail because its members are just Strings
         // and JsonValues
-        let payload = serde_json::to_value(self).unwrap();
+        let payload = serde_json::to_value(r).unwrap();
 
         Frame::new(FrameType::Response, payload)
     }

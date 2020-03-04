@@ -38,10 +38,6 @@ pub type ComitHandlerEvent = ProtocolsHandlerEvent<
     handler::Error,
 >;
 
-pub trait IntoFrame<F> {
-    fn into_frame(self) -> F;
-}
-
 #[derive(Deserialize, Serialize, PartialEq, Debug)]
 pub struct Frame {
     #[serde(rename = "type")]

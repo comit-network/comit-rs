@@ -3,7 +3,7 @@ use crate::{
     handler::{self, InboundMessage, PendingInboundRequest, ProtocolOutEvent},
     protocol::Frames,
     substream::{Advance, Advanced, CloseStream},
-    Frame, FrameType, IntoFrame,
+    Frame, FrameType,
 };
 use futures::{channel::oneshot, task::Poll, Future, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
@@ -107,7 +107,7 @@ impl Advance for State {
                 stream,
             } => match receiver.as_mut().poll(cx) {
                 Poll::Ready(Ok(response)) => WaitingSend {
-                    msg: response.into_frame(),
+                    msg: response.into(),
                     stream,
                 }
                 .advance(known_headers, cx),

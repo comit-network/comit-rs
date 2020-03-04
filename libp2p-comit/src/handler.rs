@@ -2,7 +2,7 @@ use crate::{
     frame::{self, OutboundRequest, Response, UnknownMandatoryHeaders, ValidatedInboundRequest},
     protocol::ComitProtocolConfig,
     substream::{self, Advance, Advanced},
-    ComitHandlerEvent, Frame, Frames, IntoFrame,
+    ComitHandlerEvent, Frame, Frames,
 };
 use futures::{
     channel::oneshot::{self, Canceled},
@@ -155,7 +155,7 @@ impl ProtocolsHandler for ComitHandler {
             )) => {
                 self.outbound_substreams
                     .push(substream::outbound::State::WaitingSend {
-                        frame: request.into_frame(),
+                        frame: request.into(),
                         response_sender: channel,
                         stream: Box::pin(stream),
                     });
