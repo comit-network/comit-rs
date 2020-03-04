@@ -253,8 +253,8 @@ export class Actor {
 
         this.swap = await comitClient.sendSwap(payload);
         to.swap = new Swap(to.cnd, this.swap.self, {
-            bitcoinWallet: to.wallets.bitcoin.inner,
-            ethereumWallet: to.wallets.ethereum.inner,
+            bitcoin: to.wallets.bitcoin.inner,
+            ethereum: to.wallets.ethereum.inner,
         });
         this.logger.debug("Created new swap at %s", this.swap.self);
 
