@@ -834,6 +834,13 @@ bolt07@1.4.4:
   dependencies:
     bn.js "5.0.0"
 
+bolt07@1.4.5:
+  version "1.4.5"
+  resolved "https://registry.yarnpkg.com/bolt07/-/bolt07-1.4.5.tgz#e4c1cfac71f76a52ac4d5e830bed07fb3893c290"
+  integrity sha512-cthfbW9W4zyhhhNykWRe+QukrMM8WOq9p3g40i1zP0XNKNvJNYOTziV9AXqYWPZ4BV39PY33YsJzIhuEjNfp7Q==
+  dependencies:
+    bn.js "5.1.1"
+
 bolt09@0.0.1:
   version "0.0.1"
   resolved "https://registry.yarnpkg.com/bolt09/-/bolt09-0.0.1.tgz#cd62d5022928fed776ed1ecc59f3cf2e4176a258"
@@ -2460,10 +2467,10 @@ lightning@1.2.3:
     invoices "1.0.0"
     is-base64 "1.0.0"
 
-ln-service@^47.15.0:
-  version "47.15.0"
-  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.0.tgz#c693d1b8a97128f130816cbee740eb169d03f793"
-  integrity sha512-VI7v/TwUUysB3595IXOFKJ/9w7rD1YWc5HrIXVdFml5YfStMTIp9XW0Obl8x5Jp73ySpNuft3Ls3GT0q7F7daw==
+ln-service@^47.15.1:
+  version "47.15.1"
+  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.1.tgz#aa4b5aa795c835bde5a61c36d4a66124cd808c35"
+  integrity sha512-cad00SBy/pXLtHyyAlv8qug/h+B04XrKuYFbEL5pvlIHVvRtDi0YQk8fBEgAzyih2lYiDMcLWFqRBlsZIcfqeA==
   dependencies:
     "@alexbosworth/request" "2.88.3"
     "@datastructures-js/priority-queue" "1.0.2"
@@ -2475,7 +2482,7 @@ ln-service@^47.15.0:
     bitcoinjs-lib "5.1.7"
     bn.js "5.1.1"
     body-parser "1.19.0"
-    bolt07 "1.4.4"
+    bolt07 "1.4.5"
     bolt09 "0.0.1"
     compression "1.7.4"
     cors "2.8.5"
