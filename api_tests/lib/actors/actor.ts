@@ -354,10 +354,18 @@ export class Actor {
             }
         );
         const amount = response.data.payload.amount;
-        response.data.payload.amount = amount * 1.01;
+        const overfundAmount = amount * 1.01;
+
+        response.data.payload.amount = overfundAmount;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Overfunded swap %s in %s", this.swap.self, txid);
+        this.logger.debug(
+            "Overfunded swap %s in %s with %d instead of %d",
+            this.swap.self,
+            txid,
+            overfundAmount,
+            amount
+        );
     }
 
     public async underfund() {
@@ -369,10 +377,18 @@ export class Actor {
             }
         );
         const amount = response.data.payload.amount;
-        response.data.payload.amount = amount * 0.01;
+        const underfundAmount = amount * 0.01;
+
+        response.data.payload.amount = underfundAmount;
 
         const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug("Underfunded swap %s in %s", this.swap.self, txid);
+        this.logger.debug(
+            "Underfunded swap %s in %s with %d instead of %d",
+            this.swap.self,
+            txid,
+            underfundAmount,
+            amount
+        );
     }
 
     public async refund() {
