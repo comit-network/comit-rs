@@ -1,20 +1,18 @@
 # Releasing
 
-Releases of comit-rs are mostly automated.
-Here is what you need to know:
+Releases of comit-rs are mostly automated based on the GitFlow branching model.
 
-The repository uses the GitFlow branching model.
-Hence, releases are started by branching a release-branch (`release/x.y.z`) off `dev`.
+To release a new version, create an issue with the title "Release version x.y.z" and label it with the "release" label.
 
-1. Start with creating said release branch locally.
-1. Update the changelog to reflect the newest release.
-1. Bump necessary versions in the manifest files.
-1. Build to ensure the lock files are updated.
-1. Commit and push your changes
-1. Create a pull request targeting the __master__ branch.
-1. Get approvals and merge it.
+From here, [the automation](./.github/workflows/draft-new-release.yml) takes over and:
 
-From here, [the automation](./.github/workflows/publish-new-release.yml) takes over and:
+1. Creates a new branch `release/x.y.z`
+1. Updates the changelog to the new version
+1. Bumps the version of the cnd/Cargo.toml manifest
+1. Commits and pushes the changes
+1. Creates a pull request for merging the release branch into master.
+
+Merging this pull request will trigger another [workflow](./.github/workflows/publish-new-release.yml) that:
 
 1. Builds the release artifacts for Linux and MacOS.
 1. Pushes a new tag of the [comitnetwork/cnd](https://hub.docker.com/repository/docker/comitnetwork/cnd) docker image.
