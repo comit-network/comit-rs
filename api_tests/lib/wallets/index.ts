@@ -1,5 +1,4 @@
-import { BigNumber, Lnd } from "comit-sdk";
-import { Asset } from "comit-sdk";
+import { Asset, BigNumber, Lnd } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";

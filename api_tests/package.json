@@ -11,7 +11,7 @@
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
-        "node": "^10.14"
+        "node": "^12"
     },
     "author": "CoBloX Team",
     "license": "ISC",
@@ -45,7 +45,7 @@
         "chai-json-schema": "^1.5.0",
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
-        "comit-sdk": "^0.13.0",
+        "comit-sdk": "^0.14.0",
         "commander": "^4.1.1",
         "ethers": "^4.0.45",
         "get-port": "^5.1.1",

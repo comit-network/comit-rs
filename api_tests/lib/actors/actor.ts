@@ -253,8 +253,8 @@ export class Actor {
 
         this.swap = await comitClient.sendSwap(payload);
         to.swap = new Swap(to.cnd, this.swap.self, {
-            bitcoinWallet: to.wallets.bitcoin.inner,
-            ethereumWallet: to.wallets.ethereum.inner,
+            bitcoin: to.wallets.bitcoin.inner,
+            ethereum: to.wallets.ethereum.inner,
         });
         this.logger.debug("Created new swap at %s", this.swap.self);
 
@@ -905,14 +905,15 @@ export class Actor {
     public async lnCreateHoldInvoice(
         sats: string,
         secretHash: string,
-        expiry: number
+        expiry: number,
+        cltvExpiry: number
     ): Promise<void> {
         this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
         const resp = await this.wallets.lightning.inner.addHoldInvoice(
             sats,
             secretHash,
             expiry,
-            "test hold invoice"
+            cltvExpiry
         );
         this.logger.debug("LN: Create Hold Response:", resp);
     }

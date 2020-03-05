@@ -78,9 +78,9 @@ commands:
             curl -sL https://dl.yarnpkg.com/debian/pubkey.gpg | sudo apt-key add -
             curl -sL https://deb.nodesource.com/gpgkey/nodesource.gpg.key | sudo apt-key add -
             echo "deb https://dl.yarnpkg.com/debian/ stable main" | sudo tee /etc/apt/sources.list.d/yarn.list
-            echo "deb https://deb.nodesource.com/node_10.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_10.list
+            echo "deb https://deb.nodesource.com/node_12.x/ trusty main" | sudo tee /etc/apt/sources.list.d/node_12.list
             sudo apt-get update
-            sudo apt-get install -y nodejs=10.* yarn
+            sudo apt-get install -y nodejs=12.* yarn
   install_rust:
     steps:
       - run:
