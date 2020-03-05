@@ -17,7 +17,7 @@ use tokio::sync::Mutex;
 
 // This makes it a bit obscure that we have an option, the compile will point it
 // out though; this alias allows us to use the macros :)
-type Block = Option<ethereum::Block>;
+type Block = ethereum::Block;
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
@@ -26,7 +26,7 @@ pub struct Cache<C> {
     #[derivative(Debug = "ignore")]
     pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
     #[derivative(Debug = "ignore")]
-    pub receipt_cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
+    pub receipt_cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
 }
 
 impl<C> Cache<C> {
@@ -61,13 +61,11 @@ where
         let future = async move {
             let block = connector.latest_block().compat().await?;
 
-            if let Some(block) = block.clone() {
-                let block_hash = block.hash.expect("no blocks without hash");
-                let mut guard = cache.lock().await;
-                if !guard.contains(&block_hash) {
-                    guard.put(block_hash, Some(block.clone()));
-                }
-            };
+            let block_hash = block.hash.expect("no blocks without hash");
+            let mut guard = cache.lock().await;
+            if !guard.contains(&block_hash) {
+                guard.put(block_hash, block.clone());
+            }
 
             Ok(block)
         }
@@ -82,9 +80,9 @@ impl_block_by_hash!();
 
 impl<C> ReceiptByHash for Cache<C>
 where
-    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash> + Clone,
 {
-    type Receipt = Option<TransactionReceipt>;
+    type Receipt = TransactionReceipt;
     type TransactionHash = Hash;
 
     fn receipt_by_hash(
@@ -99,11 +97,11 @@ where
 
 async fn receipt_by_hash<C>(
     connector: C,
-    cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
+    cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
     transaction_hash: Hash,
-) -> anyhow::Result<Option<TransactionReceipt>>
+) -> anyhow::Result<TransactionReceipt>
 where
-    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash> + Clone,
 {
     if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
         tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
