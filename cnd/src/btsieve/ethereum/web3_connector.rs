@@ -25,57 +25,50 @@ impl Web3Connector {
     }
 }
 
+#[async_trait]
 impl LatestBlock for Web3Connector {
     type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let web3 = self.web3.clone();
         let url = self.url.clone();
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
-                serialize(BlockNumber::Latest)?,
-                serialize(true)?,
-            ]);
+        let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
+            serialize(BlockNumber::Latest)?,
+            serialize(true)?,
+        ]);
 
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block>>()
-                .await?;
+        let response = web3
+            .post(url)
+            .json(&request)
+            .send()
+            .await?
+            .json::<JsonRpcResponse<crate::ethereum::Block>>()
+            .await?;
 
-            let block = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getBlockByNumber request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Err(anyhow::anyhow!(
-                        "eth_getBlockByNumber request failed with {}: {}",
-                        code,
-                        message
-                    ));
-                }
-            };
+        let block = match response {
+            JsonRpcResponse::Success { result } => result,
+            JsonRpcResponse::Error { code, message } => {
+                tracing::warn!(
+                    "eth_getBlockByNumber request failed with {}: {}",
+                    code,
+                    message
+                );
+                return Err(anyhow::anyhow!(
+                    "eth_getBlockByNumber request failed with {}: {}",
+                    code,
+                    message
+                ));
+            }
+        };
 
-            tracing::trace!(
-                "Fetched block from web3: {:x}",
-                block.hash.expect("blocks to have a hash")
-            );
+        tracing::trace!(
+            "Fetched block from web3: {:x}",
+            block.hash.expect("blocks to have a hash")
+        );
 
-            Ok(block)
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(block)
     }
 }
 

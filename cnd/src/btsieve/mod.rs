@@ -7,19 +7,19 @@ pub mod bitcoin;
 pub mod ethereum;
 
 use crate::Never;
+use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use futures::Future;
 use futures_core::compat::Future01CompatExt;
 use genawaiter::sync::Co;
 use std::{collections::HashSet, hash::Hash};
 
+#[async_trait]
 pub trait LatestBlock: Send + Sync + 'static {
     type Block;
     type BlockHash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static>;
+    async fn latest_block(&mut self) -> anyhow::Result<Self::Block>;
 }
 
 pub trait BlockByHash: Send + Sync + 'static {
@@ -64,7 +64,7 @@ where
     B: Predates + BlockHash<H> + PreviousBlockHash<H> + Clone,
     H: Eq + Hash + Copy,
 {
-    let block = connector.latest_block().compat().await?;
+    let block = connector.latest_block().await?;
 
     // Look back in time until we get a block that predates start_of_swap.
     let mut seen_blocks = walk_back_until(
@@ -77,7 +77,7 @@ where
 
     // Look forward in time, but keep going back for missed blocks
     loop {
-        let block = connector.latest_block().compat().await?;
+        let block = connector.latest_block().await?;
 
         let missed_blocks = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),

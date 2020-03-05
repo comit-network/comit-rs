@@ -1,11 +1,9 @@
 use crate::btsieve::{BlockByHash, LatestBlock};
+use async_trait::async_trait;
 use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
 use futures::Future;
-use futures_core::{
-    compat::Future01CompatExt,
-    future::{FutureExt, TryFutureExt},
-};
+use futures_core::{compat::Future01CompatExt, future::TryFutureExt};
 use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -28,6 +26,7 @@ impl<C> Cache<C> {
     }
 }
 
+#[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
     C: LatestBlock<Block = Block, BlockHash = BlockHash> + Clone,
@@ -35,27 +34,19 @@ where
     type Block = Block;
     type BlockHash = BlockHash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let cache = Arc::clone(&self.block_cache);
         let mut connector = self.connector.clone();
 
-        let future = async move {
-            let block = connector.latest_block().compat().await?;
+        let block = connector.latest_block().await?;
 
-            let block_hash = block.bitcoin_hash();
-            let mut guard = cache.lock().await;
-            if !guard.contains(&block_hash) {
-                guard.put(block_hash, block.clone());
-            }
-
-            Ok(block)
+        let block_hash = block.bitcoin_hash();
+        let mut guard = cache.lock().await;
+        if !guard.contains(&block_hash) {
+            guard.put(block_hash, block.clone());
         }
-        .boxed()
-        .compat();
 
-        Box::new(future)
+        Ok(block)
     }
 }
 
