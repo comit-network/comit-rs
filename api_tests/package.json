@@ -7,7 +7,7 @@
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
         "pretest": "cargo build --bin cnd && tsc",
-        "test": "jest",
+        "test": "time jest --config jest.config-dry.js --maxWorkers=4 && time yarn jest --config jest.config-e2e.js --runInBand --forceExit ",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
@@ -15,24 +15,6 @@
     },
     "author": "CoBloX Team",
     "license": "ISC",
-    "jest": {
-        "preset": "ts-jest",
-        "roots": [
-            "./tests"
-        ],
-        "testRegex": "\\.ts$",
-        "transform": {
-            "^.+\\.(t|j)s$": "ts-jest"
-        },
-        "moduleFileExtensions": [
-            "ts",
-            "js",
-            "json",
-            "node"
-        ],
-        "testEnvironment": "./dist/src/test_environment",
-        "testTimeout": 180000
-    },
     "dependencies": {
         "@iarna/toml": "^2.2.3",
         "@radar/lnrpc": "^0.9.0-beta",
