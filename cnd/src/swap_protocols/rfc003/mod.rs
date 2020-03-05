@@ -1,6 +1,3 @@
-#[macro_use]
-mod transition_save;
-
 pub mod alice;
 pub mod bitcoin;
 pub mod bob;
