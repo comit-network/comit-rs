@@ -1,7 +1,7 @@
 use crate::{
     btsieve::{
-        ethereum::{self, Hash},
-        BlockByHash, LatestBlock, ReceiptByHash,
+        ethereum::{self, Hash, ReceiptByHash},
+        BlockByHash, LatestBlock,
     },
     ethereum::TransactionReceipt,
 };
@@ -80,15 +80,12 @@ impl_block_by_hash!();
 
 impl<C> ReceiptByHash for Cache<C>
 where
-    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash + Clone,
 {
-    type Receipt = TransactionReceipt;
-    type TransactionHash = Hash;
-
     fn receipt_by_hash(
         &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
+        transaction_hash: Hash,
+    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
         let connector = self.connector.clone();
         let cache = Arc::clone(&self.receipt_cache);
         Box::new(Box::pin(receipt_by_hash(connector, cache, transaction_hash)).compat())
@@ -101,7 +98,7 @@ async fn receipt_by_hash<C>(
     transaction_hash: Hash,
 ) -> anyhow::Result<TransactionReceipt>
 where
-    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash,
 {
     if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
         tracing::trace!("Found receipt in cache: {:x}", transaction_hash);

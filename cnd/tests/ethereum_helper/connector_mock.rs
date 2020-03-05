@@ -1,5 +1,5 @@
 use cnd::{
-    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
+    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, TransactionReceipt, H256},
 };
 use futures::{future::IntoFuture, Future};
@@ -87,13 +87,10 @@ impl BlockByHash for EthereumConnectorMock {
 }
 
 impl ReceiptByHash for EthereumConnectorMock {
-    type Receipt = TransactionReceipt;
-    type TransactionHash = H256;
-
     fn receipt_by_hash(
         &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
+        transaction_hash: H256,
+    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
         Box::new(
             self.receipts
                 .get(&transaction_hash)

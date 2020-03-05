@@ -1,6 +1,6 @@
 use crate::{
-    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
-    ethereum::BlockNumber,
+    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+    ethereum::{BlockNumber, TransactionReceipt, H256},
 };
 use anyhow::Context;
 use futures::Future;
@@ -157,13 +157,10 @@ impl BlockByHash for Web3Connector {
 }
 
 impl ReceiptByHash for Web3Connector {
-    type Receipt = crate::ethereum::TransactionReceipt;
-    type TransactionHash = crate::ethereum::H256;
-
     fn receipt_by_hash(
         &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
+        transaction_hash: H256,
+    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
         let web3 = self.web3.clone();
         let url = self.url.clone();
 
