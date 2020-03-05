@@ -11,7 +11,7 @@
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
-        "node": "^10.14"
+        "node": "^12"
     },
     "author": "CoBloX Team",
     "license": "ISC",
