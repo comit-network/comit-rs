@@ -4,8 +4,6 @@ use crate::{
 };
 use anyhow::Context;
 use async_trait::async_trait;
-use futures::Future;
-use futures_core::{FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
 use serde::Serialize;
 use std::sync::Arc;
@@ -98,55 +96,47 @@ enum JsonRpcResponse<T> {
     Error { code: i64, message: String },
 }
 
+#[async_trait]
 impl BlockByHash for Web3Connector {
     type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let web3 = self.web3.clone();
         let url = self.url.clone();
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getBlockByHash", vec![
-                serialize(&block_hash)?,
-                serialize(true)?,
-            ]);
+        let request = JsonRpcRequest::new("eth_getBlockByHash", vec![
+            serialize(&block_hash)?,
+            serialize(true)?,
+        ]);
 
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block>>()
-                .await?;
+        let response = web3
+            .post(url)
+            .json(&request)
+            .send()
+            .await?
+            .json::<JsonRpcResponse<crate::ethereum::Block>>()
+            .await?;
 
-            let block = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getBlockByHash request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Err(anyhow::anyhow!(
-                        "eth_getBlockByHash request failed with {}: {}",
-                        code,
-                        message
-                    ));
-                }
-            };
+        let block = match response {
+            JsonRpcResponse::Success { result } => result,
+            JsonRpcResponse::Error { code, message } => {
+                tracing::warn!(
+                    "eth_getBlockByHash request failed with {}: {}",
+                    code,
+                    message
+                );
+                return Err(anyhow::anyhow!(
+                    "eth_getBlockByHash request failed with {}: {}",
+                    code,
+                    message
+                ));
+            }
+        };
 
-            tracing::trace!("Fetched block from web3: {:x}", block_hash);
+        tracing::trace!("Fetched block from web3: {:x}", block_hash);
 
-            Ok(block)
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(block)
     }
 }
 

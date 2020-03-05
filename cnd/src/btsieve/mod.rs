@@ -1,16 +1,12 @@
 #![warn(rust_2018_idioms)]
 #![forbid(unsafe_code)]
 
-#[macro_use]
-pub mod block_by_hash;
 pub mod bitcoin;
 pub mod ethereum;
 
 use crate::Never;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures::Future;
-use futures_core::compat::Future01CompatExt;
 use genawaiter::sync::Co;
 use std::{collections::HashSet, hash::Hash};
 
@@ -22,14 +18,12 @@ pub trait LatestBlock: Send + Sync + 'static {
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block>;
 }
 
+#[async_trait]
 pub trait BlockByHash: Send + Sync + 'static {
     type Block;
     type BlockHash;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static>;
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block>;
 }
 
 /// Checks if a given block predates a certain timestamp.
@@ -106,13 +100,14 @@ async fn walk_back_until<C, P, B, H>(
     block: B,
 ) -> anyhow::Result<HashSet<H>>
 where
-    C: BlockByHash<Block = B, BlockHash = H>,
+    C: BlockByHash<Block = B, BlockHash = H> + Clone,
     P: Fn(&B) -> anyhow::Result<bool>,
     B: BlockHash<H> + PreviousBlockHash<H> + Clone,
     H: Eq + Hash + Copy,
 {
     let mut seen_blocks: HashSet<H> = HashSet::new();
     let mut blockhash = block.block_hash();
+    let mut connector = connector.clone();
 
     co.yield_(block.clone()).await;
     seen_blocks.insert(blockhash);
@@ -124,7 +119,7 @@ where
     }
 
     loop {
-        let block = connector.block_by_hash(blockhash).compat().await?;
+        let block = connector.block_by_hash(blockhash).await?;
         co.yield_(block.clone()).await;
         seen_blocks.insert(blockhash);
 

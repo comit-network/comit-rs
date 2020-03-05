@@ -4,7 +4,6 @@ use cnd::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, TransactionReceipt, H256},
 };
-use futures::{future::IntoFuture, Future};
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -69,21 +68,16 @@ impl LatestBlock for EthereumConnectorMock {
     }
 }
 
+#[async_trait]
 impl BlockByHash for EthereumConnectorMock {
     type Block = Block;
     type BlockHash = H256;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        Box::new(
-            self.all_blocks
-                .get(&block_hash)
-                .cloned()
-                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(block_hash)))
-                .into_future(),
-        )
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        self.all_blocks
+            .get(&block_hash)
+            .cloned()
+            .with_context(|| format!("could not find block with hash {}", block_hash))
     }
 }
 
@@ -101,6 +95,4 @@ impl ReceiptByHash for EthereumConnectorMock {
 pub enum Error {
     #[error("ran out of blocks in chain")]
     NoMoreBlocks,
-    #[error("could not find block with hash {0}")]
-    UnknownHash(H256),
 }

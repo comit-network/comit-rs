@@ -7,8 +7,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use derivative::Derivative;
-use futures::Future;
-use futures_core::{compat::Future01CompatExt, future::TryFutureExt};
 use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -67,7 +65,34 @@ where
     }
 }
 
-impl_block_by_hash!();
+#[async_trait]
+impl<C> BlockByHash for Cache<C>
+where
+    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+{
+    type Block = Block;
+    type BlockHash = Hash;
+
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        let mut connector = self.connector.clone();
+        let cache = Arc::clone(&self.block_cache);
+
+        if let Some(block) = cache.lock().await.get(&block_hash) {
+            tracing::trace!("Found block in cache: {:x}", block_hash);
+            return Ok(block.clone());
+        }
+
+        let block = connector.block_by_hash(block_hash.clone()).await?;
+        tracing::trace!("Fetched block from connector: {:x}", block_hash);
+
+        // We dropped the lock so at this stage the block may have been inserted by
+        // another thread, no worries, inserting the same block twice does not hurt.
+        let mut guard = cache.lock().await;
+        guard.put(block_hash, block.clone());
+
+        Ok(block)
+    }
+}
 
 #[async_trait]
 impl<C> ReceiptByHash for Cache<C>
