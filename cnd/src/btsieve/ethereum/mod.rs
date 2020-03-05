@@ -242,54 +242,38 @@ where
         + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
         + Clone,
 {
-    let mut seen_blocks: HashSet<Hash> = HashSet::new();
-
     let block = connector
         .latest_block()
         .compat()
         .await?
         .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
-    co.yield_(block.clone()).await;
-
-    let blockhash = block
-        .hash
-        .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
-    seen_blocks.insert(blockhash);
 
     // Look back in time until we get a block that predates start_of_swap.
-    let parent_hash = block.parent_hash;
-    walk_back_until(
+    let mut seen_blocks = walk_back_until(
         predates_start_of_swap(start_of_swap),
         connector.clone(),
         co,
-        parent_hash,
+        block,
     )
     .await?;
 
+    // Look forward in time, but keep going back for missed blocks
     loop {
         let block = connector
             .latest_block()
             .compat()
             .await?
             .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
-        co.yield_(block.clone()).await;
 
-        let blockhash = block
-            .hash
-            .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
-        seen_blocks.insert(blockhash);
+        let missed_blocks: HashSet<Hash> = walk_back_until(
+            seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
+            connector.clone(),
+            co,
+            block,
+        )
+        .await?;
 
-        // Look back along the blockchain for missing blocks.
-        let parent_hash = block.parent_hash;
-        if !seen_blocks.contains(&parent_hash) {
-            walk_back_until(
-                seen_block_or_predates_start_of_swap(seen_blocks.clone(), start_of_swap),
-                connector.clone(),
-                co,
-                parent_hash,
-            )
-            .await?;
-        }
+        seen_blocks.extend(missed_blocks);
 
         // The duration of this timeout could/should depend on the network
         tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
@@ -299,18 +283,31 @@ where
 /// Walks the blockchain backwards from the given hash until the predicate given
 /// in `stop_condition` returns `true`.
 ///
-/// This functions yields all blocks as part of its process.
+/// This function yields all blocks as part of its process.
+/// This function returns the block-hashes of all visited blocks.
 async fn walk_back_until<C, P>(
     stop_condition: P,
     connector: C,
     co: &Co<Block>,
-    starting_blockhash: Hash,
-) -> anyhow::Result<()>
+    block: Block,
+) -> anyhow::Result<HashSet<Hash>>
 where
     C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
     P: Fn(&Block) -> anyhow::Result<bool>,
 {
-    let mut blockhash = starting_blockhash;
+    let mut seen_blocks: HashSet<Hash> = HashSet::new();
+    let mut blockhash = block
+        .hash
+        .ok_or_else(|| anyhow::anyhow!("Connector returned latest block with null hash"))?;
+
+    co.yield_(block.clone()).await;
+    seen_blocks.insert(blockhash);
+
+    if stop_condition(&block)? {
+        return Ok(seen_blocks);
+    } else {
+        blockhash = block.parent_hash;
+    }
 
     loop {
         let block = connector
@@ -320,11 +317,12 @@ where
             .ok_or_else(|| anyhow::anyhow!("Could not fetch block with hash {}", blockhash))?;
 
         co.yield_(block.clone()).await;
+        seen_blocks.insert(blockhash);
 
         if stop_condition(&block)? {
-            return Ok(());
+            return Ok(seen_blocks);
         } else {
-            blockhash = block.parent_hash
+            blockhash = block.parent_hash;
         }
     }
 }
@@ -337,10 +335,10 @@ fn predates_start_of_swap(start_of_swap: NaiveDateTime) -> impl Fn(&Block) -> an
 
 /// Constructs a predicate that returns `true` if we have seen the given block
 /// or the block predates the start_of_swap timestamp.
-fn seen_block_or_predates_start_of_swap(
-    seen_blocks: HashSet<Hash>,
+fn seen_block_or_predates_start_of_swap<'sb>(
+    seen_blocks: &'sb HashSet<Hash>,
     start_of_swap: NaiveDateTime,
-) -> impl Fn(&Block) -> anyhow::Result<bool> {
+) -> impl Fn(&Block) -> anyhow::Result<bool> + 'sb {
     move |block: &Block| {
         let have_seen_block = seen_blocks.contains(
             &block
