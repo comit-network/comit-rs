@@ -43,7 +43,7 @@ impl EthereumConnectorMock {
 }
 
 impl LatestBlock for EthereumConnectorMock {
-    type Block = Option<Block>;
+    type Block = Block;
     type BlockHash = H256;
 
     fn latest_block(
@@ -64,31 +64,43 @@ impl LatestBlock for EthereumConnectorMock {
                 self.current_latest_block_index += 1;
             }
         }
-        Box::new(Ok(Some(latest_block)).into_future())
+        Box::new(Ok(latest_block).into_future())
     }
 }
 
 impl BlockByHash for EthereumConnectorMock {
-    type Block = Option<Block>;
+    type Block = Block;
     type BlockHash = H256;
 
     fn block_by_hash(
         &self,
         block_hash: Self::BlockHash,
     ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        Box::new(Ok(self.all_blocks.get(&block_hash).cloned()).into_future())
+        Box::new(
+            self.all_blocks
+                .get(&block_hash)
+                .cloned()
+                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(block_hash)))
+                .into_future(),
+        )
     }
 }
 
 impl ReceiptByHash for EthereumConnectorMock {
-    type Receipt = Option<TransactionReceipt>;
+    type Receipt = TransactionReceipt;
     type TransactionHash = H256;
 
     fn receipt_by_hash(
         &self,
         transaction_hash: Self::TransactionHash,
     ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
-        Box::new(Ok(self.receipts.get(&transaction_hash).cloned()).into_future())
+        Box::new(
+            self.receipts
+                .get(&transaction_hash)
+                .cloned()
+                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(transaction_hash)))
+                .into_future(),
+        )
     }
 }
 
@@ -96,4 +108,6 @@ impl ReceiptByHash for EthereumConnectorMock {
 pub enum Error {
     #[error("ran out of blocks in chain")]
     NoMoreBlocks,
+    #[error("could not find block with hash {0}")]
+    UnknownHash(H256),
 }

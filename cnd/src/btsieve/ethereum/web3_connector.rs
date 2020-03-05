@@ -25,7 +25,7 @@ impl Web3Connector {
 }
 
 impl LatestBlock for Web3Connector {
-    type Block = Option<crate::ethereum::Block>;
+    type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
     fn latest_block(
@@ -56,7 +56,11 @@ impl LatestBlock for Web3Connector {
                         code,
                         message
                     );
-                    return Ok(None);
+                    return Err(anyhow::anyhow!(
+                        "eth_getBlockByNumber request failed with {}: {}",
+                        code,
+                        message
+                    ));
                 }
             };
 
@@ -65,7 +69,7 @@ impl LatestBlock for Web3Connector {
                 block.hash.expect("blocks to have a hash")
             );
 
-            Ok(Some(block))
+            Ok(block)
         }
         .boxed()
         .compat();
@@ -101,7 +105,7 @@ enum JsonRpcResponse<T> {
 }
 
 impl BlockByHash for Web3Connector {
-    type Block = Option<crate::ethereum::Block>;
+    type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
     fn block_by_hash(
@@ -133,13 +137,17 @@ impl BlockByHash for Web3Connector {
                         code,
                         message
                     );
-                    return Ok(None);
+                    return Err(anyhow::anyhow!(
+                        "eth_getBlockByHash request failed with {}: {}",
+                        code,
+                        message
+                    ));
                 }
             };
 
             tracing::trace!("Fetched block from web3: {:x}", block_hash);
 
-            Ok(Some(block))
+            Ok(block)
         }
         .boxed()
         .compat();
@@ -149,7 +157,7 @@ impl BlockByHash for Web3Connector {
 }
 
 impl ReceiptByHash for Web3Connector {
-    type Receipt = Option<crate::ethereum::TransactionReceipt>;
+    type Receipt = crate::ethereum::TransactionReceipt;
     type TransactionHash = crate::ethereum::H256;
 
     fn receipt_by_hash(
@@ -180,13 +188,17 @@ impl ReceiptByHash for Web3Connector {
                         code,
                         message
                     );
-                    return Ok(None);
+                    return Err(anyhow::anyhow!(
+                        "eth_getTransactionReceipt request failed with {}: {}",
+                        code,
+                        message
+                    ));
                 }
             };
 
             tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
-            Ok(Some(receipt))
+            Ok(receipt)
         }
         .boxed()
         .compat();

@@ -27,9 +27,9 @@ pub async fn watch_for_contract_creation<C>(
     bytecode: Bytes,
 ) -> anyhow::Result<(Transaction, Address)>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
         + Clone,
 {
     let (transaction, receipt) =
@@ -52,9 +52,9 @@ pub async fn watch_for_event<C>(
     event: Event,
 ) -> anyhow::Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
         + Clone,
 {
     matching_transaction_and_log(
@@ -69,18 +69,9 @@ where
 /// Fetch receipt from connector using transaction hash.
 async fn fetch_receipt<C>(blockchain_connector: C, hash: Hash) -> anyhow::Result<TransactionReceipt>
 where
-    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>,
+    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>,
 {
-    let receipt = blockchain_connector
-        .receipt_by_hash(hash)
-        .compat()
-        .await?
-        .ok_or_else(|| {
-            anyhow::anyhow!(
-                "Could not get transaction receipt for transaction {:x}",
-                hash
-            )
-        })?;
+    let receipt = blockchain_connector.receipt_by_hash(hash).compat().await?;
     Ok(receipt)
 }
 
@@ -110,9 +101,9 @@ pub async fn matching_transaction_and_receipt<C, F>(
     matcher: F,
 ) -> anyhow::Result<(Transaction, TransactionReceipt)>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
         + Clone,
     F: Fn(Transaction) -> bool,
 {
@@ -157,9 +148,9 @@ async fn matching_transaction_and_log<C, F>(
     matcher: F,
 ) -> anyhow::Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
         + Clone,
     F: Fn(TransactionReceipt) -> Option<Log>,
 {
@@ -237,16 +228,12 @@ async fn find_relevant_blocks<C>(
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Never>
 where
-    C: LatestBlock<Block = Option<Block>>
-        + BlockByHash<Block = Option<Block>, BlockHash = Hash>
-        + ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash>
+    C: LatestBlock<Block = Block>
+        + BlockByHash<Block = Block, BlockHash = Hash>
+        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
         + Clone,
 {
-    let block = connector
-        .latest_block()
-        .compat()
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
+    let block = connector.latest_block().compat().await?;
 
     // Look back in time until we get a block that predates start_of_swap.
     let mut seen_blocks = walk_back_until(
@@ -259,11 +246,7 @@ where
 
     // Look forward in time, but keep going back for missed blocks
     loop {
-        let block = connector
-            .latest_block()
-            .compat()
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Connector returned null latest block"))?;
+        let block = connector.latest_block().compat().await?;
 
         let missed_blocks: HashSet<Hash> = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
@@ -292,7 +275,7 @@ async fn walk_back_until<C, P>(
     block: Block,
 ) -> anyhow::Result<HashSet<Hash>>
 where
-    C: BlockByHash<Block = Option<Block>, BlockHash = Hash>,
+    C: BlockByHash<Block = Block, BlockHash = Hash>,
     P: Fn(&Block) -> anyhow::Result<bool>,
 {
     let mut seen_blocks: HashSet<Hash> = HashSet::new();
@@ -310,11 +293,7 @@ where
     }
 
     loop {
-        let block = connector
-            .block_by_hash(blockhash)
-            .compat()
-            .await?
-            .ok_or_else(|| anyhow::anyhow!("Could not fetch block with hash {}", blockhash))?;
+        let block = connector.block_by_hash(blockhash).compat().await?;
 
         co.yield_(block.clone()).await;
         seen_blocks.insert(blockhash);
