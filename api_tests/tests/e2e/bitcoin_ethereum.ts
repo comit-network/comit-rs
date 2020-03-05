@@ -13,7 +13,7 @@ import { LedgerKind } from "../../lib/ledgers/ledger";
 // Lightning Sanity Test                        //
 // ******************************************** //
 describe("E2E: Sanity - LND Alice pays Bob", () => {
-    it("sanity-lnd-alice-pays-bob", async function() {
+    it.skip("sanity-lnd-alice-pays-bob", async function() {
         await twoActorTest(async function({ alice, bob }) {
             await alice.sendRequest(
                 { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
@@ -27,7 +27,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
         });
     });
 
-    it("sanity-lnd-alice-pays-bob-using-hold-invoice", async function() {
+    it.skip("sanity-lnd-alice-pays-bob-using-hold-invoice", async function() {
         await twoActorTest(async function({ alice, bob }) {
             await alice.sendRequest(
                 { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
