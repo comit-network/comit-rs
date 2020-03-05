@@ -192,10 +192,9 @@ impl Arbitrary for Quickcheck<transaction::Ethereum> {
         Quickcheck(transaction::Ethereum {
             hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
             nonce: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            block_hash: Option::<Quickcheck<crate::ethereum::H256>>::arbitrary(g).map(|i| i.0),
-            block_number: Option::<Quickcheck<crate::ethereum::U256>>::arbitrary(g).map(|i| i.0),
-            transaction_index: Option::<Quickcheck<crate::ethereum::U128>>::arbitrary(g)
-                .map(|i| i.0),
+            block_hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
+            block_number: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
+            transaction_index: *Quickcheck::<crate::ethereum::U128>::arbitrary(g),
             from: *Quickcheck::<crate::ethereum::H160>::arbitrary(g),
             to: Option::<Quickcheck<crate::ethereum::H160>>::arbitrary(g).map(|i| i.0),
             value: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
