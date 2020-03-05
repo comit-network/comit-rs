@@ -1,10 +1,7 @@
 mod bitcoind_connector;
 mod cache;
-mod transaction_ext;
 
-pub use self::{
-    bitcoind_connector::BitcoindConnector, cache::Cache, transaction_ext::TransactionExt,
-};
+pub use self::{bitcoind_connector::BitcoindConnector, cache::Cache};
 use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
@@ -12,6 +9,7 @@ use crate::{
     transaction,
 };
 use bitcoin::{
+    blockdata::script::Instruction,
     consensus::{encode::deserialize, Decodable},
     BitcoinHash, OutPoint,
 };
@@ -44,7 +42,24 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        transaction.spends_from_with(&from_outpoint, &unlock_script)
+        transaction
+            .input
+            .iter()
+            .filter(|previous_outpoint| previous_outpoint.previous_output == from_outpoint)
+            .any(|txin| {
+                unlock_script.iter().all(|item| {
+                    txin.witness.contains(item)
+                        || unlock_script.iter().all(|item| {
+                            txin.script_sig
+                                .iter(true)
+                                .any(|instruction| match instruction {
+                                    Instruction::PushBytes(data) => (item as &[u8]) == data,
+                                    Instruction::Op(_) => false,
+                                    Instruction::Error(_) => false,
+                                })
+                        })
+                })
+            })
     })
     .await?;
 
@@ -60,12 +75,28 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
     let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        transaction.spends_to(&compute_address)
+        let address_script_pubkey = compute_address.script_pubkey();
+
+        transaction
+            .output
+            .iter()
+            .map(|out| &out.script_pubkey)
+            .any(|script_pub_key| script_pub_key == &address_script_pubkey)
     })
     .await?;
 
     let (vout, _txout) = transaction
-        .find_output(&compute_address)
+        .output
+        .iter()
+        .enumerate()
+        .map(|(index, txout)| {
+            // Casting a usize to u32 can lead to truncation on 64bit platforms
+            // However, bitcoin limits the number of inputs to u32 anyway, so this
+            // is not a problem for us.
+            #[allow(clippy::cast_possible_truncation)]
+            (index as u32, txout)
+        })
+        .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
         .expect("Deployment transaction must contain outpoint described in pattern");
 
     let txid = transaction.txid();
