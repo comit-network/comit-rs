@@ -11,19 +11,16 @@ use crate::{
     },
 };
 use anyhow;
+use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures::Future;
-use futures_core::compat::Future01CompatExt;
 use genawaiter::{sync::Gen, GeneratorState};
 
 type Hash = H256;
 type Block = crate::ethereum::Block;
 
+#[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: Hash,
-    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static>;
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt>;
 }
 
 impl BlockHash<Hash> for Block {
@@ -89,7 +86,7 @@ async fn fetch_receipt<C>(blockchain_connector: C, hash: Hash) -> anyhow::Result
 where
     C: ReceiptByHash,
 {
-    let receipt = blockchain_connector.receipt_by_hash(hash).compat().await?;
+    let receipt = blockchain_connector.receipt_by_hash(hash).await?;
     Ok(receipt)
 }
 

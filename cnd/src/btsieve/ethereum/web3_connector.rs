@@ -3,6 +3,7 @@ use crate::{
     ethereum::{BlockNumber, TransactionReceipt, H256},
 };
 use anyhow::Context;
+use async_trait::async_trait;
 use futures::Future;
 use futures_core::{FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
@@ -156,51 +157,43 @@ impl BlockByHash for Web3Connector {
     }
 }
 
+#[async_trait]
 impl ReceiptByHash for Web3Connector {
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: H256,
-    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
+    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
         let web3 = self.web3.clone();
         let url = self.url.clone();
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getTransactionReceipt", vec![serialize(
-                transaction_hash,
-            )?]);
+        let request = JsonRpcRequest::new("eth_getTransactionReceipt", vec![serialize(
+            transaction_hash,
+        )?]);
 
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::TransactionReceipt>>()
-                .await?;
+        let response = web3
+            .post(url)
+            .json(&request)
+            .send()
+            .await?
+            .json::<JsonRpcResponse<crate::ethereum::TransactionReceipt>>()
+            .await?;
 
-            let receipt = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getTransactionReceipt request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Err(anyhow::anyhow!(
-                        "eth_getTransactionReceipt request failed with {}: {}",
-                        code,
-                        message
-                    ));
-                }
-            };
+        let receipt = match response {
+            JsonRpcResponse::Success { result } => result,
+            JsonRpcResponse::Error { code, message } => {
+                tracing::warn!(
+                    "eth_getTransactionReceipt request failed with {}: {}",
+                    code,
+                    message
+                );
+                return Err(anyhow::anyhow!(
+                    "eth_getTransactionReceipt request failed with {}: {}",
+                    code,
+                    message
+                ));
+            }
+        };
 
-            tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
+        tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
-            Ok(receipt)
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(receipt)
     }
 }
 

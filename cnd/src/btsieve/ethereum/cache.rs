@@ -5,6 +5,7 @@ use crate::{
     },
     ethereum::TransactionReceipt,
 };
+use async_trait::async_trait;
 use derivative::Derivative;
 use futures::Future;
 use futures_core::{
@@ -78,44 +79,29 @@ where
 
 impl_block_by_hash!();
 
+#[async_trait]
 impl<C> ReceiptByHash for Cache<C>
 where
     C: ReceiptByHash + Clone,
 {
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: Hash,
-    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
         let connector = self.connector.clone();
         let cache = Arc::clone(&self.receipt_cache);
-        Box::new(Box::pin(receipt_by_hash(connector, cache, transaction_hash)).compat())
+
+        if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
+            tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
+            return Ok(receipt.clone());
+        }
+
+        let receipt = connector.receipt_by_hash(transaction_hash.clone()).await?;
+
+        tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
+
+        // We dropped the lock so at this stage the receipt may have been inserted by
+        // another thread, no worries, inserting the same receipt twice does not hurt.
+        let mut guard = cache.lock().await;
+        guard.put(transaction_hash, receipt.clone());
+
+        Ok(receipt)
     }
-}
-
-async fn receipt_by_hash<C>(
-    connector: C,
-    cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
-    transaction_hash: Hash,
-) -> anyhow::Result<TransactionReceipt>
-where
-    C: ReceiptByHash,
-{
-    if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
-        tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
-        return Ok(receipt.clone());
-    }
-
-    let receipt = connector
-        .receipt_by_hash(transaction_hash.clone())
-        .compat()
-        .await?;
-
-    tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
-
-    // We dropped the lock so at this stage the receipt may have been inserted by
-    // another thread, no worries, inserting the same receipt twice does not hurt.
-    let mut guard = cache.lock().await;
-    guard.put(transaction_hash, receipt.clone());
-
-    Ok(receipt)
 }

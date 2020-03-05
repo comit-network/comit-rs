@@ -1,3 +1,5 @@
+use anyhow::Context;
+use async_trait::async_trait;
 use cnd::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, TransactionReceipt, H256},
@@ -86,18 +88,13 @@ impl BlockByHash for EthereumConnectorMock {
     }
 }
 
+#[async_trait]
 impl ReceiptByHash for EthereumConnectorMock {
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: H256,
-    ) -> Box<dyn Future<Item = TransactionReceipt, Error = anyhow::Error> + Send + 'static> {
-        Box::new(
-            self.receipts
-                .get(&transaction_hash)
-                .cloned()
-                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(transaction_hash)))
-                .into_future(),
-        )
+    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
+        self.receipts
+            .get(&transaction_hash)
+            .cloned()
+            .with_context(|| format!("could not find block with hash {}", transaction_hash))
     }
 }
 
