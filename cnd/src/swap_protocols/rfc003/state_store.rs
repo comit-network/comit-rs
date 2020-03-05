@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    rfc003::{create_swap::SwapEvent, ActorState, Ledger},
+    rfc003::{create_swap::SwapEvent, ActorState},
     swap_id::SwapId,
 };
 use std::{any::Any, cmp::Ordering, collections::HashMap, sync::Mutex};
@@ -18,18 +18,8 @@ pub trait StateStore: Send + Sync + 'static {
     fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
     where
         A: ActorState + Clone;
-    fn update<A>(
-        &self,
-        key: &SwapId,
-        update: SwapEvent<
-            A::AA,
-            A::BA,
-            A::AH,
-            A::BH,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::Transaction,
-        >,
-    ) where
+    fn update<A>(&self, key: &SwapId, update: SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>)
+    where
         A: ActorState,
         A::AA: Ord,
         A::BA: Ord;
@@ -64,18 +54,8 @@ impl StateStore for InMemoryStateStore {
     }
 
     #[allow(clippy::type_complexity)]
-    fn update<A>(
-        &self,
-        key: &SwapId,
-        event: SwapEvent<
-            A::AA,
-            A::BA,
-            A::AH,
-            A::BH,
-            <<A as ActorState>::AL as Ledger>::Transaction,
-            <<A as ActorState>::BL as Ledger>::Transaction,
-        >,
-    ) where
+    fn update<A>(&self, key: &SwapId, event: SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>)
+    where
         A: ActorState,
         A::AA: Ord,
         A::BA: Ord,
@@ -156,6 +136,7 @@ mod tests {
             HashFunction,
         },
         timestamp::Timestamp,
+        transaction,
     };
     use spectral::prelude::*;
 
@@ -201,6 +182,8 @@ mod tests {
             htlc_location::Ethereum,
             identity::Bitcoin,
             identity::Ethereum,
+            transaction::Bitcoin,
+            transaction::Ethereum,
         >>(id, state.clone());
 
         let res = state_store
@@ -213,6 +196,8 @@ mod tests {
                 htlc_location::Ethereum,
                 identity::Bitcoin,
                 identity::Ethereum,
+                transaction::Bitcoin,
+                transaction::Ethereum,
             >>(&id)
             .unwrap();
         assert_that(&res).contains_value(&state);

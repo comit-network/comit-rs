@@ -7,7 +7,6 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            ledger::Ledger,
             state_store::StateStore,
             Accept, ActorState, Request, SecretHash,
         },
@@ -38,14 +37,14 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
     D: StateStore
-        + HtlcFunded<A::AL, A::AA, A::AH, AI>
-        + HtlcFunded<A::BL, A::BA, A::BH, BI>
-        + HtlcDeployed<A::AL, A::AA, A::AH, AI>
-        + HtlcDeployed<A::BL, A::BA, A::BH, BI>
-        + HtlcRedeemed<A::AL, A::AA, A::AH, AI>
-        + HtlcRedeemed<A::BL, A::BA, A::BH, BI>
-        + HtlcRefunded<A::AL, A::AA, A::AH, AI>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI>
+        + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcDeployed<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>
         + Clone,
     A::AL: Clone,
     A::BL: Clone,
@@ -55,6 +54,8 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     A::BH: Clone,
     AI: Clone,
     BI: Clone,
+    A::AT: Clone,
+    A::BT: Clone,
     A: ActorState,
     AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
 {
@@ -67,7 +68,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     let mut generator = Gen::new({
         let dependencies = dependencies.clone();
         |co| async move {
-            watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
+            watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
                 &dependencies,
                 &co,
                 swap.alpha_htlc_params(),
@@ -115,14 +116,14 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
     D: StateStore
-        + HtlcFunded<A::AL, A::AA, A::AH, AI>
-        + HtlcFunded<A::BL, A::BA, A::BH, BI>
-        + HtlcDeployed<A::AL, A::AA, A::AH, AI>
-        + HtlcDeployed<A::BL, A::BA, A::BH, BI>
-        + HtlcRedeemed<A::AL, A::AA, A::AH, AI>
-        + HtlcRedeemed<A::BL, A::BA, A::BH, BI>
-        + HtlcRefunded<A::AL, A::AA, A::AH, AI>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI>
+        + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcDeployed<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
+        + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>
         + Clone,
     A::AL: Clone,
     A::BL: Clone,
@@ -130,6 +131,8 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     A::BA: Ord + Clone,
     A::AH: Clone,
     A::BH: Clone,
+    A::AT: Clone,
+    A::BT: Clone,
     AI: Clone,
     BI: Clone,
     A: ActorState,
@@ -144,7 +147,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     let mut generator = Gen::new({
         let dependencies = dependencies.clone();
         |co| async move {
-            watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI>(
+            watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
                 &dependencies,
                 &co,
                 swap.beta_htlc_params(),
@@ -179,20 +182,20 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
 /// Returns a future that waits for events on alpha ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_alpha_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI>(
+async fn watch_alpha_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: &D,
-    co: &Co<SwapEventOnLedger<AL, BL, AA, BA, AH, BH>>,
+    co: &Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
     htlc_params: HtlcParams<AL, AA, AI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    AL: Ledger,
-    BL: Ledger,
-    D: HtlcFunded<AL, AA, AH, AI>
-        + HtlcDeployed<AL, AA, AH, AI>
-        + HtlcRedeemed<AL, AA, AH, AI>
-        + HtlcRefunded<AL, AA, AH, AI>,
-    Deployed<AH, AL::Transaction>: Clone,
+    D: HtlcFunded<AL, AA, AH, AI, AT>
+        + HtlcDeployed<AL, AA, AH, AI, AT>
+        + HtlcRedeemed<AL, AA, AH, AI, AT>
+        + HtlcRefunded<AL, AA, AH, AI, AT>,
+    Deployed<AH, AT>: Clone,
+    Redeemed<AT>: Clone,
+    Refunded<AT>: Clone,
 {
     let deployed = dependencies
         .htlc_deployed(&htlc_params, start_of_swap)
@@ -228,20 +231,20 @@ where
 /// Returns a future that waits for events on beta ledger to happen.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_beta_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI>(
+async fn watch_beta_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: &D,
-    co: &Co<SwapEventOnLedger<AL, BL, AA, BA, AH, BH>>,
+    co: &Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
     htlc_params: HtlcParams<BL, BA, BI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    AL: Ledger,
-    BL: Ledger,
-    D: HtlcFunded<BL, BA, BH, BI>
-        + HtlcDeployed<BL, BA, BH, BI>
-        + HtlcRedeemed<BL, BA, BH, BI>
-        + HtlcRefunded<BL, BA, BH, BI>,
-    Deployed<BH, BL::Transaction>: Clone,
+    D: HtlcFunded<BL, BA, BH, BI, BT>
+        + HtlcDeployed<BL, BA, BH, BI, BT>
+        + HtlcRedeemed<BL, BA, BH, BI, BT>
+        + HtlcRefunded<BL, BA, BH, BI, BT>,
+    Deployed<BH, BT>: Clone,
+    Redeemed<BT>: Clone,
+    Refunded<BT>: Clone,
 {
     let deployed = dependencies
         .htlc_deployed(&htlc_params, start_of_swap)
@@ -390,17 +393,13 @@ where
     }
 }
 
-pub type SwapEventOnLedger<AL, BL, AA, BA, AH, BH> =
-    SwapEvent<AA, BA, AH, BH, <AL as Ledger>::Transaction, <BL as Ledger>::Transaction>;
-
-// Needed to satisfy clippy, this goes away once Ledger::Transaction is gone.
-pub type ReplacementSwapEventOnLedger<A> = SwapEvent<
+pub type SwapEventOnLedger<A> = SwapEvent<
     <A as ActorState>::AA,
     <A as ActorState>::BA,
     <A as ActorState>::AH,
     <A as ActorState>::BH,
-    <<A as ActorState>::AL as Ledger>::Transaction,
-    <<A as ActorState>::BL as Ledger>::Transaction,
+    <A as ActorState>::AT,
+    <A as ActorState>::BT,
 >;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]

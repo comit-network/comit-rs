@@ -10,13 +10,11 @@ pub mod state_store;
 
 pub mod actions;
 mod actor_state;
-mod ledger;
 mod secret;
 
 pub use self::{
     actor_state::ActorState,
     create_swap::create_alpha_watcher,
-    ledger::Ledger,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
 };

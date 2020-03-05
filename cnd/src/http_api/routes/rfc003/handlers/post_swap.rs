@@ -11,11 +11,12 @@ use crate::{
             self, alice,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state_store::StateStore,
-            Accept, Decline, DeriveIdentities, DeriveSecret, Ledger, Request, SecretHash,
+            Accept, Decline, DeriveIdentities, DeriveSecret, Request, SecretHash,
         },
         Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
+    transaction,
 };
 use anyhow::Context;
 use futures_core::future::TryFutureExt;
@@ -23,7 +24,7 @@ use libp2p_comit::frame::OutboundRequest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
-async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI>(
+async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: Facade,
     id: SwapId,
     peer: DialInformation,
@@ -32,27 +33,29 @@ async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI>(
 where
     Sqlite:
         Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Accept<AI, BI>> + Save<Swap> + Save<Decline>,
-    AL: Ledger,
-    BL: Ledger,
+    AL: Clone + Send + Sync + 'static,
+    BL: Clone + Send + Sync + 'static,
     AA: Clone + Ord + Send + Sync + 'static,
     BA: Clone + Ord + Send + Sync + 'static,
     AH: Clone + Send + Sync + 'static,
     BH: Clone + Send + Sync + 'static,
     AI: Clone + Send + Sync + 'static,
     BI: Clone + Send + Sync + 'static,
+    AT: Clone + Send + Sync + 'static,
+    BT: Clone + Send + Sync + 'static,
     rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
     Accept<AI, BI>: Copy,
     rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Clone,
     <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
     Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
-        + HtlcFunded<AL, AA, AH, AI>
-        + HtlcFunded<BL, BA, BH, BI>
-        + HtlcDeployed<AL, AA, AH, AI>
-        + HtlcDeployed<BL, BA, BH, BI>
-        + HtlcRedeemed<AL, AA, AH, AI>
-        + HtlcRedeemed<BL, BA, BH, BI>
-        + HtlcRefunded<AL, AA, AH, AI>
-        + HtlcRefunded<BL, BA, BH, BI>,
+        + HtlcFunded<AL, AA, AH, AI, AT>
+        + HtlcFunded<BL, BA, BH, BI, BT>
+        + HtlcDeployed<AL, AA, AH, AI, AT>
+        + HtlcDeployed<BL, BA, BH, BI, BT>
+        + HtlcRedeemed<AL, AA, AH, AI, AT>
+        + HtlcRedeemed<BL, BA, BH, BI, BT>
+        + HtlcRefunded<AL, AA, AH, AI, AT>
+        + HtlcRefunded<BL, BA, BH, BI, BT>,
 {
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
@@ -62,7 +65,8 @@ where
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
 
-    let state = alice::State::<_, _, _, _, AH, BH, _, _>::proposed(swap_request.clone(), seed);
+    let state =
+        alice::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
     StateStore::insert(&dependencies, id, state);
 
     let future = {
@@ -80,7 +84,7 @@ where
                         &id,
                     )
                     .await?;
-                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _>(
+                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
                         &dependencies,
                         accepted,
                         Role::Alice,
@@ -88,7 +92,7 @@ where
                 }
                 Err(decline) => {
                     tracing::info!("Swap declined: {}", decline.swap_id);
-                    let state = alice::State::<_, _, _, _, AH, BH, _, _>::declined(
+                    let state = alice::State::<_, _, _, _, AH, BH, _, _, AT, BT>::declined(
                         swap_request.clone(),
                         decline,
                         seed,
@@ -141,12 +145,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -171,12 +181,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -201,12 +217,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -231,12 +253,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -261,12 +289,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -291,12 +325,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -321,12 +361,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -351,12 +397,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -381,12 +433,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Bitcoin, htlc_location::Ethereum, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -411,12 +469,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -441,12 +505,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
         SwapRequestBody {
@@ -471,12 +541,18 @@ pub async fn handle_post_swap(
                 identities,
                 secret_hash,
             );
-            initiate_request::<_, _, _, _, htlc_location::Ethereum, htlc_location::Bitcoin, _, _>(
-                dependencies,
-                id,
-                peer,
-                request,
-            )
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
             .await?;
         }
 
@@ -504,11 +580,7 @@ fn new_request<AL, BL, AA, BA, AI, BI>(
     beta_expiry: Option<Timestamp>,
     identities: Identities<AI, BI>,
     secret_hash: SecretHash,
-) -> rfc003::Request<AL, BL, AA, BA, AI, BI>
-where
-    AL: Ledger,
-    BL: Ledger,
-{
+) -> rfc003::Request<AL, BL, AA, BA, AI, BI> {
     rfc003::Request {
         swap_id: id,
         alpha_ledger,
