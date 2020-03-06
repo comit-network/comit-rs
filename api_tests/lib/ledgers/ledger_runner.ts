@@ -118,18 +118,15 @@ export class LedgerRunner {
         return returnValue;
     }
 
-    public async stopLedgers() {
+    public stopLedgers() {
         const ledgers = Object.entries(this.runningLedgers);
 
-        const promises = ledgers.map(async ([ledger, ledgerInstance]) => {
+        ledgers.map(([ledger, ledgerInstance]) => {
             console.log(`Stopping ledger ${ledger}`);
-
             clearInterval(this.blockTimers[ledger]);
             ledgerInstance.stop();
             delete this.runningLedgers[ledger];
         });
-
-        await Promise.all(promises);
     }
 
     private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {

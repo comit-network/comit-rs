@@ -7,7 +7,9 @@
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
         "pretest": "cargo build --bin cnd && tsc",
-        "test": "time jest --config jest.config-dry.js --maxWorkers=4 && time yarn jest --config jest.config-e2e.js --runInBand --forceExit ",
+        "dry": "jest --config jest.config-dry.js --maxWorkers=4",
+        "e2e": "yarn jest --config jest.config-e2e.js --runInBand --forceExit --bail",
+        "test": "yarn dry && yarn e2e",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {

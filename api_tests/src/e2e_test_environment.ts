@@ -92,16 +92,16 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         if (this.global.verbose) {
             console.log(`Tearing down test environment.`);
         }
-        await this.cleanupAll();
+        this.cleanupAll();
         if (this.global.verbose) {
             console.log(`All teared down.`);
         }
     }
 
-    async cleanupAll() {
+    cleanupAll() {
         try {
             if (this.ledgerRunner) {
-                await this.ledgerRunner.stopLedgers();
+                this.ledgerRunner.stopLedgers();
             }
         } catch (e) {
             console.error("Failed to clean up resources", e);
