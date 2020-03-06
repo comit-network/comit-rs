@@ -6,6 +6,8 @@ import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
 import { LedgerConfig } from "../ledgers/ledger_runner";
 import { HarnessGlobal, sleep } from "../utils";
+import path from "path";
+import { LogReader } from "../ledgers/log_reader";
 
 declare var global: HarnessGlobal;
 
@@ -44,18 +46,17 @@ export class CndInstance {
             "config.toml"
         );
 
+        const logFile = path.join(
+            this.logDir,
+            `cnd-${this.actorConfig.name}.log`
+        );
+
         this.process = spawn(bin, ["--config", configFile], {
             cwd: this.projectRoot,
             stdio: [
                 "ignore", // stdin
-                await openAsync(
-                    this.logDir + "/cnd-" + this.actorConfig.name + ".log",
-                    "w"
-                ), // stdout
-                await openAsync(
-                    this.logDir + "/cnd-" + this.actorConfig.name + ".log",
-                    "w"
-                ), // stderr
+                await openAsync(logFile, "w"), // stdout
+                await openAsync(logFile, "w"), // stderr
             ],
         });
 
@@ -74,7 +75,11 @@ export class CndInstance {
             }
         });
 
-        await sleep(1000); // allow the nodes to start up
+        const logReader = new LogReader(logFile);
+        await logReader.waitForLogMessage("Starting HTTP server on");
+
+        // we emit the log _before_ we start the http server, let's make sure it actually starts up
+        await sleep(1000);
     }
 
     public stop() {
