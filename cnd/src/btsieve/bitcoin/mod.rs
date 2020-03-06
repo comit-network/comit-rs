@@ -34,16 +34,16 @@ pub async fn watch_for_spent_outpoint<C>(
     start_of_swap: NaiveDateTime,
     from_outpoint: OutPoint,
     unlock_script: Vec<Vec<u8>>,
-) -> anyhow::Result<bitcoin::Transaction>
+) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
+    let (transaction, txin) = watch(blockchain_connector, start_of_swap, |transaction| {
         transaction
             .input
             .iter()
             .filter(|txin| txin.previous_output == from_outpoint)
-            .any(|txin| {
+            .find(|txin| {
                 unlock_script.iter().all(|item| {
                     txin.witness.contains(item)
                         || unlock_script.iter().all(|item| {
@@ -57,10 +57,11 @@ where
                         })
                 })
             })
+            .cloned()
     })
     .await?;
 
-    Ok(transaction)
+    Ok((transaction, txin))
 }
 
 pub async fn watch_for_created_outpoint<C>(
@@ -71,39 +72,35 @@ pub async fn watch_for_created_outpoint<C>(
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    let (transaction, out_point) = matching_transaction_and_output(
-        blockchain_connector,
-        start_of_swap,
-        |transaction| -> Option<bitcoin::OutPoint> {
-            let txid = transaction.txid();
-            transaction
-                .output
-                .iter()
-                .enumerate()
-                .map(|(index, txout)| {
-                    // Casting a usize to u32 can lead to truncation on 64bit platforms
-                    // However, bitcoin limits the number of inputs to u32 anyway, so this
-                    // is not a problem for us.
-                    #[allow(clippy::cast_possible_truncation)]
-                    (index as u32, txout)
-                })
-                .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
-                .map(|(vout, _txout)| OutPoint { txid, vout })
-        },
-    )
+    let (transaction, out_point) = watch(blockchain_connector, start_of_swap, |transaction| {
+        let txid = transaction.txid();
+        transaction
+            .output
+            .iter()
+            .enumerate()
+            .map(|(index, txout)| {
+                // Casting a usize to u32 can lead to truncation on 64bit platforms
+                // However, bitcoin limits the number of inputs to u32 anyway, so this
+                // is not a problem for us.
+                #[allow(clippy::cast_possible_truncation)]
+                (index as u32, txout)
+            })
+            .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
+            .map(|(vout, _txout)| OutPoint { txid, vout })
+    })
     .await?;
 
     Ok((transaction, out_point))
 }
 
-pub async fn matching_transaction_and_output<C, F>(
+async fn watch<C, S, M>(
     connector: C,
     start_of_swap: NaiveDateTime,
-    matcher: F,
-) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
+    sieve: S,
+) -> anyhow::Result<(bitcoin::Transaction, M)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
-    F: Fn(bitcoin::Transaction) -> Option<bitcoin::OutPoint>,
+    S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
@@ -114,47 +111,9 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 for transaction in block.txdata.into_iter() {
-                    match matcher(transaction.clone()) {
-                        Some(out_point) => {
-                            tracing::trace!("transaction matched {:x}", transaction.txid());
-                            return Ok((transaction, out_point));
-                        }
-                        None => {
-                            continue;
-                        }
-                    }
-                }
-            }
-            GeneratorState::Complete(Err(e)) => return Err(e),
-            // By matching against the never type explicitly, we assert that the `Ok` value of the
-            // result is actually the never type and has not been changed since this line was
-            // written. The never type can never be constructed, so we can never reach this line.
-            GeneratorState::Complete(Ok(never)) => match never {},
-        }
-    }
-}
-
-pub async fn matching_transaction<C, F>(
-    connector: C,
-    start_of_swap: NaiveDateTime,
-    matcher: F,
-) -> anyhow::Result<bitcoin::Transaction>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
-    F: Fn(bitcoin::Transaction) -> bool,
-{
-    let mut block_generator = Gen::new({
-        let connector = connector.clone();
-        |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await }
-    });
-
-    loop {
-        match block_generator.async_resume().await {
-            GeneratorState::Yielded(block) => {
-                for transaction in block.txdata.into_iter() {
-                    if matcher(transaction.clone()) {
+                    if let Some(result) = sieve(&transaction) {
                         tracing::trace!("transaction matched {:x}", transaction.txid());
-                        return Ok(transaction);
+                        return Ok((transaction, result));
                     }
                 }
             }
