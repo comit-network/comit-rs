@@ -81,9 +81,16 @@ export class LndInstance {
         this.logger.debug("Instantiating lnd connection:", config);
         const lnd = await Lnd.init(config);
 
+        this.logger.debug("Calling genSeed");
         const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({});
         const walletPassword = Buffer.from("password", "utf8");
+        this.logger.debug(
+            "Initialize wallet",
+            cipherSeedMnemonic,
+            walletPassword
+        );
         await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
+        this.logger.debug("Wallet initialized!");
     }
 
     private async initAuthenticatedLndConnection() {
