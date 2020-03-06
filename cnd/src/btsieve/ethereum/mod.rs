@@ -6,9 +6,7 @@ use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
-    ethereum::{
-        Address, Bytes, Input, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256,
-    },
+    ethereum::{Address, Bytes, Input, Log, Transaction, TransactionReceipt, H256, U256},
 };
 use anyhow;
 use async_trait::async_trait;
@@ -120,7 +118,7 @@ where
         + BlockByHash<Block = Block, BlockHash = Hash>
         + ReceiptByHash
         + Clone,
-    F: Fn(Transaction) -> bool,
+    F: Fn(&Transaction) -> bool,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
@@ -131,7 +129,7 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 for transaction in block.transactions.into_iter() {
-                    if matcher(transaction.clone()) {
+                    if matcher(&transaction) {
                         let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
                         if !receipt.is_status_ok() {
                             // This can be caused by a failed attempt to complete an action,

@@ -191,15 +191,8 @@ impl Arbitrary for Quickcheck<transaction::Ethereum> {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         Quickcheck(transaction::Ethereum {
             hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
-            nonce: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            block_hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
-            block_number: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            transaction_index: *Quickcheck::<crate::ethereum::U128>::arbitrary(g),
-            from: *Quickcheck::<crate::ethereum::H160>::arbitrary(g),
             to: Option::<Quickcheck<crate::ethereum::H160>>::arbitrary(g).map(|i| i.0),
             value: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            gas_price: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            gas: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
             input: Bytes(Arbitrary::arbitrary(g)),
         })
     }
