@@ -3,7 +3,7 @@
 
 pub use ethbloom::{Bloom as H2048, Input};
 pub use primitive_types::{H160, H256, U128, U256};
-use serde::{Deserialize, Serialize, Serializer};
+use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, SerHexSeq, StrictPfx};
 
 pub type Index = U128;
@@ -170,24 +170,6 @@ pub struct Block {
     pub mix_hash: Option<H256>,
     /// Nonce
     pub nonce: Option<H64>,
-}
-
-/// Used to specify a block. Can currently only specify the latest block but
-/// other variants can be added as required
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub enum BlockNumber {
-    Latest,
-}
-
-impl Serialize for BlockNumber {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match *self {
-            BlockNumber::Latest => serializer.serialize_str("latest"),
-        }
-    }
 }
 
 /// Raw bytes wrapper

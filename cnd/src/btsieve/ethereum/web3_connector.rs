@@ -1,6 +1,6 @@
 use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{BlockNumber, TransactionReceipt, H256},
+    ethereum::{TransactionReceipt, H256},
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -33,7 +33,7 @@ impl LatestBlock for Web3Connector {
         let url = self.url.clone();
 
         let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
-            serialize(BlockNumber::Latest)?,
+            serialize("latest")?,
             serialize(true)?,
         ]);
 
