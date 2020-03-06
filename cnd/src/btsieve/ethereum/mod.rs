@@ -5,19 +5,23 @@ pub use self::{cache::Cache, web3_connector::Web3Connector};
 use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
-        ReceiptByHash,
     },
     ethereum::{
         Address, Bytes, Input, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256,
     },
 };
 use anyhow;
+use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use futures_core::compat::Future01CompatExt;
 use genawaiter::{sync::Gen, GeneratorState};
 
 type Hash = H256;
 type Block = crate::ethereum::Block;
+
+#[async_trait]
+pub trait ReceiptByHash: Send + Sync + 'static {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt>;
+}
 
 impl BlockHash<Hash> for Block {
     fn block_hash(&self) -> H256 {
@@ -40,7 +44,7 @@ pub async fn watch_for_contract_creation<C>(
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
+        + ReceiptByHash
         + Clone,
 {
     let (transaction, receipt) =
@@ -65,7 +69,7 @@ pub async fn watch_for_event<C>(
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
+        + ReceiptByHash
         + Clone,
 {
     matching_transaction_and_log(
@@ -80,9 +84,9 @@ where
 /// Fetch receipt from connector using transaction hash.
 async fn fetch_receipt<C>(blockchain_connector: C, hash: Hash) -> anyhow::Result<TransactionReceipt>
 where
-    C: ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>,
+    C: ReceiptByHash,
 {
-    let receipt = blockchain_connector.receipt_by_hash(hash).compat().await?;
+    let receipt = blockchain_connector.receipt_by_hash(hash).await?;
     Ok(receipt)
 }
 
@@ -114,7 +118,7 @@ pub async fn matching_transaction_and_receipt<C, F>(
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
+        + ReceiptByHash
         + Clone,
     F: Fn(Transaction) -> bool,
 {
@@ -161,7 +165,7 @@ async fn matching_transaction_and_log<C, F>(
 where
     C: LatestBlock<Block = Block>
         + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash<Receipt = TransactionReceipt, TransactionHash = Hash>
+        + ReceiptByHash
         + Clone,
     F: Fn(TransactionReceipt) -> Option<Log>,
 {

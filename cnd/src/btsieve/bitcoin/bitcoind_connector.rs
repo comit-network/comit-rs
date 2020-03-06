@@ -1,9 +1,8 @@
 use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
+use async_trait::async_trait;
 use bitcoin::{BlockHash, Network};
-use futures::Future;
-use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
 use serde::Deserialize;
 
@@ -35,63 +34,46 @@ impl BitcoindConnector {
     }
 }
 
+#[async_trait]
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let chaininfo_url = self.chaininfo_url.clone();
-        let this = self.clone();
+        let mut connector = self.clone();
 
-        let latest_block = async move {
-            let chain_info = this
-                .client
-                .get(chaininfo_url)
-                .send()
-                .await?
-                .json::<ChainInfo>()
-                .await?;
+        let chain_info = connector
+            .client
+            .get(chaininfo_url)
+            .send()
+            .await?
+            .json::<ChainInfo>()
+            .await?;
 
-            let block = this
-                .block_by_hash(chain_info.bestblockhash)
-                .compat()
-                .await?;
+        let block = connector.block_by_hash(chain_info.bestblockhash).await?;
 
-            Ok(block)
-        };
-
-        Box::new(latest_block.boxed().compat())
+        Ok(block)
     }
 }
 
+#[async_trait]
 impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
-
         let client = self.client.clone();
-        let block = async move {
-            let block =
-                bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
-            tracing::debug!(
-                "Fetched block {} with {} transactions from bitcoind",
-                block_hash,
-                block.txdata.len()
-            );
+        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
 
-            Ok(block)
-        }
-        .boxed()
-        .compat();
+        tracing::debug!(
+            "Fetched block {} with {} transactions from bitcoind",
+            block_hash,
+            block.txdata.len()
+        );
 
-        Box::new(block)
+        Ok(block)
     }
 }
 

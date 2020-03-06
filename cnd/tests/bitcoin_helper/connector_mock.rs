@@ -1,6 +1,7 @@
+use anyhow::Context;
+use async_trait::async_trait;
 use bitcoin::{hashes::sha256d, util::hash::BitcoinHash, BlockHash};
 use cnd::btsieve::{BlockByHash, LatestBlock};
-use futures::{future::IntoFuture, Future};
 use std::{
     collections::HashMap,
     time::{Duration, Instant},
@@ -33,15 +34,14 @@ impl BitcoinConnectorMock {
     }
 }
 
+#[async_trait]
 impl LatestBlock for BitcoinConnectorMock {
     type Block = bitcoin::Block;
     type BlockHash = sha256d::Hash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         if self.latest_blocks.is_empty() {
-            return Box::new(Err(anyhow::Error::from(Error::NoMoreBlocks)).into_future());
+            return Err(anyhow::Error::from(Error::NoMoreBlocks));
         }
 
         let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
@@ -55,25 +55,20 @@ impl LatestBlock for BitcoinConnectorMock {
                 self.current_latest_block_index += 1;
             }
         }
-        Box::new(Ok(latest_block).into_future())
+        Ok(latest_block)
     }
 }
 
+#[async_trait]
 impl BlockByHash for BitcoinConnectorMock {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        Box::new(
-            self.all_blocks
-                .get(&block_hash)
-                .cloned()
-                .ok_or_else(|| anyhow::Error::from(Error::UnknownHash(block_hash)))
-                .into_future(),
-        )
+    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        self.all_blocks
+            .get(&block_hash)
+            .cloned()
+            .with_context(|| format!("could not find block with hash {}", block_hash))
     }
 }
 
@@ -81,6 +76,4 @@ impl BlockByHash for BitcoinConnectorMock {
 pub enum Error {
     #[error("ran out of blocks in chain")]
     NoMoreBlocks,
-    #[error("could not find block with hash {0}")]
-    UnknownHash(BlockHash),
 }
