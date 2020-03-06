@@ -25,15 +25,9 @@ pub struct TransactionReceipt {
     pub status: u8,
 }
 
-pub trait IsStatusOk {
-    fn is_status_ok(&self) -> bool;
-}
-
-impl IsStatusOk for TransactionReceipt {
-    fn is_status_ok(&self) -> bool {
-        const TRANSACTION_STATUS_OK: u8 = 1;
-
-        self.status == TRANSACTION_STATUS_OK
+impl TransactionReceipt {
+    pub fn is_status_ok(&self) -> bool {
+        self.status == 1
     }
 }
 

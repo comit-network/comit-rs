@@ -6,9 +6,7 @@ use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
-    ethereum::{
-        Address, Bytes, Input, IsStatusOk, Log, Transaction, TransactionReceipt, H256, U256,
-    },
+    ethereum::{Address, Bytes, Input, Log, Transaction, TransactionReceipt, H256, U256},
 };
 use anyhow;
 use async_trait::async_trait;
