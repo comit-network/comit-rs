@@ -6,7 +6,6 @@ pub use primitive_types::{H160, H256, U128, U256};
 use serde::{Deserialize, Serialize};
 use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
 
-pub type Index = U128;
 pub type Address = H160;
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Deserialize)]
