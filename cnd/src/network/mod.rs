@@ -26,14 +26,13 @@ use async_trait::async_trait;
 use futures_core::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future as _,
 };
 use libp2p::{
     core::either::{EitherError, EitherOutput},
     identity::{ed25519, Keypair},
     mdns::Mdns,
     swarm::{
-        protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect,
+        protocols_handler::DummyProtocolsHandler, IntoProtocolsHandlerSelect,
         NetworkBehaviourEventProcess, SwarmBuilder,
     },
     Multiaddr, NetworkBehaviour, PeerId,
@@ -50,27 +49,29 @@ use std::{
     convert::{TryFrom, TryInto},
     fmt::{Debug, Display},
     io,
+    pin::Pin,
     sync::Arc,
+    task::{Context, Poll},
 };
-use tokio::sync::Mutex;
-use tokio_compat::runtime::{Runtime, TaskExecutor};
+use tokio::{
+    runtime::{Handle, Runtime},
+    sync::Mutex,
+};
+
+type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
+    ComitNode,
+    EitherOutput<ProtocolInEvent, void::Void>,
+    EitherOutput<ProtocolOutEvent, void::Void>,
+    IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
+    EitherError<handler::Error, void::Void>,
+>;
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
-    swarm: Arc<
-        Mutex<
-            ExpandedSwarm<
-                ComitNode,
-                EitherOutput<ProtocolInEvent, void::Void>,
-                EitherOutput<ProtocolOutEvent, void::Void>,
-                IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
-                EitherError<handler::Error, void::Void>,
-            >,
-        >,
-    >,
+    swarm: Arc<Mutex<ExpandedSwarm>>,
     local_peer_id: PeerId,
 }
 
@@ -95,13 +96,15 @@ impl Swarm {
             Arc::clone(&state_store),
             seed,
             database.clone(),
-            runtime.executor(),
+            runtime.handle().clone(),
         )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
             .executor_fn({
-                let executor = runtime.executor();
-                move |task| executor.spawn_std(task)
+                let handle = runtime.handle().clone();
+                move |task| {
+                    handle.spawn(task);
+                }
             })
             .build();
 
@@ -112,22 +115,32 @@ impl Swarm {
 
         let swarm = Arc::new(Mutex::new(swarm));
 
-        runtime.spawn_std({
-            let swarm = swarm.clone();
-
-            futures_core::future::poll_fn(move |cx| loop {
-                let mutex = swarm.lock();
-                futures_core::pin_mut!(mutex);
-
-                let mut guard = futures_core::ready!(mutex.poll(cx));
-                futures_core::ready!(guard.poll_next_unpin(cx));
-            })
+        runtime.spawn(SwarmWorker {
+            swarm: swarm.clone(),
         });
 
         Ok(Self {
             swarm,
             local_peer_id,
         })
+    }
+}
+
+struct SwarmWorker {
+    swarm: Arc<Mutex<ExpandedSwarm>>,
+}
+
+impl futures_core::Future for SwarmWorker {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        loop {
+            let mutex = self.swarm.lock();
+            futures_core::pin_mut!(mutex);
+
+            let mut guard = futures_core::ready!(mutex.poll(cx));
+            futures_core::ready!(guard.poll_next_unpin(cx));
+        }
     }
 }
 
@@ -156,7 +169,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
     #[behaviour(ignore)]
-    task_executor: TaskExecutor,
+    task_executor: Handle,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -198,7 +211,7 @@ impl ComitNode {
         state_store: Arc<InMemoryStateStore>,
         seed: RootSeed,
         db: Sqlite,
-        task_executor: TaskExecutor,
+        task_executor: Handle,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -933,7 +946,7 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
                 let state_store = self.state_store.clone();
                 let seed = self.seed;
 
-                self.task_executor.spawn_std(async move {
+                self.task_executor.spawn(async move {
                     match handle_request(db, seed, state_store, peer_id, request).await {
                         Ok(id) => {
                             let mut response_channels = response_channels.lock().await;
@@ -943,7 +956,7 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
                             tracing::debug!("failed to send response through channel")
                         }),
                     }
-                })
+                });
             }
         }
     }

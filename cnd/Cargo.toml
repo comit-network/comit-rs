@@ -21,7 +21,7 @@ directories = "2.0"
 ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
 futures = { version = "0.1" }
-futures-core = { version = "0.3", features = ["compat", "async-await"], default-features = false, package = "futures" }
+futures-core = { version = "0.3", features = ["async-await"], default-features = false, package = "futures" }
 genawaiter = "0.99"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
@@ -50,7 +50,6 @@ strum_macros = "0.18"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
 tokio = { version = "0.2", features = ["rt-core", "time", "macros", "sync"] }
-tokio-compat = "0.1"
 toml = "0.5"
 tracing = "0.1"
 tracing-core = "0.1"
