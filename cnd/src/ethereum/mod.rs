@@ -4,7 +4,7 @@
 pub use ethbloom::{Bloom as H2048, Input};
 pub use primitive_types::{H160, H256, U128, U256};
 use serde::{Deserialize, Serialize};
-use serde_hex::{SerHex, SerHexSeq, StrictPfx};
+use serde_hex::{CompactPfx, SerHex, SerHexSeq, StrictPfx};
 
 pub type Index = U128;
 pub type Address = H160;
@@ -41,7 +41,8 @@ pub struct TransactionReceipt {
     /// Logs generated within this transaction.
     pub logs: Vec<Log>,
     /// Status: either 1 (success) or 0 (failure).
-    pub status: U256,
+    #[serde(with = "SerHex::<CompactPfx>")]
+    pub status: u8,
     /// Logs bloom
     #[serde(rename = "logsBloom")]
     pub logs_bloom: H2048,
@@ -53,8 +54,9 @@ pub trait IsStatusOk {
 
 impl IsStatusOk for TransactionReceipt {
     fn is_status_ok(&self) -> bool {
-        const TRANSACTION_STATUS_OK: u32 = 1;
-        self.status == TRANSACTION_STATUS_OK.into()
+        const TRANSACTION_STATUS_OK: u8 = 1;
+
+        self.status == TRANSACTION_STATUS_OK
     }
 }
 
@@ -185,6 +187,8 @@ impl<T: Into<Vec<u8>>> From<T> for Bytes {
 #[cfg(test)]
 mod tests {
     use super::Log;
+    use crate::ethereum::TransactionReceipt;
+
     #[test]
     fn deserialise_log() {
         let json = r#"
@@ -205,5 +209,35 @@ mod tests {
             }"#;
 
         let _: Log = serde_json::from_str(json).unwrap();
+    }
+
+    #[test]
+    fn deserialize_receipt_with_status_1() {
+        let json = r#"
+        {
+          "contractAddress": null,
+          "logs": [],
+          "status": "0x1"
+        }
+        "#;
+
+        let receipt = serde_json::from_str::<TransactionReceipt>(json).unwrap();
+
+        assert_eq!(receipt.status, 1);
+    }
+
+    #[test]
+    fn deserialize_receipt_with_status_0() {
+        let json = r#"
+        {
+          "contractAddress": null,
+          "logs": [],
+          "status": "0x0"
+        }
+        "#;
+
+        let receipt = serde_json::from_str::<TransactionReceipt>(json).unwrap();
+
+        assert_eq!(receipt.status, 0);
     }
 }
