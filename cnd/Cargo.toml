@@ -48,7 +48,7 @@ strum = "0.18"
 strum_macros = "0.18"
 thiserror = "1"
 tiny-keccak = { version = "2.0", features = ["keccak"] }
-tokio = { version = "0.2", features = ["rt-core", "time", "macros", "sync"] }
+tokio = { version = "0.2", features = ["rt-threaded", "time", "macros", "sync"] }
 toml = "0.5"
 tracing = "0.1"
 tracing-core = "0.1"
