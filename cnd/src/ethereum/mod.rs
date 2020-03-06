@@ -15,26 +15,6 @@ pub struct H64(#[serde(with = "SerHex::<StrictPfx>")] [u8; 8]);
 /// "Receipt" of an executed transaction: details of its execution.
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct TransactionReceipt {
-    /// Transaction hash.
-    #[serde(rename = "transactionHash")]
-    pub transaction_hash: H256,
-    /// Index within the block.
-    #[serde(rename = "transactionIndex")]
-    pub transaction_index: Index,
-    /// Hash of the block this transaction was included within.
-    #[serde(rename = "blockHash")]
-    pub block_hash: H256,
-    /// Number of the block this transaction was included within.
-    #[serde(rename = "blockNumber")]
-    pub block_number: U256,
-    /// Cumulative gas used within the block after this was executed.
-    #[serde(rename = "cumulativeGasUsed")]
-    pub cumulative_gas_used: U256,
-    /// Gas used by this transaction alone.
-    ///
-    /// Gas used is `None` if the the client is running in light client mode.
-    #[serde(rename = "gasUsed")]
-    pub gas_used: U256,
     /// Contract address created, or `None` if not a deployment.
     #[serde(rename = "contractAddress")]
     pub contract_address: Option<H160>,
@@ -43,9 +23,6 @@ pub struct TransactionReceipt {
     /// Status: either 1 (success) or 0 (failure).
     #[serde(with = "SerHex::<CompactPfx>")]
     pub status: u8,
-    /// Logs bloom
-    #[serde(rename = "logsBloom")]
-    pub logs_bloom: H2048,
 }
 
 pub trait IsStatusOk {
@@ -65,28 +42,10 @@ impl IsStatusOk for TransactionReceipt {
 pub struct Transaction {
     /// Hash
     pub hash: H256,
-    /// Nonce
-    pub nonce: U256,
-    /// Block hash. None when pending.
-    #[serde(rename = "blockHash")]
-    pub block_hash: H256,
-    /// Block number. None when pending.
-    #[serde(rename = "blockNumber")]
-    pub block_number: U256,
-    /// Transaction Index. None when pending.
-    #[serde(rename = "transactionIndex")]
-    pub transaction_index: Index,
-    /// Sender
-    pub from: H160,
     /// Recipient (None when contract creation)
     pub to: Option<H160>,
     /// Transfered value
     pub value: U256,
-    /// Gas Price
-    #[serde(rename = "gasPrice")]
-    pub gas_price: U256,
-    /// Gas amount
-    pub gas: U256,
     /// Input data
     pub input: Bytes,
 }
@@ -100,21 +59,11 @@ pub struct Log {
     pub topics: Vec<H256>,
     /// Data
     pub data: Bytes,
-    /// Block Hash
-    #[serde(rename = "blockHash")]
-    pub block_hash: Option<H256>,
-    /// Block Number
-    #[serde(rename = "blockNumber")]
-    pub block_number: Option<U256>,
-    /// Transaction Hash
-    #[serde(rename = "transactionHash")]
-    pub transaction_hash: Option<H256>,
-    /// Transaction Index
-    #[serde(rename = "transactionIndex")]
-    pub transaction_index: Option<U256>,
 }
 
 /// The block returned from RPC calls.
+///
+/// This type contains only the fields we are actually using.
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Block {
     /// Hash of the block
@@ -122,56 +71,13 @@ pub struct Block {
     /// Hash of the parent
     #[serde(rename = "parentHash")]
     pub parent_hash: H256,
-    /// Hash of the uncles
-    #[serde(rename = "sha3Uncles")]
-    pub uncles_hash: H256,
-    /// Miner/author's address.
-    #[serde(rename = "miner")]
-    pub author: H160,
-    /// State root hash
-    #[serde(rename = "stateRoot")]
-    pub state_root: H256,
-    /// Transactions root hash
-    #[serde(rename = "transactionsRoot")]
-    pub transactions_root: H256,
-    /// Transactions receipts root hash
-    #[serde(rename = "receiptsRoot")]
-    pub receipts_root: H256,
-    /// Block number. None if pending.
-    pub number: Option<U128>,
-    /// Gas Used
-    #[serde(rename = "gasUsed")]
-    pub gas_used: U256,
-    /// Gas Limit
-    #[serde(rename = "gasLimit")]
-    pub gas_limit: U256,
-    /// Extra data
-    #[serde(rename = "extraData")]
-    pub extra_data: Bytes,
     /// Logs bloom
     #[serde(rename = "logsBloom")]
     pub logs_bloom: H2048,
     /// Timestamp
     pub timestamp: U256,
-    /// Difficulty
-    pub difficulty: U256,
-    /// Total difficulty
-    #[serde(rename = "totalDifficulty")]
-    pub total_difficulty: U256,
-    /// Seal fields
-    #[serde(default, rename = "sealFields")]
-    pub seal_fields: Vec<Bytes>,
-    /// Uncles' hashes
-    pub uncles: Vec<H256>,
     /// Transactions
     pub transactions: Vec<Transaction>,
-    /// Size in bytes
-    pub size: Option<U256>,
-    /// Mix Hash
-    #[serde(rename = "mixHash")]
-    pub mix_hash: Option<H256>,
-    /// Nonce
-    pub nonce: Option<H64>,
 }
 
 /// Raw bytes wrapper
