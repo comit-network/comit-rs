@@ -1,6 +1,10 @@
 use crate::{
-    asset::{self},
-    btsieve::{self, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    asset,
+    btsieve::{
+        self,
+        bitcoin::BitcoindConnector,
+        ethereum::{self, Web3Connector},
+    },
     db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
     htlc_location, identity,
     network::{
@@ -12,14 +16,14 @@ use crate::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             self,
-            create_swap::{HtlcParams, SwapEventOnLedger},
+            create_swap::{HtlcParams, SwapEvent},
             events::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            state_store::{self, InMemoryStateStore, StateStore},
             ActorState,
         },
+        state_store::{self, InMemoryStateStore, StateStore},
         SwapId,
     },
     transaction,
@@ -53,28 +57,34 @@ pub struct Facade {
     pub db: Sqlite,
 }
 
-impl StateStore for Facade {
-    fn insert<A>(&self, key: SwapId, value: A)
-    where
-        A: ActorState + Send,
-    {
-        self.state_store.insert(key, value)
+impl<S> StateStore<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for Facade
+where
+    S: ActorState + Clone + Send,
+    S::AA: Ord,
+    S::BA: Ord,
+{
+    fn insert(&self, key: SwapId, value: S) {
+        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::insert(
+            self.state_store.as_ref(),
+            key,
+            value,
+        )
     }
 
-    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, state_store::Error>
-    where
-        A: ActorState + Clone,
-    {
-        self.state_store.get(key)
+    fn get(&self, key: &SwapId) -> Result<Option<S>, state_store::Error> {
+        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::get(
+            self.state_store.as_ref(),
+            key,
+        )
     }
 
-    fn update<A>(&self, key: &SwapId, update: SwapEventOnLedger<A>)
-    where
-        A: ActorState,
-        A::AA: Ord,
-        A::BA: Ord,
-    {
-        self.state_store.update::<A>(key, update)
+    #[allow(clippy::type_complexity)]
+    fn update(&self, key: &SwapId, update: SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>) {
+        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::update(
+            self.state_store.as_ref(),
+            key,
+            update,
+        )
     }
 }
 

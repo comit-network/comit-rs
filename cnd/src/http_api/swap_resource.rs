@@ -10,7 +10,8 @@ use crate::{
     },
     swap_protocols::{
         actions::Actions,
-        rfc003::{self, state_store::StateStore, ActorState},
+        rfc003::{self, create_swap::SwapEvent, ActorState},
+        state_store::{InMemoryStateStore, StateStore},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -80,21 +81,17 @@ pub enum OnFail {
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
-pub fn build_rfc003_siren_entity<S>(
-    state_store: &S,
+pub fn build_rfc003_siren_entity(
+    state_store: &InMemoryStateStore,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
     on_fail: OnFail,
-) -> anyhow::Result<siren::Entity>
-where
-    S: StateStore,
-{
+) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
     with_swap_types!(types, {
-        let state = state_store
-            .get::<ROLE>(&id)?
+        let state = StateStore::<ROLE, SwapEvent<AA, BA, AH, BH, AT, BT>>::get(state_store, &id)?
             .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
 
         if state.swap_failed() && on_fail == OnFail::Error {

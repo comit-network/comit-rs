@@ -15,14 +15,17 @@
 use crate::cli::Options;
 use anyhow::Context;
 use cnd::{
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    btsieve::{
+        bitcoin::{self, BitcoindConnector},
+        ethereum::{self, Web3Connector},
+    },
     config::{self, Settings},
     db::Sqlite,
     http_api::route_factory,
     load_swaps,
     network::Swarm,
     seed::RootSeed,
-    swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
+    swap_protocols::{state_store::InMemoryStateStore, Facade},
 };
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
