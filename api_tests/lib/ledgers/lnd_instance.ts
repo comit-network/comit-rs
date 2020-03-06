@@ -174,6 +174,9 @@ restlisten=127.0.0.1:${restPort}
 ; Do not seek out peers on the network
 nobootstrap=true
 
+; Only wait 1 confirmation to open a channel
+bitcoin.defaultchanconfs=1
+
 [Bitcoin]
 
 bitcoin.active=true

@@ -14,8 +14,14 @@ export async function createActors(
     const testFolderName = path.join(global.logRoot, "tests", testName);
 
     await resetLogs(testFolderName);
+
+    const listPromises: Promise<Actor>[] = [];
     for (const name of actorNames) {
-        actorsMap.set(name, await createActor(testFolderName, name));
+        listPromises.push(createActor(testFolderName, name));
+    }
+    const createdActors = await Promise.all(listPromises);
+    for (const actor of createdActors) {
+        actorsMap.set(actor.getName(), actor);
     }
 
     const actors = new Actors(actorsMap);
@@ -24,7 +30,7 @@ export async function createActors(
         actorsMap.get(name).actors = actors;
     }
 
-    return Promise.resolve(actors);
+    return actors;
 }
 
 async function resetLogs(logDir: string) {
