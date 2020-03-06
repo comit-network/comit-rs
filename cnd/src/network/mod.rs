@@ -23,7 +23,7 @@ use crate::{
     transaction,
 };
 use async_trait::async_trait;
-use futures_core::{
+use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
 };
@@ -130,16 +130,16 @@ struct SwarmWorker {
     swarm: Arc<Mutex<ExpandedSwarm>>,
 }
 
-impl futures_core::Future for SwarmWorker {
+impl futures::Future for SwarmWorker {
     type Output = ();
 
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         loop {
             let mutex = self.swarm.lock();
-            futures_core::pin_mut!(mutex);
+            futures::pin_mut!(mutex);
 
-            let mut guard = futures_core::ready!(mutex.poll(cx));
-            futures_core::ready!(guard.poll_next_unpin(cx));
+            let mut guard = futures::ready!(mutex.poll(cx));
+            futures::ready!(guard.poll_next_unpin(cx));
         }
     }
 }
@@ -241,7 +241,7 @@ impl ComitNode {
         &mut self,
         peer_id: DialInformation,
         request: OutboundRequest,
-    ) -> impl futures_core::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
+    ) -> impl futures::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }

@@ -19,7 +19,7 @@ use crate::{
     transaction,
 };
 use anyhow::Context;
-use futures_core::future::TryFutureExt;
+use futures::future::TryFutureExt;
 use libp2p_comit::frame::OutboundRequest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};

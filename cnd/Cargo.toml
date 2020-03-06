@@ -20,8 +20,7 @@ diesel_migrations = "1.4.0"
 directories = "2.0"
 ethbloom = "0.6.4"
 fern = { version = "0.5", features = ["colored"] }
-futures = { version = "0.1" }
-futures-core = { version = "0.3", features = ["async-await"], default-features = false, package = "futures" }
+futures = { version = "0.3", features = ["async-await"], default-features = false }
 genawaiter = "0.99"
 hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }

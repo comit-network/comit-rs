@@ -15,7 +15,7 @@ use crate::{
     timestamp::Timestamp,
 };
 use chrono::NaiveDateTime;
-use futures_core::future::{self, Either};
+use futures::future::{self, Either};
 use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
