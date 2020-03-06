@@ -15,7 +15,7 @@ use crate::{
         ledger,
         rfc003::{
             self, bob,
-            messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
+            messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
             state_store::{InMemoryStateStore, StateStore},
         },
         HashFunction, Role, SwapId, SwapProtocol,
@@ -44,10 +44,10 @@ use libp2p_comit::{
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
-use serde::de::DeserializeOwned;
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt::{Debug, Display},
     io,
     sync::Arc,
@@ -951,6 +951,47 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
 
 impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
+}
+
+impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest
+where
+    RequestBody<AI, BI>: From<Request<AL, BL, AA, BA, AI, BI>> + Serialize,
+    LedgerKind: From<AL> + From<BL>,
+    AssetKind: From<AA> + From<BA>,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
+{
+    type Error = anyhow::Error;
+
+    fn try_from(request: Request<AL, BL, AA, BA, AI, BI>) -> anyhow::Result<Self> {
+        let request_body = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::from(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::from(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::from(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::from(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl<AL, BL, AA, BA, AI, BI> From<Request<AL, BL, AA, BA, AI, BI>> for RequestBody<AI, BI> {
+    fn from(request: Request<AL, BL, AA, BA, AI, BI>) -> Self {
+        RequestBody {
+            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: request.beta_ledger_redeem_identity,
+            alpha_expiry: request.alpha_expiry,
+            beta_expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
 }
 
 fn rfc003_swap_request<AL, BL, AA, BA, AI, BI>(
