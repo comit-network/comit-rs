@@ -1,17 +1,12 @@
 mod bitcoind_connector;
 mod cache;
-mod transaction_ext;
 
-pub use self::{
-    bitcoind_connector::BitcoindConnector, cache::Cache, transaction_ext::TransactionExt,
-};
-use crate::{
-    btsieve::{
-        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
-    },
-    transaction,
+pub use self::{bitcoind_connector::BitcoindConnector, cache::Cache};
+use crate::btsieve::{
+    find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
 };
 use bitcoin::{
+    blockdata::script::Instruction,
     consensus::{encode::deserialize, Decodable},
     BitcoinHash, OutPoint,
 };
@@ -39,16 +34,34 @@ pub async fn watch_for_spent_outpoint<C>(
     start_of_swap: NaiveDateTime,
     from_outpoint: OutPoint,
     unlock_script: Vec<Vec<u8>>,
-) -> anyhow::Result<bitcoin::Transaction>
+) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        transaction.spends_from_with(&from_outpoint, &unlock_script)
+    let (transaction, txin) = watch(blockchain_connector, start_of_swap, |transaction| {
+        transaction
+            .input
+            .iter()
+            .filter(|txin| txin.previous_output == from_outpoint)
+            .find(|txin| {
+                unlock_script.iter().all(|item| {
+                    txin.witness.contains(item)
+                        || unlock_script.iter().all(|item| {
+                            txin.script_sig
+                                .iter(true)
+                                .any(|instruction| match instruction {
+                                    Instruction::PushBytes(data) => (item as &[u8]) == data,
+                                    Instruction::Op(_) => false,
+                                    Instruction::Error(_) => false,
+                                })
+                        })
+                })
+            })
+            .cloned()
     })
     .await?;
 
-    Ok(transaction)
+    Ok((transaction, txin))
 }
 
 pub async fn watch_for_created_outpoint<C>(
@@ -59,27 +72,35 @@ pub async fn watch_for_created_outpoint<C>(
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
 {
-    let transaction = matching_transaction(blockchain_connector, start_of_swap, |transaction| {
-        transaction.spends_to(&compute_address)
+    let (transaction, out_point) = watch(blockchain_connector, start_of_swap, |transaction| {
+        let txid = transaction.txid();
+        transaction
+            .output
+            .iter()
+            .enumerate()
+            .map(|(index, txout)| {
+                // Casting a usize to u32 can lead to truncation on 64bit platforms
+                // However, bitcoin limits the number of inputs to u32 anyway, so this
+                // is not a problem for us.
+                #[allow(clippy::cast_possible_truncation)]
+                (index as u32, txout)
+            })
+            .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
+            .map(|(vout, _txout)| OutPoint { txid, vout })
     })
     .await?;
 
-    let (vout, _txout) = transaction
-        .find_output(&compute_address)
-        .expect("Deployment transaction must contain outpoint described in pattern");
-
-    let txid = transaction.txid();
-    Ok((transaction, OutPoint { txid, vout }))
+    Ok((transaction, out_point))
 }
 
-pub async fn matching_transaction<C, F>(
+async fn watch<C, S, M>(
     connector: C,
     start_of_swap: NaiveDateTime,
-    matcher: F,
-) -> anyhow::Result<transaction::Bitcoin>
+    sieve: S,
+) -> anyhow::Result<(bitcoin::Transaction, M)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
-    F: Fn(bitcoin::Transaction) -> bool,
+    S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
     let mut block_generator = Gen::new({
         let connector = connector.clone();
@@ -90,9 +111,9 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 for transaction in block.txdata.into_iter() {
-                    if matcher(transaction.clone()) {
+                    if let Some(result) = sieve(&transaction) {
                         tracing::trace!("transaction matched {:x}", transaction.txid());
-                        return Ok(transaction);
+                        return Ok((transaction, result));
                     }
                 }
             }
@@ -149,8 +170,8 @@ where
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use crate::transaction;
     use spectral::prelude::*;
 
     #[test]

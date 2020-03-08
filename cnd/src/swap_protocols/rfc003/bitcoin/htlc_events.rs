@@ -85,7 +85,7 @@ where
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
         let connector = self.clone();
 
-        let transaction =
+        let (transaction, _) =
             watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
                 vec![1u8],
             ])
@@ -117,7 +117,7 @@ where
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
         let connector = self.clone();
 
-        let transaction =
+        let (transaction, _) =
             watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
                 vec![],
             ])
