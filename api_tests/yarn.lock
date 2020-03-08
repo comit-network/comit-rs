@@ -441,11 +441,6 @@ assertion-error@^1.1.0:
   resolved "https://registry.yarnpkg.com/assertion-error/-/assertion-error-1.1.0.tgz#e60b6b0e8f301bd97e5375215bda406c85118c0b"
   integrity sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==
 
-async@3.1.1:
-  version "3.1.1"
-  resolved "https://registry.yarnpkg.com/async/-/async-3.1.1.tgz#dd3542db03de837979c9ebbca64ca01b06dc98df"
-  integrity sha512-X5Dj8hK1pJNC2Wzo2Rcp9FBVdJMGRR/S7V+lH46s8GVFhtbo5O4Le5GECCF/8PISVdkUA6mMPvgz7qTTD1rf1g==
-
 async@3.2.0:
   version "3.2.0"
   resolved "https://registry.yarnpkg.com/async/-/async-3.2.0.tgz#b3a2685c5ebb641d3de02d161002c60fc9f85720"
@@ -2215,10 +2210,10 @@ ipaddr.js@1.9.0:
   resolved "https://registry.yarnpkg.com/ipaddr.js/-/ipaddr.js-1.9.0.tgz#37df74e430a0e47550fe54a2defe30d8acd95f65"
   integrity sha512-M4Sjn6N/+O6/IXSJseKqHoFc+5FdGJ22sXqnjTpdZweHK64MzEPAyQZyEU3R/KRv2GLoa7nNtg/C2Ev6m7z+eA==
 
-is-base64@1.0.0:
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/is-base64/-/is-base64-1.0.0.tgz#0bdda1a758fcfac6d78df8bb95960512bb42db61"
-  integrity sha512-7McBWBgGDHS8OHvCnPVVxl3HdzitV6XyjM1x7vVxbzXIKJUzxphU5MDL986aZ/oKf/Q+j4Vh4m54Fjwi88n75g==
+is-base64@1.1.0:
+  version "1.1.0"
+  resolved "https://registry.yarnpkg.com/is-base64/-/is-base64-1.1.0.tgz#8ce1d719895030a457c59a7dcaf39b66d99d56b4"
+  integrity sha512-Nlhg7Z2dVC4/PTvIFkgVVNvPHSO2eR/Yd0XzhGiXCXEvWnptXlXa/clQ8aePPiMuxEGcWfzWbGw2Fe3d+Y3v1g==
 
 is-binary-path@~2.1.0:
   version "2.1.0"
@@ -2449,28 +2444,28 @@ lcid@^1.0.0:
   dependencies:
     invert-kv "^1.0.0"
 
-lightning@1.2.3:
-  version "1.2.3"
-  resolved "https://registry.yarnpkg.com/lightning/-/lightning-1.2.3.tgz#ce066848589f7f53f025bd74c083571f0eac68e8"
-  integrity sha512-wu2KDfB7+0Cd1pMGJhmTd3vbDRRUVlDP6II4rb7E4s8bQTZF6Vz3lYv53q5oUrmCBpIBwhG6qaHo3CnxwNZjpQ==
+lightning@1.2.4:
+  version "1.2.4"
+  resolved "https://registry.yarnpkg.com/lightning/-/lightning-1.2.4.tgz#1debec35da84d8fabced378d191e6fc392394af2"
+  integrity sha512-J3NWINK2lE3NwtXpY1dsqUwZdosDymDsimEops56nuqeD09LENeQY4zBXD3WWS0ckYXh/Ar8LnCO2E/qMpXjyg==
   dependencies:
     "@grpc/proto-loader" "0.5.3"
-    async "3.1.1"
+    async "3.2.0"
     asyncjs-util "1.1.3"
     bn.js "5.1.1"
     body-parser "1.19.0"
-    bolt07 "1.4.4"
+    bolt07 "1.4.5"
     bolt09 "0.0.1"
     cbor "5.0.1"
     express "4.17.1"
     grpc "1.24.2"
     invoices "1.0.0"
-    is-base64 "1.0.0"
+    is-base64 "1.1.0"
 
-ln-service@^47.15.1:
-  version "47.15.1"
-  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.1.tgz#aa4b5aa795c835bde5a61c36d4a66124cd808c35"
-  integrity sha512-cad00SBy/pXLtHyyAlv8qug/h+B04XrKuYFbEL5pvlIHVvRtDi0YQk8fBEgAzyih2lYiDMcLWFqRBlsZIcfqeA==
+ln-service@^47.15.2:
+  version "47.15.2"
+  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.2.tgz#d90095340b4479811ea97216fdc4d2c4b68fe29b"
+  integrity sha512-sydFwqsSYYe/tFg/lnKloAgGO/DKXhlWbUzDE1mI0bz9nXAX0EdTVyZhRiSA9NCbyPj8hFj+sU2sws5XOdG04A==
   dependencies:
     "@alexbosworth/request" "2.88.3"
     "@datastructures-js/priority-queue" "1.0.2"
@@ -2489,8 +2484,8 @@ ln-service@^47.15.1:
     dotenv "8.2.0"
     express "4.17.1"
     grpc "1.24.2"
-    is-base64 "1.0.0"
-    lightning "1.2.3"
+    is-base64 "1.1.0"
+    lightning "1.2.4"
     lodash "4.17.15"
     macaroon "3.0.4"
     morgan "1.9.1"
