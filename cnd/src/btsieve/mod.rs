@@ -13,7 +13,6 @@ use std::{collections::HashSet, hash::Hash};
 #[async_trait]
 pub trait LatestBlock: Send + Sync + 'static {
     type Block;
-    type BlockHash;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block>;
 }

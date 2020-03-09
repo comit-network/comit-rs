@@ -22,15 +22,14 @@ impl Web3Connector {
 #[async_trait]
 impl LatestBlock for Web3Connector {
     type Block = crate::ethereum::Block;
-    type BlockHash = crate::ethereum::H256;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let block: Self::Block = self
             .client
-            .send(jsonrpc::Request::new(
-                "eth_getBlockByNumber",
-                vec![jsonrpc::serialize("latest")?, jsonrpc::serialize(true)?],
-            ))
+            .send(jsonrpc::Request::new("eth_getBlockByNumber", vec![
+                jsonrpc::serialize("latest")?,
+                jsonrpc::serialize(true)?,
+            ]))
             .await?;
 
         tracing::trace!(
@@ -50,10 +49,10 @@ impl BlockByHash for Web3Connector {
     async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let block = self
             .client
-            .send(jsonrpc::Request::new(
-                "eth_getBlockByHash",
-                vec![jsonrpc::serialize(&block_hash)?, jsonrpc::serialize(true)?],
-            ))
+            .send(jsonrpc::Request::new("eth_getBlockByHash", vec![
+                jsonrpc::serialize(&block_hash)?,
+                jsonrpc::serialize(true)?,
+            ]))
             .await?;
 
         tracing::trace!("Fetched block from web3: {:x}", block_hash);
@@ -67,10 +66,9 @@ impl ReceiptByHash for Web3Connector {
     async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
         let receipt = self
             .client
-            .send(jsonrpc::Request::new(
-                "eth_getTransactionReceipt",
-                vec![jsonrpc::serialize(transaction_hash)?],
-            ))
+            .send(jsonrpc::Request::new("eth_getTransactionReceipt", vec![
+                jsonrpc::serialize(transaction_hash)?,
+            ]))
             .await?;
 
         tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);

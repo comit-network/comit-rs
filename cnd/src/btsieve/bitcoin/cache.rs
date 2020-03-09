@@ -27,10 +27,9 @@ impl<C> Cache<C> {
 #[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block, BlockHash = BlockHash> + Clone,
+    C: LatestBlock<Block = Block> + Clone,
 {
     type Block = Block;
-    type BlockHash = BlockHash;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let cache = Arc::clone(&self.block_cache);
