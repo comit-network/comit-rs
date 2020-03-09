@@ -7,36 +7,6 @@ use crate::{
     swap_protocols::{ledger::Ethereum, rfc003::create_swap::HtlcParams},
 };
 use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::EtherHtlc};
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
-
-#[derive(Deserialize, Serialize, Debug)]
-pub struct ByteCode(pub String);
-
-impl Into<Bytes> for ByteCode {
-    fn into(self) -> Bytes {
-        Bytes(hex::decode(self.0).unwrap())
-    }
-}
-
-pub trait Htlc {
-    fn compile_to_hex(&self) -> ByteCode;
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Seconds(pub u64);
-
-impl From<Duration> for Seconds {
-    fn from(duration: Duration) -> Self {
-        Seconds(duration.as_secs())
-    }
-}
-
-impl From<Seconds> for Duration {
-    fn from(seconds: Seconds) -> Duration {
-        Duration::from_secs(seconds.0)
-    }
-}
 
 impl From<HtlcParams<Ethereum, asset::Ether, identity::Ethereum>> for EtherHtlc {
     fn from(htlc_params: HtlcParams<Ethereum, asset::Ether, identity::Ethereum>) -> Self {
