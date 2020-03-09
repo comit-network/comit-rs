@@ -95,7 +95,7 @@ async fn walk_back_until<C, P, B, H>(
 ) -> anyhow::Result<HashSet<H>>
 where
     C: BlockByHash<Block = B, BlockHash = H>,
-    P: Fn(&B) -> anyhow::Result<bool>,
+    P: Fn(&B) -> bool,
     B: BlockHash<H> + PreviousBlockHash<H> + Clone,
     H: Eq + Hash + Copy,
 {
@@ -105,7 +105,7 @@ where
     co.yield_(block.clone()).await;
     seen_blocks.insert(blockhash);
 
-    if stop_condition(&block)? {
+    if stop_condition(&block) {
         return Ok(seen_blocks);
     } else {
         blockhash = block.previous_block_hash();
@@ -116,7 +116,7 @@ where
         co.yield_(block.clone()).await;
         seen_blocks.insert(blockhash);
 
-        if stop_condition(&block)? {
+        if stop_condition(&block) {
             return Ok(seen_blocks);
         } else {
             blockhash = block.previous_block_hash();
@@ -126,11 +126,11 @@ where
 
 /// Constructs a predicate that returns `true` if the given block predates the
 /// start_of_swap timestamp.
-fn predates_start_of_swap<B>(start_of_swap: NaiveDateTime) -> impl Fn(&B) -> anyhow::Result<bool>
+fn predates_start_of_swap<B>(start_of_swap: NaiveDateTime) -> impl Fn(&B) -> bool
 where
     B: Predates,
 {
-    move |block| Ok(block.predates(start_of_swap))
+    move |block| block.predates(start_of_swap)
 }
 
 /// Constructs a predicate that returns `true` if we have seen the given block
@@ -138,15 +138,15 @@ where
 fn seen_block_or_predates_start_of_swap<'sb, B, H>(
     seen_blocks: &'sb HashSet<H>,
     start_of_swap: NaiveDateTime,
-) -> impl Fn(&B) -> anyhow::Result<bool> + 'sb
+) -> impl Fn(&B) -> bool + 'sb
 where
     B: Predates + BlockHash<H>,
     H: Eq + Hash,
 {
     move |block: &B| {
         let have_seen_block = seen_blocks.contains(&block.block_hash());
-        let predates_start_of_swap = predates_start_of_swap(start_of_swap)(block)?;
+        let predates_start_of_swap = predates_start_of_swap(start_of_swap)(block);
 
-        Ok(have_seen_block || predates_start_of_swap)
+        have_seen_block || predates_start_of_swap
     }
 }
