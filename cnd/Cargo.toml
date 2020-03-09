@@ -19,7 +19,7 @@ diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
 directories = "2.0"
 ethbloom = "0.6.4"
-fern = { version = "0.5", features = ["colored"] }
+fern = { version = "0.6", features = ["colored"] }
 futures = { version = "0.3", features = ["async-await"], default-features = false }
 genawaiter = "0.99"
 hex = "0.4"
