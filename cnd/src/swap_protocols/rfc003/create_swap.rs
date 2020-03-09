@@ -44,8 +44,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
         + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>
-        + Clone,
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>,
     A::AL: Clone,
     A::BL: Clone,
     A::AA: Ord + Clone,
@@ -66,11 +65,10 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
-        let dependencies = dependencies.clone();
-        |co| async move {
+        |co| async {
             watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
                 &dependencies,
-                &co,
+                co,
                 swap.alpha_htlc_params(),
                 at,
             )
@@ -123,8 +121,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
         + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>
-        + Clone,
+        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>,
     A::AL: Clone,
     A::BL: Clone,
     A::AA: Ord + Clone,
@@ -145,11 +142,10 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
-        let dependencies = dependencies.clone();
-        |co| async move {
+        |co| async {
             watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
                 &dependencies,
-                &co,
+                co,
                 swap.beta_htlc_params(),
                 at,
             )
@@ -184,7 +180,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_alpha_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: &D,
-    co: &Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
+    co: Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
     htlc_params: HtlcParams<AL, AA, AI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
@@ -233,7 +229,7 @@ where
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_beta_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: &D,
-    co: &Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
+    co: Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
     htlc_params: HtlcParams<BL, BA, BI>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
