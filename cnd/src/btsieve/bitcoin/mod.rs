@@ -30,13 +30,13 @@ impl PreviousBlockHash<Hash> for Block {
 }
 
 pub async fn watch_for_spent_outpoint<C>(
-    blockchain_connector: C,
+    blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
     from_outpoint: OutPoint,
     unlock_script: Vec<Vec<u8>>,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
     let (transaction, txin) = watch(blockchain_connector, start_of_swap, |transaction| {
         transaction
@@ -65,12 +65,12 @@ where
 }
 
 pub async fn watch_for_created_outpoint<C>(
-    blockchain_connector: C,
+    blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
     compute_address: bitcoin::Address,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
     let (transaction, out_point) = watch(blockchain_connector, start_of_swap, |transaction| {
         let txid = transaction.txid();
@@ -94,18 +94,16 @@ where
 }
 
 async fn watch<C, S, M>(
-    connector: C,
+    connector: &C,
     start_of_swap: NaiveDateTime,
     sieve: S,
 ) -> anyhow::Result<(bitcoin::Transaction, M)>
 where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
     S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
-    let mut block_generator = Gen::new({
-        let connector = connector.clone();
-        |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await }
-    });
+    let mut block_generator =
+        Gen::new({ |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await } });
 
     loop {
         match block_generator.async_resume().await {
@@ -137,7 +135,7 @@ impl Predates for Block {
 
 pub async fn bitcoin_http_request_for_hex_encoded_object<T>(
     request_url: Url,
-    client: Client,
+    client: &Client,
 ) -> anyhow::Result<T>
 where
     T: Decodable,

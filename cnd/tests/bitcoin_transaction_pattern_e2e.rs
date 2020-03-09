@@ -62,7 +62,7 @@ async fn bitcoin_transaction_pattern_e2e_test() {
         .expect("failed to send money to address");
 
     let (funding_transaction, _out_point) =
-        watch_for_created_outpoint(connector, start_of_swap, target_address)
+        watch_for_created_outpoint(&connector, start_of_swap, target_address)
             .await
             .unwrap();
 

@@ -80,9 +80,9 @@ impl Swarm {
         settings: &Settings,
         seed: RootSeed,
         runtime: &mut Runtime,
-        bitcoin_connector: &bitcoin::Cache<BitcoindConnector>,
-        ethereum_connector: &ethereum::Cache<Web3Connector>,
-        state_store: &Arc<InMemoryStateStore>,
+        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
+        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
+        state_store: Arc<InMemoryStateStore>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -91,9 +91,9 @@ impl Swarm {
 
         let transport = transport::build_comit_transport(local_key_pair)?;
         let behaviour = ComitNode::new(
-            bitcoin_connector.clone(),
-            ethereum_connector.clone(),
-            Arc::clone(&state_store),
+            bitcoin_connector,
+            ethereum_connector,
+            state_store,
             seed,
             database.clone(),
             runtime.handle().clone(),
@@ -157,9 +157,9 @@ pub struct ComitNode {
     mdns: Mdns,
 
     #[behaviour(ignore)]
-    pub bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
+    pub bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
     #[behaviour(ignore)]
-    pub ethereum_connector: ethereum::Cache<Web3Connector>,
+    pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
@@ -206,8 +206,8 @@ pub struct Reason {
 
 impl ComitNode {
     pub fn new(
-        bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
-        ethereum_connector: ethereum::Cache<Web3Connector>,
+        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
+        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         state_store: Arc<InMemoryStateStore>,
         seed: RootSeed,
         db: Sqlite,

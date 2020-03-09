@@ -27,15 +27,14 @@ impl<C> Cache<C> {
 #[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block> + Clone,
+    C: LatestBlock<Block = Block>,
 {
     type Block = Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let cache = Arc::clone(&self.block_cache);
-        let mut connector = self.connector.clone();
 
-        let block = connector.latest_block().await?;
+        let block = self.connector.latest_block().await?;
 
         let block_hash = block.bitcoin_hash();
         let mut guard = cache.lock().await;
@@ -50,13 +49,12 @@ where
 #[async_trait]
 impl<C> BlockByHash for Cache<C>
 where
-    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash>,
 {
     type Block = Block;
     type BlockHash = BlockHash;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        let mut connector = self.connector.clone();
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let cache = Arc::clone(&self.block_cache);
 
         if let Some(block) = cache.lock().await.get(&block_hash) {
@@ -64,7 +62,7 @@ where
             return Ok(block.clone());
         }
 
-        let block = connector.block_by_hash(block_hash.clone()).await?;
+        let block = self.connector.block_by_hash(block_hash.clone()).await?;
         tracing::trace!("Fetched block from connector: {:x}", block_hash);
 
         // We dropped the lock so at this stage the block may have been inserted by

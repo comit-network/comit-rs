@@ -49,7 +49,7 @@ async fn find_transaction_go_back_into_the_past() {
         NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0);
 
     let (got_transaction, got_receipt) =
-        matching_transaction_and_receipt(connector, start_of_swap, {
+        matching_transaction_and_receipt(&connector, start_of_swap, {
             |transaction| transaction.to == want_transaction.to
         })
         .await

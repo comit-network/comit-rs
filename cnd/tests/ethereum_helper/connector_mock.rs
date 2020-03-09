@@ -4,24 +4,20 @@ use cnd::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{Block, TransactionReceipt, H256},
 };
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use futures::{stream::BoxStream, StreamExt};
+use std::{collections::HashMap, time::Duration};
+use tokio::{stream, sync::Mutex, time::throttle};
 
-#[derive(Clone)]
 pub struct EthereumConnectorMock {
     all_blocks: HashMap<H256, Block>,
-    latest_blocks: Vec<Block>,
     receipts: HashMap<H256, TransactionReceipt>,
-    latest_time_return_block: Instant,
-    current_latest_block_index: usize,
+    latest_blocks: Mutex<BoxStream<'static, Block>>,
 }
 
 impl EthereumConnectorMock {
     pub fn new(
-        latest_blocks: impl IntoIterator<Item = Block>,
-        all_blocks: impl IntoIterator<Item = Block>,
+        latest_blocks: Vec<Block>,
+        all_blocks: Vec<Block>,
         receipts: Vec<(H256, TransactionReceipt)>,
     ) -> Self {
         let all_blocks = all_blocks
@@ -31,39 +27,34 @@ impl EthereumConnectorMock {
                 hm
             });
 
-        let latest_blocks = latest_blocks.into_iter().collect();
-
         EthereumConnectorMock {
             all_blocks,
-            latest_blocks,
-            latest_time_return_block: Instant::now(),
-            current_latest_block_index: 0,
             receipts: receipts.into_iter().collect(),
+            latest_blocks: Mutex::new(
+                throttle(Duration::from_secs(1), stream::iter(latest_blocks)).boxed(),
+            ),
         }
     }
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("there are no more blocks in this blockchain, either your implementation is buggy or you need a better test setup")]
+pub struct OutOfBlocks;
 
 #[async_trait]
 impl LatestBlock for EthereumConnectorMock {
     type Block = Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
-        if self.latest_blocks.is_empty() {
-            return Err(anyhow::Error::from(Error::NoMoreBlocks));
-        }
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block = self
+            .latest_blocks
+            .lock()
+            .await
+            .next()
+            .await
+            .ok_or(OutOfBlocks)?;
 
-        let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
-        if self.latest_time_return_block.elapsed() >= Duration::from_secs(1) {
-            self.latest_time_return_block = Instant::now();
-            if self
-                .latest_blocks
-                .get(self.current_latest_block_index + 1)
-                .is_some()
-            {
-                self.current_latest_block_index += 1;
-            }
-        }
-        Ok(latest_block)
+        Ok(block)
     }
 }
 
@@ -72,7 +63,7 @@ impl BlockByHash for EthereumConnectorMock {
     type Block = Block;
     type BlockHash = H256;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         self.all_blocks
             .get(&block_hash)
             .cloned()
@@ -88,10 +79,4 @@ impl ReceiptByHash for EthereumConnectorMock {
             .cloned()
             .with_context(|| format!("could not find block with hash {}", transaction_hash))
     }
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("ran out of blocks in chain")]
-    NoMoreBlocks,
 }

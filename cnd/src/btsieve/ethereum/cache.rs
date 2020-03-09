@@ -44,15 +44,14 @@ impl<C> Cache<C> {
 #[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block> + Clone,
+    C: LatestBlock<Block = Block>,
 {
     type Block = Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let cache = self.block_cache.clone();
-        let mut connector = self.connector.clone();
 
-        let block = connector.latest_block().await?;
+        let block = self.connector.latest_block().await?;
 
         let block_hash = block.hash.expect("no blocks without hash");
         let mut guard = cache.lock().await;
@@ -67,13 +66,12 @@ where
 #[async_trait]
 impl<C> BlockByHash for Cache<C>
 where
-    C: BlockByHash<Block = Block, BlockHash = Hash> + Clone,
+    C: BlockByHash<Block = Block, BlockHash = Hash>,
 {
     type Block = Block;
     type BlockHash = Hash;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        let mut connector = self.connector.clone();
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let cache = Arc::clone(&self.block_cache);
 
         if let Some(block) = cache.lock().await.get(&block_hash) {
@@ -81,7 +79,7 @@ where
             return Ok(block.clone());
         }
 
-        let block = connector.block_by_hash(block_hash.clone()).await?;
+        let block = self.connector.block_by_hash(block_hash.clone()).await?;
         tracing::trace!("Fetched block from connector: {:x}", block_hash);
 
         // We dropped the lock so at this stage the block may have been inserted by
@@ -96,10 +94,9 @@ where
 #[async_trait]
 impl<C> ReceiptByHash for Cache<C>
 where
-    C: ReceiptByHash + Clone,
+    C: ReceiptByHash,
 {
     async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
-        let connector = self.connector.clone();
         let cache = Arc::clone(&self.receipt_cache);
 
         if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
@@ -107,7 +104,10 @@ where
             return Ok(receipt.clone());
         }
 
-        let receipt = connector.receipt_by_hash(transaction_hash.clone()).await?;
+        let receipt = self
+            .connector
+            .receipt_by_hash(transaction_hash.clone())
+            .await?;
 
         tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
 
