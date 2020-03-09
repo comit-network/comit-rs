@@ -49,12 +49,10 @@ where
     type Block = Block;
 
     async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        let cache = self.block_cache.clone();
-
         let block = self.connector.latest_block().await?;
 
         let block_hash = block.hash.expect("no blocks without hash");
-        let mut guard = cache.lock().await;
+        let mut guard = self.block_cache.lock().await;
         if !guard.contains(&block_hash) {
             guard.put(block_hash, block.clone());
         }
@@ -72,9 +70,7 @@ where
     type BlockHash = Hash;
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        let cache = Arc::clone(&self.block_cache);
-
-        if let Some(block) = cache.lock().await.get(&block_hash) {
+        if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
             tracing::trace!("Found block in cache: {:x}", block_hash);
             return Ok(block.clone());
         }
@@ -84,7 +80,7 @@ where
 
         // We dropped the lock so at this stage the block may have been inserted by
         // another thread, no worries, inserting the same block twice does not hurt.
-        let mut guard = cache.lock().await;
+        let mut guard = self.block_cache.lock().await;
         guard.put(block_hash, block.clone());
 
         Ok(block)
@@ -97,9 +93,7 @@ where
     C: ReceiptByHash,
 {
     async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
-        let cache = Arc::clone(&self.receipt_cache);
-
-        if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
+        if let Some(receipt) = self.receipt_cache.lock().await.get(&transaction_hash) {
             tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
             return Ok(receipt.clone());
         }
@@ -113,7 +107,7 @@ where
 
         // We dropped the lock so at this stage the receipt may have been inserted by
         // another thread, no worries, inserting the same receipt twice does not hurt.
-        let mut guard = cache.lock().await;
+        let mut guard = self.receipt_cache.lock().await;
         guard.put(transaction_hash, receipt.clone());
 
         Ok(receipt)

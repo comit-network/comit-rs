@@ -32,12 +32,10 @@ where
     type Block = Block;
 
     async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        let cache = Arc::clone(&self.block_cache);
-
         let block = self.connector.latest_block().await?;
 
         let block_hash = block.bitcoin_hash();
-        let mut guard = cache.lock().await;
+        let mut guard = self.block_cache.lock().await;
         if !guard.contains(&block_hash) {
             guard.put(block_hash, block.clone());
         }
@@ -55,9 +53,7 @@ where
     type BlockHash = BlockHash;
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        let cache = Arc::clone(&self.block_cache);
-
-        if let Some(block) = cache.lock().await.get(&block_hash) {
+        if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
             tracing::trace!("Found block in cache: {:x}", block_hash);
             return Ok(block.clone());
         }
@@ -67,7 +63,7 @@ where
 
         // We dropped the lock so at this stage the block may have been inserted by
         // another thread, no worries, inserting the same block twice does not hurt.
-        let mut guard = cache.lock().await;
+        let mut guard = self.block_cache.lock().await;
         guard.put(block_hash, block.clone());
 
         Ok(block)
