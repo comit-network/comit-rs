@@ -23,8 +23,14 @@ export class BitcoindInstance implements LedgerInstance {
     public async start() {
         const bin = process.env.BITCOIND_BIN
             ? process.env.BITCOIND_BIN
-            : this.projectRoot +
-              "/blockchain_nodes/bitcoin/bitcoin-0.17.0/bin/bitcoind";
+            : path.join(
+                  this.projectRoot,
+                  "blockchain_nodes",
+                  "bitcoin",
+                  "bitcoin-0.17.0",
+                  "bin",
+                  "bitcoind"
+              );
 
         this.dataDir = path.join(this.logDir, "bitcoind");
         await mkdirAsync(this.dataDir, "755");

@@ -60,7 +60,7 @@ export class EthereumWallet implements Wallet {
             value: "0x0",
             data,
         };
-        const transactionResponse = await this.parity.sendTransaction(tx);
+        const transactionResponse = await this.sendTransaction(tx);
         const transactionReceipt = await transactionResponse.wait(1);
 
         if (!transactionReceipt.status) {
@@ -76,14 +76,22 @@ export class EthereumWallet implements Wallet {
         }
     }
 
+    private async sendTransaction(tx: TransactionRequest) {
+        const release = await global.parityAccountMutex.acquire();
+        try {
+            return await this.parity.sendTransaction(tx);
+        } finally {
+            release();
+        }
+    }
+
     private async mintEther(asset: Asset): Promise<void> {
         const startingBalance = await this.getBalanceByAsset(asset);
-
         const minimumExpectedBalance = asset.quantity;
 
         // make sure we have at least twice as much
         const value = new BigNumberEthers(minimumExpectedBalance).mul(2);
-        await this.parity.sendTransaction({
+        await this.sendTransaction({
             to: this.account(),
             value,
             gasLimit: 21000,

@@ -64,7 +64,7 @@ export class Actor {
             JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
         );
 
-        return new Actor(logger, cndInstance, logRoot, actorConfig);
+        return new Actor(logger, cndInstance, logRoot, actorConfig, name);
     }
 
     public actors: Actors;
@@ -85,11 +85,12 @@ export class Actor {
 
     public lndInstance: LndInstance;
 
-    private constructor(
+    constructor(
         private readonly logger: Logger,
         private readonly cndInstance: CndInstance,
         private readonly logRoot: string,
-        private readonly config: E2ETestActorConfig
+        private readonly config: E2ETestActorConfig,
+        private name: string
     ) {
         this.wallets = new Wallets({});
         const socket = cndInstance.getConfigFile().http_api.socket;
@@ -169,8 +170,11 @@ export class Actor {
             betaAssetKind
         );
 
-        await this.initializeDependencies();
-        await to.initializeDependencies();
+        const listPromises: Promise<void>[] = [
+            this.initializeDependencies(),
+            to.initializeDependencies(),
+        ];
+        await Promise.all(listPromises);
 
         await this.setStartingBalance([
             this.alphaAsset,
@@ -635,6 +639,10 @@ export class Actor {
         return entity.properties.role;
     }
 
+    public getName() {
+        return this.name;
+    }
+
     private async waitForAlphaExpiry() {
         const swapDetails = await this.swap.fetchDetails();
 
@@ -747,6 +755,7 @@ export class Actor {
             await this.lndInstance.start();
         }
 
+        const walletPromises: Promise<void>[] = [];
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
@@ -758,12 +767,12 @@ export class Actor {
                     lndP2pSocket: this.lndInstance.getLightningSocket(),
                 };
             }
-            await this.wallets.initializeForLedger(
-                ledgerName,
-                this.logger,
-                lnd
+            walletPromises.push(
+                this.wallets.initializeForLedger(ledgerName, this.logger, lnd)
             );
         }
+
+        await Promise.all(walletPromises);
 
         if (!lightningNeeded) {
             this.comitClient = new ComitClient(this.cnd)
