@@ -27,7 +27,7 @@ use cnd::{
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
-use tokio_compat::runtime;
+use tokio::runtime;
 
 mod cli;
 mod trace;
@@ -52,7 +52,9 @@ fn main() -> anyhow::Result<()> {
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
     let mut runtime = runtime::Builder::new()
-        .stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
+        .enable_all()
+        .threaded_scheduler()
+        .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
     const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
@@ -95,8 +97,8 @@ fn main() -> anyhow::Result<()> {
         db: database,
     };
 
-    runtime.block_on_std(load_swaps::load_swaps_from_database(deps.clone()))?;
-    runtime.spawn_std(spawn_warp_instance(settings, deps));
+    runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
+    runtime.spawn(spawn_warp_instance(settings, deps));
 
     // Block the current thread.
     ::std::thread::park();

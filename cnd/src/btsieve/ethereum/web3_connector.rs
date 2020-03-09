@@ -1,24 +1,20 @@
 use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{TransactionReceipt, H256},
+    jsonrpc,
 };
-use anyhow::Context;
 use async_trait::async_trait;
-use reqwest::{Client, Url};
-use serde::Serialize;
 use std::sync::Arc;
 
 #[derive(Clone, Debug)]
 pub struct Web3Connector {
-    web3: Arc<Client>,
-    url: Url,
+    client: Arc<jsonrpc::Client>,
 }
 
 impl Web3Connector {
-    pub fn new(node_url: Url) -> Self {
+    pub fn new(node_url: reqwest::Url) -> Self {
         Self {
-            web3: Arc::new(Client::new()),
-            url: node_url,
+            client: Arc::new(jsonrpc::Client::new(node_url)),
         }
     }
 }
@@ -29,37 +25,13 @@ impl LatestBlock for Web3Connector {
     type BlockHash = crate::ethereum::H256;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
-
-        let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
-            serialize("latest")?,
-            serialize(true)?,
-        ]);
-
-        let response = web3
-            .post(url)
-            .json(&request)
-            .send()
-            .await?
-            .json::<JsonRpcResponse<crate::ethereum::Block>>()
+        let block: Self::Block = self
+            .client
+            .send(jsonrpc::Request::new(
+                "eth_getBlockByNumber",
+                vec![jsonrpc::serialize("latest")?, jsonrpc::serialize(true)?],
+            ))
             .await?;
-
-        let block = match response {
-            JsonRpcResponse::Success { result } => result,
-            JsonRpcResponse::Error { code, message } => {
-                tracing::warn!(
-                    "eth_getBlockByNumber request failed with {}: {}",
-                    code,
-                    message
-                );
-                return Err(anyhow::anyhow!(
-                    "eth_getBlockByNumber request failed with {}: {}",
-                    code,
-                    message
-                ));
-            }
-        };
 
         tracing::trace!(
             "Fetched block from web3: {:x}",
@@ -70,69 +42,19 @@ impl LatestBlock for Web3Connector {
     }
 }
 
-#[derive(serde::Serialize)]
-struct JsonRpcRequest<T> {
-    id: String,
-    jsonrpc: String,
-    method: String,
-    params: T,
-}
-
-impl<T> JsonRpcRequest<T> {
-    fn new(method: &str, params: T) -> Self {
-        Self {
-            id: "1".to_owned(),
-            jsonrpc: "2.0".to_owned(),
-            method: method.to_owned(),
-            params,
-        }
-    }
-}
-
-#[derive(serde::Deserialize)]
-#[serde(untagged)]
-enum JsonRpcResponse<T> {
-    Success { result: T },
-    Error { code: i64, message: String },
-}
-
 #[async_trait]
 impl BlockByHash for Web3Connector {
     type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
     async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
-
-        let request = JsonRpcRequest::new("eth_getBlockByHash", vec![
-            serialize(&block_hash)?,
-            serialize(true)?,
-        ]);
-
-        let response = web3
-            .post(url)
-            .json(&request)
-            .send()
-            .await?
-            .json::<JsonRpcResponse<crate::ethereum::Block>>()
+        let block = self
+            .client
+            .send(jsonrpc::Request::new(
+                "eth_getBlockByHash",
+                vec![jsonrpc::serialize(&block_hash)?, jsonrpc::serialize(true)?],
+            ))
             .await?;
-
-        let block = match response {
-            JsonRpcResponse::Success { result } => result,
-            JsonRpcResponse::Error { code, message } => {
-                tracing::warn!(
-                    "eth_getBlockByHash request failed with {}: {}",
-                    code,
-                    message
-                );
-                return Err(anyhow::anyhow!(
-                    "eth_getBlockByHash request failed with {}: {}",
-                    code,
-                    message
-                ));
-            }
-        };
 
         tracing::trace!("Fetched block from web3: {:x}", block_hash);
 
@@ -143,48 +65,16 @@ impl BlockByHash for Web3Connector {
 #[async_trait]
 impl ReceiptByHash for Web3Connector {
     async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
-
-        let request = JsonRpcRequest::new("eth_getTransactionReceipt", vec![serialize(
-            transaction_hash,
-        )?]);
-
-        let response = web3
-            .post(url)
-            .json(&request)
-            .send()
-            .await?
-            .json::<JsonRpcResponse<crate::ethereum::TransactionReceipt>>()
+        let receipt = self
+            .client
+            .send(jsonrpc::Request::new(
+                "eth_getTransactionReceipt",
+                vec![jsonrpc::serialize(transaction_hash)?],
+            ))
             .await?;
-
-        let receipt = match response {
-            JsonRpcResponse::Success { result } => result,
-            JsonRpcResponse::Error { code, message } => {
-                tracing::warn!(
-                    "eth_getTransactionReceipt request failed with {}: {}",
-                    code,
-                    message
-                );
-                return Err(anyhow::anyhow!(
-                    "eth_getTransactionReceipt request failed with {}: {}",
-                    code,
-                    message
-                ));
-            }
-        };
 
         tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
         Ok(receipt)
     }
-}
-
-fn serialize<T>(t: T) -> anyhow::Result<serde_json::Value>
-where
-    T: Serialize,
-{
-    let value = serde_json::to_value(t).context("failed to serialize parameter")?;
-
-    Ok(value)
 }
