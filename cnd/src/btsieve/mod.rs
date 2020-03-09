@@ -67,7 +67,7 @@ where
 
     // Look back in time until we get a block that predates start_of_swap.
     let mut seen_blocks =
-        walk_back_until(predates_start_of_swap(start_of_swap), connector, &co, block).await?;
+        walk_back_until(predates_start_of_swap(start_of_swap), block, connector, &co).await?;
 
     // Look forward in time, but keep going back for missed blocks
     loop {
@@ -75,9 +75,9 @@ where
 
         let missed_blocks = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
+            block,
             connector,
             &co,
-            block,
         )
         .await?;
 
@@ -94,39 +94,38 @@ where
 /// This function yields all blocks as part of its process.
 /// This function returns the block-hashes of all visited blocks.
 async fn walk_back_until<C, P, B, H>(
-    stop_condition: P,
+    should_stop_here: P,
+    starting_block: B,
     connector: &C,
     co: &Co<B>,
-    block: B,
 ) -> anyhow::Result<HashSet<H>>
 where
     C: BlockByHash<Block = B, BlockHash = H>,
     P: Fn(&B) -> bool,
-    B: BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone,
+    B: BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H>,
     H: Eq + Hash + Copy,
 {
-    let mut seen_blocks: HashSet<H> = HashSet::new();
-    let mut blockhash = block.block_hash();
+    let mut seen_blocks = HashSet::new();
 
-    co.yield_(block.clone()).await;
-    seen_blocks.insert(blockhash);
-
-    if stop_condition(&block) {
-        return Ok(seen_blocks);
-    } else {
-        blockhash = block.previous_block_hash();
-    }
+    let mut current_blockhash = starting_block.block_hash();
+    let mut current_block = starting_block;
 
     loop {
-        let block = connector.block_by_hash(blockhash).await?;
-        co.yield_(block.clone()).await;
-        seen_blocks.insert(blockhash);
+        seen_blocks.insert(current_blockhash);
 
-        if stop_condition(&block) {
+        // we have to compute these variables before we consume the block with
+        // `co.yield_`
+        current_blockhash = current_block.previous_block_hash();
+        let should_stop_here = should_stop_here(&current_block);
+
+        // we have to yield the block before exiting
+        co.yield_(current_block).await;
+
+        if should_stop_here {
             return Ok(seen_blocks);
-        } else {
-            blockhash = block.previous_block_hash();
         }
+
+        current_block = connector.block_by_hash(current_blockhash).await?
     }
 }
 
