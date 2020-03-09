@@ -44,10 +44,9 @@ impl<C> Cache<C> {
 #[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block> + Clone,
 {
     type Block = Block;
-    type BlockHash = Hash;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let cache = self.block_cache.clone();

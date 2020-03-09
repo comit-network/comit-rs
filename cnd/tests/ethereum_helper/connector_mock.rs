@@ -46,7 +46,6 @@ impl EthereumConnectorMock {
 #[async_trait]
 impl LatestBlock for EthereumConnectorMock {
     type Block = Block;
-    type BlockHash = H256;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         if self.latest_blocks.is_empty() {

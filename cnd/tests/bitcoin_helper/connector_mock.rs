@@ -1,6 +1,6 @@
 use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::{hashes::sha256d, util::hash::BitcoinHash, BlockHash};
+use bitcoin::{util::hash::BitcoinHash, BlockHash};
 use cnd::btsieve::{BlockByHash, LatestBlock};
 use std::{
     collections::HashMap,
@@ -37,7 +37,6 @@ impl BitcoinConnectorMock {
 #[async_trait]
 impl LatestBlock for BitcoinConnectorMock {
     type Block = bitcoin::Block;
-    type BlockHash = sha256d::Hash;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         if self.latest_blocks.is_empty() {

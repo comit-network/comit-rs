@@ -37,7 +37,6 @@ impl BitcoindConnector {
 #[async_trait]
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
-    type BlockHash = bitcoin::BlockHash;
 
     async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
         let chaininfo_url = self.chaininfo_url.clone();
