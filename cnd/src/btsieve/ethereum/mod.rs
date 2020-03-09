@@ -35,15 +35,12 @@ impl PreviousBlockHash<Hash> for Block {
 }
 
 pub async fn watch_for_contract_creation<C>(
-    blockchain_connector: C,
+    blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
     bytecode: Bytes,
 ) -> anyhow::Result<(Transaction, Address)>
 where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     let (transaction, receipt) =
         matching_transaction_and_receipt(blockchain_connector, start_of_swap, |transaction| {
@@ -60,18 +57,15 @@ where
 }
 
 pub async fn watch_for_event<C>(
-    blockchain_connector: C,
+    blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
     event: Event,
 ) -> anyhow::Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     matching_transaction_and_log(
-        blockchain_connector.clone(),
+        blockchain_connector,
         start_of_swap,
         event.topics.clone(),
         |receipt| find_log_for_event_in_receipt(&event, receipt),
@@ -80,7 +74,10 @@ where
 }
 
 /// Fetch receipt from connector using transaction hash.
-async fn fetch_receipt<C>(blockchain_connector: C, hash: Hash) -> anyhow::Result<TransactionReceipt>
+async fn fetch_receipt<C>(
+    blockchain_connector: &C,
+    hash: Hash,
+) -> anyhow::Result<TransactionReceipt>
 where
     C: ReceiptByHash,
 {
@@ -109,28 +106,23 @@ fn find_log_for_event_in_receipt(event: &Event, receipt: TransactionReceipt) -> 
 }
 
 pub async fn matching_transaction_and_receipt<C, F>(
-    connector: C,
+    connector: &C,
     start_of_swap: NaiveDateTime,
     matcher: F,
 ) -> anyhow::Result<(Transaction, TransactionReceipt)>
 where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(&Transaction) -> bool,
 {
-    let mut block_generator = Gen::new({
-        let connector = connector.clone();
-        |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await }
-    });
+    let mut block_generator =
+        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
 
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 for transaction in block.transactions.into_iter() {
                     if matcher(&transaction) {
-                        let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
+                        let receipt = fetch_receipt(connector, transaction.hash).await?;
                         if !receipt.is_status_ok() {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
@@ -155,22 +147,17 @@ where
 }
 
 async fn matching_transaction_and_log<C, F>(
-    connector: C,
+    connector: &C,
     start_of_swap: NaiveDateTime,
     topics: Vec<Option<Topic>>,
     matcher: F,
 ) -> anyhow::Result<(Transaction, Log)>
 where
-    C: LatestBlock<Block = Block>
-        + BlockByHash<Block = Block, BlockHash = Hash>
-        + ReceiptByHash
-        + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(TransactionReceipt) -> Option<Log>,
 {
-    let mut block_generator = Gen::new({
-        let connector = connector.clone();
-        |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await }
-    });
+    let mut block_generator =
+        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
 
     loop {
         match block_generator.async_resume().await {
@@ -200,7 +187,7 @@ where
                     block_hash,
                 );
                 for transaction in block.transactions.into_iter() {
-                    let receipt = fetch_receipt(connector.clone(), transaction.hash).await?;
+                    let receipt = fetch_receipt(connector, transaction.hash).await?;
                     let status_is_ok = receipt.is_status_ok();
                     if let Some(log) = matcher(receipt) {
                         if !status_is_ok {

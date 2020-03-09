@@ -31,7 +31,7 @@ async fn find_transaction_missed_previous_latest_block() {
     // first one
     let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
-        connector,
+        &connector,
         start_of_swap,
         Address::from_str(
             include_str!("test_data/bitcoin/find_transaction_missed_previous_latest_block/address")
@@ -78,7 +78,7 @@ async fn find_transaction_missed_previous_latest_block_with_big_gap() {
     // first one
     let start_of_swap = NaiveDateTime::from_timestamp((block1.header.time as i64) + 1, 0);
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
-        connector,
+        &connector,
         start_of_swap,
         Address::from_str(
             include_str!(
@@ -116,7 +116,7 @@ async fn find_transaction_if_blockchain_reorganisation() {
 
     let start_of_swap = Utc::now().naive_local();
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
-        connector,
+        &connector,
         start_of_swap,
         Address::from_str(
             include_str!("test_data/bitcoin/find_transaction_if_blockchain_reorganisation/address")
@@ -154,7 +154,7 @@ async fn find_transaction_if_blockchain_reorganisation_with_long_chain() {
     );
 
     let start_of_swap = Utc::now().naive_local();
-    let (expected_transaction, _out_point) = watch_for_created_outpoint(connector, start_of_swap, Address::from_str(
+    let (expected_transaction, _out_point) = watch_for_created_outpoint(&connector, start_of_swap, Address::from_str(
         include_str!(
             "test_data/bitcoin/find_transaction_if_blockchain_reorganisation_with_long_chain/address"
         ).trim()

@@ -56,10 +56,8 @@ where
         htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Bitcoin, transaction::Bitcoin>> {
-        let connector = self.clone();
-
         let (transaction, location) =
-            watch_for_created_outpoint(connector, start_of_swap, htlc_params.compute_address())
+            watch_for_created_outpoint(self, start_of_swap, htlc_params.compute_address())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -83,12 +81,10 @@ where
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
-        let connector = self.clone();
-
         let (transaction, _) =
-            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
-                vec![1u8],
-            ])
+            watch_for_spent_outpoint(self, start_of_swap, htlc_deployment.location, vec![vec![
+                1u8,
+            ]])
             .instrument(tracing::info_span!("htlc_redeemed"))
             .await?;
 
@@ -115,14 +111,10 @@ where
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
-        let connector = self.clone();
-
         let (transaction, _) =
-            watch_for_spent_outpoint(connector, start_of_swap, htlc_deployment.location, vec![
-                vec![],
-            ])
-            .instrument(tracing::info_span!("htlc_refunded"))
-            .await?;
+            watch_for_spent_outpoint(self, start_of_swap, htlc_deployment.location, vec![vec![]])
+                .instrument(tracing::info_span!("htlc_refunded"))
+                .await?;
 
         Ok(Refunded { transaction })
     }

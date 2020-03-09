@@ -2,24 +2,17 @@ use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::{util::hash::BitcoinHash, BlockHash};
 use cnd::btsieve::{BlockByHash, LatestBlock};
-use std::{
-    collections::HashMap,
-    time::{Duration, Instant},
-};
+use futures::{stream::BoxStream, StreamExt};
+use std::{collections::HashMap, time::Duration};
+use tokio::{stream, sync::Mutex, time::throttle};
 
-#[derive(Clone)]
 pub struct BitcoinConnectorMock {
     all_blocks: HashMap<BlockHash, bitcoin::Block>,
-    latest_blocks: Vec<bitcoin::Block>,
-    latest_time_return_block: Instant,
-    current_latest_block_index: usize,
+    latest_blocks: Mutex<BoxStream<'static, bitcoin::Block>>,
 }
 
 impl BitcoinConnectorMock {
-    pub fn new(
-        latest_blocks: impl IntoIterator<Item = bitcoin::Block>,
-        all_blocks: impl IntoIterator<Item = bitcoin::Block>,
-    ) -> Self {
+    pub fn new(latest_blocks: Vec<bitcoin::Block>, all_blocks: Vec<bitcoin::Block>) -> Self {
         BitcoinConnectorMock {
             all_blocks: all_blocks
                 .into_iter()
@@ -27,34 +20,31 @@ impl BitcoinConnectorMock {
                     hm.insert(block.bitcoin_hash(), block);
                     hm
                 }),
-            latest_blocks: latest_blocks.into_iter().collect(),
-            latest_time_return_block: Instant::now(),
-            current_latest_block_index: 0,
+            latest_blocks: Mutex::new(
+                throttle(Duration::from_secs(1), stream::iter(latest_blocks)).boxed(),
+            ),
         }
     }
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("there are no more blocks in this blockchain, either your implementation is buggy or you need a better test setup")]
+pub struct OutOfBlocks;
 
 #[async_trait]
 impl LatestBlock for BitcoinConnectorMock {
     type Block = bitcoin::Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
-        if self.latest_blocks.is_empty() {
-            return Err(anyhow::Error::from(Error::NoMoreBlocks));
-        }
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block = self
+            .latest_blocks
+            .lock()
+            .await
+            .next()
+            .await
+            .ok_or(OutOfBlocks)?;
 
-        let latest_block = self.latest_blocks[self.current_latest_block_index].clone();
-        if self.latest_time_return_block.elapsed() >= Duration::from_secs(1) {
-            self.latest_time_return_block = Instant::now();
-            if self
-                .latest_blocks
-                .get(self.current_latest_block_index + 1)
-                .is_some()
-            {
-                self.current_latest_block_index += 1;
-            }
-        }
-        Ok(latest_block)
+        Ok(block)
     }
 }
 
@@ -63,7 +53,7 @@ impl BlockByHash for BitcoinConnectorMock {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         self.all_blocks
             .get(&block_hash)
             .cloned()

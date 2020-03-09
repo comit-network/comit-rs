@@ -11,7 +11,7 @@ struct ChainInfo {
     bestblockhash: BlockHash,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
@@ -38,11 +38,10 @@ impl BitcoindConnector {
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let chaininfo_url = self.chaininfo_url.clone();
-        let mut connector = self.clone();
 
-        let chain_info = connector
+        let chain_info = self
             .client
             .get(chaininfo_url)
             .send()
@@ -50,7 +49,7 @@ impl LatestBlock for BitcoindConnector {
             .json::<ChainInfo>()
             .await?;
 
-        let block = connector.block_by_hash(chain_info.bestblockhash).await?;
+        let block = self.block_by_hash(chain_info.bestblockhash).await?;
 
         Ok(block)
     }
@@ -61,10 +60,10 @@ impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
-        let client = self.client.clone();
-        let block = bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
+        let block =
+            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, &self.client).await?;
 
         tracing::debug!(
             "Fetched block {} with {} transactions from bitcoind",

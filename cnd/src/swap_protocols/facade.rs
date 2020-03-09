@@ -49,8 +49,8 @@ use std::{convert::TryInto, fmt::Debug, sync::Arc};
 #[delegate(Retrieve, target = "db")]
 #[delegate(DetermineTypes, target = "db")]
 pub struct Facade {
-    pub bitcoin_connector: btsieve::bitcoin::Cache<BitcoindConnector>,
-    pub ethereum_connector: ethereum::Cache<Web3Connector>,
+    pub bitcoin_connector: Arc<btsieve::bitcoin::Cache<BitcoindConnector>>,
+    pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     pub state_store: Arc<InMemoryStateStore>,
     pub seed: RootSeed,
     pub swarm: Swarm,

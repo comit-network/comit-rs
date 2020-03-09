@@ -67,9 +67,8 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
-        let connector = self.clone();
         let (transaction, location) =
-            watch_for_contract_creation(connector, start_of_swap, htlc_params.bytecode())
+            watch_for_contract_creation(self, start_of_swap, htlc_params.bytecode())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -96,13 +95,12 @@ impl
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
-        let connector = self.clone();
         let event = Event {
             address: htlc_deployment.location,
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
-        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_redeemed"))
             .await?;
 
@@ -133,13 +131,12 @@ impl
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Ethereum>> {
-        let connector = self.clone();
         let event = Event {
             address: htlc_deployment.location,
             topics: vec![Some(Topic(*REFUND_LOG_MSG))],
         };
 
-        let (transaction, _) = watch_for_event(connector, start_of_swap, event)
+        let (transaction, _) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_refunded"))
             .await?;
 
@@ -163,8 +160,6 @@ impl
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<asset::Erc20, transaction::Ethereum>> {
-        let connector = self.clone();
-
         let event = Event {
             address: htlc_params.asset.token_contract,
             topics: vec![
@@ -174,7 +169,7 @@ impl
             ],
         };
 
-        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_funded"))
             .await?;
 
@@ -200,10 +195,8 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
-        let connector = self.clone();
-
         let (transaction, location) =
-            watch_for_contract_creation(connector, start_of_swap, htlc_params.clone().bytecode())
+            watch_for_contract_creation(self, start_of_swap, htlc_params.clone().bytecode())
                 .instrument(tracing::info_span!("htlc_deployed"))
                 .await?;
 
@@ -230,13 +223,12 @@ impl
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
-        let connector = self.clone();
         let event = Event {
             address: htlc_deployment.location,
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
-        let (transaction, log) = watch_for_event(connector, start_of_swap, event)
+        let (transaction, log) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_redeemed"))
             .await?;
 
@@ -267,13 +259,12 @@ impl
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Ethereum>> {
-        let connector = self.clone();
         let event = Event {
             address: htlc_deployment.location,
             topics: vec![Some(Topic(*REFUND_LOG_MSG))],
         };
 
-        let (transaction, _) = watch_for_event(connector, start_of_swap, event)
+        let (transaction, _) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("htlc_refunded"))
             .await?;
 

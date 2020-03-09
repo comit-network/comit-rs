@@ -63,19 +63,19 @@ fn main() -> anyhow::Result<()> {
     const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
         let config::Bitcoin { network, bitcoind } = settings.clone().bitcoin;
-        bitcoin::Cache::new(
+        Arc::new(bitcoin::Cache::new(
             BitcoindConnector::new(bitcoind.node_url, network)?,
             BITCOIN_BLOCK_CACHE_CAPACITY,
-        )
+        ))
     };
 
     const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
     const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
-    let ethereum_connector = ethereum::Cache::new(
+    let ethereum_connector = Arc::new(ethereum::Cache::new(
         Web3Connector::new(settings.clone().ethereum.parity.node_url),
         ETHEREUM_BLOCK_CACHE_CAPACITY,
         ETHEREUM_RECEIPT_CACHE_CAPACITY,
-    );
+    ));
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
@@ -85,16 +85,16 @@ fn main() -> anyhow::Result<()> {
         &settings,
         seed,
         &mut runtime,
-        &bitcoin_connector,
-        &ethereum_connector,
-        &state_store,
+        Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
+        Arc::clone(&state_store),
         &database,
     )?;
 
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
-        state_store: Arc::clone(&state_store),
+        state_store,
         seed,
         swarm,
         db: database,

@@ -55,7 +55,7 @@ async fn ethereum_transaction_matching_smoke_test() {
 
     let (matched_transaction, _receipt) = tokio::time::timeout(
         Duration::from_secs(5),
-        matching_transaction_and_receipt(connector, start_of_swap, |transaction| {
+        matching_transaction_and_receipt(&connector, start_of_swap, |transaction| {
             transaction.to == Some(target_address)
         }),
     )

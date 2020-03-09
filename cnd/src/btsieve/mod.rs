@@ -14,7 +14,7 @@ use std::{collections::HashSet, hash::Hash};
 pub trait LatestBlock: Send + Sync + 'static {
     type Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block>;
+    async fn latest_block(&self) -> anyhow::Result<Self::Block>;
 }
 
 #[async_trait]
@@ -22,7 +22,7 @@ pub trait BlockByHash: Send + Sync + 'static {
     type Block;
     type BlockHash;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block>;
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block>;
 }
 
 /// Checks if a given block predates a certain timestamp.
@@ -48,25 +48,20 @@ pub trait PreviousBlockHash<H> {
 ///
 /// It yields those blocks as part of the process.
 pub async fn find_relevant_blocks<C, B, H>(
-    mut connector: C,
-    co: &Co<B>,
+    connector: &C,
+    co: Co<B>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Never>
 where
-    C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H> + Clone,
+    C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
     B: Predates + BlockHash<H> + PreviousBlockHash<H> + Clone,
     H: Eq + Hash + Copy,
 {
     let block = connector.latest_block().await?;
 
     // Look back in time until we get a block that predates start_of_swap.
-    let mut seen_blocks = walk_back_until(
-        predates_start_of_swap(start_of_swap),
-        connector.clone(),
-        co,
-        block,
-    )
-    .await?;
+    let mut seen_blocks =
+        walk_back_until(predates_start_of_swap(start_of_swap), connector, &co, block).await?;
 
     // Look forward in time, but keep going back for missed blocks
     loop {
@@ -74,8 +69,8 @@ where
 
         let missed_blocks = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
-            connector.clone(),
-            co,
+            connector,
+            &co,
             block,
         )
         .await?;
@@ -94,19 +89,18 @@ where
 /// This function returns the block-hashes of all visited blocks.
 async fn walk_back_until<C, P, B, H>(
     stop_condition: P,
-    connector: C,
+    connector: &C,
     co: &Co<B>,
     block: B,
 ) -> anyhow::Result<HashSet<H>>
 where
-    C: BlockByHash<Block = B, BlockHash = H> + Clone,
+    C: BlockByHash<Block = B, BlockHash = H>,
     P: Fn(&B) -> anyhow::Result<bool>,
     B: BlockHash<H> + PreviousBlockHash<H> + Clone,
     H: Eq + Hash + Copy,
 {
     let mut seen_blocks: HashSet<H> = HashSet::new();
     let mut blockhash = block.block_hash();
-    let mut connector = connector.clone();
 
     co.yield_(block.clone()).await;
     seen_blocks.insert(blockhash);

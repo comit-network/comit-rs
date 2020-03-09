@@ -29,7 +29,7 @@ async fn find_transaction_go_back_into_the_past() {
     let start_of_swap =
         NaiveDateTime::from_timestamp(block1_with_transaction.header.time as i64, 0);
     let (expected_transaction, _out_point) = watch_for_created_outpoint(
-        connector,
+        &connector,
         start_of_swap,
         Address::from_str(
             include_str!("test_data/bitcoin/find_transaction_go_back_into_the_past/address").trim(),

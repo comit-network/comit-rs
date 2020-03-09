@@ -4,17 +4,16 @@ use crate::{
     jsonrpc,
 };
 use async_trait::async_trait;
-use std::sync::Arc;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Web3Connector {
-    client: Arc<jsonrpc::Client>,
+    client: jsonrpc::Client,
 }
 
 impl Web3Connector {
     pub fn new(node_url: reqwest::Url) -> Self {
         Self {
-            client: Arc::new(jsonrpc::Client::new(node_url)),
+            client: jsonrpc::Client::new(node_url),
         }
     }
 }
@@ -23,7 +22,7 @@ impl Web3Connector {
 impl LatestBlock for Web3Connector {
     type Block = crate::ethereum::Block;
 
-    async fn latest_block(&mut self) -> anyhow::Result<Self::Block> {
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let block: Self::Block = self
             .client
             .send(jsonrpc::Request::new("eth_getBlockByNumber", vec![
@@ -46,7 +45,7 @@ impl BlockByHash for Web3Connector {
     type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
-    async fn block_by_hash(&mut self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let block = self
             .client
             .send(jsonrpc::Request::new("eth_getBlockByHash", vec![
