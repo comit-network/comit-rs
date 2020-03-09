@@ -4,7 +4,10 @@ pub use transport::ComitTransport;
 
 use crate::{
     asset::AssetKind,
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    btsieve::{
+        bitcoin::{self, BitcoindConnector},
+        ethereum::{self, Web3Connector},
+    },
     comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
@@ -15,9 +18,10 @@ use crate::{
         ledger,
         rfc003::{
             self, bob,
+            create_swap::SwapEvent,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
-            state_store::{InMemoryStateStore, StateStore},
         },
+        state_store::{InMemoryStateStore, StateStore},
         HashFunction, Role, SwapId, SwapProtocol,
     },
     transaction,
@@ -39,8 +43,7 @@ use libp2p::{
 };
 use libp2p_comit::{
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    handler,
-    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
+    handler::{self, ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -743,8 +746,8 @@ async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT, DB>(
 where
     AL: Send + 'static,
     BL: Send + 'static,
-    AA: Send + 'static,
-    BA: Send + 'static,
+    AA: Ord + Send + 'static,
+    BA: Ord + Send + 'static,
     AH: Send + 'static,
     BH: Send + 'static,
     AI: Send + 'static,
@@ -753,6 +756,7 @@ where
     BT: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
+    bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>: Clone + Sync,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);
@@ -762,7 +766,7 @@ where
 
     let state =
         bob::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
-    state_store.insert(id, state);
+    StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(state_store.as_ref(), id, state);
 
     Ok(())
 }

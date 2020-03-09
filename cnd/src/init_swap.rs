@@ -4,11 +4,11 @@ use crate::{
     swap_protocols::{
         rfc003::{
             alice, bob, create_alpha_watcher,
-            create_swap::create_beta_watcher,
+            create_swap::{create_beta_watcher, SwapEvent},
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
-            state_store::StateStore,
             Accept, Request,
         },
+        state_store::StateStore,
         Role,
     },
 };
@@ -20,8 +20,13 @@ pub fn init_accepted_swap<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     role: Role,
 ) -> anyhow::Result<()>
 where
-    D: StateStore
-        + Clone
+    D: StateStore<
+            alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+            SwapEvent<AA, BA, AH, BH, AT, BT>,
+        > + StateStore<
+            bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+            SwapEvent<AA, BA, AH, BH, AT, BT>,
+        > + Clone
         + DeriveSwapSeed
         + HtlcFunded<AL, AA, AH, AI, AT>
         + HtlcFunded<BL, BA, BH, BI, BT>
@@ -52,9 +57,8 @@ where
 
     match role {
         Role::Alice => {
-            let state: alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> =
-                alice::State::accepted(request.clone(), *accept, seed);
-            StateStore::insert(dependencies, id, state);
+            let state = alice::State::accepted(request.clone(), *accept, seed);
+            StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(dependencies, id, state);
 
             tokio::task::spawn(create_alpha_watcher::<
                 D,

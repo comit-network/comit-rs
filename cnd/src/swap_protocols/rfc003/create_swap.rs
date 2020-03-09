@@ -7,9 +7,9 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            state_store::StateStore,
             Accept, ActorState, Request, SecretHash,
         },
+        state_store::StateStore,
         HashFunction,
     },
     timestamp::Timestamp,
@@ -36,7 +36,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
-    D: StateStore
+    D: StateStore<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
         + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
@@ -56,7 +56,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     BI: Clone,
     A::AT: Clone,
     A::BT: Clone,
-    A: ActorState,
+    A: ActorState + Clone + Send,
     AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
 {
     let (request, accept, at) = accepted;
@@ -84,7 +84,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
                 tracing::info!("swap {} yielded event {}", id, event);
-                dependencies.update::<A>(&id, event);
+                dependencies.update(&id, event);
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
@@ -115,7 +115,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
-    D: StateStore
+    D: StateStore<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
         + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
@@ -135,7 +135,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     A::BT: Clone,
     AI: Clone,
     BI: Clone,
-    A: ActorState,
+    A: ActorState + Clone + Send,
     AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
 {
     let (request, accept, at) = accepted.clone();
@@ -163,7 +163,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
                 tracing::info!("swap {} yielded event {}", id, event);
-                dependencies.update::<A>(&id, event);
+                dependencies.update(&id, event);
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
@@ -392,15 +392,6 @@ where
         }
     }
 }
-
-pub type SwapEventOnLedger<A> = SwapEvent<
-    <A as ActorState>::AA,
-    <A as ActorState>::BA,
-    <A as ActorState>::AH,
-    <A as ActorState>::BH,
-    <A as ActorState>::AT,
-    <A as ActorState>::BT,
->;
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum SwapEvent<AA, BA, AH, BH, AT, BT> {

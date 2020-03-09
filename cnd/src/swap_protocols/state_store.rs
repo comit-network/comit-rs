@@ -11,18 +11,13 @@ pub enum Error {
 }
 
 #[allow(clippy::type_complexity)]
-pub trait StateStore: Send + Sync + 'static {
-    fn insert<A>(&self, key: SwapId, value: A)
-    where
-        A: ActorState + Send + 'static;
-    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
-    where
-        A: ActorState + Clone;
-    fn update<A>(&self, key: &SwapId, update: SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>)
-    where
-        A: ActorState,
-        A::AA: Ord,
-        A::BA: Ord;
+pub trait StateStore<S, E>: Send + Sync + 'static
+where
+    S: ActorState + Clone + Send,
+{
+    fn insert(&self, key: SwapId, value: S);
+    fn get(&self, key: &SwapId) -> Result<Option<S>, Error>;
+    fn update(&self, key: &SwapId, update: E);
 }
 
 #[derive(Default, Debug)]
@@ -30,22 +25,20 @@ pub struct InMemoryStateStore {
     states: Mutex<HashMap<SwapId, Box<dyn Any + Send>>>,
 }
 
-impl StateStore for InMemoryStateStore {
-    fn insert<A>(&self, key: SwapId, value: A)
-    where
-        A: ActorState + Send,
-    {
+impl<S> StateStore<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for InMemoryStateStore
+where
+    S: ActorState + Clone + Send,
+    S::AA: Ord,
+    S::BA: Ord,
+{
+    fn insert(&self, key: SwapId, value: S) {
         let mut states = self.states.lock().unwrap();
         states.insert(key, Box::new(value));
     }
-
-    fn get<A>(&self, key: &SwapId) -> Result<Option<A>, Error>
-    where
-        A: ActorState + Clone,
-    {
+    fn get(&self, key: &SwapId) -> Result<Option<S>, Error> {
         let states = self.states.lock().unwrap();
         match states.get(key) {
-            Some(state) => match state.downcast_ref::<A>() {
+            Some(state) => match state.downcast_ref::<S>() {
                 Some(state) => Ok(Some(state.clone())),
                 None => Err(Error::InvalidType),
             },
@@ -54,16 +47,11 @@ impl StateStore for InMemoryStateStore {
     }
 
     #[allow(clippy::type_complexity)]
-    fn update<A>(&self, key: &SwapId, event: SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>)
-    where
-        A: ActorState,
-        A::AA: Ord,
-        A::BA: Ord,
-    {
+    fn update(&self, key: &SwapId, event: SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>) {
         let mut states = self.states.lock().unwrap();
         let actor_state = match states
             .get_mut(key)
-            .and_then(|state| state.downcast_mut::<A>())
+            .and_then(|state| state.downcast_mut::<S>())
         {
             Some(state) => state,
             None => {
@@ -125,8 +113,7 @@ impl StateStore for InMemoryStateStore {
 mod tests {
     use super::*;
     use crate::{
-        asset,
-        asset::ethereum::FromWei,
+        asset::{self, ethereum::FromWei},
         ethereum::Address,
         htlc_location, identity,
         seed::{DeriveSwapSeed, RootSeed},
@@ -139,15 +126,18 @@ mod tests {
         transaction,
     };
     use spectral::prelude::*;
+    use std::str::FromStr;
 
     #[test]
     fn insert_and_get_state() {
         let state_store = InMemoryStateStore::default();
 
-        let bitcoin_pub_key = "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275"
-            .parse()
-            .unwrap();
-        let ethereum_address: Address = "8457037fcd80a8650c4692d7fcfc1d0a96b92867".parse().unwrap();
+        let bitcoin_pub_key = identity::Bitcoin::from_str(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        )
+        .unwrap();
+        let ethereum_address =
+            Address::from_str("8457037fcd80a8650c4692d7fcfc1d0a96b92867").unwrap();
 
         let request = Request {
             swap_id: SwapId::default(),
@@ -171,9 +161,7 @@ mod tests {
         let id = SwapId::default();
         let seed = RootSeed::from(*b"hello world, you are beautiful!!");
         let secret_source = seed.derive_swap_seed(id);
-        let state = alice::State::accepted(request, accept, secret_source);
-
-        state_store.insert::<alice::State<
+        let state: alice::State<
             bitcoin::Regtest,
             Ethereum,
             asset::Bitcoin,
@@ -184,10 +172,13 @@ mod tests {
             identity::Ethereum,
             transaction::Bitcoin,
             transaction::Ethereum,
-        >>(id, state.clone());
+        > = alice::State::accepted(request, accept, secret_source);
 
-        let res = state_store
-            .get::<alice::State<
+        state_store.insert(id, state.clone());
+
+        #[allow(clippy::type_complexity)]
+        let res: Option<
+            alice::State<
                 bitcoin::Regtest,
                 Ethereum,
                 asset::Bitcoin,
@@ -198,8 +189,8 @@ mod tests {
                 identity::Ethereum,
                 transaction::Bitcoin,
                 transaction::Ethereum,
-            >>(&id)
-            .unwrap();
+            >,
+        > = state_store.get(&id).unwrap();
         assert_that(&res).contains_value(&state);
     }
 }

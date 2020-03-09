@@ -6,7 +6,6 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
-pub mod state_store;
 
 pub mod actions;
 mod actor_state;
