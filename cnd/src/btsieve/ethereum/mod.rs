@@ -115,7 +115,7 @@ where
     F: Fn(&Transaction) -> bool,
 {
     let mut block_generator =
-        Gen::new({ |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await } });
+        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
 
     loop {
         match block_generator.async_resume().await {
@@ -157,7 +157,7 @@ where
     F: Fn(TransactionReceipt) -> Option<Log>,
 {
     let mut block_generator =
-        Gen::new({ |co| async move { find_relevant_blocks(connector, &co, start_of_swap).await } });
+        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
 
     loop {
         match block_generator.async_resume().await {

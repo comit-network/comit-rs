@@ -49,7 +49,7 @@ pub trait PreviousBlockHash<H> {
 /// It yields those blocks as part of the process.
 pub async fn find_relevant_blocks<C, B, H>(
     connector: &C,
-    co: &Co<B>,
+    co: Co<B>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<Never>
 where
@@ -61,7 +61,7 @@ where
 
     // Look back in time until we get a block that predates start_of_swap.
     let mut seen_blocks =
-        walk_back_until(predates_start_of_swap(start_of_swap), connector, co, block).await?;
+        walk_back_until(predates_start_of_swap(start_of_swap), connector, &co, block).await?;
 
     // Look forward in time, but keep going back for missed blocks
     loop {
@@ -70,7 +70,7 @@ where
         let missed_blocks = walk_back_until(
             seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
             connector,
-            co,
+            &co,
             block,
         )
         .await?;
