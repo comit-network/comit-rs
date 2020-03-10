@@ -1,6 +1,7 @@
 pub mod file;
 mod serde_bitcoin_network;
 pub mod settings;
+pub mod validation;
 
 use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;

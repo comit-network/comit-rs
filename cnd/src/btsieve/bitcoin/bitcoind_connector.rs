@@ -6,9 +6,10 @@ use bitcoin::{BlockHash, Network};
 use reqwest::{Client, Url};
 use serde::Deserialize;
 
-#[derive(Deserialize)]
-struct ChainInfo {
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct ChainInfo {
     bestblockhash: BlockHash,
+    pub chain: Network,
 }
 
 #[derive(Debug)]
@@ -73,6 +74,22 @@ impl BlockByHash for BitcoindConnector {
 
         Ok(block)
     }
+}
+
+pub async fn chain_info(conn: &BitcoindConnector) -> Result<ChainInfo, anyhow::Error> {
+    let client = conn.client.clone();
+    let chaininfo_url = conn.chaininfo_url.clone();
+
+    let chain_info = client
+        .get(chaininfo_url)
+        .send()
+        .await?
+        .json::<ChainInfo>()
+        .await?;
+
+    tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
+
+    Ok(chain_info)
 }
 
 #[cfg(test)]
