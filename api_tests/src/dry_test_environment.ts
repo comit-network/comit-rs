@@ -14,7 +14,7 @@ import path from "path";
 // Setting global variables //
 // ************************ //
 
-export default class E2ETestEnvironment extends NodeEnvironment {
+export default class DryTestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
     private testRoot: string;
@@ -55,7 +55,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         const { logDir } = this.extractDocblockPragmas(this.docblockPragmas);
 
         this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
-        await E2ETestEnvironment.cleanLogDir(this.logDir);
+        await DryTestEnvironment.cleanLogDir(this.logDir);
 
         this.global.logRoot = this.logDir;
     }
