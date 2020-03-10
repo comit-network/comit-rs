@@ -522,7 +522,7 @@ dependencies = [
  "blockchain_contracts",
  "chrono",
  "config",
- "derivative",
+ "derivative 2.0.1",
  "diesel",
  "diesel_migrations",
  "directories",
@@ -754,13 +754,24 @@ checksum = "11c0346158a19b3627234e15596f5e465c360fcdb97d817bcb255e0510f5a788"
 
 [[package]]
 name = "derivative"
-version = "1.0.3"
+version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "942ca430eef7a3806595a6737bc388bf51adb888d3fc0dd1b50f1c170167ee3a"
+checksum = "3c6d883546668a3e2011b6a716a7330b82eabb0151b138217f632c8243e17135"
 dependencies = [
  "proc-macro2 0.4.30",
  "quote 0.6.13",
  "syn 0.15.44",
+]
+
+[[package]]
+name = "derivative"
+version = "2.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "40c1f2732657d77ebc4e52a04dcf529ffb72e46e78d2e113b9016d5c01598649"
+dependencies = [
+ "proc-macro2 1.0.8",
+ "quote 1.0.2",
+ "syn 1.0.15",
 ]
 
 [[package]]
@@ -1644,7 +1655,7 @@ name = "libp2p-comit"
 version = "0.1.0"
 dependencies = [
  "bytes 0.5.4",
- "derivative",
+ "derivative 2.0.1",
  "futures 0.3.4",
  "futures_codec 0.4.0",
  "libp2p",
@@ -3352,7 +3363,7 @@ version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2795d361da761822a8681fd70bde6bdd7ad4955413ffb8ad883520ee5684c870"
 dependencies = [
- "derivative",
+ "derivative 1.0.4",
  "http",
  "readonly",
  "serde",
@@ -3576,7 +3587,7 @@ version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5aacbbd75f3df9b76dcb5ef222594e94780d5da271d2e533e2e00d4b001877c5"
 dependencies = [
- "derivative",
+ "derivative 1.0.4",
  "hex 0.4.2",
  "hmac",
  "log 0.4.8",
