@@ -13,7 +13,7 @@ import { LedgerKind } from "../../lib/ledgers/ledger";
 // Lightning Sanity Test                        //
 // ******************************************** //
 describe("E2E: Sanity - LND Alice pays Bob", () => {
-    it.skip(
+    it(
         "sanity-lnd-alice-pays-bob",
         twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
@@ -28,7 +28,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
         })
     );
 
-    it.skip(
+    it(
         "sanity-lnd-alice-pays-bob-using-hold-invoice",
         twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
