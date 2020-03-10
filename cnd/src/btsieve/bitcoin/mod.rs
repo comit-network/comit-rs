@@ -22,13 +22,17 @@ use reqwest::{Client, Url};
 type Hash = bitcoin::BlockHash;
 type Block = bitcoin::Block;
 
-impl BlockHash<Hash> for Block {
+impl BlockHash for Block {
+    type BlockHash = Hash;
+
     fn block_hash(&self) -> Hash {
         self.bitcoin_hash()
     }
 }
 
-impl PreviousBlockHash<Hash> for Block {
+impl PreviousBlockHash for Block {
+    type BlockHash = Hash;
+
     fn previous_block_hash(&self) -> Hash {
         self.header.prev_blockhash
     }

@@ -30,12 +30,18 @@ pub trait Predates {
     fn predates(&self, timestamp: NaiveDateTime) -> bool;
 }
 
-pub trait BlockHash<H> {
-    fn block_hash(&self) -> H;
+/// Abstracts over the ability of getting the hash of the current block.
+pub trait BlockHash {
+    type BlockHash;
+
+    fn block_hash(&self) -> Self::BlockHash;
 }
 
-pub trait PreviousBlockHash<H> {
-    fn previous_block_hash(&self) -> H;
+/// Abstracts over the ability of getting the hash of the previous block.
+pub trait PreviousBlockHash {
+    type BlockHash;
+
+    fn previous_block_hash(&self) -> Self::BlockHash;
 }
 
 /// This function uses the `connector` to find blocks relevant to a swap.  To do
@@ -54,7 +60,7 @@ pub async fn find_relevant_blocks<C, B, H>(
 ) -> anyhow::Result<Never>
 where
     C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
-    B: Predates + BlockHash<H> + PreviousBlockHash<H> + Clone,
+    B: Predates + BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone,
     H: Eq + Hash + Copy,
 {
     let block = connector.latest_block().await?;
@@ -96,7 +102,7 @@ async fn walk_back_until<C, P, B, H>(
 where
     C: BlockByHash<Block = B, BlockHash = H>,
     P: Fn(&B) -> bool,
-    B: BlockHash<H> + PreviousBlockHash<H> + Clone,
+    B: BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone,
     H: Eq + Hash + Copy,
 {
     let mut seen_blocks: HashSet<H> = HashSet::new();
@@ -140,7 +146,7 @@ fn seen_block_or_predates_start_of_swap<'sb, B, H>(
     start_of_swap: NaiveDateTime,
 ) -> impl Fn(&B) -> bool + 'sb
 where
-    B: Predates + BlockHash<H>,
+    B: Predates + BlockHash<BlockHash = H>,
     H: Eq + Hash,
 {
     move |block: &B| {

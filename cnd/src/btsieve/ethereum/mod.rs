@@ -24,14 +24,18 @@ pub trait ReceiptByHash: Send + Sync + 'static {
     async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt>;
 }
 
-impl BlockHash<Hash> for Block {
+impl BlockHash for Block {
+    type BlockHash = Hash;
+
     fn block_hash(&self) -> H256 {
         self.hash
             .expect("Connector returned latest block with null hash")
     }
 }
 
-impl PreviousBlockHash<Hash> for Block {
+impl PreviousBlockHash for Block {
+    type BlockHash = Hash;
+
     fn previous_block_hash(&self) -> H256 {
         self.parent_hash
     }
