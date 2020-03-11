@@ -1,59 +1,57 @@
-use digest::{digest, DigestField, DigestRoot};
-use digest_macro_derive::DigestRootMacro;
-
-use digest::multihash::Multihash;
-
-struct NewType(String);
-
-impl DigestRoot for NewType {
-    fn digest_root(self) -> Multihash {
-        self.0.digest_field("".into())
-    }
-}
-
-struct SingleFieldStruct {
-    field: String,
-}
-
-impl DigestRoot for SingleFieldStruct {
-    fn digest_root(self) -> Multihash {
-        self.field.digest_field("field".into())
-    }
-}
-
-#[derive(DigestRootMacro)]
-struct DoubleFieldStruct {
-    foo: String,
-    bar: String,
-}
-
-struct OtherStruct {
-    bar: String,
-    foo: String,
-}
-
-impl DigestRoot for OtherStruct {
-    fn digest_root(self) -> Multihash {
-        let mut digests = vec![];
-        let foo_digest = self.foo.digest_field("foo".into());
-        digests.push(foo_digest);
-        let bar_digest = self.bar.digest_field("bar".into());
-        digests.push(bar_digest);
-
-        digests.sort();
-
-        let res = digests.into_iter().fold(vec![], |mut res, digest| {
-            res.append(&mut digest.into_bytes());
-            res
-        });
-
-        digest(&res)
-    }
-}
-
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use digest::{digest, DigestField, DigestRoot};
+    use digest_macro_derive::DigestRootMacro;
+
+    use digest::multihash::Multihash;
+
+    struct NewType(String);
+
+    impl DigestRoot for NewType {
+        fn digest_root(self) -> Multihash {
+            self.0.digest_field("".into())
+        }
+    }
+
+    struct SingleFieldStruct {
+        field: String,
+    }
+
+    impl DigestRoot for SingleFieldStruct {
+        fn digest_root(self) -> Multihash {
+            self.field.digest_field("field".into())
+        }
+    }
+
+    #[derive(DigestRootMacro)]
+    struct DoubleFieldStruct {
+        foo: String,
+        bar: String,
+    }
+
+    struct OtherStruct {
+        bar: String,
+        foo: String,
+    }
+
+    impl DigestRoot for OtherStruct {
+        fn digest_root(self) -> Multihash {
+            let mut digests = vec![];
+            let foo_digest = self.foo.digest_field("foo".into());
+            digests.push(foo_digest);
+            let bar_digest = self.bar.digest_field("bar".into());
+            digests.push(bar_digest);
+
+            digests.sort();
+
+            let res = digests.into_iter().fold(vec![], |mut res, digest| {
+                res.append(&mut digest.into_bytes());
+                res
+            });
+
+            digest(&res)
+        }
+    }
 
     #[test]
     fn given_same_strings_return_same_multihash() {
