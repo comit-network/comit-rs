@@ -335,6 +335,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "blake2s_simd"
+version = "0.5.10"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ab9e07352b829279624ceb7c64adb4f585dacdb81d35cafae81139ccd617cf44"
+dependencies = [
+ "arrayref",
+ "arrayvec 0.5.1",
+ "constant_time_eq",
+]
+
+[[package]]
 name = "block-buffer"
 version = "0.7.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -546,6 +557,7 @@ dependencies = [
  "log 0.4.8",
  "lru",
  "matches",
+ "multihash",
  "num 0.2.1",
  "paste",
  "pem",
@@ -2222,6 +2234,21 @@ dependencies = [
  "net2",
  "winapi 0.2.8",
  "ws2_32-sys",
+]
+
+[[package]]
+name = "multihash"
+version = "0.10.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47fbc227f7e2b1cb701f95404579ecb2668abbdd3c7ef7a6cbb3cc0d3b236869"
+dependencies = [
+ "blake2b_simd",
+ "blake2s_simd",
+ "digest",
+ "sha-1",
+ "sha2",
+ "sha3",
+ "unsigned-varint",
 ]
 
 [[package]]
