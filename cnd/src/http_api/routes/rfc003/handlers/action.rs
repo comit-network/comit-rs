@@ -18,10 +18,9 @@ use crate::{
             self,
             actions::{Action, ActionKind},
             bob::State,
-            create_swap::SwapEvent,
             messages::{Decision, IntoAcceptMessage},
         },
-        state_store::StateStore,
+        state_store::{Get, Insert},
         Facade, SwapId,
     },
 };
@@ -46,11 +45,9 @@ pub async fn handle_action(
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
-        let state =
-            StateStore::<ROLE, SwapEvent<AA, BA, AH, BH, AT, BT>>::get(&dependencies, &swap_id)?
-                .ok_or_else(|| {
-                    anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
-                })?;
+        let state: ROLE = dependencies.get(&swap_id)?.ok_or_else(|| {
+            anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
+        })?;
 
         let action = state
             .actions()
@@ -131,11 +128,7 @@ pub async fn handle_action(
                     decline_message,
                     seed,
                 );
-                StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(
-                    &dependencies,
-                    swap_id,
-                    state,
-                );
+                dependencies.insert(swap_id, state);
 
                 Ok(ActionResponseBody::None)
             }

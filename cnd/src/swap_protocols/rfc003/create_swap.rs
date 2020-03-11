@@ -9,7 +9,7 @@ use crate::{
             },
             Accept, ActorState, Request, SecretHash,
         },
-        state_store::StateStore,
+        state_store::Update,
         HashFunction,
     },
     timestamp::Timestamp,
@@ -36,7 +36,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
-    D: StateStore<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
+    D: Update<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
         + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
@@ -113,7 +113,7 @@ pub async fn create_beta_watcher<D, A, AI, BI>(
     dependencies: D,
     accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
 ) where
-    D: StateStore<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
+    D: Update<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
         + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
         + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
         + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
