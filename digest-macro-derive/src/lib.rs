@@ -42,7 +42,7 @@ fn impl_digest_root_macro(ast: &syn::DeriveInput) -> TokenStream {
             };
             gen.into()
         } else {
-            panic!("DigestRootMacro does not support new types.");
+            panic!("DigestRootMacro only supports named filed, ie, no new types, tuples structs/variants or unit struct/variants.");
         }
     } else {
         panic!("DigestRootMacro only supports structs.");
