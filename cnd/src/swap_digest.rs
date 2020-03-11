@@ -69,6 +69,33 @@ impl Digest for DoubleFieldStruct {
     }
 }
 
+struct OtherStruct {
+    bar: String,
+    foo: String,
+}
+
+impl Digest for OtherStruct {
+    fn digest(&self) -> Multihash {
+        let mut foo = String::from("foo: ");
+        foo += &self.foo;
+        let foo = foo.digest();
+
+        let mut bar = String::from("bar: ");
+        bar += &self.bar;
+        let bar = bar.digest();
+
+        if foo < bar {
+            let mut res = foo.into_bytes();
+            res.append(&mut bar.into_bytes());
+            res.digest()
+        } else {
+            let mut res = bar.into_bytes();
+            res.append(&mut foo.into_bytes());
+            res.digest()
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,5 +180,19 @@ mod tests {
         };
 
         assert_ne!(struct1.digest(), struct2.digest())
+    }
+
+    #[test]
+    fn given_two_double_field_struct_with_same_data_return_same_multihash() {
+        let struct1 = DoubleFieldStruct {
+            foo: "foo field".into(),
+            bar: "bar field".into(),
+        };
+        let struct2 = OtherStruct {
+            bar: "bar field".into(),
+            foo: "foo field".into(),
+        };
+
+        assert_eq!(struct1.digest(), struct2.digest())
     }
 }
