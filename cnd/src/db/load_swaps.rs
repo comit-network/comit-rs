@@ -1,5 +1,5 @@
 use crate::{
-    asset::{self},
+    asset,
     db::{
         schema,
         wrapper_types::{

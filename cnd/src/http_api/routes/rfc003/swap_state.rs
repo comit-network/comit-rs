@@ -16,7 +16,7 @@ pub struct SwapState<AH, BH, AI, BI, AT, BT> {
     pub beta_ledger: LedgerState<BH, BT>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 #[serde(bound = "Http<AI>: Serialize, Http<BI>: Serialize")]
 pub struct SwapCommunication<AI, BI> {
     pub status: SwapCommunicationState,
@@ -110,19 +110,6 @@ where
                 refund_tx: None,
                 redeem_tx: None,
             },
-            IncorrectlyFunded {
-                htlc_location,
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => Self {
-                status,
-                htlc_location: Some(Http(htlc_location)),
-                deploy_tx: Some(Http(deploy_transaction)),
-                fund_tx: Some(Http(fund_transaction)),
-                redeem_tx: None,
-                refund_tx: None,
-            },
             Funded {
                 htlc_location,
                 deploy_transaction,
@@ -135,6 +122,19 @@ where
                 fund_tx: Some(Http(fund_transaction)),
                 refund_tx: None,
                 redeem_tx: None,
+            },
+            IncorrectlyFunded {
+                htlc_location,
+                deploy_transaction,
+                fund_transaction,
+                ..
+            } => Self {
+                status,
+                htlc_location: Some(Http(htlc_location)),
+                deploy_tx: Some(Http(deploy_transaction)),
+                fund_tx: Some(Http(fund_transaction)),
+                redeem_tx: None,
+                refund_tx: None,
             },
             Redeemed {
                 htlc_location,
