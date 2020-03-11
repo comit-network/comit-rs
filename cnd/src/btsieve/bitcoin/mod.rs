@@ -5,10 +5,8 @@ pub use self::{
     bitcoind_connector::{chain_info, BitcoindConnector, ChainInfo},
     cache::Cache,
 };
-use crate::{
-    btsieve::{
-        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
-    },
+use crate::btsieve::{
+    find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
 };
 use bitcoin::{
     blockdata::script::Instruction,

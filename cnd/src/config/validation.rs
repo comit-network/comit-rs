@@ -13,7 +13,7 @@ pub enum ConfigValidationError<T: std::fmt::Debug> {
     ConnectedNetworkDoesNotMatchSpecified {
         connected_network: T,
         specified_network: T,
-    }
+    },
 }
 
 #[derive(Debug)]
@@ -22,10 +22,13 @@ pub enum NetworkValidationResult<T> {
     Invalid {
         connected_network: T,
         specified_network: T,
-    }
+    },
 }
 
-pub async fn validate_ethereum_chain_id(connection: &Web3Connector, specified: ChainId) -> Result<NetworkValidationResult<ChainId>, anyhow::Error> {
+pub async fn validate_ethereum_chain_id(
+    connection: &Web3Connector,
+    specified: ChainId,
+) -> Result<NetworkValidationResult<ChainId>, anyhow::Error> {
     let actual = net_version(connection).await?;
     if actual == specified {
         Ok(NetworkValidationResult::Valid)
@@ -37,7 +40,10 @@ pub async fn validate_ethereum_chain_id(connection: &Web3Connector, specified: C
     }
 }
 
-pub async fn validate_bitcoin_network(connection: &BitcoindConnector, specified: Network) -> Result<NetworkValidationResult<Network>, anyhow::Error>  {
+pub async fn validate_bitcoin_network(
+    connection: &BitcoindConnector,
+    specified: Network,
+) -> Result<NetworkValidationResult<Network>, anyhow::Error> {
     let actual = chain_info(connection).await?;
     if actual.chain == specified {
         Ok(NetworkValidationResult::Valid)
