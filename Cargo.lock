@@ -543,6 +543,7 @@ dependencies = [
  "diesel",
  "diesel_migrations",
  "digest 0.1.0",
+ "digest-macro-derive",
  "directories",
  "ethbloom",
  "fern",
@@ -840,6 +841,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f3d0c8c8752312f9713efd397ff63acb9f85585afbf179282e720e7704954dd5"
 dependencies = [
  "generic-array",
+]
+
+[[package]]
+name = "digest-macro-derive"
+version = "0.1.0"
+dependencies = [
+ "quote 1.0.2",
+ "syn 1.0.15",
 ]
 
 [[package]]

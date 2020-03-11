@@ -1,4 +1,5 @@
 use digest::{digest, DigestField, DigestRoot};
+use digest_macro_derive::DigestRootMacro;
 
 use multihash::Multihash;
 
@@ -20,26 +21,10 @@ impl DigestRoot for SingleFieldStruct {
     }
 }
 
+#[derive(DigestRootMacro)]
 struct DoubleFieldStruct {
     foo: String,
     bar: String,
-}
-
-impl DigestRoot for DoubleFieldStruct {
-    fn digest_root(self) -> Multihash {
-        let bar_digest = self.bar.digest_field("bar".into());
-        let foo_digest = self.foo.digest_field("foo".into());
-
-        if foo_digest < bar_digest {
-            let mut res = foo_digest.into_bytes();
-            res.append(&mut bar_digest.into_bytes());
-            digest(&res)
-        } else {
-            let mut res = bar_digest.into_bytes();
-            res.append(&mut foo_digest.into_bytes());
-            digest(&res)
-        }
-    }
 }
 
 struct OtherStruct {

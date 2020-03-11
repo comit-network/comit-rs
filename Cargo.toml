@@ -1,2 +1,2 @@
 [workspace]
-members = ["cnd", "digest", "libp2p-comit"]
+members = ["cnd", "digest", "digest-macro-derive", "libp2p-comit"]
