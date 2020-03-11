@@ -1,3 +1,4 @@
+pub use multihash;
 use multihash::Multihash;
 
 const SEPARATOR: &[u8; 1] = b":";

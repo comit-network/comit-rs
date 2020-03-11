@@ -1,7 +1,7 @@
 use digest::{digest, DigestField, DigestRoot};
 use digest_macro_derive::DigestRootMacro;
 
-use multihash::Multihash;
+use digest::multihash::Multihash;
 
 struct NewType(String);
 
