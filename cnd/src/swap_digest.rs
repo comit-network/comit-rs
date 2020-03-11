@@ -49,18 +49,20 @@ struct OtherStruct {
 
 impl DigestRoot for OtherStruct {
     fn digest_root(self) -> Multihash {
+        let mut digests = vec![];
         let foo_digest = self.foo.digest_field("foo".into());
+        digests.push(foo_digest);
         let bar_digest = self.bar.digest_field("bar".into());
+        digests.push(bar_digest);
 
-        if foo_digest < bar_digest {
-            let mut res = foo_digest.into_bytes();
-            res.append(&mut bar_digest.into_bytes());
-            digest(&res)
-        } else {
-            let mut res = bar_digest.into_bytes();
-            res.append(&mut foo_digest.into_bytes());
-            digest(&res)
-        }
+        digests.sort();
+
+        let res = digests.into_iter().fold(vec![], |mut res, digest| {
+            res.append(&mut digest.into_bytes());
+            res
+        });
+
+        digest(&res)
     }
 }
 
