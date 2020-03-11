@@ -1,32 +1,12 @@
+use digest::{digest, DigestField, DigestRoot};
+
 use multihash::Multihash;
-
-fn digest(bytes: &[u8]) -> Multihash {
-    // Time the tests and take fastest hash?
-    multihash::Sha3_256::digest(bytes)
-}
-
-trait Digest {
-    fn digest(&self) -> Multihash;
-}
-
-impl Digest for String {
-    fn digest(&self) -> Multihash {
-        let bytes = self.as_bytes();
-        digest(bytes)
-    }
-}
-
-impl Digest for Vec<u8> {
-    fn digest(&self) -> Multihash {
-        digest(&self)
-    }
-}
 
 struct NewType(String);
 
-impl Digest for NewType {
-    fn digest(&self) -> Multihash {
-        self.0.digest()
+impl DigestRoot for NewType {
+    fn digest_root(self) -> Multihash {
+        self.0.digest_field("".into())
     }
 }
 
@@ -34,11 +14,9 @@ struct SingleFieldStruct {
     field: String,
 }
 
-impl Digest for SingleFieldStruct {
-    fn digest(&self) -> Multihash {
-        let mut str = String::from("field: ");
-        str += &self.field;
-        str.digest()
+impl DigestRoot for SingleFieldStruct {
+    fn digest_root(self) -> Multihash {
+        self.field.digest_field("field".into())
     }
 }
 
@@ -47,24 +25,19 @@ struct DoubleFieldStruct {
     bar: String,
 }
 
-impl Digest for DoubleFieldStruct {
-    fn digest(&self) -> Multihash {
-        let mut foo = String::from("foo: ");
-        foo += &self.foo;
-        let foo = foo.digest();
-
-        let mut bar = String::from("bar: ");
-        bar += &self.bar;
-        let bar = bar.digest();
+impl DigestRoot for DoubleFieldStruct {
+    fn digest_root(self) -> Multihash {
+        let bar = self.bar.digest_field("bar".into());
+        let foo = self.foo.digest_field("foo".into());
 
         if foo < bar {
             let mut res = foo.into_bytes();
             res.append(&mut bar.into_bytes());
-            res.digest()
+            digest(&res)
         } else {
             let mut res = bar.into_bytes();
             res.append(&mut foo.into_bytes());
-            res.digest()
+            digest(&res)
         }
     }
 }
@@ -74,24 +47,19 @@ struct OtherStruct {
     foo: String,
 }
 
-impl Digest for OtherStruct {
-    fn digest(&self) -> Multihash {
-        let mut foo = String::from("foo: ");
-        foo += &self.foo;
-        let foo = foo.digest();
-
-        let mut bar = String::from("bar: ");
-        bar += &self.bar;
-        let bar = bar.digest();
+impl DigestRoot for OtherStruct {
+    fn digest_root(self) -> Multihash {
+        let foo = self.foo.digest_field("foo".into());
+        let bar = self.bar.digest_field("bar".into());
 
         if foo < bar {
             let mut res = foo.into_bytes();
             res.append(&mut bar.into_bytes());
-            res.digest()
+            digest(&res)
         } else {
             let mut res = bar.into_bytes();
             res.append(&mut foo.into_bytes());
-            res.digest()
+            digest(&res)
         }
     }
 }
@@ -105,15 +73,32 @@ mod tests {
         let str1 = String::from("simple string");
         let str2 = String::from("simple string");
 
-        assert_eq!(str1.digest(), str2.digest())
+        assert_eq!(
+            str1.digest_field("foo".into()),
+            str2.digest_field("foo".into())
+        )
     }
 
     #[test]
-    fn given_differemt_strings_return_different_multihash() {
+    fn given_same_strings_different_names_return_diff_multihash() {
+        let str1 = String::from("simple string");
+        let str2 = String::from("simple string");
+
+        assert_ne!(
+            str1.digest_field("foo".into()),
+            str2.digest_field("bar".into())
+        )
+    }
+
+    #[test]
+    fn given_different_strings_return_different_multihash() {
         let str1 = String::from("simple string");
         let str2 = String::from("longer string.");
 
-        assert_ne!(str1.digest(), str2.digest())
+        assert_ne!(
+            str1.digest_field("foo".into()),
+            str2.digest_field("foo".into())
+        )
     }
 
     #[test]
@@ -121,7 +106,7 @@ mod tests {
         let new_type1 = NewType("simple string".into());
         let new_type2 = NewType("simple string".into());
 
-        assert_eq!(new_type1.digest(), new_type2.digest())
+        assert_eq!(new_type1.digest_root(), new_type2.digest_root())
     }
 
     #[test]
@@ -129,7 +114,7 @@ mod tests {
         let new_type1 = NewType("simple string".into());
         let new_type2 = NewType("longer string.".into());
 
-        assert_ne!(new_type1.digest(), new_type2.digest())
+        assert_ne!(new_type1.digest_root(), new_type2.digest_root())
     }
 
     #[test]
@@ -141,7 +126,7 @@ mod tests {
             field: "foo".into(),
         };
 
-        assert_eq!(struct1.digest(), struct2.digest())
+        assert_eq!(struct1.digest_root(), struct2.digest_root())
     }
 
     #[test]
@@ -151,7 +136,7 @@ mod tests {
         };
         let new_type = NewType("foo".into());
 
-        assert_ne!(single_field_struct.digest(), new_type.digest())
+        assert_ne!(single_field_struct.digest_root(), new_type.digest_root())
     }
 
     #[test]
@@ -165,7 +150,7 @@ mod tests {
             bar: "second field".into(),
         };
 
-        assert_eq!(struct1.digest(), struct2.digest())
+        assert_eq!(struct1.digest_root(), struct2.digest_root())
     }
 
     #[test]
@@ -179,7 +164,7 @@ mod tests {
             bar: "different field".into(),
         };
 
-        assert_ne!(struct1.digest(), struct2.digest())
+        assert_ne!(struct1.digest_root(), struct2.digest_root())
     }
 
     #[test]
@@ -193,6 +178,6 @@ mod tests {
             foo: "foo field".into(),
         };
 
-        assert_eq!(struct1.digest(), struct2.digest())
+        assert_eq!(struct1.digest_root(), struct2.digest_root())
     }
 }

@@ -17,6 +17,7 @@ config = { version = "0.10", features = ["toml"], default-features = false }
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
 diesel_migrations = "1.4.0"
+digest = { path = "../digest" }
 directories = "2.0"
 ethbloom = "0.8.1"
 fern = { version = "0.6", features = ["colored"] }

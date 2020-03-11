@@ -1,0 +1,8 @@
+[package]
+name = "digest"
+version = "0.1.0"
+authors = ["CoBloX <hello@coblox.tech>"]
+edition = "2018"
+
+[dependencies]
+multihash = "0.10"
