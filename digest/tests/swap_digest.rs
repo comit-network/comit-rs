@@ -1,11 +1,11 @@
-use digest::{digest, DigestField, DigestRoot};
+use digest::{digest, FieldDigest, RootDigest};
 use digest_macro_derive::DigestRootMacro;
 
 use digest::multihash::Multihash;
 
 struct NewType(String);
 
-impl DigestRoot for NewType {
+impl RootDigest for NewType {
     fn digest_root(self) -> Multihash {
         self.0.digest_field("".into())
     }
@@ -15,7 +15,7 @@ struct SingleFieldStruct {
     field: String,
 }
 
-impl DigestRoot for SingleFieldStruct {
+impl RootDigest for SingleFieldStruct {
     fn digest_root(self) -> Multihash {
         self.field.digest_field("field".into())
     }
@@ -32,7 +32,7 @@ struct OtherStruct {
     foo: String,
 }
 
-impl DigestRoot for OtherStruct {
+impl RootDigest for OtherStruct {
     fn digest_root(self) -> Multihash {
         let mut digests = vec![];
         let foo_digest = self.foo.digest_field("foo".into());

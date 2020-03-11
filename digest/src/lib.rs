@@ -8,15 +8,15 @@ pub fn digest(bytes: &[u8]) -> Multihash {
     multihash::Sha3_256::digest(bytes)
 }
 
-pub trait DigestRoot {
+pub trait RootDigest {
     fn digest_root(self) -> Multihash;
 }
 
-pub trait DigestField {
+pub trait FieldDigest {
     fn digest_field(self, field_name: String) -> Multihash;
 }
 
-impl DigestField for String {
+impl FieldDigest for String {
     fn digest_field(self, field_name: String) -> Multihash {
         let mut bytes = field_name.into_bytes();
         let mut separator = SEPARATOR.to_vec();
@@ -28,7 +28,7 @@ impl DigestField for String {
     }
 }
 
-impl DigestField for Vec<u8> {
+impl FieldDigest for Vec<u8> {
     fn digest_field(mut self, field_name: String) -> Multihash {
         let mut bytes = field_name.into_bytes();
         let mut separator = SEPARATOR.to_vec();
