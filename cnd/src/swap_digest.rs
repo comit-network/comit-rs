@@ -27,16 +27,16 @@ struct DoubleFieldStruct {
 
 impl DigestRoot for DoubleFieldStruct {
     fn digest_root(self) -> Multihash {
-        let bar = self.bar.digest_field("bar".into());
-        let foo = self.foo.digest_field("foo".into());
+        let bar_digest = self.bar.digest_field("bar".into());
+        let foo_digest = self.foo.digest_field("foo".into());
 
-        if foo < bar {
-            let mut res = foo.into_bytes();
-            res.append(&mut bar.into_bytes());
+        if foo_digest < bar_digest {
+            let mut res = foo_digest.into_bytes();
+            res.append(&mut bar_digest.into_bytes());
             digest(&res)
         } else {
-            let mut res = bar.into_bytes();
-            res.append(&mut foo.into_bytes());
+            let mut res = bar_digest.into_bytes();
+            res.append(&mut foo_digest.into_bytes());
             digest(&res)
         }
     }
@@ -49,16 +49,16 @@ struct OtherStruct {
 
 impl DigestRoot for OtherStruct {
     fn digest_root(self) -> Multihash {
-        let foo = self.foo.digest_field("foo".into());
-        let bar = self.bar.digest_field("bar".into());
+        let foo_digest = self.foo.digest_field("foo".into());
+        let bar_digest = self.bar.digest_field("bar".into());
 
-        if foo < bar {
-            let mut res = foo.into_bytes();
-            res.append(&mut bar.into_bytes());
+        if foo_digest < bar_digest {
+            let mut res = foo_digest.into_bytes();
+            res.append(&mut bar_digest.into_bytes());
             digest(&res)
         } else {
-            let mut res = bar.into_bytes();
-            res.append(&mut foo.into_bytes());
+            let mut res = bar_digest.into_bytes();
+            res.append(&mut foo_digest.into_bytes());
             digest(&res)
         }
     }
