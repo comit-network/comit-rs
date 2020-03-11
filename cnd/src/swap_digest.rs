@@ -20,6 +20,18 @@ impl Digest for NewType {
     }
 }
 
+struct SingleFieldStruct {
+    field: String,
+}
+
+impl Digest for SingleFieldStruct {
+    fn digest(&self) -> Multihash {
+        let mut str = String::from("field: ");
+        str += &self.field;
+        str.digest()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -54,5 +66,27 @@ mod tests {
         let new_type2 = NewType("longer string.".into());
 
         assert_ne!(new_type1.digest(), new_type2.digest())
+    }
+
+    #[test]
+    fn given_same_single_field_struct_return_same_multihash() {
+        let struct1 = SingleFieldStruct {
+            field: "foo".into(),
+        };
+        let struct2 = SingleFieldStruct {
+            field: "foo".into(),
+        };
+
+        assert_eq!(struct1.digest(), struct2.digest())
+    }
+
+    #[test]
+    fn given_single_field_struct_and_new_type_with_same_inner_return_different_multihash() {
+        let single_field_struct = SingleFieldStruct {
+            field: "foo".into(),
+        };
+        let new_type = NewType("foo".into());
+
+        assert_ne!(single_field_struct.digest(), new_type.digest())
     }
 }
