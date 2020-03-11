@@ -528,7 +528,7 @@ dependencies = [
  "blockchain_contracts",
  "chrono",
  "config",
- "derivative 2.0.1",
+ "derivative 2.0.2",
  "diesel",
  "diesel_migrations",
  "directories",
@@ -771,9 +771,9 @@ dependencies = [
 
 [[package]]
 name = "derivative"
-version = "2.0.1"
+version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "40c1f2732657d77ebc4e52a04dcf529ffb72e46e78d2e113b9016d5c01598649"
+checksum = "1b94d2eb97732ec84b4e25eaf37db890e317b80e921f168c82cb5282473f8151"
 dependencies = [
  "proc-macro2 1.0.8",
  "quote 1.0.2",
@@ -1661,7 +1661,7 @@ name = "libp2p-comit"
 version = "0.1.0"
 dependencies = [
  "bytes 0.5.4",
- "derivative 2.0.1",
+ "derivative 2.0.2",
  "futures 0.3.4",
  "futures_codec 0.4.0",
  "libp2p",
