@@ -36,15 +36,18 @@ async function assertValidSirenDocument(
 }
 
 describe("Rfc003 schema tests", () => {
-    it("get-all-swaps-is-valid-siren", async function() {
-        await twoActorTest(async function({ alice }) {
+    it(
+        "get-all-swaps-is-valid-siren",
+        twoActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/swaps");
 
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
-        });
-    });
-    it("get-single-swap-is-valid-siren", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+        })
+    );
+
+    it(
+        "get-single-swap-is-valid-siren",
+        twoActorTest(async ({ alice, bob }) => {
             // Alice send swap request to Bob
             await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
@@ -70,11 +73,12 @@ describe("Rfc003 schema tests", () => {
                 bob,
                 "[Bob] Response for GET /swaps/rfc003/{} is a valid siren document and properties match the json schema"
             );
-        });
-    });
+        })
+    );
 
-    it("get-single-swap-contains-link-to-rfc", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "get-single-swap-contains-link-to-rfc",
+        twoActorTest(async ({ alice, bob }) => {
             // Alice send swap request to Bob
             await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
@@ -95,8 +99,8 @@ describe("Rfc003 schema tests", () => {
                 href:
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.adoc",
             });
-        });
-    });
+        })
+    );
 });
 
 // ******************************************** //
@@ -114,8 +118,9 @@ async function assertSwapsInProgress(actor: Actor, message: string) {
 }
 
 describe("Rfc003 schema swap reject tests", () => {
-    it("alice-can-make-default-swap-request", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "alice-can-make-default-swap-request",
+        twoActorTest(async ({ alice, bob }) => {
             // Alice should be able to send two swap requests to Bob
             const url1 = await alice.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
@@ -146,11 +151,12 @@ describe("Rfc003 schema swap reject tests", () => {
                 bob,
                 "[Bob] Shows the swaps as IN_PROGRESS in /swaps"
             );
-        });
-    });
+        })
+    );
 
-    it("bob-can-decline-swap", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "bob-can-decline-swap",
+        twoActorTest(async ({ alice, bob }) => {
             // Alice should be able to send two swap requests to Bob
             const aliceReasonableSwap = await alice.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
@@ -221,6 +227,6 @@ describe("Rfc003 schema swap reject tests", () => {
                     .status,
                 "[Alice] Should be in the SENT State for the other swap request"
             ).to.eq("SENT");
-        });
-    });
+        })
+    );
 });
