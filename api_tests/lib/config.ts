@@ -75,28 +75,6 @@ interface BitcoinConnector {
     bitcoind: Bitcoind;
 }
 
-export const ALICE_CONFIG = new E2ETestActorConfig(
-    8000,
-    9938,
-    "alice",
-    59736,
-    50009
-);
-export const BOB_CONFIG = new E2ETestActorConfig(
-    8010,
-    9939,
-    "bob",
-    59737,
-    50010
-);
-export const CHARLIE_CONFIG = new E2ETestActorConfig(
-    8020,
-    8021,
-    "charlie",
-    59738,
-    50011
-);
-
 function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
     const config: LedgerConnectors = {};
 
@@ -128,11 +106,3 @@ function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
         },
     };
 }
-
-export const CND_CONFIGS: {
-    [actor: string]: E2ETestActorConfig | undefined;
-} = {
-    alice: ALICE_CONFIG,
-    bob: BOB_CONFIG,
-    charlie: CHARLIE_CONFIG,
-};
