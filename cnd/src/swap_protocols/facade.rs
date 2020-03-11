@@ -23,7 +23,7 @@ use crate::{
             },
             ActorState,
         },
-        state_store::{self, InMemoryStateStore, StateStore},
+        state_store::{self, Get, InMemoryStateStore, Insert, Update},
         SwapId,
     },
     transaction,
@@ -57,30 +57,33 @@ pub struct Facade {
     pub db: Sqlite,
 }
 
-impl<S> StateStore<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for Facade
+impl<S> Insert<S> for Facade
 where
-    S: ActorState + Clone + Send,
+    S: Send + 'static,
+{
+    fn insert(&self, key: SwapId, value: S) {
+        self.state_store.insert(key, value)
+    }
+}
+
+impl<S> Get<S> for Facade
+where
+    S: Clone + Send + 'static,
+{
+    fn get(&self, key: &SwapId) -> Result<Option<S>, state_store::Error> {
+        self.state_store.get(key)
+    }
+}
+
+impl<S> Update<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for Facade
+where
+    S: ActorState + Send,
     S::AA: Ord,
     S::BA: Ord,
 {
-    fn insert(&self, key: SwapId, value: S) {
-        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::insert(
-            self.state_store.as_ref(),
-            key,
-            value,
-        )
-    }
-
-    fn get(&self, key: &SwapId) -> Result<Option<S>, state_store::Error> {
-        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::get(
-            self.state_store.as_ref(),
-            key,
-        )
-    }
-
     #[allow(clippy::type_complexity)]
     fn update(&self, key: &SwapId, update: SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>) {
-        StateStore::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::update(
+        Update::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::update(
             self.state_store.as_ref(),
             key,
             update,

@@ -8,7 +8,7 @@ use crate::{
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             Accept, Request,
         },
-        state_store::StateStore,
+        state_store::{Insert, Update},
         Role,
     },
 };
@@ -20,10 +20,12 @@ pub fn init_accepted_swap<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     role: Role,
 ) -> anyhow::Result<()>
 where
-    D: StateStore<
+    D: Insert<alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>>
+        + Insert<bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>>
+        + Update<
             alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
             SwapEvent<AA, BA, AH, BH, AT, BT>,
-        > + StateStore<
+        > + Update<
             bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
             SwapEvent<AA, BA, AH, BH, AT, BT>,
         > + Clone
@@ -58,7 +60,7 @@ where
     match role {
         Role::Alice => {
             let state = alice::State::accepted(request.clone(), *accept, seed);
-            StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(dependencies, id, state);
+            dependencies.insert(id, state);
 
             tokio::task::spawn(create_alpha_watcher::<
                 D,
@@ -77,7 +79,7 @@ where
         Role::Bob => {
             let state: bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> =
                 bob::State::accepted(request.clone(), *accept, seed);
-            StateStore::insert(dependencies, id, state);
+            dependencies.insert(id, state);
 
             tokio::task::spawn(create_alpha_watcher::<
                 D,

@@ -10,8 +10,8 @@ use crate::{
     },
     swap_protocols::{
         actions::Actions,
-        rfc003::{self, create_swap::SwapEvent, ActorState},
-        state_store::{InMemoryStateStore, StateStore},
+        rfc003::{self, ActorState},
+        state_store::{Get, InMemoryStateStore},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -91,7 +91,8 @@ pub fn build_rfc003_siren_entity(
     let id = swap.swap_id;
 
     with_swap_types!(types, {
-        let state = StateStore::<ROLE, SwapEvent<AA, BA, AH, BH, AT, BT>>::get(state_store, &id)?
+        let state: ROLE = state_store
+            .get(&id)?
             .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
 
         if state.swap_failed() && on_fail == OnFail::Error {

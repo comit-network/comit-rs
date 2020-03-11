@@ -9,11 +9,10 @@ use crate::{
     swap_protocols::{
         rfc003::{
             self, alice,
-            create_swap::SwapEvent,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             Accept, Decline, DeriveIdentities, DeriveSecret, Request, SecretHash,
         },
-        state_store::StateStore,
+        state_store::Insert,
         Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
@@ -68,7 +67,7 @@ where
 
     let state =
         alice::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
-    StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(&dependencies, id, state);
+    dependencies.insert(id, state);
 
     let future = {
         async move {
@@ -98,11 +97,7 @@ where
                         decline,
                         seed,
                     );
-                    StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(
-                        &dependencies,
-                        id,
-                        state,
-                    );
+                    dependencies.insert(id, state);
                     Save::save(&dependencies, decline).await?;
                 }
             };

@@ -11,12 +11,17 @@ pub enum Error {
 }
 
 #[allow(clippy::type_complexity)]
-pub trait StateStore<S, E>: Send + Sync + 'static
-where
-    S: ActorState + Clone + Send,
-{
+pub trait Insert<S>: Send + Sync + 'static {
     fn insert(&self, key: SwapId, value: S);
+}
+
+#[allow(clippy::type_complexity)]
+pub trait Get<S>: Send + Sync + 'static {
     fn get(&self, key: &SwapId) -> Result<Option<S>, Error>;
+}
+
+#[allow(clippy::type_complexity)]
+pub trait Update<S, E>: Send + Sync + 'static {
     fn update(&self, key: &SwapId, update: E);
 }
 
@@ -25,16 +30,20 @@ pub struct InMemoryStateStore {
     states: Mutex<HashMap<SwapId, Box<dyn Any + Send>>>,
 }
 
-impl<S> StateStore<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for InMemoryStateStore
+impl<S> Insert<S> for InMemoryStateStore
 where
-    S: ActorState + Clone + Send,
-    S::AA: Ord,
-    S::BA: Ord,
+    S: Send + 'static,
 {
     fn insert(&self, key: SwapId, value: S) {
         let mut states = self.states.lock().unwrap();
         states.insert(key, Box::new(value));
     }
+}
+
+impl<S> Get<S> for InMemoryStateStore
+where
+    S: Clone + Send + 'static,
+{
     fn get(&self, key: &SwapId) -> Result<Option<S>, Error> {
         let states = self.states.lock().unwrap();
         match states.get(key) {
@@ -45,7 +54,14 @@ where
             None => Ok(None),
         }
     }
+}
 
+impl<S> Update<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for InMemoryStateStore
+where
+    S: ActorState + Send,
+    S::AA: Ord,
+    S::BA: Ord,
+{
     #[allow(clippy::type_complexity)]
     fn update(&self, key: &SwapId, event: SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>) {
         let mut states = self.states.lock().unwrap();

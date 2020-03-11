@@ -18,10 +18,9 @@ use crate::{
         ledger,
         rfc003::{
             self, bob,
-            create_swap::SwapEvent,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
         },
-        state_store::{InMemoryStateStore, StateStore},
+        state_store::{InMemoryStateStore, Insert},
         HashFunction, Role, SwapId, SwapProtocol,
     },
     transaction,
@@ -766,7 +765,7 @@ where
 
     let state =
         bob::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
-    StateStore::<_, SwapEvent<AA, BA, AH, BH, AT, BT>>::insert(state_store.as_ref(), id, state);
+    state_store.insert(id, state);
 
     Ok(())
 }
