@@ -47,7 +47,6 @@ pub mod seed;
 pub mod jsonrpc;
 #[cfg(test)]
 pub mod spectral_ext;
-pub mod swap_digest;
 pub mod swap_protocols;
 pub mod timestamp;
 

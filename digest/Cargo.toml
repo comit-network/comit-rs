@@ -6,3 +6,6 @@ edition = "2018"
 
 [dependencies]
 multihash = "0.10"
+
+[dev-dependencies]
+digest-macro-derive = { path = "../digest-macro-derive" }

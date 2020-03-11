@@ -830,6 +830,7 @@ dependencies = [
 name = "digest"
 version = "0.1.0"
 dependencies = [
+ "digest-macro-derive",
  "multihash",
 ]
 
