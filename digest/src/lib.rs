@@ -4,7 +4,6 @@ use multihash::Multihash;
 const SEPARATOR: &[u8; 1] = b":";
 
 pub fn digest(bytes: &[u8]) -> Multihash {
-    // Time the tests and take fastest hash?
     multihash::Sha3_256::digest(bytes)
 }
 
