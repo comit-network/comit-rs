@@ -8,9 +8,14 @@ import { LedgerConfig } from "./ledgers/ledger_runner";
 import rimraf from "rimraf";
 import { Mutex } from "async-mutex";
 import { exec } from "child_process";
+import { LightningWallet } from "./wallets/lightning";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
+    lndWallets: {
+        alice?: LightningWallet;
+        bob?: LightningWallet;
+    };
     testRoot: string;
     projectRoot: string;
     logRoot: string;

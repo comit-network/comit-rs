@@ -42,9 +42,7 @@ export class Actor {
         const actorConfig = new E2ETestActorConfig(
             await getPort(),
             await getPort(),
-            name,
-            await getPort(),
-            await getPort()
+            name
         );
 
         const cndInstance = new CndInstance(
@@ -64,7 +62,7 @@ export class Actor {
             JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
         );
 
-        return new Actor(logger, cndInstance, logRoot, actorConfig, name);
+        return new Actor(logger, cndInstance, name);
     }
 
     public actors: Actors;
@@ -88,8 +86,6 @@ export class Actor {
     constructor(
         private readonly logger: Logger,
         private readonly cndInstance: CndInstance,
-        private readonly logRoot: string,
-        private readonly config: E2ETestActorConfig,
         private name: string
     ) {
         this.wallets = new Wallets({});
@@ -193,38 +189,6 @@ export class Actor {
             to.betaAsset,
         ]);
 
-        const isLightning =
-            this.alphaLedger.name === "lightning" ||
-            this.betaLedger.name === "lightning";
-
-        if (isLightning) {
-            this.logger.debug(`Initialising lightning for ${this.config.name}`);
-            const thisLightningWallet = this.wallets.getWalletForLedger(
-                "lightning"
-            );
-            const toLightningWallet = to.wallets.getWalletForLedger(
-                "lightning"
-            );
-
-            await thisLightningWallet.connectPeer(toLightningWallet);
-
-            if (this.alphaLedger.name === "lightning") {
-                // Alpha Ledger is lightning so Alice will be sending assets over lightning
-                const quantity = parseInt(this.alphaAsset.quantity, 10);
-                await thisLightningWallet.openChannel(
-                    toLightningWallet,
-                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
-                );
-            } else {
-                // Beta Ledger is lightning so Bob will be sending assets over lightning
-                const quantity = parseInt(this.betaAsset.quantity, 10);
-                await toLightningWallet.openChannel(
-                    thisLightningWallet,
-                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
-                );
-            }
-        }
-
         this.expectedBalanceChanges.set(
             toKey(this.betaAsset),
             new BigNumber(this.betaAsset.quantity)
@@ -233,6 +197,10 @@ export class Actor {
             toKey(this.alphaAsset),
             new BigNumber(to.alphaAsset.quantity)
         );
+
+        const isLightning =
+            this.alphaLedger.name === "lightning" ||
+            this.betaLedger.name === "lightning";
 
         if (isLightning) {
             this.logger.debug("Using lightning routes on cnd REST API");
@@ -745,30 +713,13 @@ export class Actor {
             this.alphaLedger.name === "lightning" ||
             this.betaLedger.name === "lightning";
 
-        if (lightningNeeded) {
-            this.lndInstance = new LndInstance(
-                this.logger,
-                this.logRoot,
-                this.config,
-                global.ledgerConfigs.bitcoin.dataDir
-            );
-            await this.lndInstance.start();
-        }
-
         const walletPromises: Promise<void>[] = [];
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
-            let lnd;
-            if (this.lndInstance) {
-                lnd = {
-                    lnd: this.lndInstance.lnd,
-                    lndP2pSocket: this.lndInstance.getLightningSocket(),
-                };
-            }
             walletPromises.push(
-                this.wallets.initializeForLedger(ledgerName, this.logger, lnd)
+                this.wallets.initializeForLedger(ledgerName, this.name)
             );
         }
 

@@ -1,6 +1,6 @@
 import * as tmp from "tmp";
-import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { LedgerConfig } from "./ledgers/ledger_runner";
+import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
 
 export interface CndConfigFile {
@@ -20,9 +20,7 @@ export class E2ETestActorConfig {
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: string,
-        public readonly lndP2pPort: number,
-        public readonly lndRpcPort: number
+        public readonly name: string
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;

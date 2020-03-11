@@ -6,8 +6,8 @@ import {
     InMemoryBitcoinWallet as BitcoinWalletSdk,
 } from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
-import { BitcoinNodeConfig } from "../ledgers/bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
+import { BitcoinNodeConfig } from "../ledgers/bitcoin";
 
 export class BitcoinWallet implements Wallet {
     public static async newInstance(config: BitcoinNodeConfig) {

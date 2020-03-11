@@ -1,15 +1,19 @@
 import getPort from "get-port";
 import * as bitcoin from "./bitcoin";
-import { BitcoinNodeConfig } from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { ParityInstance } from "./parity_instance";
 import { EthereumWallet } from "../wallets/ethereum";
 import { HarnessGlobal } from "../utils";
+import { LndInstance } from "./lnd_instance";
+import * as path from "path";
 import { EthereumNodeConfig } from "./ethereum";
+import { BitcoinNodeConfig } from "./bitcoin";
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
+    lndAlice?: LndInstance;
+    lndBob?: LndInstance;
 }
 
 export interface LedgerInstance {
@@ -35,7 +39,7 @@ export class LedgerRunner {
     ): Promise<LedgerConfig> {
         const toBeStarted = ledgers.filter(name => !this.runningLedgers[name]);
 
-        const returnValue: LedgerConfig = {};
+        const ledgerConfig: LedgerConfig = {};
         const promises = toBeStarted.map(async ledger => {
             console.log(`Starting ledger ${ledger}`);
 
@@ -65,8 +69,30 @@ export class LedgerRunner {
                         instance: await instance.start(),
                     };
                 }
+                case "lnd-alice": {
+                    const instance = await LndInstance.new(
+                        this.logDir,
+                        "lnd-alice",
+                        path.join(this.logDir, "bitcoind")
+                    );
+                    return {
+                        ledger,
+                        instance: await instance.start(),
+                    };
+                }
+                case "lnd-bob": {
+                    const instance = await LndInstance.new(
+                        this.logDir,
+                        "lnd-bob",
+                        path.join(this.logDir, "bitcoind")
+                    );
+                    return {
+                        ledger,
+                        instance: await instance.start(),
+                    };
+                }
                 default: {
-                    throw new Error(`Ledgerrunner does not support ${ledger}`);
+                    throw new Error(`LedgerRunner does not support ${ledger}`);
                 }
             }
         });
@@ -76,46 +102,60 @@ export class LedgerRunner {
         for (const { ledger, instance } of startedContainers) {
             this.runningLedgers[ledger] = instance;
 
-            if (ledger === "bitcoin") {
-                if (this.harnessGlobal.verbose) {
-                    console.log(
-                        "Bitcoin: initialization after ledger is running."
+            switch (ledger) {
+                case "bitcoin": {
+                    if (this.harnessGlobal.verbose) {
+                        console.log(
+                            "Bitcoin: initialization after ledger is running."
+                        );
+                    }
+                    bitcoin.init(await this.getBitcoinClientConfig());
+                    await bitcoin.ensureFunding();
+                    this.blockTimers.bitcoin = this.harnessGlobal.setInterval(
+                        async () => {
+                            await bitcoin.generate();
+                        },
+                        1000
                     );
+                    ledgerConfig.bitcoin = await this.getBitcoinClientConfig().catch(
+                        () => undefined
+                    );
+                    break;
                 }
-                bitcoin.init(await this.getBitcoinClientConfig());
-                await bitcoin.ensureFunding();
-                this.blockTimers.bitcoin = this.harnessGlobal.setInterval(
-                    async () => {
-                        await bitcoin.generate();
-                    },
-                    1000
-                );
-                returnValue.bitcoin = await this.getBitcoinClientConfig().catch(
-                    () => undefined
-                );
-            }
 
-            if (ledger === "ethereum") {
-                const ethereumNodeUrl = await this.getEthereumNodeUrl().catch(
-                    () => undefined
-                );
-                const erc20Wallet = new EthereumWallet(ethereumNodeUrl);
-                returnValue.ethereum = {
-                    rpc_url: ethereumNodeUrl,
-                    tokenContract: await erc20Wallet.deployErc20TokenContract(
-                        this.projectRoot
-                    ),
-                };
-                if (this.harnessGlobal.verbose) {
-                    console.log(
-                        "Ethereum: deployed Erc20 contract at %s",
-                        returnValue.ethereum.tokenContract
+                case "ethereum": {
+                    const ethereumNodeUrl = await this.getEthereumNodeUrl().catch(
+                        () => undefined
                     );
+                    const erc20Wallet = new EthereumWallet(ethereumNodeUrl);
+                    ledgerConfig.ethereum = {
+                        rpc_url: ethereumNodeUrl,
+                        tokenContract: await erc20Wallet.deployErc20TokenContract(
+                            this.projectRoot
+                        ),
+                    };
+                    if (this.harnessGlobal.verbose) {
+                        console.log(
+                            "Ethereum: deployed Erc20 contract at %s",
+                            ledgerConfig.ethereum.tokenContract
+                        );
+                    }
+                    break;
+                }
+
+                case "lnd-alice": {
+                    ledgerConfig.lndAlice = instance as LndInstance;
+                    break;
+                }
+
+                case "lnd-bob": {
+                    ledgerConfig.lndBob = instance as LndInstance;
+                    break;
                 }
             }
         }
 
-        return returnValue;
+        return ledgerConfig;
     }
 
     public stopLedgers() {

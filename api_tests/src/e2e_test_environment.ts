@@ -9,6 +9,8 @@ import {
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
+import { LightningWallet } from "../lib/wallets/lightning";
+import { BitcoinWallet } from "../lib/wallets/bitcoin";
 
 // ************************ //
 // Setting global variables //
@@ -42,6 +44,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.global.projectRoot = this.projectRoot;
         this.global.testRoot = this.testRoot;
         this.global.ledgerConfigs = {};
+        this.global.lndWallets = {};
         this.global.verbose =
             this.global.process.argv.find(item => item.includes("verbose")) !==
             undefined;
@@ -73,12 +76,44 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             const ledgerConfig = await this.ledgerRunner.ensureLedgersRunning(
                 ledgers
             );
-            this.global.tokenContract = ledgerConfig.ethereum.tokenContract;
-            this.global.ledgerConfigs = {
-                bitcoin: ledgerConfig.bitcoin,
-                ethereum: ledgerConfig.ethereum,
-            };
+
+            const ethereum = ledgerConfig.ethereum;
+            if (ethereum) {
+                this.global.tokenContract = ethereum.tokenContract;
+                this.global.ledgerConfigs.ethereum = ethereum;
+            }
+
+            const bitcoin = ledgerConfig.bitcoin;
+            if (bitcoin) {
+                this.global.ledgerConfigs.bitcoin = bitcoin;
+            }
+
+            const lndAlice = ledgerConfig.lndAlice;
+            const lndBob = ledgerConfig.lndBob;
+
+            if (lndAlice && lndBob && bitcoin) {
+                this.global.ledgerConfigs.lndAlice = lndAlice;
+                this.global.ledgerConfigs.lndBob = lndBob;
+
+                const aliceWallet = await LightningWallet.newInstance(
+                    await BitcoinWallet.newInstance(bitcoin),
+                    lndAlice.lnd,
+                    lndAlice.p2pSocket
+                );
+                const bobWallet = await LightningWallet.newInstance(
+                    await BitcoinWallet.newInstance(bitcoin),
+                    lndBob.lnd,
+                    lndBob.p2pSocket
+                );
+                this.global.lndWallets = {
+                    alice: aliceWallet,
+                    bob: bobWallet,
+                };
+
+                await aliceWallet.connectPeer(bobWallet);
+            }
         }
+
         this.global.logRoot = this.logDir;
     }
 
