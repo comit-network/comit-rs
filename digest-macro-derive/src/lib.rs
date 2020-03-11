@@ -22,8 +22,8 @@ fn impl_digest_root_macro(ast: &syn::DeriveInput) -> TokenStream {
             let types = fields.named.iter().map(|field| &field.ty);
 
             let gen = quote! {
-            impl DigestRoot for #name
-                 where #(#types: DigestField),*
+            impl ::digest::DigestRoot for #name
+                 where #(#types: ::digest::DigestField),*
                  {
                     fn digest_root(self) -> Multihash {
                         let mut digests = vec![];
