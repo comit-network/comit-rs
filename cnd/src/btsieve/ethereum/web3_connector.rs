@@ -2,9 +2,10 @@ use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     ethereum::{TransactionReceipt, H256},
     jsonrpc,
-    swap_protocols::ledger::ethereum::ChainId,
 };
+use crate::swap_protocols::ledger::ethereum::ChainId;
 use async_trait::async_trait;
+use crate::config::validation::FetchNetworkId;
 
 #[derive(Debug)]
 pub struct Web3Connector {
@@ -77,19 +78,16 @@ impl ReceiptByHash for Web3Connector {
     }
 }
 
-pub async fn net_version(
-    conn: &Web3Connector,
-) -> Result<crate::swap_protocols::ledger::ethereum::ChainId, anyhow::Error> {
-    let empty_params: Vec<()> = vec![];
-
-    let chain_id: ChainId =
-        conn.client
-            .send::<Vec<()>, crate::swap_protocols::ledger::ethereum::ChainId>(
-                jsonrpc::Request::new("net_version", empty_params),
-            )
+#[async_trait]
+impl FetchNetworkId<ChainId> for Web3Connector {
+    async fn network_id(&self) -> anyhow::Result<ChainId> {
+        let chain_id: ChainId = self
+            .client
+            .send::<Vec<()>, ChainId>(jsonrpc::Request::new("net_version", vec![]))
             .await?;
 
-    tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
+        tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
 
-    Ok(chain_id)
+        Ok(chain_id)
+    }
 }
