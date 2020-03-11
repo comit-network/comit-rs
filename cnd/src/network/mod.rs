@@ -1,3 +1,5 @@
+pub mod behaviour;
+mod protocol;
 pub mod transport;
 
 pub use transport::ComitTransport;
@@ -42,7 +44,7 @@ use libp2p::{
 };
 use libp2p_comit::{
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    handler::{self, ComitHandler, ProtocolInEvent, ProtocolOutEvent},
+    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -65,7 +67,7 @@ type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
     EitherOutput<ProtocolInEvent, void::Void>,
     EitherOutput<ProtocolOutEvent, void::Void>,
     IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
-    EitherError<handler::Error, void::Void>,
+    EitherError<libp2p_comit::handler::Error, void::Void>,
 >;
 
 #[derive(Clone, derivative::Derivative)]
@@ -152,6 +154,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
     Keypair::Ed25519(key.into())
 }
 
+/// A `NetworkBehaviour` that delegates to the `Comit` and `Mdns` behaviours.
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
