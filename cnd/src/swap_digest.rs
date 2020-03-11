@@ -1,5 +1,10 @@
 use multihash::Multihash;
 
+fn digest(bytes: &[u8]) -> Multihash {
+    // Time the tests and take fastest hash?
+    multihash::Sha3_256::digest(bytes)
+}
+
 trait Digest {
     fn digest(&self) -> Multihash;
 }
@@ -7,8 +12,13 @@ trait Digest {
 impl Digest for String {
     fn digest(&self) -> Multihash {
         let bytes = self.as_bytes();
-        // Time the tests and take fastest hash?
-        multihash::Sha3_256::digest(bytes)
+        digest(bytes)
+    }
+}
+
+impl Digest for Vec<u8> {
+    fn digest(&self) -> Multihash {
+        digest(&self)
     }
 }
 
@@ -29,6 +39,33 @@ impl Digest for SingleFieldStruct {
         let mut str = String::from("field: ");
         str += &self.field;
         str.digest()
+    }
+}
+
+struct DoubleFieldStruct {
+    foo: String,
+    bar: String,
+}
+
+impl Digest for DoubleFieldStruct {
+    fn digest(&self) -> Multihash {
+        let mut foo = String::from("foo: ");
+        foo += &self.foo;
+        let foo = foo.digest();
+
+        let mut bar = String::from("bar: ");
+        bar += &self.bar;
+        let bar = bar.digest();
+
+        if foo < bar {
+            let mut res = foo.into_bytes();
+            res.append(&mut bar.into_bytes());
+            res.digest()
+        } else {
+            let mut res = bar.into_bytes();
+            res.append(&mut foo.into_bytes());
+            res.digest()
+        }
     }
 }
 
@@ -88,5 +125,33 @@ mod tests {
         let new_type = NewType("foo".into());
 
         assert_ne!(single_field_struct.digest(), new_type.digest())
+    }
+
+    #[test]
+    fn given_same_double_field_struct_return_same_multihash() {
+        let struct1 = DoubleFieldStruct {
+            foo: "first field".into(),
+            bar: "second field".into(),
+        };
+        let struct2 = DoubleFieldStruct {
+            foo: "first field".into(),
+            bar: "second field".into(),
+        };
+
+        assert_eq!(struct1.digest(), struct2.digest())
+    }
+
+    #[test]
+    fn given_different_double_field_struct_return_different_multihash() {
+        let struct1 = DoubleFieldStruct {
+            foo: "first field".into(),
+            bar: "second field".into(),
+        };
+        let struct2 = DoubleFieldStruct {
+            foo: "first field".into(),
+            bar: "different field".into(),
+        };
+
+        assert_ne!(struct1.digest(), struct2.digest())
     }
 }
