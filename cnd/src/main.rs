@@ -74,16 +74,16 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
-    match runtime.block_on(validate_blockchain_config(&bitcoin_connector.connector, settings.bitcoin.network)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<reqwest::Error>() {
-                tracing::warn!("Could not validate Bitcoin node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
-    };
+    runtime.block_on(async {
+        validate_blockchain_config(&bitcoin_connector.connector, settings.bitcoin.network)
+            .await
+            .or_else::<anyhow::Error, _>(|e| {
+                let conn_error = e.downcast::<reqwest::Error>()?;
+                tracing::warn!("Could not validate Bitcoin node config: {}", conn_error);
+
+                Ok(())
+            })
+    })?;
 
     const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
     const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
@@ -93,16 +93,16 @@ fn main() -> anyhow::Result<()> {
         ETHEREUM_RECEIPT_CACHE_CAPACITY,
     ));
 
-    match runtime.block_on(validate_blockchain_config(&ethereum_connector.connector, settings.ethereum.chain_id)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<jsonrpc::Error>() {
-                tracing::warn!("Could not validate Ethereum node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
-    };
+    runtime.block_on(async {
+        validate_blockchain_config(&ethereum_connector.connector, settings.ethereum.chain_id)
+            .await
+            .or_else::<anyhow::Error, _>(|e| {
+                let conn_error = e.downcast::<jsonrpc::Error>()?;
+                tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
+
+                Ok(())
+            })
+    })?;
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
