@@ -718,10 +718,10 @@
   resolved "https://registry.yarnpkg.com/@types/tv4/-/tv4-1.2.29.tgz#4c6d2222b03245dd2104f4fd67f54d1658985911"
   integrity sha512-NtJmi+XbYocrLb5Au4Q64srX4FlCPDvrSF/OnK3H0QJwrw40tIUoQPDoUHnZ5wpAB2KThtVyeS+kOEQyZabORg==
 
-"@types/urijs@^1.19.6":
-  version "1.19.6"
-  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.6.tgz#4cee39e4e5ad8d276d617d159ffcb423ca2fd9f1"
-  integrity sha512-kdnK+JtEiUgnpB7r99SAZjjz9nhZ/7MWo/hxTSNfvslAa4r8jpDXDEJ2cQrjemes4eX2Y5Om3udmcc8QalPzOA==
+"@types/urijs@^1.19.7":
+  version "1.19.7"
+  resolved "https://registry.yarnpkg.com/@types/urijs/-/urijs-1.19.7.tgz#94dae48b40300135db8cc3796b12252850383193"
+  integrity sha512-0YN0GGB2Xab5cuHerBQw/NvWUnkdVfDNdBjXtTr+2AE1c9t29HVvV+IkXwp+fwqN8/05U/XjaQ7pk+jP41ypqA==
 
 "@types/yargs-parser@*":
   version "15.0.0"
