@@ -11,6 +11,8 @@ import { Mutex } from "async-mutex";
 import path from "path";
 import { LightningWallet } from "../lib/wallets/lightning";
 import { BitcoinWallet } from "../lib/wallets/bitcoin";
+import { AssetKind } from "../lib/asset";
+import { LedgerKind } from "../lib/ledgers/ledger";
 
 // ************************ //
 // Setting global variables //
@@ -111,6 +113,14 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 };
 
                 await aliceWallet.connectPeer(bobWallet);
+
+                await aliceWallet.mint({
+                    name: AssetKind.Bitcoin,
+                    ledger: LedgerKind.Lightning,
+                    quantity: "15000000",
+                });
+
+                await aliceWallet.openChannel(bobWallet, 15000000);
             }
         }
 

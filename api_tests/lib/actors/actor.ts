@@ -755,6 +755,7 @@ export class Actor {
             const ledgerName = ledger.name;
 
             this.logger.debug("Minting %s on %s", asset.name, ledgerName);
+
             await this.wallets.getWalletForLedger(ledgerName).mint(asset);
 
             const balance = await this.wallets[ledgerName].getBalanceByAsset(
