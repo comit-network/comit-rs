@@ -193,10 +193,17 @@
     exec-sh "^0.3.2"
     minimist "^1.2.0"
 
-"@datastructures-js/priority-queue@1.0.2":
-  version "1.0.2"
-  resolved "https://registry.yarnpkg.com/@datastructures-js/priority-queue/-/priority-queue-1.0.2.tgz#3511cb9cd7fb03be057afb7874cd8839d1ac91f8"
-  integrity sha512-HrSXJy5QPBn7DyF5ubjR6g88zW4SXDcYf732MKXTwRYf/MSVc8C1oM7UkDpaIc9OoC4r8kwpYa6oWndQZykd1w==
+"@datastructures-js/heap@^1.2.0":
+  version "1.2.0"
+  resolved "https://registry.yarnpkg.com/@datastructures-js/heap/-/heap-1.2.0.tgz#d5bc5f36127630e922d3342e71da9bc81944f5f2"
+  integrity sha512-4dexQMQB2S6VXjtwI2px/Y2oIrfqOq2QkZKXFzaXizVA5FgAHlWNZ50/PF7SpjKgkMR1E1vPtY5eaxFwuPanFQ==
+
+"@datastructures-js/priority-queue@2.0.0":
+  version "2.0.0"
+  resolved "https://registry.yarnpkg.com/@datastructures-js/priority-queue/-/priority-queue-2.0.0.tgz#5d8255e0e772c2ed06ff206636948d4f1fd3155d"
+  integrity sha512-PPtv7nZaDFO/3D0mWd/99iVYqyl7sKY8ZNQMKbS8x92OJ9Qw0yrpWz6KX/i8bSlGlTBx3oTUx8gZeKqaUDXZRg==
+  dependencies:
+    "@datastructures-js/heap" "^1.2.0"
 
 "@grpc/proto-loader@0.5.3":
   version "0.5.3"
@@ -4033,13 +4040,13 @@ lightning@1.2.4:
     invoices "1.0.0"
     is-base64 "1.1.0"
 
-ln-service@^47.15.2:
-  version "47.15.2"
-  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.2.tgz#d90095340b4479811ea97216fdc4d2c4b68fe29b"
-  integrity sha512-sydFwqsSYYe/tFg/lnKloAgGO/DKXhlWbUzDE1mI0bz9nXAX0EdTVyZhRiSA9NCbyPj8hFj+sU2sws5XOdG04A==
+ln-service@^47.15.3:
+  version "47.15.3"
+  resolved "https://registry.yarnpkg.com/ln-service/-/ln-service-47.15.3.tgz#c508b107126eca864da229f8a47f01e87df915be"
+  integrity sha512-kbBCIxS8MqemXxp9r79NaBYtXHbxPvtvw8jhLyBwlViF/uKST2+3jU0ckh/Zinw+Wh7c7ydpEiPW3Y5FzlESIg==
   dependencies:
     "@alexbosworth/request" "2.88.3"
-    "@datastructures-js/priority-queue" "1.0.2"
+    "@datastructures-js/priority-queue" "2.0.0"
     "@grpc/proto-loader" "0.5.3"
     async "3.2.0"
     asyncjs-util "1.1.3"
@@ -4063,7 +4070,7 @@ ln-service@^47.15.2:
     promptly "3.0.3"
     safe-compare "1.1.4"
     secp256k1 "4.0.0"
-    ws "7.2.1"
+    ws "7.2.3"
 
 loady@~0.0.1:
   version "0.0.1"
@@ -6581,10 +6588,10 @@ write-file-atomic@^3.0.0:
     signal-exit "^3.0.2"
     typedarray-to-buffer "^3.1.5"
 
-ws@7.2.1, ws@^7.0.0:
-  version "7.2.1"
-  resolved "https://registry.yarnpkg.com/ws/-/ws-7.2.1.tgz#03ed52423cd744084b2cf42ed197c8b65a936b8e"
-  integrity sha512-sucePNSafamSKoOqoNfBd8V0StlkzJKL2ZAhGQinCfNQ+oacw+Pk7lcdAElecBF2VkLNZRiIb5Oi1Q5lVUVt2A==
+ws@7.2.3, ws@^7.0.0:
+  version "7.2.3"
+  resolved "https://registry.yarnpkg.com/ws/-/ws-7.2.3.tgz#a5411e1fb04d5ed0efee76d26d5c46d830c39b46"
+  integrity sha512-HTDl9G9hbkNDk98naoR/cHDws7+EyYMOdL1BmjsZXRUjf7d+MficC4B7HLUPlSiho0vg+CWKrGIt/VJBd1xunQ==
 
 xml-name-validator@^3.0.0:
   version "3.0.0"
