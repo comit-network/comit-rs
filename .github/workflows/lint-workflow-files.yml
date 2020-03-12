@@ -1,0 +1,16 @@
+name: "Lint GitHub workflow files"
+
+on: push
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source code
+        uses: actions/checkout@v2
+
+      - name: Setup NodeJS
+        uses: actions/setup-node@v1
+
+      - name: Run spectral
+        run: npx @stoplight/spectral lint .github/workflows/*.yml --ignore-unknown-format --verbose

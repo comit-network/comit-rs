@@ -13,8 +13,8 @@ jobs:
     name: Build binary
     strategy:
       matrix:
-        os: [ubuntu, macos]
-    runs-on: ${{ matrix.os }}-latest
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout merge commit
         uses: actions/checkout@v2
@@ -72,13 +72,13 @@ jobs:
       - name: Download ubuntu release package
         uses: actions/download-artifact@v1
         with:
-          name: ubuntu-release-archive
+          name: ubuntu-latest-release-archive
 
       - name: Move binary into correct place for Docker build
         run: |
           mkdir -p ./target/release
 
-          tar --extract -f ./ubuntu-release-archive/*.tar.gz -C ./target/release/
+          tar --extract -f ./ubuntu-latest-release-archive/*.tar.gz -C ./target/release/
 
       - name: Login to docker
         uses: azure/docker-login@v1
@@ -120,18 +120,18 @@ jobs:
       - name: Download ubuntu release package
         uses: actions/download-artifact@v1
         with:
-          name: ubuntu-release-archive
+          name: ubuntu-latest-release-archive
 
       - name: Download macos release package
         uses: actions/download-artifact@v1
         with:
-          name: macos-release-archive
+          name: macos-latest-release-archive
 
       - name: Detect archives to upload
         id: detect-archives
         run: |
-          echo "::set-output name=ubuntu-archive::$(cd ./ubuntu-release-archive/; echo *.tar.gz)"
-          echo "::set-output name=macos-archive::$(cd ./macos-release-archive/; echo *.tar.gz)"
+          echo "::set-output name=ubuntu-archive::$(cd ./ubuntu-latest-release-archive/; echo *.tar.gz)"
+          echo "::set-output name=macos-archive::$(cd ./macos-latest-release-archive/; echo *.tar.gz)"
 
       - name: Create Release
         id: create-release
@@ -151,7 +151,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./ubuntu-release-archive/${{ steps.detect-archives.outputs.ubuntu-archive }}
+          asset_path: ./ubuntu-latest-release-archive/${{ steps.detect-archives.outputs.ubuntu-archive }}
           asset_name: ${{ steps.detect-archives.outputs.ubuntu-archive }}
           asset_content_type: application/gzip
 
@@ -161,7 +161,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ steps.create-release.outputs.upload_url }}
-          asset_path: ./macos-release-archive/${{ steps.detect-archives.outputs.macos-archive }}
+          asset_path: ./macos-latest-release-archive/${{ steps.detect-archives.outputs.macos-archive }}
           asset_name: ${{ steps.detect-archives.outputs.macos-archive }}
           asset_content_type: application/gzip
 
@@ -182,10 +182,10 @@ jobs:
         uses: thomaseizinger/create-pull-request@1.0.0
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        head: release/${{ steps.extract-version.outputs.version }}
-        base: dev
-        title: Merge release ${{ steps.extract-version.outputs.version }} into dev branch
-        body: |
-          This PR merges the release branch for ${{ steps.extract-version.outputs.version }} back into dev.
-          This happens to ensure that the updates that happend on the release branch, i.e. CHANGELOG and manifest updates are also present on the dev branch.
+          head: release/${{ steps.extract-version.outputs.version }}
+          base: dev
+          title: Merge release ${{ steps.extract-version.outputs.version }} into dev branch
+          body: |
+            This PR merges the release branch for ${{ steps.extract-version.outputs.version }} back into dev.
+            This happens to ensure that the updates that happend on the release branch, i.e. CHANGELOG and manifest updates are also present on the dev branch.
 
