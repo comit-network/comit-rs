@@ -8,15 +8,15 @@ pub fn digest(bytes: &[u8]) -> Multihash {
 }
 
 pub trait RootDigest {
-    fn digest_root(self) -> Multihash;
+    fn root_digest(self) -> Multihash;
 }
 
 pub trait FieldDigest {
-    fn digest_field(self, field_name: String) -> Multihash;
+    fn field_digest(self, field_name: String) -> Multihash;
 }
 
 impl FieldDigest for String {
-    fn digest_field(self, field_name: String) -> Multihash {
+    fn field_digest(self, field_name: String) -> Multihash {
         let mut bytes = field_name.into_bytes();
         let mut separator = SEPARATOR.to_vec();
         bytes.append(&mut separator);
@@ -28,7 +28,7 @@ impl FieldDigest for String {
 }
 
 impl FieldDigest for Vec<u8> {
-    fn digest_field(mut self, field_name: String) -> Multihash {
+    fn field_digest(mut self, field_name: String) -> Multihash {
         let mut bytes = field_name.into_bytes();
         let mut separator = SEPARATOR.to_vec();
         bytes.append(&mut separator);

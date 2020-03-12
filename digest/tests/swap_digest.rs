@@ -6,8 +6,8 @@ use digest::multihash::Multihash;
 struct NewType(String);
 
 impl RootDigest for NewType {
-    fn digest_root(self) -> Multihash {
-        self.0.digest_field("0".into())
+    fn root_digest(self) -> Multihash {
+        self.0.field_digest("0".into())
     }
 }
 
@@ -16,8 +16,8 @@ struct SingleFieldStruct {
 }
 
 impl RootDigest for SingleFieldStruct {
-    fn digest_root(self) -> Multihash {
-        self.field.digest_field("field".into())
+    fn root_digest(self) -> Multihash {
+        self.field.field_digest("field".into())
     }
 }
 
@@ -33,11 +33,11 @@ struct OtherStruct {
 }
 
 impl RootDigest for OtherStruct {
-    fn digest_root(self) -> Multihash {
+    fn root_digest(self) -> Multihash {
         let mut digests = vec![];
-        let foo_digest = self.foo.digest_field("foo".into());
+        let foo_digest = self.foo.field_digest("foo".into());
         digests.push(foo_digest);
-        let bar_digest = self.bar.digest_field("bar".into());
+        let bar_digest = self.bar.field_digest("bar".into());
         digests.push(bar_digest);
 
         digests.sort();
@@ -57,8 +57,8 @@ fn given_same_strings_return_same_multihash() {
     let str2 = String::from("simple string");
 
     assert_eq!(
-        str1.digest_field("foo".into()),
-        str2.digest_field("foo".into())
+        str1.field_digest("foo".into()),
+        str2.field_digest("foo".into())
     )
 }
 
@@ -68,8 +68,8 @@ fn given_same_strings_different_names_return_diff_multihash() {
     let str2 = String::from("simple string");
 
     assert_ne!(
-        str1.digest_field("foo".into()),
-        str2.digest_field("bar".into())
+        str1.field_digest("foo".into()),
+        str2.field_digest("bar".into())
     )
 }
 
@@ -79,8 +79,8 @@ fn given_different_strings_return_different_multihash() {
     let str2 = String::from("longer string.");
 
     assert_ne!(
-        str1.digest_field("foo".into()),
-        str2.digest_field("foo".into())
+        str1.field_digest("foo".into()),
+        str2.field_digest("foo".into())
     )
 }
 
@@ -89,7 +89,7 @@ fn given_same_newtypes_return_same_multihash() {
     let new_type1 = NewType("simple string".into());
     let new_type2 = NewType("simple string".into());
 
-    assert_eq!(new_type1.digest_root(), new_type2.digest_root())
+    assert_eq!(new_type1.root_digest(), new_type2.root_digest())
 }
 
 #[test]
@@ -97,7 +97,7 @@ fn given_different_newtypes_return_different_multihash() {
     let new_type1 = NewType("simple string".into());
     let new_type2 = NewType("longer string.".into());
 
-    assert_ne!(new_type1.digest_root(), new_type2.digest_root())
+    assert_ne!(new_type1.root_digest(), new_type2.root_digest())
 }
 
 #[test]
@@ -109,7 +109,7 @@ fn given_same_single_field_struct_return_same_multihash() {
         field: "foo".into(),
     };
 
-    assert_eq!(struct1.digest_root(), struct2.digest_root())
+    assert_eq!(struct1.root_digest(), struct2.root_digest())
 }
 
 #[test]
@@ -119,7 +119,7 @@ fn given_single_field_struct_and_new_type_with_same_inner_return_different_multi
     };
     let new_type = NewType("foo".into());
 
-    assert_ne!(single_field_struct.digest_root(), new_type.digest_root())
+    assert_ne!(single_field_struct.root_digest(), new_type.root_digest())
 }
 
 #[test]
@@ -133,7 +133,7 @@ fn given_same_double_field_struct_return_same_multihash() {
         bar: "second field".into(),
     };
 
-    assert_eq!(struct1.digest_root(), struct2.digest_root())
+    assert_eq!(struct1.root_digest(), struct2.root_digest())
 }
 
 #[test]
@@ -147,7 +147,7 @@ fn given_different_double_field_struct_return_different_multihash() {
         bar: "different field".into(),
     };
 
-    assert_ne!(struct1.digest_root(), struct2.digest_root())
+    assert_ne!(struct1.root_digest(), struct2.root_digest())
 }
 
 #[test]
@@ -161,5 +161,5 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
         foo: "foo field".into(),
     };
 
-    assert_eq!(struct1.digest_root(), struct2.digest_root())
+    assert_eq!(struct1.root_digest(), struct2.root_digest())
 }
