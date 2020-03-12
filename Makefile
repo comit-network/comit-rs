@@ -109,6 +109,8 @@ check_toml_format: install_tomlfmt
 	$(CARGO) tomlfmt -d -p libp2p-comit/Cargo.toml
 
 check_ts_format:
-ifneq (,$(STAGED_TYPESCRIPT_FILES))
+ifeq ($(CI),true)
+	(cd ./api_tests; yarn install; yarn run check)
+else ifneq (,$(STAGED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run check)
 endif
