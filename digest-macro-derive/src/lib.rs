@@ -25,13 +25,17 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                 let attr = field
                     .attrs
                     .get(0)
-                    .expect("digest_byte attribute must be present on all fields");
+                    .expect("digest_bytes attribute must be present on all fields");
                 let meta = attr.parse_meta().expect("Attribute is malformed");
 
                 if let Meta::NameValue(name_value) = meta {
                     if name_value.path.is_ident("digest_bytes") {
                         if let Lit::Str(lit_str) = name_value.lit {
-                            return lit_str.value();
+                            let str = lit_str.value();
+                            // Ensure it is a correct format
+                            let _ = ::hex::decode(&str)
+                                .expect("digest_bytes value should be in hex format");
+                            return str;
                         }
                     }
                 }
