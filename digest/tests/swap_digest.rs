@@ -1,4 +1,4 @@
-use digest::{digest, DigestRootMacro, FieldDigest, RootDigest};
+use digest::{digest, FieldDigest, RootDigest, RootDigestMacro};
 
 use digest::multihash::Multihash;
 
@@ -20,7 +20,7 @@ impl RootDigest for SingleFieldStruct {
     }
 }
 
-#[derive(DigestRootMacro)]
+#[derive(RootDigestMacro)]
 struct DoubleFieldStruct {
     foo: String,
     bar: String,

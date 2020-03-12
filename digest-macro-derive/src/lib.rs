@@ -4,13 +4,13 @@ use crate::proc_macro::TokenStream;
 use quote::quote;
 use syn::{Data, Fields};
 
-#[proc_macro_derive(DigestRootMacro)]
-pub fn digest_root_macro_fn(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(RootDigestMacro)]
+pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_digest_root_macro(&ast)
+    impl_root_digest_macro(&ast)
 }
 
-fn impl_digest_root_macro(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     if let Data::Struct(data) = &ast.data {
         if let Fields::Named(fields) = &data.fields {
