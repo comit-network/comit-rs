@@ -39,8 +39,11 @@ export class LedgerRunner {
     ): Promise<LedgerConfig> {
         const toBeStarted = ledgers.filter(name => !this.runningLedgers[name]);
 
+        const startedContainers = [];
+
         const ledgerConfig: LedgerConfig = {};
-        const promises = toBeStarted.map(async ledger => {
+
+        for (const ledger of toBeStarted) {
             console.log(`Starting ledger ${ledger}`);
 
             switch (ledger) {
@@ -53,10 +56,11 @@ export class LedgerRunner {
                         await getPort({ port: 28332 }),
                         await getPort({ port: 28333 })
                     );
-                    return {
+                    startedContainers.push({
                         ledger,
                         instance: await instance.start(),
-                    };
+                    });
+                    break;
                 }
                 case "ethereum": {
                     const instance = new ParityInstance(
@@ -64,10 +68,11 @@ export class LedgerRunner {
                         this.logDir,
                         await getPort({ port: 8545 })
                     );
-                    return {
+                    startedContainers.push({
                         ledger,
                         instance: await instance.start(),
-                    };
+                    });
+                    break;
                 }
                 case "lnd-alice": {
                     const instance = await LndInstance.new(
@@ -75,10 +80,11 @@ export class LedgerRunner {
                         "lnd-alice",
                         path.join(this.logDir, "bitcoind")
                     );
-                    return {
+                    startedContainers.push({
                         ledger,
                         instance: await instance.start(),
-                    };
+                    });
+                    break;
                 }
                 case "lnd-bob": {
                     const instance = await LndInstance.new(
@@ -86,18 +92,17 @@ export class LedgerRunner {
                         "lnd-bob",
                         path.join(this.logDir, "bitcoind")
                     );
-                    return {
+                    startedContainers.push({
                         ledger,
                         instance: await instance.start(),
-                    };
+                    });
+                    break;
                 }
                 default: {
                     throw new Error(`LedgerRunner does not support ${ledger}`);
                 }
             }
-        });
-
-        const startedContainers = await Promise.all(promises);
+        }
 
         for (const { ledger, instance } of startedContainers) {
             this.runningLedgers[ledger] = instance;
