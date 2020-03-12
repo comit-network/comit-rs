@@ -8,11 +8,9 @@ workflows:
             branches:
               ignore: /^(staging.tmp|trying.tmp)$/
       - release-build-test:
-          filters: # runs for "release/" branches and all tags.
+          filters: # runs for "release/" branches
             branches:
-              only: /^release\/*$/
-            tags:
-              only: /.*/
+              only: /^release\/.*$/
 
 jobs:
   debug-build-test:
