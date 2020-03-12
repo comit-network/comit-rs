@@ -7,7 +7,7 @@ struct NewType(String);
 
 impl RootDigest for NewType {
     fn digest_root(self) -> Multihash {
-        self.0.digest_field("".into())
+        self.0.digest_field("0".into())
     }
 }
 
