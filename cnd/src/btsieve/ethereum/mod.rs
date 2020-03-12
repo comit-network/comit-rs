@@ -3,7 +3,7 @@ mod web3_connector;
 
 pub use self::{
     cache::Cache,
-    web3_connector::{net_version, Web3Connector},
+    web3_connector::{Web3Connector},
 };
 use crate::{
     btsieve::{

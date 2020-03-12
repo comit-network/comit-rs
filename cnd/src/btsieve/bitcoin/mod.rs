@@ -2,7 +2,7 @@ mod bitcoind_connector;
 mod cache;
 
 pub use self::{
-    bitcoind_connector::{chain_info, BitcoindConnector, ChainInfo},
+    bitcoind_connector::{BitcoindConnector, ChainInfo},
     cache::Cache,
 };
 use crate::btsieve::{

@@ -5,6 +5,7 @@ use async_trait::async_trait;
 use bitcoin::{BlockHash, Network};
 use reqwest::{Client, Url};
 use serde::Deserialize;
+use crate::config::validation::FetchNetworkId;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {
@@ -76,20 +77,23 @@ impl BlockByHash for BitcoindConnector {
     }
 }
 
-pub async fn chain_info(conn: &BitcoindConnector) -> Result<ChainInfo, anyhow::Error> {
-    let client = conn.client.clone();
-    let chaininfo_url = conn.chaininfo_url.clone();
+#[async_trait]
+impl FetchNetworkId<Network> for BitcoindConnector {
+    async fn network_id(&self) -> anyhow::Result<Network> {
+        let client = self.client.clone();
+        let chaininfo_url = self.chaininfo_url.clone();
 
-    let chain_info = client
-        .get(chaininfo_url)
-        .send()
-        .await?
-        .json::<ChainInfo>()
-        .await?;
+        let chain_info: ChainInfo = client
+            .get(chaininfo_url)
+            .send()
+            .await?
+            .json::<ChainInfo>()
+            .await?;
 
-    tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
+        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
 
-    Ok(chain_info)
+        Ok(chain_info.chain)
+    }
 }
 
 #[cfg(test)]
