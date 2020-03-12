@@ -1,5 +1,4 @@
-use digest::{digest, FieldDigest, RootDigest};
-use digest_macro_derive::DigestRootMacro;
+use digest::{digest, DigestRootMacro, FieldDigest, RootDigest};
 
 use digest::multihash::Multihash;
 

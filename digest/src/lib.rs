@@ -1,3 +1,5 @@
+pub use digest_macro_derive::DigestRootMacro;
+
 pub use multihash;
 use multihash::Multihash;
 
