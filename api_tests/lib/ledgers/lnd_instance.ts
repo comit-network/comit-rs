@@ -98,7 +98,7 @@ export class LndInstance {
 
         // this.logger.debug("Calling genSeed");
         const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({
-            seedEntropy: this.name,
+            seedEntropy: Buffer.alloc(16, this.name),
         });
         const walletPassword = Buffer.from("password", "utf8");
         // this.logger.debug(
