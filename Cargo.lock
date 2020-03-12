@@ -831,6 +831,7 @@ name = "digest"
 version = "0.1.0"
 dependencies = [
  "digest-macro-derive",
+ "hex 0.4.2",
  "multihash",
 ]
 
@@ -847,6 +848,7 @@ dependencies = [
 name = "digest-macro-derive"
 version = "0.1.0"
 dependencies = [
+ "hex 0.4.2",
  "quote 1.0.2",
  "syn 1.0.15",
 ]

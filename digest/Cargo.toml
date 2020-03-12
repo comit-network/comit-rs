@@ -5,6 +5,7 @@ authors = ["CoBloX <hello@coblox.tech>"]
 edition = "2018"
 
 [dependencies]
+hex = "0.4"
 multihash = "0.10"
 digest-macro-derive = { path = "../digest-macro-derive" }
 

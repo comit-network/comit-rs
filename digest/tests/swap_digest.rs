@@ -22,7 +22,9 @@ impl RootDigest for SingleFieldStruct {
 
 #[derive(RootDigestMacro)]
 struct DoubleFieldStruct {
+    #[digest_bytes = "00"]
     foo: String,
+    #[digest_bytes = "FF"]
     bar: String,
 }
 
@@ -34,9 +36,9 @@ struct OtherStruct {
 impl RootDigest for OtherStruct {
     fn root_digest(self) -> Multihash {
         let mut digests = vec![];
-        let foo_digest = self.foo.field_digest("foo".into());
+        let foo_digest = self.foo.field_digest([0u8].to_vec());
         digests.push(foo_digest);
-        let bar_digest = self.bar.field_digest("bar".into());
+        let bar_digest = self.bar.field_digest([0xFFu8].to_vec());
         digests.push(bar_digest);
 
         digests.sort();

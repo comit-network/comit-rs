@@ -2,9 +2,9 @@ extern crate proc_macro;
 
 use crate::proc_macro::TokenStream;
 use quote::quote;
-use syn::{Data, Fields};
+use syn::{Data, Fields, Lit, Meta};
 
-#[proc_macro_derive(RootDigestMacro)]
+#[proc_macro_derive(RootDigestMacro, attributes(digest_bytes))]
 pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_root_digest_macro(&ast)
@@ -21,13 +21,31 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             let types = fields.named.iter().map(|field| &field.ty);
 
+            let bytes_str = fields.named.iter().map(|field| {
+                let attr = field
+                    .attrs
+                    .get(0)
+                    .expect("digest_byte attribute must be present on all fields");
+                let meta = attr.parse_meta().expect("Attribute is malformed");
+
+                if let Meta::NameValue(name_value) = meta {
+                    if name_value.path.is_ident("digest_bytes") {
+                        if let Lit::Str(lit_str) = name_value.lit {
+                            return lit_str.value();
+                        }
+                    }
+                }
+                panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
+            });
+
             let gen = quote! {
             impl ::digest::RootDigest for #name
                  where #(#types: ::digest::FieldDigest),*
                  {
                     fn root_digest(self) -> Multihash {
+                        use ::digest::hex;
                         let mut digests = vec![];
-                        #(digests.push(self.#idents.field_digest(stringify!(#idents).into())););*
+                        #(digests.push(self.#idents.field_digest(hex::decode(#bytes_str).unwrap())););*
 
                         digests.sort();
 
