@@ -12,8 +12,9 @@ import * as sirenJsonSchema from "../../siren.schema.json";
 // ******************************************** //
 
 describe("Sanity - peers using IP", () => {
-    it("invalid-swap-yields-404", async function() {
-        await oneActorTest(async function({ alice }) {
+    it(
+        "invalid-swap-yields-404",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get(
                 "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
             );
@@ -23,21 +24,23 @@ describe("Sanity - peers using IP", () => {
                 "content-type",
                 "application/problem+json"
             );
-        });
-    });
+        })
+    );
 
-    it("empty-swap-list-after-startup", async function() {
-        await oneActorTest(async function({ alice }) {
+    it(
+        "empty-swap-list-after-startup",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/swaps");
 
             const body = res.body as Entity;
 
             expect(body.entities).to.have.lengthOf(0);
-        });
-    });
+        })
+    );
 
-    it("bad-request-for-invalid-swap-combination", async function() {
-        await oneActorTest(async function({ alice }) {
+    it(
+        "bad-request-for-invalid-swap-combination",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
@@ -68,10 +71,12 @@ describe("Sanity - peers using IP", () => {
                 "application/problem+json"
             );
             expect(res.body.title).to.equal("Invalid body.");
-        });
-    });
-    it("returns-invalid-body-for-bad-json", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "returns-invalid-body-for-bad-json",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl())
                 .post("/swaps/rfc003")
                 .send({
@@ -84,36 +89,44 @@ describe("Sanity - peers using IP", () => {
                 "application/problem+json"
             );
             expect(res.body.title).to.equal("Invalid body.");
-        });
-    });
-    it("alice-has-empty-peer-list", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "alice-has-empty-peer-list",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
             expect(res).to.have.status(200);
             expect(res.body.peers).to.have.length(0);
-        });
-    });
-    it("returns-listen-addresses-on-root-document", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "returns-listen-addresses-on-root-document",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
             expect(res.body.id).to.be.a("string");
             expect(res.body.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface
             expect(res.body.listen_addresses.length).to.be.greaterThan(1);
-        });
-    });
-    it("can-fetch-root-document-as-siren", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "can-fetch-root-document-as-siren",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/");
 
             expect(res).to.have.status(200);
             expect(res.body).to.be.jsonSchema(sirenJsonSchema);
-        });
-    });
-    it("returns-listen-addresses-on-root-document-as-siren", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "returns-listen-addresses-on-root-document-as-siren",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl())
                 .get("/")
                 .set("accept", "application/vnd.siren+json");
@@ -124,10 +137,12 @@ describe("Sanity - peers using IP", () => {
             expect(
                 res.body.properties.listen_addresses.length
             ).to.be.greaterThan(1);
-        });
-    });
-    it("returns-links-to-create-swap-endpoints-on-root-document-as-siren", async function() {
-        await oneActorTest(async function({ alice }) {
+        })
+    );
+
+    it(
+        "returns-links-to-create-swap-endpoints-on-root-document-as-siren",
+        oneActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl())
                 .get("/")
                 .set("accept", "application/vnd.siren+json");
@@ -162,6 +177,6 @@ describe("Sanity - peers using IP", () => {
                 class: ["swaps", "rfc003"],
                 href: "/swaps/rfc003",
             });
-        });
-    });
+        })
+    );
 });
