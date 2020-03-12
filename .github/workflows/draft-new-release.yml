@@ -56,7 +56,7 @@ jobs:
           echo "::set-output name=commit::$(git rev-parse HEAD)"
 
       - name: Push new branch
-        run: git push origin release/${{ env.RELEASE_VERSION }}
+        run: git push origin release/${{ env.RELEASE_VERSION }} --force
 
       - name: Create pull request
         uses: thomaseizinger/create-pull-request@1.0.0
