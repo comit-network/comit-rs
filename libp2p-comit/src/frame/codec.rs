@@ -1,7 +1,7 @@
 use crate::Frame;
 use bytes::BytesMut;
+use futures_codec::{Decoder, Encoder};
 use std::io;
-use tokio_codec::{Decoder, Encoder};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
@@ -54,12 +54,12 @@ impl Decoder for JsonFrameCodec {
 mod tests {
 
     use super::*;
-    use crate::FrameType;
+    use crate::FrameKind;
     use spectral::prelude::*;
 
     #[test]
     fn should_encode_frame_to_bytes() {
-        let frame = Frame::new(FrameType::Request, serde_json::Value::Null);
+        let frame = Frame::new(FrameKind::Request, serde_json::Value::Null);
 
         let mut codec = JsonFrameCodec::default();
 
@@ -85,7 +85,7 @@ mod tests {
         let mut bytes = BytesMut::new();
         bytes.extend([frame_bytes, newline].concat());
 
-        let expected_frame = Frame::new(FrameType::Response, serde_json::Value::Null);
+        let expected_frame = Frame::new(FrameKind::Response, serde_json::Value::Null);
 
         assert_that(&codec.decode(&mut bytes))
             .is_ok()
@@ -124,7 +124,7 @@ mod tests {
         let first = codec.decode(&mut bytes);
         let second = codec.decode(&mut bytes);
 
-        let expected_frame = Frame::new(FrameType::Response, serde_json::Value::Null);
+        let expected_frame = Frame::new(FrameKind::Response, serde_json::Value::Null);
 
         assert_that(&first)
             .is_ok()

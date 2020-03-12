@@ -1,38 +1,57 @@
 use crate::{
-    asset::Asset,
     db::AcceptedSwap,
     seed::DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
-            alice, bob, create_swap,
+            alice, bob, create_alpha_watcher,
+            create_swap::{create_beta_watcher, SwapEvent},
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
-            state_store::StateStore,
-            Ledger,
+            Accept, Request,
         },
+        state_store::{Insert, Update},
         Role,
     },
 };
 
 #[allow(clippy::cognitive_complexity)]
-pub fn init_accepted_swap<D, AL: Ledger, BL: Ledger, AA: Asset, BA: Asset>(
+pub fn init_accepted_swap<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     dependencies: &D,
-    accepted: AcceptedSwap<AL, BL, AA, BA>,
+    accepted: AcceptedSwap<AL, BL, AA, BA, AI, BI>,
     role: Role,
 ) -> anyhow::Result<()>
 where
-    D: StateStore
-        + Clone
+    D: Insert<alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>>
+        + Insert<bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>>
+        + Update<
+            alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+            SwapEvent<AA, BA, AH, BH, AT, BT>,
+        > + Update<
+            bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+            SwapEvent<AA, BA, AH, BH, AT, BT>,
+        > + Clone
         + DeriveSwapSeed
-        + HtlcFunded<AL, AA>
-        + HtlcFunded<BL, BA>
-        + HtlcDeployed<AL, AA>
-        + HtlcDeployed<BL, BA>
-        + HtlcRedeemed<AL, AA>
-        + HtlcRedeemed<BL, BA>
-        + HtlcRefunded<AL, AA>
-        + HtlcRefunded<BL, BA>,
+        + HtlcFunded<AL, AA, AH, AI, AT>
+        + HtlcFunded<BL, BA, BH, BI, BT>
+        + HtlcDeployed<AL, AA, AH, AI, AT>
+        + HtlcDeployed<BL, BA, BH, BI, BT>
+        + HtlcRedeemed<AL, AA, AH, AI, AT>
+        + HtlcRedeemed<BL, BA, BH, BI, BT>
+        + HtlcRefunded<AL, AA, AH, AI, AT>
+        + HtlcRefunded<BL, BA, BH, BI, BT>,
+    AL: Clone + Send + Sync + 'static,
+    BL: Clone + Send + Sync + 'static,
+    AA: Ord + Clone + Send + Sync + 'static,
+    BA: Ord + Clone + Send + Sync + 'static,
+    AH: Clone + Send + Sync + 'static,
+    BH: Clone + Send + Sync + 'static,
+    AI: Clone + Send + Sync + 'static,
+    BI: Clone + Send + Sync + 'static,
+    AT: Clone + Send + Sync + 'static,
+    BT: Clone + Send + Sync + 'static,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
+    Accept<AI, BI>: Copy,
 {
-    let (request, accept, _at) = accepted.clone();
+    let (request, accept, _) = &accepted;
 
     let id = request.swap_id;
     let seed = dependencies.derive_swap_seed(id);
@@ -40,22 +59,41 @@ where
 
     match role {
         Role::Alice => {
-            let state = alice::State::accepted(request, accept, seed);
-            StateStore::insert(dependencies, id, state);
+            let state = alice::State::accepted(request.clone(), *accept, seed);
+            dependencies.insert(id, state);
 
-            tokio::task::spawn(create_swap::<D, alice::State<AL, BL, AA, BA>>(
-                dependencies.clone(),
-                accepted,
-            ));
+            tokio::task::spawn(create_alpha_watcher::<
+                D,
+                alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted.clone()));
+
+            tokio::task::spawn(create_beta_watcher::<
+                D,
+                alice::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted));
         }
         Role::Bob => {
-            let state = bob::State::accepted(request, accept, seed);
-            StateStore::insert(dependencies, id, state);
+            let state: bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> =
+                bob::State::accepted(request.clone(), *accept, seed);
+            dependencies.insert(id, state);
 
-            tokio::task::spawn(create_swap::<D, bob::State<AL, BL, AA, BA>>(
-                dependencies.clone(),
-                accepted,
-            ));
+            tokio::task::spawn(create_alpha_watcher::<
+                D,
+                bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted.clone()));
+
+            tokio::task::spawn(create_beta_watcher::<
+                D,
+                bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>,
+                AI,
+                BI,
+            >(dependencies.clone(), accepted));
         }
     };
 

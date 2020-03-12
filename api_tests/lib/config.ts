@@ -1,7 +1,7 @@
 import * as tmp from "tmp";
-import { BitcoinNodeConfig } from "./bitcoin";
-import { EthereumNodeConfig } from "./ethereum";
-import { LedgerConfig } from "./ledger_runner";
+import { BitcoinNodeConfig } from "./ledgers/bitcoin";
+import { LedgerConfig } from "./ledgers/ledger_runner";
+import { EthereumNodeConfig } from "./ledgers/ethereum";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -11,7 +11,7 @@ export interface CndConfigFile {
 }
 
 export interface HttpApi {
-    socket: { address: string; port: number };
+    socket: string;
 }
 
 export class E2ETestActorConfig {
@@ -20,7 +20,9 @@ export class E2ETestActorConfig {
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: string
+        public readonly name: string,
+        public readonly lndP2pPort: number,
+        public readonly lndRpcPort: number
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -34,10 +36,7 @@ export class E2ETestActorConfig {
     public generateCndConfigFile(ledgerConfig: LedgerConfig): CndConfigFile {
         return {
             http_api: {
-                socket: {
-                    address: "0.0.0.0",
-                    port: this.httpApiPort,
-                },
+                socket: `0.0.0.0:${this.httpApiPort}`,
             },
             data: {
                 dir: this.data,
@@ -58,18 +57,23 @@ interface LedgerConnectors {
     ethereum?: EthereumConnector;
 }
 
+interface Parity {
+    node_url: string;
+}
+
 interface EthereumConnector {
+    chain_id: number;
+    parity: Parity;
+}
+
+interface Bitcoind {
     node_url: string;
 }
 
 interface BitcoinConnector {
-    node_url: string;
     network: string;
+    bitcoind: Bitcoind;
 }
-
-export const ALICE_CONFIG = new E2ETestActorConfig(8000, 9938, "alice");
-export const BOB_CONFIG = new E2ETestActorConfig(8010, 9939, "bob");
-export const CHARLIE_CONFIG = new E2ETestActorConfig(8020, 8021, "charlie");
 
 function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
     const config: LedgerConnectors = {};
@@ -87,21 +91,18 @@ function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
 
 function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     return {
-        node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+        bitcoind: {
+            node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+        },
         network: nodeConfig.network,
     };
 }
 
 function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
     return {
-        node_url: nodeConfig.rpc_url,
+        chain_id: 17,
+        parity: {
+            node_url: nodeConfig.rpc_url,
+        },
     };
 }
-
-export const CND_CONFIGS: {
-    [actor: string]: E2ETestActorConfig | undefined;
-} = {
-    alice: ALICE_CONFIG,
-    bob: BOB_CONFIG,
-    charlie: CHARLIE_CONFIG,
-};

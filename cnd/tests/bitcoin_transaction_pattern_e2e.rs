@@ -1,8 +1,7 @@
 use bitcoin::{Amount, Network};
 use bitcoincore_rpc::RpcApi;
 use chrono::offset::Utc;
-use cnd::btsieve::bitcoin::{matching_transaction, BitcoindConnector, TransactionPattern};
-use futures_core::future;
+use cnd::btsieve::bitcoin::{watch_for_created_outpoint, BitcoindConnector};
 use images::coblox_bitcoincore::BitcoinCore;
 use reqwest::Url;
 use std::time::Duration;
@@ -31,52 +30,51 @@ async fn bitcoin_transaction_pattern_e2e_test() {
     // make sure we have money
     client.generate(101, None).unwrap();
 
-    let pattern = TransactionPattern {
-        to_address: Some(target_address.clone()),
-        from_outpoint: None,
-        unlock_script: None,
-    };
-
     let start_of_swap = Utc::now().naive_local();
-    let funding_transaction = matching_transaction(connector, pattern, start_of_swap);
+
     let send_money_to_address = async {
         tokio::time::delay_for(Duration::from_secs(2)).await;
-        tokio::task::spawn_blocking(move || {
-            let transaction_hash = client
-                .send_to_address(
-                    &target_address,
-                    Amount::from_sat(100_000_000),
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                    None,
-                )
-                .unwrap();
-            client.generate(1, None).unwrap();
+        tokio::task::spawn_blocking({
+            let target_address = target_address.clone();
+            move || {
+                let transaction_hash = client
+                    .send_to_address(
+                        &target_address,
+                        Amount::from_sat(100_000_000),
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                        None,
+                    )
+                    .unwrap();
+                client.generate(1, None).unwrap();
 
-            transaction_hash
+                transaction_hash
+            }
         })
         .await
     };
 
-    let future = future::join(send_money_to_address, funding_transaction);
+    let actual_transaction = tokio::time::timeout(Duration::from_secs(5), send_money_to_address)
+        .await
+        .expect("failed to send money to address");
 
-    let (actual_transaction, funding_transaction) =
-        tokio::time::timeout(Duration::from_secs(5), future)
+    let (funding_transaction, _out_point) =
+        watch_for_created_outpoint(&connector, start_of_swap, target_address)
             .await
             .unwrap();
 
-    assert_eq!(
-        funding_transaction.unwrap().txid(),
-        actual_transaction.unwrap()
-    )
+    assert_eq!(funding_transaction.txid(), actual_transaction.unwrap())
 }
 
-pub fn new_bitcoincore_client<D: Docker>(
+pub fn new_bitcoincore_client<D>(
     container: &Container<'_, D, BitcoinCore>,
-) -> bitcoincore_rpc::Client {
+) -> bitcoincore_rpc::Client
+where
+    D: Docker,
+{
     let port = container.get_host_port(18443).unwrap();
     let auth = container.image().auth();
 

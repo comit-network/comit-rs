@@ -1,18 +1,19 @@
 use crate::btsieve::{
     bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
 };
+use async_trait::async_trait;
 use bitcoin::{BlockHash, Network};
-use futures::Future;
-use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use reqwest::{Client, Url};
 use serde::Deserialize;
+use crate::config::validation::FetchNetworkId;
 
-#[derive(Deserialize)]
-struct ChainInfo {
+#[derive(Copy, Clone, Debug, Deserialize)]
+pub struct ChainInfo {
     bestblockhash: BlockHash,
+    pub chain: Network,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct BitcoindConnector {
     chaininfo_url: Url,
     raw_block_by_hash_url: Url,
@@ -35,63 +36,63 @@ impl BitcoindConnector {
     }
 }
 
+#[async_trait]
 impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
-    type BlockHash = bitcoin::BlockHash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let chaininfo_url = self.chaininfo_url.clone();
-        let this = self.clone();
 
-        let latest_block = async move {
-            let chain_info = this
-                .client
-                .get(chaininfo_url)
-                .send()
-                .await?
-                .json::<ChainInfo>()
-                .await?;
+        let chain_info = self
+            .client
+            .get(chaininfo_url)
+            .send()
+            .await?
+            .json::<ChainInfo>()
+            .await?;
 
-            let block = this
-                .block_by_hash(chain_info.bestblockhash)
-                .compat()
-                .await?;
+        let block = self.block_by_hash(chain_info.bestblockhash).await?;
 
-            Ok(block)
-        };
-
-        Box::new(latest_block.boxed().compat())
+        Ok(block)
     }
 }
 
+#[async_trait]
 impl BlockByHash for BitcoindConnector {
     type Block = bitcoin::Block;
     type BlockHash = bitcoin::BlockHash;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
+        let block =
+            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, &self.client).await?;
 
+        tracing::debug!(
+            "Fetched block {} with {} transactions from bitcoind",
+            block_hash,
+            block.txdata.len()
+        );
+
+        Ok(block)
+    }
+}
+
+#[async_trait]
+impl FetchNetworkId<Network> for BitcoindConnector {
+    async fn network_id(&self) -> anyhow::Result<Network> {
         let client = self.client.clone();
-        let block = async move {
-            let block =
-                bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, client).await?;
-            tracing::debug!(
-                "Fetched block {} with {} transactions from bitcoind",
-                block_hash,
-                block.txdata.len()
-            );
+        let chaininfo_url = self.chaininfo_url.clone();
 
-            Ok(block)
-        }
-        .boxed()
-        .compat();
+        let chain_info: ChainInfo = client
+            .get(chaininfo_url)
+            .send()
+            .await?
+            .json::<ChainInfo>()
+            .await?;
 
-        Box::new(block)
+        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
+
+        Ok(chain_info.chain)
     }
 }
 

@@ -17,11 +17,14 @@ pub async fn load_swaps_from_database(facade: Facade) -> anyhow::Result<()> {
 
         with_swap_types!(types, {
             let accepted =
-                LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&facade, &swap_id).await;
+                LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(&facade, &swap_id)
+                    .await;
 
             match accepted {
                 Ok(accepted) => {
-                    init_accepted_swap(&facade, accepted, types.role)?;
+                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
+                        &facade, accepted, types.role,
+                    )?;
                 }
                 Err(e) => tracing::error!("failed to load swap: {}, continuing ...", e),
             };

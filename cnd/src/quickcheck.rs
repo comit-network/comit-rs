@@ -3,17 +3,21 @@ use crate::{
     asset::ethereum::FromWei,
     db::Swap,
     ethereum::Bytes,
+    identity,
     swap_protocols::{
-        ledger::{self, bitcoin, ethereum::ChainId},
+        ledger,
+        ledger::{bitcoin, ethereum::ChainId},
         rfc003::{Accept, Request, SecretHash},
         HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
+    transaction,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},
     secp256k1,
 };
+use impl_template::impl_template;
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
@@ -130,7 +134,7 @@ impl Arbitrary for Quickcheck<crate::asset::Erc20Quantity> {
 
 impl Arbitrary for Quickcheck<crate::asset::Erc20> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        let token_contract = *Quickcheck::<crate::ethereum::Address>::arbitrary(g);
+        let token_contract = *Quickcheck::<identity::Ethereum>::arbitrary(g);
         let quantity = Quickcheck::<crate::asset::Erc20Quantity>::arbitrary(g).0;
         let erc20_token = crate::asset::Erc20 {
             token_contract,
@@ -147,25 +151,23 @@ impl Arbitrary for Quickcheck<HashFunction> {
     }
 }
 
-impl Arbitrary for Quickcheck<crate::bitcoin::PublicKey> {
+impl Arbitrary for Quickcheck<identity::Bitcoin> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
         let secret_key =
             secp256k1::SecretKey::from_slice(&bytes).expect("all bytes are a valid secret key");
-        let public_key = crate::bitcoin::PublicKey::from_secret_key(
-            &secp256k1::Secp256k1::signing_only(),
-            &secret_key,
-        );
+        let public_key =
+            identity::Bitcoin::from_secret_key(&secp256k1::Secp256k1::signing_only(), &secret_key);
 
         Quickcheck(public_key)
     }
 }
 
-impl Arbitrary for Quickcheck<crate::ethereum::Address> {
+impl Arbitrary for Quickcheck<identity::Ethereum> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 20]>::arbitrary(g);
 
-        Quickcheck(crate::ethereum::Address::from(bytes))
+        Quickcheck(identity::Ethereum::from(bytes))
     }
 }
 
@@ -185,20 +187,12 @@ impl Arbitrary for Quickcheck<crate::ethereum::H256> {
     }
 }
 
-impl Arbitrary for Quickcheck<crate::ethereum::Transaction> {
+impl Arbitrary for Quickcheck<transaction::Ethereum> {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        Quickcheck(crate::ethereum::Transaction {
+        Quickcheck(transaction::Ethereum {
             hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
-            nonce: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            block_hash: Option::<Quickcheck<crate::ethereum::H256>>::arbitrary(g).map(|i| i.0),
-            block_number: Option::<Quickcheck<crate::ethereum::U256>>::arbitrary(g).map(|i| i.0),
-            transaction_index: Option::<Quickcheck<crate::ethereum::U128>>::arbitrary(g)
-                .map(|i| i.0),
-            from: *Quickcheck::<crate::ethereum::H160>::arbitrary(g),
             to: Option::<Quickcheck<crate::ethereum::H160>>::arbitrary(g).map(|i| i.0),
             value: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            gas_price: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
-            gas: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
             input: Bytes(Arbitrary::arbitrary(g)),
         })
     }
@@ -220,23 +214,42 @@ impl Arbitrary for Quickcheck<SecretHash> {
     }
 }
 
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::bitcoin::Regtest, ledger::Ethereum, asset::Bitcoin, crate::asset::Ether>,
-    >
+#[impl_template]
+impl Arbitrary for Quickcheck<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest))> {
+    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
+        Quickcheck(__TYPE0__)
+    }
+}
+
+impl Arbitrary for Quickcheck<ledger::Ethereum> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let chain_id = *Quickcheck::<ChainId>::arbitrary(g);
+        let ethereum = ledger::Ethereum { chain_id };
+
+        Quickcheck(ethereum)
+    }
+}
+
+impl<AL, BL, AA, BA, AI, BI> Arbitrary for Quickcheck<Request<AL, BL, AA, BA, AI, BI>>
+where
+    Quickcheck<AL>: Arbitrary,
+    Quickcheck<BL>: Arbitrary,
+    Quickcheck<AA>: Arbitrary,
+    Quickcheck<BA>: Arbitrary,
+    Quickcheck<AI>: Arbitrary,
+    Quickcheck<BI>: Arbitrary,
+    Request<AL, BL, AA, BA, AI, BI>: Clone + Send + 'static,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Request {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::bitcoin::Regtest,
-            beta_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            beta_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
+            alpha_ledger: Quickcheck::<AL>::arbitrary(g).0,
+            beta_ledger: Quickcheck::<BL>::arbitrary(g).0,
+            alpha_asset: Quickcheck::<AA>::arbitrary(g).0,
+            beta_asset: Quickcheck::<BA>::arbitrary(g).0,
             hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
+            alpha_ledger_refund_identity: Quickcheck::<AI>::arbitrary(g).0,
+            beta_ledger_redeem_identity: Quickcheck::<BI>::arbitrary(g).0,
             alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
             secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
@@ -244,182 +257,18 @@ impl Arbitrary
     }
 }
 
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::bitcoin::Testnet, ledger::Ethereum, asset::Bitcoin, crate::asset::Ether>,
-    >
+impl<AI, BI> Arbitrary for Quickcheck<Accept<AI, BI>>
+where
+    AI: Copy + Clone + Send,
+    BI: Copy + Clone + Send,
+    Quickcheck<AI>: Arbitrary,
+    Quickcheck<BI>: Arbitrary,
 {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::bitcoin::Testnet,
-            beta_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            beta_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::bitcoin::Mainnet, ledger::Ethereum, asset::Bitcoin, crate::asset::Ether>,
-    >
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::bitcoin::Mainnet,
-            beta_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            beta_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::Ethereum, ledger::bitcoin::Mainnet, crate::asset::Erc20, asset::Bitcoin>,
-    >
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            beta_ledger: ledger::bitcoin::Mainnet,
-            alpha_asset: Quickcheck::<crate::asset::Erc20>::arbitrary(g).0,
-            beta_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::Ethereum, ledger::bitcoin::Mainnet, crate::asset::Ether, asset::Bitcoin>,
-    >
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            beta_ledger: ledger::bitcoin::Mainnet,
-            alpha_asset: Quickcheck::<crate::asset::Ether>::arbitrary(g).0,
-            beta_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary
-    for Quickcheck<
-        Request<ledger::bitcoin::Mainnet, ledger::Ethereum, asset::Bitcoin, crate::asset::Erc20>,
-    >
-{
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Request {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger: ledger::bitcoin::Mainnet,
-            beta_ledger: ledger::Ethereum {
-                chain_id: *Quickcheck::<ChainId>::arbitrary(g),
-            },
-            alpha_asset: *Quickcheck::<asset::Bitcoin>::arbitrary(g),
-            beta_asset: Quickcheck::<crate::asset::Erc20>::arbitrary(g).0,
-            hash_function: *Quickcheck::<HashFunction>::arbitrary(g),
-            alpha_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            alpha_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            beta_expiry: *Quickcheck::<Timestamp>::arbitrary(g),
-            secret_hash: *Quickcheck::<SecretHash>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<bitcoin::Mainnet, ledger::Ethereum>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
         Quickcheck(Accept {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<bitcoin::Testnet, ledger::Ethereum>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<bitcoin::Regtest, ledger::Ethereum>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, bitcoin::Mainnet>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, bitcoin::Testnet>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
-        })
-    }
-}
-
-impl Arbitrary for Quickcheck<Accept<ledger::Ethereum, bitcoin::Regtest>> {
-    fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Accept {
-            swap_id: *Quickcheck::<SwapId>::arbitrary(g),
-            alpha_ledger_redeem_identity: *Quickcheck::<crate::ethereum::Address>::arbitrary(g),
-            beta_ledger_refund_identity: *Quickcheck::<crate::bitcoin::PublicKey>::arbitrary(g),
+            alpha_ledger_redeem_identity: *Quickcheck::<AI>::arbitrary(g),
+            beta_ledger_refund_identity: *Quickcheck::<BI>::arbitrary(g),
         })
     }
 }

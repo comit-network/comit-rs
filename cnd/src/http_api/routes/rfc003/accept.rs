@@ -1,11 +1,12 @@
 use crate::{
     http_api::action::ListRequiredFields,
+    identity,
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
-            DeriveIdentities, Ledger,
+            DeriveIdentities,
         },
         SwapId,
     },
@@ -13,8 +14,8 @@ use crate::{
 use serde::Deserialize;
 
 #[derive(Deserialize, Clone, Debug)]
-pub struct OnlyRedeem<L: Ledger> {
-    pub alpha_ledger_redeem_identity: L::Identity,
+pub struct OnlyRedeem<I> {
+    pub alpha_ledger_redeem_identity: I,
 }
 
 impl ListRequiredFields for Accept<Ethereum, bitcoin::Mainnet> {
@@ -45,13 +46,13 @@ fn ethereum_bitcoin_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<Ethereum> {
+impl IntoAcceptMessage<identity::Ethereum, identity::Bitcoin> for OnlyRedeem<identity::Ethereum> {
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<Ethereum, bitcoin::Regtest> {
-        let beta_ledger_refund_identity = crate::bitcoin::PublicKey::from_secret_key(
+    ) -> messages::Accept<identity::Ethereum, identity::Bitcoin> {
+        let beta_ledger_refund_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_refund_identity(),
         );
@@ -64,8 +65,8 @@ impl IntoAcceptMessage<Ethereum, bitcoin::Regtest> for OnlyRedeem<Ethereum> {
 }
 
 #[derive(Deserialize, Clone, Debug)]
-pub struct OnlyRefund<L: Ledger> {
-    pub beta_ledger_refund_identity: L::Identity,
+pub struct OnlyRefund<I> {
+    pub beta_ledger_refund_identity: I,
 }
 
 impl ListRequiredFields for Accept<bitcoin::Mainnet, Ethereum> {
@@ -96,13 +97,13 @@ fn bitcoin_ethereum_accept_required_fields() -> Vec<siren::Field> {
     }]
 }
 
-impl IntoAcceptMessage<bitcoin::Regtest, Ethereum> for OnlyRefund<Ethereum> {
+impl IntoAcceptMessage<identity::Bitcoin, identity::Ethereum> for OnlyRefund<identity::Ethereum> {
     fn into_accept_message(
         self,
         id: SwapId,
         secret_source: &dyn DeriveIdentities,
-    ) -> messages::Accept<bitcoin::Regtest, Ethereum> {
-        let alpha_ledger_redeem_identity = crate::bitcoin::PublicKey::from_secret_key(
+    ) -> messages::Accept<identity::Bitcoin, identity::Ethereum> {
+        let alpha_ledger_redeem_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
             &secret_source.derive_redeem_identity(),
         );

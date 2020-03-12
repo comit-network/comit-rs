@@ -1,22 +1,19 @@
 #![allow(clippy::type_repetition_in_bounds)]
 use crate::{
-    asset::Asset,
     http_api::{Http, SwapStatus},
-    swap_protocols::rfc003::{self, Ledger, SecretHash},
+    swap_protocols::rfc003::{self, SecretHash},
     timestamp::Timestamp,
 };
 use serde::Serialize;
 
 #[derive(Debug, Serialize)]
-#[serde(
-    bound = "Http<AL::Identity>: Serialize, Http<BL::Identity>: Serialize,\
-             Http<AL::HtlcLocation>: Serialize, Http<BL::HtlcLocation>: Serialize,\
-             Http<AL::Transaction>: Serialize, Http<BL::Transaction>: Serialize"
-)]
-pub struct SwapState<AL: Ledger, BL: Ledger> {
-    pub communication: SwapCommunication<AL::Identity, BL::Identity>,
-    pub alpha_ledger: LedgerState<AL::HtlcLocation, AL::Transaction>,
-    pub beta_ledger: LedgerState<BL::HtlcLocation, BL::Transaction>,
+#[serde(bound = "Http<AH>: Serialize, Http<BH>: Serialize,\
+                 Http<AI>: Serialize, Http<BI>: Serialize,\
+                 Http<AT>: Serialize, Http<BT>: Serialize")]
+pub struct SwapState<AH, BH, AI, BI, AT, BT> {
+    pub communication: SwapCommunication<AI, BI>,
+    pub alpha_ledger: LedgerState<AH, AT>,
+    pub beta_ledger: LedgerState<BH, BT>,
 }
 
 #[derive(Debug, Serialize)]
@@ -53,10 +50,10 @@ pub enum SwapCommunicationState {
     Declined,
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunication<AL, BL, AA, BA>>
-    for SwapCommunication<AL::Identity, BL::Identity>
+impl<AL, BL, AA, BA, AI, BI> From<rfc003::SwapCommunication<AL, BL, AA, BA, AI, BI>>
+    for SwapCommunication<AI, BI>
 {
-    fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA>) -> Self {
+    fn from(communication: rfc003::SwapCommunication<AL, BL, AA, BA, AI, BI>) -> Self {
         use rfc003::SwapCommunication::*;
         match communication {
             Proposed { request } => Self {
@@ -93,10 +90,11 @@ impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> From<rfc003::SwapCommunicatio
     }
 }
 
-impl<L: Ledger, A: Asset> From<rfc003::LedgerState<L, A>>
-    for LedgerState<L::HtlcLocation, L::Transaction>
+impl<H, T, A> From<rfc003::LedgerState<A, H, T>> for LedgerState<H, T>
+where
+    rfc003::LedgerState<A, H, T>: Clone,
 {
-    fn from(ledger_state: rfc003::LedgerState<L, A>) -> Self {
+    fn from(ledger_state: rfc003::LedgerState<A, H, T>) -> Self {
         use self::rfc003::LedgerState::*;
         let status = ledger_state.clone().into();
         match ledger_state {

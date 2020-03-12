@@ -46,7 +46,10 @@ impl Sqlite {
     /// When this returns, an Sqlite database file 'cnd.sql' exists in 'dir', a
     /// successful connection to the database has been made, and the database
     /// migrations have been run.
-    pub fn new_in_dir<D: AsRef<OsStr>>(dir: D) -> anyhow::Result<Self> {
+    pub fn new_in_dir<D>(dir: D) -> anyhow::Result<Self>
+    where
+        D: AsRef<OsStr>,
+    {
         let dir = Path::new(&dir);
         let path = db_path_from_dir(dir);
         Sqlite::new(&path)

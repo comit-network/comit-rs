@@ -3,7 +3,6 @@ pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
-mod ethereum_network;
 mod problem;
 mod swap_resource;
 
@@ -15,12 +14,13 @@ pub use self::{
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, ethereum,
+    asset, htlc_location, identity,
     network::DialInformation,
     swap_protocols::{
-        ledger::{self, ethereum::ChainId},
+        ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
         SwapId, SwapProtocol,
     },
+    transaction,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
@@ -68,7 +68,7 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
     }
 }
 
-impl Serialize for Http<bitcoin::Transaction> {
+impl Serialize for Http<transaction::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -77,7 +77,7 @@ impl Serialize for Http<bitcoin::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::ethereum::Transaction> {
+impl Serialize for Http<transaction::Ethereum> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -86,7 +86,7 @@ impl Serialize for Http<crate::ethereum::Transaction> {
     }
 }
 
-impl Serialize for Http<crate::bitcoin::PublicKey> {
+impl Serialize for Http<identity::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -96,7 +96,7 @@ impl Serialize for Http<crate::bitcoin::PublicKey> {
     }
 }
 
-impl_serialize_type_with_fields!(bitcoin::OutPoint { "txid" => txid, "vout" => vout });
+impl_serialize_type_with_fields!(htlc_location::Bitcoin { "txid" => txid, "vout" => vout });
 impl_serialize_http!(crate::ethereum::H160);
 impl_serialize_http!(SwapId);
 
@@ -240,9 +240,9 @@ impl<'de> Deserialize<'de> for DialInformation {
 #[serde(try_from = "HttpLedgerParams")]
 #[serde(into = "HttpLedgerParams")]
 pub enum HttpLedger {
-    BitcoinMainnet,
-    BitcoinTestnet,
-    BitcoinRegtest,
+    BitcoinMainnet(ledger::bitcoin::Mainnet),
+    BitcoinTestnet(ledger::bitcoin::Testnet),
+    BitcoinRegtest(ledger::bitcoin::Regtest),
     Ethereum(ledger::Ethereum),
 }
 
@@ -278,10 +278,10 @@ pub struct BitcoinLedgerParams {
     network: Http<bitcoin::Network>,
 }
 
-impl From<bitcoin::Network> for BitcoinLedgerParams {
-    fn from(network: bitcoin::Network) -> Self {
+impl<B: Bitcoin + Network> From<B> for BitcoinLedgerParams {
+    fn from(_: B) -> Self {
         BitcoinLedgerParams {
-            network: Http(network),
+            network: Http(B::network()),
         }
     }
 }
@@ -289,7 +289,6 @@ impl From<bitcoin::Network> for BitcoinLedgerParams {
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq)]
 pub struct EthereumLedgerParams {
     chain_id: Option<ChainId>,
-    network: Option<ethereum_network::Network>,
 }
 
 /// The actual enum that is used by serde to deserialize the `alpha_asset` and
@@ -320,7 +319,7 @@ pub struct EtherAssetParams {
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 pub struct Erc20AssetParams {
     quantity: asset::Erc20Quantity,
-    token_contract: ethereum::Address,
+    token_contract: identity::Ethereum,
 }
 
 impl TryFrom<HttpLedgerParams> for HttpLedger {
@@ -329,9 +328,9 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
     fn try_from(params: HttpLedgerParams) -> Result<Self, Self::Error> {
         Ok(match params {
             HttpLedgerParams::Bitcoin(BitcoinLedgerParams { network }) => match *network {
-                bitcoin::Network::Bitcoin => HttpLedger::BitcoinMainnet,
-                bitcoin::Network::Testnet => HttpLedger::BitcoinTestnet,
-                bitcoin::Network::Regtest => HttpLedger::BitcoinRegtest,
+                bitcoin::Network::Bitcoin => HttpLedger::BitcoinMainnet(ledger::bitcoin::Mainnet),
+                bitcoin::Network::Testnet => HttpLedger::BitcoinTestnet(ledger::bitcoin::Testnet),
+                bitcoin::Network::Regtest => HttpLedger::BitcoinRegtest(ledger::bitcoin::Regtest),
             },
             HttpLedgerParams::Ethereum(params) => HttpLedger::Ethereum(params.try_into()?),
         })
@@ -341,15 +340,9 @@ impl TryFrom<HttpLedgerParams> for HttpLedger {
 impl From<HttpLedger> for HttpLedgerParams {
     fn from(ledger: HttpLedger) -> Self {
         match ledger {
-            HttpLedger::BitcoinMainnet => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Bitcoin.into())
-            }
-            HttpLedger::BitcoinTestnet => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Testnet.into())
-            }
-            HttpLedger::BitcoinRegtest => {
-                HttpLedgerParams::Bitcoin(bitcoin::Network::Regtest.into())
-            }
+            HttpLedger::BitcoinMainnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
+            HttpLedger::BitcoinTestnet(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
+            HttpLedger::BitcoinRegtest(ledger) => HttpLedgerParams::Bitcoin(ledger.into()),
             HttpLedger::Ethereum(ledger) => HttpLedgerParams::Ethereum(ledger.into()),
         }
     }
@@ -365,17 +358,9 @@ impl TryFrom<EthereumLedgerParams> for ledger::Ethereum {
     fn try_from(params: EthereumLedgerParams) -> Result<Self, Self::Error> {
         let chain_id = match params {
             EthereumLedgerParams {
-                network: Some(network),
-                ..
-            } => network.into(),
-            EthereumLedgerParams {
                 chain_id: Some(chain_id),
-                ..
             } => chain_id,
-            EthereumLedgerParams {
-                network: None,
-                chain_id: None,
-            } => return Err(InvalidEthereumLedgerParams),
+            EthereumLedgerParams { chain_id: None } => return Err(InvalidEthereumLedgerParams),
         };
 
         Ok(Self { chain_id })
@@ -387,7 +372,6 @@ impl From<ledger::Ethereum> for EthereumLedgerParams {
         let chain_id = ethereum.chain_id;
 
         Self {
-            network: chain_id.try_into().ok(),
             chain_id: Some(chain_id),
         }
     }
@@ -458,20 +442,20 @@ impl From<asset::Erc20> for Erc20AssetParams {
 }
 
 impl From<ledger::bitcoin::Mainnet> for HttpLedger {
-    fn from(_: ledger::bitcoin::Mainnet) -> Self {
-        HttpLedger::BitcoinMainnet
+    fn from(ledger: ledger::bitcoin::Mainnet) -> Self {
+        HttpLedger::BitcoinMainnet(ledger)
     }
 }
 
 impl From<ledger::bitcoin::Testnet> for HttpLedger {
-    fn from(_: ledger::bitcoin::Testnet) -> Self {
-        HttpLedger::BitcoinTestnet
+    fn from(ledger: ledger::bitcoin::Testnet) -> Self {
+        HttpLedger::BitcoinTestnet(ledger)
     }
 }
 
 impl From<ledger::bitcoin::Regtest> for HttpLedger {
-    fn from(_: ledger::bitcoin::Regtest) -> Self {
-        HttpLedger::BitcoinRegtest
+    fn from(ledger: ledger::bitcoin::Regtest) -> Self {
+        HttpLedger::BitcoinRegtest(ledger)
     }
 }
 
@@ -511,6 +495,7 @@ mod tests {
             ledger::{bitcoin, ethereum, Ethereum},
             HashFunction, SwapId, SwapProtocol,
         },
+        transaction,
     };
     use ::bitcoin::{
         hashes::{hex::FromHex, sha256d},
@@ -578,9 +563,9 @@ mod tests {
         ];
 
         let expected = &[
-            r#"{"name":"ethereum","chain_id":1,"network":"mainnet"}"#,
-            r#"{"name":"ethereum","chain_id":3,"network":"ropsten"}"#,
-            r#"{"name":"ethereum","chain_id":17,"network":"regtest"}"#,
+            r#"{"name":"ethereum","chain_id":1}"#,
+            r#"{"name":"ethereum","chain_id":3}"#,
+            r#"{"name":"ethereum","chain_id":17}"#,
         ];
 
         let actual = input
@@ -594,7 +579,7 @@ mod tests {
 
     #[test]
     fn http_transaction_serializes_correctly_to_json() {
-        let bitcoin_tx = ::bitcoin::Transaction {
+        let bitcoin_tx = transaction::Bitcoin {
             version: 1,
             lock_time: 0,
             input: vec![TxIn {
@@ -605,9 +590,9 @@ mod tests {
             }],
             output: vec![],
         };
-        let ethereum_tx = crate::ethereum::Transaction {
+        let ethereum_tx = transaction::Ethereum {
             hash: H256::repeat_byte(1),
-            ..crate::ethereum::Transaction::default()
+            ..transaction::Ethereum::default()
         };
 
         let bitcoin_tx = Http(bitcoin_tx);

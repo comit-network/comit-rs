@@ -3,77 +3,77 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::{Asset, AssetKind},
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
+    asset::AssetKind,
+    btsieve::{
+        bitcoin::{self, BitcoindConnector},
+        ethereum::{self, Web3Connector},
+    },
     comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
+    htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         ledger,
         rfc003::{
             self, bob,
-            messages::{Decision, DeclineResponseBody, Request, SwapDeclineReason},
-            state_store::{InMemoryStateStore, StateStore},
-            Ledger,
+            messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
         },
+        state_store::{InMemoryStateStore, Insert},
         HashFunction, Role, SwapId, SwapProtocol,
     },
+    transaction,
 };
 use async_trait::async_trait;
 use futures::{
-    future::Future,
-    stream::Stream,
-    sync::oneshot::{self, Sender},
+    channel::oneshot::{self, Sender},
+    stream::StreamExt,
 };
-use futures_core::{compat::Future01CompatExt, FutureExt, TryFutureExt};
 use libp2p::{
-    core::{
-        either::{EitherError, EitherOutput},
-        muxing::{StreamMuxerBox, SubstreamRef},
-    },
-    identity::{self, ed25519},
+    core::either::{EitherError, EitherOutput},
+    identity::{ed25519, Keypair},
     mdns::Mdns,
     swarm::{
-        protocols_handler::DummyProtocolsHandler, ExpandedSwarm, IntoProtocolsHandlerSelect,
-        NetworkBehaviourEventProcess,
+        protocols_handler::DummyProtocolsHandler, IntoProtocolsHandlerSelect,
+        NetworkBehaviourEventProcess, SwarmBuilder,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
-    frame::{self, CodecError, OutboundRequest, Response, ValidatedInboundRequest},
-    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
+    frame::{OutboundRequest, Response, ValidatedInboundRequest},
+    handler::{self, ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
+use serde::{de::DeserializeOwned, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    fmt::Display,
+    convert::{TryFrom, TryInto},
+    fmt::{Debug, Display},
     io,
-    sync::{Arc, Mutex},
+    pin::Pin,
+    sync::Arc,
+    task::{Context, Poll},
 };
-use tokio_compat::runtime::{Runtime, TaskExecutor};
+use tokio::{
+    runtime::{Handle, Runtime},
+    sync::Mutex,
+};
+
+type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
+    ComitNode,
+    EitherOutput<ProtocolInEvent, void::Void>,
+    EitherOutput<ProtocolOutEvent, void::Void>,
+    IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
+    EitherError<handler::Error, void::Void>,
+>;
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
-    swarm: Arc<
-        Mutex<
-            ExpandedSwarm<
-                ComitTransport,
-                ComitNode<SubstreamRef<Arc<StreamMuxerBox>>>,
-                EitherOutput<ProtocolInEvent, void::Void>,
-                EitherOutput<ProtocolOutEvent, void::Void>,
-                IntoProtocolsHandlerSelect<
-                    ComitHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
-                    DummyProtocolsHandler<SubstreamRef<Arc<StreamMuxerBox>>>,
-                >,
-                EitherError<CodecError, void::Void>,
-            >,
-        >,
-    >,
+    swarm: Arc<Mutex<ExpandedSwarm>>,
     local_peer_id: PeerId,
 }
 
@@ -82,25 +82,33 @@ impl Swarm {
         settings: &Settings,
         seed: RootSeed,
         runtime: &mut Runtime,
-        bitcoin_connector: &bitcoin::Cache<BitcoindConnector>,
-        ethereum_connector: &ethereum::Cache<Web3Connector>,
-        state_store: &Arc<InMemoryStateStore>,
+        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
+        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
+        state_store: Arc<InMemoryStateStore>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
         let local_peer_id = PeerId::from(local_key_pair.clone().public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
-        let transport = transport::build_comit_transport(local_key_pair);
+        let transport = transport::build_comit_transport(local_key_pair)?;
         let behaviour = ComitNode::new(
-            bitcoin_connector.clone(),
-            ethereum_connector.clone(),
-            Arc::clone(&state_store),
+            bitcoin_connector,
+            ethereum_connector,
+            state_store,
             seed,
             database.clone(),
-            runtime.executor(),
+            runtime.handle().clone(),
         )?;
-        let mut swarm = libp2p::Swarm::new(transport, behaviour, local_peer_id.clone());
+
+        let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
+            .executor_fn({
+                let handle = runtime.handle().clone();
+                move |task| {
+                    handle.spawn(task);
+                }
+            })
+            .build();
 
         for addr in settings.network.listen.clone() {
             libp2p::Swarm::listen_on(&mut swarm, addr)
@@ -109,16 +117,9 @@ impl Swarm {
 
         let swarm = Arc::new(Mutex::new(swarm));
 
-        let swarm_worker = futures::stream::poll_fn({
-            let swarm = swarm.clone();
-            move || swarm.lock().unwrap().poll()
-        })
-        .for_each(|_| Ok(()))
-        .map_err(|e| {
-            tracing::error!("failed with {:?}", e);
+        runtime.spawn(SwarmWorker {
+            swarm: swarm.clone(),
         });
-
-        runtime.spawn(swarm_worker);
 
         Ok(Self {
             swarm,
@@ -127,22 +128,40 @@ impl Swarm {
     }
 }
 
-fn derive_key_pair(seed: &RootSeed) -> identity::Keypair {
+struct SwarmWorker {
+    swarm: Arc<Mutex<ExpandedSwarm>>,
+}
+
+impl futures::Future for SwarmWorker {
+    type Output = ();
+
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+        loop {
+            let mutex = self.swarm.lock();
+            futures::pin_mut!(mutex);
+
+            let mut guard = futures::ready!(mutex.poll(cx));
+            futures::ready!(guard.poll_next_unpin(cx));
+        }
+    }
+}
+
+fn derive_key_pair(seed: &RootSeed) -> Keypair {
     let bytes = seed.sha256_with_seed(&[b"NODE_ID"]);
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
-    identity::Keypair::Ed25519(key.into())
+    Keypair::Ed25519(key.into())
 }
 
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
-pub struct ComitNode<TSubstream> {
-    comit: Comit<TSubstream>,
-    mdns: Mdns<TSubstream>,
+pub struct ComitNode {
+    comit: Comit,
+    mdns: Mdns,
 
     #[behaviour(ignore)]
-    pub bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
+    pub bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
     #[behaviour(ignore)]
-    pub ethereum_connector: ethereum::Cache<Web3Connector>,
+    pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     #[behaviour(ignore)]
     pub state_store: Arc<InMemoryStateStore>,
     #[behaviour(ignore)]
@@ -152,7 +171,7 @@ pub struct ComitNode<TSubstream> {
     #[behaviour(ignore)]
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
     #[behaviour(ignore)]
-    task_executor: TaskExecutor,
+    task_executor: Handle,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -187,14 +206,14 @@ pub struct Reason {
     pub value: SwapDeclineReason,
 }
 
-impl<TSubstream> ComitNode<TSubstream> {
+impl ComitNode {
     pub fn new(
-        bitcoin_connector: bitcoin::Cache<BitcoindConnector>,
-        ethereum_connector: ethereum::Cache<Web3Connector>,
+        bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
+        ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         state_store: Arc<InMemoryStateStore>,
         seed: RootSeed,
         db: Sqlite,
-        task_executor: TaskExecutor,
+        task_executor: Handle,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -224,7 +243,7 @@ impl<TSubstream> ComitNode<TSubstream> {
         &mut self,
         peer_id: DialInformation,
         request: OutboundRequest,
-    ) -> Box<dyn Future<Item = Response, Error = ()> + Send> {
+    ) -> impl futures::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
@@ -277,12 +296,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -303,12 +330,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -329,12 +364,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -355,12 +398,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -381,12 +432,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -407,12 +466,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -433,12 +500,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -460,12 +535,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Bitcoin,
+                                htlc_location::Ethereum,
+                                _,
+                                _,
+                                transaction::Bitcoin,
+                                transaction::Ethereum,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -487,12 +570,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -514,12 +605,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -540,12 +639,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -566,12 +673,20 @@ async fn handle_request(
                                 hash_function,
                                 body!(request.take_body_as()),
                             );
-                            insert_state_for_bob(
-                                db.clone(),
-                                seed,
-                                state_store.clone(),
-                                counterparty,
-                                request,
+                            insert_state_for_bob::<
+                                _,
+                                _,
+                                _,
+                                _,
+                                htlc_location::Ethereum,
+                                htlc_location::Bitcoin,
+                                _,
+                                _,
+                                transaction::Ethereum,
+                                transaction::Bitcoin,
+                                _,
+                            >(
+                                db.clone(), seed, state_store.clone(), counterparty, request
                             )
                             .await
                             .expect("Could not save state to db");
@@ -620,15 +735,27 @@ async fn handle_request(
 }
 
 #[allow(clippy::type_complexity)]
-async fn insert_state_for_bob<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset, DB>(
+async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT, DB>(
     db: DB,
     seed: RootSeed,
     state_store: Arc<InMemoryStateStore>,
     counterparty: PeerId,
-    swap_request: Request<AL, BL, AA, BA>,
+    swap_request: Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
-    DB: Save<Request<AL, BL, AA, BA>> + Save<Swap>,
+    AL: Send + 'static,
+    BL: Send + 'static,
+    AA: Ord + Send + 'static,
+    BA: Ord + Send + 'static,
+    AH: Send + 'static,
+    BH: Send + 'static,
+    AI: Send + 'static,
+    BI: Send + 'static,
+    AT: Send + 'static,
+    BT: Send + 'static,
+    DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
+    bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>: Clone + Sync,
 {
     let id = swap_request.swap_id;
     let seed = seed.derive_swap_seed(id);
@@ -636,7 +763,8 @@ where
     Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
-    let state = bob::State::proposed(swap_request.clone(), seed);
+    let state =
+        bob::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
     state_store.insert(id, state);
 
     Ok(())
@@ -669,7 +797,7 @@ impl ComitPeers for Swarm {
     async fn comit_peers(
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        let mut swarm = self.swarm.lock().unwrap();
+        let mut swarm = self.swarm.lock().await;
         Box::new(swarm.comit.connected_peers())
     }
 }
@@ -684,7 +812,7 @@ pub trait ListenAddresses {
 #[async_trait]
 impl ListenAddresses for Swarm {
     async fn listen_addresses(&self) -> Vec<Multiaddr> {
-        let swarm = self.swarm.lock().unwrap();
+        let swarm = self.swarm.lock().await;
 
         libp2p::Swarm::listeners(&swarm)
             .chain(libp2p::Swarm::external_addresses(&swarm))
@@ -697,14 +825,14 @@ impl ListenAddresses for Swarm {
 #[async_trait]
 #[ambassador::delegatable_trait]
 pub trait PendingRequestFor {
-    async fn pending_request_for(&self, swap: SwapId) -> Option<oneshot::Sender<Response>>;
+    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>>;
 }
 
 #[async_trait]
 impl PendingRequestFor for Swarm {
     async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        let swarm = self.swarm.lock().unwrap();
-        let mut response_channels = swarm.response_channels.lock().unwrap();
+        let swarm = self.swarm.lock().await;
+        let mut response_channels = swarm.response_channels.lock().await;
         response_channels.remove(&swap)
     }
 }
@@ -712,26 +840,36 @@ impl PendingRequestFor for Swarm {
 /// Send swap request to connected peer.
 #[async_trait]
 pub trait SendRequest {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA, AI, BI>(
         &self,
         peer_identity: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError>;
+        request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
+    ) -> Result<rfc003::Response<AI, BI>, RequestError>
+    where
+        rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
+        rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
+        <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug;
 }
 
 #[async_trait]
 impl SendRequest for Swarm {
-    async fn send_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+    async fn send_request<AL, BL, AA, BA, AI, BI>(
         &self,
         dial_information: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA>,
-    ) -> Result<rfc003::Response<AL, BL>, RequestError> {
+        request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
+    ) -> Result<rfc003::Response<AI, BI>, RequestError>
+    where
+        rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
+        rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
+        <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
+    {
         let id = request.swap_id;
-        let request = build_outbound_request(request)
+        let request = request
+            .try_into()
             .expect("constructing a frame::OutoingRequest should never fail!");
 
         let result = {
-            let mut guard = self.swarm.lock().unwrap();
+            let mut guard = self.swarm.lock().await;
             let swarm = &mut *guard;
 
             tracing::debug!(
@@ -740,9 +878,7 @@ impl SendRequest for Swarm {
                 id,
             );
 
-            swarm
-                .send_request(dial_information.clone(), request)
-                .compat()
+            swarm.send_request(dial_information.clone(), request)
         }
         .await;
 
@@ -763,7 +899,7 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AL, BL>>(
+                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AI, BI>>(
                             response.body().clone(),
                         ) {
                             Ok(body) => Ok(Ok(rfc003::Accept {
@@ -802,58 +938,88 @@ impl SendRequest for Swarm {
     }
 }
 
-impl<TSubstream> NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode<TSubstream> {
+impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
                 let PendingInboundRequest { request, channel } = request;
 
-                self.task_executor.spawn(
-                    handle_request(
-                        self.db.clone(),
-                        self.seed,
-                        self.state_store.clone(),
-                        peer_id,
-                        request,
-                    )
-                    .boxed()
-                    .compat()
-                    .then({
-                        let response_channels = self.response_channels.clone();
+                let response_channels = self.response_channels.clone();
+                let db = self.db.clone();
+                let state_store = self.state_store.clone();
+                let seed = self.seed;
 
-                        move |result| {
-                            match result {
-                                Ok(id) => {
-                                    let mut response_channels = response_channels.lock().unwrap();
-                                    response_channels.insert(id, channel);
-                                }
-                                Err(response) => channel.send(response).unwrap_or_else(|_| {
-                                    tracing::debug!("failed to send response through channel")
-                                }),
-                            }
-                            Ok(())
+                self.task_executor.spawn(async move {
+                    match handle_request(db, seed, state_store, peer_id, request).await {
+                        Ok(id) => {
+                            let mut response_channels = response_channels.lock().await;
+                            response_channels.insert(id, channel);
                         }
-                    }),
-                );
+                        Err(response) => channel.send(response).unwrap_or_else(|_| {
+                            tracing::debug!("failed to send response through channel")
+                        }),
+                    }
+                });
             }
         }
     }
 }
 
-impl<TSubstream> NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode<TSubstream> {
+impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
-fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
+impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest
+where
+    RequestBody<AI, BI>: From<Request<AL, BL, AA, BA, AI, BI>> + Serialize,
+    LedgerKind: From<AL> + From<BL>,
+    AssetKind: From<AA> + From<BA>,
+    Request<AL, BL, AA, BA, AI, BI>: Clone,
+{
+    type Error = anyhow::Error;
+
+    fn try_from(request: Request<AL, BL, AA, BA, AI, BI>) -> anyhow::Result<Self> {
+        let request_body = RequestBody::from(request.clone());
+        let protocol = SwapProtocol::Rfc003(request.hash_function).to_header()?;
+
+        let alpha_ledger = LedgerKind::from(request.alpha_ledger).to_header()?;
+        let beta_ledger = LedgerKind::from(request.beta_ledger).to_header()?;
+        let alpha_asset = AssetKind::from(request.alpha_asset).to_header()?;
+        let beta_asset = AssetKind::from(request.beta_asset).to_header()?;
+
+        Ok(OutboundRequest::new("SWAP")
+            .with_header("id", request.swap_id.to_header()?)
+            .with_header("alpha_ledger", alpha_ledger)
+            .with_header("beta_ledger", beta_ledger)
+            .with_header("alpha_asset", alpha_asset)
+            .with_header("beta_asset", beta_asset)
+            .with_header("protocol", protocol)
+            .with_body(serde_json::to_value(request_body)?))
+    }
+}
+
+impl<AL, BL, AA, BA, AI, BI> From<Request<AL, BL, AA, BA, AI, BI>> for RequestBody<AI, BI> {
+    fn from(request: Request<AL, BL, AA, BA, AI, BI>) -> Self {
+        RequestBody {
+            alpha_ledger_refund_identity: request.alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity: request.beta_ledger_redeem_identity,
+            alpha_expiry: request.alpha_expiry,
+            beta_expiry: request.beta_expiry,
+            secret_hash: request.secret_hash,
+        }
+    }
+}
+
+fn rfc003_swap_request<AL, BL, AA, BA, AI, BI>(
     id: SwapId,
     alpha_ledger: AL,
     beta_ledger: BL,
     alpha_asset: AA,
     beta_asset: BA,
     hash_function: HashFunction,
-    body: rfc003::messages::RequestBody<AL, BL>,
-) -> rfc003::Request<AL, BL, AA, BA> {
-    rfc003::Request::<AL, BL, AA, BA> {
+    body: rfc003::messages::RequestBody<AI, BI>,
+) -> rfc003::Request<AL, BL, AA, BA, AI, BI> {
+    rfc003::Request {
         swap_id: id,
         alpha_asset,
         beta_asset,
@@ -866,33 +1032,4 @@ fn rfc003_swap_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: As
         beta_expiry: body.beta_expiry,
         secret_hash: body.secret_hash,
     }
-}
-
-fn build_outbound_request<AL: rfc003::Ledger, BL: rfc003::Ledger, AA: Asset, BA: Asset>(
-    request: rfc003::Request<AL, BL, AA, BA>,
-) -> Result<frame::OutboundRequest, serde_json::Error> {
-    let alpha_ledger_refund_identity = request.alpha_ledger_refund_identity;
-    let beta_ledger_redeem_identity = request.beta_ledger_redeem_identity;
-    let alpha_expiry = request.alpha_expiry;
-    let beta_expiry = request.beta_expiry;
-    let secret_hash = request.secret_hash;
-    let protocol = SwapProtocol::Rfc003(request.hash_function);
-
-    Ok(frame::OutboundRequest::new("SWAP")
-        .with_header("id", request.swap_id.to_header()?)
-        .with_header("alpha_ledger", request.alpha_ledger.into().to_header()?)
-        .with_header("beta_ledger", request.beta_ledger.into().to_header()?)
-        .with_header("alpha_asset", request.alpha_asset.into().to_header()?)
-        .with_header("beta_asset", request.beta_asset.into().to_header()?)
-        .with_header("protocol", protocol.to_header()?)
-        .with_body(serde_json::to_value(rfc003::messages::RequestBody::<
-            AL,
-            BL,
-        > {
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            alpha_expiry,
-            beta_expiry,
-            secret_hash,
-        })?))
 }

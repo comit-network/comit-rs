@@ -2,10 +2,7 @@ pub mod bitcoin;
 pub mod erc20;
 pub mod ether;
 
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, DeriveIdentities, Ledger, Secret},
-};
+use crate::swap_protocols::rfc003::{DeriveIdentities, Secret};
 use std::marker::PhantomData;
 
 /// Defines the set of actions available in the RFC003 protocol
@@ -24,40 +21,46 @@ pub enum Action<Accept, Decline, Deploy, Fund, Redeem, Refund> {
     Refund(Refund),
 }
 
-pub trait FundAction<L: Ledger, A: Asset> {
-    type FundActionOutput;
+pub trait FundAction {
+    type HtlcParams;
+    type Output;
 
-    fn fund_action(htlc_params: HtlcParams<L, A>) -> Self::FundActionOutput;
+    fn fund_action(htlc_params: Self::HtlcParams) -> Self::Output;
 }
 
-pub trait RefundAction<L: Ledger, A: Asset> {
-    type RefundActionOutput;
+pub trait RefundAction {
+    type HtlcParams;
+    type HtlcLocation;
+    type FundTransaction;
+    type Output;
 
     fn refund_action(
-        htlc_params: HtlcParams<L, A>,
-        htlc_location: L::HtlcLocation,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
-        fund_transaction: &L::Transaction,
-    ) -> Self::RefundActionOutput;
+        fund_transaction: &Self::FundTransaction,
+    ) -> Self::Output;
 }
 
-pub trait RedeemAction<L: Ledger, A: Asset> {
-    type RedeemActionOutput;
+pub trait RedeemAction {
+    type HtlcParams;
+    type HtlcLocation;
+    type Output;
 
     fn redeem_action(
-        htlc_params: HtlcParams<L, A>,
-        htlc_location: L::HtlcLocation,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
-    ) -> Self::RedeemActionOutput;
+    ) -> Self::Output;
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Accept<AL: Ledger, BL: Ledger> {
+pub struct Accept<AL, BL> {
     phantom_data: PhantomData<(AL, BL)>,
 }
 
-impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
+impl<AL, BL> Accept<AL, BL> {
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,
@@ -66,11 +69,11 @@ impl<AL: Ledger, BL: Ledger> Accept<AL, BL> {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct Decline<AL: Ledger, BL: Ledger> {
+pub struct Decline<AL, BL> {
     phantom_data: PhantomData<(AL, BL)>,
 }
 
-impl<AL: Ledger, BL: Ledger> Decline<AL, BL> {
+impl<AL, BL> Decline<AL, BL> {
     pub fn new() -> Self {
         Self {
             phantom_data: PhantomData,

@@ -1,5 +1,6 @@
 use crate::{
-    asset::{self, Asset},
+    asset::{self},
+    htlc_location, identity,
     swap_protocols::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
@@ -7,17 +8,33 @@ use crate::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             bob,
             create_swap::HtlcParams,
-            Ledger, LedgerState, SwapCommunication,
+            LedgerState, SwapCommunication,
         },
     },
+    transaction,
 };
 use std::convert::Infallible;
 
-impl<AL, AA> Actions for bob::State<AL, Ethereum, AA, asset::Erc20>
+impl<AL, AA, AH, AI, AT> Actions
+    for bob::State<
+        AL,
+        Ethereum,
+        AA,
+        asset::Erc20,
+        AH,
+        htlc_location::Ethereum,
+        AI,
+        identity::Ethereum,
+        AT,
+        transaction::Ethereum,
+    >
 where
-    AL: Ledger,
-    AA: Asset,
-    (AL, AA): RedeemAction<AL, AA>,
+    AL: Clone,
+    AA: Clone,
+    AH: Clone,
+    AI: Clone,
+    AT: Clone,
+    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -25,7 +42,7 @@ where
         Decline<AL, Ethereum>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
+        <(AL, AA) as RedeemAction>::Output,
         ethereum::CallContract,
     >;
 
@@ -55,7 +72,7 @@ where
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source, // Derive identities with this.
-                    *secret,              /* Bob uses the secret learned from Alice's redeem
+                    *secret,              /* Bob uses the secret learned from Aliceredeem
                                            * action. */
                 ))]
             }
@@ -83,20 +100,36 @@ where
     }
 }
 
-impl<BL, BA> Actions for bob::State<Ethereum, BL, asset::Erc20, BA>
+impl<BL, BA, BH, BI, BT> Actions
+    for bob::State<
+        Ethereum,
+        BL,
+        asset::Erc20,
+        BA,
+        htlc_location::Ethereum,
+        BH,
+        identity::Ethereum,
+        BI,
+        transaction::Ethereum,
+        BT,
+    >
 where
-    BL: Ledger,
-    BA: Asset,
-    (BL, BA): FundAction<BL, BA> + RefundAction<BL, BA>,
+    BL: Clone,
+    BA: Clone,
+    BH: Clone,
+    BI: Clone,
+    BT: Clone,
+    (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
+        + RefundAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH, FundTransaction = BT>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<Ethereum, BL>,
         Decline<Ethereum, BL>,
         Infallible,
-        <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
+        <(BL, BA) as FundAction>::Output,
         ethereum::CallContract,
-        <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
+        <(BL, BA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {

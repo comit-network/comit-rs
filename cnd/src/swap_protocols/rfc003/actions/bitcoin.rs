@@ -1,5 +1,5 @@
 use crate::{
-    asset,
+    asset, identity,
     swap_protocols::{
         actions::bitcoin::{SendToAddress, SpendOutput},
         ledger,
@@ -13,12 +13,14 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> FundAction for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
-    type FundActionOutput = SendToAddress;
+    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+    type Output = SendToAddress;
 
-    fn fund_action(htlc_params: HtlcParams<B, asset::Bitcoin>) -> Self::FundActionOutput {
+    fn fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
         let to = htlc_params.compute_address();
 
         SendToAddress {
@@ -29,17 +31,21 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> FundAction<B, asset::Bitcoin
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> RefundAction for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
-    type RefundActionOutput = SpendOutput;
+    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+    type HtlcLocation = OutPoint;
+    type FundTransaction = Transaction;
+    type Output = SpendOutput;
 
     fn refund_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin>,
-        htlc_location: OutPoint,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
-        fund_transaction: &Transaction,
-    ) -> Self::RefundActionOutput {
+        fund_transaction: &Self::FundTransaction,
+    ) -> Self::Output {
         let htlc = BitcoinHtlc::from(htlc_params);
 
         SpendOutput {
@@ -53,23 +59,26 @@ impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RefundAction<B, asset::Bitco
     }
 }
 
-impl<B: ledger::Bitcoin + ledger::bitcoin::Network> RedeemAction<B, asset::Bitcoin>
-    for (B, asset::Bitcoin)
+impl<B> RedeemAction for (B, asset::Bitcoin)
+where
+    B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
-    type RedeemActionOutput = SpendOutput;
+    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+    type HtlcLocation = OutPoint;
+    type Output = SpendOutput;
 
     fn redeem_action(
-        htlc_params: HtlcParams<B, asset::Bitcoin>,
-        htlc_location: OutPoint,
+        htlc_params: Self::HtlcParams,
+        htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
         secret: Secret,
-    ) -> Self::RedeemActionOutput {
+    ) -> Self::Output {
         let htlc = BitcoinHtlc::from(htlc_params);
 
         SpendOutput {
             output: PrimedInput::new(
                 htlc_location,
-                htlc_params.asset.into(),
+                htlc_params.asset.clone().into(),
                 htlc.unlock_with_secret(
                     &*crate::SECP,
                     secret_source.derive_redeem_identity(),

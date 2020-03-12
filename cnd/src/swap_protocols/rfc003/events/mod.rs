@@ -1,72 +1,65 @@
-// This is fine because we're using associated types
-// see: https://github.com/rust-lang/rust/issues/21903
-#![allow(type_alias_bounds)]
-
-use crate::{
-    asset::Asset,
-    swap_protocols::rfc003::{create_swap::HtlcParams, ledger::Ledger, Secret},
-};
+use crate::swap_protocols::rfc003::{create_swap::HtlcParams, Secret};
 use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Funded<L: Ledger, A: Asset> {
-    pub transaction: L::Transaction,
+pub struct Funded<A, T> {
     pub asset: A,
+    pub transaction: T,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Redeemed<L: Ledger> {
-    pub transaction: L::Transaction,
+pub struct Redeemed<T> {
+    pub transaction: T,
     pub secret: Secret,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Deployed<L: Ledger> {
-    pub transaction: L::Transaction,
-    pub location: L::HtlcLocation,
+pub struct Deployed<H, T> {
+    pub location: H,
+    pub transaction: T,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Refunded<L: Ledger> {
-    pub transaction: L::Transaction,
+pub struct Refunded<T> {
+    pub transaction: T,
 }
 
 #[async_trait::async_trait]
-pub trait HtlcFunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcFunded<L, A, H, I, T>: Send + Sync + Sized + 'static {
     async fn htlc_funded(
         &self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
+        htlc_params: &HtlcParams<L, A, I>,
+        htlc_deployment: &Deployed<H, T>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<L, A>>;
+    ) -> anyhow::Result<Funded<A, T>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcDeployed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcDeployed<L, A, H, I, T>: Send + Sync + Sized + 'static {
     async fn htlc_deployed(
         &self,
-        htlc_params: HtlcParams<L, A>,
+        htlc_params: &HtlcParams<L, A, I>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<L>>;
+    ) -> anyhow::Result<Deployed<H, T>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRedeemed<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcRedeemed<L, A, H, I, T>: Send + Sync + Sized + 'static {
     async fn htlc_redeemed(
         &self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
+        htlc_params: &HtlcParams<L, A, I>,
+        htlc_deployment: &Deployed<H, T>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<L>>;
+    ) -> anyhow::Result<Redeemed<T>>;
 }
 
 #[async_trait::async_trait]
-pub trait HtlcRefunded<L: Ledger, A: Asset>: Send + Sync + Sized + 'static {
+pub trait HtlcRefunded<L, A, H, I, T>: Send + Sync + Sized + 'static {
     async fn htlc_refunded(
         &self,
-        htlc_params: HtlcParams<L, A>,
-        htlc_deployment: &Deployed<L>,
+        htlc_params: &HtlcParams<L, A, I>,
+        htlc_deployment: &Deployed<H, T>,
         start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<L>>;
+    ) -> anyhow::Result<Refunded<T>>;
 }

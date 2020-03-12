@@ -68,7 +68,10 @@ pub struct Header {
 }
 
 impl Header {
-    pub fn value<V: DeserializeOwned>(&self) -> Result<V, serde_json::Error> {
+    pub fn value<V>(&self) -> Result<V, serde_json::Error>
+    where
+        V: DeserializeOwned,
+    {
         serde_json::from_value(self.inner.value())
     }
 
@@ -79,10 +82,10 @@ impl Header {
     /// the `value` being null. This allows to change the otherwise cumbersome
     /// return type of `Option<Result<P, serde_json::Error>>` to `Result<P,
     /// serde_json::Error>`. The caller has to handle conversion errors anyway.
-    pub fn take_parameter<P: DeserializeOwned>(
-        &mut self,
-        key: &'static str,
-    ) -> Result<P, serde_json::Error> {
+    pub fn take_parameter<P>(&mut self, key: &'static str) -> Result<P, serde_json::Error>
+    where
+        P: DeserializeOwned,
+    {
         let parameter = self
             .inner
             .take_parameter(key)
@@ -93,10 +96,13 @@ impl Header {
 
     /// Returns the parameter with the provided key converted into the type `P`
     /// or `P::default()` if the parameter is not present.
-    pub fn take_parameter_or_default<P: DeserializeOwned + Default>(
+    pub fn take_parameter_or_default<P>(
         &mut self,
         key: &'static str,
-    ) -> Result<P, serde_json::Error> {
+    ) -> Result<P, serde_json::Error>
+    where
+        P: DeserializeOwned + Default,
+    {
         self.inner
             .take_parameter(key)
             .map(serde_json::from_value)
@@ -115,17 +121,23 @@ impl Header {
         }
     }
 
-    pub fn with_value<V: Serialize>(value: V) -> Result<Header, serde_json::Error> {
+    pub fn with_value<V>(value: V) -> Result<Header, serde_json::Error>
+    where
+        V: Serialize,
+    {
         Ok(Header {
             inner: CompactOrExtended::Compact(serde_json::to_value(value)?),
         })
     }
 
-    pub fn with_parameter<P: Serialize>(
+    pub fn with_parameter<P>(
         self,
         key: &'static str,
         parameter: P,
-    ) -> Result<Header, serde_json::Error> {
+    ) -> Result<Header, serde_json::Error>
+    where
+        P: Serialize,
+    {
         let (value, mut parameters) = match self.inner {
             CompactOrExtended::Compact(value) => (value, BTreeMap::new()),
             CompactOrExtended::Extended { value, parameters } => (value, parameters),

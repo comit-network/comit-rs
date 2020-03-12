@@ -91,6 +91,38 @@ pub fn create(
         .and(dependencies)
         .and_then(http_api::routes::index::get_info);
 
+    let han_ether_halight_bitcoin = swaps
+        .and(warp::path!(
+            "han" / "ethereum" / "ether" / "halight" / "lightning" / "bitcoin"
+        ))
+        .and(warp::post())
+        .and(warp::path::end())
+        .and_then(http_api::routes::index::post_lightning_route);
+
+    let herc20_erc20_halight_bitcoin = swaps
+        .and(warp::path!(
+            "herc20" / "ethereum" / "erc20" / "halight" / "lightning" / "bitcoin"
+        ))
+        .and(warp::post())
+        .and(warp::path::end())
+        .and_then(http_api::routes::index::post_lightning_route);
+
+    let halight_bitcoin_han_ether = swaps
+        .and(warp::path!(
+            "halight" / "lightning" / "bitcoin" / "han" / "ethereum" / "ether"
+        ))
+        .and(warp::post())
+        .and(warp::path::end())
+        .and_then(http_api::routes::index::post_lightning_route);
+
+    let halight_bitcoin_herc20_erc20 = swaps
+        .and(warp::path!(
+            "halight" / "lightning" / "bitcoin" / "herc20" / "ethereum" / "erc20"
+        ))
+        .and(warp::post())
+        .and(warp::path::end())
+        .and_then(http_api::routes::index::post_lightning_route);
+
     preflight_cors_route
         .or(rfc003_get_swap)
         .or(rfc003_post_swap)
@@ -99,6 +131,10 @@ pub fn create(
         .or(get_peers)
         .or(get_info_siren)
         .or(get_info)
+        .or(han_ether_halight_bitcoin)
+        .or(herc20_erc20_halight_bitcoin)
+        .or(halight_bitcoin_han_ether)
+        .or(halight_bitcoin_herc20_erc20)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

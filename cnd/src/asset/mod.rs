@@ -6,21 +6,6 @@ pub use self::{
 };
 use crate::asset;
 use derivative::Derivative;
-use std::{
-    fmt::{Debug, Display},
-    hash::Hash,
-};
-
-pub trait Asset:
-    Clone + Debug + Display + Send + Sync + 'static + PartialEq + Eq + Hash + Into<AssetKind> + Ord
-{
-}
-
-impl Asset for Bitcoin {}
-
-impl Asset for Ether {}
-
-impl Asset for Erc20 {}
 
 #[derive(Clone, Derivative, PartialEq)]
 #[derivative(Debug = "transparent")]

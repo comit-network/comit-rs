@@ -19,13 +19,14 @@ use crate::{
             actions::{Action, ActionKind},
             bob::State,
             messages::{Decision, IntoAcceptMessage},
-            state_store::StateStore,
         },
+        state_store::{Get, Insert},
         Facade, SwapId,
     },
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
+use serde::Serialize;
 use std::{
     fmt::{self, Debug, Display},
     string::ToString,
@@ -44,7 +45,7 @@ pub async fn handle_action(
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
-        let state = StateStore::get::<ROLE>(&dependencies, &swap_id)?.ok_or_else(|| {
+        let state: ROLE = dependencies.get(&swap_id)?.ok_or_else(|| {
             anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
         })?;
 
@@ -80,10 +81,16 @@ pub async fn handle_action(
                     )
                 })?;
 
-                let accepted =
-                    LoadAcceptedSwap::<AL, BL, AA, BA>::load_accepted_swap(&dependencies, &swap_id)
-                        .await?;
-                init_accepted_swap(&dependencies, accepted, types.role)?;
+                let accepted = LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(
+                    &dependencies,
+                    &swap_id,
+                )
+                .await?;
+                init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
+                    &dependencies,
+                    accepted,
+                    types.role,
+                )?;
 
                 Ok(ActionResponseBody::None)
             }
@@ -116,8 +123,12 @@ pub async fn handle_action(
 
                 let swap_request = state.request();
                 let seed = dependencies.derive_swap_seed(swap_id);
-                let state = State::declined(swap_request, decline_message, seed);
-                StateStore::insert(&dependencies, swap_id, state);
+                let state = State::<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>::declined(
+                    swap_request.clone(),
+                    decline_message,
+                    seed,
+                );
+                dependencies.insert(swap_id, state);
 
                 Ok(ActionResponseBody::None)
             }
@@ -180,9 +191,10 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     }
 }
 
-fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
-    message: rfc003::messages::Accept<AL, BL>,
-) -> Response {
+fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
+where
+    rfc003::messages::AcceptResponseBody<AI, BI>: Serialize,
+{
     Response::empty()
         .with_header(
             "decision",
@@ -191,7 +203,7 @@ fn rfc003_accept_response<AL: rfc003::Ledger, BL: rfc003::Ledger>(
                 .expect("Decision should not fail to serialize"),
         )
         .with_body(
-            serde_json::to_value(rfc003::messages::AcceptResponseBody::<AL, BL> {
+            serde_json::to_value(rfc003::messages::AcceptResponseBody::<AI, BI> {
                 beta_ledger_refund_identity: message.beta_ledger_refund_identity,
                 alpha_ledger_redeem_identity: message.alpha_ledger_redeem_identity,
             })

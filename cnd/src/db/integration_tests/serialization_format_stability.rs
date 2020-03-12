@@ -65,9 +65,10 @@ fn secrethash() {
 /// is symmetric to the `Display` implementation.
 ///
 /// Our custom sql type `Text` relies on this behaviour being symmetric.
-fn roundtrip_test<T: fmt::Display + FromStr>(stored_value: &str)
+fn roundtrip_test<T>(stored_value: &str)
 where
     <T as FromStr>::Err: fmt::Debug,
+    T: fmt::Display + FromStr,
 {
     // First, we verify that we can create T from the given value.
     let read = T::from_str(stored_value).unwrap();

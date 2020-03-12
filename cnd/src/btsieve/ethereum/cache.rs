@@ -1,23 +1,19 @@
 use crate::{
     btsieve::{
-        ethereum::{self, Hash},
-        BlockByHash, LatestBlock, ReceiptByHash,
+        ethereum::{self, Hash, ReceiptByHash},
+        BlockByHash, LatestBlock,
     },
     ethereum::TransactionReceipt,
 };
+use async_trait::async_trait;
 use derivative::Derivative;
-use futures::Future;
-use futures_core::{
-    compat::Future01CompatExt,
-    future::{FutureExt, TryFutureExt},
-};
 use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 // This makes it a bit obscure that we have an option, the compile will point it
 // out though; this alias allows us to use the macros :)
-type Block = Option<ethereum::Block>;
+type Block = ethereum::Block;
 
 #[derive(Derivative, Clone)]
 #[derivative(Debug)]
@@ -26,7 +22,7 @@ pub struct Cache<C> {
     #[derivative(Debug = "ignore")]
     pub block_cache: Arc<Mutex<LruCache<Hash, Block>>>,
     #[derivative(Debug = "ignore")]
-    pub receipt_cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
+    pub receipt_cache: Arc<Mutex<LruCache<Hash, TransactionReceipt>>>,
 }
 
 impl<C> Cache<C> {
@@ -45,82 +41,75 @@ impl<C> Cache<C> {
     }
 }
 
+#[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block, BlockHash = Hash> + Clone,
+    C: LatestBlock<Block = Block>,
+{
+    type Block = Block;
+
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block = self.connector.latest_block().await?;
+
+        let block_hash = block.hash.expect("no blocks without hash");
+        let mut guard = self.block_cache.lock().await;
+        if !guard.contains(&block_hash) {
+            guard.put(block_hash, block.clone());
+        }
+
+        Ok(block)
+    }
+}
+
+#[async_trait]
+impl<C> BlockByHash for Cache<C>
+where
+    C: BlockByHash<Block = Block, BlockHash = Hash>,
 {
     type Block = Block;
     type BlockHash = Hash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let cache = self.block_cache.clone();
-        let mut connector = self.connector.clone();
-
-        let future = async move {
-            let block = connector.latest_block().compat().await?;
-
-            if let Some(block) = block.clone() {
-                let block_hash = block.hash.expect("no blocks without hash");
-                let mut guard = cache.lock().await;
-                if !guard.contains(&block_hash) {
-                    guard.put(block_hash, Some(block.clone()));
-                }
-            };
-
-            Ok(block)
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
+            tracing::trace!("Found block in cache: {:x}", block_hash);
+            return Ok(block.clone());
         }
-        .boxed()
-        .compat();
 
-        Box::new(future)
+        let block = self.connector.block_by_hash(block_hash.clone()).await?;
+        tracing::trace!("Fetched block from connector: {:x}", block_hash);
+
+        // We dropped the lock so at this stage the block may have been inserted by
+        // another thread, no worries, inserting the same block twice does not hurt.
+        let mut guard = self.block_cache.lock().await;
+        guard.put(block_hash, block.clone());
+
+        Ok(block)
     }
 }
 
-impl_block_by_hash!();
-
+#[async_trait]
 impl<C> ReceiptByHash for Cache<C>
 where
-    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
+    C: ReceiptByHash,
 {
-    type Receipt = Option<TransactionReceipt>;
-    type TransactionHash = Hash;
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
+        if let Some(receipt) = self.receipt_cache.lock().await.get(&transaction_hash) {
+            tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
+            return Ok(receipt.clone());
+        }
 
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
-        let connector = self.connector.clone();
-        let cache = Arc::clone(&self.receipt_cache);
-        Box::new(Box::pin(receipt_by_hash(connector, cache, transaction_hash)).compat())
+        let receipt = self
+            .connector
+            .receipt_by_hash(transaction_hash.clone())
+            .await?;
+
+        tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
+
+        // We dropped the lock so at this stage the receipt may have been inserted by
+        // another thread, no worries, inserting the same receipt twice does not hurt.
+        let mut guard = self.receipt_cache.lock().await;
+        guard.put(transaction_hash, receipt.clone());
+
+        Ok(receipt)
     }
-}
-
-async fn receipt_by_hash<C>(
-    connector: C,
-    cache: Arc<Mutex<LruCache<Hash, Option<TransactionReceipt>>>>,
-    transaction_hash: Hash,
-) -> anyhow::Result<Option<TransactionReceipt>>
-where
-    C: ReceiptByHash<Receipt = Option<TransactionReceipt>, TransactionHash = Hash> + Clone,
-{
-    if let Some(receipt) = cache.lock().await.get(&transaction_hash) {
-        tracing::trace!("Found receipt in cache: {:x}", transaction_hash);
-        return Ok(receipt.clone());
-    }
-
-    let receipt = connector
-        .receipt_by_hash(transaction_hash.clone())
-        .compat()
-        .await?;
-
-    tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
-
-    // We dropped the lock so at this stage the receipt may have been inserted by
-    // another thread, no worries, inserting the same receipt twice does not hurt.
-    let mut guard = cache.lock().await;
-    guard.put(transaction_hash, receipt.clone());
-
-    Ok(receipt)
 }

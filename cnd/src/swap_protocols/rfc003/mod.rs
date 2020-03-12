@@ -1,6 +1,3 @@
-#[macro_use]
-mod transition_save;
-
 pub mod alice;
 pub mod bitcoin;
 pub mod bob;
@@ -9,46 +6,43 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
-pub mod state_store;
 
 pub mod actions;
 mod actor_state;
-mod ledger;
 mod secret;
 
 pub use self::{
     actor_state::ActorState,
-    create_swap::create_swap,
-    ledger::Ledger,
+    create_swap::create_alpha_watcher,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
 };
 
 pub use self::messages::{Accept, Decline, Request};
 
-use crate::{asset::Asset, seed::SwapSeed};
+use crate::seed::SwapSeed;
 use ::bitcoin::secp256k1::SecretKey;
 
 /// Swap request response as received from peer node acting as Bob.
-pub type Response<AL, BL> = Result<Accept<AL, BL>, Decline>;
+pub type Response<AI, BI> = Result<Accept<AI, BI>, Decline>;
 
 #[derive(Clone, Debug, PartialEq)]
-pub enum SwapCommunication<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> {
+pub enum SwapCommunication<AL, BL, AA, BA, AI, BI> {
     Proposed {
-        request: Request<AL, BL, AA, BA>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
     },
     Accepted {
-        request: Request<AL, BL, AA, BA>,
-        response: Accept<AL, BL>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
+        response: Accept<AI, BI>,
     },
     Declined {
-        request: Request<AL, BL, AA, BA>,
+        request: Request<AL, BL, AA, BA, AI, BI>,
         response: Decline,
     },
 }
 
-impl<AL: Ledger, BL: Ledger, AA: Asset, BA: Asset> SwapCommunication<AL, BL, AA, BA> {
-    pub fn request(&self) -> &Request<AL, BL, AA, BA> {
+impl<AL, BL, AA, BA, AI, BI> SwapCommunication<AL, BL, AA, BA, AI, BI> {
+    pub fn request(&self) -> &Request<AL, BL, AA, BA, AI, BI> {
         match self {
             SwapCommunication::Accepted { request, .. } => request,
             SwapCommunication::Proposed { request } => request,

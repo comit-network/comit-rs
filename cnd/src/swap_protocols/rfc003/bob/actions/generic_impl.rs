@@ -1,34 +1,39 @@
-use crate::{
-    asset::Asset,
-    swap_protocols::{
-        actions::Actions,
-        rfc003::{
-            actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
-            bob,
-            create_swap::HtlcParams,
-            Ledger, LedgerState, SwapCommunication,
-        },
+use crate::swap_protocols::{
+    actions::Actions,
+    rfc003::{
+        actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+        bob,
+        create_swap::HtlcParams,
+        LedgerState, SwapCommunication,
     },
 };
 use std::convert::Infallible;
 
-impl<AL, BL, AA, BA> Actions for bob::State<AL, BL, AA, BA>
+impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> Actions
+    for bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>
 where
-    AL: Ledger,
-    BL: Ledger,
-    AA: Asset,
-    BA: Asset,
-    (BL, BA): FundAction<BL, BA> + RefundAction<BL, BA>,
-    (AL, AA): RedeemAction<AL, AA>,
+    AL: Clone,
+    BL: Clone,
+    AA: Clone,
+    BA: Clone,
+    AH: Clone,
+    BH: Clone,
+    AI: Clone,
+    BI: Clone,
+    AT: Clone,
+    BT: Clone,
+    (BL, BA): FundAction<HtlcParams = HtlcParams<BL, BA, BI>>
+        + RefundAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH, FundTransaction = BT>,
+    (AL, AA): RedeemAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<AL, BL>,
         Infallible,
-        <(BL, BA) as FundAction<BL, BA>>::FundActionOutput,
-        <(AL, AA) as RedeemAction<AL, AA>>::RedeemActionOutput,
-        <(BL, BA) as RefundAction<BL, BA>>::RefundActionOutput,
+        <(BL, BA) as FundAction>::Output,
+        <(AL, AA) as RedeemAction>::Output,
+        <(BL, BA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -56,7 +61,7 @@ where
                     HtlcParams::new_alpha_params(request, response),
                     htlc_location.clone(),
                     &*self.secret_source, // Derive identities with this.
-                    *secret,              /* Bob uses the secret learned from Alice's redeem
+                    *secret,              /* Bob uses the secret learned from Alice redeem
                                            * action. */
                 ))]
             }

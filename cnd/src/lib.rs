@@ -44,14 +44,37 @@ pub mod network;
 pub mod quickcheck;
 #[macro_use]
 pub mod seed;
+pub mod jsonrpc;
 #[cfg(test)]
 pub mod spectral_ext;
 pub mod swap_protocols;
 pub mod timestamp;
 
 use anyhow::Context;
-use directories::ProjectDirs;
-use std::path::{Path, PathBuf};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
+
+/// Define domain specific terms using identity module so that we can refer to
+/// things in an ergonomic fashion e.g., `identity::Bitcoin`.
+pub mod identity {
+    pub use crate::{bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum};
+}
+
+/// Define domain specific terms using transaction module so that we can refer
+/// to things in an ergonomic fashion e.g., `transaction::Ethereum`.
+pub mod transaction {
+    pub use crate::ethereum::Transaction as Ethereum;
+    pub use bitcoin::Transaction as Bitcoin;
+}
+
+/// Define domain specific terms using htlc_location module so that we can refer
+/// to things in an ergonomic fashion e.g., `htlc_location::Bitcoin`.
+pub mod htlc_location {
+    pub use crate::ethereum::Address as Ethereum;
+    pub use bitcoin::OutPoint as Bitcoin;
+}
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -62,7 +85,8 @@ lazy_static::lazy_static! {
 // Windows: C:\Users\<user>\AppData\Roaming\comit\config\
 // OSX: /Users/<user>/Library/Preferences/comit/
 fn config_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
+    directories::ProjectDirs::from("", "", "comit")
+        .map(|proj_dirs| proj_dirs.config_dir().to_path_buf())
 }
 
 pub fn default_config_path() -> anyhow::Result<PathBuf> {
@@ -75,7 +99,30 @@ pub fn default_config_path() -> anyhow::Result<PathBuf> {
 // Windows: C:\Users\<user>\AppData\Roaming\comit\
 // OSX: /Users/<user>/Library/Application Support/comit/
 pub fn data_dir() -> Option<PathBuf> {
-    ProjectDirs::from("", "", "comit").map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+    directories::ProjectDirs::from("", "", "comit")
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
+
+/// Returns `/Users/[username]/Library/Application Support/Lnd/`.
+/// exists.
+#[cfg(target_os = "macos")]
+pub fn lnd_default_dir() -> Option<PathBuf> {
+    directories::ProjectDirs::from("", "", "Lnd")
+        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+}
+
+/// Returns `~/.lnd` if $HOME exists.
+#[cfg(target_os = "linux")]
+pub fn lnd_default_dir() -> Option<PathBuf> {
+    directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+}
+
+/// Returns the directory used by lnd.
+pub fn lnd_dir() -> Option<PathBuf> {
+    if let Ok(dir) = env::var("LND_DIR") {
+        return Some(PathBuf::from(dir));
+    }
+    lnd_default_dir()
 }
 
 pub type Never = std::convert::Infallible;

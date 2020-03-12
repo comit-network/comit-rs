@@ -1,155 +1,152 @@
 mod bitcoind_connector;
 mod cache;
-mod transaction_ext;
-mod transaction_pattern;
 
 pub use self::{
-    bitcoind_connector::BitcoindConnector, cache::Cache, transaction_ext::TransactionExt,
-    transaction_pattern::TransactionPattern,
+    bitcoind_connector::{BitcoindConnector, ChainInfo},
+    cache::Cache,
 };
-use crate::btsieve::{BlockByHash, LatestBlock, Predates};
+use crate::btsieve::{
+    find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+};
 use bitcoin::{
+    blockdata::script::Instruction,
     consensus::{encode::deserialize, Decodable},
-    BitcoinHash,
+    BitcoinHash, OutPoint,
 };
 use chrono::NaiveDateTime;
-use futures_core::compat::Future01CompatExt;
+use genawaiter::{sync::Gen, GeneratorState};
 use reqwest::{Client, Url};
-use std::collections::HashSet;
 
-pub async fn matching_transaction<C>(
-    mut blockchain_connector: C,
-    pattern: TransactionPattern,
+type Hash = bitcoin::BlockHash;
+type Block = bitcoin::Block;
+
+impl BlockHash for Block {
+    type BlockHash = Hash;
+
+    fn block_hash(&self) -> Hash {
+        self.bitcoin_hash()
+    }
+}
+
+impl PreviousBlockHash for Block {
+    type BlockHash = Hash;
+
+    fn previous_block_hash(&self) -> Hash {
+        self.header.prev_blockhash
+    }
+}
+
+pub async fn watch_for_spent_outpoint<C>(
+    blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<bitcoin::Transaction>
+    from_outpoint: OutPoint,
+    unlock_script: Vec<Vec<u8>>,
+) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
-    C: LatestBlock<Block = bitcoin::Block>
-        + BlockByHash<Block = bitcoin::Block, BlockHash = bitcoin::BlockHash>
-        + Clone,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
-    // Verify that we can successfully connect to the blockchain connector and check
-    // if the transaction is in the latest block.
-    let latest_block = blockchain_connector.latest_block().compat().await?;
-    if let Some(transaction) = check_block_against_pattern(&latest_block.clone(), &pattern) {
-        return Ok(transaction.clone());
-    };
+    let (transaction, txin) = watch(blockchain_connector, start_of_swap, |transaction| {
+        transaction
+            .input
+            .iter()
+            .filter(|txin| txin.previous_output == from_outpoint)
+            .find(|txin| {
+                unlock_script.iter().all(|item| {
+                    txin.witness.contains(item)
+                        || unlock_script.iter().all(|item| {
+                            txin.script_sig
+                                .iter(true)
+                                .any(|instruction| match instruction {
+                                    Instruction::PushBytes(data) => (item as &[u8]) == data,
+                                    Instruction::Op(_) => false,
+                                    Instruction::Error(_) => false,
+                                })
+                        })
+                })
+            })
+            .cloned()
+    })
+    .await?;
 
-    // We didn't find the transaction, now we need to do two things; keep polling
-    // for latest block so that we see transactions in new blocks and also go
-    // back up the blockchain until 'start_of_swap' i.e., look back in the
-    // past.
+    Ok((transaction, txin))
+}
 
-    let mut prev_blockhashes: HashSet<bitcoin::BlockHash> = HashSet::new();
-    let mut missing_block_futures: Vec<_> = Vec::new();
+pub async fn watch_for_created_outpoint<C>(
+    blockchain_connector: &C,
+    start_of_swap: NaiveDateTime,
+    compute_address: bitcoin::Address,
+) -> anyhow::Result<(bitcoin::Transaction, bitcoin::OutPoint)>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+{
+    let (transaction, out_point) = watch(blockchain_connector, start_of_swap, |transaction| {
+        let txid = transaction.txid();
+        transaction
+            .output
+            .iter()
+            .enumerate()
+            .map(|(index, txout)| {
+                // Casting a usize to u32 can lead to truncation on 64bit platforms
+                // However, bitcoin limits the number of inputs to u32 anyway, so this
+                // is not a problem for us.
+                #[allow(clippy::cast_possible_truncation)]
+                (index as u32, txout)
+            })
+            .find(|(_, txout)| txout.script_pubkey == compute_address.script_pubkey())
+            .map(|(vout, _txout)| OutPoint { txid, vout })
+    })
+    .await?;
 
-    let mut oldest_block: Option<bitcoin::Block> = Some(latest_block.clone());
-    prev_blockhashes.insert(latest_block.bitcoin_hash());
+    Ok((transaction, out_point))
+}
 
-    let prev_blockhash = latest_block.header.prev_blockhash;
-    let future = blockchain_connector.block_by_hash(prev_blockhash).compat();
-    missing_block_futures.push((future, prev_blockhash));
+async fn watch<C, S, M>(
+    connector: &C,
+    start_of_swap: NaiveDateTime,
+    sieve: S,
+) -> anyhow::Result<(bitcoin::Transaction, M)>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+    S: Fn(&bitcoin::Transaction) -> Option<M>,
+{
+    let mut block_generator =
+        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
 
     loop {
-        // Delay so that we don't overload the CPU in the event that
-        // latest_block() and block_by_hash() resolve quickly.
-
-        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-
-        let mut new_missing_block_futures = Vec::new();
-        for (block_future, blockhash) in missing_block_futures.into_iter() {
-            match block_future.await {
-                Ok(block) => {
-                    match check_block_against_pattern(&block, &pattern) {
-                        Some(transaction) => return Ok(transaction.clone()),
-                        None => {
-                            let prev_blockhash = block.header.prev_blockhash;
-                            let unknown_parent = prev_blockhashes.insert(prev_blockhash);
-
-                            if unknown_parent {
-                                let future =
-                                    blockchain_connector.block_by_hash(prev_blockhash).compat();
-                                new_missing_block_futures.push((future, prev_blockhash));
-                            }
-                        }
-                    };
-                }
-                Err(e) => {
-                    tracing::warn!("Could not get block with hash {}: {}", blockhash, e);
-
-                    let future = blockchain_connector.block_by_hash(blockhash).compat();
-                    new_missing_block_futures.push((future, blockhash));
-                }
-            };
-        }
-        missing_block_futures = new_missing_block_futures;
-
-        // Look back into the past (upto timestamp) for one block.
-
-        if let Some(block) = oldest_block.as_ref() {
-            if !block.predates(start_of_swap) {
-                match blockchain_connector
-                    .block_by_hash(block.header.prev_blockhash)
-                    .compat()
-                    .await
-                {
-                    Ok(block) => match check_block_against_pattern(&block, &pattern) {
-                        Some(transaction) => return Ok(transaction.clone()),
-                        None => {
-                            oldest_block.replace(block);
-                        }
-                    },
-                    Err(e) => tracing::warn!(
-                        "Could not get block with hash {}: {}",
-                        block.bitcoin_hash(),
-                        e
-                    ),
-                };
-            }
-        }
-
-        // Check if a new block has been mined.
-
-        if let Ok(latest_block) = blockchain_connector.latest_block().compat().await {
-            // If we can insert then we have not seen this block.
-            if prev_blockhashes.insert(latest_block.bitcoin_hash()) {
-                if let Some(transaction) = check_block_against_pattern(&latest_block, &pattern) {
-                    return Ok(transaction.clone());
-                };
-
-                // In case we missed a block somehow, check this blocks parent.
-                if !prev_blockhashes.contains(&latest_block.header.prev_blockhash) {
-                    let prev_blockhash = latest_block.header.prev_blockhash;
-                    let future = blockchain_connector.block_by_hash(prev_blockhash).compat();
-
-                    missing_block_futures.push((future, prev_blockhash));
+        match block_generator.async_resume().await {
+            GeneratorState::Yielded(block) => {
+                for transaction in block.txdata.into_iter() {
+                    if let Some(result) = sieve(&transaction) {
+                        tracing::trace!("transaction matched {:x}", transaction.txid());
+                        return Ok((transaction, result));
+                    }
                 }
             }
+            GeneratorState::Complete(Err(e)) => return Err(e),
+            // By matching against the never type explicitly, we assert that the `Ok` value of the
+            // result is actually the never type and has not been changed since this line was
+            // written. The never type can never be constructed, so we can never reach this line.
+            GeneratorState::Complete(Ok(never)) => match never {},
         }
     }
 }
 
-fn check_block_against_pattern<'b>(
-    block: &'b bitcoin::Block,
-    pattern: &TransactionPattern,
-) -> Option<&'b bitcoin::Transaction> {
-    block.txdata.iter().find(|transaction| {
-        let result = pattern.matches(transaction);
+impl Predates for Block {
+    fn predates(&self, timestamp: NaiveDateTime) -> bool {
+        let unix_timestamp = timestamp.timestamp();
+        let block_time = self.header.time as i64;
 
-        tracing::debug!(
-            "matching {:?} against transaction {} yielded {}",
-            pattern,
-            transaction.txid(),
-            result
-        );
-
-        result
-    })
+        block_time < unix_timestamp
+    }
 }
 
-pub async fn bitcoin_http_request_for_hex_encoded_object<T: Decodable>(
+pub async fn bitcoin_http_request_for_hex_encoded_object<T>(
     request_url: Url,
-    client: Client,
-) -> anyhow::Result<T> {
+    client: &Client,
+) -> anyhow::Result<T>
+where
+    T: Decodable,
+{
     let response_text = client.get(request_url).send().await?.text().await?;
     let decoded_response = decode_response(response_text)?;
 
@@ -168,24 +165,18 @@ pub enum Error {
     Deserialization(#[from] bitcoin::consensus::encode::Error),
 }
 
-pub fn decode_response<T: Decodable>(response_text: String) -> Result<T, Error> {
+pub fn decode_response<T>(response_text: String) -> Result<T, Error>
+where
+    T: Decodable,
+{
     let bytes = hex::decode(response_text.trim()).map_err(Error::Hex)?;
     deserialize(bytes.as_slice()).map_err(Error::Deserialization)
 }
 
-impl Predates for bitcoin::Block {
-    fn predates(&self, timestamp: NaiveDateTime) -> bool {
-        let unix_timestamp = timestamp.timestamp();
-        let block_time = self.header.time as i64;
-
-        block_time < unix_timestamp
-    }
-}
-
 #[cfg(test)]
 mod tests {
-
     use super::*;
+    use crate::transaction;
     use spectral::prelude::*;
 
     #[test]
@@ -194,7 +185,7 @@ mod tests {
         let transaction = r#"02000000014135047eff77c95bce4955f630bc3e334690d31517176dbc23e9345493c48ecf000000004847304402200da78118d6970bca6f152a6ca81fa8c4dde856680eb6564edb329ce1808207c402203b3b4890dd203cc4c9361bbbeb7ebce70110d4b07f411208b2540b10373755ba01feffffff02644024180100000017a9142464790f3a3fddb132691fac9fd02549cdc09ff48700a3e1110000000017a914c40a2c4fd9dcad5e1694a41ca46d337eb59369d78765000000
 "#.to_owned();
 
-        let bytes = decode_response::<bitcoin::Transaction>(transaction);
+        let bytes = decode_response::<transaction::Bitcoin>(transaction);
 
         assert_that(&bytes).is_ok();
     }
@@ -205,7 +196,7 @@ mod tests {
         let block = r#"00000020837603de6069115e22e7fbf063c2a6e3bc3b3206f0b7e08d6ab6c168c2e50d4a9b48676dedc93d05f677778c1d83df28fd38d377548340052823616837666fb8be1b795dffff7f200000000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0401650101ffffffff0200f2052a0100000023210205980e76eee77386241a3a7a5af65e910fb7be411b98e609f7c0d97c50ab8ebeac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000
 "#.to_owned();
 
-        let bytes = decode_response::<bitcoin::Block>(block);
+        let bytes = decode_response::<Block>(block);
 
         assert_that(&bytes).is_ok();
     }

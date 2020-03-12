@@ -1,12 +1,22 @@
 pub mod file;
 mod serde_bitcoin_network;
 pub mod settings;
+pub mod validation;
 
+use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;
 use serde::{Deserialize, Serialize};
-use std::{net::IpAddr, path::PathBuf};
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::PathBuf,
+};
 
 pub use self::{file::File, settings::Settings};
+use reqwest::Url;
+
+lazy_static::lazy_static! {
+    pub static ref LND_SOCKET: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+}
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Data {
@@ -18,28 +28,108 @@ pub struct Network {
     pub listen: Vec<Multiaddr>,
 }
 
-#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Serialize)]
-pub struct Socket {
-    pub address: IpAddr,
-    pub port: u16,
-}
-
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoin {
     #[serde(with = "crate::config::serde_bitcoin_network")]
     pub network: bitcoin::Network,
+    pub bitcoind: Bitcoind,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Bitcoind {
     pub node_url: reqwest::Url,
+}
+
+impl Default for Bitcoin {
+    fn default() -> Self {
+        Self {
+            network: bitcoin::Network::Regtest,
+            bitcoind: Bitcoind {
+                node_url: Url::parse("http://localhost:18443")
+                    .expect("static string to be a valid url"),
+            },
+        }
+    }
+}
+
+impl From<Bitcoin> for file::Bitcoin {
+    fn from(bitcoin: Bitcoin) -> Self {
+        file::Bitcoin {
+            network: bitcoin.network,
+            bitcoind: Some(bitcoin.bitcoind),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
+    pub chain_id: ethereum::ChainId,
+    pub parity: Parity,
+}
+
+impl From<Ethereum> for file::Ethereum {
+    fn from(ethereum: Ethereum) -> Self {
+        file::Ethereum {
+            chain_id: ethereum.chain_id,
+            parity: Some(ethereum.parity),
+        }
+    }
+}
+
+impl Default for Ethereum {
+    fn default() -> Self {
+        Self {
+            chain_id: ethereum::ChainId::regtest(),
+            parity: Parity {
+                node_url: Url::parse("http://localhost:8545")
+                    .expect("static string to be a valid url"),
+            },
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Parity {
     pub node_url: reqwest::Url,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lightning {
+    pub network: bitcoin::Network,
+    pub lnd: Option<Lnd>,
+}
+
+impl Default for Lightning {
+    fn default() -> Self {
+        Self {
+            network: bitcoin::Network::Regtest,
+            lnd: Some(Lnd::default()),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lnd {
+    pub rest_api_socket: Option<SocketAddr>,
+    pub dir: Option<PathBuf>,
+}
+
+impl Default for Lnd {
+    fn default() -> Self {
+        Self {
+            rest_api_socket: Some(*LND_SOCKET),
+            dir: Some(default_lnd_dir()),
+        }
+    }
+}
+
+fn default_lnd_dir() -> PathBuf {
+    crate::lnd_dir().expect("no home directory")
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use reqwest::Url;
 
     #[test]
     fn network_deserializes_correctly() {
@@ -74,41 +164,76 @@ mod tests {
     }
 
     #[test]
-    fn bitcoin_deserializes_correctly() {
+    fn lnd_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            network = "mainnet"
-            node_url = "http://example.com:8545"
+            rest_api_socket = "127.0.0.1:8080"
+            dir = "~/.local/share/comit/lnd"
             "#,
             r#"
-            network = "testnet"
-            node_url = "http://example.com:8545"
+            rest_api_socket = "127.0.0.1:8080"
             "#,
             r#"
-            network = "regtest"
-            node_url = "http://example.com:8545"
+            dir = "~/.local/share/comit/lnd"
             "#,
         ];
 
         let expected = vec![
-            Bitcoin {
-                network: bitcoin::Network::Bitcoin,
-                node_url: Url::parse("http://example.com:8545").unwrap(),
+            Lnd {
+                rest_api_socket: Some(*LND_SOCKET),
+                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
             },
-            Bitcoin {
-                network: bitcoin::Network::Testnet,
-                node_url: Url::parse("http://example.com:8545").unwrap(),
+            Lnd {
+                rest_api_socket: Some(*LND_SOCKET),
+                dir: None,
             },
-            Bitcoin {
-                network: bitcoin::Network::Regtest,
-                node_url: Url::parse("http://example.com:8545").unwrap(),
+            Lnd {
+                rest_api_socket: None,
+                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
             },
         ];
 
         let actual = file_contents
             .into_iter()
             .map(toml::from_str)
-            .collect::<Result<Vec<Bitcoin>, toml::de::Error>>()
+            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
+            .unwrap();
+
+        assert_eq!(actual, expected);
+    }
+
+    #[test]
+    fn lightning_deserializes_correctly() {
+        let file_contents = vec![
+            r#"
+            network = "regtest"
+            "#,
+            r#"
+            network = "regtest"
+            [lnd]
+            rest_api_socket = "127.0.0.1:8080"
+            dir = "/path/to/lnd"
+            "#,
+        ];
+
+        let expected = vec![
+            Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: None,
+            },
+            Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_socket: Some(*LND_SOCKET),
+                    dir: Some(PathBuf::from("/path/to/lnd")),
+                }),
+            },
+        ];
+
+        let actual = file_contents
+            .into_iter()
+            .map(toml::from_str)
+            .collect::<Result<Vec<Lightning>, toml::de::Error>>()
             .unwrap();
 
         assert_eq!(actual, expected);

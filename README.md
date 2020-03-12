@@ -1,5 +1,5 @@
 <a href="https://comit.network">
-<img src="logo.svg" height="120px">
+<img src="logo.svg" height="120px" alt="COMIT logo" />
 </a>
 
 ---
@@ -47,9 +47,10 @@ Please see `cnd --help` for help with command line options.
 
 ## Setup testing/dev environment
 
-1. Install `docker`
-2. Install `node` (check the version required in api_tests/package.json) & `yarn`
-3. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy
+1. Install `docker`,
+2. Install `node` (check the version required in api_tests/package.json) & `yarn`,
+3. Install `lnd` v0.9.0-beta (optional) using `make tags=invoicesrpc && make tags=invoicesrpc install`, this is only needed to run lnd e2e tests,
+4. Run `make` in the root folder of the repository, this will install various crates & tools such as clippy.
    
 ## Testing
 

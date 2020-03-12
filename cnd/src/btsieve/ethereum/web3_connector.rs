@@ -1,202 +1,93 @@
 use crate::{
-    btsieve::{BlockByHash, LatestBlock, ReceiptByHash},
-    ethereum::{BlockId, BlockNumber},
+    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+    ethereum::{TransactionReceipt, H256},
+    jsonrpc,
 };
-use anyhow::Context;
-use futures::Future;
-use futures_core::{FutureExt, TryFutureExt};
-use reqwest::{Client, Url};
-use serde::Serialize;
-use std::sync::Arc;
+use crate::swap_protocols::ledger::ethereum::ChainId;
+use async_trait::async_trait;
+use crate::config::validation::FetchNetworkId;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct Web3Connector {
-    web3: Arc<Client>,
-    url: Url,
+    client: jsonrpc::Client,
 }
 
 impl Web3Connector {
-    pub fn new(node_url: Url) -> Self {
+    pub fn new(node_url: reqwest::Url) -> Self {
         Self {
-            web3: Arc::new(Client::new()),
-            url: node_url,
+            client: jsonrpc::Client::new(node_url),
         }
     }
 }
 
+#[async_trait]
 impl LatestBlock for Web3Connector {
-    type Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>;
-    type BlockHash = crate::ethereum::H256;
+    type Block = crate::ethereum::Block;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block: Self::Block = self
+            .client
+            .send(jsonrpc::Request::new("eth_getBlockByNumber", vec![
+                jsonrpc::serialize("latest")?,
+                jsonrpc::serialize(true)?,
+            ]))
+            .await?;
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getBlockByNumber", vec![
-                serialize(BlockId::Number(BlockNumber::Latest))?,
-                serialize(true)?,
-            ]);
+        tracing::trace!(
+            "Fetched block from web3: {:x}",
+            block.hash.expect("blocks to have a hash")
+        );
 
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block<crate::ethereum::Transaction>>>()
-                .await?;
-
-            let block = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getBlockByNumber request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Ok(None);
-                }
-            };
-
-            tracing::trace!(
-                "Fetched block from web3: {:x}",
-                block.hash.expect("blocks to have a hash")
-            );
-
-            Ok(Some(block))
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(block)
     }
 }
 
-#[derive(serde::Serialize)]
-struct JsonRpcRequest<T> {
-    id: String,
-    jsonrpc: String,
-    method: String,
-    params: T,
-}
-
-impl<T> JsonRpcRequest<T> {
-    fn new(method: &str, params: T) -> Self {
-        Self {
-            id: "1".to_owned(),
-            jsonrpc: "2.0".to_owned(),
-            method: method.to_owned(),
-            params,
-        }
-    }
-}
-
-#[derive(serde::Deserialize)]
-#[serde(untagged)]
-enum JsonRpcResponse<T> {
-    Success { result: T },
-    Error { code: i64, message: String },
-}
-
+#[async_trait]
 impl BlockByHash for Web3Connector {
-    type Block = Option<crate::ethereum::Block<crate::ethereum::Transaction>>;
+    type Block = crate::ethereum::Block;
     type BlockHash = crate::ethereum::H256;
 
-    fn block_by_hash(
-        &self,
-        block_hash: Self::BlockHash,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        let block = self
+            .client
+            .send(jsonrpc::Request::new("eth_getBlockByHash", vec![
+                jsonrpc::serialize(&block_hash)?,
+                jsonrpc::serialize(true)?,
+            ]))
+            .await?;
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getBlockByHash", vec![
-                serialize(&block_hash)?,
-                serialize(true)?,
-            ]);
+        tracing::trace!("Fetched block from web3: {:x}", block_hash);
 
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::Block<crate::ethereum::Transaction>>>()
-                .await?;
-
-            let block = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getBlockByHash request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Ok(None);
-                }
-            };
-
-            tracing::trace!("Fetched block from web3: {:x}", block_hash);
-
-            Ok(Some(block))
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(block)
     }
 }
 
+#[async_trait]
 impl ReceiptByHash for Web3Connector {
-    type Receipt = Option<crate::ethereum::TransactionReceipt>;
-    type TransactionHash = crate::ethereum::H256;
+    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
+        let receipt = self
+            .client
+            .send(jsonrpc::Request::new("eth_getTransactionReceipt", vec![
+                jsonrpc::serialize(transaction_hash)?,
+            ]))
+            .await?;
 
-    fn receipt_by_hash(
-        &self,
-        transaction_hash: Self::TransactionHash,
-    ) -> Box<dyn Future<Item = Self::Receipt, Error = anyhow::Error> + Send + 'static> {
-        let web3 = self.web3.clone();
-        let url = self.url.clone();
+        tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
 
-        let future = async move {
-            let request = JsonRpcRequest::new("eth_getTransactionReceipt", vec![serialize(
-                transaction_hash,
-            )?]);
-
-            let response = web3
-                .post(url)
-                .json(&request)
-                .send()
-                .await?
-                .json::<JsonRpcResponse<crate::ethereum::TransactionReceipt>>()
-                .await?;
-
-            let receipt = match response {
-                JsonRpcResponse::Success { result } => result,
-                JsonRpcResponse::Error { code, message } => {
-                    tracing::warn!(
-                        "eth_getTransactionReceipt request failed with {}: {}",
-                        code,
-                        message
-                    );
-                    return Ok(None);
-                }
-            };
-
-            tracing::trace!("Fetched receipt from web3: {:x}", transaction_hash);
-
-            Ok(Some(receipt))
-        }
-        .boxed()
-        .compat();
-
-        Box::new(future)
+        Ok(receipt)
     }
 }
 
-fn serialize<T: Serialize>(t: T) -> anyhow::Result<serde_json::Value> {
-    let value = serde_json::to_value(t).context("failed to serialize parameter")?;
+#[async_trait]
+impl FetchNetworkId<ChainId> for Web3Connector {
+    async fn network_id(&self) -> anyhow::Result<ChainId> {
+        let chain_id: ChainId = self
+            .client
+            .send::<Vec<()>, ChainId>(jsonrpc::Request::new("net_version", vec![]))
+            .await?;
 
-    Ok(value)
+        tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
+
+        Ok(chain_id)
+    }
 }

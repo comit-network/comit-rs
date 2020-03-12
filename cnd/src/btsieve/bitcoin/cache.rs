@@ -1,11 +1,7 @@
 use crate::btsieve::{BlockByHash, LatestBlock};
+use async_trait::async_trait;
 use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
-use futures::Future;
-use futures_core::{
-    compat::Future01CompatExt,
-    future::{FutureExt, TryFutureExt},
-};
 use lru::LruCache;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -28,35 +24,48 @@ impl<C> Cache<C> {
     }
 }
 
+#[async_trait]
 impl<C> LatestBlock for Cache<C>
 where
-    C: LatestBlock<Block = Block, BlockHash = BlockHash> + Clone,
+    C: LatestBlock<Block = Block>,
+{
+    type Block = Block;
+
+    async fn latest_block(&self) -> anyhow::Result<Self::Block> {
+        let block = self.connector.latest_block().await?;
+
+        let block_hash = block.bitcoin_hash();
+        let mut guard = self.block_cache.lock().await;
+        if !guard.contains(&block_hash) {
+            guard.put(block_hash, block.clone());
+        }
+
+        Ok(block)
+    }
+}
+
+#[async_trait]
+impl<C> BlockByHash for Cache<C>
+where
+    C: BlockByHash<Block = Block, BlockHash = Hash>,
 {
     type Block = Block;
     type BlockHash = BlockHash;
 
-    fn latest_block(
-        &mut self,
-    ) -> Box<dyn Future<Item = Self::Block, Error = anyhow::Error> + Send + 'static> {
-        let cache = Arc::clone(&self.block_cache);
-        let mut connector = self.connector.clone();
-
-        let future = async move {
-            let block = connector.latest_block().compat().await?;
-
-            let block_hash = block.bitcoin_hash();
-            let mut guard = cache.lock().await;
-            if !guard.contains(&block_hash) {
-                guard.put(block_hash, block.clone());
-            }
-
-            Ok(block)
+    async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
+        if let Some(block) = self.block_cache.lock().await.get(&block_hash) {
+            tracing::trace!("Found block in cache: {:x}", block_hash);
+            return Ok(block.clone());
         }
-        .boxed()
-        .compat();
 
-        Box::new(future)
+        let block = self.connector.block_by_hash(block_hash.clone()).await?;
+        tracing::trace!("Fetched block from connector: {:x}", block_hash);
+
+        // We dropped the lock so at this stage the block may have been inserted by
+        // another thread, no worries, inserting the same block twice does not hurt.
+        let mut guard = self.block_cache.lock().await;
+        guard.put(block_hash, block.clone());
+
+        Ok(block)
     }
 }
-
-impl_block_by_hash!();

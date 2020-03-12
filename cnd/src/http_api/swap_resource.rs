@@ -1,7 +1,6 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    asset,
     db::{Swap, SwapTypes},
     http_api::{
         action::ToSirenAction,
@@ -11,8 +10,8 @@ use crate::{
     },
     swap_protocols::{
         actions::Actions,
-        ledger,
-        rfc003::{self, state_store::StateStore, ActorState},
+        rfc003::{self, ActorState},
+        state_store::{Get, InMemoryStateStore},
         HashFunction, SwapId, SwapProtocol,
     },
 };
@@ -51,57 +50,22 @@ pub enum SwapStatus {
     InternalFailure,
 }
 
-macro_rules! impl_from_request_for_swap_parameters {
-    ($alpha_ledger:ty, $beta_ledger:ty, $alpha_asset:ty, $beta_asset:ty) => {
-        impl From<rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>>
-            for SwapParameters
-        {
-            fn from(
-                request: rfc003::Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset>,
-            ) -> Self {
-                Self {
-                    alpha_ledger: HttpLedger::from(request.alpha_ledger),
-                    alpha_asset: HttpAsset::from(request.alpha_asset),
-                    beta_ledger: HttpLedger::from(request.beta_ledger),
-                    beta_asset: HttpAsset::from(request.beta_asset),
-                }
-            }
+impl<AL, BL, AA, BA, AI, BI> From<rfc003::Request<AL, BL, AA, BA, AI, BI>> for SwapParameters
+where
+    HttpLedger: From<AL>,
+    HttpLedger: From<BL>,
+    HttpAsset: From<AA>,
+    HttpAsset: From<BA>,
+{
+    fn from(request: rfc003::Request<AL, BL, AA, BA, AI, BI>) -> Self {
+        Self {
+            alpha_ledger: HttpLedger::from(request.alpha_ledger),
+            alpha_asset: HttpAsset::from(request.alpha_asset),
+            beta_ledger: HttpLedger::from(request.beta_ledger),
+            beta_asset: HttpAsset::from(request.beta_asset),
         }
-    };
+    }
 }
-
-macro_rules! impl_from_request_for_swap_parameters_bitcoin {
-    ($bitcoin_ledger:ty) => {
-        impl_from_request_for_swap_parameters!(
-            $bitcoin_ledger,
-            ledger::Ethereum,
-            asset::Bitcoin,
-            asset::Ether
-        );
-        impl_from_request_for_swap_parameters!(
-            ledger::Ethereum,
-            $bitcoin_ledger,
-            asset::Ether,
-            asset::Bitcoin
-        );
-        impl_from_request_for_swap_parameters!(
-            $bitcoin_ledger,
-            ledger::Ethereum,
-            asset::Bitcoin,
-            asset::Erc20
-        );
-        impl_from_request_for_swap_parameters!(
-            ledger::Ethereum,
-            $bitcoin_ledger,
-            asset::Erc20,
-            asset::Bitcoin
-        );
-    };
-}
-
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Mainnet);
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Testnet);
-impl_from_request_for_swap_parameters_bitcoin!(ledger::bitcoin::Regtest);
 
 pub enum IncludeState {
     Yes,
@@ -117,8 +81,8 @@ pub enum OnFail {
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
-pub fn build_rfc003_siren_entity<S: StateStore>(
-    state_store: &S,
+pub fn build_rfc003_siren_entity(
+    state_store: &InMemoryStateStore,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
@@ -127,8 +91,8 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
     let id = swap.swap_id;
 
     with_swap_types!(types, {
-        let state = state_store
-            .get::<ROLE>(&id)?
+        let state: ROLE = state_store
+            .get(&id)?
             .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
 
         if state.swap_failed() && on_fail == OnFail::Error {
@@ -140,7 +104,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
         let communication = SwapCommunication::from(state.swap_communication.clone());
         let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
         let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-        let parameters = SwapParameters::from(state.clone().request());
+        let parameters = SwapParameters::from(state.request().clone());
         let actions = state.actions();
 
         let status = SwapStatus::new(
@@ -157,7 +121,7 @@ pub fn build_rfc003_siren_entity<S: StateStore>(
             role: swap.role.to_string(),
             counterparty: Http(swap.counterparty),
             state: match include_state {
-                IncludeState::Yes => Some(SwapState::<AL, BL> {
+                IncludeState::Yes => Some(SwapState::<AH, BH, AI, BI, AT, BT> {
                     communication,
                     alpha_ledger,
                     beta_ledger,

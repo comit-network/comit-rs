@@ -1,5 +1,6 @@
 use crate::{
-    asset::{self, Asset},
+    asset::{self},
+    htlc_location, identity,
     swap_protocols::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
@@ -7,17 +8,33 @@ use crate::{
             actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
             alice,
             create_swap::HtlcParams,
-            DeriveSecret, Ledger, LedgerState, SwapCommunication,
+            DeriveSecret, LedgerState, SwapCommunication,
         },
     },
+    transaction,
 };
 use std::convert::Infallible;
 
-impl<BL, BA> Actions for alice::State<Ethereum, BL, asset::Erc20, BA>
+impl<BL, BA, BH, BI, BT> Actions
+    for alice::State<
+        Ethereum,
+        BL,
+        asset::Erc20,
+        BA,
+        htlc_location::Ethereum,
+        BH,
+        identity::Ethereum,
+        BI,
+        transaction::Ethereum,
+        BT,
+    >
 where
-    BL: Ledger,
-    BA: Asset,
-    (BL, BA): RedeemAction<BL, BA>,
+    BL: Clone,
+    BA: Clone,
+    BH: Clone,
+    BI: Clone,
+    BT: Clone,
+    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -25,7 +42,7 @@ where
         Decline<Ethereum, BL>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(BL, BA) as RedeemAction<BL, BA>>::RedeemActionOutput,
+        <(BL, BA) as RedeemAction>::Output,
         ethereum::CallContract,
     >;
 
@@ -71,20 +88,36 @@ where
     }
 }
 
-impl<AL, AA> Actions for alice::State<AL, Ethereum, AA, asset::Erc20>
+impl<AL, AA, AH, AI, AT> Actions
+    for alice::State<
+        AL,
+        Ethereum,
+        AA,
+        asset::Erc20,
+        AH,
+        htlc_location::Ethereum,
+        AI,
+        identity::Ethereum,
+        AT,
+        transaction::Ethereum,
+    >
 where
-    AL: Ledger,
-    AA: Asset,
-    (AL, AA): FundAction<AL, AA> + RefundAction<AL, AA>,
+    AL: Clone,
+    AA: Clone,
+    AH: Copy,
+    AI: Clone,
+    AT: Clone,
+    (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
+        + RefundAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH, FundTransaction = AT>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         Infallible,
-        <(AL, AA) as FundAction<AL, AA>>::FundActionOutput,
+        <(AL, AA) as FundAction>::Output,
         ethereum::CallContract,
-        <(AL, AA) as RefundAction<AL, AA>>::RefundActionOutput,
+        <(AL, AA) as RefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -110,7 +143,7 @@ where
                 ..
             } => vec![Action::Refund(<(AL, AA)>::refund_action(
                 HtlcParams::new_alpha_params(request, response),
-                htlc_location.clone(),
+                *htlc_location,
                 &self.secret_source,
                 fund_transaction,
             ))],

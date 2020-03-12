@@ -1,6 +1,6 @@
 use crate::{
     frame::header::{Header, Headers},
-    Frame, FrameType, IntoFrame,
+    Frame, FrameKind,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
@@ -37,13 +37,19 @@ impl ValidatedInboundRequest {
         self.inner.headers.take(key)
     }
 
-    pub fn take_body_as<B: DeserializeOwned>(self) -> Result<B, serde_json::Error> {
+    pub fn take_body_as<B>(self) -> Result<B, serde_json::Error>
+    where
+        B: DeserializeOwned,
+    {
         self.inner.take_body_as()
     }
 }
 
 impl OutboundRequest {
-    pub fn new<T: Into<String>>(request_type: T) -> Self {
+    pub fn new<T>(request_type: T) -> Self
+    where
+        T: Into<String>,
+    {
         Self {
             inner: Request {
                 request_type: request_type.into(),
@@ -135,17 +141,23 @@ struct Request {
 }
 
 impl Request {
-    pub fn take_body_as<B: DeserializeOwned>(self) -> Result<B, serde_json::Error> {
+    pub fn take_body_as<B>(self) -> Result<B, serde_json::Error>
+    where
+        B: DeserializeOwned,
+    {
         B::deserialize(self.body)
     }
 }
 
-impl IntoFrame<Frame> for OutboundRequest {
-    fn into_frame(self) -> Frame {
-        // Serializing Request should never fail because its members are just Strings
-        // and JsonValues
-        let payload = serde_json::to_value(self).unwrap();
-
-        Frame::new(FrameType::Request, payload)
+impl From<OutboundRequest> for Frame {
+    fn from(r: OutboundRequest) -> Frame {
+        let payload = serialize(r);
+        Frame::new(FrameKind::Request, payload)
     }
+}
+
+fn serialize(r: OutboundRequest) -> JsonValue {
+    // Serializing and OutboundRequest should never fail because its
+    // members are just Strings and JsonValues.
+    serde_json::to_value(r).unwrap()
 }

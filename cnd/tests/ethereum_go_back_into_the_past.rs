@@ -2,20 +2,20 @@ pub mod ethereum_helper;
 
 use chrono::NaiveDateTime;
 use cnd::{
-    btsieve::ethereum::{matching_transaction, TransactionPattern},
-    ethereum::{Block, Transaction, TransactionAndReceipt, TransactionReceipt},
+    btsieve::ethereum::matching_transaction_and_receipt,
+    ethereum::{Block, Transaction, TransactionReceipt},
 };
 use ethereum_helper::EthereumConnectorMock;
 
 #[tokio::test]
 async fn find_transaction_go_back_into_the_past() {
-    let block1_with_transaction: Block<Transaction> = include_json_test_data!(
+    let block1_with_transaction: Block = include_json_test_data!(
         "./test_data/ethereum/find_transaction_go_back_into_the_past/block1_with_transaction.json"
     );
-    let transaction: Transaction = include_json_test_data!(
+    let want_transaction: Transaction = include_json_test_data!(
         "./test_data/ethereum/find_transaction_go_back_into_the_past/transaction.json"
     );
-    let receipt: TransactionReceipt = include_json_test_data!(
+    let want_receipt: TransactionReceipt = include_json_test_data!(
         "./test_data/ethereum/find_transaction_go_back_into_the_past/receipt.json"
     );
     let connector = EthereumConnectorMock::new(
@@ -42,26 +42,21 @@ async fn find_transaction_go_back_into_the_past() {
                 "./test_data/ethereum/find_transaction_go_back_into_the_past/block5.json"
             ),
         ],
-        vec![(transaction.hash, receipt.clone())],
+        vec![(want_transaction.hash, want_receipt.clone())],
     );
-
-    let pattern = TransactionPattern {
-        from_address: None,
-        to_address: Some(transaction.to.unwrap()),
-        is_contract_creation: None,
-        transaction_data: None,
-        transaction_data_length: None,
-        events: None,
-    };
 
     let start_of_swap =
         NaiveDateTime::from_timestamp(block1_with_transaction.timestamp.low_u32() as i64, 0);
-    let expected_transaction_and_receipt = matching_transaction(connector, pattern, start_of_swap)
-        .await
-        .unwrap();
 
-    assert_eq!(expected_transaction_and_receipt, TransactionAndReceipt {
-        transaction,
-        receipt
-    });
+    let (got_transaction, got_receipt) =
+        matching_transaction_and_receipt(&connector, start_of_swap, {
+            |transaction| transaction.to == want_transaction.to
+        })
+        .await
+        .expect("failed to get the transaction and receipt");
+
+    assert_eq!(
+        (got_transaction, got_receipt),
+        (want_transaction, want_receipt)
+    );
 }

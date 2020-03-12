@@ -15,20 +15,27 @@
 use crate::cli::Options;
 use anyhow::Context;
 use cnd::{
-    btsieve::{bitcoin, bitcoin::BitcoindConnector, ethereum, ethereum::Web3Connector},
-    config::{self, Settings},
+    btsieve::{
+        bitcoin::{self, BitcoindConnector},
+        ethereum::{self, Web3Connector},
+    },
+    config::{
+        self,
+        validation::{validate_blockchain_config},
+        Settings,
+    },
     db::Sqlite,
     http_api::route_factory,
+    jsonrpc,
     load_swaps,
     network::Swarm,
     seed::RootSeed,
-    swap_protocols::{rfc003::state_store::InMemoryStateStore, Facade},
+    swap_protocols::{state_store::InMemoryStateStore, Facade},
 };
-use futures_core::{FutureExt, TryFutureExt};
 use rand::rngs::OsRng;
-use std::{net::SocketAddr, process, sync::Arc};
+use std::{process, sync::Arc};
 use structopt::StructOpt;
-use tokio_compat::runtime;
+use tokio::runtime;
 
 mod cli;
 mod trace;
@@ -53,25 +60,49 @@ fn main() -> anyhow::Result<()> {
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
     let mut runtime = runtime::Builder::new()
-        .stack_size(1024 * 1024 * 4) // the default is 2MB but that causes a segfault for some reason
+        .enable_all()
+        .threaded_scheduler()
+        .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
     const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
-        let config::Bitcoin { node_url, network } = settings.clone().bitcoin;
-        bitcoin::Cache::new(
-            BitcoindConnector::new(node_url, network)?,
+        let config::Bitcoin { network, bitcoind } = settings.clone().bitcoin;
+        Arc::new(bitcoin::Cache::new(
+            BitcoindConnector::new(bitcoind.node_url, network)?,
             BITCOIN_BLOCK_CACHE_CAPACITY,
-        )
+        ))
+    };
+
+    match runtime.block_on(validate_blockchain_config(&bitcoin_connector.connector, settings.bitcoin.network)) {
+        Ok(_) => (),
+        Err(e) => {
+            if e.is::<reqwest::Error>() {
+                tracing::warn!("Could not validate Bitcoin node config: {}", e)
+            } else {
+                return Err(e)
+            }
+        }
     };
 
     const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
     const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
-    let ethereum_connector = ethereum::Cache::new(
-        Web3Connector::new(settings.clone().ethereum.node_url),
+    let ethereum_connector = Arc::new(ethereum::Cache::new(
+        Web3Connector::new(settings.clone().ethereum.parity.node_url),
         ETHEREUM_BLOCK_CACHE_CAPACITY,
         ETHEREUM_RECEIPT_CACHE_CAPACITY,
-    );
+    ));
+
+    match runtime.block_on(validate_blockchain_config(&ethereum_connector.connector, settings.ethereum.chain_id)) {
+        Ok(_) => (),
+        Err(e) => {
+            if e.is::<jsonrpc::Error>() {
+                tracing::warn!("Could not validate Ethereum node config: {}", e)
+            } else {
+                return Err(e)
+            }
+        }
+    };
 
     let state_store = Arc::new(InMemoryStateStore::default());
 
@@ -81,28 +112,23 @@ fn main() -> anyhow::Result<()> {
         &settings,
         seed,
         &mut runtime,
-        &bitcoin_connector,
-        &ethereum_connector,
-        &state_store,
+        Arc::clone(&bitcoin_connector),
+        Arc::clone(&ethereum_connector),
+        Arc::clone(&state_store),
         &database,
     )?;
 
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
-        state_store: Arc::clone(&state_store),
+        state_store,
         seed,
         swarm,
         db: database,
     };
 
-    runtime.block_on(
-        load_swaps::load_swaps_from_database(deps.clone())
-            .boxed()
-            .compat(),
-    )?;
-
-    runtime.spawn_std(spawn_warp_instance(settings, deps));
+    runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
+    runtime.spawn(spawn_warp_instance(settings, deps));
 
     // Block the current thread.
     ::std::thread::park();
@@ -123,10 +149,7 @@ fn version() {
 async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
     let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
 
-    let listen_addr = SocketAddr::new(
-        settings.http_api.socket.address,
-        settings.http_api.socket.port,
-    );
+    let listen_addr = settings.http_api.socket;
 
     tracing::info!("Starting HTTP server on {}", listen_addr);
 

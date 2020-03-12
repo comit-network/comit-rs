@@ -1,18 +1,18 @@
 use crate::frame::{self, JsonFrameCodec};
-use futures::future::FutureResult;
-use libp2p_core::{InboundUpgrade, Negotiated, OutboundUpgrade, UpgradeInfo};
-use std::{convert::Infallible, iter};
-use tokio::{
-    codec::{Decoder, Framed},
-    prelude::*,
+use futures::future;
+use futures_codec::Framed;
+use libp2p::{
+    core::{InboundUpgrade, OutboundUpgrade, UpgradeInfo},
+    swarm::NegotiatedSubstream,
 };
+use std::{convert::Infallible, iter};
 
-pub type Frames<TSubstream> = Framed<Negotiated<TSubstream>, JsonFrameCodec>;
+pub type Frames = Framed<NegotiatedSubstream, JsonFrameCodec>;
 
 #[derive(Clone, Copy, Debug)]
-pub struct ComitProtocolConfig {}
+pub struct Config {}
 
-impl UpgradeInfo for ComitProtocolConfig {
+impl UpgradeInfo for Config {
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
@@ -21,32 +21,30 @@ impl UpgradeInfo for ComitProtocolConfig {
     }
 }
 
-impl<TSubstream> InboundUpgrade<TSubstream> for ComitProtocolConfig
-where
-    TSubstream: AsyncRead + AsyncWrite,
-{
-    type Output = Frames<TSubstream>;
+impl InboundUpgrade<NegotiatedSubstream> for Config {
+    type Output = Frames;
     type Error = Infallible;
-    type Future = FutureResult<Self::Output, Self::Error>;
+    type Future = future::Ready<Result<Self::Output, Infallible>>;
 
     #[inline]
-    fn upgrade_inbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, socket: NegotiatedSubstream, _: Self::Info) -> Self::Future {
         let codec = frame::JsonFrameCodec::default();
-        futures::future::ok(codec.framed(socket))
+        let framed = Framed::new(socket, codec);
+
+        future::ok(framed)
     }
 }
 
-impl<TSubstream> OutboundUpgrade<TSubstream> for ComitProtocolConfig
-where
-    TSubstream: AsyncRead + AsyncWrite,
-{
-    type Output = Frames<TSubstream>;
+impl OutboundUpgrade<NegotiatedSubstream> for Config {
+    type Output = Frames;
     type Error = Infallible;
-    type Future = FutureResult<Self::Output, Self::Error>;
+    type Future = future::Ready<Result<Self::Output, Infallible>>;
 
     #[inline]
-    fn upgrade_outbound(self, socket: Negotiated<TSubstream>, _: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, socket: NegotiatedSubstream, _: Self::Info) -> Self::Future {
         let codec = frame::JsonFrameCodec::default();
-        futures::future::ok(codec.framed(socket))
+        let framed = Framed::new(socket, codec);
+
+        future::ok(framed)
     }
 }
