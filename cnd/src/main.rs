@@ -65,43 +65,49 @@ fn main() -> anyhow::Result<()> {
         .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
-    const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
-        let config::Bitcoin { network, bitcoind } = settings.clone().bitcoin;
-        Arc::new(bitcoin::Cache::new(
-            BitcoindConnector::new(bitcoind.node_url, network)?,
-            BITCOIN_BLOCK_CACHE_CAPACITY,
+        let config::Bitcoin { bitcoind, network } = &settings.bitcoin;
+        let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
+
+        runtime.block_on(async {
+            validate_blockchain_config(&connector, *network)
+                .await
+                .or_else::<anyhow::Error, _>(|e| {
+                    let conn_error = e.downcast::<reqwest::Error>()?;
+                    tracing::warn!("Could not validate Bitcoin node config: {}", conn_error);
+
+                    Ok(())
+                })
+        })?;
+
+        const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
+
+        Arc::new(bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY))
+    };
+
+    let ethereum_connector = {
+        let config::Ethereum { parity, chain_id } = &settings.ethereum;
+        let connector = Web3Connector::new(parity.node_url.clone());
+
+        runtime.block_on(async {
+            validate_blockchain_config(&connector, *chain_id)
+                .await
+                .or_else::<anyhow::Error, _>(|e| {
+                    let conn_error = e.downcast::<jsonrpc::Error>()?;
+                    tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
+
+                    Ok(())
+                })
+        })?;
+
+        const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
+        const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
+
+        Arc::new(ethereum::Cache::new(
+            connector,
+            ETHEREUM_BLOCK_CACHE_CAPACITY,
+            ETHEREUM_RECEIPT_CACHE_CAPACITY,
         ))
-    };
-
-    match runtime.block_on(validate_blockchain_config(&bitcoin_connector.connector, settings.bitcoin.network)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<reqwest::Error>() {
-                tracing::warn!("Could not validate Bitcoin node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
-    };
-
-    const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
-    const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
-    let ethereum_connector = Arc::new(ethereum::Cache::new(
-        Web3Connector::new(settings.clone().ethereum.parity.node_url),
-        ETHEREUM_BLOCK_CACHE_CAPACITY,
-        ETHEREUM_RECEIPT_CACHE_CAPACITY,
-    ));
-
-    match runtime.block_on(validate_blockchain_config(&ethereum_connector.connector, settings.ethereum.chain_id)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<jsonrpc::Error>() {
-                tracing::warn!("Could not validate Ethereum node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
     };
 
     let state_store = Arc::new(InMemoryStateStore::default());
