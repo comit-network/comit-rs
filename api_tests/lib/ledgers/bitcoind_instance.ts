@@ -1,21 +1,11 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { LedgerInstance } from "./ledger_runner";
+import { BitcoinNodeConfig, LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import * as path from "path";
 import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
 import BitcoinRpcClient from "bitcoin-core";
-
-export interface BitcoinNodeConfig {
-    network: string;
-    username: string;
-    password: string;
-    host: string;
-    rpcPort: number;
-    p2pPort: number;
-    dataDir: string;
-}
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;

@@ -53,7 +53,7 @@ export class Wallets {
         switch (name) {
             case "ethereum":
                 this.wallets.ethereum = new EthereumWallet(
-                    global.ledgerConfigs.ethereum
+                    global.ledgerConfigs.ethereum.rpc_url
                 );
                 break;
             case "bitcoin":

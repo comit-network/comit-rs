@@ -1,16 +1,28 @@
-import { BitcoindInstance, BitcoinNodeConfig } from "./bitcoind_instance";
+import { BitcoindInstance } from "./bitcoind_instance";
 import { ParityInstance } from "./parity_instance";
-import { EthereumWallet } from "../wallets/ethereum";
-import { HarnessGlobal } from "../utils";
 import { LndInstance } from "./lnd_instance";
 import * as path from "path";
-import { EthereumNodeConfig } from "./ethereum";
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
     lndAlice?: LndInstance;
     lndBob?: LndInstance;
+}
+
+export interface BitcoinNodeConfig {
+    network: string;
+    username: string;
+    password: string;
+    host: string;
+    rpcPort: number;
+    p2pPort: number;
+    dataDir: string;
+}
+
+export interface EthereumNodeConfig {
+    rpc_url: string;
+    tokenContract: string;
 }
 
 export interface LedgerInstance {
@@ -23,8 +35,7 @@ export class LedgerRunner {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
-        private harnessGlobal: HarnessGlobal
+        private readonly logDir: string
     ) {
         this.runningLedgers = {};
         this.blockTimers = {};
@@ -58,12 +69,16 @@ export class LedgerRunner {
                     break;
                 }
                 case "ethereum": {
+                    const parity = await ParityInstance.start(
+                        this.projectRoot,
+                        this.logDir
+                    );
+
+                    ledgerConfig.ethereum = parity.config;
+
                     startedContainers.push({
                         ledger,
-                        instance: await ParityInstance.start(
-                            this.projectRoot,
-                            this.logDir
-                        ),
+                        instance: parity,
                     });
                     break;
                 }
@@ -99,26 +114,6 @@ export class LedgerRunner {
             this.runningLedgers[ledger] = instance;
 
             switch (ledger) {
-                case "ethereum": {
-                    const ethereumNodeUrl = await this.getEthereumNodeUrl().catch(
-                        () => undefined
-                    );
-                    const erc20Wallet = new EthereumWallet(ethereumNodeUrl);
-                    ledgerConfig.ethereum = {
-                        rpc_url: ethereumNodeUrl,
-                        tokenContract: await erc20Wallet.deployErc20TokenContract(
-                            this.projectRoot
-                        ),
-                    };
-                    if (this.harnessGlobal.verbose) {
-                        console.log(
-                            "Ethereum: deployed Erc20 contract at %s",
-                            ledgerConfig.ethereum.tokenContract
-                        );
-                    }
-                    break;
-                }
-
                 case "lnd-alice": {
                     ledgerConfig.lndAlice = instance as LndInstance;
                     break;
@@ -143,15 +138,5 @@ export class LedgerRunner {
             ledgerInstance.stop();
             delete this.runningLedgers[ledger];
         });
-    }
-
-    private async getEthereumNodeUrl(): Promise<string> {
-        const instance = this.runningLedgers.ethereum as ParityInstance;
-
-        if (instance) {
-            return `http://localhost:${instance.rpcPort}`;
-        } else {
-            return Promise.reject("ethereum not yet started");
-        }
     }
 }

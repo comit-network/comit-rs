@@ -6,7 +6,6 @@ import { pollUntilMinted, Wallet } from "./index";
 import { TransactionRequest } from "ethers/providers";
 import * as fs from "fs";
 import { HarnessGlobal, sleep } from "../utils";
-import { EthereumNodeConfig } from "../ledgers/ethereum";
 
 declare var global: HarnessGlobal;
 
@@ -17,15 +16,15 @@ export class EthereumWallet implements Wallet {
     private readonly parity: ethers.Wallet;
     private readonly jsonRpcProvider: ethers.providers.JsonRpcProvider;
 
-    constructor(config: EthereumNodeConfig) {
-        const provider = new ethers.providers.JsonRpcProvider(config.rpc_url);
+    constructor(rpcUrl: string) {
+        const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         this.parity = new ethers.Wallet(
             "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
             provider
         );
 
         this.jsonRpcProvider = provider;
-        this.inner = new EthereumWalletSdk(config.rpc_url);
+        this.inner = new EthereumWalletSdk(rpcUrl);
     }
 
     public async mint(asset: Asset): Promise<void> {
