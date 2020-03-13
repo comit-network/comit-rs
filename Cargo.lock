@@ -849,6 +849,7 @@ name = "digest-macro-derive"
 version = "0.1.0"
 dependencies = [
  "hex 0.4.2",
+ "proc-macro2 1.0.8",
  "quote 1.0.2",
  "syn 1.0.15",
 ]
