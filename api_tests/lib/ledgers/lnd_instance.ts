@@ -70,6 +70,8 @@ export class LndInstance implements LightningInstance {
 
         // this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
         // this.logger.info("lnd is ready:", this.publicKey);
+
+        console.log(`lnd started with PID ${this.process.pid}`);
     }
 
     private async execBinary() {

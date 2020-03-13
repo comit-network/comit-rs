@@ -4,11 +4,12 @@ import { SwapRequest } from "comit-sdk";
 import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
-import { LedgerConfig } from "./ledgers/ledger_runner";
 import rimraf from "rimraf";
 import { Mutex } from "async-mutex";
 import { exec } from "child_process";
 import { LightningWallet } from "./wallets/lightning";
+import { BitcoinNodeConfig } from "./ledgers/bitcoin";
+import { EthereumNodeConfig } from "./ledgers/ethereum";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -22,6 +23,11 @@ export interface HarnessGlobal extends Global.Global {
     verbose: boolean;
     tokenContract: string;
     parityAccountMutex: Mutex;
+}
+
+export interface LedgerConfig {
+    bitcoin?: BitcoinNodeConfig;
+    ethereum?: EthereumNodeConfig;
 }
 
 export const unlinkAsync = promisify(fs.unlink);

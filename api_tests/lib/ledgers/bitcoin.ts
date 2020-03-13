@@ -1,5 +1,5 @@
-import { LedgerInstance } from "./ledger_runner";
 import BitcoinRpcClient from "bitcoin-core";
+import LedgerInstance from "./ledger_instance";
 
 /**
  * An instance of the Bitcoin ledger for use in the e2e tests.
@@ -26,17 +26,23 @@ export default class BitcoinLedger implements LedgerInstance {
 
         await client.generateToAddress(101, await client.getNewAddress());
 
-        setInterval(async () => {
+        const miner = setInterval(async () => {
             await client.generateToAddress(1, await client.getNewAddress());
         }, 1000);
 
-        return new BitcoinLedger(instance);
+        console.log("Bitcoin miner initialized");
+
+        return new BitcoinLedger(instance, miner);
     }
 
-    constructor(private readonly instance: BitcoinInstance) {}
+    constructor(
+        private readonly instance: BitcoinInstance,
+        private readonly miner: NodeJS.Timeout
+    ) {}
 
     public async stop(): Promise<void> {
         await this.instance.stop();
+        clearInterval(this.miner);
     }
 
     public get config(): BitcoinNodeConfig {

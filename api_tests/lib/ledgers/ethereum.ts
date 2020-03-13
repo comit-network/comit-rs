@@ -1,5 +1,5 @@
-import { LedgerInstance } from "./ledger_runner";
 import { EthereumWallet } from "../wallets/ethereum";
+import LedgerInstance from "./ledger_instance";
 
 /**
  * An instance of the Ethereum ledger for use in the e2e tests.

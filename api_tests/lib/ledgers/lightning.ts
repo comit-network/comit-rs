@@ -1,5 +1,5 @@
-import { LedgerInstance } from "./ledger_runner";
 import { Lnd } from "comit-sdk";
+import LedgerInstance from "./ledger_instance";
 
 /**
  * An instance of the Lightning ledger for use in the e2e tests.

@@ -1,5 +1,4 @@
 import { Config } from "@jest/types";
-import { LedgerRunner } from "../lib/ledgers/ledger_runner";
 import {
     execAsync,
     HarnessGlobal,
@@ -13,6 +12,12 @@ import { LightningWallet } from "../lib/wallets/lightning";
 import { BitcoinWallet } from "../lib/wallets/bitcoin";
 import { AssetKind } from "../lib/asset";
 import { LedgerKind } from "../lib/ledgers/ledger";
+import BitcoinLedger from "../lib/ledgers/bitcoin";
+import { BitcoindInstance } from "../lib/ledgers/bitcoind_instance";
+import EthereumLedger from "../lib/ledgers/ethereum";
+import LightningLedger from "../lib/ledgers/lightning";
+import { ParityInstance } from "../lib/ledgers/parity_instance";
+import { LndInstance } from "../lib/ledgers/lnd_instance";
 
 // ************************ //
 // Setting global variables //
@@ -23,8 +28,12 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private projectRoot: string;
     private testRoot: string;
     private logDir: string;
-    private ledgerRunner: LedgerRunner;
     public global: HarnessGlobal;
+
+    private bitcoinLedger?: BitcoinLedger;
+    private ethereumLedger?: EthereumLedger;
+    private aliceLightning?: LightningLedger;
+    private bobLightning?: LightningLedger;
 
     constructor(config: Config.ProjectConfig, context: any) {
         super(config);
@@ -64,63 +73,135 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
         await E2ETestEnvironment.cleanLogDir(this.logDir);
 
-        if (ledgers.length > 0) {
-            // setup ledgers
-            this.ledgerRunner = new LedgerRunner(this.projectRoot, this.logDir);
-
-            if (this.global.verbose) {
-                console.log(`Initializing ledgers : ${ledgers}`);
-            }
-            const ledgerConfig = await this.ledgerRunner.ensureLedgersRunning(
-                ledgers
-            );
-
-            const ethereum = ledgerConfig.ethereum;
-            if (ethereum) {
-                this.global.tokenContract = ethereum.tokenContract;
-                this.global.ledgerConfigs.ethereum = ethereum;
-            }
-
-            const bitcoin = ledgerConfig.bitcoin;
-            if (bitcoin) {
-                this.global.ledgerConfigs.bitcoin = bitcoin;
-            }
-
-            const lndAlice = ledgerConfig.lndAlice;
-            const lndBob = ledgerConfig.lndBob;
-
-            if (lndAlice && lndBob && bitcoin) {
-                this.global.ledgerConfigs.lndAlice = lndAlice;
-                this.global.ledgerConfigs.lndBob = lndBob;
-
-                const aliceWallet = await LightningWallet.newInstance(
-                    await BitcoinWallet.newInstance(bitcoin),
-                    lndAlice.lnd,
-                    lndAlice.p2pSocket
-                );
-                const bobWallet = await LightningWallet.newInstance(
-                    await BitcoinWallet.newInstance(bitcoin),
-                    lndBob.lnd,
-                    lndBob.p2pSocket
-                );
-                this.global.lndWallets = {
-                    alice: aliceWallet,
-                    bob: bobWallet,
-                };
-
-                await aliceWallet.connectPeer(bobWallet);
-
-                await aliceWallet.mint({
-                    name: AssetKind.Bitcoin,
-                    ledger: LedgerKind.Lightning,
-                    quantity: "15000000",
-                });
-
-                await aliceWallet.openChannel(bobWallet, 15000000);
-            }
-        }
+        await this.startLedgers(ledgers);
 
         this.global.logRoot = this.logDir;
+    }
+
+    /**
+     * Initializes all required ledgers with as much parallelism as possible.
+     *
+     * @param ledgers The list of ledgers to initialize
+     */
+    private async startLedgers(ledgers: string[]) {
+        const startEthereum = ledgers.includes("ethereum");
+        const startBitcoin = ledgers.includes("bitcoin");
+        const startLightning = ledgers.includes("lightning");
+
+        const tasks = [];
+
+        if (startEthereum) {
+            tasks.push(this.startEthereum());
+        }
+
+        if (startBitcoin && !startLightning) {
+            tasks.push(this.startBitcoin());
+        }
+
+        if (startBitcoin && startLightning) {
+            tasks.push(this.startBitcoinAndLightning());
+        }
+
+        await Promise.all(tasks);
+    }
+
+    /**
+     * Start the Bitcoin Ledger
+     *
+     * Once this function returns, the necessary configuration values have been set inside the test environment.
+     */
+    private async startBitcoin() {
+        this.bitcoinLedger = await BitcoinLedger.start(
+            await BitcoindInstance.new(this.projectRoot, this.logDir)
+        );
+        this.global.ledgerConfigs.bitcoin = this.bitcoinLedger.config;
+    }
+    /**
+     * Start the Ethereum Ledger
+     *
+     * Once this function returns, the necessary configuration values have been set inside the test environment.
+     */
+    private async startEthereum() {
+        this.ethereumLedger = await EthereumLedger.start(
+            await ParityInstance.new(this.projectRoot, this.logDir)
+        );
+        this.global.ledgerConfigs.ethereum = this.ethereumLedger.config;
+        this.global.tokenContract = this.ethereumLedger.config.tokenContract;
+    }
+
+    /**
+     * First starts the Bitcoin and then the Lightning ledgers.
+     *
+     * The Lightning ledgers depend on Bitcoin to be up and running.
+     */
+    private async startBitcoinAndLightning() {
+        await this.startBitcoin();
+
+        // Lightning nodes can be started in parallel
+        await Promise.all([
+            this.startAliceLightning(),
+            this.startBobLightning(),
+        ]);
+
+        await this.setupLightningChannels();
+    }
+
+    private async setupLightningChannels() {
+        const { alice, bob } = this.global.lndWallets;
+
+        await alice.connectPeer(bob);
+
+        await alice.mint({
+            name: AssetKind.Bitcoin,
+            ledger: LedgerKind.Lightning,
+            quantity: "15000000",
+        });
+
+        await alice.openChannel(bob, 15000000);
+    }
+
+    /**
+     * Start the Lightning Ledger for Alice
+     *
+     * This function assumes that the Bitcoin ledger is initialized.
+     * Once this function returns, the necessary configuration values have been set inside the test environment.
+     */
+    private async startAliceLightning() {
+        this.aliceLightning = await LightningLedger.start(
+            await LndInstance.new(
+                this.logDir,
+                "lnd-alice",
+                path.join(this.logDir, "bitcoind")
+            )
+        );
+
+        this.global.lndWallets.alice = await LightningWallet.newInstance(
+            await BitcoinWallet.newInstance(this.bitcoinLedger.config),
+            this.aliceLightning.config.lnd,
+            this.aliceLightning.config.p2pSocket
+        );
+    }
+
+    /**
+     * Start the Lightning Ledger for Bob
+     *
+     * This function assumes that the Bitcoin ledger is initialized.
+     * Once this function returns, the necessary configuration values have been set inside the test environment.
+     */
+    private async startBobLightning() {
+        this.bobLightning = await LightningLedger.start(
+            await LndInstance.new(
+                this.logDir,
+                "lnd-bob",
+                path.join(this.logDir, "bitcoind")
+            )
+        );
+
+        this.global.lndWallets.bob = await LightningWallet.newInstance(
+            await BitcoinWallet.newInstance(this.bitcoinLedger.config),
+            this.bobLightning.config.lnd,
+            this.bobLightning.config.p2pSocket
+        );
     }
 
     private static async cleanLogDir(logDir: string) {
@@ -140,13 +221,25 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     }
 
     async cleanupAll() {
-        try {
-            if (this.ledgerRunner) {
-                await this.ledgerRunner.stopLedgers();
-            }
-        } catch (e) {
-            console.error("Failed to clean up resources", e);
+        const tasks = [];
+
+        if (this.bitcoinLedger) {
+            tasks.push(this.bitcoinLedger.stop);
         }
+
+        if (this.ethereumLedger) {
+            tasks.push(this.ethereumLedger.stop);
+        }
+
+        if (this.aliceLightning) {
+            tasks.push(this.aliceLightning.stop);
+        }
+
+        if (this.bobLightning) {
+            tasks.push(this.bobLightning.stop);
+        }
+
+        await Promise.all(tasks);
     }
 
     private extractDocblockPragmas(

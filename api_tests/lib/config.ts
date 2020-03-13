@@ -1,7 +1,7 @@
 import * as tmp from "tmp";
-import { LedgerConfig } from "./ledgers/ledger_runner";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
+import { LedgerConfig } from "./utils";
 
 export interface CndConfigFile {
     http_api: HttpApi;

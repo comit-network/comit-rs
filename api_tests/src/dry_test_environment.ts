@@ -1,5 +1,4 @@
 import { Config } from "@jest/types";
-import { LedgerRunner } from "../lib/ledgers/ledger_runner";
 import {
     execAsync,
     HarnessGlobal,
@@ -19,7 +18,6 @@ export default class DryTestEnvironment extends NodeEnvironment {
     private projectRoot: string;
     private testRoot: string;
     private logDir: string;
-    private ledgerRunner: LedgerRunner;
     public global: HarnessGlobal;
 
     constructor(config: Config.ProjectConfig, context: any) {
@@ -67,23 +65,6 @@ export default class DryTestEnvironment extends NodeEnvironment {
 
     async teardown() {
         await super.teardown();
-        if (this.global.verbose) {
-            console.log(`Tearing down test environment.`);
-        }
-        await this.cleanupAll();
-        if (this.global.verbose) {
-            console.log(`All teared down.`);
-        }
-    }
-
-    async cleanupAll() {
-        try {
-            if (this.ledgerRunner) {
-                await this.ledgerRunner.stopLedgers();
-            }
-        } catch (e) {
-            console.error("Failed to clean up resources", e);
-        }
     }
 
     private extractDocblockPragmas(

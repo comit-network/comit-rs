@@ -1,5 +1,5 @@
 /**
- * @ledgers ethereum,bitcoin,lnd-alice,lnd-bob
+ * @ledgers ethereum,bitcoin,lightning
  * @logDir e2e
  */
 

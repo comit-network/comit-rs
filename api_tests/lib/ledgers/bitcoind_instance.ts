@@ -76,6 +76,8 @@ export class BitcoindInstance implements BitcoinInstance {
 
         this.username = username;
         this.password = password;
+
+        console.log(`bitcoind started with PID ${this.process.pid}`);
     }
 
     public get config(): BitcoinNodeConfig {

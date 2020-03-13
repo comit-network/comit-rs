@@ -17,14 +17,16 @@ export class ParityInstance implements EthereumInstance {
         return new ParityInstance(
             projectRoot,
             logDir,
-            await getPort({ port: 8545 })
+            await getPort({ port: 8545 }),
+            await getPort()
         );
     }
 
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
-        public readonly rpcPort: number
+        public readonly rpcPort: number,
+        public readonly p2pPort: number
     ) {}
 
     public async start() {
@@ -42,6 +44,8 @@ export class ParityInstance implements EthereumInstance {
                 `--db-path=${this.dbDir.name}`,
                 `--password=${this.projectRoot}/blockchain_nodes/parity/home/parity/authorities/authority.pwd`,
                 `--jsonrpc-port=${this.rpcPort}`,
+                `--port=${this.p2pPort}`,
+                `--no-ws`,
             ],
 
             {
@@ -59,6 +63,8 @@ export class ParityInstance implements EthereumInstance {
         });
         const logReader = new LogReader(this.logDir + "/parity.log");
         await logReader.waitForLogMessage("Public node URL:");
+
+        console.log(`parity started with PID ${this.process.pid}`);
     }
 
     public get rpcUrl() {

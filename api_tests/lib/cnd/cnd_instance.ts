@@ -4,8 +4,7 @@ import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile, E2ETestActorConfig } from "../config";
-import { LedgerConfig } from "../ledgers/ledger_runner";
-import { HarnessGlobal, sleep } from "../utils";
+import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
 import path from "path";
 import { LogReader } from "../ledgers/log_reader";
 
