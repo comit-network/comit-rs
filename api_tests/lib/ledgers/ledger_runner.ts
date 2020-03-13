@@ -16,7 +16,6 @@ export interface LedgerConfig {
 }
 
 export interface LedgerInstance {
-    start(): Promise<LedgerInstance>;
     stop(): void;
 }
 
@@ -47,48 +46,44 @@ export class LedgerRunner {
 
             switch (ledger) {
                 case "bitcoin": {
-                    const instance = await BitcoindInstance.new(
-                        this.projectRoot,
-                        this.logDir
-                    );
                     startedContainers.push({
                         ledger,
-                        instance: await instance.start(),
+                        instance: await BitcoindInstance.start(
+                            this.projectRoot,
+                            this.logDir
+                        ),
                     });
                     break;
                 }
                 case "ethereum": {
-                    const instance = await ParityInstance.new(
-                        this.projectRoot,
-                        this.logDir
-                    );
                     startedContainers.push({
                         ledger,
-                        instance: await instance.start(),
+                        instance: await ParityInstance.start(
+                            this.projectRoot,
+                            this.logDir
+                        ),
                     });
                     break;
                 }
                 case "lnd-alice": {
-                    const instance = await LndInstance.new(
-                        this.logDir,
-                        "lnd-alice",
-                        path.join(this.logDir, "bitcoind")
-                    );
                     startedContainers.push({
                         ledger,
-                        instance: await instance.start(),
+                        instance: await LndInstance.start(
+                            this.logDir,
+                            "lnd-alice",
+                            path.join(this.logDir, "bitcoind")
+                        ),
                     });
                     break;
                 }
                 case "lnd-bob": {
-                    const instance = await LndInstance.new(
-                        this.logDir,
-                        "lnd-bob",
-                        path.join(this.logDir, "bitcoind")
-                    );
                     startedContainers.push({
                         ledger,
-                        instance: await instance.start(),
+                        instance: await LndInstance.start(
+                            this.logDir,
+                            "lnd-bob",
+                            path.join(this.logDir, "bitcoind")
+                        ),
                     });
                     break;
                 }

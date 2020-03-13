@@ -12,8 +12,8 @@ export class BitcoindInstance implements LedgerInstance {
     private username: string;
     private password: string;
 
-    public static async new(projectRoot: string, logDir: string) {
-        return new BitcoindInstance(
+    public static async start(projectRoot: string, logDir: string) {
+        const instance = new BitcoindInstance(
             projectRoot,
             logDir,
             await getPort({ port: 18444 }),
@@ -21,6 +21,10 @@ export class BitcoindInstance implements LedgerInstance {
             await getPort({ port: 28332 }),
             await getPort({ port: 28333 })
         );
+
+        await instance.start();
+
+        return instance;
     }
 
     constructor(
@@ -73,8 +77,6 @@ export class BitcoindInstance implements LedgerInstance {
 
         this.username = username;
         this.password = password;
-
-        return this;
     }
 
     public stop() {

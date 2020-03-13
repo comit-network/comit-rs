@@ -13,12 +13,16 @@ export class ParityInstance implements LedgerInstance {
     private process: ChildProcess;
     private dbDir: any;
 
-    public static async new(projectRoot: string, logDir: string) {
-        return new ParityInstance(
+    public static async start(projectRoot: string, logDir: string) {
+        const instance = new ParityInstance(
             projectRoot,
             logDir,
             await getPort({ port: 8545 })
         );
+
+        await instance.start();
+
+        return instance;
     }
 
     constructor(
@@ -59,7 +63,6 @@ export class ParityInstance implements LedgerInstance {
         });
         const logReader = new LogReader(this.logDir + "/parity.log");
         await logReader.waitForLogMessage("Public node URL:");
-        return this;
     }
 
     public async stop() {

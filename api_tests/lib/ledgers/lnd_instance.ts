@@ -12,7 +12,7 @@ export class LndInstance {
     public lnd: Lnd;
     // private publicKey?: string;
 
-    public static async new(
+    public static async start(
         testLogDir: string,
         name: string,
         bitcoindDataDir: string
@@ -20,13 +20,17 @@ export class LndInstance {
         const lndP2pPort = await getPort();
         const lndRpcPort = await getPort();
 
-        return new LndInstance(
+        const instance = new LndInstance(
             testLogDir,
             name,
             bitcoindDataDir,
             lndP2pPort,
             lndRpcPort
         );
+
+        await instance.start();
+
+        return instance;
     }
 
     private constructor(
@@ -72,8 +76,6 @@ export class LndInstance {
 
         // this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
         // this.logger.info("lnd is ready:", this.publicKey);
-
-        return this;
     }
 
     private async execBinary() {
