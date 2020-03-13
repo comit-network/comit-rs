@@ -8,7 +8,6 @@ import {
     SwapDetails,
 } from "comit-sdk";
 import { parseEther } from "ethers/utils";
-import getPort from "get-port";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
 import "../setup_chai";
@@ -38,12 +37,7 @@ export class Actor {
         cndLogFile: string,
         logger: Logger
     ) {
-        const actorConfig = new E2ETestActorConfig(
-            await getPort(),
-            await getPort(),
-            name
-        );
-
+        const actorConfig = await E2ETestActorConfig.for(name);
         const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(

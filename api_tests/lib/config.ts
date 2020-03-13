@@ -2,6 +2,7 @@ import * as tmp from "tmp";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
 import { LedgerConfig } from "./utils";
+import getPort from "get-port";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -16,6 +17,10 @@ export interface HttpApi {
 
 export class E2ETestActorConfig {
     public readonly data: string;
+
+    public static async for(name: string) {
+        return new E2ETestActorConfig(await getPort(), await getPort(), name);
+    }
 
     constructor(
         public readonly httpApiPort: number,
