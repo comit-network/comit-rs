@@ -14,38 +14,43 @@ pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
 fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     if let Data::Struct(data) = &ast.data {
-        if let Fields::Named(fields) = &data.fields {
-            let idents = fields
-                .named
-                .iter()
-                .map(|field| field.ident.as_ref().expect("Named field"));
+        let (idents, types, bytes) = match &data.fields {
+            Fields::Named(fields) => {
+                let idents = fields
+                    .named
+                    .iter()
+                    .map(|field| field.ident.as_ref().expect("Named field"));
 
-            let types = fields.named.iter().map(|field| &field.ty);
+                let types = fields.named.iter().map(|field| &field.ty);
 
-            let bytes = fields.named.iter().map(|field| {
-                let attr = field
-                    .attrs
-                    .get(0)
-                    .expect("digest_bytes attribute must be present on all fields");
-                let meta = attr.parse_meta().expect("Attribute is malformed");
+                let bytes = fields.named.iter().map(|field| {
+                    let attr = field
+                        .attrs
+                        .get(0)
+                        .expect("digest_bytes attribute must be present on all fields");
+                    let meta = attr.parse_meta().expect("Attribute is malformed");
 
-                if let Meta::NameValue(name_value) = meta {
-                    if name_value.path.is_ident("digest_bytes") {
-                        if let Lit::Str(lit_str) = name_value.lit {
-                            let str = lit_str.value();
-                            let bytes = ::hex::decode(&str)
-                                .expect("digest_bytes value should be in hex format");
-                            return Bytes(bytes);
+                    if let Meta::NameValue(name_value) = meta {
+                        if name_value.path.is_ident("digest_bytes") {
+                            if let Lit::Str(lit_str) = name_value.lit {
+                                let str = lit_str.value();
+                                let bytes = ::hex::decode(&str)
+                                    .expect("digest_bytes value should be in hex format");
+                                return Bytes(bytes);
+                            }
                         }
                     }
-                }
-                panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
-            });
+                    panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
+                });
+                (idents, types, bytes)
+            }
+            _ => panic!("Only supporting named fields."),
+        };
 
-            let gen = quote! {
-            impl ::digest::RootDigest for #name
-                 where #(#types: ::digest::FieldDigest),*
-                 {
+        let gen = quote! {
+                impl ::digest::RootDigest for #name
+                    where #(#types: ::digest::FieldDigest),*
+                {
                     fn root_digest(self) -> Multihash {
                         let mut digests = vec![];
                         #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
@@ -60,11 +65,8 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                         digest(&res)
                     }
                 }
-            };
-            gen.into()
-        } else {
-            panic!("DigestRootMacro only supports named filed, ie, no new types, tuples structs/variants or unit struct/variants.");
-        }
+        };
+        gen.into()
     } else {
         panic!("DigestRootMacro only supports structs.");
     }
