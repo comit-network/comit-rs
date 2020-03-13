@@ -4,11 +4,9 @@ import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile } from "../config";
-import { HarnessGlobal, sleep } from "../utils";
+import { sleep } from "../utils";
 import { LogReader } from "../ledgers/log_reader";
 import { Logger } from "log4js";
-
-declare var global: HarnessGlobal;
 
 const openAsync = promisify(fs.open);
 
