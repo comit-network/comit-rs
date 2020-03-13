@@ -1,5 +1,5 @@
 import { ChildProcess, spawn } from "child_process";
-import { mkdirAsync, waitUntilFileExists, writeFileAsync } from "../utils";
+import { waitUntilFileExists, writeFileAsync } from "../utils";
 import * as path from "path";
 import getPort from "get-port";
 import { LogReader } from "./log_reader";
@@ -10,18 +10,17 @@ import { Logger } from "log4js";
 
 export class LndInstance implements LightningInstance {
     private process: ChildProcess;
-    private lndDir: string;
     public lnd: Lnd;
     private publicKey?: string;
 
     public static async new(
-        testLogDir: string,
+        dataDir: string,
         name: string,
         logger: Logger,
         bitcoindDataDir: string
     ) {
         return new LndInstance(
-            testLogDir,
+            dataDir,
             name,
             logger,
             bitcoindDataDir,
@@ -31,7 +30,7 @@ export class LndInstance implements LightningInstance {
     }
 
     private constructor(
-        private readonly testLogDir: string,
+        private readonly dataDir: string,
         private readonly name: string,
         private readonly logger: Logger,
         private readonly bitcoindDataDir: string,
@@ -40,8 +39,6 @@ export class LndInstance implements LightningInstance {
     ) {}
 
     public async start() {
-        this.lndDir = path.join(this.testLogDir, "lnd-" + this.name);
-        await mkdirAsync(this.lndDir, "755");
         await this.createConfigFile();
 
         await this.execBinary();
@@ -83,7 +80,7 @@ export class LndInstance implements LightningInstance {
             ? process.env.LND_BIN
             : await whereis("lnd");
         this.logger.debug(`Using binary ${bin}`);
-        this.process = spawn(bin, ["--lnddir", this.lndDir], {
+        this.process = spawn(bin, ["--lnddir", this.dataDir], {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
         });
 
@@ -139,16 +136,16 @@ export class LndInstance implements LightningInstance {
     }
 
     public logPath() {
-        return path.join(this.lndDir, "logs", "bitcoin", "regtest", "lnd.log");
+        return path.join(this.dataDir, "logs", "bitcoin", "regtest", "lnd.log");
     }
 
     public tlsCertPath() {
-        return path.join(this.lndDir, "tls.cert");
+        return path.join(this.dataDir, "tls.cert");
     }
 
     public adminMacaroonPath() {
         return path.join(
-            this.lndDir,
+            this.dataDir,
             "data",
             "chain",
             "bitcoin",
@@ -219,7 +216,7 @@ bitcoin.node=bitcoind
 
 bitcoind.dir=${this.bitcoindDataDir}
 `;
-        const config = path.join(this.lndDir, "lnd.conf");
+        const config = path.join(this.dataDir, "lnd.conf");
         await writeFileAsync(config, output);
     }
 

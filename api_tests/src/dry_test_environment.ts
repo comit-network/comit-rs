@@ -8,6 +8,7 @@ import {
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
+import { configure } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -17,7 +18,6 @@ export default class DryTestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
     private testRoot: string;
-    private logDir: string;
     public global: HarnessGlobal;
 
     constructor(config: Config.ProjectConfig, context: any) {
@@ -50,12 +50,38 @@ export default class DryTestEnvironment extends NodeEnvironment {
             console.log(`Starting up test environment`);
         }
 
-        const { logDir } = this.extractDocblockPragmas(this.docblockPragmas);
+        const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
+        const logDir = path.join(
+            this.projectRoot,
+            "api_tests",
+            "log",
+            suiteConfig.logDir
+        );
 
-        this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
-        await DryTestEnvironment.cleanLogDir(this.logDir);
+        await DryTestEnvironment.cleanLogDir(logDir);
 
-        this.global.logRoot = this.logDir;
+        const log4js = configure({
+            appenders: {
+                multi: {
+                    type: "multiFile",
+                    base: logDir,
+                    property: "categoryName",
+                    extension: ".log",
+                },
+            },
+            categories: {
+                default: { appenders: ["multi"], level: "debug" },
+            },
+        });
+        this.global.getLogFile = pathElements =>
+            path.join(logDir, ...pathElements);
+        this.global.getDataDir = async program => {
+            const dir = path.join(logDir, program);
+            await mkdirAsync(dir, { recursive: true });
+
+            return dir;
+        };
+        this.global.getLogger = category => log4js.getLogger(category);
     }
 
     private static async cleanLogDir(logDir: string) {

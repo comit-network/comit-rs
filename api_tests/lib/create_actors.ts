@@ -1,7 +1,6 @@
 import { Actors } from "./actors";
 import { Actor } from "./actors/actor";
 import { HarnessGlobal } from "./utils";
-import path from "path";
 
 declare var global: HarnessGlobal;
 
@@ -13,15 +12,12 @@ export async function createActors(
 
     const listPromises: Promise<Actor>[] = [];
     for (const name of actorNames) {
-        const cndLogFile = path.join(
-            global.logRoot,
+        const cndLogFile = global.getLogFile([
             "tests",
             testName,
-            `cnd-${name}.log`
-        );
-        const actorLogger = global.log4js.getLogger(
-            `tests/${testName}/${name}`
-        );
+            `cnd-${name}.log`,
+        ]);
+        const actorLogger = global.getLogger(`tests/${testName}/${name}`);
 
         listPromises.push(
             Actor.newInstance(

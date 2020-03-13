@@ -16,12 +16,12 @@ export class ParityInstance implements EthereumInstance {
 
     public static async new(
         projectRoot: string,
-        logDir: string,
+        logFile: string,
         logger: Logger
     ) {
         return new ParityInstance(
             projectRoot,
-            logDir,
+            logFile,
             logger,
             await getPort({ port: 8545 }),
             await getPort()
@@ -30,7 +30,7 @@ export class ParityInstance implements EthereumInstance {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
+        private readonly logFile: string,
         private readonly logger: Logger,
         public readonly rpcPort: number,
         public readonly p2pPort: number
@@ -62,8 +62,8 @@ export class ParityInstance implements EthereumInstance {
                 cwd: this.projectRoot,
                 stdio: [
                     "ignore", // stdin
-                    await openAsync(this.logDir + "/parity.log", "w"), // stdout
-                    await openAsync(this.logDir + "/parity.log", "w"), // stderr
+                    await openAsync(this.logFile, "w"), // stdout
+                    await openAsync(this.logFile, "w"), // stderr
                 ],
             }
         );
@@ -77,7 +77,7 @@ export class ParityInstance implements EthereumInstance {
             );
         });
 
-        const logReader = new LogReader(this.logDir + "/parity.log");
+        const logReader = new LogReader(this.logFile);
         await logReader.waitForLogMessage("Public node URL:");
 
         this.logger.info("parity started with PID", this.process.pid);

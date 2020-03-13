@@ -2,25 +2,24 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import { LogReader } from "./log_reader";
 import * as path from "path";
-import { mkdirAsync, openAsync, writeFileAsync } from "../utils";
+import { openAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
 import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
 import { Logger } from "log4js";
 
 export class BitcoindInstance implements BitcoinInstance {
     private process: ChildProcess;
-    private dataDir: string;
     private username: string;
     private password: string;
 
     public static async new(
         projectRoot: string,
-        logDir: string,
+        dataDir: string,
         logger: Logger
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
             projectRoot,
-            logDir,
+            dataDir,
             logger,
             await getPort({ port: 18444 }),
             await getPort({ port: 18443 }),
@@ -31,7 +30,7 @@ export class BitcoindInstance implements BitcoinInstance {
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
+        private readonly dataDir: string,
         private readonly logger: Logger,
         public readonly p2pPort: number,
         public readonly rpcPort: number,
@@ -52,8 +51,6 @@ export class BitcoindInstance implements BitcoinInstance {
               );
         this.logger.info("Using binary", bin);
 
-        this.dataDir = path.join(this.logDir, "bitcoind");
-        await mkdirAsync(this.dataDir, "755");
         await this.createConfigFile(this.dataDir);
 
         const log = this.logPath();

@@ -28,7 +28,6 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
     private testRoot: string;
-    private logDir: string;
     public global: HarnessGlobal;
 
     private bitcoinLedger?: BitcoinLedger;
@@ -65,18 +64,21 @@ export default class E2ETestEnvironment extends NodeEnvironment {
 
         this.global.parityAccountMutex = new Mutex();
 
-        const { ledgers, logDir } = this.extractDocblockPragmas(
-            this.docblockPragmas
+        const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
+
+        const logDir = path.join(
+            this.projectRoot,
+            "api_tests",
+            "log",
+            suiteConfig.logDir
         );
+        await E2ETestEnvironment.cleanLogDir(logDir);
 
-        this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
-        await E2ETestEnvironment.cleanLogDir(this.logDir);
-
-        this.global.log4js = configure({
+        const log4js = configure({
             appenders: {
                 multi: {
                     type: "multiFile",
-                    base: this.logDir,
+                    base: logDir,
                     property: "categoryName",
                     extension: ".log",
                 },
@@ -85,13 +87,20 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 default: { appenders: ["multi"], level: "debug" },
             },
         });
-        this.logger = this.global.log4js.getLogger("test_environment");
+        this.global.getLogFile = pathElements =>
+            path.join(logDir, ...pathElements);
+        this.global.getDataDir = async program => {
+            const dir = path.join(logDir, program);
+            await mkdirAsync(dir, { recursive: true });
 
+            return dir;
+        };
+        this.global.getLogger = category => log4js.getLogger(category);
+
+        this.logger = log4js.getLogger("test_environment");
         this.logger.info("Starting up test environment");
 
-        await this.startLedgers(ledgers);
-
-        this.global.logRoot = this.logDir;
+        await this.startLedgers(suiteConfig.ledgers);
     }
 
     /**
@@ -130,7 +139,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.bitcoinLedger = await BitcoinLedger.start(
             await BitcoindInstance.new(
                 this.projectRoot,
-                this.logDir,
+                await this.global.getDataDir("bitcoind"),
                 this.logger
             ),
             this.logger
@@ -146,7 +155,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.ethereumLedger = await EthereumLedger.start(
             await ParityInstance.new(
                 this.projectRoot,
-                this.logDir,
+                this.global.getLogFile(["parity.log"]),
                 this.logger
             ),
             this.logger
@@ -195,10 +204,10 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private async startAliceLightning() {
         this.aliceLightning = await LightningLedger.start(
             await LndInstance.new(
-                this.logDir,
+                await this.global.getDataDir("lnd-alice"),
                 "lnd-alice",
                 this.logger,
-                path.join(this.logDir, "bitcoind")
+                await this.global.getDataDir("bitcoind")
             )
         );
 
@@ -222,10 +231,10 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private async startBobLightning() {
         this.bobLightning = await LightningLedger.start(
             await LndInstance.new(
-                this.logDir,
+                await this.global.getDataDir("lnd-bob"),
                 "lnd-bob",
                 this.logger,
-                path.join(this.logDir, "bitcoind")
+                await this.global.getDataDir("bitcoind")
             )
         );
 
