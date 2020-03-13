@@ -4,6 +4,7 @@ import * as path from "path";
 import getPort from "get-port";
 import { LogReader } from "./log_reader";
 import { Lnd } from "comit-sdk";
+import whereis from "@wcjiang/whereis";
 
 export class LndInstance {
     private process: ChildProcess;
@@ -41,7 +42,7 @@ export class LndInstance {
         await mkdirAsync(this.lndDir, "755");
         await this.createConfigFile();
 
-        this.execBinary();
+        await this.execBinary();
 
         // this.logger.debug("Waiting for lnd log file to exist:", this.logPath());
         await waitUntilFileExists(this.logPath());
@@ -75,8 +76,10 @@ export class LndInstance {
         return this;
     }
 
-    private execBinary() {
-        const bin = process.env.LND_BIN ? process.env.LND_BIN : "lnd";
+    private async execBinary() {
+        const bin = process.env.LND_BIN
+            ? process.env.LND_BIN
+            : await whereis("lnd");
         // this.logger.debug(`Using binary ${bin}`);
         this.process = spawn(bin, ["--lnddir", this.lndDir], {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
