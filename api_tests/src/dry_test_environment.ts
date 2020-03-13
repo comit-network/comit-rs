@@ -17,7 +17,6 @@ import { configure } from "log4js";
 export default class DryTestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
-    private testRoot: string;
     public global: HarnessGlobal;
 
     constructor(config: Config.ProjectConfig, context: any) {
@@ -34,11 +33,9 @@ export default class DryTestEnvironment extends NodeEnvironment {
             encoding: "utf8",
         });
         this.projectRoot = stdout.trim();
-        this.testRoot = path.join(this.projectRoot, "api_tests");
 
         // setup global variables
         this.global.projectRoot = this.projectRoot;
-        this.global.testRoot = this.testRoot;
         this.global.ledgerConfigs = {};
         this.global.verbose =
             this.global.process.argv.find(item => item.includes("verbose")) !==

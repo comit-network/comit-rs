@@ -18,7 +18,6 @@ export interface HarnessGlobal extends Global.Global {
         alice?: LightningWallet;
         bob?: LightningWallet;
     };
-    testRoot: string;
     projectRoot: string;
     verbose: boolean;
     tokenContract: string;

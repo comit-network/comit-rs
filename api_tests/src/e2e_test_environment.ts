@@ -27,7 +27,6 @@ import { configure, Logger } from "log4js";
 export default class E2ETestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
-    private testRoot: string;
     public global: HarnessGlobal;
 
     private bitcoinLedger?: BitcoinLedger;
@@ -51,11 +50,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             encoding: "utf8",
         });
         this.projectRoot = stdout.trim();
-        this.testRoot = path.join(this.projectRoot, "api_tests");
 
         // setup global variables
         this.global.projectRoot = this.projectRoot;
-        this.global.testRoot = this.testRoot;
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
         this.global.verbose =
