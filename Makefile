@@ -93,6 +93,8 @@ format: install_rustfmt install_tomlfmt
 	RUST_LOG=error $(CARGO) tomlfmt -p Cargo.toml && git add Cargo.toml
 	RUST_LOG=error $(CARGO) tomlfmt -p cnd/Cargo.toml && git add cnd/Cargo.toml
 	RUST_LOG=error $(CARGO) tomlfmt -p libp2p-comit/Cargo.toml && git add libp2p-comit/Cargo.toml
+	RUST_LOG=error $(CARGO) tomlfmt -p digest/Cargo.toml && git add digest/Cargo.toml
+	RUST_LOG=error $(CARGO) tomlfmt -p digest-macro-derive/Cargo.toml && git add digest-macro-derive/Cargo.toml
 ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run fix)
 endif
@@ -107,6 +109,8 @@ check_toml_format: install_tomlfmt
 	RUST_LOG=error $(CARGO) tomlfmt -d -p Cargo.toml
 	RUST_LOG=error $(CARGO) tomlfmt -d -p cnd/Cargo.toml
 	RUST_LOG=error $(CARGO) tomlfmt -d -p libp2p-comit/Cargo.toml
+	RUST_LOG=error $(CARGO) tomlfmt -d -p digest/Cargo.toml
+	RUST_LOG=error $(CARGO) tomlfmt -d -p digest-macro-derive/Cargo.toml
 
 check_ts_format:
 ifeq ($(CI),true)
