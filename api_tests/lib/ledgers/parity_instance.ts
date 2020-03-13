@@ -1,33 +1,24 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
-import { EthereumNodeConfig, LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import { promisify } from "util";
 import { sleep } from "../utils";
 import getPort from "get-port";
-import { EthereumWallet } from "../wallets/ethereum";
+import { EthereumInstance } from "./ethereum";
 
 const openAsync = promisify(fs.open);
 
-export class ParityInstance implements LedgerInstance {
+export class ParityInstance implements EthereumInstance {
     private process: ChildProcess;
     private dbDir: any;
-    private erc20TokenContract: string;
 
-    public static async start(projectRoot: string, logDir: string) {
-        const instance = new ParityInstance(
+    public static async new(projectRoot: string, logDir: string) {
+        return new ParityInstance(
             projectRoot,
             logDir,
             await getPort({ port: 8545 })
         );
-
-        await instance.start();
-
-        const erc20Wallet = new EthereumWallet(instance.rpcUrl);
-        instance.erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
-
-        return instance;
     }
 
     constructor(
@@ -70,14 +61,7 @@ export class ParityInstance implements LedgerInstance {
         await logReader.waitForLogMessage("Public node URL:");
     }
 
-    public get config(): EthereumNodeConfig {
-        return {
-            rpc_url: this.rpcUrl,
-            tokenContract: this.erc20TokenContract,
-        };
-    }
-
-    private get rpcUrl() {
+    public get rpcUrl() {
         return `http://localhost:${this.rpcPort}`;
     }
 

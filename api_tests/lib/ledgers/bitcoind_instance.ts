@@ -1,20 +1,22 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { BitcoinNodeConfig, LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import * as path from "path";
-import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
+import { mkdirAsync, openAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
-import BitcoinRpcClient from "bitcoin-core";
+import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
 
-export class BitcoindInstance implements LedgerInstance {
+export class BitcoindInstance implements BitcoinInstance {
     private process: ChildProcess;
     private dataDir: string;
     private username: string;
     private password: string;
 
-    public static async start(projectRoot: string, logDir: string) {
-        const instance = new BitcoindInstance(
+    public static async new(
+        projectRoot: string,
+        logDir: string
+    ): Promise<BitcoindInstance> {
+        return new BitcoindInstance(
             projectRoot,
             logDir,
             await getPort({ port: 18444 }),
@@ -22,24 +24,6 @@ export class BitcoindInstance implements LedgerInstance {
             await getPort({ port: 28332 }),
             await getPort({ port: 28333 })
         );
-
-        await instance.start();
-
-        const client = new BitcoinRpcClient({
-            network: "regtest",
-            host: "localhost",
-            port: instance.rpcPort,
-            username: instance.username,
-            password: instance.password,
-        });
-
-        await client.generateToAddress(101, await client.getNewAddress());
-
-        setInterval(async () => {
-            await client.generateToAddress(1, await client.getNewAddress());
-        }, 1000);
-
-        return instance;
     }
 
     constructor(
@@ -106,7 +90,7 @@ export class BitcoindInstance implements LedgerInstance {
         };
     }
 
-    public stop() {
+    public async stop() {
         this.process.kill("SIGINT");
     }
 
@@ -116,10 +100,6 @@ export class BitcoindInstance implements LedgerInstance {
 
     public getDataDir() {
         return this.dataDir;
-    }
-
-    public getUsernamePassword() {
-        return { username: this.username, password: this.password };
     }
 
     private async createConfigFile(dataDir: string) {

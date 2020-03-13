@@ -70,16 +70,16 @@ export default class DryTestEnvironment extends NodeEnvironment {
         if (this.global.verbose) {
             console.log(`Tearing down test environment.`);
         }
-        this.cleanupAll();
+        await this.cleanupAll();
         if (this.global.verbose) {
             console.log(`All teared down.`);
         }
     }
 
-    cleanupAll() {
+    async cleanupAll() {
         try {
             if (this.ledgerRunner) {
-                this.ledgerRunner.stopLedgers();
+                await this.ledgerRunner.stopLedgers();
             }
         } catch (e) {
             console.error("Failed to clean up resources", e);

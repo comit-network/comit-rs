@@ -5,32 +5,26 @@ import getPort from "get-port";
 import { LogReader } from "./log_reader";
 import { Lnd } from "comit-sdk";
 import whereis from "@wcjiang/whereis";
+import { LightningInstance, LightningNodeConfig } from "./lightning";
 
-export class LndInstance {
+export class LndInstance implements LightningInstance {
     private process: ChildProcess;
     private lndDir: string;
     public lnd: Lnd;
     // private publicKey?: string;
 
-    public static async start(
+    public static async new(
         testLogDir: string,
         name: string,
         bitcoindDataDir: string
     ) {
-        const lndP2pPort = await getPort();
-        const lndRpcPort = await getPort();
-
-        const instance = new LndInstance(
+        return new LndInstance(
             testLogDir,
             name,
             bitcoindDataDir,
-            lndP2pPort,
-            lndRpcPort
+            await getPort(),
+            await getPort()
         );
-
-        await instance.start();
-
-        return instance;
     }
 
     private constructor(
@@ -125,7 +119,7 @@ export class LndInstance {
         this.lnd = await Lnd.init(config);
     }
 
-    public stop() {
+    public async stop() {
         // this.logger.debug("Stopping lnd instance");
         this.process.kill("SIGTERM");
         this.process = null;
@@ -176,6 +170,13 @@ export class LndInstance {
 
     get p2pPort() {
         return this.lndP2pPort;
+    }
+
+    get config(): LightningNodeConfig {
+        return {
+            p2pSocket: this.p2pSocket,
+            lnd: this.lnd,
+        };
     }
 
     private async createConfigFile() {

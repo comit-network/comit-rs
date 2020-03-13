@@ -567,16 +567,16 @@ export class Actor {
         await this.cndInstance.start();
     }
 
-    public stop() {
+    public async stop() {
         this.logger.debug("Stopping actor");
         this.cndInstance.stop();
         if (this.lndInstance && this.lndInstance.isRunning()) {
-            this.lndInstance.stop();
+            await this.lndInstance.stop();
         }
     }
 
     public async restart() {
-        this.stop();
+        await this.stop();
         await this.start();
     }
 

@@ -2,31 +2,19 @@ import { BitcoindInstance } from "./bitcoind_instance";
 import { ParityInstance } from "./parity_instance";
 import { LndInstance } from "./lnd_instance";
 import * as path from "path";
+import BitcoinLedger, { BitcoinNodeConfig } from "./bitcoin";
+import EthereumLedger, { EthereumNodeConfig } from "./ethereum";
+import LightningLedger, { LightningNodeConfig } from "./lightning";
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
-    lndAlice?: LndInstance;
-    lndBob?: LndInstance;
-}
-
-export interface BitcoinNodeConfig {
-    network: string;
-    username: string;
-    password: string;
-    host: string;
-    rpcPort: number;
-    p2pPort: number;
-    dataDir: string;
-}
-
-export interface EthereumNodeConfig {
-    rpc_url: string;
-    tokenContract: string;
+    lndAlice?: LightningNodeConfig;
+    lndBob?: LightningNodeConfig;
 }
 
 export interface LedgerInstance {
-    stop(): void;
+    stop(): Promise<void>;
 }
 
 export class LedgerRunner {
@@ -55,53 +43,67 @@ export class LedgerRunner {
 
             switch (ledger) {
                 case "bitcoin": {
-                    const instance = await BitcoindInstance.start(
-                        this.projectRoot,
-                        this.logDir
+                    const bitcoin = await BitcoinLedger.start(
+                        await BitcoindInstance.new(
+                            this.projectRoot,
+                            this.logDir
+                        )
                     );
 
-                    ledgerConfig.bitcoin = instance.config;
+                    ledgerConfig.bitcoin = bitcoin.config;
 
                     startedContainers.push({
                         ledger,
-                        instance,
+                        instance: bitcoin,
                     });
                     break;
                 }
                 case "ethereum": {
-                    const parity = await ParityInstance.start(
-                        this.projectRoot,
-                        this.logDir
+                    const ethereum = await EthereumLedger.start(
+                        await ParityInstance.new(this.projectRoot, this.logDir)
                     );
 
-                    ledgerConfig.ethereum = parity.config;
+                    ledgerConfig.ethereum = ethereum.config;
 
                     startedContainers.push({
                         ledger,
-                        instance: parity,
+                        instance: ethereum,
                     });
                     break;
                 }
                 case "lnd-alice": {
-                    startedContainers.push({
-                        ledger,
-                        instance: await LndInstance.start(
+                    const lightning = await LightningLedger.start(
+                        await LndInstance.new(
                             this.logDir,
                             "lnd-alice",
                             path.join(this.logDir, "bitcoind")
-                        ),
+                        )
+                    );
+
+                    ledgerConfig.lndAlice = lightning.config;
+
+                    startedContainers.push({
+                        ledger,
+                        instance: lightning,
                     });
+
                     break;
                 }
                 case "lnd-bob": {
-                    startedContainers.push({
-                        ledger,
-                        instance: await LndInstance.start(
+                    const lightning = await LightningLedger.start(
+                        await LndInstance.new(
                             this.logDir,
                             "lnd-bob",
                             path.join(this.logDir, "bitcoind")
-                        ),
+                        )
+                    );
+                    startedContainers.push({
+                        ledger,
+                        instance: lightning,
                     });
+
+                    ledgerConfig.lndBob = lightning.config;
+
                     break;
                 }
                 default: {
@@ -110,33 +112,17 @@ export class LedgerRunner {
             }
         }
 
-        for (const { ledger, instance } of startedContainers) {
-            this.runningLedgers[ledger] = instance;
-
-            switch (ledger) {
-                case "lnd-alice": {
-                    ledgerConfig.lndAlice = instance as LndInstance;
-                    break;
-                }
-
-                case "lnd-bob": {
-                    ledgerConfig.lndBob = instance as LndInstance;
-                    break;
-                }
-            }
-        }
-
         return ledgerConfig;
     }
 
-    public stopLedgers() {
+    public async stopLedgers() {
         const ledgers = Object.entries(this.runningLedgers);
 
-        ledgers.map(([ledger, ledgerInstance]) => {
+        for (const [ledger, instance] of ledgers) {
             console.log(`Stopping ledger ${ledger}`);
             clearInterval(this.blockTimers[ledger]);
-            ledgerInstance.stop();
+            await instance.stop();
             delete this.runningLedgers[ledger];
-        });
+        }
     }
 }
