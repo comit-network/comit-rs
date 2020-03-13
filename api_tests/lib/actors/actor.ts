@@ -9,7 +9,7 @@ import {
 } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
-import { getLogger, Logger } from "log4js";
+import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
@@ -35,7 +35,8 @@ export class Actor {
         name: string,
         ledgerConfig: LedgerConfig,
         projectRoot: string,
-        logRoot: string
+        cndLogFile: string,
+        logger: Logger
     ) {
         const actorConfig = new E2ETestActorConfig(
             await getPort(),
@@ -43,21 +44,20 @@ export class Actor {
             name
         );
 
-        const logger = getLogger(`${logRoot}/${name}`);
+        const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(
             projectRoot,
-            logRoot,
+            cndLogFile,
             logger,
-            actorConfig,
-            ledgerConfig
+            cndConfigFile
         );
 
         await cndInstance.start();
 
         logger.info(
             "Created new actor with config %s",
-            JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
+            JSON.stringify(cndConfigFile)
         );
 
         return new Actor(logger, cndInstance, name);

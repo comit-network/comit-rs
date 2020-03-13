@@ -10,6 +10,7 @@ import { exec } from "child_process";
 import { LightningWallet } from "./wallets/lightning";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
+import { Log4js } from "log4js";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -23,6 +24,7 @@ export interface HarnessGlobal extends Global.Global {
     verbose: boolean;
     tokenContract: string;
     parityAccountMutex: Mutex;
+    log4js: Log4js;
 }
 
 export interface LedgerConfig {

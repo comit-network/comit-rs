@@ -18,7 +18,7 @@ import EthereumLedger from "../lib/ledgers/ethereum";
 import LightningLedger from "../lib/ledgers/lightning";
 import { ParityInstance } from "../lib/ledgers/parity_instance";
 import { LndInstance } from "../lib/ledgers/lnd_instance";
-import { configure, getLogger, Logger } from "log4js";
+import { configure, Logger } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -70,8 +70,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         );
 
         this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
+        await E2ETestEnvironment.cleanLogDir(this.logDir);
 
-        configure({
+        this.global.log4js = configure({
             appenders: {
                 multi: {
                     type: "multiFile",
@@ -84,12 +85,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 default: { appenders: ["multi"], level: "debug" },
             },
         });
-
-        this.logger = getLogger("test-environment");
+        this.logger = this.global.log4js.getLogger("test_environment");
 
         this.logger.info("Starting up test environment");
-
-        await E2ETestEnvironment.cleanLogDir(this.logDir);
 
         await this.startLedgers(ledgers);
 

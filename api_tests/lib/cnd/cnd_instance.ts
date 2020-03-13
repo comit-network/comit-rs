@@ -3,9 +3,8 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
-import { CndConfigFile, E2ETestActorConfig } from "../config";
-import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
-import path from "path";
+import { CndConfigFile } from "../config";
+import { HarnessGlobal, sleep } from "../utils";
 import { LogReader } from "../ledgers/log_reader";
 import { Logger } from "log4js";
 
@@ -15,14 +14,12 @@ const openAsync = promisify(fs.open);
 
 export class CndInstance {
     private process: ChildProcess;
-    private configFile?: CndConfigFile;
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
+        private readonly logFile: string,
         private readonly logger: Logger,
-        private readonly actorConfig: E2ETestActorConfig,
-        private readonly ledgerConfig: LedgerConfig
+        private readonly configFile: CndConfigFile
     ) {}
 
     public getConfigFile() {
@@ -36,30 +33,21 @@ export class CndInstance {
 
         this.logger.info("Using binary", bin);
 
-        this.configFile = this.actorConfig.generateCndConfigFile(
-            this.ledgerConfig
-        );
-
         const configFile = await tempWrite(
             stringify((this.configFile as unknown) as JsonMap),
             "config.toml"
-        );
-
-        const logFile = path.join(
-            this.logDir,
-            `cnd-${this.actorConfig.name}.log`
         );
 
         this.process = spawn(bin, ["--config", configFile], {
             cwd: this.projectRoot,
             stdio: [
                 "ignore", // stdin
-                await openAsync(logFile, "w"), // stdout
-                await openAsync(logFile, "w"), // stderr
+                await openAsync(this.logFile, "w"), // stdout
+                await openAsync(this.logFile, "w"), // stderr
             ],
         });
 
-        const logReader = new LogReader(logFile);
+        const logReader = new LogReader(this.logFile);
         await logReader.waitForLogMessage("Starting HTTP server on");
 
         // we emit the log _before_ we start the http server, let's make sure it actually starts up
