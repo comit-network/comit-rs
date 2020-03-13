@@ -5,12 +5,21 @@ import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import { promisify } from "util";
 import { sleep } from "../utils";
+import getPort from "get-port";
 
 const openAsync = promisify(fs.open);
 
 export class ParityInstance implements LedgerInstance {
     private process: ChildProcess;
     private dbDir: any;
+
+    public static async new(projectRoot: string, logDir: string) {
+        return new ParityInstance(
+            projectRoot,
+            logDir,
+            await getPort({ port: 8545 })
+        );
+    }
 
     constructor(
         private readonly projectRoot: string,

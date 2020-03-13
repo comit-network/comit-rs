@@ -1,4 +1,3 @@
-import getPort from "get-port";
 import * as bitcoin from "./bitcoin";
 import { BitcoindInstance } from "./bitcoind_instance";
 import { ParityInstance } from "./parity_instance";
@@ -59,10 +58,9 @@ export class LedgerRunner {
                     break;
                 }
                 case "ethereum": {
-                    const instance = new ParityInstance(
+                    const instance = await ParityInstance.new(
                         this.projectRoot,
-                        this.logDir,
-                        await getPort({ port: 8545 })
+                        this.logDir
                     );
                     startedContainers.push({
                         ledger,
