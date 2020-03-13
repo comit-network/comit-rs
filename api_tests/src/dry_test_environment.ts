@@ -37,15 +37,7 @@ export default class DryTestEnvironment extends NodeEnvironment {
         // setup global variables
         this.global.projectRoot = this.projectRoot;
         this.global.ledgerConfigs = {};
-        this.global.verbose =
-            this.global.process.argv.find(item => item.includes("verbose")) !==
-            undefined;
-
         this.global.parityAccountMutex = new Mutex();
-
-        if (this.global.verbose) {
-            console.log(`Starting up test environment`);
-        }
 
         const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
         const logDir = path.join(
@@ -70,6 +62,10 @@ export default class DryTestEnvironment extends NodeEnvironment {
                 default: { appenders: ["multi"], level: "debug" },
             },
         });
+
+        const logger = log4js.getLogger("test_environment");
+        logger.info("Starting up test environment");
+
         this.global.getLogFile = pathElements =>
             path.join(logDir, ...pathElements);
         this.global.getDataDir = async program => {

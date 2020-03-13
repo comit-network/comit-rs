@@ -55,10 +55,6 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.global.projectRoot = this.projectRoot;
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
-        this.global.verbose =
-            this.global.process.argv.find(item => item.includes("verbose")) !==
-            undefined;
-
         this.global.parityAccountMutex = new Mutex();
 
         const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);

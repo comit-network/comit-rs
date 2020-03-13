@@ -19,7 +19,6 @@ export interface HarnessGlobal extends Global.Global {
         bob?: LightningWallet;
     };
     projectRoot: string;
-    verbose: boolean;
     tokenContract: string;
     parityAccountMutex: Mutex;
 
