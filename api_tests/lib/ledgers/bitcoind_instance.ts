@@ -5,6 +5,17 @@ import { LogReader } from "./log_reader";
 import * as path from "path";
 import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
+import BitcoinRpcClient from "bitcoin-core";
+
+export interface BitcoinNodeConfig {
+    network: string;
+    username: string;
+    password: string;
+    host: string;
+    rpcPort: number;
+    p2pPort: number;
+    dataDir: string;
+}
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -23,6 +34,20 @@ export class BitcoindInstance implements LedgerInstance {
         );
 
         await instance.start();
+
+        const client = new BitcoinRpcClient({
+            network: "regtest",
+            host: "localhost",
+            port: instance.rpcPort,
+            username: instance.username,
+            password: instance.password,
+        });
+
+        await client.generateToAddress(101, await client.getNewAddress());
+
+        setInterval(async () => {
+            await client.generateToAddress(1, await client.getNewAddress());
+        }, 1000);
 
         return instance;
     }
@@ -67,7 +92,7 @@ export class BitcoindInstance implements LedgerInstance {
         });
 
         const logReader = new LogReader(this.logPath());
-        await logReader.waitForLogMessage("Wallet completed loading");
+        await logReader.waitForLogMessage("init message: Done loading");
 
         const result = fs.readFileSync(
             path.join(this.dataDir, "regtest", ".cookie"),
@@ -77,6 +102,18 @@ export class BitcoindInstance implements LedgerInstance {
 
         this.username = username;
         this.password = password;
+    }
+
+    public get config(): BitcoinNodeConfig {
+        return {
+            network: "regtest",
+            host: "localhost",
+            rpcPort: this.rpcPort,
+            p2pPort: this.p2pPort,
+            username: this.username,
+            password: this.password,
+            dataDir: this.getDataDir(),
+        };
     }
 
     public stop() {

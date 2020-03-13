@@ -7,7 +7,7 @@ import {
 } from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
-import { BitcoinNodeConfig } from "../ledgers/bitcoin";
+import { BitcoinNodeConfig } from "../ledgers/bitcoind_instance";
 
 export class BitcoinWallet implements Wallet {
     public static async newInstance(config: BitcoinNodeConfig) {

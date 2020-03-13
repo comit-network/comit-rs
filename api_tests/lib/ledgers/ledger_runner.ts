@@ -1,12 +1,10 @@
-import * as bitcoin from "./bitcoin";
-import { BitcoindInstance } from "./bitcoind_instance";
+import { BitcoindInstance, BitcoinNodeConfig } from "./bitcoind_instance";
 import { ParityInstance } from "./parity_instance";
 import { EthereumWallet } from "../wallets/ethereum";
 import { HarnessGlobal } from "../utils";
 import { LndInstance } from "./lnd_instance";
 import * as path from "path";
 import { EthereumNodeConfig } from "./ethereum";
-import { BitcoinNodeConfig } from "./bitcoin";
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
@@ -46,12 +44,16 @@ export class LedgerRunner {
 
             switch (ledger) {
                 case "bitcoin": {
+                    const instance = await BitcoindInstance.start(
+                        this.projectRoot,
+                        this.logDir
+                    );
+
+                    ledgerConfig.bitcoin = instance.config;
+
                     startedContainers.push({
                         ledger,
-                        instance: await BitcoindInstance.start(
-                            this.projectRoot,
-                            this.logDir
-                        ),
+                        instance,
                     });
                     break;
                 }
@@ -97,26 +99,6 @@ export class LedgerRunner {
             this.runningLedgers[ledger] = instance;
 
             switch (ledger) {
-                case "bitcoin": {
-                    if (this.harnessGlobal.verbose) {
-                        console.log(
-                            "Bitcoin: initialization after ledger is running."
-                        );
-                    }
-                    bitcoin.init(await this.getBitcoinClientConfig());
-                    await bitcoin.ensureFunding();
-                    this.blockTimers.bitcoin = this.harnessGlobal.setInterval(
-                        async () => {
-                            await bitcoin.generate();
-                        },
-                        1000
-                    );
-                    ledgerConfig.bitcoin = await this.getBitcoinClientConfig().catch(
-                        () => undefined
-                    );
-                    break;
-                }
-
                 case "ethereum": {
                     const ethereumNodeUrl = await this.getEthereumNodeUrl().catch(
                         () => undefined
@@ -161,26 +143,6 @@ export class LedgerRunner {
             ledgerInstance.stop();
             delete this.runningLedgers[ledger];
         });
-    }
-
-    private async getBitcoinClientConfig(): Promise<BitcoinNodeConfig> {
-        const instance = this.runningLedgers.bitcoin as BitcoindInstance;
-
-        if (instance) {
-            const { username, password } = instance.getUsernamePassword();
-
-            return {
-                network: "regtest",
-                host: "localhost",
-                rpcPort: instance.rpcPort,
-                p2pPort: instance.p2pPort,
-                username,
-                password,
-                dataDir: instance.getDataDir(),
-            };
-        } else {
-            return Promise.reject("bitcoin not yet started");
-        }
     }
 
     private async getEthereumNodeUrl(): Promise<string> {
