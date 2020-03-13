@@ -25,9 +25,7 @@ export class ParityInstance implements LedgerInstance {
         await instance.start();
 
         const erc20Wallet = new EthereumWallet(instance.rpcUrl);
-        instance.erc20TokenContract = await erc20Wallet.deployErc20TokenContract(
-            projectRoot
-        );
+        instance.erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
         return instance;
     }
