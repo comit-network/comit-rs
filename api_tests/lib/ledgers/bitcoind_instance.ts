@@ -4,12 +4,24 @@ import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import * as path from "path";
 import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
+import getPort from "get-port";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
     private dataDir: string;
     private username: string;
     private password: string;
+
+    public static async new(projectRoot: string, logDir: string) {
+        return new BitcoindInstance(
+            projectRoot,
+            logDir,
+            await getPort({ port: 18444 }),
+            await getPort({ port: 18443 }),
+            await getPort({ port: 28332 }),
+            await getPort({ port: 28333 })
+        );
+    }
 
     constructor(
         private readonly projectRoot: string,

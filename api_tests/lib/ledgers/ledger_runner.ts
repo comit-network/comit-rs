@@ -48,13 +48,9 @@ export class LedgerRunner {
 
             switch (ledger) {
                 case "bitcoin": {
-                    const instance = new BitcoindInstance(
+                    const instance = await BitcoindInstance.new(
                         this.projectRoot,
-                        this.logDir,
-                        await getPort({ port: 18444 }),
-                        await getPort({ port: 18443 }),
-                        await getPort({ port: 28332 }),
-                        await getPort({ port: 28333 })
+                        this.logDir
                     );
                     startedContainers.push({
                         ledger,
