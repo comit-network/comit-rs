@@ -1,5 +1,6 @@
 import { EthereumWallet } from "../wallets/ethereum";
 import LedgerInstance from "./ledger_instance";
+import { Logger } from "log4js";
 
 /**
  * An instance of the Ethereum ledger for use in the e2e tests.
@@ -14,11 +15,17 @@ import LedgerInstance from "./ledger_instance";
  * of which implementation is used (Docker container, parity, geth, etc).
  */
 export default class EthereumLedger implements LedgerInstance {
-    public static async start(instance: EthereumInstance) {
+    public static async start(instance: EthereumInstance, logger: Logger) {
         await instance.start();
 
-        const erc20Wallet = new EthereumWallet(instance.rpcUrl);
+        const rpcUrl = instance.rpcUrl;
+
+        logger.info("Ethereum node started at", rpcUrl);
+
+        const erc20Wallet = new EthereumWallet(rpcUrl, logger);
         const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+
+        logger.info("ERC20 token contract deployed at", erc20TokenContract);
 
         return new EthereumLedger(instance, erc20TokenContract);
     }

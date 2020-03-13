@@ -7,6 +7,7 @@ import { CndConfigFile, E2ETestActorConfig } from "../config";
 import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
 import path from "path";
 import { LogReader } from "../ledgers/log_reader";
+import { Logger } from "log4js";
 
 declare var global: HarnessGlobal;
 
@@ -19,6 +20,7 @@ export class CndInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
+        private readonly logger: Logger,
         private readonly actorConfig: E2ETestActorConfig,
         private readonly ledgerConfig: LedgerConfig
     ) {}
@@ -32,9 +34,7 @@ export class CndInstance {
             ? process.env.CND_BIN
             : this.projectRoot + "/target/debug/cnd";
 
-        if (global.verbose) {
-            console.log(`[${this.actorConfig.name}] using binary ${bin}`);
-        }
+        this.logger.info("Using binary", bin);
 
         this.configFile = this.actorConfig.generateCndConfigFile(
             this.ledgerConfig
@@ -59,23 +59,18 @@ export class CndInstance {
             ],
         });
 
-        if (global.verbose) {
-            console.log(
-                `[${this.actorConfig.name}] process spawned with PID ${this.process.pid}`
-            );
-        }
-
         const logReader = new LogReader(logFile);
         await logReader.waitForLogMessage("Starting HTTP server on");
 
         // we emit the log _before_ we start the http server, let's make sure it actually starts up
         await sleep(1000);
+
+        this.logger.info("cnd started with PID", this.process.pid);
     }
 
     public stop() {
-        if (global.verbose) {
-            console.log(`terminating cnd ${this.actorConfig.name}`);
-        }
+        this.logger.info("Stopping cnd instance");
+
         this.process.kill("SIGINT");
         this.process = null;
     }

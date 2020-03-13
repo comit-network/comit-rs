@@ -1,3 +1,4 @@
+import { Logger } from "log4js";
 import * as bcoin from "bcoin";
 import BitcoinRpcClient from "bitcoin-core";
 import {
@@ -10,7 +11,7 @@ import { pollUntilMinted, Wallet } from "./index";
 import { BitcoinNodeConfig } from "../ledgers/bitcoin";
 
 export class BitcoinWallet implements Wallet {
-    public static async newInstance(config: BitcoinNodeConfig) {
+    public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
         const hdKey = bcoin.HDPrivateKey.generate().xprivkey(config.network);
         const wallet = await BitcoinWalletSdk.newInstance(
             config.network,
@@ -27,14 +28,15 @@ export class BitcoinWallet implements Wallet {
             password: config.password,
         });
 
-        return new BitcoinWallet(wallet, bitcoinRpcClient);
+        return new BitcoinWallet(wallet, bitcoinRpcClient, logger);
     }
 
     public MaximumFee = 100000;
 
     private constructor(
         public readonly inner: BitcoinWalletSdk,
-        private readonly bitcoinRpcClient: BitcoinRpcClient
+        private readonly bitcoinRpcClient: BitcoinRpcClient,
+        private readonly logger: Logger
     ) {}
 
     public async mintToAddress(
@@ -48,10 +50,12 @@ export class BitcoinWallet implements Wallet {
             );
         }
 
-        await this.bitcoinRpcClient.sendToAddress(
-            toAddress,
-            toBitcoin(minimumExpectedBalance.times(2).toString()) // make sure we have at least twice as much
-        );
+        // make sure we have at least twice as much
+        const amount = toBitcoin(minimumExpectedBalance.times(2).toString());
+
+        await this.bitcoinRpcClient.sendToAddress(toAddress, amount);
+
+        this.logger.info("Minted", amount, "bitcoin for", toAddress);
     }
 
     public async mint(asset: Asset): Promise<void> {

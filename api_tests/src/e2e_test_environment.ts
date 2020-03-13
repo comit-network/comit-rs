@@ -18,6 +18,7 @@ import EthereumLedger from "../lib/ledgers/ethereum";
 import LightningLedger from "../lib/ledgers/lightning";
 import { ParityInstance } from "../lib/ledgers/parity_instance";
 import { LndInstance } from "../lib/ledgers/lnd_instance";
+import { configure, getLogger, Logger } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -34,6 +35,8 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private ethereumLedger?: EthereumLedger;
     private aliceLightning?: LightningLedger;
     private bobLightning?: LightningLedger;
+
+    private logger: Logger;
 
     constructor(config: Config.ProjectConfig, context: any) {
         super(config);
@@ -62,15 +65,30 @@ export default class E2ETestEnvironment extends NodeEnvironment {
 
         this.global.parityAccountMutex = new Mutex();
 
-        if (this.global.verbose) {
-            console.log(`Starting up test environment`);
-        }
-
         const { ledgers, logDir } = this.extractDocblockPragmas(
             this.docblockPragmas
         );
 
         this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
+
+        configure({
+            appenders: {
+                multi: {
+                    type: "multiFile",
+                    base: this.logDir,
+                    property: "categoryName",
+                    extension: ".log",
+                },
+            },
+            categories: {
+                default: { appenders: ["multi"], level: "debug" },
+            },
+        });
+
+        this.logger = getLogger("test-environment");
+
+        this.logger.info("Starting up test environment");
+
         await E2ETestEnvironment.cleanLogDir(this.logDir);
 
         await this.startLedgers(ledgers);
@@ -112,7 +130,12 @@ export default class E2ETestEnvironment extends NodeEnvironment {
      */
     private async startBitcoin() {
         this.bitcoinLedger = await BitcoinLedger.start(
-            await BitcoindInstance.new(this.projectRoot, this.logDir)
+            await BitcoindInstance.new(
+                this.projectRoot,
+                this.logDir,
+                this.logger
+            ),
+            this.logger
         );
         this.global.ledgerConfigs.bitcoin = this.bitcoinLedger.config;
     }
@@ -123,7 +146,12 @@ export default class E2ETestEnvironment extends NodeEnvironment {
      */
     private async startEthereum() {
         this.ethereumLedger = await EthereumLedger.start(
-            await ParityInstance.new(this.projectRoot, this.logDir)
+            await ParityInstance.new(
+                this.projectRoot,
+                this.logDir,
+                this.logger
+            ),
+            this.logger
         );
         this.global.ledgerConfigs.ethereum = this.ethereumLedger.config;
         this.global.tokenContract = this.ethereumLedger.config.tokenContract;
@@ -171,12 +199,17 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             await LndInstance.new(
                 this.logDir,
                 "lnd-alice",
+                this.logger,
                 path.join(this.logDir, "bitcoind")
             )
         );
 
         this.global.lndWallets.alice = await LightningWallet.newInstance(
-            await BitcoinWallet.newInstance(this.bitcoinLedger.config),
+            await BitcoinWallet.newInstance(
+                this.bitcoinLedger.config,
+                this.logger
+            ),
+            this.logger,
             this.aliceLightning.config.lnd,
             this.aliceLightning.config.p2pSocket
         );
@@ -193,12 +226,17 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             await LndInstance.new(
                 this.logDir,
                 "lnd-bob",
+                this.logger,
                 path.join(this.logDir, "bitcoind")
             )
         );
 
         this.global.lndWallets.bob = await LightningWallet.newInstance(
-            await BitcoinWallet.newInstance(this.bitcoinLedger.config),
+            await BitcoinWallet.newInstance(
+                this.bitcoinLedger.config,
+                this.logger
+            ),
+            this.logger,
             this.bobLightning.config.lnd,
             this.bobLightning.config.p2pSocket
         );
@@ -211,13 +249,10 @@ export default class E2ETestEnvironment extends NodeEnvironment {
 
     async teardown() {
         await super.teardown();
-        if (this.global.verbose) {
-            console.log(`Tearing down test environment.`);
-        }
+        this.logger.info("Tearing down test environment");
+
         await this.cleanupAll();
-        if (this.global.verbose) {
-            console.log(`All teared down.`);
-        }
+        this.logger.info("Tearing down complete");
     }
 
     async cleanupAll() {

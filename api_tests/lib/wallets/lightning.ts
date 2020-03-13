@@ -9,11 +9,12 @@ import {
     Outpoint,
 } from "comit-sdk";
 import { AddressType } from "@radar/lnrpc";
+import { Logger } from "log4js";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
         bitcoinWallet: BitcoinWallet,
-        // logger: Logger,
+        logger: Logger,
         lnd: Lnd,
         lndp2pSocket: string
     ) {
@@ -24,16 +25,16 @@ export class LightningWallet implements Wallet {
             lndp2pSocket
         );
 
-        // logger.debug("lnd getinfo:", await inner.lnd.lnrpc.getInfo());
+        logger.debug("lnd getinfo:", await inner.lnd.lnrpc.getInfo());
 
-        return new LightningWallet(inner, bitcoinWallet);
+        return new LightningWallet(inner, logger, bitcoinWallet);
     }
 
     public MaximumFee = 0;
 
     private constructor(
         public readonly inner: LightningWalletSdk,
-        // private readonly logger: Logger,
+        private readonly logger: Logger,
         private readonly bitcoinWallet: BitcoinWallet
     ) {}
 
@@ -47,10 +48,10 @@ export class LightningWallet implements Wallet {
         const startingBalance = new BigNumber(
             await this.getBalanceByAsset(asset)
         );
-        // this.logger.debug("starting: ", startingBalance.toString());
+        this.logger.debug("starting: ", startingBalance.toString());
 
         const minimumExpectedBalance = new BigNumber(asset.quantity);
-        // this.logger.debug("min expected: ", minimumExpectedBalance.toString());
+        this.logger.debug("min expected: ", minimumExpectedBalance.toString());
 
         await this.bitcoinWallet.mintToAddress(
             minimumExpectedBalance,
@@ -112,9 +113,9 @@ export class LightningWallet implements Wallet {
         let toIsSynced = (await toWallet.inner.getInfo()).syncedToChain;
 
         while (!thisIsSynced || !toIsSynced) {
-            // this.logger.info(
-            //     `One of the lnd node is not yet synced, waiting. this: ${thisIsSynced}, to: ${toIsSynced}`
-            // );
+            this.logger.info(
+                `One of the lnd node is not yet synced, waiting. this: ${thisIsSynced}, to: ${toIsSynced}`
+            );
             await sleep(500);
 
             thisIsSynced = (await this.inner.getInfo()).syncedToChain;
@@ -125,7 +126,7 @@ export class LightningWallet implements Wallet {
             await toWallet.inner.getPubkey(),
             quantity
         );
-        // this.logger.debug("Channel opened, waiting for confirmations");
+        this.logger.debug("Channel opened, waiting for confirmations");
 
         await this.pollUntilChannelIsOpen(outpoint);
     }
@@ -161,9 +162,9 @@ export class LightningWallet implements Wallet {
         const channels = await this.getChannels();
         if (channels) {
             for (const channel of channels) {
-                // this.logger.debug(`Looking for channel ${txId}:${vout}`);
+                this.logger.debug(`Looking for channel ${txId}:${vout}`);
                 if (channel.channelPoint === `${txId}:${vout}`) {
-                    // this.logger.debug("Found a channel:", channel);
+                    this.logger.debug("Found a channel:", channel);
                     return;
                 }
             }

@@ -6,6 +6,7 @@ import { promisify } from "util";
 import { sleep } from "../utils";
 import getPort from "get-port";
 import { EthereumInstance } from "./ethereum";
+import { Logger } from "log4js";
 
 const openAsync = promisify(fs.open);
 
@@ -13,10 +14,15 @@ export class ParityInstance implements EthereumInstance {
     private process: ChildProcess;
     private dbDir: any;
 
-    public static async new(projectRoot: string, logDir: string) {
+    public static async new(
+        projectRoot: string,
+        logDir: string,
+        logger: Logger
+    ) {
         return new ParityInstance(
             projectRoot,
             logDir,
+            logger,
             await getPort({ port: 8545 }),
             await getPort()
         );
@@ -25,6 +31,7 @@ export class ParityInstance implements EthereumInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
+        private readonly logger: Logger,
         public readonly rpcPort: number,
         public readonly p2pPort: number
     ) {}
@@ -33,6 +40,9 @@ export class ParityInstance implements EthereumInstance {
         const bin = process.env.PARITY_BIN
             ? process.env.PARITY_BIN
             : this.projectRoot + "/blockchain_nodes/parity/parity";
+
+        this.logger.info("Using binary", bin);
+
         this.dbDir = tmp.dirSync();
 
         this.process = spawn(
@@ -59,12 +69,18 @@ export class ParityInstance implements EthereumInstance {
         );
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(`parity exited with ${code || `signal ${signal}`}`);
+            this.logger.info(
+                "parity exited with code",
+                code,
+                "after signal",
+                signal
+            );
         });
+
         const logReader = new LogReader(this.logDir + "/parity.log");
         await logReader.waitForLogMessage("Public node URL:");
 
-        console.log(`parity started with PID ${this.process.pid}`);
+        this.logger.info("parity started with PID", this.process.pid);
     }
 
     public get rpcUrl() {
@@ -72,6 +88,8 @@ export class ParityInstance implements EthereumInstance {
     }
 
     public async stop() {
+        this.logger.info("Stopping parity instance");
+
         this.process.kill("SIGTERM");
         await sleep(3000);
         this.process.kill("SIGKILL");

@@ -5,6 +5,7 @@ import { BigNumber as BigNumberEthers } from "ethers/utils";
 import { pollUntilMinted, Wallet } from "./index";
 import { TransactionRequest } from "ethers/providers";
 import { HarnessGlobal, sleep } from "../utils";
+import { Logger } from "log4js";
 
 declare var global: HarnessGlobal;
 
@@ -15,7 +16,7 @@ export class EthereumWallet implements Wallet {
     private readonly parity: ethers.Wallet;
     private readonly jsonRpcProvider: ethers.providers.JsonRpcProvider;
 
-    constructor(rpcUrl: string) {
+    constructor(rpcUrl: string, private readonly logger: Logger) {
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         this.parity = new ethers.Wallet(
             "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
@@ -67,11 +68,14 @@ export class EthereumWallet implements Wallet {
             );
         }
 
-        if (global.verbose) {
-            console.log(
-                `Minted ${asset.quantity} erc20 tokens (${asset.token_contract}) for ${toAddress}`
-            );
-        }
+        this.logger.info(
+            "Minted",
+            asset.quantity,
+            "erc20 tokens (",
+            asset.token_contract,
+            ") for",
+            toAddress
+        );
     }
 
     private async sendTransaction(tx: TransactionRequest) {
@@ -100,6 +104,8 @@ export class EthereumWallet implements Wallet {
             startingBalance.minus(new BigNumber(minimumExpectedBalance)),
             asset
         );
+
+        this.logger.info("Minted", asset.quantity, "ether for", this.account());
     }
 
     public account(): string {

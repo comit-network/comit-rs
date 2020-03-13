@@ -1,5 +1,6 @@
 import BitcoinRpcClient from "bitcoin-core";
 import LedgerInstance from "./ledger_instance";
+import { Logger } from "log4js";
 
 /**
  * An instance of the Bitcoin ledger for use in the e2e tests.
@@ -11,10 +12,12 @@ import LedgerInstance from "./ledger_instance";
  * been setup, regardless of how that is achieved (Docker container, bitcoind instance, etc).
  */
 export default class BitcoinLedger implements LedgerInstance {
-    public static async start(instance: BitcoinInstance) {
+    public static async start(instance: BitcoinInstance, logger: Logger) {
         await instance.start();
 
-        const { rpcPort, username, password } = instance.config;
+        const { rpcPort, username, password, rpcUrl } = instance.config;
+
+        logger.info("Bitcoin instance started at", rpcUrl);
 
         const client = new BitcoinRpcClient({
             network: "regtest",
@@ -30,7 +33,7 @@ export default class BitcoinLedger implements LedgerInstance {
             await client.generateToAddress(1, await client.getNewAddress());
         }, 1000);
 
-        console.log("Bitcoin miner initialized");
+        logger.info("Bitcoin miner initialized");
 
         return new BitcoinLedger(instance, miner);
     }
@@ -63,6 +66,7 @@ export interface BitcoinNodeConfig {
     password: string;
     host: string;
     rpcPort: number;
+    rpcUrl: string;
     p2pPort: number;
     dataDir: string;
 }

@@ -5,6 +5,7 @@ import * as path from "path";
 import { mkdirAsync, openAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
 import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
+import { Logger } from "log4js";
 
 export class BitcoindInstance implements BitcoinInstance {
     private process: ChildProcess;
@@ -14,11 +15,13 @@ export class BitcoindInstance implements BitcoinInstance {
 
     public static async new(
         projectRoot: string,
-        logDir: string
+        logDir: string,
+        logger: Logger
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
             projectRoot,
             logDir,
+            logger,
             await getPort({ port: 18444 }),
             await getPort({ port: 18443 }),
             await getPort({ port: 28332 }),
@@ -29,6 +32,7 @@ export class BitcoindInstance implements BitcoinInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly logDir: string,
+        private readonly logger: Logger,
         public readonly p2pPort: number,
         public readonly rpcPort: number,
         public readonly zmqPubRawBlockPort: number,
@@ -46,6 +50,7 @@ export class BitcoindInstance implements BitcoinInstance {
                   "bin",
                   "bitcoind"
               );
+        this.logger.info("Using binary", bin);
 
         this.dataDir = path.join(this.logDir, "bitcoind");
         await mkdirAsync(this.dataDir, "755");
@@ -62,7 +67,12 @@ export class BitcoindInstance implements BitcoinInstance {
         });
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(`bitcoind exited with ${code || `signal ${signal}`}`);
+            this.logger.info(
+                "binary exited with code",
+                code,
+                "after signal",
+                signal
+            );
         });
 
         const logReader = new LogReader(this.logPath());
@@ -77,7 +87,7 @@ export class BitcoindInstance implements BitcoinInstance {
         this.username = username;
         this.password = password;
 
-        console.log(`bitcoind started with PID ${this.process.pid}`);
+        this.logger.info("bitcoind started with PID", this.process.pid);
     }
 
     public get config(): BitcoinNodeConfig {
@@ -89,10 +99,13 @@ export class BitcoindInstance implements BitcoinInstance {
             username: this.username,
             password: this.password,
             dataDir: this.getDataDir(),
+            rpcUrl: `http://localhost:${this.rpcPort}`,
         };
     }
 
     public async stop() {
+        this.logger.info("Stopping bitcoind instance");
+
         this.process.kill("SIGINT");
     }
 

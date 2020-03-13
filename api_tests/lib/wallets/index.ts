@@ -3,6 +3,7 @@ import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
+import { Logger } from "log4js";
 
 declare var global: HarnessGlobal;
 
@@ -48,17 +49,20 @@ export class Wallets {
 
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
+        logger: Logger,
         actor?: string
     ) {
         switch (name) {
             case "ethereum":
                 this.wallets.ethereum = new EthereumWallet(
-                    global.ledgerConfigs.ethereum.rpc_url
+                    global.ledgerConfigs.ethereum.rpc_url,
+                    logger
                 );
                 break;
             case "bitcoin":
                 this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                    global.ledgerConfigs.bitcoin
+                    global.ledgerConfigs.bitcoin,
+                    logger
                 );
                 break;
             case "lightning":

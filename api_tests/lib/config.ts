@@ -90,7 +90,7 @@ function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
 function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     return {
         bitcoind: {
-            node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+            node_url: nodeConfig.rpcUrl,
         },
         network: nodeConfig.network,
     };

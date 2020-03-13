@@ -9,7 +9,7 @@ import {
 } from "comit-sdk";
 import { parseEther } from "ethers/utils";
 import getPort from "get-port";
-import { Logger } from "log4js";
+import { getLogger, Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
@@ -32,7 +32,6 @@ export class Actor {
     };
 
     public static async newInstance(
-        loggerFactory: (name: string) => Logger,
         name: string,
         ledgerConfig: LedgerConfig,
         projectRoot: string,
@@ -44,17 +43,17 @@ export class Actor {
             name
         );
 
+        const logger = getLogger(`${logRoot}/${name}`);
+
         const cndInstance = new CndInstance(
             projectRoot,
             logRoot,
+            logger,
             actorConfig,
             ledgerConfig
         );
 
         await cndInstance.start();
-
-        const logger = loggerFactory(name);
-        logger.level = "debug";
 
         logger.info(
             "Created new actor with config %s",
@@ -718,7 +717,11 @@ export class Actor {
             this.betaLedger.name,
         ]) {
             walletPromises.push(
-                this.wallets.initializeForLedger(ledgerName, this.name)
+                this.wallets.initializeForLedger(
+                    ledgerName,
+                    this.logger,
+                    this.name
+                )
             );
         }
 
