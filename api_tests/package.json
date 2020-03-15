@@ -56,7 +56,7 @@
         "glob": "^7.1.6",
         "jest": "^25.1.0",
         "js-sha256": "^0.9.0",
-        "json-schema-to-typescript": "^8.1.0",
+        "json-schema-to-typescript": "^8.2.0",
         "ln-service": "^47.15.3",
         "log4js": "^6.1.2",
         "multiaddr": "^7.4.0",
