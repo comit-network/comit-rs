@@ -50,7 +50,7 @@
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
         "comit-sdk": "^0.14.0",
-        "commander": "^4.1.1",
+        "commander": "^5.0.0",
         "ethers": "^4.0.45",
         "get-port": "^5.1.1",
         "glob": "^7.1.6",
