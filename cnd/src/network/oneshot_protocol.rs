@@ -108,11 +108,11 @@ where
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
-    #[error("read from socket: ")]
+    #[error("failed to read a message from the socket")]
     Read(#[from] upgrade::ReadOneError),
-    #[error("write to socket: ")]
+    #[error("failed to write the message to the socket")]
     Write(#[from] io::Error),
-    #[error("serde: ")]
+    #[error("failed to serialize/deserialize the message")]
     Serde(#[from] serde_json::Error),
 }
 
