@@ -60,6 +60,7 @@ enum Enum {
     Bar,
 }
 
+#[allow(dead_code)]
 enum OtherEnum {
     Foo,
     Bar,
