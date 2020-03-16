@@ -81,13 +81,13 @@ impl ReceiptByHash for Web3Connector {
 #[async_trait]
 impl FetchNetworkId<ChainId> for Web3Connector {
     async fn network_id(&self) -> anyhow::Result<ChainId> {
-        let chain_id: ChainId = self
+        let chain_id: String = self
             .client
-            .send::<Vec<()>, ChainId>(jsonrpc::Request::new("net_version", vec![]))
+            .send::<Vec<()>, String>(jsonrpc::Request::new("net_version", vec![]))
             .await?;
 
         tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
 
-        Ok(chain_id)
+        Ok(ChainId::from(chain_id.parse::<u32>()?))
     }
 }
