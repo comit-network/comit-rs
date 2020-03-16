@@ -82,7 +82,12 @@ where
     fn inject_node_event(&mut self, peer_id: PeerId, event: OutEvent<M>) {
         match event {
             OutEvent::Received(message) => {
-                trace!("Received message event from {}: {:?}", peer_id, message);
+                trace!(
+                    "Received message from {} on protocol {}: {:?}",
+                    peer_id,
+                    M::INFO,
+                    message
+                );
 
                 // Add the message to be dispatched to the user.
                 self.events
@@ -90,7 +95,7 @@ where
                         message,
                     )));
             }
-            OutEvent::Sent => trace!("Received 'sent' event from {}", peer_id),
+            OutEvent::Sent => trace!("Sent message to {} on protocol {}", peer_id, M::INFO),
         }
     }
 
