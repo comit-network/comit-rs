@@ -15,7 +15,7 @@ INSTALLED_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain 
 INSTALLED_NIGHTLY_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain $(NIGHTLY_TOOLCHAIN))
 AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
 
-CARGO_TOML_FILES = $(shell ls **/Cargo.toml)
+CARGO_TOML_FILES = $(wildcard **/Cargo.toml)
 
 # All our targets go into .PHONY because none of them actually create files
 .PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
