@@ -2,24 +2,6 @@ use digest::{digest, FieldDigest, RootDigest, RootDigestMacro};
 
 use digest::multihash::Multihash;
 
-struct NewType(String);
-
-impl RootDigest for NewType {
-    fn root_digest(self) -> Multihash {
-        self.0.field_digest("0".into())
-    }
-}
-
-struct SingleFieldStruct {
-    field: String,
-}
-
-impl RootDigest for SingleFieldStruct {
-    fn root_digest(self) -> Multihash {
-        self.field.field_digest("field".into())
-    }
-}
-
 #[derive(RootDigestMacro)]
 struct DoubleFieldStruct {
     #[digest_bytes = "0011"]
@@ -108,44 +90,6 @@ fn given_different_strings_return_different_multihash() {
         str1.field_digest("foo".into()),
         str2.field_digest("foo".into())
     )
-}
-
-#[test]
-fn given_same_newtypes_return_same_multihash() {
-    let new_type1 = NewType("simple string".into());
-    let new_type2 = NewType("simple string".into());
-
-    assert_eq!(new_type1.root_digest(), new_type2.root_digest())
-}
-
-#[test]
-fn given_different_newtypes_return_different_multihash() {
-    let new_type1 = NewType("simple string".into());
-    let new_type2 = NewType("longer string.".into());
-
-    assert_ne!(new_type1.root_digest(), new_type2.root_digest())
-}
-
-#[test]
-fn given_same_single_field_struct_return_same_multihash() {
-    let struct1 = SingleFieldStruct {
-        field: "foo".into(),
-    };
-    let struct2 = SingleFieldStruct {
-        field: "foo".into(),
-    };
-
-    assert_eq!(struct1.root_digest(), struct2.root_digest())
-}
-
-#[test]
-fn given_single_field_struct_and_new_type_with_same_inner_return_different_multihash() {
-    let single_field_struct = SingleFieldStruct {
-        field: "foo".into(),
-    };
-    let new_type = NewType("foo".into());
-
-    assert_ne!(single_field_struct.root_digest(), new_type.root_digest())
 }
 
 #[test]
