@@ -25,14 +25,7 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
 
                     let types = fields.named.iter().map(|field| &field.ty);
 
-                    let bytes = fields.named.iter().map(|field| {
-                        let attr = field
-                            .attrs
-                            .get(0)
-                            .expect("digest_bytes attribute must be present on all fields");
-
-                        attr_to_bytes(attr)
-                    });
+                    let bytes = fields.named.iter().map(|field| attr_to_bytes(&field.attrs));
                     (idents, types, bytes)
                 }
                 _ => panic!("Only supporting named fields."),
@@ -62,13 +55,10 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
         Data::Enum(data) => {
             let idents = data.variants.iter().map(|variant| &variant.ident);
 
-            let bytes = data.variants.iter().map(|variant| {
-                let attr = variant
-                    .attrs
-                    .get(0)
-                    .expect("digest_bytes attribute must be present on all fields");
-                attr_to_bytes(attr)
-            });
+            let bytes = data
+                .variants
+                .iter()
+                .map(|variant| attr_to_bytes(&variant.attrs));
 
             let gen = quote! {
                     impl ::digest::RootDigest for #name
@@ -101,7 +91,10 @@ impl ToTokens for Bytes {
     }
 }
 
-fn attr_to_bytes(attr: &Attribute) -> Bytes {
+fn attr_to_bytes(attrs: &[Attribute]) -> Bytes {
+    let attr = attrs
+        .get(0)
+        .expect("digest_bytes attribute must be the only attribute present on all fields");
     let meta = attr.parse_meta().expect("Attribute is malformed");
 
     if let Meta::NameValue(name_value) = meta {
