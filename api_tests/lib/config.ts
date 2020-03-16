@@ -1,7 +1,8 @@
 import * as tmp from "tmp";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
-import { LedgerConfig } from "./ledgers/ledger_runner";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
+import { LedgerConfig } from "./utils";
+import getPort from "get-port";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -17,12 +18,14 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
+    public static async for(name: string) {
+        return new E2ETestActorConfig(await getPort(), await getPort(), name);
+    }
+
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: string,
-        public readonly lndP2pPort: number,
-        public readonly lndRpcPort: number
+        public readonly name: string
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -92,7 +95,7 @@ function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
 function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
     return {
         bitcoind: {
-            node_url: `http://${nodeConfig.host}:${nodeConfig.rpcPort}`,
+            node_url: nodeConfig.rpcUrl,
         },
         network: nodeConfig.network,
     };

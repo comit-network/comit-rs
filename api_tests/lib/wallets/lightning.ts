@@ -1,7 +1,6 @@
 import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
 import BigNumber from "bignumber.js";
-import { Logger } from "log4js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import {
@@ -10,6 +9,7 @@ import {
     Outpoint,
 } from "comit-sdk";
 import { AddressType } from "@radar/lnrpc";
+import { Logger } from "log4js";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(

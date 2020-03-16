@@ -1,5 +1,5 @@
 /**
- * @ledgers ethereum,bitcoin
+ * @ledgers ethereum,bitcoin,lightning
  * @logDir e2e
  */
 
@@ -13,7 +13,7 @@ import { LedgerKind } from "../../lib/ledgers/ledger";
 // Lightning Sanity Test                        //
 // ******************************************** //
 describe("E2E: Sanity - LND Alice pays Bob", () => {
-    it.skip(
+    it(
         "sanity-lnd-alice-pays-bob",
         twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
@@ -28,7 +28,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
         })
     );
 
-    it.skip(
+    it(
         "sanity-lnd-alice-pays-bob-using-hold-invoice",
         twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
@@ -155,7 +155,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await bob.accept();
 
             await alice.fund();
-            alice.stop();
+            await alice.stop();
 
             // Action happens while alice is down.
             await bob.fund();
@@ -183,7 +183,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await bob.fund();
 
             await alice.redeem();
-            alice.stop();
+            await alice.stop();
 
             // Action happens while alice is down.
             await bob.redeem();
@@ -207,7 +207,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             // Wait for Alice to receive the accept message before stopping Bob's cnd.
             await alice.currentSwapIsAccepted();
 
-            bob.stop();
+            await bob.stop();
 
             // Action happens while bob is down.
             await alice.fund();
@@ -236,7 +236,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await alice.fund();
             await bob.fund();
 
-            bob.stop();
+            await bob.stop();
 
             // Action happens while bob is down.
             await alice.redeem();

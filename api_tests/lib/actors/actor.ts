@@ -8,15 +8,13 @@ import {
     SwapDetails,
 } from "comit-sdk";
 import { parseEther } from "ethers/utils";
-import getPort from "get-port";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
-import { LedgerConfig } from "../ledgers/ledger_runner";
 import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
-import { HarnessGlobal, sleep } from "../utils";
+import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { Entity } from "../../gen/siren";
@@ -33,38 +31,30 @@ export class Actor {
     };
 
     public static async newInstance(
-        loggerFactory: (name: string) => Logger,
         name: string,
         ledgerConfig: LedgerConfig,
         projectRoot: string,
-        logRoot: string
+        cndLogFile: string,
+        logger: Logger
     ) {
-        const actorConfig = new E2ETestActorConfig(
-            await getPort(),
-            await getPort(),
-            name,
-            await getPort(),
-            await getPort()
-        );
+        const actorConfig = await E2ETestActorConfig.for(name);
+        const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(
             projectRoot,
-            logRoot,
-            actorConfig,
-            ledgerConfig
+            cndLogFile,
+            logger,
+            cndConfigFile
         );
 
         await cndInstance.start();
 
-        const logger = loggerFactory(name);
-        logger.level = "debug";
-
         logger.info(
             "Created new actor with config %s",
-            JSON.stringify(actorConfig.generateCndConfigFile(ledgerConfig))
+            JSON.stringify(cndConfigFile)
         );
 
-        return new Actor(logger, cndInstance, logRoot, actorConfig, name);
+        return new Actor(logger, cndInstance, name);
     }
 
     public actors: Actors;
@@ -88,8 +78,6 @@ export class Actor {
     constructor(
         private readonly logger: Logger,
         private readonly cndInstance: CndInstance,
-        private readonly logRoot: string,
-        private readonly config: E2ETestActorConfig,
         private name: string
     ) {
         this.wallets = new Wallets({});
@@ -193,38 +181,6 @@ export class Actor {
             to.betaAsset,
         ]);
 
-        const isLightning =
-            this.alphaLedger.name === "lightning" ||
-            this.betaLedger.name === "lightning";
-
-        if (isLightning) {
-            this.logger.debug(`Initialising lightning for ${this.config.name}`);
-            const thisLightningWallet = this.wallets.getWalletForLedger(
-                "lightning"
-            );
-            const toLightningWallet = to.wallets.getWalletForLedger(
-                "lightning"
-            );
-
-            await thisLightningWallet.connectPeer(toLightningWallet);
-
-            if (this.alphaLedger.name === "lightning") {
-                // Alpha Ledger is lightning so Alice will be sending assets over lightning
-                const quantity = parseInt(this.alphaAsset.quantity, 10);
-                await thisLightningWallet.openChannel(
-                    toLightningWallet,
-                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
-                );
-            } else {
-                // Beta Ledger is lightning so Bob will be sending assets over lightning
-                const quantity = parseInt(this.betaAsset.quantity, 10);
-                await toLightningWallet.openChannel(
-                    thisLightningWallet,
-                    quantity * 1.5 // Similarly to minting, we open a channel with a bit more than what is needed for the swap
-                );
-            }
-        }
-
         this.expectedBalanceChanges.set(
             toKey(this.betaAsset),
             new BigNumber(this.betaAsset.quantity)
@@ -233,6 +189,10 @@ export class Actor {
             toKey(this.alphaAsset),
             new BigNumber(to.alphaAsset.quantity)
         );
+
+        const isLightning =
+            this.alphaLedger.name === "lightning" ||
+            this.betaLedger.name === "lightning";
 
         if (isLightning) {
             this.logger.debug("Using lightning routes on cnd REST API");
@@ -599,16 +559,16 @@ export class Actor {
         await this.cndInstance.start();
     }
 
-    public stop() {
+    public async stop() {
         this.logger.debug("Stopping actor");
         this.cndInstance.stop();
         if (this.lndInstance && this.lndInstance.isRunning()) {
-            this.lndInstance.stop();
+            await this.lndInstance.stop();
         }
     }
 
     public async restart() {
-        this.stop();
+        await this.stop();
         await this.start();
     }
 
@@ -745,30 +705,17 @@ export class Actor {
             this.alphaLedger.name === "lightning" ||
             this.betaLedger.name === "lightning";
 
-        if (lightningNeeded) {
-            this.lndInstance = new LndInstance(
-                this.logger,
-                this.logRoot,
-                this.config,
-                global.ledgerConfigs.bitcoin.dataDir
-            );
-            await this.lndInstance.start();
-        }
-
         const walletPromises: Promise<void>[] = [];
         for (const ledgerName of [
             this.alphaLedger.name,
             this.betaLedger.name,
         ]) {
-            let lnd;
-            if (this.lndInstance) {
-                lnd = {
-                    lnd: this.lndInstance.lnd,
-                    lndP2pSocket: this.lndInstance.getLightningSocket(),
-                };
-            }
             walletPromises.push(
-                this.wallets.initializeForLedger(ledgerName, this.logger, lnd)
+                this.wallets.initializeForLedger(
+                    ledgerName,
+                    this.logger,
+                    this.name
+                )
             );
         }
 
@@ -804,6 +751,7 @@ export class Actor {
             const ledgerName = ledger.name;
 
             this.logger.debug("Minting %s on %s", asset.name, ledgerName);
+
             await this.wallets.getWalletForLedger(ledgerName).mint(asset);
 
             const balance = await this.wallets[ledgerName].getBalanceByAsset(

@@ -32,10 +32,9 @@ function nActorTest(
             throw e;
         } finally {
             for (const actorName of actorNames) {
-                actors.getActorByName(actorName).stop();
+                await actors.getActorByName(actorName).stop();
             }
         }
-
         done();
     };
 }
