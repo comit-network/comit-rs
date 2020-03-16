@@ -1,52 +1,47 @@
-use crate::swap_protocols::{rfc003::SecretHash, SwapId};
 use futures::{future::BoxFuture, AsyncRead, AsyncWrite};
 use libp2p::core::{upgrade, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
-use serde::{Deserialize, Serialize};
-use std::{io, iter};
-use tracing::trace;
+use serde::{de::DeserializeOwned, Serialize};
+use std::{io, iter, marker::PhantomData};
 
-const INFO: &str = "/comit/swap/secret_hash/1.0.0";
+/// A trait for defining the message in a oneshot protocol.
+pub trait Message {
+    /// The identifier of the oneshot protocol.
+    const INFO: &'static str;
+}
 
-/// The secret hash sharing protocol works in the following way:
+/// Represents a prototype for an upgrade to handle the sender side of a oneshot
+/// protocol.
 ///
-/// - Dialer (Alice) writes the `Message` to the substream.
-/// - Listener (Bob) reads the `Message` from the substream.
-
-/// Data sent to peer in secret hash protocol.
-#[derive(Clone, Copy, Deserialize, Debug, Serialize, PartialEq)]
-pub struct Message {
-    swap_id: SwapId,
-    secret_hash: SecretHash,
-}
-
-/// Represents a prototype for an upgrade to handle the sender side of the
-/// secret hash sharing protocol.  Config contains the `Message`, once the
-/// outbound upgrade is complete peer node has been sent the message.
+/// This struct contains the message that should be sent to the other peer.
 #[derive(Clone, Copy, Debug)]
-pub struct OutboundProtocolConfig {
-    msg: Message,
+pub struct OutboundConfig<M> {
+    msg: M,
 }
 
-impl UpgradeInfo for OutboundProtocolConfig {
+impl<M> UpgradeInfo for OutboundConfig<M>
+where
+    M: Message,
+{
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(INFO.as_bytes())
+        iter::once(M::INFO.as_bytes())
     }
 }
 
-impl<C> OutboundUpgrade<C> for OutboundProtocolConfig
+impl<C, M> OutboundUpgrade<C> for OutboundConfig<M>
 where
     C: AsyncWrite + Unpin + Send + 'static,
+    M: Serialize + Message + Send + 'static,
 {
     type Output = ();
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
     fn upgrade_outbound(self, mut socket: C, info: Self::Info) -> Self::Future {
-        trace!(
-            "Upgrading outbound connection: {}",
+        tracing::trace!(
+            "Upgrading outbound connection for {}",
             String::from_utf8_lossy(info)
         );
         Box::pin(async move {
@@ -59,42 +54,52 @@ where
 }
 
 /// Represents a prototype for an upgrade to handle the receiver side of the
-/// secret hash sharing protocol.
+/// oneshot protocol.
+///
+/// The type parameter M is the message you are expecting to receive.
 #[derive(Clone, Copy, Debug)]
-pub struct InboundProtocolConfig;
+pub struct InboundConfig<M> {
+    msg_type: PhantomData<M>,
+}
 
-impl Default for InboundProtocolConfig {
+impl<M> Default for InboundConfig<M> {
     fn default() -> Self {
-        Self {}
+        Self {
+            msg_type: PhantomData,
+        }
     }
 }
 
-impl UpgradeInfo for InboundProtocolConfig {
+impl<M> UpgradeInfo for InboundConfig<M>
+where
+    M: Message,
+{
     type Info = &'static [u8];
     type InfoIter = iter::Once<Self::Info>;
 
     fn protocol_info(&self) -> Self::InfoIter {
-        iter::once(INFO.as_bytes())
+        iter::once(M::INFO.as_bytes())
     }
 }
 
-impl<C> InboundUpgrade<C> for InboundProtocolConfig
+impl<C, M> InboundUpgrade<C> for InboundConfig<M>
 where
     C: AsyncRead + Unpin + Send + 'static,
+    M: DeserializeOwned + Message,
 {
-    type Output = Message;
+    type Output = M;
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
     fn upgrade_inbound(self, mut socket: C, info: Self::Info) -> Self::Future {
-        trace!(
-            "Upgrading inbound connection: {}",
+        tracing::trace!(
+            "Upgrading inbound connection for {}",
             String::from_utf8_lossy(info)
         );
         Box::pin(async move {
             let message = upgrade::read_one(&mut socket, 1024).await?;
             let mut de = serde_json::Deserializer::from_slice(&message);
-            let info = Message::deserialize(&mut de)?;
+            let info = M::deserialize(&mut de)?;
 
             Ok(info)
         })
@@ -121,18 +126,20 @@ mod tests {
         upgrade,
     };
     use rand::{thread_rng, Rng};
-    use std::str::FromStr;
+    use serde::Deserialize;
+
+    #[derive(Serialize, Deserialize, PartialEq, Debug, Clone, Copy)]
+    struct DummyMessage {
+        content: u32,
+    }
+
+    impl Message for DummyMessage {
+        const INFO: &'static str = "/foo/bar/test/1.0.0";
+    }
 
     #[tokio::test]
     async fn correct_transfer() {
-        let send_msg = Message {
-            swap_id: SwapId::from_str("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34").unwrap(),
-            secret_hash: SecretHash::from_str(
-                "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
-                 bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
-            )
-            .unwrap(),
-        };
+        let sent_msg = DummyMessage { content: 42 };
 
         let mem_addr = multiaddr![Memory(thread_rng().gen::<u64>())];
         let mut listener = MemoryTransport.listen_on(mem_addr).unwrap();
@@ -150,7 +157,7 @@ mod tests {
                 let (listener_upgrade, _) = listener_event.unwrap().into_upgrade().unwrap();
                 let conn = listener_upgrade.await.unwrap();
 
-                let config = OutboundProtocolConfig { msg: send_msg };
+                let config = OutboundConfig { msg: sent_msg };
                 upgrade::apply_outbound(conn, config, upgrade::Version::V1)
                     .await
                     .unwrap();
@@ -159,9 +166,9 @@ mod tests {
 
         let conn = MemoryTransport.dial(listener_addr).unwrap().await.unwrap();
 
-        let config = InboundProtocolConfig {};
+        let config = InboundConfig::<DummyMessage>::default();
         let received_msg = upgrade::apply_inbound(conn, config).await.unwrap();
 
-        assert_eq!(received_msg, send_msg)
+        assert_eq!(received_msg, sent_msg)
     }
 }
