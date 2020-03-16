@@ -3,7 +3,7 @@ extern crate proc_macro;
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{Data, Fields, Lit, Meta};
+use syn::{Attribute, Data, Fields, Lit, Meta};
 
 #[proc_macro_derive(RootDigestMacro, attributes(digest_bytes))]
 pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
@@ -30,19 +30,8 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                             .attrs
                             .get(0)
                             .expect("digest_bytes attribute must be present on all fields");
-                        let meta = attr.parse_meta().expect("Attribute is malformed");
 
-                        if let Meta::NameValue(name_value) = meta {
-                            if name_value.path.is_ident("digest_bytes") {
-                                if let Lit::Str(lit_str) = name_value.lit {
-                                    let str = lit_str.value();
-                                    let bytes = ::hex::decode(&str)
-                                        .expect("digest_bytes value should be in hex format");
-                                    return Bytes(bytes);
-                                }
-                            }
-                        }
-                        panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
+                        attr_to_bytes(attr)
                     });
                     (idents, types, bytes)
                 }
@@ -70,8 +59,33 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
             };
             gen.into()
         }
+        Data::Enum(data) => {
+            let idents = data.variants.iter().map(|variant| &variant.ident);
+
+            let bytes = data.variants.iter().map(|variant| {
+                let attr = variant
+                    .attrs
+                    .get(0)
+                    .expect("digest_bytes attribute must be present on all fields");
+                attr_to_bytes(attr)
+            });
+
+            let gen = quote! {
+                    impl ::digest::RootDigest for #name
+                    {
+                        fn root_digest(self) -> Multihash {
+                            let bytes = match self {
+                                #(Self::#idents => #bytes.to_vec()),*
+                            };
+
+                            digest(&bytes)
+                        }
+                    }
+            };
+            gen.into()
+        }
         _ => {
-            panic!("DigestRootMacro only supports structs.");
+            panic!("DigestRootMacro only supports structs & enums.");
         }
     }
 }
@@ -85,6 +99,22 @@ impl ToTokens for Bytes {
         let group = Group::new(Delimiter::Bracket, inner_tokens);
         tokens.append(group);
     }
+}
+
+fn attr_to_bytes(attr: &Attribute) -> Bytes {
+    let meta = attr.parse_meta().expect("Attribute is malformed");
+
+    if let Meta::NameValue(name_value) = meta {
+        if name_value.path.is_ident("digest_bytes") {
+            if let Lit::Str(lit_str) = name_value.lit {
+                let str = lit_str.value();
+                let bytes =
+                    ::hex::decode(&str).expect("digest_bytes value should be in hex format");
+                return Bytes(bytes);
+            }
+        }
+    }
+    panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
 }
 
 #[cfg(test)]

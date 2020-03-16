@@ -68,8 +68,8 @@ enum OtherEnum {
 impl RootDigest for OtherEnum {
     fn root_digest(self) -> Multihash {
         let bytes = match self {
-            OtherEnum::Foo => digest(vec![0x00u8, 0x11u8]),
-            OtherEnum::Bar => digest(vec![0x0Eu8, 0x0Fu8]),
+            OtherEnum::Foo => vec![0x00u8, 0x11u8],
+            OtherEnum::Bar => vec![0x00u8, 0x11u8],
         };
 
         digest(&bytes)
