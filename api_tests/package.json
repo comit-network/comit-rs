@@ -60,7 +60,7 @@
         "json-schema-to-typescript": "^8.2.0",
         "ln-service": "^47.15.3",
         "log4js": "^6.1.2",
-        "multiaddr": "^7.4.0",
+        "multiaddr": "^7.4.1",
         "pem-ts": "^2.0.0",
         "prettier": "^1.19.1",
         "readline-promise": "^1.0.4",
