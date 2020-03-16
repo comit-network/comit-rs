@@ -15,6 +15,8 @@ INSTALLED_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain 
 INSTALLED_NIGHTLY_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain $(NIGHTLY_TOOLCHAIN))
 AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
 
+CARGO_TOML_FILES = $(shell ls **/Cargo.toml)
+
 # All our targets go into .PHONY because none of them actually create files
 .PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
 
@@ -90,11 +92,7 @@ MODIFIED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(MODIFIED_FILES))
 
 format: install_rustfmt install_tomlfmt
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
-	RUST_LOG=error $(CARGO) tomlfmt -p Cargo.toml && git add Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -p cnd/Cargo.toml && git add cnd/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -p libp2p-comit/Cargo.toml && git add libp2p-comit/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -p digest/Cargo.toml && git add digest/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -p digest-macro-derive/Cargo.toml && git add digest-macro-derive/Cargo.toml
+	@$(foreach file,$(CARGO_TOML_FILES),$(CARGO) tomlfmt -p $(file) && git add $(file);)
 ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run fix)
 endif
@@ -106,11 +104,7 @@ check_rust_format: install_rustfmt
 	$(CARGO_NIGHTLY) fmt -- --check
 
 check_toml_format: install_tomlfmt
-	RUST_LOG=error $(CARGO) tomlfmt -d -p Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -d -p cnd/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -d -p libp2p-comit/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -d -p digest/Cargo.toml
-	RUST_LOG=error $(CARGO) tomlfmt -d -p digest-macro-derive/Cargo.toml
+	@$(foreach file,$(CARGO_TOML_FILES),$(CARGO) tomlfmt -d -p $(file);)
 
 check_ts_format:
 ifeq ($(CI),true)
