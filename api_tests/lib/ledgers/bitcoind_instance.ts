@@ -65,7 +65,7 @@ export class BitcoindInstance implements BitcoinInstance {
 
         this.process.on("exit", (code: number, signal: number) => {
             this.logger.info(
-                "binary exited with code",
+                "bitcoind exited with code",
                 code,
                 "after signal",
                 signal
