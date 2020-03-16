@@ -4,6 +4,13 @@ use serde::{de::DeserializeOwned, Serialize};
 use std::{io, iter, marker::PhantomData};
 
 /// A trait for defining the message in a oneshot protocol.
+///
+/// The oneshot protocol works in a "push" manner, i.e.
+/// the dialer sends the message and the listener receives
+/// it.
+///
+/// Hence, if you want to send a message using a certain oneshot
+/// protocol, you have to open a substream with a specific protocol.
 pub trait Message {
     /// The identifier of the oneshot protocol.
     const INFO: &'static str;

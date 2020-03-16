@@ -1,6 +1,7 @@
-pub mod oneshot_behaviour;
-mod oneshot_protocol;
-mod secret_hash;
+mod oneshot_behaviour;
+
+pub mod oneshot_protocol;
+pub mod protocols;
 pub mod transport;
 
 pub use transport::ComitTransport;
