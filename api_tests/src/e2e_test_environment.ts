@@ -74,6 +74,10 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                     base: logDir,
                     property: "categoryName",
                     extension: ".log",
+                    layout: {
+                        type: "pattern",
+                        pattern: "%d %5.10p: %m",
+                    },
                 },
             },
             categories: {
