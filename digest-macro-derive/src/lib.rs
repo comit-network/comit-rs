@@ -13,62 +13,66 @@ pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
 
 fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    if let Data::Struct(data) = &ast.data {
-        let (idents, types, bytes) = match &data.fields {
-            Fields::Named(fields) => {
-                let idents = fields
-                    .named
-                    .iter()
-                    .map(|field| field.ident.as_ref().expect("Named field"));
 
-                let types = fields.named.iter().map(|field| &field.ty);
+    match &ast.data {
+        Data::Struct(data) => {
+            let (idents, types, bytes) = match &data.fields {
+                Fields::Named(fields) => {
+                    let idents = fields
+                        .named
+                        .iter()
+                        .map(|field| field.ident.as_ref().expect("Named field"));
 
-                let bytes = fields.named.iter().map(|field| {
-                    let attr = field
-                        .attrs
-                        .get(0)
-                        .expect("digest_bytes attribute must be present on all fields");
-                    let meta = attr.parse_meta().expect("Attribute is malformed");
+                    let types = fields.named.iter().map(|field| &field.ty);
 
-                    if let Meta::NameValue(name_value) = meta {
-                        if name_value.path.is_ident("digest_bytes") {
-                            if let Lit::Str(lit_str) = name_value.lit {
-                                let str = lit_str.value();
-                                let bytes = ::hex::decode(&str)
-                                    .expect("digest_bytes value should be in hex format");
-                                return Bytes(bytes);
+                    let bytes = fields.named.iter().map(|field| {
+                        let attr = field
+                            .attrs
+                            .get(0)
+                            .expect("digest_bytes attribute must be present on all fields");
+                        let meta = attr.parse_meta().expect("Attribute is malformed");
+
+                        if let Meta::NameValue(name_value) = meta {
+                            if name_value.path.is_ident("digest_bytes") {
+                                if let Lit::Str(lit_str) = name_value.lit {
+                                    let str = lit_str.value();
+                                    let bytes = ::hex::decode(&str)
+                                        .expect("digest_bytes value should be in hex format");
+                                    return Bytes(bytes);
+                                }
                             }
                         }
-                    }
-                    panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
-                });
-                (idents, types, bytes)
-            }
-            _ => panic!("Only supporting named fields."),
-        };
-
-        let gen = quote! {
-                impl ::digest::RootDigest for #name
-                    where #(#types: ::digest::FieldDigest),*
-                {
-                    fn root_digest(self) -> Multihash {
-                        let mut digests = vec![];
-                        #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
-
-                        digests.sort();
-
-                        let res = digests.into_iter().fold(vec![], |mut res, digest| {
-                            res.append(&mut digest.into_bytes());
-                            res
-                        });
-
-                        digest(&res)
-                    }
+                        panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
+                    });
+                    (idents, types, bytes)
                 }
-        };
-        gen.into()
-    } else {
-        panic!("DigestRootMacro only supports structs.");
+                _ => panic!("Only supporting named fields."),
+            };
+
+            let gen = quote! {
+                    impl ::digest::RootDigest for #name
+                        where #(#types: ::digest::FieldDigest),*
+                    {
+                        fn root_digest(self) -> Multihash {
+                            let mut digests = vec![];
+                            #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
+
+                            digests.sort();
+
+                            let res = digests.into_iter().fold(vec![], |mut res, digest| {
+                                res.append(&mut digest.into_bytes());
+                                res
+                            });
+
+                            digest(&res)
+                        }
+                    }
+            };
+            gen.into()
+        }
+        _ => {
+            panic!("DigestRootMacro only supports structs.");
+        }
     }
 }
 

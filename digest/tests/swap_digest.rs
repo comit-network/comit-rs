@@ -52,6 +52,30 @@ impl RootDigest for OtherStruct {
     }
 }
 
+#[derive(RootDigestMacro)]
+enum Enum {
+    #[digest_bytes = "0011"]
+    Foo,
+    #[digest_bytes = "0E0F"]
+    Bar,
+}
+
+enum OtherEnum {
+    Foo,
+    Bar,
+}
+
+impl RootDigest for OtherEnum {
+    fn root_digest(self) -> Multihash {
+        let bytes = match self {
+            OtherEnum::Foo => digest(vec![0x00u8, 0x11u8]),
+            OtherEnum::Bar => digest(vec![0x0Eu8, 0x0Fu8]),
+        };
+
+        digest(&bytes)
+    }
+}
+
 #[test]
 fn given_same_strings_return_same_multihash() {
     let str1 = String::from("simple string");
@@ -163,4 +187,12 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
     };
 
     assert_eq!(struct1.root_digest(), struct2.root_digest())
+}
+
+#[test]
+fn given_two_enums_with_same_bytes_per_variant_return_same_multihash() {
+    let enum1 = Enum::Foo;
+    let enum2 = OtherEnum::Foo;
+
+    assert_eq!(enum1.root_digest(), enum2.root_digest())
 }
