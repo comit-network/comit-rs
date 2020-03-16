@@ -28,12 +28,12 @@ struct DoubleFieldStruct {
     bar: String,
 }
 
-struct OtherStruct {
+struct OtherDoubleFieldStruct {
     bar: String,
     foo: String,
 }
 
-impl RootDigest for OtherStruct {
+impl RootDigest for OtherDoubleFieldStruct {
     fn root_digest(self) -> Multihash {
         let mut digests = vec![];
         let foo_digest = self.foo.field_digest([0x00u8, 0x11u8].to_vec());
@@ -181,7 +181,7 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
         foo: "foo field".into(),
         bar: "bar field".into(),
     };
-    let struct2 = OtherStruct {
+    let struct2 = OtherDoubleFieldStruct {
         bar: "bar field".into(),
         foo: "foo field".into(),
     };
