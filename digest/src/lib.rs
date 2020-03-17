@@ -13,12 +13,12 @@ pub trait Digest {
 }
 
 pub trait FieldDigest {
-    fn field_digest(self, suffix: Vec<u8>) -> Multihash;
+    fn field_digest(self, prefix: Vec<u8>) -> Multihash;
 }
 
 impl FieldDigest for String {
-    fn field_digest(self, suffix: Vec<u8>) -> Multihash {
-        let mut bytes = suffix;
+    fn field_digest(self, prefix: Vec<u8>) -> Multihash {
+        let mut bytes = prefix;
         // String::into_bytes return the bytes for UTF-8 encoding
         let mut value = self.into_bytes();
         bytes.append(&mut value);
@@ -28,8 +28,8 @@ impl FieldDigest for String {
 }
 
 impl FieldDigest for Vec<u8> {
-    fn field_digest(mut self, suffix: Vec<u8>) -> Multihash {
-        let mut bytes = suffix;
+    fn field_digest(mut self, prefix: Vec<u8>) -> Multihash {
+        let mut bytes = prefix;
         bytes.append(&mut self);
 
         digest(&self)
