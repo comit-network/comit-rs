@@ -1,10 +1,5 @@
 import { Config } from "@jest/types";
-import {
-    execAsync,
-    HarnessGlobal,
-    mkdirAsync,
-    rimrafAsync,
-} from "../lib/utils";
+import { execAsync, HarnessGlobal, mkdirAsync, rimrafAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";

@@ -3,14 +3,14 @@
  */
 
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "../../gen/siren";
-import { Actor } from "../../lib/actors/actor";
+import { Actor } from "../../src/actors/actor";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../../lib/setup_chai";
+import "../../src/setup_chai";
 import * as sirenJsonSchema from "../../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../../swap.schema.json";
-import { twoActorTest } from "../../lib/actor_test";
-import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../../lib/utils";
+import { twoActorTest } from "../../src/actor_test";
+import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../../src/utils";
 import { Action } from "comit-sdk";
 
 // ******************************************** //

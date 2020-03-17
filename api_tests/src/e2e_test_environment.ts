@@ -1,23 +1,18 @@
 import { Config } from "@jest/types";
-import {
-    execAsync,
-    HarnessGlobal,
-    mkdirAsync,
-    rimrafAsync,
-} from "../lib/utils";
+import { execAsync, HarnessGlobal, mkdirAsync, rimrafAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
-import { LightningWallet } from "../lib/wallets/lightning";
-import { BitcoinWallet } from "../lib/wallets/bitcoin";
-import { AssetKind } from "../lib/asset";
-import { LedgerKind } from "../lib/ledgers/ledger";
-import BitcoinLedger from "../lib/ledgers/bitcoin";
-import { BitcoindInstance } from "../lib/ledgers/bitcoind_instance";
-import EthereumLedger from "../lib/ledgers/ethereum";
-import LightningLedger from "../lib/ledgers/lightning";
-import { ParityInstance } from "../lib/ledgers/parity_instance";
-import { LndInstance } from "../lib/ledgers/lnd_instance";
+import { LightningWallet } from "./wallets/lightning";
+import { BitcoinWallet } from "./wallets/bitcoin";
+import { AssetKind } from "./asset";
+import { LedgerKind } from "./ledgers/ledger";
+import BitcoinLedger from "./ledgers/bitcoin";
+import { BitcoindInstance } from "./ledgers/bitcoind_instance";
+import EthereumLedger from "./ledgers/ethereum";
+import LightningLedger from "./ledgers/lightning";
+import { ParityInstance } from "./ledgers/parity_instance";
+import { LndInstance } from "./ledgers/lnd_instance";
 import { configure, Logger } from "log4js";
 
 // ************************ //
