@@ -53,11 +53,34 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
             gen.into()
         }
         Data::Enum(data) => {
-            let idents = data.variants.iter().map(|variant| &variant.ident);
-
-            let bytes = data
+            let unit_variant_idents = data
                 .variants
                 .iter()
+                .filter(|variant| variant.fields.is_empty())
+                .map(|variant| &variant.ident);
+
+            let unit_variant_bytes = data
+                .variants
+                .iter()
+                .filter(|variant| variant.fields.is_empty())
+                .map(|variant| attr_to_bytes(&variant.attrs));
+
+            let tuple_variant_idents = data
+                .variants
+                .iter()
+                .filter(|variant| match variant.fields {
+                    Fields::Unnamed(_) => true,
+                    _ => false,
+                })
+                .map(|variant| &variant.ident);
+
+            let tuple_variant_bytes = data
+                .variants
+                .iter()
+                .filter(|variant| match variant.fields {
+                    Fields::Unnamed(_) => true,
+                    _ => false,
+                })
                 .map(|variant| attr_to_bytes(&variant.attrs));
 
             let gen = quote! {
@@ -65,7 +88,12 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                     {
                         fn digest(self) -> Multihash {
                             let bytes = match self {
-                                #(Self::#idents => #bytes.to_vec()),*
+                                #(Self::#unit_variant_idents => #unit_variant_bytes.to_vec()),*,
+                                #(Self::#tuple_variant_idents(data) => {
+                                        let mut bytes = #tuple_variant_bytes.to_vec();
+                                        bytes.append(&mut data.digest().into_bytes());
+                                        bytes
+                                }),*
                             };
 
                             digest(&bytes)

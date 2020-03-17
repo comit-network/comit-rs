@@ -104,6 +104,35 @@ impl Digest for OtherNestedStruct {
     }
 }
 
+#[derive(DigestMacro)]
+enum NestedEnum {
+    #[digest_prefix = "DEAD"]
+    Foo,
+    #[digest_prefix = "BEEF"]
+    Bar(NestedStruct),
+}
+
+#[allow(dead_code)]
+enum OtherNestedEnum {
+    Foo,
+    Bar(OtherNestedStruct),
+}
+
+impl Digest for OtherNestedEnum {
+    fn digest(self) -> Multihash {
+        let bytes = match self {
+            OtherNestedEnum::Foo => vec![0xDEu8, 0xADu8],
+            OtherNestedEnum::Bar(other_nested_struct) => {
+                let mut bytes = vec![0xBEu8, 0xEFu8];
+                bytes.append(&mut other_nested_struct.digest().into_bytes());
+                bytes
+            }
+        };
+
+        digest(&bytes)
+    }
+}
+
 #[test]
 fn given_same_strings_return_same_multihash() {
     let str1: MyString = "simple string".into();
@@ -213,4 +242,24 @@ fn given_two_nested_structs_with_same_value_return_same_multihash() {
     };
 
     assert_eq!(struct1.digest(), struct2.digest())
+}
+
+#[test]
+fn given_two_nested_enums_with_same_value_return_same_multihash() {
+    let enum1 = NestedEnum::Bar(NestedStruct {
+        foo: "foo".into(),
+        nest: DoubleFieldStruct {
+            foo: "faa".into(),
+            bar: "restaurant".into(),
+        },
+    });
+    let enum2 = OtherNestedEnum::Bar(OtherNestedStruct {
+        foo: "foo".into(),
+        nest: OtherDoubleFieldStruct {
+            foo: "faa".into(),
+            bar: "restaurant".into(),
+        },
+    });
+
+    assert_eq!(enum1.digest(), enum2.digest());
 }
