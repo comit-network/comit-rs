@@ -1,9 +1,5 @@
-/**
- * @logDir lightning_routes
- */
-
 import { expect } from "chai";
-import { oneActorTest } from "../../src/actor_test";
+import { oneActorTest } from "../src/actor_test";
 
 // ******************************************** //
 // Lightning routes                               //

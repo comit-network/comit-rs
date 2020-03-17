@@ -1,4 +1,5 @@
-import LedgerInstance from "./ledger_instance";
+import { Logger } from "log4js";
+import { existsAsync, readFileAsync, writeFileAsync } from "../utils";
 
 /**
  * An instance of the Lightning ledger for use in the e2e tests.
@@ -9,21 +10,78 @@ import LedgerInstance from "./ledger_instance";
  * to be done after a {@link LightningInstance} is started. If this ever changes,
  * this class is the place where to put this information.
  */
-export default class LightningLedger implements LedgerInstance {
-    public static async start(instance: LightningInstance) {
+export default class LightningLedger {
+    public static async start(
+        instance: LightningInstance,
+        logger: Logger,
+        configFile: string
+    ) {
+        logger.info(
+            "File-lock for Lightning ledger acquired, checking for config file at",
+            configFile
+        );
+        const configFileExists = await existsAsync(configFile);
+
+        const lightningLedger = configFileExists
+            ? await LightningLedger.reuseExisting(configFile, logger)
+            : await LightningLedger.startNew(instance, configFile, logger);
+
+        return lightningLedger;
+    }
+
+    private static async reuseExisting(configFile: string, logger: Logger) {
+        logger.info(
+            "Found config file, we'll be using that configuration instead of starting another instance"
+        );
+
+        const config: LightningNodeConfig = JSON.parse(
+            await readFileAsync(configFile, {
+                encoding: "utf-8",
+            })
+        );
+        const proxy = new LightningInstanceProxy(config);
+
+        return new LightningLedger(proxy);
+    }
+
+    private static async startNew(
+        instance: LightningInstance,
+        configFile: string,
+        logger: Logger
+    ) {
+        logger.info("No config file found, starting Lightning ledger");
+
         await instance.start();
+
+        const { grpcSocket } = instance.config;
+
+        logger.info("Lightning node started at", grpcSocket);
+
+        await writeFileAsync(configFile, JSON.stringify(instance.config), {
+            encoding: "utf-8",
+        });
+
+        logger.info("Lightning ledger config file written to", configFile);
 
         return new LightningLedger(instance);
     }
 
     constructor(private readonly instance: LightningInstance) {}
 
-    async stop(): Promise<void> {
-        return this.instance.stop();
-    }
-
     get config(): LightningNodeConfig {
         return this.instance.config;
+    }
+}
+
+class LightningInstanceProxy implements LightningInstance {
+    constructor(public readonly config: LightningNodeConfig) {}
+
+    async start(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    async stop(): Promise<void> {
+        return Promise.resolve();
     }
 }
 

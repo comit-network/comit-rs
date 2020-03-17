@@ -1,15 +1,11 @@
-/**
- * @logDir rfc003
- */
-
-import { Actor } from "../../src/actors/actor";
+import { Actor } from "../src/actors/actor";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../../src/setup_chai";
-import * as sirenJsonSchema from "../../siren.schema.json";
-import * as swapPropertiesJsonSchema from "../../swap.schema.json";
-import { twoActorTest } from "../../src/actor_test";
-import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../../src/utils";
+import "../src/setup_chai";
+import * as sirenJsonSchema from "../siren.schema.json";
+import * as swapPropertiesJsonSchema from "../swap.schema.json";
+import { twoActorTest } from "../src/actor_test";
+import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
 import {
     Action,
     EmbeddedRepresentationSubEntity,

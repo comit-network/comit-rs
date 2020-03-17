@@ -5,7 +5,6 @@ import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
 import rimraf from "rimraf";
-import { Mutex } from "async-mutex";
 import { exec } from "child_process";
 import { LightningWallet } from "./wallets/lightning";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
@@ -20,11 +19,11 @@ export interface HarnessGlobal extends Global.Global {
     };
     projectRoot: string;
     tokenContract: string;
-    parityAccountMutex: Mutex;
+    parityLockDir: string;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;
-    getLogger: (category: string) => Logger;
+    getLogger: (categories: string[]) => Logger;
 }
 
 export interface LedgerConfig {
@@ -37,6 +36,7 @@ export const existsAsync = promisify(fs.exists);
 export const openAsync = promisify(fs.open);
 export const mkdirAsync = promisify(fs.mkdir);
 export const writeFileAsync = promisify(fs.writeFile);
+export const readFileAsync = promisify(fs.readFile);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 

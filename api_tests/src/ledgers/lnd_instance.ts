@@ -13,15 +13,15 @@ export class LndInstance implements LightningInstance {
 
     public static async new(
         dataDir: string,
-        name: string,
         logger: Logger,
-        bitcoindDataDir: string
+        bitcoindDataDir: string,
+        pidFile: string
     ) {
         return new LndInstance(
             dataDir,
-            name,
             logger,
             bitcoindDataDir,
+            pidFile,
             await getPort(),
             await getPort()
         );
@@ -29,9 +29,9 @@ export class LndInstance implements LightningInstance {
 
     private constructor(
         private readonly dataDir: string,
-        private readonly name: string,
         private readonly logger: Logger,
         private readonly bitcoindDataDir: string,
+        private readonly pidFile: string,
         private readonly lndP2pPort: number,
         private readonly lndRpcPort: number
     ) {}
@@ -66,6 +66,10 @@ export class LndInstance implements LightningInstance {
         );
 
         this.logger.debug("lnd started with PID", this.process.pid);
+
+        await writeFileAsync(this.pidFile, this.process.pid, {
+            encoding: "utf-8",
+        });
     }
 
     private async execBinary() {
@@ -96,7 +100,7 @@ export class LndInstance implements LightningInstance {
         const lnd = await Lnd.init(config);
 
         const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({
-            seedEntropy: Buffer.alloc(16, this.name),
+            seedEntropy: Buffer.alloc(16, this.lndP2pPort),
         });
         const walletPassword = Buffer.from("password", "utf8");
         this.logger.debug(

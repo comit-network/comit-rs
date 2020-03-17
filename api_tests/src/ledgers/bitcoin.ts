@@ -1,18 +1,40 @@
 import BitcoinRpcClient from "bitcoin-core";
-import LedgerInstance from "./ledger_instance";
 import { Logger } from "log4js";
+import { existsAsync, readFileAsync, writeFileAsync } from "../utils";
 
 /**
  * An instance of the Bitcoin ledger for use in the e2e tests.
  *
- * This class is compatible with anything that implements {@link BitcoinInstance}.
- *
- * For the e2e tests to work properly, we need to continuously mine bitcoin blocks.
- * This class takes care of spawning a miner after the Bitcoin blockchain has
- * been setup, regardless of how that is achieved (Docker container, bitcoind instance, etc).
+ * This class is compatible with anything that implements {@link BitcoinInstance}
+ * and takes care of correctly initializing the Bitcoin ledger. Concretely,
+ * this means mining a 101 blocks so we can spend coins from the mining reward.
  */
-export default class BitcoinLedger implements LedgerInstance {
-    public static async start(instance: BitcoinInstance, logger: Logger) {
+export default class BitcoinLedger {
+    public static async start(
+        instance: BitcoinInstance,
+        logger: Logger,
+        configFile: string
+    ) {
+        logger.info(
+            "File-lock for Bitcoin ledger acquired, checking for config file at",
+            configFile
+        );
+        const configFileExists = await existsAsync(configFile);
+
+        const bitcoinLedger = configFileExists
+            ? await BitcoinLedger.reuseExisting(configFile, logger)
+            : await BitcoinLedger.startNew(instance, configFile, logger);
+
+        return bitcoinLedger;
+    }
+
+    private static async startNew(
+        instance: BitcoinInstance,
+        configFile: string,
+        logger: Logger
+    ) {
+        logger.info("No config file found, starting Bitcoin ledger");
+
         await instance.start();
 
         const { rpcPort, username, password, rpcUrl } = instance.config;
@@ -30,27 +52,47 @@ export default class BitcoinLedger implements LedgerInstance {
         // only coins after the first 101 are spendable
         await client.generateToAddress(101, await client.getNewAddress());
 
-        const miner = setInterval(async () => {
-            await client.generateToAddress(1, await client.getNewAddress());
-        }, 1000);
+        await writeFileAsync(configFile, JSON.stringify(instance.config), {
+            encoding: "utf-8",
+        });
 
-        logger.info("Bitcoin miner initialized");
+        logger.info("Bitcoin ledger config file written to", configFile);
 
-        return new BitcoinLedger(instance, miner);
+        return new BitcoinLedger(instance);
     }
 
-    constructor(
-        private readonly instance: BitcoinInstance,
-        private readonly miner: NodeJS.Timeout
-    ) {}
+    private static async reuseExisting(configFile: string, logger: Logger) {
+        logger.info(
+            "Found config file, we'll be using that configuration instead of starting another instance"
+        );
 
-    public async stop(): Promise<void> {
-        await this.instance.stop();
-        clearInterval(this.miner);
+        const config: BitcoinNodeConfig = JSON.parse(
+            await readFileAsync(configFile, {
+                encoding: "utf-8",
+            })
+        );
+
+        const proxy = new BitcoinInstanceProxy(config);
+
+        return new BitcoinLedger(proxy);
     }
+
+    constructor(private readonly instance: BitcoinInstance) {}
 
     public get config(): BitcoinNodeConfig {
         return this.instance.config;
+    }
+}
+
+class BitcoinInstanceProxy implements BitcoinInstance {
+    constructor(public readonly config: BitcoinNodeConfig) {}
+
+    public async start(): Promise<void> {
+        return Promise.resolve();
+    }
+
+    public async stop(): Promise<void> {
+        return Promise.resolve();
     }
 }
 
