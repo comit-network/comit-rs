@@ -37,6 +37,7 @@ export const existsAsync = promisify(fs.exists);
 export const openAsync = promisify(fs.open);
 export const mkdirAsync = promisify(fs.mkdir);
 export const writeFileAsync = promisify(fs.writeFile);
+export const readFileAsync = promisify(fs.readFile);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 

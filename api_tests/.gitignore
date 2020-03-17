@@ -4,3 +4,4 @@ log
 gen/
 yarn-error.log
 dist/
+locks/

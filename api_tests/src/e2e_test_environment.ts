@@ -1,5 +1,5 @@
 import { Config } from "@jest/types";
-import { execAsync, HarnessGlobal, mkdirAsync, rimrafAsync } from "./utils";
+import { HarnessGlobal, mkdirAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
@@ -35,16 +35,11 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         super(config);
 
         this.docblockPragmas = context.docblockPragmas;
+        this.projectRoot = path.resolve(config.rootDir, "..");
     }
 
     async setup() {
         await super.setup();
-
-        // retrieve project root by using git
-        const { stdout } = await execAsync("git rev-parse --show-toplevel", {
-            encoding: "utf8",
-        });
-        this.projectRoot = stdout.trim();
 
         // setup global variables
         this.global.projectRoot = this.projectRoot;
@@ -60,7 +55,6 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             "log",
             suiteConfig.logDir
         );
-        await E2ETestEnvironment.cleanLogDir(logDir);
 
         const log4js = configure({
             appenders: {
@@ -115,7 +109,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             tasks.push(this.startBitcoin());
         }
 
-        if (startBitcoin && startLightning) {
+        if (startLightning) {
             tasks.push(this.startBitcoinAndLightning());
         }
 
@@ -134,7 +128,8 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 await this.global.getDataDir("bitcoind"),
                 this.logger
             ),
-            this.logger
+            this.logger,
+            await this.getLockDirectory("bitcoind")
         );
         this.global.ledgerConfigs.bitcoin = this.bitcoinLedger.config;
     }
@@ -150,7 +145,8 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 this.global.getLogFile(["parity.log"]),
                 this.logger
             ),
-            this.logger
+            this.logger,
+            await this.getLockDirectory("parity")
         );
         this.global.ledgerConfigs.ethereum = this.ethereumLedger.config;
         this.global.tokenContract = this.ethereumLedger.config.tokenContract;
@@ -241,9 +237,14 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         );
     }
 
-    private static async cleanLogDir(logDir: string) {
-        await rimrafAsync(logDir);
-        await mkdirAsync(logDir, { recursive: true });
+    private async getLockDirectory(process: string): Promise<string> {
+        const dir = path.join(this.projectRoot, "api_tests", "locks", process);
+
+        await mkdirAsync(dir, {
+            recursive: true,
+        });
+
+        return dir;
     }
 
     async teardown() {
