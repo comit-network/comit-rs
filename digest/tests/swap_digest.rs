@@ -1,18 +1,32 @@
-use digest::{digest, Digest, DigestMacro, FieldDigest};
+use digest::{digest, Digest, DigestMacro, FieldDigest, IntoDigestInput};
 
 use digest::multihash::Multihash;
+
+struct MyString(String);
+
+impl IntoDigestInput for MyString {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.0.into_bytes()
+    }
+}
+
+impl From<&str> for MyString {
+    fn from(str: &str) -> MyString {
+        MyString(str.to_owned())
+    }
+}
 
 #[derive(DigestMacro)]
 struct DoubleFieldStruct {
     #[digest_prefix = "0011"]
-    foo: String,
+    foo: MyString,
     #[digest_prefix = "FFAA"]
-    bar: String,
+    bar: MyString,
 }
 
 struct OtherDoubleFieldStruct {
-    bar: String,
-    foo: String,
+    bar: MyString,
+    foo: MyString,
 }
 
 impl Digest for OtherDoubleFieldStruct {
@@ -62,13 +76,13 @@ impl Digest for OtherEnum {
 #[derive(DigestMacro)]
 struct NestedStruct {
     #[digest_prefix = "0011"]
-    foo: String,
+    foo: MyString,
     #[digest_prefix = "AA00"]
     nest: DoubleFieldStruct,
 }
 
 struct OtherNestedStruct {
-    foo: String,
+    foo: MyString,
     nest: OtherDoubleFieldStruct,
 }
 
@@ -93,8 +107,8 @@ impl Digest for OtherNestedStruct {
 
 #[test]
 fn given_same_strings_return_same_multihash() {
-    let str1 = String::from("simple string");
-    let str2 = String::from("simple string");
+    let str1: MyString = "simple string".into();
+    let str2: MyString = "simple string".into();
 
     assert_eq!(
         str1.field_digest("foo".into()),
@@ -104,8 +118,8 @@ fn given_same_strings_return_same_multihash() {
 
 #[test]
 fn given_same_strings_different_names_return_diff_multihash() {
-    let str1 = String::from("simple string");
-    let str2 = String::from("simple string");
+    let str1: MyString = "simple string".into();
+    let str2: MyString = "simple string".into();
 
     assert_ne!(
         str1.field_digest("foo".into()),
@@ -115,8 +129,8 @@ fn given_same_strings_different_names_return_diff_multihash() {
 
 #[test]
 fn given_different_strings_return_different_multihash() {
-    let str1 = String::from("simple string");
-    let str2 = String::from("longer string.");
+    let str1: MyString = "simple string".into();
+    let str2: MyString = "longer string".into();
 
     assert_ne!(
         str1.field_digest("foo".into()),
@@ -177,17 +191,17 @@ fn given_two_enums_with_same_bytes_per_variant_return_same_multihash() {
 #[test]
 fn given_two_nested_structs_with_same_value_return_same_multihash() {
     let struct1 = NestedStruct {
-        foo: "foo".to_string(),
+        foo: "foo".into(),
         nest: DoubleFieldStruct {
-            foo: "phou".to_string(),
-            bar: "pub".to_string(),
+            foo: "phou".into(),
+            bar: "pub".into(),
         },
     };
     let struct2 = OtherNestedStruct {
-        foo: "foo".to_string(),
+        foo: "foo".into(),
         nest: OtherDoubleFieldStruct {
-            foo: "phou".to_string(),
-            bar: "pub".to_string(),
+            foo: "phou".into(),
+            bar: "pub".into(),
         },
     };
 

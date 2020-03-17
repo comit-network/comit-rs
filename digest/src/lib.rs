@@ -12,39 +12,41 @@ pub trait Digest {
     fn digest(self) -> Multihash;
 }
 
-pub trait FieldDigest {
+pub trait IntoDigestInput {
+    fn into_digest_input(self) -> Vec<u8>;
+}
+
+#[doc(hidden)]
+pub trait FieldDigest: private::Sealed {
     fn field_digest(self, prefix: Vec<u8>) -> Multihash;
+}
+
+impl<T> IntoDigestInput for T
+where
+    T: Digest,
+{
+    fn into_digest_input(self) -> Vec<u8> {
+        let field_digest = self.digest();
+
+        field_digest.into_bytes()
+    }
 }
 
 impl<T> FieldDigest for T
 where
-    T: Digest,
+    T: IntoDigestInput,
 {
     fn field_digest(self, prefix: Vec<u8>) -> Multihash {
         let mut bytes = prefix;
-        let field_digest = self.digest();
-        bytes.append(&mut field_digest.into_bytes());
-
-        digest(&bytes)
-    }
-}
-
-impl FieldDigest for String {
-    fn field_digest(self, prefix: Vec<u8>) -> Multihash {
-        let mut bytes = prefix;
-        // String::into_bytes return the bytes for UTF-8 encoding
-        let mut value = self.into_bytes();
+        let mut value = self.into_digest_input();
         bytes.append(&mut value);
 
         digest(&bytes)
     }
 }
 
-impl FieldDigest for Vec<u8> {
-    fn field_digest(mut self, prefix: Vec<u8>) -> Multihash {
-        let mut bytes = prefix;
-        bytes.append(&mut self);
+mod private {
+    pub trait Sealed {}
 
-        digest(&self)
-    }
+    impl<T> Sealed for T where T: super::IntoDigestInput {}
 }
