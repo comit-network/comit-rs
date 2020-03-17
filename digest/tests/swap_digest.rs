@@ -245,6 +245,26 @@ fn given_two_nested_structs_with_same_value_return_same_multihash() {
 }
 
 #[test]
+fn given_two_nested_structs_with_diff_value_return_diff_multihash() {
+    let struct1 = NestedStruct {
+        foo: "phou".into(),
+        nest: DoubleFieldStruct {
+            foo: "foo".into(),
+            bar: "pub".into(),
+        },
+    };
+    let struct2 = OtherNestedStruct {
+        foo: "phou".into(),
+        nest: OtherDoubleFieldStruct {
+            foo: "foo".into(),
+            bar: "pub".into(),
+        },
+    };
+
+    assert_eq!(struct1.digest(), struct2.digest())
+}
+
+#[test]
 fn given_two_nested_enums_with_same_value_return_same_multihash() {
     let enum1 = NestedEnum::Bar(NestedStruct {
         foo: "foo".into(),
