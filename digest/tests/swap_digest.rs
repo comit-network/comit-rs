@@ -1,8 +1,8 @@
-use digest::{digest, FieldDigest, RootDigest, RootDigestMacro};
+use digest::{digest, Digest, DigestMacro, FieldDigest};
 
 use digest::multihash::Multihash;
 
-#[derive(RootDigestMacro)]
+#[derive(DigestMacro)]
 struct DoubleFieldStruct {
     #[digest_bytes = "0011"]
     foo: String,
@@ -15,8 +15,8 @@ struct OtherDoubleFieldStruct {
     foo: String,
 }
 
-impl RootDigest for OtherDoubleFieldStruct {
-    fn root_digest(self) -> Multihash {
+impl Digest for OtherDoubleFieldStruct {
+    fn digest(self) -> Multihash {
         let mut digests = vec![];
         let foo_digest = self.foo.field_digest([0x00u8, 0x11u8].to_vec());
         digests.push(foo_digest);
@@ -34,7 +34,7 @@ impl RootDigest for OtherDoubleFieldStruct {
     }
 }
 
-#[derive(RootDigestMacro)]
+#[derive(DigestMacro)]
 enum Enum {
     #[digest_bytes = "0011"]
     Foo,
@@ -48,8 +48,8 @@ enum OtherEnum {
     Bar,
 }
 
-impl RootDigest for OtherEnum {
-    fn root_digest(self) -> Multihash {
+impl Digest for OtherEnum {
+    fn digest(self) -> Multihash {
         let bytes = match self {
             OtherEnum::Foo => vec![0x00u8, 0x11u8],
             OtherEnum::Bar => vec![0x00u8, 0x11u8],
@@ -103,7 +103,7 @@ fn given_same_double_field_struct_return_same_multihash() {
         bar: "second field".into(),
     };
 
-    assert_eq!(struct1.root_digest(), struct2.root_digest())
+    assert_eq!(struct1.digest(), struct2.digest())
 }
 
 #[test]
@@ -117,7 +117,7 @@ fn given_different_double_field_struct_return_different_multihash() {
         bar: "different field".into(),
     };
 
-    assert_ne!(struct1.root_digest(), struct2.root_digest())
+    assert_ne!(struct1.digest(), struct2.digest())
 }
 
 #[test]
@@ -131,7 +131,7 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
         foo: "foo field".into(),
     };
 
-    assert_eq!(struct1.root_digest(), struct2.root_digest())
+    assert_eq!(struct1.digest(), struct2.digest())
 }
 
 #[test]
@@ -139,5 +139,5 @@ fn given_two_enums_with_same_bytes_per_variant_return_same_multihash() {
     let enum1 = Enum::Foo;
     let enum2 = OtherEnum::Foo;
 
-    assert_eq!(enum1.root_digest(), enum2.root_digest())
+    assert_eq!(enum1.digest(), enum2.digest())
 }

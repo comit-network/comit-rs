@@ -5,13 +5,13 @@ use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{Attribute, Data, Fields, Lit, Meta};
 
-#[proc_macro_derive(RootDigestMacro, attributes(digest_bytes))]
-pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(DigestMacro, attributes(digest_bytes))]
+pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_root_digest_macro(&ast)
+    impl_digest_macro(&ast)
 }
 
-fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
 
     match &ast.data {
@@ -32,10 +32,10 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
             };
 
             let gen = quote! {
-                    impl ::digest::RootDigest for #name
+                    impl ::digest::Digest for #name
                         where #(#types: ::digest::FieldDigest),*
                     {
-                        fn root_digest(self) -> Multihash {
+                        fn digest(self) -> Multihash {
                             let mut digests = vec![];
                             #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
 
@@ -61,9 +61,9 @@ fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                 .map(|variant| attr_to_bytes(&variant.attrs));
 
             let gen = quote! {
-                    impl ::digest::RootDigest for #name
+                    impl ::digest::Digest for #name
                     {
-                        fn root_digest(self) -> Multihash {
+                        fn digest(self) -> Multihash {
                             let bytes = match self {
                                 #(Self::#idents => #bytes.to_vec()),*
                             };

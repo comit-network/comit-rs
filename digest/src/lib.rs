@@ -1,4 +1,4 @@
-pub use digest_macro_derive::RootDigestMacro;
+pub use digest_macro_derive::DigestMacro;
 pub use hex;
 
 pub use multihash;
@@ -8,8 +8,8 @@ pub fn digest(bytes: &[u8]) -> Multihash {
     multihash::Sha3_256::digest(bytes)
 }
 
-pub trait RootDigest {
-    fn root_digest(self) -> Multihash;
+pub trait Digest {
+    fn digest(self) -> Multihash;
 }
 
 pub trait FieldDigest {
