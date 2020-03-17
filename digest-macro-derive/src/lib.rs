@@ -5,7 +5,7 @@ use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{Attribute, Data, Fields, Lit, Meta};
 
-#[proc_macro_derive(DigestMacro, attributes(digest_bytes))]
+#[proc_macro_derive(DigestMacro, attributes(digest_prefix))]
 pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_digest_macro(&ast)
@@ -94,20 +94,20 @@ impl ToTokens for Bytes {
 fn attr_to_bytes(attrs: &[Attribute]) -> Bytes {
     let attr = attrs
         .get(0)
-        .expect("digest_bytes attribute must be the only attribute present on all fields");
+        .expect("digest_prefix attribute must be the only attribute present on all fields");
     let meta = attr.parse_meta().expect("Attribute is malformed");
 
     if let Meta::NameValue(name_value) = meta {
-        if name_value.path.is_ident("digest_bytes") {
+        if name_value.path.is_ident("digest_prefix") {
             if let Lit::Str(lit_str) = name_value.lit {
                 let str = lit_str.value();
                 let bytes =
-                    ::hex::decode(&str).expect("digest_bytes value should be in hex format");
+                    ::hex::decode(&str).expect("digest_prefix value should be in hex format");
                 return Bytes(bytes);
             }
         }
     }
-    panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
+    panic!("Only `digest_prefix = \"0102..0A\"` attributes are supported");
 }
 
 #[cfg(test)]

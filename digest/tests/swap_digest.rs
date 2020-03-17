@@ -4,9 +4,9 @@ use digest::multihash::Multihash;
 
 #[derive(DigestMacro)]
 struct DoubleFieldStruct {
-    #[digest_bytes = "0011"]
+    #[digest_prefix = "0011"]
     foo: String,
-    #[digest_bytes = "FFAA"]
+    #[digest_prefix = "FFAA"]
     bar: String,
 }
 
@@ -36,9 +36,9 @@ impl Digest for OtherDoubleFieldStruct {
 
 #[derive(DigestMacro)]
 enum Enum {
-    #[digest_bytes = "0011"]
+    #[digest_prefix = "0011"]
     Foo,
-    #[digest_bytes = "0E0F"]
+    #[digest_prefix = "0E0F"]
     Bar,
 }
 
@@ -61,9 +61,9 @@ impl Digest for OtherEnum {
 
 #[derive(DigestMacro)]
 struct NestedStruct {
-    #[digest_bytes = "0011"]
+    #[digest_prefix = "0011"]
     foo: String,
-    #[digest_bytes = "AA00"]
+    #[digest_prefix = "AA00"]
     nest: DoubleFieldStruct,
 }
 
