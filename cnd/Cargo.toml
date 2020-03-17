@@ -20,7 +20,7 @@ diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
 digest-macro-derive = { path = "../digest-macro-derive" }
 directories = "2.0"
-ethbloom = "0.8.1"
+ethbloom = "0.9.0"
 fern = { version = "0.6", features = ["colored"] }
 futures = { version = "0.3", features = ["async-await"], default-features = false }
 genawaiter = "0.99"
