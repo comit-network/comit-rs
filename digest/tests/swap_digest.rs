@@ -56,7 +56,6 @@ enum Enum {
     Bar,
 }
 
-#[allow(dead_code)]
 enum OtherEnum {
     Foo,
     Bar,
@@ -184,6 +183,14 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
 fn given_two_enums_with_same_bytes_per_variant_return_same_multihash() {
     let enum1 = Enum::Foo;
     let enum2 = OtherEnum::Foo;
+
+    assert_eq!(enum1.digest(), enum2.digest())
+}
+
+#[test]
+fn given_two_enums_with_differnt_variant_return_different_multihash() {
+    let enum1 = Enum::Foo;
+    let enum2 = OtherEnum::Bar;
 
     assert_eq!(enum1.digest(), enum2.digest())
 }
