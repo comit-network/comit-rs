@@ -59,6 +59,38 @@ impl Digest for OtherEnum {
     }
 }
 
+#[derive(DigestMacro)]
+struct NestedStruct {
+    #[digest_bytes = "0011"]
+    foo: String,
+    #[digest_bytes = "AA00"]
+    nest: DoubleFieldStruct,
+}
+
+struct OtherNestedStruct {
+    foo: String,
+    nest: OtherDoubleFieldStruct,
+}
+
+impl Digest for OtherNestedStruct {
+    fn digest(self) -> Multihash {
+        let mut digests = vec![];
+        let foo_digest = self.foo.field_digest([0x00u8, 0x11u8].to_vec());
+        digests.push(foo_digest);
+        let nest_digest = self.nest.field_digest([0xAAu8, 0x00u8].to_vec());
+        digests.push(nest_digest);
+
+        digests.sort();
+
+        let res = digests.into_iter().fold(vec![], |mut res, digest| {
+            res.append(&mut digest.into_bytes());
+            res
+        });
+
+        digest(&res)
+    }
+}
+
 #[test]
 fn given_same_strings_return_same_multihash() {
     let str1 = String::from("simple string");
@@ -140,4 +172,24 @@ fn given_two_enums_with_same_bytes_per_variant_return_same_multihash() {
     let enum2 = OtherEnum::Foo;
 
     assert_eq!(enum1.digest(), enum2.digest())
+}
+
+#[test]
+fn given_two_nested_structs_with_same_value_return_same_multihash() {
+    let struct1 = NestedStruct {
+        foo: "foo".to_string(),
+        nest: DoubleFieldStruct {
+            foo: "phou".to_string(),
+            bar: "pub".to_string(),
+        },
+    };
+    let struct2 = OtherNestedStruct {
+        foo: "foo".to_string(),
+        nest: OtherDoubleFieldStruct {
+            foo: "phou".to_string(),
+            bar: "pub".to_string(),
+        },
+    };
+
+    assert_eq!(struct1.digest(), struct2.digest())
 }
