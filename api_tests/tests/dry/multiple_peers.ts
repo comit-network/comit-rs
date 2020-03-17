@@ -2,8 +2,8 @@
  * @logDir multiple_peers
  */
 
-import { threeActorTest } from "../../lib/actor_test";
-import { createDefaultSwapRequest } from "../../lib/utils";
+import { threeActorTest } from "../../src/actor_test";
+import { createDefaultSwapRequest } from "../../src/utils";
 import { expect } from "chai";
 import { SwapDetails } from "comit-sdk";
 

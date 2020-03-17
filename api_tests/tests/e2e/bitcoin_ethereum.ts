@@ -3,11 +3,11 @@
  * @logDir e2e
  */
 
-import { twoActorTest } from "../../lib/actor_test";
-import { AssetKind } from "../../lib/asset";
-import { sleep } from "../../lib/utils";
+import { twoActorTest } from "../../src/actor_test";
+import { AssetKind } from "../../src/asset";
+import { sleep } from "../../src/utils";
 import { expect } from "chai";
-import { LedgerKind } from "../../lib/ledgers/ledger";
+import { LedgerKind } from "../../src/ledgers/ledger";
 
 // ******************************************** //
 // Lightning Sanity Test                        //
