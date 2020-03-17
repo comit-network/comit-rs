@@ -3,25 +3,27 @@ import * as fs from "fs";
 import tmp from "tmp";
 import waitForLogMessage from "../wait_for_log_message";
 import { promisify } from "util";
-import { sleep } from "../utils";
+import { writeFileAsync } from "../utils";
 import getPort from "get-port";
-import { EthereumInstance } from "./ethereum";
 import { Logger } from "log4js";
+import { LedgerInstance } from "./index";
 
 const openAsync = promisify(fs.open);
 
-export class ParityInstance implements EthereumInstance {
+export class ParityInstance implements LedgerInstance {
     private process: ChildProcess;
     private dbDir: any;
 
     public static async new(
         projectRoot: string,
         logFile: string,
+        pidFile: string,
         logger: Logger
     ) {
         return new ParityInstance(
             projectRoot,
             logFile,
+            pidFile,
             logger,
             await getPort({ port: 8545 }),
             await getPort()
@@ -31,6 +33,7 @@ export class ParityInstance implements EthereumInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly logFile: string,
+        private readonly pidFile: string,
         private readonly logger: Logger,
         public readonly rpcPort: number,
         public readonly p2pPort: number
@@ -82,17 +85,13 @@ export class ParityInstance implements EthereumInstance {
         await waitForLogMessage(this.logFile, "Public node URL:");
 
         this.logger.info("parity started with PID", this.process.pid);
+
+        await writeFileAsync(this.pidFile, this.process.pid, {
+            encoding: "utf-8",
+        });
     }
 
     public get rpcUrl() {
         return `http://localhost:${this.rpcPort}`;
-    }
-
-    public async stop() {
-        this.logger.info("Stopping parity instance");
-
-        this.process.kill("SIGTERM");
-        await sleep(3000);
-        this.process.kill("SIGKILL");
     }
 }

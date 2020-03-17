@@ -5,23 +5,23 @@ import getPort from "get-port";
 import waitForLogMessage from "../wait_for_log_message";
 import { Lnd } from "comit-sdk";
 import whereis from "@wcjiang/whereis";
-import { LightningInstance, LightningNodeConfig } from "./lightning";
 import { Logger } from "log4js";
+import { LightningNodeConfig, LedgerInstance } from "./index";
 
-export class LndInstance implements LightningInstance {
+export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
 
     public static async new(
         dataDir: string,
-        name: string,
         logger: Logger,
-        bitcoindDataDir: string
+        bitcoindDataDir: string,
+        pidFile: string
     ) {
         return new LndInstance(
             dataDir,
-            name,
             logger,
             bitcoindDataDir,
+            pidFile,
             await getPort(),
             await getPort(),
             await getPort()
@@ -30,9 +30,9 @@ export class LndInstance implements LightningInstance {
 
     private constructor(
         private readonly dataDir: string,
-        private readonly name: string,
         private readonly logger: Logger,
         private readonly bitcoindDataDir: string,
+        private readonly pidFile: string,
         private readonly lndP2pPort: number,
         private readonly lndRpcPort: number,
         private readonly lndRestPort: number
@@ -59,10 +59,14 @@ export class LndInstance implements LightningInstance {
         );
         await waitUntilFileExists(this.adminMacaroonPath());
 
-        this.logger.debug("Waiting for lnd to catch up with blocks");
-        await waitForLogMessage(logFile, "LNWL: Done catching up block hashes");
+        this.logger.debug("Waiting for lightning server to start");
+        await waitForLogMessage(logFile, "[INF] BTCN: Server listening on ");
 
         this.logger.debug("lnd started with PID", this.process.pid);
+
+        await writeFileAsync(this.pidFile, this.process.pid, {
+            encoding: "utf-8",
+        });
     }
 
     private async execBinary() {
@@ -93,7 +97,7 @@ export class LndInstance implements LightningInstance {
         const lnd = await Lnd.init(config);
 
         const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({
-            seedEntropy: Buffer.alloc(16, this.name),
+            seedEntropy: Buffer.alloc(16, this.lndP2pPort),
         });
         const walletPassword = Buffer.from("password", "utf8");
         this.logger.debug(
@@ -103,12 +107,6 @@ export class LndInstance implements LightningInstance {
         );
         await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
         this.logger.debug("Lnd wallet initialized!");
-    }
-
-    public async stop() {
-        this.logger.debug("Stopping lnd instance");
-        this.process.kill("SIGTERM");
-        this.process = null;
     }
 
     public isRunning() {

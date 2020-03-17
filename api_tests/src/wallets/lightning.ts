@@ -6,7 +6,7 @@ import { sleep } from "../utils";
 import { LightningWallet as LightningWalletSdk, Outpoint } from "comit-sdk";
 import { AddressType } from "@radar/lnrpc";
 import { Logger } from "log4js";
-import { LightningNodeConfig } from "../ledgers/lightning";
+import { LightningNodeConfig } from "../ledgers";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(

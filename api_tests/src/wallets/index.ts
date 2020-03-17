@@ -56,7 +56,8 @@ export class Wallets {
             case "ethereum":
                 this.wallets.ethereum = new EthereumWallet(
                     global.ledgerConfigs.ethereum.rpc_url,
-                    logger
+                    logger,
+                    global.parityLockDir
                 );
                 break;
             case "bitcoin":

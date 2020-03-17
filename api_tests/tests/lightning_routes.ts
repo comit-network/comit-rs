@@ -1,14 +1,10 @@
-/**
- * @logDir lightning_routes
- */
-
-import { oneActorTest } from "../../src/actor_test";
+import { oneActorTest } from "../src/actor_test";
 import {
     defaultHalightLightningBitcoinHanEthereumEther,
     defaultHalightLightningBitcoinHerc20EthereumErc20,
     defaultHanEthereumEtherHalightLightningBitcoin,
     defaultHerc20EthereumErc20HalightLightningBitcoin,
-} from "../../src/actors/defaults";
+} from "../src/actors/defaults";
 
 // ******************************************** //
 // Lightning routes                               //

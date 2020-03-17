@@ -3,11 +3,11 @@ import * as fs from "fs";
 import * as path from "path";
 import { writeFileAsync } from "../utils";
 import getPort from "get-port";
-import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
 import { Logger } from "log4js";
 import waitForLogMessage from "../wait_for_log_message";
+import { BitcoinNodeConfig, LedgerInstance } from "./index";
 
-export class BitcoindInstance implements BitcoinInstance {
+export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
     private username: string;
     private password: string;
@@ -15,11 +15,13 @@ export class BitcoindInstance implements BitcoinInstance {
     public static async new(
         projectRoot: string,
         dataDir: string,
+        pidFile: string,
         logger: Logger
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
             projectRoot,
             dataDir,
+            pidFile,
             logger,
             await getPort({ port: 18444 }),
             await getPort({ port: 18443 }),
@@ -31,6 +33,7 @@ export class BitcoindInstance implements BitcoinInstance {
     constructor(
         private readonly projectRoot: string,
         private readonly dataDir: string,
+        private readonly pidFile: string,
         private readonly logger: Logger,
         public readonly p2pPort: number,
         public readonly rpcPort: number,
@@ -79,6 +82,10 @@ export class BitcoindInstance implements BitcoinInstance {
         this.password = password;
 
         this.logger.info("bitcoind started with PID", this.process.pid);
+
+        await writeFileAsync(this.pidFile, this.process.pid, {
+            encoding: "utf-8",
+        });
     }
 
     public get config(): BitcoinNodeConfig {
@@ -92,12 +99,6 @@ export class BitcoindInstance implements BitcoinInstance {
             dataDir: this.getDataDir(),
             rpcUrl: `http://localhost:${this.rpcPort}`,
         };
-    }
-
-    public async stop() {
-        this.logger.info("Stopping bitcoind instance");
-
-        this.process.kill("SIGINT");
     }
 
     private logPath() {

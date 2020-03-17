@@ -1,10 +1,6 @@
-/**
- * @logDir sanity
- */
-
-import { oneActorTest } from "../../src/actor_test";
+import { oneActorTest } from "../src/actor_test";
 import { expect, request } from "chai";
-import * as sirenJsonSchema from "../../siren.schema.json";
+import * as sirenJsonSchema from "../siren.schema.json";
 import { Entity, Link } from "comit-sdk";
 
 // ******************************************** //

@@ -1,15 +1,11 @@
-/**
- * @logDir rfc003
- */
-
-import { Actor } from "../../src/actors/actor";
+import { Actor } from "../src/actors/actor";
 import { expect, request } from "chai";
 import "chai/register-should";
-import "../../src/setup_chai";
-import * as sirenJsonSchema from "../../siren.schema.json";
-import * as swapPropertiesJsonSchema from "../../swap.schema.json";
-import { twoActorTest } from "../../src/actor_test";
-import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../../src/utils";
+import "../src/setup_chai";
+import * as sirenJsonSchema from "../siren.schema.json";
+import * as swapPropertiesJsonSchema from "../swap.schema.json";
+import { twoActorTest } from "../src/actor_test";
+import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
 import {
     Action,
     EmbeddedRepresentationSubEntity,
@@ -220,14 +216,16 @@ describe("Rfc003 schema swap reject tests", () => {
             const aliceReasonableSwapDetails = await alice.pollSwapDetails(
                 aliceReasonableSwap
             );
-            const aliceStingySwapDetails = await alice.pollSwapDetails(
-                aliceStingySwap
-            );
 
             expect(
-                aliceStingySwapDetails.properties.state.communication.status,
+                await alice.pollCndUntil(
+                    aliceStingySwap,
+                    (entity) =>
+                        entity.properties.state.communication.status ===
+                        "DECLINED"
+                ),
                 "[Alice] Should be in the Declined State after Bob declines a swap"
-            ).to.eq("DECLINED");
+            ).to.exist;
 
             expect(
                 aliceReasonableSwapDetails.properties.state.communication
