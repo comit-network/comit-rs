@@ -3,6 +3,7 @@ import {
     BigNumber,
     Cnd,
     ComitClient,
+    Entity,
     LedgerAction,
     Swap,
     SwapDetails,
@@ -17,7 +18,6 @@ import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { HarnessGlobal, LedgerConfig, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
-import { Entity } from "../../gen/siren";
 import { LndInstance } from "../ledgers/lnd_instance";
 import { sha256 } from "js-sha256";
 import { InvoiceState } from "@radar/lnrpc";
