@@ -16,6 +16,19 @@ pub trait FieldDigest {
     fn field_digest(self, prefix: Vec<u8>) -> Multihash;
 }
 
+impl<T> FieldDigest for T
+where
+    T: Digest,
+{
+    fn field_digest(self, prefix: Vec<u8>) -> Multihash {
+        let mut bytes = prefix;
+        let field_digest = self.digest();
+        bytes.append(&mut field_digest.into_bytes());
+
+        digest(&bytes)
+    }
+}
+
 impl FieldDigest for String {
     fn field_digest(self, prefix: Vec<u8>) -> Multihash {
         let mut bytes = prefix;
