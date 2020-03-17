@@ -8,12 +8,10 @@ pub mod ledger_state;
 pub mod messages;
 
 pub mod actions;
-mod actor_state;
 mod secret;
 
 pub use self::{
-    actor_state::ActorState,
-    create_swap::create_alpha_watcher,
+    create_swap::create_watcher,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
 };

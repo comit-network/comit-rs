@@ -23,6 +23,12 @@ pub enum LedgerState<A, H, T> {
         fund_transaction: T,
         asset: A,
     },
+    IncorrectlyFunded {
+        htlc_location: H,
+        deploy_transaction: T,
+        fund_transaction: T,
+        asset: A,
+    },
     Redeemed {
         htlc_location: H,
         deploy_transaction: T,
@@ -36,12 +42,6 @@ pub enum LedgerState<A, H, T> {
         deploy_transaction: T,
         fund_transaction: T,
         refund_transaction: T,
-        asset: A,
-    },
-    IncorrectlyFunded {
-        htlc_location: H,
-        deploy_transaction: T,
-        fund_transaction: T,
         asset: A,
     },
 }
@@ -65,39 +65,28 @@ impl<A, H, T> LedgerState<A, H, T> {
     }
 
     pub fn transition_to_funded(&mut self, funded: Funded<A, T>) {
-        let Funded { transaction, asset } = funded;
-
         match std::mem::replace(self, LedgerState::NotDeployed) {
             LedgerState::Deployed {
                 deploy_transaction,
                 htlc_location,
-            } => {
-                *self = LedgerState::Funded {
-                    deploy_transaction,
-                    htlc_location,
-                    fund_transaction: transaction,
-                    asset,
+            } => match funded {
+                Funded::Correctly { asset, transaction } => {
+                    *self = LedgerState::Funded {
+                        deploy_transaction,
+                        htlc_location,
+                        fund_transaction: transaction,
+                        asset,
+                    }
                 }
-            }
-            other => panic!("expected state Deployed, got {}", HtlcState::from(other)),
-        }
-    }
-
-    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded<A, T>) {
-        let Funded { transaction, asset } = funded;
-
-        match std::mem::replace(self, LedgerState::NotDeployed) {
-            LedgerState::Deployed {
-                deploy_transaction,
-                htlc_location,
-            } => {
-                *self = LedgerState::IncorrectlyFunded {
-                    deploy_transaction,
-                    htlc_location,
-                    fund_transaction: transaction,
-                    asset,
+                Funded::Incorrectly { asset, transaction } => {
+                    *self = LedgerState::IncorrectlyFunded {
+                        deploy_transaction,
+                        htlc_location,
+                        fund_transaction: transaction,
+                        asset,
+                    }
                 }
-            }
+            },
             other => panic!("expected state Deployed, got {}", HtlcState::from(other)),
         }
     }
@@ -173,9 +162,9 @@ impl quickcheck::Arbitrary for HtlcState {
             0 => HtlcState::NotDeployed,
             1 => HtlcState::Deployed,
             2 => HtlcState::Funded,
-            3 => HtlcState::Redeemed,
-            4 => HtlcState::Refunded,
-            5 => HtlcState::IncorrectlyFunded,
+            3 => HtlcState::IncorrectlyFunded,
+            4 => HtlcState::Redeemed,
+            5 => HtlcState::Refunded,
             _ => unreachable!(),
         }
     }

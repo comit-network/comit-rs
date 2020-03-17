@@ -1,5 +1,4 @@
 use crate::{
-    db::AcceptedSwap,
     swap_protocols::{
         rfc003::{
             self,
@@ -7,10 +6,9 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            Accept, ActorState, Request, SecretHash,
+            Accept, LedgerState, Request, SecretHash,
         },
-        state_store::Update,
-        HashFunction,
+        state, HashFunction, InsertFailedSwap, SwapId,
     },
     timestamp::Timestamp,
 };
@@ -20,59 +18,47 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
+use std::sync::Arc;
 
 /// Returns a future that tracks the swap negotiated from the given request and
-/// accept response on alpha ledger.
+/// accept response on a ledger.
 ///
 /// The current implementation is naive in the sense that it does not take into
 /// account situations where it is clear that no more events will happen even
 /// though in theory, there could. For example:
-/// - alpha funded
-/// - alpha refunded
+/// - funded
+/// - refunded
 ///
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
-pub async fn create_alpha_watcher<D, A, AI, BI>(
+pub async fn create_watcher<D, S, L, A, H, I, T>(
     dependencies: D,
-    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
+    ledger_state: Arc<S>,
+    id: SwapId,
+    htlc_params: HtlcParams<L, A, I>,
+    accepted_at: NaiveDateTime,
 ) where
-    D: Update<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
-        + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcDeployed<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>,
-    A::AL: Clone,
-    A::BL: Clone,
-    A::AA: Ord + Clone,
-    A::BA: Ord + Clone,
-    A::AH: Clone,
-    A::BH: Clone,
-    AI: Clone,
-    BI: Clone,
-    A::AT: Clone,
-    A::BT: Clone,
-    A: ActorState + Clone + Send,
-    AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
+    D: InsertFailedSwap
+        + HtlcFunded<L, A, H, I, T>
+        + HtlcDeployed<L, A, H, I, T>
+        + HtlcRedeemed<L, A, H, I, T>
+        + HtlcRefunded<L, A, H, I, T>,
+    S: state::Update<LedgerState<A, H, T>, SwapEvent<A, H, T>>
+        + state::Insert<LedgerState<A, H, T>>,
+    L: Clone,
+    A: Ord + Clone,
+    H: Clone,
+    I: Clone,
+    T: Clone,
 {
-    let (request, accept, at) = accepted;
-
-    let id = request.swap_id;
-    let swap = OngoingSwap::new(request, accept);
+    ledger_state
+        .insert(id, LedgerState::<A, H, T>::NotDeployed)
+        .await;
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
         |co| async {
-            watch_alpha_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
-                &dependencies,
-                co,
-                swap.alpha_htlc_params(),
-                at,
-            )
-            .await
+            watch_ledger::<D, L, A, H, I, T>(&dependencies, co, htlc_params, accepted_at).await
         }
     });
 
@@ -82,7 +68,7 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
                 tracing::info!("swap {} yielded event {}", id, event);
-                dependencies.update(&id, event);
+                ledger_state.update(&id, event).await;
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
@@ -92,116 +78,40 @@ pub async fn create_alpha_watcher<D, A, AI, BI>(
             }
             GeneratorState::Complete(Err(e)) => {
                 tracing::error!("swap {} failed with {:?}", id, e);
+                dependencies.insert_failed_swap(&id);
                 return;
             }
         }
     }
 }
 
-/// Returns a future that tracks the swap negotiated from the given request and
-/// accept response on beta ledger.
-///
-/// The current implementation is naive in the sense that it does not take into
-/// account situations where it is clear that no more events will happen even
-/// though in theory, there could. For example:
-/// - alpha funded
-/// - alpha refunded
-///
-/// It is highly unlikely for Bob to fund the HTLC now, yet the current
-/// implementation is still waiting for that.
-pub async fn create_beta_watcher<D, A, AI, BI>(
-    dependencies: D,
-    accepted: AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>,
-) where
-    D: Update<A, SwapEvent<A::AA, A::BA, A::AH, A::BH, A::AT, A::BT>>
-        + HtlcFunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcFunded<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcDeployed<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcDeployed<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcRedeemed<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRedeemed<A::BL, A::BA, A::BH, BI, A::BT>
-        + HtlcRefunded<A::AL, A::AA, A::AH, AI, A::AT>
-        + HtlcRefunded<A::BL, A::BA, A::BH, BI, A::BT>,
-    A::AL: Clone,
-    A::BL: Clone,
-    A::AA: Ord + Clone,
-    A::BA: Ord + Clone,
-    A::AH: Clone,
-    A::BH: Clone,
-    A::AT: Clone,
-    A::BT: Clone,
-    AI: Clone,
-    BI: Clone,
-    A: ActorState + Clone + Send,
-    AcceptedSwap<A::AL, A::BL, A::AA, A::BA, AI, BI>: Clone,
-{
-    let (request, accept, at) = accepted.clone();
-
-    let id = request.swap_id;
-    let swap = OngoingSwap::new(request, accept);
-
-    // construct a generator that watches alpha and beta ledger concurrently
-    let mut generator = Gen::new({
-        |co| async {
-            watch_beta_ledger::<_, A::AL, A::BL, A::AA, A::BA, A::AH, A::BH, AI, BI, A::AT, A::BT>(
-                &dependencies,
-                co,
-                swap.beta_htlc_params(),
-                at,
-            )
-            .await
-        }
-    });
-
-    loop {
-        // wait for events to be emitted as the generator executes
-        match generator.async_resume().await {
-            // every event that is yielded is passed on
-            GeneratorState::Yielded(event) => {
-                tracing::info!("swap {} yielded event {}", id, event);
-                dependencies.update(&id, event);
-            }
-            // the generator stopped executing, this means there are no more events that can be
-            // watched.
-            GeneratorState::Complete(Ok(_)) => {
-                tracing::info!("swap {} finished", id);
-                return;
-            }
-            GeneratorState::Complete(Err(e)) => {
-                tracing::error!("swap {} failed with {:?}", id, e);
-                return;
-            }
-        }
-    }
-}
-
-/// Returns a future that waits for events on alpha ledger to happen.
+/// Returns a future that waits for events to happen on a ledger.
 ///
 /// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_alpha_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
+async fn watch_ledger<D, L, A, H, I, T>(
     dependencies: &D,
-    co: Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
-    htlc_params: HtlcParams<AL, AA, AI>,
+    co: Co<SwapEvent<A, H, T>>,
+    htlc_params: HtlcParams<L, A, I>,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    D: HtlcFunded<AL, AA, AH, AI, AT>
-        + HtlcDeployed<AL, AA, AH, AI, AT>
-        + HtlcRedeemed<AL, AA, AH, AI, AT>
-        + HtlcRefunded<AL, AA, AH, AI, AT>,
-    Deployed<AH, AT>: Clone,
-    Redeemed<AT>: Clone,
-    Refunded<AT>: Clone,
+    D: HtlcFunded<L, A, H, I, T>
+        + HtlcDeployed<L, A, H, I, T>
+        + HtlcRedeemed<L, A, H, I, T>
+        + HtlcRefunded<L, A, H, I, T>,
+    Deployed<H, T>: Clone,
+    Redeemed<T>: Clone,
+    Refunded<T>: Clone,
 {
     let deployed = dependencies
         .htlc_deployed(&htlc_params, start_of_swap)
         .await?;
-    co.yield_(SwapEvent::AlphaDeployed(deployed.clone())).await;
+    co.yield_(SwapEvent::Deployed(deployed.clone())).await;
 
     let funded = dependencies
         .htlc_funded(&htlc_params, &deployed, start_of_swap)
         .await?;
-    co.yield_(SwapEvent::AlphaFunded(funded)).await;
+    co.yield_(SwapEvent::Funded(funded)).await;
 
     let redeemed = dependencies.htlc_redeemed(&htlc_params, &deployed, start_of_swap);
 
@@ -209,59 +119,10 @@ where
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
-            co.yield_(SwapEvent::AlphaRedeemed(redeemed.clone())).await;
+            co.yield_(SwapEvent::Redeemed(redeemed.clone())).await;
         }
         Ok(Either::Right((refunded, _))) => {
-            co.yield_(SwapEvent::AlphaRefunded(refunded.clone())).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-
-            return Err(error);
-        }
-    }
-
-    Ok(())
-}
-
-/// Returns a future that waits for events on beta ledger to happen.
-///
-/// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_beta_ledger<D, AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
-    dependencies: &D,
-    co: Co<SwapEvent<AA, BA, AH, BH, AT, BT>>,
-    htlc_params: HtlcParams<BL, BA, BI>,
-    start_of_swap: NaiveDateTime,
-) -> anyhow::Result<()>
-where
-    D: HtlcFunded<BL, BA, BH, BI, BT>
-        + HtlcDeployed<BL, BA, BH, BI, BT>
-        + HtlcRedeemed<BL, BA, BH, BI, BT>
-        + HtlcRefunded<BL, BA, BH, BI, BT>,
-    Deployed<BH, BT>: Clone,
-    Redeemed<BT>: Clone,
-    Refunded<BT>: Clone,
-{
-    let deployed = dependencies
-        .htlc_deployed(&htlc_params, start_of_swap)
-        .await?;
-    co.yield_(SwapEvent::BetaDeployed(deployed.clone())).await;
-
-    let funded = dependencies
-        .htlc_funded(&htlc_params, &deployed, start_of_swap)
-        .await?;
-    co.yield_(SwapEvent::BetaFunded(funded)).await;
-
-    let redeemed = dependencies.htlc_redeemed(&htlc_params, &deployed, start_of_swap);
-
-    let refunded = dependencies.htlc_refunded(&htlc_params, &deployed, start_of_swap);
-
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((redeemed, _))) => {
-            co.yield_(SwapEvent::BetaRedeemed(redeemed.clone())).await;
-        }
-        Ok(Either::Right((refunded, _))) => {
-            co.yield_(SwapEvent::BetaRefunded(refunded.clone())).await;
+            co.yield_(SwapEvent::Refunded(refunded.clone())).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
@@ -390,16 +251,11 @@ where
 }
 
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent<AA, BA, AH, BH, AT, BT> {
-    AlphaDeployed(Deployed<AH, AT>),
-    AlphaFunded(Funded<AA, AT>),
-    AlphaRedeemed(Redeemed<AT>),
-    AlphaRefunded(Refunded<AT>),
-
-    BetaDeployed(Deployed<BH, BT>),
-    BetaFunded(Funded<BA, BT>),
-    BetaRedeemed(Redeemed<BT>),
-    BetaRefunded(Refunded<BT>),
+pub enum SwapEvent<A, H, T> {
+    Deployed(Deployed<H, T>),
+    Funded(Funded<A, T>),
+    Redeemed(Redeemed<T>),
+    Refunded(Refunded<T>),
 }
 
 #[cfg(test)]
@@ -409,20 +265,16 @@ mod tests {
 
     #[test]
     fn swap_event_should_render_to_nice_string() {
-        let event = SwapEvent::<
-            asset::Bitcoin,
-            asset::Ether,
-            htlc_location::Bitcoin,
-            htlc_location::Ethereum,
-            transaction::Bitcoin,
-            transaction::Ethereum,
-        >::BetaDeployed(Deployed {
-            location: htlc_location::Ethereum::default(),
-            transaction: transaction::Ethereum::default(),
-        });
+        let event =
+            SwapEvent::<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>::Deployed(
+                Deployed {
+                    location: htlc_location::Ethereum::default(),
+                    transaction: transaction::Ethereum::default(),
+                },
+            );
 
         let formatted = format!("{}", event);
 
-        assert_eq!(formatted, "BetaDeployed")
+        assert_eq!(formatted, "Deployed")
     }
 }
