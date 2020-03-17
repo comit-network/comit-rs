@@ -35,7 +35,9 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                     impl ::digest::Digest for #name
                         where #(#types: ::digest::FieldDigest),*
                     {
-                        fn digest(self) -> Multihash {
+                        fn digest(self) -> ::multihash::Multihash {
+                            use ::digest::FieldDigest;
+
                             let mut digests = vec![];
                             #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
 
@@ -46,7 +48,7 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                                 res
                             });
 
-                            digest(&res)
+                            ::digest::digest(&res)
                         }
                     }
             };
@@ -86,7 +88,7 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
             let gen = quote! {
                     impl ::digest::Digest for #name
                     {
-                        fn digest(self) -> Multihash {
+                        fn digest(self) -> ::multihash::Multihash {
                             let bytes = match self {
                                 #(Self::#unit_variant_idents => #unit_variant_bytes.to_vec()),*,
                                 #(Self::#tuple_variant_idents(data) => {
@@ -96,7 +98,7 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                                 }),*
                             };
 
-                            digest(&bytes)
+                            ::digest::digest(&bytes)
                         }
                     }
             };
