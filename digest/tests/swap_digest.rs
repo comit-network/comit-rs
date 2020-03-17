@@ -1,4 +1,4 @@
-use digest::{digest, Digest, DigestMacro, FieldDigest, IntoDigestInput};
+use digest::{digest, Digest, FieldDigest, IntoDigestInput};
 
 use digest::multihash::Multihash;
 
@@ -16,7 +16,7 @@ impl From<&str> for MyString {
     }
 }
 
-#[derive(DigestMacro)]
+#[derive(Digest)]
 struct DoubleFieldStruct {
     #[digest_prefix = "0011"]
     foo: MyString,
@@ -48,7 +48,7 @@ impl Digest for OtherDoubleFieldStruct {
     }
 }
 
-#[derive(DigestMacro)]
+#[derive(Digest)]
 enum Enum {
     #[digest_prefix = "0011"]
     Foo,
@@ -72,7 +72,7 @@ impl Digest for OtherEnum {
     }
 }
 
-#[derive(DigestMacro)]
+#[derive(Digest)]
 struct NestedStruct {
     #[digest_prefix = "0011"]
     foo: MyString,
@@ -104,7 +104,7 @@ impl Digest for OtherNestedStruct {
     }
 }
 
-#[derive(DigestMacro)]
+#[derive(Digest)]
 enum NestedEnum {
     #[digest_prefix = "DEAD"]
     Foo,

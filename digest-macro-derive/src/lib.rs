@@ -5,7 +5,7 @@ use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
 use syn::{Attribute, Data, Fields, Lit, Meta};
 
-#[proc_macro_derive(DigestMacro, attributes(digest_prefix))]
+#[proc_macro_derive(Digest, attributes(digest_prefix))]
 pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_digest_macro(&ast)

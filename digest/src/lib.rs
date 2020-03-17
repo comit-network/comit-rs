@@ -1,4 +1,4 @@
-pub use digest_macro_derive::DigestMacro;
+pub use digest_macro_derive::Digest;
 pub use hex;
 
 pub use multihash;
