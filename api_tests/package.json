@@ -6,7 +6,7 @@
     "scripts": {
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "pretest": "cargo build --bin cnd && tsc",
-        "test": "jest --maxWorkers=4 --forceExit --bail",
+        "test": "jest --forceExit --bail",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
