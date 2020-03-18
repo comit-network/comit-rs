@@ -4,8 +4,8 @@
 
 import { oneActorTest } from "../../src/actor_test";
 import { expect, request } from "chai";
-import { Entity, Link } from "../../gen/siren";
 import * as sirenJsonSchema from "../../siren.schema.json";
+import { Entity, Link } from "comit-sdk";
 
 // ******************************************** //
 // Sanity tests                                 //

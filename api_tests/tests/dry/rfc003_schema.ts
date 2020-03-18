@@ -2,7 +2,6 @@
  * @logDir rfc003
  */
 
-import { EmbeddedRepresentationSubEntity, Entity, Link } from "../../gen/siren";
 import { Actor } from "../../src/actors/actor";
 import { expect, request } from "chai";
 import "chai/register-should";
@@ -11,7 +10,12 @@ import * as sirenJsonSchema from "../../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../../swap.schema.json";
 import { twoActorTest } from "../../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../../src/utils";
-import { Action } from "comit-sdk";
+import {
+    Action,
+    EmbeddedRepresentationSubEntity,
+    Entity,
+    Link,
+} from "comit-sdk";
 
 // ******************************************** //
 // RFC003 schema tests                          //

@@ -5,7 +5,6 @@
     "main": "index.js",
     "scripts": {
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
-        "postinstall": "mkdir -p ./gen && json2ts -i ./siren.schema.json -o ./gen/siren.d.ts",
         "pretest": "cargo build --bin cnd && tsc",
         "dry": "jest --config jest.config-dry.js --maxWorkers=4",
         "e2e": "yarn jest --config jest.config-e2e.js --runInBand --forceExit --bail",
@@ -48,7 +47,6 @@
         "get-port": "^5.1.1",
         "jest": "^25.1.0",
         "js-sha256": "^0.9.0",
-        "json-schema-to-typescript": "^8.2.0",
         "log4js": "^6.1.2",
         "prettier": "^1.19.1",
         "rimraf": "^3.0.2",
