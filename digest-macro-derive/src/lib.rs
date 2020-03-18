@@ -3,70 +3,108 @@ extern crate proc_macro;
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{Data, Fields, Lit, Meta};
+use syn::{Attribute, Data, Fields, Lit, Meta};
 
-#[proc_macro_derive(RootDigestMacro, attributes(digest_bytes))]
-pub fn root_digest_macro_fn(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Digest, attributes(digest_prefix))]
+pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
-    impl_root_digest_macro(&ast)
+    impl_digest_macro(&ast)
 }
 
-fn impl_root_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
+fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
-    if let Data::Struct(data) = &ast.data {
-        if let Fields::Named(fields) = &data.fields {
-            let idents = fields
-                .named
-                .iter()
-                .map(|field| field.ident.as_ref().expect("Named field"));
 
-            let types = fields.named.iter().map(|field| &field.ty);
+    match &ast.data {
+        Data::Struct(data) => {
+            let (idents, types, bytes) = match &data.fields {
+                Fields::Named(fields) => {
+                    let idents = fields
+                        .named
+                        .iter()
+                        .map(|field| field.ident.as_ref().expect("Named field"));
 
-            let bytes = fields.named.iter().map(|field| {
-                let attr = field
-                    .attrs
-                    .get(0)
-                    .expect("digest_bytes attribute must be present on all fields");
-                let meta = attr.parse_meta().expect("Attribute is malformed");
+                    let types = fields.named.iter().map(|field| &field.ty);
 
-                if let Meta::NameValue(name_value) = meta {
-                    if name_value.path.is_ident("digest_bytes") {
-                        if let Lit::Str(lit_str) = name_value.lit {
-                            let str = lit_str.value();
-                            let bytes = ::hex::decode(&str)
-                                .expect("digest_bytes value should be in hex format");
-                            return Bytes(bytes);
-                        }
-                    }
+                    let bytes = fields.named.iter().map(|field| attr_to_bytes(&field.attrs));
+                    (idents, types, bytes)
                 }
-                panic!("Only `digest_bytes = \"0102..0A\"` attributes are supported");
-            });
+                _ => panic!("Only supporting named fields."),
+            };
 
             let gen = quote! {
-            impl ::digest::RootDigest for #name
-                 where #(#types: ::digest::FieldDigest),*
-                 {
-                    fn root_digest(self) -> Multihash {
-                        let mut digests = vec![];
-                        #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
+                    impl ::digest::Digest for #name
+                        where #(#types: ::digest::IntoDigestInput),*
+                    {
+                        fn digest(self) -> ::multihash::Multihash {
+                            let mut digests = vec![];
+                            #(digests.push(::digest::field_digest(self.#idents, #bytes.to_vec())););*
 
-                        digests.sort();
+                            digests.sort();
 
-                        let res = digests.into_iter().fold(vec![], |mut res, digest| {
-                            res.append(&mut digest.into_bytes());
-                            res
-                        });
+                            let res = digests.into_iter().fold(vec![], |mut res, digest| {
+                                res.append(&mut digest.into_bytes());
+                                res
+                            });
 
-                        digest(&res)
+                            ::digest::digest(&res)
+                        }
                     }
-                }
             };
             gen.into()
-        } else {
-            panic!("DigestRootMacro only supports named filed, ie, no new types, tuples structs/variants or unit struct/variants.");
         }
-    } else {
-        panic!("DigestRootMacro only supports structs.");
+        Data::Enum(data) => {
+            let unit_variant_idents = data
+                .variants
+                .iter()
+                .filter(|variant| variant.fields.is_empty())
+                .map(|variant| &variant.ident);
+
+            let unit_variant_bytes = data
+                .variants
+                .iter()
+                .filter(|variant| variant.fields.is_empty())
+                .map(|variant| attr_to_bytes(&variant.attrs));
+
+            let tuple_variant_idents = data
+                .variants
+                .iter()
+                .filter(|variant| match variant.fields {
+                    Fields::Unnamed(_) => true,
+                    _ => false,
+                })
+                .map(|variant| &variant.ident);
+
+            let tuple_variant_bytes = data
+                .variants
+                .iter()
+                .filter(|variant| match variant.fields {
+                    Fields::Unnamed(_) => true,
+                    _ => false,
+                })
+                .map(|variant| attr_to_bytes(&variant.attrs));
+
+            let gen = quote! {
+                    impl ::digest::Digest for #name
+                    {
+                        fn digest(self) -> ::multihash::Multihash {
+                            let bytes = match self {
+                                #(Self::#unit_variant_idents => #unit_variant_bytes.to_vec()),*,
+                                #(Self::#tuple_variant_idents(data) => {
+                                        let mut bytes = #tuple_variant_bytes.to_vec();
+                                        bytes.append(&mut data.digest().into_bytes());
+                                        bytes
+                                }),*
+                            };
+
+                            ::digest::digest(&bytes)
+                        }
+                    }
+            };
+            gen.into()
+        }
+        _ => {
+            panic!("DigestRootMacro only supports structs & enums.");
+        }
     }
 }
 
@@ -79,6 +117,25 @@ impl ToTokens for Bytes {
         let group = Group::new(Delimiter::Bracket, inner_tokens);
         tokens.append(group);
     }
+}
+
+fn attr_to_bytes(attrs: &[Attribute]) -> Bytes {
+    let attr = attrs
+        .get(0)
+        .expect("digest_prefix attribute must be the only attribute present on all fields");
+    let meta = attr.parse_meta().expect("Attribute is malformed");
+
+    if let Meta::NameValue(name_value) = meta {
+        if name_value.path.is_ident("digest_prefix") {
+            if let Lit::Str(lit_str) = name_value.lit {
+                let str = lit_str.value();
+                let bytes =
+                    ::hex::decode(&str).expect("digest_prefix value should be in hex format");
+                return Bytes(bytes);
+            }
+        }
+    }
+    panic!("Only `digest_prefix = \"0102..0A\"` attributes are supported");
 }
 
 #[cfg(test)]
