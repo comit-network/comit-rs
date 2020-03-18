@@ -1,7 +1,6 @@
 import { Config } from "@jest/types";
 import { HarnessGlobal, mkdirAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
-import { Mutex } from "async-mutex";
 import path from "path";
 import { LightningWallet } from "./wallets/lightning";
 import { BitcoinWallet } from "./wallets/bitcoin";
@@ -45,7 +44,6 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.global.projectRoot = this.projectRoot;
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
-        this.global.parityAccountMutex = new Mutex();
 
         const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
 
@@ -82,6 +80,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             return dir;
         };
         this.global.getLogger = category => log4js.getLogger(category);
+        this.global.parityLockDir = await this.getLockDirectory("parity");
 
         this.logger = log4js.getLogger("test_environment");
         this.logger.info("Starting up test environment");

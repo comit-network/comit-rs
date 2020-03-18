@@ -76,8 +76,8 @@ export default class EthereumLedger implements LedgerInstance {
 
         logger.info("Ethereum node started at", rpcUrl);
 
-            const erc20Wallet = new EthereumWallet(rpcUrl, logger);
-            const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+        const erc20Wallet = new EthereumWallet(rpcUrl, logger, lockDir);
+        const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
         logger.info("ERC20 token contract deployed at", erc20TokenContract);
 

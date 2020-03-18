@@ -4,10 +4,9 @@ import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
 import { pollUntilMinted, Wallet } from "./index";
 import { TransactionRequest } from "ethers/providers";
-import { HarnessGlobal, sleep } from "../utils";
+import { sleep } from "../utils";
 import { Logger } from "log4js";
-
-declare var global: HarnessGlobal;
+import { lock } from "proper-lockfile";
 
 export class EthereumWallet implements Wallet {
     public readonly inner: EthereumWalletSdk;
@@ -16,7 +15,11 @@ export class EthereumWallet implements Wallet {
     private readonly parity: ethers.Wallet;
     private readonly jsonRpcProvider: ethers.providers.JsonRpcProvider;
 
-    constructor(rpcUrl: string, private readonly logger: Logger) {
+    constructor(
+        rpcUrl: string,
+        private readonly logger: Logger,
+        private readonly parityLockDir: string
+    ) {
         const provider = new ethers.providers.JsonRpcProvider(rpcUrl);
         this.parity = new ethers.Wallet(
             "0x4d5db4107d237df6a3d58ee5f70ae63d73d7658d4026f2eefd2f204c81682cb7",
@@ -79,12 +82,27 @@ export class EthereumWallet implements Wallet {
     }
 
     private async sendTransaction(tx: TransactionRequest) {
-        const release = await global.parityAccountMutex.acquire();
+        const release = await lock(this.parityLockDir, {
+            retries: {
+                retries: 10,
+                minTimeout: 50,
+                maxTimeout: 2000,
+            },
+            lockfilePath: "parity-account",
+        });
+
+        this.logger.debug(
+            "Acquired lock for parity account, sending transaction ",
+            tx
+        );
+
         try {
             return await this.parity.sendTransaction(tx);
         } finally {
-            release();
+            await release();
         }
+
+        this.logger.debug("Lock for parity account released");
     }
 
     private async mintEther(asset: Asset): Promise<void> {

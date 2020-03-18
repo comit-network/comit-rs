@@ -5,7 +5,6 @@ import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
 import rimraf from "rimraf";
-import { Mutex } from "async-mutex";
 import { exec } from "child_process";
 import { LightningWallet } from "./wallets/lightning";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
@@ -20,7 +19,7 @@ export interface HarnessGlobal extends Global.Global {
     };
     projectRoot: string;
     tokenContract: string;
-    parityAccountMutex: Mutex;
+    parityLockDir: string;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;

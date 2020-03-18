@@ -1,7 +1,6 @@
 import { Config } from "@jest/types";
 import { execAsync, HarnessGlobal, mkdirAsync, rimrafAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
-import { Mutex } from "async-mutex";
 import path from "path";
 import { configure } from "log4js";
 
@@ -32,7 +31,6 @@ export default class DryTestEnvironment extends NodeEnvironment {
         // setup global variables
         this.global.projectRoot = this.projectRoot;
         this.global.ledgerConfigs = {};
-        this.global.parityAccountMutex = new Mutex();
 
         const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
         const logDir = path.join(
