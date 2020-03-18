@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tmp from "tmp";
-import { LogReader } from "./log_reader";
+import waitForLogMessage from "../wait_for_log_message";
 import { promisify } from "util";
 import { sleep } from "../utils";
 import getPort from "get-port";
@@ -77,8 +77,7 @@ export class ParityInstance implements EthereumInstance {
             );
         });
 
-        const logReader = new LogReader(this.logFile);
-        await logReader.waitForLogMessage("Public node URL:");
+        await waitForLogMessage(this.logFile, "Public node URL:");
 
         this.logger.info("parity started with PID", this.process.pid);
     }

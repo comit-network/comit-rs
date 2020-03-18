@@ -1,11 +1,11 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { LogReader } from "./log_reader";
 import * as path from "path";
 import { openAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
 import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
 import { Logger } from "log4js";
+import waitForLogMessage from "../wait_for_log_message";
 
 export class BitcoindInstance implements BitcoinInstance {
     private process: ChildProcess;
@@ -72,8 +72,7 @@ export class BitcoindInstance implements BitcoinInstance {
             );
         });
 
-        const logReader = new LogReader(this.logPath());
-        await logReader.waitForLogMessage("init message: Done loading");
+        await waitForLogMessage(this.logPath(), "init message: Done loading");
 
         const result = fs.readFileSync(
             path.join(this.dataDir, "regtest", ".cookie"),
