@@ -43,7 +43,7 @@
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
         "comit-sdk": "^0.14.0",
-        "ethers": "^4.0.45",
+        "ethers": "^4.0.46",
         "get-port": "^5.1.1",
         "jest": "^25.1.0",
         "js-sha256": "^0.9.0",
