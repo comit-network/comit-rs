@@ -10,8 +10,6 @@ import { Logger } from "log4js";
 
 export class LndInstance implements LightningInstance {
     private process: ChildProcess;
-    public lnd: Lnd;
-    private publicKey?: string;
 
     public static async new(
         dataDir: string,
@@ -69,11 +67,6 @@ export class LndInstance implements LightningInstance {
             "LNWL: Done catching up block hashes"
         );
 
-        await this.initAuthenticatedLndConnection();
-
-        this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
-        this.logger.info("lnd is ready:", this.publicKey);
-
         this.logger.debug("lnd started with PID", this.process.pid);
     }
 
@@ -115,16 +108,6 @@ export class LndInstance implements LightningInstance {
         );
         await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
         this.logger.debug("Lnd wallet initialized!");
-    }
-
-    private async initAuthenticatedLndConnection() {
-        const config = {
-            server: this.grpcSocket,
-            tls: this.tlsCertPath(),
-            macaroonPath: this.adminMacaroonPath(),
-        };
-
-        this.lnd = await Lnd.init(config);
     }
 
     public async stop() {
@@ -187,7 +170,9 @@ export class LndInstance implements LightningInstance {
     get config(): LightningNodeConfig {
         return {
             p2pSocket: this.p2pSocket,
-            lnd: this.lnd,
+            grpcSocket: this.grpcSocket,
+            tlsCertPath: this.tlsCertPath(),
+            macaroonPath: this.adminMacaroonPath(),
             restPort: this.restPort,
             dataDir: this.dataDir,
         };

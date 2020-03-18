@@ -217,8 +217,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 this.logger
             ),
             this.logger,
-            this.aliceLightning.config.lnd,
-            this.aliceLightning.config.p2pSocket
+            this.aliceLightning.config
         );
 
         this.global.ledgerConfigs.aliceLnd = this.aliceLightning.config;
@@ -246,8 +245,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 this.logger
             ),
             this.logger,
-            this.bobLightning.config.lnd,
-            this.bobLightning.config.p2pSocket
+            this.bobLightning.config
         );
 
         this.global.ledgerConfigs.bobLnd = this.bobLightning.config;

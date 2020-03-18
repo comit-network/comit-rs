@@ -1,4 +1,3 @@
-import { Lnd } from "comit-sdk";
 import LedgerInstance from "./ledger_instance";
 
 /**
@@ -37,8 +36,9 @@ export interface LightningInstance {
 
 export interface LightningNodeConfig {
     p2pSocket: string;
-    // sucks that we have to leak here that the instance is LND under the hood but we can't do much about that :)
-    lnd: Lnd;
+    grpcSocket: string;
+    tlsCertPath: string;
+    macaroonPath: string;
     restPort: number;
     dataDir: string;
 }
