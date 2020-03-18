@@ -59,6 +59,7 @@ export default class BitcoinLedger implements LedgerInstance {
             password,
         });
 
+        // only coins after the first 101 are spendable
         await client.generateToAddress(101, await client.getNewAddress());
 
         const miner = setInterval(async () => {
