@@ -2,7 +2,7 @@ import { BigNumber, EthereumWallet as EthereumWalletSdk } from "comit-sdk";
 import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
-import { pollUntilMinted, Wallet } from "./index";
+import { Wallet } from "./index";
 import { TransactionRequest } from "ethers/providers";
 import { HarnessGlobal, sleep } from "../utils";
 import { Logger } from "log4js";
@@ -88,22 +88,23 @@ export class EthereumWallet implements Wallet {
     }
 
     private async mintEther(asset: Asset): Promise<void> {
-        const startingBalance = await this.getBalanceByAsset(asset);
         const minimumExpectedBalance = asset.quantity;
 
         // make sure we have at least twice as much
         const value = new BigNumberEthers(minimumExpectedBalance).mul(2);
-        await this.sendTransaction({
+        const response = await this.sendTransaction({
             to: this.account(),
             value,
             gasLimit: 21000,
         });
 
-        await pollUntilMinted(
-            this,
-            startingBalance.minus(new BigNumber(minimumExpectedBalance)),
-            asset
-        );
+        await response.wait(1);
+
+        const balance = await this.getBalanceByAsset(asset);
+
+        if (balance.lte(minimumExpectedBalance)) {
+            throw new Error("Failed to mint Ether");
+        }
 
         this.logger.info("Minted", asset.quantity, "ether for", this.account());
     }
