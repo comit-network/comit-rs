@@ -11,7 +11,7 @@ pub struct SwapDigest {
 }
 
 impl Serialize for SwapDigest {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
@@ -20,7 +20,7 @@ impl Serialize for SwapDigest {
 }
 
 impl<'de> Deserialize<'de> for SwapDigest {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    fn deserialize<D>(_deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
     {

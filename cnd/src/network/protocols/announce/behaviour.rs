@@ -1,7 +1,8 @@
 use crate::{
     network::protocols::announce::{
         handler::{self, Handler, HandlerEvent},
-        protocol::ReplySubstream,
+        protocol::{OutboundConfig, ReplySubstream},
+        SwapDigest,
     },
     swap_protocols::SwapId,
 };
@@ -21,7 +22,7 @@ use std::{
 /// and receives the `swap_id` back.
 pub struct Announce {
     /// Pending events to be emitted when polled.
-    events: VecDeque<NetworkBehaviourAction<(), BehaviourEvent>>,
+    events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourEvent>>,
 }
 
 impl Announce {
@@ -30,6 +31,15 @@ impl Announce {
         Announce {
             events: VecDeque::new(),
         }
+    }
+
+    // This is where data flows into the network behaviour. Begin the announce
+    // protocol here.
+    pub fn start_announce_protocol(&mut self, outbound_config: OutboundConfig, peer_id: PeerId) {
+        self.events.push_back(NetworkBehaviourAction::SendEvent {
+            peer_id: peer_id.clone(),
+            event: outbound_config,
+        });
     }
 }
 
@@ -45,26 +55,27 @@ impl NetworkBehaviour for Announce {
         Vec::new()
     }
 
-    fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
+    fn inject_connected(&mut self, _peer_id: PeerId, _endpoint: ConnectedPoint) {
         // No need to do anything, both this node and connected peer now have a
         // handler (as spawned by `new_handler`) running in the background.
     }
 
-    fn inject_disconnected(&mut self, peer_id: &PeerId, _: ConnectedPoint) {}
+    fn inject_disconnected(&mut self, _peer_id: &PeerId, _: ConnectedPoint) {}
 
     fn inject_node_event(&mut self, peer_id: PeerId, event: HandlerEvent) {
         match event {
-            HandlerEvent::Announce(swap_id) => {
+            HandlerEvent::AnnounceConfirmed(swap_digest, swap_id) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::Announce {
+                    BehaviourEvent::AnnounceConfirmed {
                         peer: peer_id,
                         swap_id,
+                        swap_digest,
                     },
                 ));
             }
-            HandlerEvent::Announced(sender) => {
+            HandlerEvent::AwaitingConfirmation(sender) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::Announced {
+                    BehaviourEvent::AwaitingConfirmation {
                         peer: peer_id,
                         io: sender,
                     },
@@ -83,8 +94,8 @@ impl NetworkBehaviour for Announce {
 
     fn poll(
         &mut self,
-        cx: &mut Context<'_>,
-        params: &mut impl PollParameters,
+        _cx: &mut Context<'_>,
+        _params: &mut impl PollParameters,
     ) -> Poll<
         NetworkBehaviourAction<
             <Self::ProtocolsHandler as ProtocolsHandler>::InEvent,
@@ -104,19 +115,20 @@ impl NetworkBehaviour for Announce {
 pub enum BehaviourEvent {
     /// Node (Alice) has announced the swap and the `swap_id` has been received
     /// from a peer (acting as Bob).
-    Announce {
+    AnnounceConfirmed {
         /// The peer (Bob) that the swap has been announced to.
         peer: PeerId,
         /// The swap_id returned by the peer (Bob).
         swap_id: SwapId,
+        /// The swap_digest
+        swap_digest: SwapDigest,
     },
 
     /// Node (Bob) has received the announced swap (inc. swap_digest) from a
     /// peer (acting as Alice).
-    Announced {
+    AwaitingConfirmation {
         /// The peer (Alice) that the reply substream is connected to.
         peer: PeerId,
-
         /// The substream (inc. swap_digest) to reply on (i.e., send `swap_id`).
         io: ReplySubstream<NegotiatedSubstream>,
     },

@@ -4,7 +4,7 @@ use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::Deserialize;
 use std::{fmt, io, iter, pin::Pin};
 
-const INFO: &'static str = "/comit/swap/announce/1.0.0";
+const INFO: &str = "/comit/swap/announce/1.0.0";
 
 /// Configuration for an upgrade to the `Announce` protocol on the outbound
 /// side.
@@ -26,7 +26,7 @@ impl<C> OutboundUpgrade<C> for OutboundConfig
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Output = SwapId;
+    type Output = (SwapDigest, SwapId);
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
 
@@ -47,7 +47,7 @@ where
             let swap_id = SwapId::deserialize(&mut de)?;
             tracing::trace!("Received: {}", swap_id);
 
-            Ok(swap_id)
+            Ok((self.swap_digest.clone(), swap_id))
         })
     }
 }
@@ -79,7 +79,7 @@ where
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
 
-    fn upgrade_inbound(self, socket: C, info: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, mut socket: C, info: Self::Info) -> Self::Future {
         tracing::trace!(
             "Upgrading inbound connection for {}",
             String::from_utf8_lossy(info)
