@@ -5,3 +5,4 @@ gen/
 yarn-error.log
 dist/
 locks/
+!jest.config.js

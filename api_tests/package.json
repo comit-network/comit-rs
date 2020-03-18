@@ -6,9 +6,7 @@
     "scripts": {
         "check": "tsc && prettier --check '**/*.{ts,json,yml}' && tslint --project .",
         "pretest": "cargo build --bin cnd && tsc",
-        "dry": "jest --config jest.config-dry.js --maxWorkers=4",
-        "e2e": "yarn jest --config jest.config-e2e.js --runInBand --forceExit --bail",
-        "test": "yarn dry && yarn e2e",
+        "test": "jest --maxWorkers=4 --forceExit --bail",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {

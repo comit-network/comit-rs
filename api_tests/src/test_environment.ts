@@ -14,13 +14,11 @@ import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
 import { configure, Logger } from "log4js";
 
-// ************************ //
-// Setting global variables //
-// ************************ //
+export default class TestEnvironment extends NodeEnvironment {
+    private readonly projectRoot: string;
+    private readonly testSuite: string;
+    private readonly ledgers: string[];
 
-export default class E2ETestEnvironment extends NodeEnvironment {
-    private docblockPragmas: Record<string, string>;
-    private projectRoot: string;
     public global: HarnessGlobal;
 
     private bitcoinLedger?: BitcoinLedger;
@@ -29,12 +27,16 @@ export default class E2ETestEnvironment extends NodeEnvironment {
     private bobLightning?: LightningLedger;
 
     private logger: Logger;
+    private logDir: string;
 
     constructor(config: Config.ProjectConfig, context: any) {
         super(config);
 
-        this.docblockPragmas = context.docblockPragmas;
+        this.ledgers = TestEnvironment.extractLedgersToBeStarted(
+            context.docblockPragmas
+        );
         this.projectRoot = path.resolve(config.rootDir, "..");
+        this.testSuite = path.parse(context.testPath).name;
     }
 
     async setup() {
@@ -45,20 +47,13 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
 
-        const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
-
-        const logDir = path.join(
-            this.projectRoot,
-            "api_tests",
-            "log",
-            suiteConfig.logDir
-        );
+        this.logDir = path.join(this.projectRoot, "api_tests", "log");
 
         const log4js = configure({
             appenders: {
                 multi: {
                     type: "multiFile",
-                    base: logDir,
+                    base: this.logDir,
                     property: "categoryName",
                     extension: ".log",
                     layout: {
@@ -72,31 +67,32 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             },
         });
         this.global.getLogFile = pathElements =>
-            path.join(logDir, ...pathElements);
+            path.join(this.logDir, this.testSuite, ...pathElements);
         this.global.getDataDir = async program => {
-            const dir = path.join(logDir, program);
+            const dir = path.join(this.logDir, program);
             await mkdirAsync(dir, { recursive: true });
 
             return dir;
         };
-        this.global.getLogger = category => log4js.getLogger(category);
+        this.global.getLogger = category =>
+            log4js.getLogger(path.join(this.testSuite, category));
         this.global.parityLockDir = await this.getLockDirectory("parity");
 
-        this.logger = log4js.getLogger("test_environment");
+        this.logger = log4js.getLogger(
+            path.join(this.testSuite, "test_environment")
+        );
         this.logger.info("Starting up test environment");
 
-        await this.startLedgers(suiteConfig.ledgers);
+        await this.startLedgers();
     }
 
     /**
      * Initializes all required ledgers with as much parallelism as possible.
-     *
-     * @param ledgers The list of ledgers to initialize
      */
-    private async startLedgers(ledgers: string[]) {
-        const startEthereum = ledgers.includes("ethereum");
-        const startBitcoin = ledgers.includes("bitcoin");
-        const startLightning = ledgers.includes("lightning");
+    private async startLedgers() {
+        const startEthereum = this.ledgers.includes("ethereum");
+        const startBitcoin = this.ledgers.includes("bitcoin");
+        const startLightning = this.ledgers.includes("lightning");
 
         const tasks = [];
 
@@ -141,7 +137,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.ethereumLedger = await EthereumLedger.start(
             await ParityInstance.new(
                 this.projectRoot,
-                this.global.getLogFile(["parity.log"]),
+                path.join(this.logDir, "parity.log"),
                 this.logger
             ),
             this.logger,
@@ -278,19 +274,11 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         await Promise.all(tasks);
     }
 
-    private extractDocblockPragmas(
+    private static extractLedgersToBeStarted(
         docblockPragmas: Record<string, string>
-    ): { logDir: string; ledgers: string[] } {
+    ): string[] {
         const docblockLedgers = docblockPragmas.ledgers!;
-        const ledgers = docblockLedgers ? docblockLedgers.split(",") : [];
 
-        const logDir = this.docblockPragmas.logDir!;
-        if (!logDir) {
-            throw new Error(
-                "Test file did not specify a log directory. Did you miss adding @logDir"
-            );
-        }
-
-        return { ledgers, logDir };
+        return docblockLedgers ? docblockLedgers.split(",") : [];
     }
 }

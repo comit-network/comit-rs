@@ -1,14 +1,13 @@
 /**
  * @ledgers lightning
- * @logDir e2e
  */
 
 // ******************************************** //
 // Lightning Sanity Test                        //
 // ******************************************** //
-import { twoActorTest } from "../../src/actor_test";
-import { LedgerKind } from "../../src/ledgers/ledger";
-import { AssetKind } from "../../src/asset";
+import { twoActorTest } from "../src/actor_test";
+import { LedgerKind } from "../src/ledgers/ledger";
+import { AssetKind } from "../src/asset";
 import { expect } from "chai";
 
 describe("E2E: Sanity - LND Alice pays Bob", () => {
