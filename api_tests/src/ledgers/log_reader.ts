@@ -1,4 +1,5 @@
 import { Tail } from "tail";
+import { timeout } from "../utils";
 
 export class LogReader {
     private tail: Tail;
@@ -15,7 +16,7 @@ export class LogReader {
     }
 
     public async waitForLogMessage(line: string) {
-        await this.findTextInLog(line);
+        await timeout(60000, this.findTextInLog(line));
         this.unwatch();
     }
 
