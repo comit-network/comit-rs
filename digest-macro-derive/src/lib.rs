@@ -33,13 +33,11 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             let gen = quote! {
                     impl ::digest::Digest for #name
-                        where #(#types: ::digest::FieldDigest),*
+                        where #(#types: ::digest::IntoDigestInput),*
                     {
                         fn digest(self) -> ::multihash::Multihash {
-                            use ::digest::FieldDigest;
-
                             let mut digests = vec![];
-                            #(digests.push(self.#idents.field_digest(#bytes.to_vec())););*
+                            #(digests.push(::digest::field_digest(self.#idents, #bytes.to_vec())););*
 
                             digests.sort();
 
