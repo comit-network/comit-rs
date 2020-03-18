@@ -195,7 +195,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 "lnd-alice",
                 this.logger,
                 await this.global.getDataDir("bitcoind")
-            )
+            ),
+            this.logger,
+            await this.getLockDirectory("lnd-alice")
         );
 
         this.global.lndWallets.alice = await LightningWallet.newInstance(
@@ -221,7 +223,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 "lnd-bob",
                 this.logger,
                 await this.global.getDataDir("bitcoind")
-            )
+            ),
+            this.logger,
+            await this.getLockDirectory("lnd-bob")
         );
 
         this.global.lndWallets.bob = await LightningWallet.newInstance(
