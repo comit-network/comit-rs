@@ -23,7 +23,7 @@ export interface HarnessGlobal extends Global.Global {
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;
-    getLogger: (category: string) => Logger;
+    getLogger: (categories: string[]) => Logger;
 }
 
 export interface LedgerConfig {

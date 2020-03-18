@@ -66,21 +66,27 @@ export default class TestEnvironment extends NodeEnvironment {
                 default: { appenders: ["multi"], level: "debug" },
             },
         });
+
+        const testLogDir = path.join(this.logDir, "tests", this.testSuite);
+        await mkdirAsync(testLogDir, { recursive: true });
+
         this.global.getLogFile = pathElements =>
-            path.join(this.logDir, this.testSuite, ...pathElements);
+            path.join(testLogDir, ...pathElements);
+        this.global.getLogger = categories => {
+            return log4js.getLogger(
+                path.join("tests", this.testSuite, ...categories)
+            );
+        };
+        this.logger = this.global.getLogger(["test_environment"]);
+
         this.global.getDataDir = async program => {
             const dir = path.join(this.logDir, program);
             await mkdirAsync(dir, { recursive: true });
 
             return dir;
         };
-        this.global.getLogger = category =>
-            log4js.getLogger(path.join(this.testSuite, category));
         this.global.parityLockDir = await this.getLockDirectory("parity");
 
-        this.logger = log4js.getLogger(
-            path.join(this.testSuite, "test_environment")
-        );
         this.logger.info("Starting up test environment");
 
         await this.startLedgers();

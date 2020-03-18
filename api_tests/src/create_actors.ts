@@ -13,7 +13,7 @@ export async function createActors(
     const listPromises: Promise<Actor>[] = [];
     for (const name of actorNames) {
         const cndLogFile = global.getLogFile([testName, `cnd-${name}.log`]);
-        const actorLogger = global.getLogger(`${testName}/${name}`);
+        const actorLogger = global.getLogger([testName, name]);
 
         listPromises.push(
             Actor.newInstance(
