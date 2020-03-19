@@ -282,7 +282,7 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private static extractLedgersToBeStarted(
-        docblockPragmas: Record<string, string>
+        docblockPragmas: Record<string, string | string[]>
     ): string[] {
         const docblockLedgers = docblockPragmas.ledgers!;
 
