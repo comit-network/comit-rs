@@ -2,7 +2,7 @@ use crate::{network::protocols::announce::SwapDigest, swap_protocols::SwapId};
 use futures::prelude::*;
 use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::Deserialize;
-use std::{fmt, io, iter, pin::Pin};
+use std::{io, iter, pin::Pin};
 
 const INFO: &str = "/comit/swap/announce/1.0.0";
 
@@ -62,7 +62,7 @@ pub struct Confirmed {
 }
 
 /// Configuration for an upgrade to the `Announce` protocol on the inbound side.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct InboundConfig {}
 
 impl Default for InboundConfig {
@@ -107,15 +107,10 @@ where
 }
 
 /// The substream on which a reply is expected to be sent.
+#[derive(Debug)]
 pub struct ReplySubstream<T> {
-    io: T,
-    swap_digest: SwapDigest,
-}
-
-impl<T> fmt::Debug for ReplySubstream<T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_tuple("ReplySubstream").finish()
-    }
+    pub io: T,
+    pub swap_digest: SwapDigest,
 }
 
 impl<T> ReplySubstream<T>

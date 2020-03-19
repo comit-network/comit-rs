@@ -1,6 +1,6 @@
-mod behaviour;
-mod handler;
-mod protocol;
+pub mod behaviour;
+pub mod handler;
+pub mod protocol;
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 

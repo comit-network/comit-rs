@@ -20,6 +20,7 @@ use std::{
 
 /// Network behaviour that announces a swap to peer by sending a `swap_digest`
 /// and receives the `swap_id` back.
+#[derive(Debug)]
 pub struct Announce {
     /// Pending events to be emitted when polled.
     events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourEvent>>,
