@@ -8,7 +8,7 @@ export interface EnvGlobal extends Global.Global {
 
 declare var global: EnvGlobal;
 
-module.exports = async (config: any) => {
+export default async (config: any) => {
     const root = config.rootDir;
 
     const logDir = path.join(root, "log");
