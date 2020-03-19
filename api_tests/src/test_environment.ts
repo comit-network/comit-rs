@@ -30,7 +30,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private logger: Logger;
     private logDir: string;
 
-    constructor(config: Config.ProjectConfig, context: any) {
+    constructor(config: Config.ProjectConfig, context: EnvironmentContext) {
         super(config);
 
         this.ledgers = TestEnvironment.extractLedgersToBeStarted(
