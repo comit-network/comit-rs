@@ -1,6 +1,5 @@
-use crate::network::protocols::announce::{
-    protocol::{self, Confirmed, InboundConfig, OutboundConfig, ReplySubstream},
-    SwapDigest,
+use crate::network::protocols::announce::protocol::{
+    self, Confirmed, InboundConfig, OutboundConfig, ReplySubstream,
 };
 use libp2p::{
     core::upgrade::{InboundUpgrade, OutboundUpgrade, ReadOneError},
