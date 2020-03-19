@@ -60,9 +60,9 @@ export class LndInstance implements LightningInstance {
         );
         await waitUntilFileExists(this.adminMacaroonPath());
 
-        this.logger.debug("Waiting for lnd to catch up with blocks");
+        this.logger.debug("Waiting for lightning server to start");
         await this.logReader().waitForLogMessage(
-            "LNWL: Done catching up block hashes"
+            "[INF] BTCN: Server listening on "
         );
 
         this.logger.debug("lnd started with PID", this.process.pid);

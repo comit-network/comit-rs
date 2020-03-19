@@ -5,6 +5,7 @@
 
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
+import { sleep } from "../src/utils";
 
 // ******************************************** //
 // Ethereum/ether Alpha Ledger/ Alpha Asset     //
@@ -40,6 +41,9 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
             await bob.accept();
 
             await alice.fundLowGas("0x1b000");
+
+            // It is meaningless to assert before cnd processes a new block
+            await sleep(3000);
 
             await alice.assertAlphaNotDeployed();
             await bob.assertAlphaNotDeployed();

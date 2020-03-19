@@ -21,7 +21,7 @@ export default class EthereumLedger {
         configFile: string
     ) {
         logger.info(
-            "File-lock for Ethereum ledger acquired, checking for config file at",
+            "Lock file for Ethereum ledger acquired, checking for config file at",
             configFile
         );
         const configFileExists = await existsAsync(configFile);

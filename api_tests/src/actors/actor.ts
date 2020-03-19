@@ -546,12 +546,10 @@ export class Actor {
     }
 
     public async assertAlphaNotDeployed() {
-        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("alpha_ledger", "NOT_DEPLOYED");
     }
 
     public async assertBetaNotDeployed() {
-        await sleep(3000); // It is meaningless to assert before cnd processes a new block
         await this.assertLedgerState("beta_ledger", "NOT_DEPLOYED");
     }
 

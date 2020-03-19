@@ -100,9 +100,8 @@ export class EthereumWallet implements Wallet {
             return await this.parity.sendTransaction(tx);
         } finally {
             await release();
+            this.logger.debug("Lock for parity account released");
         }
-
-        this.logger.debug("Lock for parity account released");
     }
 
     private async mintEther(asset: Asset): Promise<void> {
@@ -116,7 +115,11 @@ export class EthereumWallet implements Wallet {
             gasLimit: 21000,
         });
 
+        this.logger.debug(
+            "Waiting for Ether mint transaction to be confirmed."
+        );
         await response.wait(1);
+        this.logger.debug("Ether mint transaction is confirmed.");
 
         const balance = await this.getBalanceByAsset(asset);
 

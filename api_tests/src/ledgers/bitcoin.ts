@@ -16,7 +16,7 @@ export default class BitcoinLedger {
         configFile: string
     ) {
         logger.info(
-            "File-lock for Bitcoin ledger acquired, checking for config file at",
+            "Lock file for Bitcoin ledger acquired, checking for config file at",
             configFile
         );
         const configFileExists = await existsAsync(configFile);

@@ -17,7 +17,7 @@ export default class LightningLedger {
         configFile: string
     ) {
         logger.info(
-            "File-lock for Lightning ledger acquired, checking for config file at",
+            "Lock file for Lightning ledger acquired, checking for config file at",
             configFile
         );
         const configFileExists = await existsAsync(configFile);
