@@ -54,10 +54,6 @@ endif
 
 ## User install
 
-download_bc_nodes:
-	@./blockchain_nodes/ensure_bitcoind.sh
-	@./blockchain_nodes/ensure_parity.sh
-
 install:
 	$(CARGO) install --force --path cnd
 
@@ -82,10 +78,10 @@ test:
 doc:
 	$(CARGO) doc
 
-e2e: download_bc_nodes build
+e2e: build
 	(cd ./api_tests; yarn install; yarn test)
 
-ci_gha: download_bc_nodes
+ci_gha:
 	(cd ./api_tests; yarn install; yarn ci)
 
 check_format: check_rust_format check_toml_format check_ts_format

@@ -4,9 +4,14 @@ import tmp from "tmp";
 import waitForLogMessage from "../wait_for_log_message";
 import { promisify } from "util";
 import { writeFileAsync } from "../utils";
+import { existsAsync } from "../utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import { LedgerInstance } from "./index";
+import findCacheDir from "find-cache-dir";
+import download from "download";
+import { platform } from "os";
+import chmod from "chmod";
 
 const openAsync = promisify(fs.open);
 
@@ -40,9 +45,7 @@ export class ParityInstance implements LedgerInstance {
     ) {}
 
     public async start() {
-        const bin = process.env.PARITY_BIN
-            ? process.env.PARITY_BIN
-            : this.projectRoot + "/blockchain_nodes/parity/parity";
+        const bin = await this.findBinary("2.7.2");
 
         this.logger.info("Using binary", bin);
 
@@ -91,7 +94,68 @@ export class ParityInstance implements LedgerInstance {
         });
     }
 
+    private async findBinary(version: string): Promise<string> {
+        const envOverride = process.env.PARITY_BIN;
+
+        if (envOverride) {
+            this.logger.info(
+                "Overriding parity bin with PARITY_BIN: ",
+                envOverride
+            );
+
+            return envOverride;
+        }
+
+        const cacheDirPath = `parity-${version}`;
+        const binaryName = "parity";
+
+        const cacheDir = findCacheDir({
+            name: cacheDirPath,
+            create: true,
+            thunk: true,
+        });
+        const binaryPath = cacheDir(binaryName);
+
+        if (await existsAsync(binaryPath)) {
+            return binaryPath;
+        }
+
+        const url = downloadUrl(version);
+
+        this.logger.info(
+            "Binary for version ",
+            version,
+            " not found at ",
+            binaryPath,
+            ", downloading from ",
+            url
+        );
+
+        await download(url, cacheDir(""), {
+            filename: binaryName,
+        });
+
+        chmod(binaryPath, {
+            execute: true,
+        });
+
+        this.logger.info("Download completed");
+
+        return binaryPath;
+    }
+
     public get rpcUrl() {
         return `http://localhost:${this.rpcPort}`;
+    }
+}
+
+function downloadUrl(version: string) {
+    switch (platform()) {
+        case "darwin":
+            return `https://releases.parity.io/ethereum/v${version}/x86_64-apple-darwin/parity`;
+        case "linux":
+            return `https://releases.parity.io/ethereum/v${version}/x86_64-unknown-linux-gnu/parity`;
+        default:
+            throw new Error(`Unsupported platform ${platform()}`);
     }
 }
