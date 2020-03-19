@@ -1,4 +1,4 @@
-import { Asset, BigNumber, Lnd } from "comit-sdk";
+import { Asset, BigNumber } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
@@ -50,34 +50,37 @@ export class Wallets {
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
         logger: Logger,
-        lnd: { lnd: Lnd; lndP2pSocket: string } | undefined
+        actor?: string
     ) {
         switch (name) {
             case "ethereum":
                 this.wallets.ethereum = new EthereumWallet(
-                    global.ledgerConfigs.ethereum
+                    global.ledgerConfigs.ethereum.rpc_url,
+                    logger
                 );
                 break;
             case "bitcoin":
                 this.wallets.bitcoin = await BitcoinWallet.newInstance(
-                    global.ledgerConfigs.bitcoin
+                    global.ledgerConfigs.bitcoin,
+                    logger
                 );
                 break;
             case "lightning":
-                if (!lnd) {
-                    throw new Error(
-                        "Lnd is needed to instantiate lightning wallet."
-                    );
+                switch (actor) {
+                    case "alice": {
+                        this.wallets.lightning = global.lndWallets.alice;
+                        break;
+                    }
+                    case "bob": {
+                        this.wallets.lightning = global.lndWallets.bob;
+                        break;
+                    }
+                    default: {
+                        throw new Error(
+                            `Cannot initialize Lightning wallet for actor: '${actor}'`
+                        );
+                    }
                 }
-                this.wallets.lightning = await LightningWallet.newInstance(
-                    await BitcoinWallet.newInstance(
-                        global.ledgerConfigs.bitcoin
-                    ),
-                    logger,
-                    lnd.lnd,
-                    lnd.lndP2pSocket
-                );
-                break;
         }
     }
 }

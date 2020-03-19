@@ -8,11 +8,9 @@ use crate::{
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
+    seed::DeriveSwapSeed,
     swap_protocols::{
-        actions::Actions,
-        rfc003::{self, ActorState},
-        state_store::{Get, InMemoryStateStore},
-        HashFunction, SwapId, SwapProtocol,
+        actions::Actions, rfc003, state::Get, Facade, HashFunction, SwapId, SwapProtocol,
     },
 };
 use anyhow::anyhow;
@@ -81,8 +79,8 @@ pub enum OnFail {
 // This is due to the introduction of a trust per Bitcoin network in the
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
-pub fn build_rfc003_siren_entity(
-    state_store: &InMemoryStateStore,
+pub async fn build_rfc003_siren_entity(
+    dependencies: &Facade,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
@@ -91,21 +89,45 @@ pub fn build_rfc003_siren_entity(
     let id = swap.swap_id;
 
     with_swap_types!(types, {
-        let state: ROLE = state_store
-            .get(&id)?
-            .ok_or_else(|| anyhow!("state store did not contain an entry for {}", id))?;
+        let swap_has_failed = dependencies.swap_error_states.has_failed(&id).await;
 
-        if state.swap_failed() && on_fail == OnFail::Error {
+        if swap_has_failed && on_fail == OnFail::Error {
             return Err(anyhow!(HttpApiProblem::with_title_and_type_from_status(
                 StatusCode::INTERNAL_SERVER_ERROR,
             )));
         }
 
-        let communication = SwapCommunication::from(state.swap_communication.clone());
-        let alpha_ledger = LedgerState::from(state.alpha_ledger_state.clone());
-        let beta_ledger = LedgerState::from(state.beta_ledger_state.clone());
-        let parameters = SwapParameters::from(state.request().clone());
-        let actions = state.actions();
+        let swap_communication: rfc003::SwapCommunication<AL, BL, AA, BA, AI, BI> = dependencies
+            .get(&id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("swap communication state not found for {}", id))?;
+        let alpha_ledger_state: rfc003::LedgerState<AA, AH, AT> = dependencies
+            .alpha_ledger_state
+            .get(&id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+        let beta_ledger_state: rfc003::LedgerState<BA, BH, BT> = dependencies
+            .beta_ledger_state
+            .get(&id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+
+        let communication = SwapCommunication::from(swap_communication.clone());
+        let alpha_ledger = LedgerState::from(alpha_ledger_state.clone());
+        let beta_ledger = LedgerState::from(beta_ledger_state.clone());
+        let parameters = SwapParameters::from(swap_communication.request().clone());
+
+        let secret_source = dependencies.derive_swap_seed(id);
+
+        let actions = {
+            let state = RoleState::new(
+                swap_communication,
+                alpha_ledger_state,
+                beta_ledger_state,
+                secret_source,
+            );
+            state.actions()
+        };
 
         let status = SwapStatus::new(
             communication.status,
@@ -147,7 +169,7 @@ pub fn build_rfc003_siren_entity(
                 .with_class_member("protocol-spec"),
             );
 
-        if state.swap_failed() && on_fail == OnFail::NoAction {
+        if swap_has_failed && on_fail == OnFail::NoAction {
             return Ok(entity);
         }
 

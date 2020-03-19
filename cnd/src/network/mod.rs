@@ -1,3 +1,7 @@
+mod oneshot_behaviour;
+
+pub mod oneshot_protocol;
+pub mod protocols;
 pub mod transport;
 
 pub use transport::ComitTransport;
@@ -13,15 +17,16 @@ use crate::{
     db::{Save, Sqlite, Swap},
     htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    seed::{DeriveSwapSeed, RootSeed},
+    seed::RootSeed,
     swap_protocols::{
         ledger,
         rfc003::{
-            self, bob,
+            self,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
+            LedgerState, SwapCommunication,
         },
-        state_store::{InMemoryStateStore, Insert},
-        HashFunction, Role, SwapId, SwapProtocol,
+        state::Insert,
+        HashFunction, LedgerStates, Role, SwapCommunicationStates, SwapId, SwapProtocol,
     },
     transaction,
 };
@@ -42,7 +47,7 @@ use libp2p::{
 };
 use libp2p_comit::{
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    handler::{self, ComitHandler, ProtocolInEvent, ProtocolOutEvent},
+    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -65,7 +70,7 @@ type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
     EitherOutput<ProtocolInEvent, void::Void>,
     EitherOutput<ProtocolOutEvent, void::Void>,
     IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
-    EitherError<handler::Error, void::Void>,
+    EitherError<libp2p_comit::handler::Error, void::Void>,
 >;
 
 #[derive(Clone, derivative::Derivative)]
@@ -78,13 +83,16 @@ pub struct Swarm {
 }
 
 impl Swarm {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         settings: &Settings,
         seed: RootSeed,
         runtime: &mut Runtime,
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        state_store: Arc<InMemoryStateStore>,
+        swap_communication_states: Arc<SwapCommunicationStates>,
+        alpha_ledger_state: Arc<LedgerStates>,
+        beta_ledger_state: Arc<LedgerStates>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -95,7 +103,9 @@ impl Swarm {
         let behaviour = ComitNode::new(
             bitcoin_connector,
             ethereum_connector,
-            state_store,
+            swap_communication_states,
+            alpha_ledger_state,
+            beta_ledger_state,
             seed,
             database.clone(),
             runtime.handle().clone(),
@@ -152,6 +162,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
     Keypair::Ed25519(key.into())
 }
 
+/// A `NetworkBehaviour` that delegates to the `Comit` and `Mdns` behaviours.
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
@@ -163,7 +174,11 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     #[behaviour(ignore)]
-    pub state_store: Arc<InMemoryStateStore>,
+    pub swap_communication_states: Arc<SwapCommunicationStates>,
+    #[behaviour(ignore)]
+    pub alpha_ledger_state: Arc<LedgerStates>,
+    #[behaviour(ignore)]
+    pub beta_ledger_state: Arc<LedgerStates>,
     #[behaviour(ignore)]
     pub seed: RootSeed,
     #[behaviour(ignore)]
@@ -207,10 +222,13 @@ pub struct Reason {
 }
 
 impl ComitNode {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        state_store: Arc<InMemoryStateStore>,
+        swap_communication_states: Arc<SwapCommunicationStates>,
+        alpha_ledger_state: Arc<LedgerStates>,
+        beta_ledger_state: Arc<LedgerStates>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -231,7 +249,9 @@ impl ComitNode {
             mdns: Mdns::new()?,
             bitcoin_connector,
             ethereum_connector,
-            state_store,
+            alpha_ledger_state,
+            beta_ledger_state,
+            swap_communication_states,
             seed,
             db,
             response_channels: Arc::new(Mutex::new(HashMap::new())),
@@ -254,8 +274,9 @@ impl ComitNode {
 #[allow(clippy::cognitive_complexity)]
 async fn handle_request(
     db: Sqlite,
-    seed: RootSeed,
-    state_store: Arc<InMemoryStateStore>,
+    swap_communication_states: Arc<SwapCommunicationStates>,
+    alpha_ledger_state: Arc<LedgerStates>,
+    beta_ledger_state: Arc<LedgerStates>,
     counterparty: PeerId,
     mut request: ValidatedInboundRequest,
 ) -> Result<SwapId, Response> {
@@ -309,7 +330,12 @@ async fn handle_request(
                                 transaction::Ethereum,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -343,7 +369,12 @@ async fn handle_request(
                                 transaction::Ethereum,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -377,7 +408,12 @@ async fn handle_request(
                                 transaction::Ethereum,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -411,7 +447,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -445,7 +486,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -479,7 +525,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -513,7 +564,12 @@ async fn handle_request(
                                 transaction::Ethereum,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -548,7 +604,12 @@ async fn handle_request(
                                 transaction::Ethereum,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -583,7 +644,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -618,7 +684,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -652,7 +723,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -686,7 +762,12 @@ async fn handle_request(
                                 transaction::Bitcoin,
                                 _,
                             >(
-                                db.clone(), seed, state_store.clone(), counterparty, request
+                                db.clone(),
+                                swap_communication_states.clone(),
+                                alpha_ledger_state.clone(),
+                                beta_ledger_state.clone(),
+                                counterparty,
+                                request,
                             )
                             .await
                             .expect("Could not save state to db");
@@ -737,8 +818,9 @@ async fn handle_request(
 #[allow(clippy::type_complexity)]
 async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT, DB>(
     db: DB,
-    seed: RootSeed,
-    state_store: Arc<InMemoryStateStore>,
+    swap_communication_states: Arc<SwapCommunicationStates>,
+    alpha_ledger_state: Arc<LedgerStates>,
+    beta_ledger_state: Arc<LedgerStates>,
     counterparty: PeerId,
     swap_request: Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
@@ -755,17 +837,24 @@ where
     BT: Send + 'static,
     DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
-    bob::State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>: Clone + Sync,
 {
     let id = swap_request.swap_id;
-    let seed = seed.derive_swap_seed(id);
 
     Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
-    let state =
-        bob::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
-    state_store.insert(id, state);
+    swap_communication_states
+        .insert(id, SwapCommunication::Proposed {
+            request: swap_request,
+        })
+        .await;
+
+    alpha_ledger_state
+        .insert(id, LedgerState::<AA, AH, AT>::NotDeployed)
+        .await;
+    beta_ledger_state
+        .insert(id, LedgerState::<BA, BH, BT>::NotDeployed)
+        .await;
 
     Ok(())
 }
@@ -946,11 +1035,21 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
 
                 let response_channels = self.response_channels.clone();
                 let db = self.db.clone();
-                let state_store = self.state_store.clone();
-                let seed = self.seed;
+                let swap_communication_states = self.swap_communication_states.clone();
+                let alpha_ledger_state = self.alpha_ledger_state.clone();
+                let beta_ledger_state = self.beta_ledger_state.clone();
 
                 self.task_executor.spawn(async move {
-                    match handle_request(db, seed, state_store, peer_id, request).await {
+                    match handle_request(
+                        db,
+                        swap_communication_states,
+                        alpha_ledger_state,
+                        beta_ledger_state,
+                        peer_id,
+                        request,
+                    )
+                    .await
+                    {
                         Ok(id) => {
                             let mut response_channels = response_channels.lock().await;
                             response_channels.insert(id, channel);

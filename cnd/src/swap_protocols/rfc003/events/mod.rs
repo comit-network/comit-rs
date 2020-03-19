@@ -3,9 +3,9 @@ use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
-pub struct Funded<A, T> {
-    pub asset: A,
-    pub transaction: T,
+pub enum Funded<A, T> {
+    Correctly { asset: A, transaction: T },
+    Incorrectly { asset: A, transaction: T },
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]

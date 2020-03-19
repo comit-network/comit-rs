@@ -1,5 +1,4 @@
 import { Config } from "@jest/types";
-import { LedgerRunner } from "../lib/ledgers/ledger_runner";
 import {
     execAsync,
     HarnessGlobal,
@@ -9,17 +8,15 @@ import {
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
+import { configure } from "log4js";
 
 // ************************ //
 // Setting global variables //
 // ************************ //
 
-export default class E2ETestEnvironment extends NodeEnvironment {
+export default class DryTestEnvironment extends NodeEnvironment {
     private docblockPragmas: Record<string, string>;
     private projectRoot: string;
-    private testRoot: string;
-    private logDir: string;
-    private ledgerRunner: LedgerRunner;
     public global: HarnessGlobal;
 
     constructor(config: Config.ProjectConfig, context: any) {
@@ -36,28 +33,52 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             encoding: "utf8",
         });
         this.projectRoot = stdout.trim();
-        this.testRoot = path.join(this.projectRoot, "api_tests");
 
         // setup global variables
         this.global.projectRoot = this.projectRoot;
-        this.global.testRoot = this.testRoot;
         this.global.ledgerConfigs = {};
-        this.global.verbose =
-            this.global.process.argv.find(item => item.includes("verbose")) !==
-            undefined;
-
         this.global.parityAccountMutex = new Mutex();
 
-        if (this.global.verbose) {
-            console.log(`Starting up test environment`);
-        }
+        const suiteConfig = this.extractDocblockPragmas(this.docblockPragmas);
+        const logDir = path.join(
+            this.projectRoot,
+            "api_tests",
+            "log",
+            suiteConfig.logDir
+        );
 
-        const { logDir } = this.extractDocblockPragmas(this.docblockPragmas);
+        await DryTestEnvironment.cleanLogDir(logDir);
 
-        this.logDir = path.join(this.projectRoot, "api_tests", "log", logDir);
-        await E2ETestEnvironment.cleanLogDir(this.logDir);
+        const log4js = configure({
+            appenders: {
+                multi: {
+                    type: "multiFile",
+                    base: logDir,
+                    property: "categoryName",
+                    extension: ".log",
+                    layout: {
+                        type: "pattern",
+                        pattern: "%d %5.10p: %m",
+                    },
+                },
+            },
+            categories: {
+                default: { appenders: ["multi"], level: "debug" },
+            },
+        });
 
-        this.global.logRoot = this.logDir;
+        const logger = log4js.getLogger("test_environment");
+        logger.info("Starting up test environment");
+
+        this.global.getLogFile = pathElements =>
+            path.join(logDir, ...pathElements);
+        this.global.getDataDir = async program => {
+            const dir = path.join(logDir, program);
+            await mkdirAsync(dir, { recursive: true });
+
+            return dir;
+        };
+        this.global.getLogger = category => log4js.getLogger(category);
     }
 
     private static async cleanLogDir(logDir: string) {
@@ -67,23 +88,6 @@ export default class E2ETestEnvironment extends NodeEnvironment {
 
     async teardown() {
         await super.teardown();
-        if (this.global.verbose) {
-            console.log(`Tearing down test environment.`);
-        }
-        this.cleanupAll();
-        if (this.global.verbose) {
-            console.log(`All teared down.`);
-        }
-    }
-
-    cleanupAll() {
-        try {
-            if (this.ledgerRunner) {
-                this.ledgerRunner.stopLedgers();
-            }
-        } catch (e) {
-            console.error("Failed to clean up resources", e);
-        }
     }
 
     private extractDocblockPragmas(

@@ -1,19 +1,37 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
-import { LedgerInstance } from "./ledger_runner";
 import { LogReader } from "./log_reader";
 import * as path from "path";
-import { openAsync, mkdirAsync, writeFileAsync } from "../utils";
+import { openAsync, writeFileAsync } from "../utils";
+import getPort from "get-port";
+import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
+import { Logger } from "log4js";
 
-export class BitcoindInstance implements LedgerInstance {
+export class BitcoindInstance implements BitcoinInstance {
     private process: ChildProcess;
-    private dataDir: string;
     private username: string;
     private password: string;
 
+    public static async new(
+        projectRoot: string,
+        dataDir: string,
+        logger: Logger
+    ): Promise<BitcoindInstance> {
+        return new BitcoindInstance(
+            projectRoot,
+            dataDir,
+            logger,
+            await getPort({ port: 18444 }),
+            await getPort({ port: 18443 }),
+            await getPort({ port: 28332 }),
+            await getPort({ port: 28333 })
+        );
+    }
+
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
+        private readonly dataDir: string,
+        private readonly logger: Logger,
         public readonly p2pPort: number,
         public readonly rpcPort: number,
         public readonly zmqPubRawBlockPort: number,
@@ -31,9 +49,8 @@ export class BitcoindInstance implements LedgerInstance {
                   "bin",
                   "bitcoind"
               );
+        this.logger.info("Using binary", bin);
 
-        this.dataDir = path.join(this.logDir, "bitcoind");
-        await mkdirAsync(this.dataDir, "755");
         await this.createConfigFile(this.dataDir);
 
         const log = this.logPath();
@@ -47,11 +64,16 @@ export class BitcoindInstance implements LedgerInstance {
         });
 
         this.process.on("exit", (code: number, signal: number) => {
-            console.log(`bitcoind exited with ${code || `signal ${signal}`}`);
+            this.logger.info(
+                "bitcoind exited with code",
+                code,
+                "after signal",
+                signal
+            );
         });
 
         const logReader = new LogReader(this.logPath());
-        await logReader.waitForLogMessage("Wallet completed loading");
+        await logReader.waitForLogMessage("init message: Done loading");
 
         const result = fs.readFileSync(
             path.join(this.dataDir, "regtest", ".cookie"),
@@ -62,10 +84,25 @@ export class BitcoindInstance implements LedgerInstance {
         this.username = username;
         this.password = password;
 
-        return this;
+        this.logger.info("bitcoind started with PID", this.process.pid);
     }
 
-    public stop() {
+    public get config(): BitcoinNodeConfig {
+        return {
+            network: "regtest",
+            host: "localhost",
+            rpcPort: this.rpcPort,
+            p2pPort: this.p2pPort,
+            username: this.username,
+            password: this.password,
+            dataDir: this.getDataDir(),
+            rpcUrl: `http://localhost:${this.rpcPort}`,
+        };
+    }
+
+    public async stop() {
+        this.logger.info("Stopping bitcoind instance");
+
         this.process.kill("SIGINT");
     }
 
@@ -77,22 +114,20 @@ export class BitcoindInstance implements LedgerInstance {
         return this.dataDir;
     }
 
-    public getUsernamePassword() {
-        return { username: this.username, password: this.password };
-    }
-
     private async createConfigFile(dataDir: string) {
         const output = `regtest=1
 server=1
 printtoconsole=1
-bind=0.0.0.0:${this.p2pPort}
-rpcbind=0.0.0.0:${this.rpcPort}
 rpcallowip=0.0.0.0/0
 nodebug=1
 rest=1
 acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
 zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
+
+[regtest]
+bind=0.0.0.0:${this.p2pPort}
+rpcbind=0.0.0.0:${this.rpcPort}
 `;
         const config = path.join(dataDir, "bitcoin.conf");
         await writeFileAsync(config, output);

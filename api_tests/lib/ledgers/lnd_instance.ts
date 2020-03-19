@@ -1,34 +1,47 @@
 import { ChildProcess, spawn } from "child_process";
-import { E2ETestActorConfig } from "../config";
-import { mkdirAsync, waitUntilFileExists, writeFileAsync } from "../utils";
+import { waitUntilFileExists, writeFileAsync } from "../utils";
 import * as path from "path";
-import { Logger } from "log4js";
 import getPort from "get-port";
 import { LogReader } from "./log_reader";
 import { Lnd } from "comit-sdk";
+import whereis from "@wcjiang/whereis";
+import { LightningInstance, LightningNodeConfig } from "./lightning";
+import { Logger } from "log4js";
 
-export class LndInstance {
+export class LndInstance implements LightningInstance {
     private process: ChildProcess;
-    private lndDir: string;
     public lnd: Lnd;
     private publicKey?: string;
 
-    constructor(
+    public static async new(
+        dataDir: string,
+        name: string,
+        logger: Logger,
+        bitcoindDataDir: string
+    ) {
+        return new LndInstance(
+            dataDir,
+            name,
+            logger,
+            bitcoindDataDir,
+            await getPort(),
+            await getPort()
+        );
+    }
+
+    private constructor(
+        private readonly dataDir: string,
+        private readonly name: string,
         private readonly logger: Logger,
-        private readonly testLogDir: string,
-        private readonly actorConfig: E2ETestActorConfig,
-        private readonly bitcoindDataDir: string
+        private readonly bitcoindDataDir: string,
+        private readonly lndP2pPort: number,
+        private readonly lndRpcPort: number
     ) {}
 
     public async start() {
-        this.lndDir = path.join(
-            this.testLogDir,
-            "lnd-" + this.actorConfig.name
-        );
-        await mkdirAsync(this.lndDir, "755");
         await this.createConfigFile();
 
-        this.execBinary();
+        await this.execBinary();
 
         this.logger.debug("Waiting for lnd log file to exist:", this.logPath());
         await waitUntilFileExists(this.logPath());
@@ -58,31 +71,40 @@ export class LndInstance {
 
         this.publicKey = (await this.lnd.lnrpc.getInfo()).identityPubkey;
         this.logger.info("lnd is ready:", this.publicKey);
+
+        this.logger.debug("lnd started with PID", this.process.pid);
     }
 
-    private execBinary() {
-        const bin = process.env.LND_BIN ? process.env.LND_BIN : "lnd";
+    private async execBinary() {
+        const bin = process.env.LND_BIN
+            ? process.env.LND_BIN
+            : await whereis("lnd");
         this.logger.debug(`Using binary ${bin}`);
-        this.process = spawn(bin, ["--lnddir", this.lndDir], {
+        this.process = spawn(bin, ["--lnddir", this.dataDir], {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
         });
-        this.logger.debug(`Process spawned LND with PID ${this.process.pid}`);
 
         this.process.on("exit", (code: number, signal: number) => {
-            this.logger.debug(`lnd exited with ${code || `signal ${signal}`}`);
+            this.logger.info(
+                "lnd exited with code",
+                code,
+                "after signal",
+                signal
+            );
         });
     }
 
     private async initWallet() {
         const config = {
-            server: this.getGrpcSocket(),
+            server: this.grpcSocket,
             tls: this.tlsCertPath(),
         };
         this.logger.debug("Instantiating lnd connection:", config);
         const lnd = await Lnd.init(config);
 
-        this.logger.debug("Calling genSeed");
-        const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({});
+        const { cipherSeedMnemonic } = await lnd.lnrpc.genSeed({
+            seedEntropy: Buffer.alloc(16, this.name),
+        });
         const walletPassword = Buffer.from("password", "utf8");
         this.logger.debug(
             "Initialize wallet",
@@ -90,20 +112,20 @@ export class LndInstance {
             walletPassword
         );
         await lnd.lnrpc.initWallet({ cipherSeedMnemonic, walletPassword });
-        this.logger.debug("Wallet initialized!");
+        this.logger.debug("Lnd wallet initialized!");
     }
 
     private async initAuthenticatedLndConnection() {
         const config = {
-            server: this.getGrpcSocket(),
+            server: this.grpcSocket,
             tls: this.tlsCertPath(),
             macaroonPath: this.adminMacaroonPath(),
         };
-        this.logger.debug("Instantiating lnd connection:", config);
+
         this.lnd = await Lnd.init(config);
     }
 
-    public stop() {
+    public async stop() {
         this.logger.debug("Stopping lnd instance");
         this.process.kill("SIGTERM");
         this.process = null;
@@ -114,16 +136,16 @@ export class LndInstance {
     }
 
     public logPath() {
-        return path.join(this.lndDir, "logs", "bitcoin", "regtest", "lnd.log");
+        return path.join(this.dataDir, "logs", "bitcoin", "regtest", "lnd.log");
     }
 
     public tlsCertPath() {
-        return path.join(this.lndDir, "tls.cert");
+        return path.join(this.dataDir, "tls.cert");
     }
 
     public adminMacaroonPath() {
         return path.join(
-            this.lndDir,
+            this.dataDir,
             "data",
             "chain",
             "bitcoin",
@@ -132,28 +154,35 @@ export class LndInstance {
         );
     }
 
-    public getGrpcSocket() {
-        return `${this.getGrpcHost()}:${this.getGrpcPort()}`;
+    get grpcSocket() {
+        return `${this.grpcHost}:${this.grpcPort}`;
     }
 
-    public getGrpcHost() {
+    get grpcHost() {
         return "127.0.0.1";
     }
 
-    public getGrpcPort() {
-        return this.actorConfig.lndRpcPort;
+    get grpcPort() {
+        return this.lndRpcPort;
     }
 
-    public getLightningSocket() {
-        return `${this.getLightningHost()}:${this.getLightningPort()}`;
+    get p2pSocket() {
+        return `${this.p2pHost}:${this.p2pPort}`;
     }
 
-    public getLightningHost() {
+    get p2pHost() {
         return "127.0.0.1";
     }
 
-    public getLightningPort() {
-        return this.actorConfig.lndP2pPort;
+    get p2pPort() {
+        return this.lndP2pPort;
+    }
+
+    get config(): LightningNodeConfig {
+        return {
+            p2pSocket: this.p2pSocket,
+            lnd: this.lnd,
+        };
     }
 
     private async createConfigFile() {
@@ -163,10 +192,10 @@ export class LndInstance {
 debuglevel=trace
 
 ; peer to peer port
-listen=127.0.0.1:${this.actorConfig.lndP2pPort}
+listen=127.0.0.1:${this.lndP2pPort}
 
 ; gRPC
-rpclisten=127.0.0.1:${this.actorConfig.lndRpcPort}
+rpclisten=127.0.0.1:${this.lndRpcPort}
 
 ; REST interface
 restlisten=127.0.0.1:${restPort}
@@ -187,7 +216,7 @@ bitcoin.node=bitcoind
 
 bitcoind.dir=${this.bitcoindDataDir}
 `;
-        const config = path.join(this.lndDir, "lnd.conf");
+        const config = path.join(this.dataDir, "lnd.conf");
         await writeFileAsync(config, output);
     }
 

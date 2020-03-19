@@ -1,11 +1,11 @@
 use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+    config::validation::FetchNetworkId,
     ethereum::{TransactionReceipt, H256},
     jsonrpc,
+    swap_protocols::ledger::ethereum::ChainId,
 };
-use crate::swap_protocols::ledger::ethereum::ChainId;
 use async_trait::async_trait;
-use crate::config::validation::FetchNetworkId;
 
 #[derive(Debug)]
 pub struct Web3Connector {

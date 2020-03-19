@@ -30,17 +30,19 @@ async function assertPeersAvailable(alice: Actor, bob: Actor, message: string) {
 }
 
 describe("Peers using IP tests", () => {
-    it("alice-empty-peer-list", async function() {
-        await twoActorTest(async function({ alice }) {
+    it(
+        "alice-empty-peer-list",
+        twoActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
             expect(res.status).to.equal(200);
             expect(res.body.peers).to.be.empty;
-        });
-    });
+        })
+    );
 
-    it("alice-send-request-wrong-peer-id", async function() {
-        await threeActorTest(async function({ alice, bob, charlie }) {
+    it(
+        "alice-send-request-wrong-peer-id",
+        threeActorTest(async ({ alice, bob, charlie }) => {
             await assertNoPeersAvailable(
                 alice,
                 "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
@@ -74,11 +76,12 @@ describe("Peers using IP tests", () => {
                 charlie,
                 "[Charlie] Should not see Alice's PeerID because there was no communication so far"
             );
-        });
-    });
+        })
+    );
 
-    it("alice-send-swap-request-to-charlie", async function() {
-        await threeActorTest(async function({ alice, bob, charlie }) {
+    it(
+        "alice-send-swap-request-to-charlie",
+        threeActorTest(async ({ alice, bob, charlie }) => {
             await assertNoPeersAvailable(
                 alice,
                 "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
@@ -105,6 +108,6 @@ describe("Peers using IP tests", () => {
                 alice,
                 "[Charlie] Should see Alice's peer ID in his list of peers after receiving a swap request from Alice"
             );
-        });
-    });
+        })
+    );
 });

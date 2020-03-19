@@ -3,25 +3,21 @@ import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import tempWrite from "temp-write";
 import { promisify } from "util";
-import { CndConfigFile, E2ETestActorConfig } from "../config";
-import { LedgerConfig } from "../ledgers/ledger_runner";
-import { HarnessGlobal, sleep } from "../utils";
-import path from "path";
+import { CndConfigFile } from "../config";
+import { sleep } from "../utils";
 import { LogReader } from "../ledgers/log_reader";
-
-declare var global: HarnessGlobal;
+import { Logger } from "log4js";
 
 const openAsync = promisify(fs.open);
 
 export class CndInstance {
     private process: ChildProcess;
-    private configFile?: CndConfigFile;
 
     constructor(
         private readonly projectRoot: string,
-        private readonly logDir: string,
-        private readonly actorConfig: E2ETestActorConfig,
-        private readonly ledgerConfig: LedgerConfig
+        private readonly logFile: string,
+        private readonly logger: Logger,
+        private readonly configFile: CndConfigFile
     ) {}
 
     public getConfigFile() {
@@ -33,50 +29,34 @@ export class CndInstance {
             ? process.env.CND_BIN
             : this.projectRoot + "/target/debug/cnd";
 
-        if (global.verbose) {
-            console.log(`[${this.actorConfig.name}] using binary ${bin}`);
-        }
-
-        this.configFile = this.actorConfig.generateCndConfigFile(
-            this.ledgerConfig
-        );
+        this.logger.info("Using binary", bin);
 
         const configFile = await tempWrite(
             stringify((this.configFile as unknown) as JsonMap),
             "config.toml"
         );
 
-        const logFile = path.join(
-            this.logDir,
-            `cnd-${this.actorConfig.name}.log`
-        );
-
         this.process = spawn(bin, ["--config", configFile], {
             cwd: this.projectRoot,
             stdio: [
                 "ignore", // stdin
-                await openAsync(logFile, "w"), // stdout
-                await openAsync(logFile, "w"), // stderr
+                await openAsync(this.logFile, "w"), // stdout
+                await openAsync(this.logFile, "w"), // stderr
             ],
         });
 
-        if (global.verbose) {
-            console.log(
-                `[${this.actorConfig.name}] process spawned with PID ${this.process.pid}`
-            );
-        }
-
-        const logReader = new LogReader(logFile);
+        const logReader = new LogReader(this.logFile);
         await logReader.waitForLogMessage("Starting HTTP server on");
 
         // we emit the log _before_ we start the http server, let's make sure it actually starts up
         await sleep(1000);
+
+        this.logger.info("cnd started with PID", this.process.pid);
     }
 
     public stop() {
-        if (global.verbose) {
-            console.log(`terminating cnd ${this.actorConfig.name}`);
-        }
+        this.logger.info("Stopping cnd instance");
+
         this.process.kill("SIGINT");
         this.process = null;
     }

@@ -25,8 +25,9 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
 // Multiple peers                               //
 // ******************************************** //
 describe("Multiple peers tests", () => {
-    it("alice-sends-swap-request-to-bob-and-charlie", async function() {
-        await threeActorTest(async function({ alice, bob, charlie }) {
+    it(
+        "alice-sends-swap-request-to-bob-and-charlie",
+        threeActorTest(async ({ alice, bob, charlie }) => {
             // Alice send swap request to Bob
             const aliceToBobSwapUrl = await alice.cnd.postSwap(
                 await createDefaultSwapRequest(bob)
@@ -72,6 +73,6 @@ describe("Multiple peers tests", () => {
                 toMatch(bobSwapDetails),
                 toMatch(charlieSwapDetails),
             ]);
-        });
-    });
+        })
+    );
 });

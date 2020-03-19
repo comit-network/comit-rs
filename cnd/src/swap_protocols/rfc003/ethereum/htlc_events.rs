@@ -20,6 +20,7 @@ use crate::{
     transaction,
 };
 use chrono::NaiveDateTime;
+use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
 lazy_static::lazy_static! {
@@ -41,14 +42,26 @@ impl
 {
     async fn htlc_funded(
         &self,
-        _htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+        htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
         deploy_transaction: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<asset::Ether, transaction::Ethereum>> {
-        Ok(Funded {
-            asset: Ether::from_wei(deploy_transaction.transaction.value),
-            transaction: deploy_transaction.transaction.clone(),
-        })
+        let expected_asset = &htlc_params.asset;
+
+        let asset = Ether::from_wei(deploy_transaction.transaction.value);
+
+        let event = match expected_asset.cmp(&asset) {
+            Ordering::Equal => Funded::Correctly {
+                transaction: deploy_transaction.transaction.clone(),
+                asset,
+            },
+            _ => Funded::Incorrectly {
+                transaction: deploy_transaction.transaction.clone(),
+                asset,
+            },
+        };
+
+        Ok(event)
     }
 }
 
@@ -173,10 +186,17 @@ impl
             .instrument(tracing::info_span!("htlc_funded"))
             .await?;
 
+        let expected_asset = &htlc_params.asset;
+
         let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
         let asset = Erc20::new(log.address, quantity);
 
-        Ok(Funded { asset, transaction })
+        let event = match expected_asset.cmp(&asset) {
+            Ordering::Equal => Funded::Correctly { transaction, asset },
+            _ => Funded::Incorrectly { transaction, asset },
+        };
+
+        Ok(event)
     }
 }
 
