@@ -210,17 +210,19 @@ describe("Rfc003 schema swap reject tests", () => {
                 "[Bob] Should be in the Declined State after declining a swap request providing a reason"
             ).to.exist;
 
+            expect(
+                await alice.pollCndUntil(
+                    aliceStingySwap,
+                    entity =>
+                        entity.properties.state.communication.status ===
+                        "DECLINED"
+                ),
+                "[Alice] Should be in the Declined State after Bob declines a swap"
+            ).to.exist;
+
             const aliceReasonableSwapDetails = await alice.pollSwapDetails(
                 aliceReasonableSwap
             );
-            const aliceStingySwapDetails = await alice.pollSwapDetails(
-                aliceStingySwap
-            );
-
-            expect(
-                aliceStingySwapDetails.properties.state.communication.status,
-                "[Alice] Should be in the Declined State after Bob declines a swap"
-            ).to.eq("DECLINED");
 
             expect(
                 aliceReasonableSwapDetails.properties.state.communication
