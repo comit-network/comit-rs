@@ -16,7 +16,7 @@ export default async function ledgerLock(
         retries: {
             retries: 10,
             minTimeout: 200,
-            maxTimeout: 2000,
+            maxTimeout: 8000,
         },
     });
 }

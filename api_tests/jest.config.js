@@ -9,5 +9,5 @@ module.exports = {
     testEnvironment: "<rootDir>/dist/src/test_environment",
     globalSetup: "<rootDir>/src/environment/cleanup.ts",
     globalTeardown: "<rootDir>/src/environment/cleanup.ts",
-    testTimeout: 63000,
+    testTimeout: 123000,
 };
