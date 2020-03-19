@@ -9,8 +9,8 @@ use crate::{
 use libp2p::{
     core::{ConnectedPoint, Multiaddr, PeerId},
     swarm::{
-        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction, PollParameters,
-        ProtocolsHandler,
+        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
+        NetworkBehaviourEventProcess, PollParameters, ProtocolsHandler,
     },
 };
 use std::{
@@ -140,6 +140,13 @@ pub enum BehaviourEvent {
         /// The error that occurred.
         error: handler::Error,
     },
+}
+
+impl NetworkBehaviourEventProcess<BehaviourEvent> for Announce {
+    // Called when announce behaviour produces an event.
+    fn inject_event(&mut self, _: BehaviourEvent) {
+        unreachable!("Did you compose Announce behaviour with another behaviour?")
+    }
 }
 
 #[cfg(test)]
