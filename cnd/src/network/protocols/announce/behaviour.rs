@@ -114,8 +114,10 @@ impl NetworkBehaviour for Announce {
 /// Event emitted  by the `Announce` behaviour.
 #[derive(Debug)]
 pub enum BehaviourEvent {
-    /// Node (Alice) has announced the swap and the `swap_id` has been received
-    /// from a peer (acting as Bob).
+    /// This event created when a confirmation message containing a `swap_id` is
+    /// received in response to an announce message containing a
+    /// `swap_digest`. The Event contains both the swap id and
+    /// the swap digest. The announce message is sent by Alice to Bob.
     ReceivedConfirmation {
         /// The peer (Bob) that the swap has been announced to.
         peer: PeerId,
@@ -125,12 +127,15 @@ pub enum BehaviourEvent {
         swap_digest: SwapDigest,
     },
 
-    /// Node (Bob) has received the announced swap (inc. swap_digest) from a
-    /// peer (acting as Alice).
+    /// The event is created when a remote sends a `swap_digest`. The event
+    /// contains a reply substream for the receiver to send back the
+    /// `swap_id` that corresponds to the swap digest. Bob sends the
+    /// confirmations message to Alice using the the reply substream.
     AwaitingConfirmation {
         /// The peer (Alice) that the reply substream is connected to.
         peer: PeerId,
-        /// The substream (inc. swap_digest) to reply on (i.e., send `swap_id`).
+        /// The substream (inc. `swap_digest`) to reply on (i.e., send
+        /// `swap_id`).
         io: ReplySubstream<NegotiatedSubstream>,
     },
 

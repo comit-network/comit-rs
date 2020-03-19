@@ -29,13 +29,15 @@ pub struct Handler {
 /// Event produced by the `Handler`.
 #[derive(Debug)]
 pub enum HandlerEvent {
-    /// Node (Alice) announces the swap by way of the protocol upgrade - result
-    /// of the successful application of this upgrade is the SwapId sent back
-    /// from peer (Bob).
+    /// This event created when a confirmation message containing a `swap_id` is
+    /// received in response to an announce message containing a
+    /// `swap_digest`. The Event contains both the swap id and
+    /// the swap digest.
     ReceivedConfirmation(Confirmed),
 
-    /// Node (Bob) received the announced swap (inc. swap_digest) from peer
-    /// (Alice).
+    /// The event is created when a remote sends a `swap_digest`. The event
+    /// contains a reply substream for the receiver to send back the
+    /// `swap_id` that corresponds to the swap digest.
     AwaitingConfirmation(ReplySubstream<NegotiatedSubstream>),
 
     /// Failed to announce swap to peer.
