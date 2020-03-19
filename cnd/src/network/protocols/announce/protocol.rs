@@ -130,8 +130,7 @@ where
     pub async fn send(mut self, swap_id: SwapId) -> impl Future<Output = Result<(), Error>> {
         tracing::trace!("Sending: {}", swap_id);
         async move {
-            // TODO: Remove unwrap.
-            let bytes = serde_json::to_vec(&swap_id).unwrap();
+            let bytes = serde_json::to_vec(&swap_id)?;
             Ok(upgrade::write_one(&mut self.io, &bytes).await?)
         }
     }
