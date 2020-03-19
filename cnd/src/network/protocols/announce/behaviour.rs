@@ -37,7 +37,7 @@ impl Announce {
     // protocol here.
     pub fn start_announce_protocol(&mut self, outbound_config: OutboundConfig, peer_id: PeerId) {
         self.events.push_back(NetworkBehaviourAction::SendEvent {
-            peer_id: peer_id.clone(),
+            peer_id,
             event: outbound_config,
         });
     }
