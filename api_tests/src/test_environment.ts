@@ -204,7 +204,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
         const parity = await ParityInstance.new(
             this.projectRoot,
-            path.join(this.logDir, "parity.log"),
+            await this.global.getDataDir("parity"),
             path.join(lockDir, "parity.pid"),
             this.logger
         );
