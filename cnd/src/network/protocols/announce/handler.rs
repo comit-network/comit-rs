@@ -2,7 +2,7 @@ use crate::network::protocols::announce::protocol::{
     self, Confirmed, InboundConfig, OutboundConfig, ReplySubstream,
 };
 use libp2p::{
-    core::upgrade::{InboundUpgrade, OutboundUpgrade, ReadOneError},
+    core::upgrade::{InboundUpgrade, OutboundUpgrade},
     swarm::{
         KeepAlive, NegotiatedSubstream, ProtocolsHandler, ProtocolsHandlerEvent,
         ProtocolsHandlerUpgrErr, SubstreamProtocol,
@@ -56,7 +56,7 @@ impl Handler {
 impl ProtocolsHandler for Handler {
     type InEvent = OutboundConfig;
     type OutEvent = HandlerEvent;
-    type Error = ReadOneError;
+    type Error = Error;
     type InboundProtocol = InboundConfig;
     type OutboundProtocol = OutboundConfig;
     type OutboundOpenInfo = ();
@@ -114,12 +114,16 @@ impl ProtocolsHandler for Handler {
         >,
     > {
         if !self.events.is_empty() {
-            return Poll::Ready(ProtocolsHandlerEvent::Custom(self.events.remove(0)));
+            let event = self.events.remove(0);
+            if let HandlerEvent::Error(err) = event {
+                return Poll::Ready(ProtocolsHandlerEvent::Close(err));
+            };
+            return Poll::Ready(ProtocolsHandlerEvent::Custom(event));
         }
 
         if !self.dial_queue.is_empty() {
             return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                // TODO: remove unwrap
+                // TODO: Remove unwrap
                 protocol: SubstreamProtocol::new(self.dial_queue.remove(0).unwrap()),
                 info: (),
             });
