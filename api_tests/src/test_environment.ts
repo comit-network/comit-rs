@@ -13,6 +13,7 @@ import LightningLedger from "./ledgers/lightning";
 import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
 import { configure, Logger } from "log4js";
+import { EnvironmentContext } from "@jest/environment";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly projectRoot: string;
