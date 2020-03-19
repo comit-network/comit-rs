@@ -122,9 +122,9 @@ impl ProtocolsHandler for Handler {
         }
 
         if !self.dial_queue.is_empty() {
+            let upgrade = self.dial_queue.remove(0).unwrap(); // Cannot fail, queue is not empty.
             return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                // TODO: Remove unwrap
-                protocol: SubstreamProtocol::new(self.dial_queue.remove(0).unwrap()),
+                protocol: SubstreamProtocol::new(upgrade),
                 info: (),
             });
         }
