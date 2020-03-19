@@ -26,7 +26,7 @@ impl<C> OutboundUpgrade<C> for OutboundConfig
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    type Output = (SwapDigest, SwapId);
+    type Output = Confirmed;
     type Error = Error;
     type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
 
@@ -47,9 +47,18 @@ where
             let swap_id = SwapId::deserialize(&mut de)?;
             tracing::trace!("Received: {}", swap_id);
 
-            Ok((self.swap_digest.clone(), swap_id))
+            Ok(Confirmed {
+                swap_digest: self.swap_digest.clone(),
+                swap_id,
+            })
         })
     }
+}
+
+#[derive(Debug)]
+pub struct Confirmed {
+    pub swap_digest: SwapDigest,
+    pub swap_id: SwapId,
 }
 
 /// Configuration for an upgrade to the `Announce` protocol on the inbound side.

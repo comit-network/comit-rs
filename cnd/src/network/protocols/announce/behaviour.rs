@@ -64,12 +64,12 @@ impl NetworkBehaviour for Announce {
 
     fn inject_node_event(&mut self, peer_id: PeerId, event: HandlerEvent) {
         match event {
-            HandlerEvent::AnnounceConfirmed(swap_digest, swap_id) => {
+            HandlerEvent::ReceivedConfirmation(confirmed) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::AnnounceConfirmed {
+                    BehaviourEvent::ReceivedConfirmation {
                         peer: peer_id,
-                        swap_id,
-                        swap_digest,
+                        swap_id: confirmed.swap_id,
+                        swap_digest: confirmed.swap_digest,
                     },
                 ));
             }
@@ -81,7 +81,7 @@ impl NetworkBehaviour for Announce {
                     },
                 ));
             }
-            HandlerEvent::AnnounceError(error) => {
+            HandlerEvent::Error(error) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
                     BehaviourEvent::Error {
                         peer: peer_id,
@@ -115,7 +115,7 @@ impl NetworkBehaviour for Announce {
 pub enum BehaviourEvent {
     /// Node (Alice) has announced the swap and the `swap_id` has been received
     /// from a peer (acting as Bob).
-    AnnounceConfirmed {
+    ReceivedConfirmation {
         /// The peer (Bob) that the swap has been announced to.
         peer: PeerId,
         /// The swap_id returned by the peer (Bob).

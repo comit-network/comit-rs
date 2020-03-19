@@ -1,9 +1,6 @@
-use crate::{
-    network::protocols::announce::{
-        protocol::{self, InboundConfig, OutboundConfig, ReplySubstream},
-        SwapDigest,
-    },
-    swap_protocols::SwapId,
+use crate::network::protocols::announce::{
+    protocol::{self, Confirmed, InboundConfig, OutboundConfig, ReplySubstream},
+    SwapDigest,
 };
 use libp2p::{
     core::upgrade::{InboundUpgrade, OutboundUpgrade, ReadOneError},
@@ -36,17 +33,15 @@ pub enum HandlerEvent {
     /// Node (Alice) announces the swap by way of the protocol upgrade - result
     /// of the successful application of this upgrade is the SwapId sent back
     /// from peer (Bob).
-    AnnounceConfirmed(SwapDigest, SwapId),
+    ReceivedConfirmation(Confirmed),
 
     /// Node (Bob) received the announced swap (inc. swap_digest) from peer
     /// (Alice).
     AwaitingConfirmation(ReplySubstream<NegotiatedSubstream>),
 
     /// Failed to announce swap to peer.
-    AnnounceError(Error),
+    Error(Error),
 }
-
-pub struct MakeAnnouncement(SwapDigest);
 
 impl Handler {
     /// Creates a new `Handler`.
@@ -80,11 +75,11 @@ impl ProtocolsHandler for Handler {
 
     fn inject_fully_negotiated_outbound(
         &mut self,
-        swap_id: <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Output,
+        confirmed: <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Output,
         _info: Self::OutboundOpenInfo,
     ) {
         self.events
-            .push(HandlerEvent::AnnounceConfirmed(swap_id.0, swap_id.1));
+            .push(HandlerEvent::ReceivedConfirmation(confirmed));
         self.keep_alive = KeepAlive::No;
     }
 
@@ -100,8 +95,7 @@ impl ProtocolsHandler for Handler {
             <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Error,
         >,
     ) {
-        self.events
-            .push(HandlerEvent::AnnounceError(Error::Upgrade(err)));
+        self.events.push(HandlerEvent::Error(Error::Upgrade(err)));
         self.keep_alive = KeepAlive::No;
     }
 
