@@ -291,7 +291,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 });
 
 // ******************************************** //
-// Bitcoin/bitcoin Alpha Ledger/ Alpha Asset    //
+// Bitcoin/bitcoin Alpha Ledger/Alpha Asset    //
 // Ethereum/erc20 Beta Ledger/Beta Asset        //
 // ******************************************** //
 describe("E2E: Bitcoin/bitcoin - Ethereum/erc20", () => {
