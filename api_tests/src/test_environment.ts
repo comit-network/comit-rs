@@ -1,5 +1,6 @@
 import { Config } from "@jest/types";
 import {
+    execAsync,
     existsAsync,
     HarnessGlobal,
     mkdirAsync,
@@ -23,14 +24,16 @@ import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
 
 export default class TestEnvironment extends NodeEnvironment {
-    private readonly projectRoot: string;
     private readonly testSuite: string;
     private readonly ledgers: string[];
+    private readonly logDir: string;
+    private readonly locksDir: string;
+    private readonly nodeModulesBinDir: string;
+    private readonly srcDir: string;
 
     public global: HarnessGlobal;
 
     private logger: Logger;
-    private logDir: string;
 
     constructor(config: Config.ProjectConfig, context: EnvironmentContext) {
         super(config);
@@ -38,19 +41,30 @@ export default class TestEnvironment extends NodeEnvironment {
         this.ledgers = TestEnvironment.extractLedgersToBeStarted(
             context.docblockPragmas
         );
-        this.projectRoot = path.resolve(config.rootDir, "..");
+        this.logDir = path.resolve(config.rootDir, "log");
+        this.locksDir = path.resolve(config.rootDir, "locks");
+        this.nodeModulesBinDir = path.resolve(
+            config.rootDir,
+            "node_modules",
+            ".bin"
+        );
+        this.srcDir = path.resolve(config.rootDir, "src");
         this.testSuite = path.parse(context.testPath).name;
     }
 
     async setup() {
         await super.setup();
 
+        const cargoTargetDir = await execAsync(
+            "cargo metadata --format-version=1 --no-deps"
+        )
+            .then(({ stdout }) => JSON.parse(stdout))
+            .then((metadata) => metadata.target_directory);
+
         // setup global variables
-        this.global.projectRoot = this.projectRoot;
         this.global.ledgerConfigs = {};
         this.global.lndWallets = {};
-
-        this.logDir = path.join(this.projectRoot, "api_tests", "log");
+        this.global.cargoTargetDir = cargoTargetDir;
 
         const log4js = configure({
             appenders: {
@@ -149,7 +163,6 @@ export default class TestEnvironment extends NodeEnvironment {
         const release = await ledgerLock(lockDir);
 
         const bitcoind = await BitcoindInstance.new(
-            this.projectRoot,
             await this.global.getDataDir("bitcoind"),
             path.join(lockDir, "bitcoind.pid"),
             this.logger
@@ -165,19 +178,8 @@ export default class TestEnvironment extends NodeEnvironment {
         const minerAlreadyRunning = await existsAsync(minerPidFile);
 
         if (!minerAlreadyRunning) {
-            const tsNode = path.join(
-                this.projectRoot,
-                "api_tests",
-                "node_modules",
-                ".bin",
-                "ts-node"
-            );
-            const minerProgram = path.join(
-                this.projectRoot,
-                "api_tests",
-                "src",
-                "bitcoin_miner.ts"
-            );
+            const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
+            const minerProgram = path.join(this.srcDir, "bitcoin_miner.ts");
 
             await BitcoinMinerInstance.start(
                 tsNode,
@@ -203,7 +205,6 @@ export default class TestEnvironment extends NodeEnvironment {
         const release = await ledgerLock(lockDir);
 
         const parity = await ParityInstance.new(
-            this.projectRoot,
             await this.global.getDataDir("parity"),
             path.join(lockDir, "parity.pid"),
             this.logger
@@ -372,7 +373,7 @@ export default class TestEnvironment extends NodeEnvironment {
     }
 
     private async getLockDirectory(process: string): Promise<string> {
-        const dir = path.join(this.projectRoot, "api_tests", "locks", process);
+        const dir = path.join(this.locksDir, process);
 
         await mkdirAsync(dir, {
             recursive: true,

@@ -19,7 +19,7 @@ export async function createActors(
             Actor.newInstance(
                 name,
                 global.ledgerConfigs,
-                global.projectRoot,
+                global.cargoTargetDir,
                 cndLogFile,
                 actorLogger
             )

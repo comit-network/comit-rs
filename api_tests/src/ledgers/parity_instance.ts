@@ -13,14 +13,8 @@ import * as path from "path";
 export class ParityInstance implements LedgerInstance {
     private process: ChildProcess;
 
-    public static async new(
-        projectRoot: string,
-        dataDir: string,
-        pidFile: string,
-        logger: Logger
-    ) {
+    public static async new(dataDir: string, pidFile: string, logger: Logger) {
         return new ParityInstance(
-            projectRoot,
             dataDir,
             pidFile,
             logger,
@@ -30,7 +24,6 @@ export class ParityInstance implements LedgerInstance {
     }
 
     constructor(
-        private readonly projectRoot: string,
         private readonly dataDir: string,
         private readonly pidFile: string,
         private readonly logger: Logger,
@@ -64,7 +57,7 @@ export class ParityInstance implements LedgerInstance {
             ],
 
             {
-                cwd: this.projectRoot,
+                cwd: this.dataDir,
                 stdio: [
                     "ignore", // stdin
                     "ignore", // stdout

@@ -16,13 +16,11 @@ export class BitcoindInstance implements LedgerInstance {
     private password: string;
 
     public static async new(
-        projectRoot: string,
         dataDir: string,
         pidFile: string,
         logger: Logger
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
-            projectRoot,
             dataDir,
             pidFile,
             logger,
@@ -34,7 +32,6 @@ export class BitcoindInstance implements LedgerInstance {
     }
 
     constructor(
-        private readonly projectRoot: string,
         private readonly dataDir: string,
         private readonly pidFile: string,
         private readonly logger: Logger,
@@ -52,7 +49,7 @@ export class BitcoindInstance implements LedgerInstance {
         await this.createConfigFile(this.dataDir);
 
         this.process = spawn(bin, [`-datadir=${this.dataDir}`], {
-            cwd: this.projectRoot,
+            cwd: this.dataDir,
             stdio: "ignore",
         });
 
