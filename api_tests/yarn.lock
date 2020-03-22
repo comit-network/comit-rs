@@ -560,10 +560,10 @@
   resolved "https://registry.yarnpkg.com/@types/node/-/node-10.17.17.tgz#7a183163a9e6ff720d86502db23ba4aade5999b8"
   integrity sha512-gpNnRnZP3VWzzj5k3qrpRC6Rk3H/uclhAVo1aIvwzK5p5cOrs9yEyQ8H/HBsBY0u5rrWxXEiVPQ0dEB6pkjE8Q==
 
-"@types/rimraf@^2.0.3":
-  version "2.0.3"
-  resolved "https://registry.yarnpkg.com/@types/rimraf/-/rimraf-2.0.3.tgz#0199a46af106729ba14213fda7b981278d8c84f2"
-  integrity sha512-dZfyfL/u9l/oi984hEXdmAjX3JHry7TLWw43u1HQ8HhPv6KtfxnrZ3T/bleJ0GEvnk9t5sM7eePkgMqz3yBcGg==
+"@types/rimraf@^3.0.0":
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/@types/rimraf/-/rimraf-3.0.0.tgz#b9d03f090ece263671898d57bb7bb007023ac19f"
+  integrity sha512-7WhJ0MdpFgYQPXlF4Dx+DhgvlPCfz/x5mHaeDQAKhcenvQP1KCpLQ18JklAqeGMYSAT2PxLpzd0g2/HE7fj7hQ==
   dependencies:
     "@types/glob" "*"
     "@types/node" "*"
