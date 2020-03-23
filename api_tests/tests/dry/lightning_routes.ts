@@ -13,7 +13,7 @@ describe("Lightning routes tests", () => {
         "lightning-routes-post-eth-lnbtc-return-400",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.createHanEthereumEtherHalightLightningBitcoin();
-            return expect(promise).to.eventually.be.rejected.then(error => {
+            return expect(promise).to.eventually.be.rejected.then((error) => {
                 expect(error).to.have.property(
                     "message",
                     "Request failed with status code 400"
@@ -26,7 +26,7 @@ describe("Lightning routes tests", () => {
         "lightning-routes-post-erc20-lnbtc-return-400",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin();
-            return expect(promise).to.eventually.be.rejected.then(error => {
+            return expect(promise).to.eventually.be.rejected.then((error) => {
                 expect(error).to.have.property(
                     "message",
                     "Request failed with status code 400"
@@ -39,7 +39,7 @@ describe("Lightning routes tests", () => {
         "lightning-routes-post-lnbtc-eth-return-400",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.createHalightLightningBitcoinHanEthereumEther();
-            return expect(promise).to.eventually.be.rejected.then(error => {
+            return expect(promise).to.eventually.be.rejected.then((error) => {
                 expect(error).to.have.property(
                     "message",
                     "Request failed with status code 400"
@@ -52,7 +52,7 @@ describe("Lightning routes tests", () => {
         "lightning-routes-post-lnbtc-erc20-return-400",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20();
-            return expect(promise).to.eventually.be.rejected.then(error => {
+            return expect(promise).to.eventually.be.rejected.then((error) => {
                 expect(error).to.have.property(
                     "message",
                     "Request failed with status code 400"

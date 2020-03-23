@@ -41,7 +41,7 @@ export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 
 export async function sleep(time: number) {
-    return new Promise(res => {
+    return new Promise((res) => {
         setTimeout(res, time);
     });
 }
@@ -116,7 +116,7 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
             peer_id: await counterParty.cnd.getPeerId(),
             address_hint: await counterParty.cnd
                 .getPeerListenAddresses()
-                .then(addresses => addresses[0]),
+                .then((addresses) => addresses[0]),
         },
     };
     return swapRequest;

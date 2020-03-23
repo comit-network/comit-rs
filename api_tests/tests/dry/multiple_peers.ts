@@ -68,7 +68,7 @@ describe("Multiple peers tests", () => {
                 [
                     aliceToBobSwapDetails,
                     aliceToCharlieSwapDetails,
-                ].map(swapDetail => toMatch(swapDetail))
+                ].map((swapDetail) => toMatch(swapDetail))
             ).to.have.deep.members([
                 toMatch(bobSwapDetails),
                 toMatch(charlieSwapDetails),
