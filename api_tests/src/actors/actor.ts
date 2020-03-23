@@ -19,7 +19,6 @@ import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { LedgerConfig, sleep } from "../utils";
 import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
-import { LndInstance } from "../ledgers/lnd_instance";
 import { sha256 } from "js-sha256";
 import { InvoiceState } from "@radar/lnrpc";
 import {
@@ -79,8 +78,6 @@ export class Actor {
 
     private readonly startingBalances: Map<string, BigNumber>;
     private readonly expectedBalanceChanges: Map<string, BigNumber>;
-
-    public lndInstance: LndInstance;
 
     constructor(
         private readonly logger: Logger,
@@ -582,9 +579,6 @@ export class Actor {
     public async stop() {
         this.logger.debug("Stopping actor");
         this.cndInstance.stop();
-        if (this.lndInstance && this.lndInstance.isRunning()) {
-            await this.lndInstance.stop();
-        }
     }
 
     public async restart() {
