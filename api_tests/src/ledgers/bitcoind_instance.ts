@@ -1,7 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { openAsync, writeFileAsync } from "../utils";
+import { writeFileAsync } from "../utils";
 import getPort from "get-port";
 import { BitcoinInstance, BitcoinNodeConfig } from "./bitcoin";
 import { Logger } from "log4js";
@@ -53,14 +53,9 @@ export class BitcoindInstance implements BitcoinInstance {
 
         await this.createConfigFile(this.dataDir);
 
-        const log = this.logPath();
         this.process = spawn(bin, [`-datadir=${this.dataDir}`], {
             cwd: this.projectRoot,
-            stdio: [
-                "ignore", // stdin
-                await openAsync(log, "w"), // stdout
-                await openAsync(log, "w"), // stderr
-            ],
+            stdio: "ignore",
         });
 
         this.process.on("exit", (code: number, signal: number) => {
@@ -106,7 +101,7 @@ export class BitcoindInstance implements BitcoinInstance {
     }
 
     private logPath() {
-        return path.join(this.dataDir, "bitcoind.log");
+        return path.join(this.dataDir, "regtest", "debug.log");
     }
 
     public getDataDir() {
