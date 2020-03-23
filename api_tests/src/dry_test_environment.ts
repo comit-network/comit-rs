@@ -65,15 +65,15 @@ export default class DryTestEnvironment extends NodeEnvironment {
         const logger = log4js.getLogger("test_environment");
         logger.info("Starting up test environment");
 
-        this.global.getLogFile = pathElements =>
+        this.global.getLogFile = (pathElements) =>
             path.join(logDir, ...pathElements);
-        this.global.getDataDir = async program => {
+        this.global.getDataDir = async (program) => {
             const dir = path.join(logDir, program);
             await mkdirAsync(dir, { recursive: true });
 
             return dir;
         };
-        this.global.getLogger = category => log4js.getLogger(category);
+        this.global.getLogger = (category) => log4js.getLogger(category);
     }
 
     private static async cleanLogDir(logDir: string) {

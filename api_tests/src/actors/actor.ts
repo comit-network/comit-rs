@@ -209,7 +209,7 @@ export class Actor {
                 peer_id: await to.cnd.getPeerId(),
                 address_hint: await to.cnd
                     .getPeerListenAddresses()
-                    .then(addresses => addresses[0]),
+                    .then((addresses) => addresses[0]),
             },
             ...(await this.additionalIdentities(alphaAssetKind, betaAssetKind)),
             ...defaultExpiryTimes(),

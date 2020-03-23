@@ -79,15 +79,15 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                 default: { appenders: ["multi"], level: "debug" },
             },
         });
-        this.global.getLogFile = pathElements =>
+        this.global.getLogFile = (pathElements) =>
             path.join(logDir, ...pathElements);
-        this.global.getDataDir = async program => {
+        this.global.getDataDir = async (program) => {
             const dir = path.join(logDir, program);
             await mkdirAsync(dir, { recursive: true });
 
             return dir;
         };
-        this.global.getLogger = category => log4js.getLogger(category);
+        this.global.getLogger = (category) => log4js.getLogger(category);
 
         this.logger = log4js.getLogger("test_environment");
         this.logger.info("Starting up test environment");

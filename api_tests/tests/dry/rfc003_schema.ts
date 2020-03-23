@@ -56,9 +56,10 @@ describe("Rfc003 schema tests", () => {
             await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
             const aliceSwapEntity = await alice
-                .pollCndUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
-                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
                 );
 
             await assertValidSirenDocument(
@@ -68,9 +69,10 @@ describe("Rfc003 schema tests", () => {
             );
 
             const bobsSwapEntity = await bob
-                .pollCndUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
-                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
                 );
             await assertValidSirenDocument(
                 bobsSwapEntity,
@@ -87,9 +89,10 @@ describe("Rfc003 schema tests", () => {
             await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
 
             const aliceSwapEntity = await alice
-                .pollCndUntil("/swaps", body => body.entities.length > 0)
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
-                    body => body.entities[0] as EmbeddedRepresentationSubEntity
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
                 );
 
             const protocolLink = aliceSwapEntity.links.find((link: Link) =>
@@ -116,7 +119,7 @@ async function assertSwapsInProgress(actor: Actor, message: string) {
 
     const swapEntities = res.body.entities as EmbeddedRepresentationSubEntity[];
 
-    expect(swapEntities.map(entity => entity.properties, message))
+    expect(swapEntities.map((entity) => entity.properties, message))
         .to.each.have.property("status")
         .that.is.equal("IN_PROGRESS");
 }
@@ -207,7 +210,7 @@ describe("Rfc003 schema swap reject tests", () => {
             expect(
                 await bob.pollCndUntil(
                     aliceStingySwap,
-                    entity =>
+                    (entity) =>
                         entity.properties.state.communication.status ===
                         "DECLINED"
                 ),

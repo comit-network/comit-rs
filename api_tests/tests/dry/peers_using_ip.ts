@@ -56,7 +56,7 @@ describe("Peers using IP tests", () => {
                     peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb", // Random peer id on purpose to see if Bob still appears in GET /swaps using the multiaddress
                     address_hint: await bob.cnd
                         .getPeerListenAddresses()
-                        .then(addresses => addresses[0]),
+                        .then((addresses) => addresses[0]),
                 },
             });
 
