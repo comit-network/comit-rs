@@ -48,6 +48,8 @@ export class ParityInstance implements EthereumInstance {
         this.process = spawn(
             bin,
             [
+                `--force-direct`,
+                `--no-download`,
                 `--config=${this.projectRoot}/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum/config.toml`,
                 `--chain=${this.projectRoot}/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum/chain.json`,
                 `--base-path=${this.projectRoot}/blockchain_nodes/parity/home/parity/.local/share/io.parity.ethereum`,

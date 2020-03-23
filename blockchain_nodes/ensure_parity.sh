@@ -3,8 +3,8 @@ set -e
 
 
 case "$OSTYPE" in
-  darwin*)  OS="OSX"; url="https://releases.parity.io/ethereum/v2.5.9/x86_64-apple-darwin/parity";;
-  linux*)   OS="Linux"; url="https://releases.parity.io/ethereum/v2.5.9/x86_64-unknown-linux-gnu/parity";;
+  darwin*)  OS="OSX"; url="https://releases.parity.io/ethereum/v2.7.2/x86_64-apple-darwin/parity";;
+  linux*)   OS="Linux"; url="https://releases.parity.io/ethereum/v2.7.2/x86_64-unknown-linux-gnu/parity";;
   *)        echo "unknown: $OSTYPE. Sorry, this is currently not supported"; exit 1 ;;
 esac
 
