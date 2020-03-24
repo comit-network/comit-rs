@@ -7,8 +7,9 @@ import {
     LedgerAction,
     Swap,
     SwapDetails,
+    TransactionStatus,
+    Transaction,
 } from "comit-sdk";
-import { parseEther } from "ethers/utils";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
 import "../setup_chai";
@@ -21,6 +22,7 @@ import { Actors } from "./index";
 import { LndInstance } from "../ledgers/lnd_instance";
 import { sha256 } from "js-sha256";
 import { InvoiceState } from "@radar/lnrpc";
+import { parseEther } from "ethers/utils";
 
 declare var global: HarnessGlobal;
 
@@ -238,11 +240,22 @@ export class Actor {
             throw new Error("Cannot deploy htlc for nonexistent swap");
         }
 
-        const txid = await this.swap.deploy(Actor.defaultActionConfig);
+        const transaction = await this.swap.deploy(Actor.defaultActionConfig);
+        let transactionId;
+        if (transaction instanceof Transaction) {
+            const status = await transaction.status();
+            transactionId = transaction.id;
+            if (status === TransactionStatus.Failed) {
+                throw new Error(`Transaction ${transactionId} failed`);
+            }
+        } else {
+            transactionId = transaction;
+        }
+
         this.logger.debug(
             "Deployed htlc for swap %s in %s",
             this.swap.self,
-            txid
+            transactionId
         );
 
         const entity = await this.swap.fetchDetails();
@@ -296,16 +309,18 @@ export class Actor {
             }
         );
         response.data.payload.gas_limit = hexGasLimit;
-        const txid = await this.swap.doLedgerAction(response.data);
-        this.logger.debug(
-            "Deployed with low gas swap %s in %s",
-            this.swap.self,
-            txid
-        );
-
-        const status = await this.wallets.ethereum.getTransactionStatus(txid);
-        if (status !== 0) {
-            throw new Error("Deploy with low gas transaction was successful.");
+        const transaction = await this.swap.doLedgerAction(response.data);
+        if (transaction instanceof Transaction) {
+            const status = await transaction.status();
+            if (status !== TransactionStatus.Failed) {
+                throw new Error(
+                    "Deploy with low gas transaction was successful."
+                );
+            }
+        } else {
+            throw new Error(
+                "Internal error: Transaction class expected for Ethereum."
+            );
         }
     }
 

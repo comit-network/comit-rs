@@ -402,6 +402,17 @@
     pkg-dir "^2.0.0"
     ts-protoc-gen "^0.8.0"
 
+"@radar/lnrpc@^0.9.1-beta":
+  version "0.9.1-beta"
+  resolved "https://registry.yarnpkg.com/@radar/lnrpc/-/lnrpc-0.9.1-beta.tgz#96283000a737a70fdf893e029d664e9845363585"
+  integrity sha512-W81HcTUAc1MyO96oiUscIXJpDH+CTHPZLr3WObte/fPuCDbre3NkIo3njfD7WTzo2hkLy9LgqcYx6aYD1ex/yQ==
+  dependencies:
+    "@grpc/proto-loader" "^0.4.0"
+    "@types/google-protobuf" "^3.2.7"
+    grpc "^1.24.2"
+    pkg-dir "^2.0.0"
+    ts-protoc-gen "^0.8.0"
+
 "@sinonjs/commons@^1.7.0":
   version "1.7.1"
   resolved "https://registry.yarnpkg.com/@sinonjs/commons/-/commons-1.7.1.tgz#da5fd19a5f71177a53778073978873964f49acf1"
@@ -1533,12 +1544,12 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.14.0:
-  version "0.14.0"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.14.0.tgz#8183e92ab6543b32a19883372bee61ece3faf741"
-  integrity sha512-cyGw0yvDIQJUntuV5h4+XckInZ6iu6NqS8dnw3QIiQjXz7AskFfF5WotTeRt7LnqYtbZWz2fnRTEChvf2/R3Bg==
+comit-sdk@^0.15.0:
+  version "0.15.0"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.15.0.tgz#d825b19e89bd5920bb5c7f1b0907259d6b9f93af"
+  integrity sha512-JsBkboA2gI4HT/2zCKqU9vV4rBKxX9PkJsM8RmH2EPXIgpeSZ4S7+jRha88k0Kiu7RvdHp84HvkqrVjmDbWfFw==
   dependencies:
-    "@radar/lnrpc" "^0.9.0-beta"
+    "@radar/lnrpc" "^0.9.1-beta"
     axios "^0.19.0"
     bcoin "https://github.com/bcoin-org/bcoin#2496acc7a98a43f00a7b5728eb256877c1bbf001"
     bignumber.js "^9.0.0"
