@@ -97,6 +97,7 @@ impl ProtocolsHandler for Handler {
         KeepAlive::Yes
     }
 
+    #[allow(clippy::type_complexity)]
     fn poll(
         &mut self,
         _: &mut Context<'_>,

@@ -28,13 +28,15 @@ impl UpgradeInfo for OutboundConfig {
     }
 }
 
+type UpgradeFuture<T> = Pin<Box<dyn Future<Output = T> + Send>>;
+
 impl<C> OutboundUpgrade<C> for OutboundConfig
 where
     C: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     type Output = Confirmed;
     type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
+    type Future = UpgradeFuture<Result<Self::Output, Self::Error>>;
 
     fn upgrade_outbound(self, mut socket: C, info: Self::Info) -> Self::Future {
         tracing::trace!(
@@ -90,7 +92,7 @@ where
 {
     type Output = ReplySubstream<C>;
     type Error = Error;
-    type Future = Pin<Box<dyn Future<Output = Result<Self::Output, Self::Error>> + Send>>;
+    type Future = UpgradeFuture<Result<Self::Output, Self::Error>>;
 
     fn upgrade_inbound(self, mut socket: C, info: Self::Info) -> Self::Future {
         tracing::trace!(
