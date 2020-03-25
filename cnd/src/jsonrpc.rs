@@ -11,7 +11,7 @@ pub struct Client {
 pub enum Error {
     #[error("json-rpc request failed with code {code}: {message}")]
     JsonRpc { code: i64, message: String },
-    #[error("connection error")]
+    #[error("connection error: {0}")]
     Connection(#[from] reqwest::Error),
 }
 
