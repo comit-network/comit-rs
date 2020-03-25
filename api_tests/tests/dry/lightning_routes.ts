@@ -23,12 +23,9 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejected.then((error) => {
-                expect(error).to.have.property(
-                    "message",
-                    "Request failed with status code 400"
-                );
-            });
+            return expect(promise).to.eventually.be.rejectedWith(
+                "Route not yet supported"
+            );
         })
     );
 
@@ -40,12 +37,9 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejected.then((error) => {
-                expect(error).to.have.property(
-                    "message",
-                    "Request failed with status code 400"
-                );
-            });
+            return expect(promise).to.eventually.be.rejectedWith(
+                "Route not yet supported"
+            );
         })
     );
 
@@ -57,12 +51,9 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejected.then((error) => {
-                expect(error).to.have.property(
-                    "message",
-                    "Request failed with status code 400"
-                );
-            });
+            return expect(promise).to.eventually.be.rejectedWith(
+                "Route not yet supported"
+            );
         })
     );
 
@@ -74,12 +65,9 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejected.then((error) => {
-                expect(error).to.have.property(
-                    "message",
-                    "Request failed with status code 400"
-                );
-            });
+            return expect(promise).to.eventually.be.rejectedWith(
+                "Route not yet supported"
+            );
         })
     );
 });
