@@ -246,13 +246,7 @@ export class Actor {
         const transaction = await this.swap.deploy(Actor.defaultActionConfig);
         let transactionId;
         if (transaction instanceof Transaction) {
-            {
-                // Temporary hack until comit-sdk can return a status for unconfirmed failed transactions
-                await this.wallets.ethereum.getTransactionStatus(
-                    transaction.id
-                );
-            }
-            const status = await transaction.status();
+            const status = await transaction.status(1);
             transactionId = transaction.id;
             if (status === TransactionStatus.Failed) {
                 throw new Error(`Transaction ${transactionId} failed`);
@@ -320,13 +314,7 @@ export class Actor {
         response.data.payload.gas_limit = hexGasLimit;
         const transaction = await this.swap.doLedgerAction(response.data);
         if (transaction instanceof Transaction) {
-            {
-                // Temporary hack until comit-sdk can return a status for unconfirmed failed transactions
-                await this.wallets.ethereum.getTransactionStatus(
-                    transaction.id
-                );
-            }
-            const status = await transaction.status();
+            const status = await transaction.status(1);
             if (status !== TransactionStatus.Failed) {
                 throw new Error(
                     "Deploy with low gas transaction was successful."
