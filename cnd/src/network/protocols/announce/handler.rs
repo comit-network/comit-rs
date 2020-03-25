@@ -19,7 +19,7 @@ use std::{
 pub struct Handler {
     /// Pending events to yield.
     #[derivative(Debug = "ignore")]
-    events: Vec<HandlerEvent>,
+    events: VecDeque<HandlerEvent>,
     /// Queue of outbound substreams to open.
     dial_queue: VecDeque<OutboundConfig>,
 }
@@ -27,7 +27,7 @@ pub struct Handler {
 impl Default for Handler {
     fn default() -> Self {
         Handler {
-            events: vec![],
+            events: VecDeque::new(),
             dial_queue: VecDeque::new(),
         }
     }
@@ -67,7 +67,8 @@ impl ProtocolsHandler for Handler {
         &mut self,
         sender: <Self::InboundProtocol as InboundUpgrade<NegotiatedSubstream>>::Output,
     ) {
-        self.events.push(HandlerEvent::AwaitingConfirmation(sender))
+        self.events
+            .push_back(HandlerEvent::AwaitingConfirmation(sender))
     }
 
     fn inject_fully_negotiated_outbound(
@@ -76,11 +77,11 @@ impl ProtocolsHandler for Handler {
         _info: Self::OutboundOpenInfo,
     ) {
         self.events
-            .push(HandlerEvent::ReceivedConfirmation(confirmed));
+            .push_back(HandlerEvent::ReceivedConfirmation(confirmed));
     }
 
     fn inject_event(&mut self, event: Self::InEvent) {
-        self.dial_queue.push_front(event);
+        self.dial_queue.push_back(event);
     }
 
     fn inject_dial_upgrade_error(
@@ -90,7 +91,8 @@ impl ProtocolsHandler for Handler {
             <Self::OutboundProtocol as OutboundUpgrade<NegotiatedSubstream>>::Error,
         >,
     ) {
-        self.events.push(HandlerEvent::Error(Error::Upgrade(err)));
+        self.events
+            .push_back(HandlerEvent::Error(Error::Upgrade(err)));
     }
 
     fn connection_keep_alive(&self) -> KeepAlive {
@@ -109,21 +111,18 @@ impl ProtocolsHandler for Handler {
             Self::Error,
         >,
     > {
-        if !self.events.is_empty() {
-            let event = self.events.remove(0);
+        if let Some(event) = self.events.pop_front() {
             if let HandlerEvent::Error(err) = event {
                 return Poll::Ready(ProtocolsHandlerEvent::Close(err));
             };
             return Poll::Ready(ProtocolsHandlerEvent::Custom(event));
         }
 
-        if !self.dial_queue.is_empty() {
-            if let Some(upgrade) = self.dial_queue.remove(0) {
-                return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
-                    protocol: SubstreamProtocol::new(upgrade),
-                    info: (),
-                });
-            }
+        if let Some(upgrade) = self.dial_queue.pop_front() {
+            return Poll::Ready(ProtocolsHandlerEvent::OutboundSubstreamRequest {
+                protocol: SubstreamProtocol::new(upgrade),
+                info: (),
+            });
         }
 
         Poll::Pending
