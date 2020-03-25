@@ -9,6 +9,7 @@
         "dry": "jest --config jest.config-dry.js --maxWorkers=4",
         "e2e": "yarn jest --config jest.config-e2e.js --runInBand --forceExit --bail",
         "test": "yarn dry && yarn e2e",
+        "ci": "tsc && yarn dry && yarn e2e",
         "fix": "tslint --project . --fix && prettier --write '**/*.{ts,js,json,yml}'"
     },
     "engines": {
