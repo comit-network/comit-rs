@@ -41,7 +41,7 @@ where
 }
 
 #[async_trait]
-impl<A, H, T> Update<LedgerState<A, H, T>, SwapEvent<A, H, T>> for LedgerStates
+impl<A, H, T> Update<SwapEvent<A, H, T>> for LedgerStates
 where
     LedgerState<A, H, T>: 'static,
     A: Send,

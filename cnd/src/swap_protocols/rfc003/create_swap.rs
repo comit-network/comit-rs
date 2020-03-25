@@ -43,8 +43,7 @@ pub async fn create_watcher<D, S, L, A, H, I, T>(
         + HtlcDeployed<L, A, H, I, T>
         + HtlcRedeemed<L, A, H, I, T>
         + HtlcRefunded<L, A, H, I, T>,
-    S: state::Update<LedgerState<A, H, T>, SwapEvent<A, H, T>>
-        + state::Insert<LedgerState<A, H, T>>,
+    S: state::Update<SwapEvent<A, H, T>> + state::Insert<LedgerState<A, H, T>>,
     L: Clone,
     A: Ord + Clone,
     H: Clone,
