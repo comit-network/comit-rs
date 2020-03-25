@@ -2,7 +2,6 @@
  * @logDir lightning_routes
  */
 
-import { expect } from "chai";
 import { oneActorTest } from "../../src/actor_test";
 import {
     defaultHalightLightningBitcoinHanEthereumEther,
@@ -23,9 +22,7 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejectedWith(
-                "Route not yet supported"
-            );
+            await expect(promise).rejects.toThrow("Route not yet supported");
         })
     );
 
@@ -37,9 +34,7 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejectedWith(
-                "Route not yet supported"
-            );
+            await expect(promise).rejects.toThrow("Route not yet supported");
         })
     );
 
@@ -51,9 +46,7 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejectedWith(
-                "Route not yet supported"
-            );
+            await expect(promise).rejects.toThrow("Route not yet supported");
         })
     );
 
@@ -65,9 +58,7 @@ describe("Lightning routes tests", () => {
                     peer_id: "",
                 })
             );
-            return expect(promise).to.eventually.be.rejectedWith(
-                "Route not yet supported"
-            );
+            await expect(promise).rejects.toThrow("Route not yet supported");
         })
     );
 });
