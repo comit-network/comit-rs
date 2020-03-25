@@ -12,6 +12,6 @@ pub trait Get<S>: Send + Sync + 'static {
 }
 
 #[async_trait]
-pub trait Update<S, E>: Send + Sync + 'static {
+pub trait Update<E>: Send + Sync + 'static {
     async fn update(&self, key: &SwapId, update: E);
 }

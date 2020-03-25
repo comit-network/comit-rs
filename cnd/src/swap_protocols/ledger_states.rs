@@ -4,11 +4,7 @@ use crate::swap_protocols::{
     swap_id::SwapId,
 };
 use async_trait::async_trait;
-use std::{
-    any::Any,
-    collections::HashMap,
-    ops::{Deref, DerefMut},
-};
+use std::{any::Any, collections::HashMap};
 use tokio::sync::Mutex;
 
 #[derive(Default, Debug)]
@@ -17,25 +13,23 @@ pub struct LedgerStates {
 }
 
 #[async_trait]
-impl<S, L> Insert<S> for L
+impl<S> Insert<S> for LedgerStates
 where
-    L: DerefMut<Target = Mutex<HashMap<SwapId, Box<dyn Any + Send>>>> + Send + Sync + 'static,
     S: Send + 'static,
 {
     async fn insert(&self, key: SwapId, value: S) {
-        let mut states = self.lock().await;
+        let mut states = self.states.lock().await;
         states.insert(key, Box::new(value));
     }
 }
 
 #[async_trait]
-impl<S, L> Get<S> for L
+impl<S> Get<S> for LedgerStates
 where
-    L: DerefMut<Target = Mutex<HashMap<SwapId, Box<dyn Any + Send>>>> + Send + Sync + 'static,
     S: Clone + Send + 'static,
 {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<S>> {
-        let states = self.lock().await;
+        let states = self.states.lock().await;
         match states.get(key) {
             Some(state) => match state.downcast_ref::<S>() {
                 Some(state) => Ok(Some(state.clone())),
@@ -47,16 +41,15 @@ where
 }
 
 #[async_trait]
-impl<A, H, T, L> Update<LedgerState<A, H, T>, SwapEvent<A, H, T>> for L
+impl<A, H, T> Update<SwapEvent<A, H, T>> for LedgerStates
 where
-    L: DerefMut<Target = Mutex<HashMap<SwapId, Box<dyn Any + Send>>>> + Send + Sync + 'static,
     LedgerState<A, H, T>: 'static,
     A: Send,
     H: Send,
     T: Send,
 {
     async fn update(&self, key: &SwapId, event: SwapEvent<A, H, T>) {
-        let mut states = self.lock().await;
+        let mut states = self.states.lock().await;
         let ledger_state = match states
             .get_mut(key)
             .and_then(|state| state.downcast_mut::<LedgerState<A, H, T>>())
@@ -78,19 +71,6 @@ where
             }
             SwapEvent::Refunded(refunded) => ledger_state.transition_to_refunded(refunded),
         }
-    }
-}
-
-impl Deref for LedgerStates {
-    type Target = Mutex<HashMap<SwapId, Box<dyn Any + Send>>>;
-    fn deref(&self) -> &Self::Target {
-        &self.states
-    }
-}
-
-impl DerefMut for LedgerStates {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.states
     }
 }
 
