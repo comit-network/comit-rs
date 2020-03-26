@@ -128,12 +128,13 @@ where
     ///
     /// Consumes the substream, returning a reply future that resolves
     /// when the reply has been sent on the underlying connection.
-    pub async fn send(mut self, swap_id: SwapId) -> impl Future<Output = Result<(), Error>> {
+    pub async fn send(mut self, swap_id: SwapId) -> Result<(), Error> {
         tracing::trace!("Sending: {}", swap_id);
-        async move {
-            let bytes = serde_json::to_vec(&swap_id)?;
-            Ok(upgrade::write_one(&mut self.io, &bytes).await?)
-        }
+
+        let bytes = serde_json::to_vec(&swap_id)?;
+        upgrade::write_one(&mut self.io, &bytes).await?;
+
+        Ok(())
     }
 }
 
