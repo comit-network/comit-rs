@@ -2,8 +2,8 @@
  * @logDir multiple_peers
  */
 
-import { threeActorTest } from "../../lib/actor_test";
-import { createDefaultSwapRequest } from "../../lib/utils";
+import { threeActorTest } from "../../src/actor_test";
+import { createDefaultSwapRequest } from "../../src/utils";
 import { expect } from "chai";
 import { SwapDetails } from "comit-sdk";
 
@@ -25,8 +25,9 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
 // Multiple peers                               //
 // ******************************************** //
 describe("Multiple peers tests", () => {
-    it("alice-sends-swap-request-to-bob-and-charlie", async function() {
-        await threeActorTest(async function({ alice, bob, charlie }) {
+    it(
+        "alice-sends-swap-request-to-bob-and-charlie",
+        threeActorTest(async ({ alice, bob, charlie }) => {
             // Alice send swap request to Bob
             const aliceToBobSwapUrl = await alice.cnd.postSwap(
                 await createDefaultSwapRequest(bob)
@@ -67,11 +68,11 @@ describe("Multiple peers tests", () => {
                 [
                     aliceToBobSwapDetails,
                     aliceToCharlieSwapDetails,
-                ].map(swapDetail => toMatch(swapDetail))
+                ].map((swapDetail) => toMatch(swapDetail))
             ).to.have.deep.members([
                 toMatch(bobSwapDetails),
                 toMatch(charlieSwapDetails),
             ]);
-        });
-    });
+        })
+    );
 });

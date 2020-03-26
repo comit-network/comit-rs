@@ -11,12 +11,13 @@ pub async fn handle_get_swaps(dependencies: Facade) -> anyhow::Result<siren::Ent
         let types = dependencies.determine_types(&swap.swap_id).await?;
 
         let sub_entity = build_rfc003_siren_entity(
-            dependencies.state_store.as_ref(),
+            &dependencies,
             swap,
             types,
             IncludeState::No,
             OnFail::NoAction,
-        )?;
+        )
+        .await?;
         entity.push_sub_entity(siren::SubEntity::from_entity(sub_entity, &["item"]));
     }
 

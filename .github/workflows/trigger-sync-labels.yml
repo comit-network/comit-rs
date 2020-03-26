@@ -1,0 +1,28 @@
+name: Sync labels
+
+on:
+  repository_dispatch:
+    types:
+      - sync-labels
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    name: Sync labels from coblox/admin
+    steps:
+      - name: Download label file
+        env:
+          REPO_TOKEN: ${{ secrets.GITHUB_REPO_TOKEN }}
+        run: |
+          curl --header "Authorization: token ${REPO_TOKEN}" \
+            --header 'Accept: application/vnd.github.v3.raw' \
+            --location  'https://api.github.com/repos/coblox/admin/contents/.github/labels.yml' \
+            --output labels.yml
+          # For debug purposes
+          ls; cat labels.yml
+      - name: Sync label locally
+        uses: micnncim/action-label-syncer@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          manifest: labels.yml

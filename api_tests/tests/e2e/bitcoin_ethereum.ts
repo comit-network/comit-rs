@@ -1,20 +1,21 @@
 /**
- * @ledgers ethereum,bitcoin
+ * @ledgers ethereum,bitcoin,lightning
  * @logDir e2e
  */
 
-import { twoActorTest } from "../../lib/actor_test";
-import { AssetKind } from "../../lib/asset";
-import { sleep } from "../../lib/utils";
+import { twoActorTest } from "../../src/actor_test";
+import { AssetKind } from "../../src/asset";
+import { sleep } from "../../src/utils";
 import { expect } from "chai";
-import { LedgerKind } from "../../lib/ledgers/ledger";
+import { LedgerKind } from "../../src/ledgers/ledger";
 
 // ******************************************** //
 // Lightning Sanity Test                        //
 // ******************************************** //
 describe("E2E: Sanity - LND Alice pays Bob", () => {
-    it.skip("sanity-lnd-alice-pays-bob", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "sanity-lnd-alice-pays-bob",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
                 { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
                 { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
@@ -24,11 +25,12 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
             );
             await alice.lnPayInvoiceWithRequest(paymentRequest);
             await bob.lnAssertInvoiceSettled(rHash);
-        });
-    });
+        })
+    );
 
-    it.skip("sanity-lnd-alice-pays-bob-using-hold-invoice", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "sanity-lnd-alice-pays-bob-using-hold-invoice",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(
                 { ledger: LedgerKind.Lightning, asset: AssetKind.Bitcoin },
                 { ledger: LedgerKind.Bitcoin, asset: AssetKind.Bitcoin }
@@ -57,8 +59,8 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
             expect(pay.paymentPreimage.toString("hex")).equals(secret);
 
             await bob.lnAssertInvoiceSettled(secretHash);
-        });
-    });
+        })
+    );
 });
 
 // ******************************************** //
@@ -66,8 +68,9 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
 // Ethereum/ether Beta Ledger/Beta Asset        //
 // ******************************************** //
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
-    it("rfc003-btc-eth-alice-redeems-bob-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-alice-redeems-bob-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -79,15 +82,16 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Refund test              //
     // ************************ //
 
-    it("rfc003-btc-eth-bob-refunds-alice-refunds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-bob-refunds-alice-refunds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -99,11 +103,12 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await bob.assertRefunded();
             await alice.assertRefunded();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-alice-refunds-bob-refunds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-alice-refunds-bob-refunds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -115,15 +120,16 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertRefunded();
             await bob.assertRefunded();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Restart cnd test         //
     // ************************ //
 
-    it("rfc003-btc-eth-cnd-can-be-restarted", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-cnd-can-be-restarted",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -135,20 +141,21 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.currentSwapIsAccepted();
             await bob.currentSwapIsAccepted();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Resume cnd test          //
     // ************************ //
 
-    it("rfc003-btc-eth-resume-alice-down-bob-funds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-resume-alice-down-bob-funds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
             await alice.fund();
-            alice.stop();
+            await alice.stop();
 
             // Action happens while alice is down.
             await bob.fund();
@@ -163,11 +170,12 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-resume-alice-down-bob-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-resume-alice-down-bob-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -175,7 +183,7 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await bob.fund();
 
             await alice.redeem();
-            alice.stop();
+            await alice.stop();
 
             // Action happens while alice is down.
             await bob.redeem();
@@ -187,18 +195,19 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-resume-bob-down-alice-funds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-resume-bob-down-alice-funds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
             // Wait for Alice to receive the accept message before stopping Bob's cnd.
             await alice.currentSwapIsAccepted();
 
-            bob.stop();
+            await bob.stop();
 
             // Action happens while bob is down.
             await alice.fund();
@@ -215,18 +224,19 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-resume-bob-down-alice-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-resume-bob-down-alice-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
             await alice.fund();
             await bob.fund();
 
-            bob.stop();
+            await bob.stop();
 
             // Action happens while bob is down.
             await alice.redeem();
@@ -240,15 +250,16 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Underfunding test        //
     // ************************ //
 
-    it("rfc003-btc-eth-alice-underfunds-bob-aborts", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-alice-underfunds-bob-aborts",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -263,11 +274,12 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await alice.assertRefunded();
 
             await bob.assertBetaNotDeployed();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-bob-underfunds-both-refund", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-bob-underfunds-both-refund",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
             await alice.fund();
@@ -284,15 +296,16 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await bob.assertRefunded();
             await alice.refund();
             await alice.assertRefunded();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Overfund test            //
     // ************************ //
 
-    it("rfc003-btc-eth-alice-overfunds-bob-aborts", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-alice-overfunds-bob-aborts",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -307,11 +320,12 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await alice.assertRefunded();
 
             await bob.assertBetaNotDeployed();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-bob-overfunds-both-refund", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-bob-overfunds-both-refund",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
             await alice.fund();
@@ -328,8 +342,8 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await bob.assertRefunded();
             await alice.refund();
             await alice.assertRefunded();
-        });
-    });
+        })
+    );
 });
 
 // ******************************************** //
@@ -337,8 +351,9 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 // Bitcoin/bitcoin Beta Ledger/Beta Asset       //
 // ******************************************** //
 describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
-    it("rfc003-eth-btc-alice-redeems-bob-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-btc-alice-redeems-bob-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -350,15 +365,16 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Ignore Failed ETH TX     //
     // ************************ //
 
-    it("rfc003-eth-btc-alpha-deploy-fails", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-btc-alpha-deploy-fails",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -368,15 +384,16 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
             await bob.assertAlphaNotDeployed();
             await bob.assertBetaNotDeployed();
             await alice.assertBetaNotDeployed();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Refund tests             //
     // ************************ //
 
-    it("rfc003-eth-btc-bob-refunds-alice-refunds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-btc-bob-refunds-alice-refunds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -388,15 +405,16 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
             await bob.assertRefunded();
             await alice.assertRefunded();
-        });
-    });
+        })
+    );
 
     // ************************ //
     // Bitcoin High Fees        //
     // ************************ //
 
-    it("rfc003-eth-btc-alice-redeems-with-high-fee", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-btc-alice-redeems-with-high-fee",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -406,8 +424,8 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
             const responsePromise = alice.redeemWithHighFee();
 
             return expect(responsePromise).to.be.rejected;
-        });
-    });
+        })
+    );
 });
 
 // ******************************************** //
@@ -415,8 +433,9 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 // Ethereum/erc20 Beta Ledger/Beta Asset        //
 // ******************************************** //
 describe("E2E: Bitcoin/bitcoin - Ethereum/erc20", () => {
-    it("rfc003-btc-eth-erc20-alice-redeems-bob-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-erc20-alice-redeems-bob-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Erc20);
             await bob.accept();
 
@@ -429,11 +448,12 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/erc20", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
-    it("rfc003-btc-eth-erc20-bob-refunds-alice-refunds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-btc-eth-erc20-bob-refunds-alice-refunds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Erc20);
             await bob.accept();
 
@@ -446,8 +466,8 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/erc20", () => {
 
             await alice.assertRefunded();
             await bob.assertRefunded();
-        });
-    });
+        })
+    );
 });
 
 // ******************************************** //
@@ -455,8 +475,9 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/erc20", () => {
 // Bitcoin/bitcoin Beta Ledger/Beta Asset       //
 // ******************************************** //
 describe("E2E: Ethereum/erc20 - Bitcoin/bitcoin", () => {
-    it("rfc003-eth-erc20_btc-alice-redeems-bob-redeems", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-erc20_btc-alice-redeems-bob-redeems",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Erc20, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -469,11 +490,12 @@ describe("E2E: Ethereum/erc20 - Bitcoin/bitcoin", () => {
 
             await alice.assertSwapped();
             await bob.assertSwapped();
-        });
-    });
+        })
+    );
 
-    it("rfc003-eth-erc20_btc-bob-refunds-alice-refunds", async function() {
-        await twoActorTest(async function({ alice, bob }) {
+    it(
+        "rfc003-eth-erc20_btc-bob-refunds-alice-refunds",
+        twoActorTest(async ({ alice, bob }) => {
             await alice.sendRequest(AssetKind.Erc20, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -486,6 +508,6 @@ describe("E2E: Ethereum/erc20 - Bitcoin/bitcoin", () => {
 
             await alice.assertRefunded();
             await bob.assertRefunded();
-        });
-    });
+        })
+    );
 });

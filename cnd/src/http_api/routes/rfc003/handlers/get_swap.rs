@@ -8,11 +8,5 @@ pub async fn handle_get_swap(dependencies: Facade, id: SwapId) -> anyhow::Result
     let swap = Retrieve::get(&dependencies, &id).await?;
     let types = dependencies.determine_types(&id).await?;
 
-    build_rfc003_siren_entity(
-        dependencies.state_store.as_ref(),
-        swap,
-        types,
-        IncludeState::Yes,
-        OnFail::Error,
-    )
+    build_rfc003_siren_entity(&dependencies, swap, types, IncludeState::Yes, OnFail::Error).await
 }
