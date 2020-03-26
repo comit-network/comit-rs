@@ -44,6 +44,7 @@ pub mod network;
 pub mod quickcheck;
 #[macro_use]
 pub mod seed;
+pub mod file_lock;
 pub mod jsonrpc;
 #[cfg(test)]
 pub mod spectral_ext;

@@ -21,18 +21,18 @@ use cnd::{
     },
     config::{self, validation::validate_blockchain_config, Settings},
     db::Sqlite,
+    file_lock::TryLockExclusive,
     http_api::route_factory,
     jsonrpc, load_swaps,
     network::Swarm,
     seed::RootSeed,
     swap_protocols::{Facade, LedgerStates, SwapCommunicationStates, SwapErrorStates},
 };
-use fs2::FileExt;
+
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
 use tokio::runtime;
-
 mod cli;
 mod trace;
 
@@ -53,11 +53,7 @@ fn main() -> anyhow::Result<()> {
 
     crate::trace::init_tracing(settings.logging.level)?;
 
-    let path = &settings.data.dir.to_path_buf();
-
-    let file = std::fs::File::open(&path)?;
-    file.try_lock_exclusive()?;
-    file.lock_exclusive()?;
+    let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
