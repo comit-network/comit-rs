@@ -27,6 +27,7 @@ use cnd::{
     seed::RootSeed,
     swap_protocols::{Facade, LedgerStates, SwapCommunicationStates, SwapErrorStates},
 };
+use fs2::FileExt;
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
@@ -51,6 +52,12 @@ fn main() -> anyhow::Result<()> {
     }
 
     crate::trace::init_tracing(settings.logging.level)?;
+
+    let path = &settings.data.dir.to_path_buf();
+
+    let file = std::fs::File::open(&path)?;
+    file.try_lock_exclusive()?;
+    file.lock_exclusive()?;
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
 
