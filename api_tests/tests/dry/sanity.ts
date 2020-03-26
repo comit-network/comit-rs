@@ -11,7 +11,7 @@ import { Entity, Link } from "comit-sdk";
 // Sanity tests                                 //
 // ******************************************** //
 
-describe("Sanity - peers using IP", () => {
+describe("Sanity", () => {
     it(
         "invalid-swap-yields-404",
         oneActorTest(async ({ alice }) => {
