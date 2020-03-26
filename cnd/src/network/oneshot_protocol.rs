@@ -25,6 +25,19 @@ pub struct OutboundConfig<M> {
     msg: M,
 }
 
+/// Events that are produced as part of the connection upgrade.
+///
+/// The oneshot protocol is push-based, meaning the outbound upgrade will
+/// generate the `Sent` event whereas the inbound upgrade will generate the
+/// `Received` event.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum OutEvent<M> {
+    /// Emitted once we receive a message from the other peer.
+    Received(M),
+    /// Emitted once we successfully sent a message to the other peer.
+    Sent(M),
+}
+
 impl<M> UpgradeInfo for OutboundConfig<M>
 where
     M: Message,
@@ -42,7 +55,7 @@ where
     C: AsyncWrite + Unpin + Send + 'static,
     M: Serialize + Message + Send + 'static,
 {
-    type Output = ();
+    type Output = OutEvent<M>;
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
@@ -55,7 +68,7 @@ where
             let bytes = serde_json::to_vec(&self.msg)?;
             upgrade::write_one(&mut socket, &bytes).await?;
 
-            Ok(())
+            Ok(OutEvent::Sent(self.msg))
         })
     }
 }
@@ -94,7 +107,7 @@ where
     C: AsyncRead + Unpin + Send + 'static,
     M: DeserializeOwned + Message,
 {
-    type Output = M;
+    type Output = OutEvent<M>;
     type Error = Error;
     type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
@@ -108,7 +121,7 @@ where
             let mut de = serde_json::Deserializer::from_slice(&message);
             let info = M::deserialize(&mut de)?;
 
-            Ok(info)
+            Ok(OutEvent::Received(info))
         })
     }
 }
@@ -176,6 +189,6 @@ mod tests {
         let config = InboundConfig::<DummyMessage>::default();
         let received_msg = upgrade::apply_inbound(conn, config).await.unwrap();
 
-        assert_eq!(received_msg, sent_msg)
+        assert_eq!(received_msg, OutEvent::Received(sent_msg))
     }
 }
