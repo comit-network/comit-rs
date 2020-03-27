@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Changed
+
+- Ensure that lnd parameters are defaulted if not present.
+
 ## [0.7.2] - 2020-03-26
 
 ## [0.7.1] - 2020-03-12

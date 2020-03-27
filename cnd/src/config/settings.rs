@@ -1,6 +1,5 @@
 use crate::config::{
-    default_lnd_dir, file, Bitcoin, Bitcoind, Data, Ethereum, File, Lightning, Lnd, Network,
-    Parity, LND_SOCKET,
+    file, Bitcoin, Bitcoind, Data, Ethereum, File, Lightning, Lnd, Network, Parity,
 };
 use anyhow::Context;
 use log::LevelFilter;
@@ -103,13 +102,7 @@ impl From<Settings> for File {
             }),
             bitcoin: Some(bitcoin.into()),
             ethereum: Some(ethereum.into()),
-            lightning: Some(Lightning {
-                network: lightning.network,
-                lnd: lightning.lnd.map(|lnd| Lnd {
-                    rest_api_socket: lnd.rest_api_socket,
-                    dir: lnd.dir,
-                }),
-            }),
+            lightning: Some(lightning.into()),
         }
     }
 }
@@ -223,11 +216,11 @@ impl Settings {
                 Some(lightning) => Lightning {
                     network: lightning.network,
                     lnd: match lightning.lnd {
-                        None => Some(Lnd::default()),
-                        Some(lnd) => Some(Lnd {
-                            rest_api_socket: lnd.rest_api_socket.or_else(|| Some(*LND_SOCKET)),
-                            dir: lnd.dir.or_else(|| Some(default_lnd_dir())),
-                        }),
+                        None => Lnd::default(),
+                        Some(lnd) => Lnd {
+                            rest_api_socket: lnd.rest_api_socket,
+                            dir: lnd.dir,
+                        },
                     },
                 },
             },
@@ -288,7 +281,7 @@ mod tests {
     use super::*;
     use crate::{config::file, swap_protocols::ledger::ethereum};
     use spectral::prelude::*;
-    use std::{net::IpAddr, path::PathBuf};
+    use std::net::IpAddr;
 
     #[test]
     fn logging_section_defaults_to_info() {
@@ -473,19 +466,13 @@ mod tests {
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(crate::lnd_default_dir().unwrap()),
-                }),
-            })
+            .is_equal_to(Lightning::default())
     }
 
     #[test]
     fn lightning_lnd_section_defaults() {
         let config_file = File {
-            lightning: Some(Lightning {
+            lightning: Some(file::Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: None,
             }),
@@ -497,60 +484,9 @@ mod tests {
         assert_that(&settings)
             .is_ok()
             .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning::default())
-    }
-
-    #[test]
-    fn lnd_dir_defaults() {
-        let config_file = File {
-            lightning: Some(Lightning {
-                network: bitcoin::Network::Bitcoin,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: None,
-                }),
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.lightning)
             .is_equal_to(Lightning {
-                network: bitcoin::Network::Bitcoin,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(crate::lnd_default_dir().unwrap()),
-                }),
-            })
-    }
-
-    #[test]
-    fn lnd_rest_api_socket_defaults() {
-        let config_file = File {
-            lightning: Some(Lightning {
-                network: bitcoin::Network::Bitcoin,
-                lnd: Some(Lnd {
-                    rest_api_socket: None,
-                    dir: Some(PathBuf::from("~/.cache/comit/lnd")),
-                }),
-            }),
-            ..File::default()
-        };
-
-        let settings = Settings::from_config_file_and_defaults(config_file);
-
-        assert_that(&settings)
-            .is_ok()
-            .map(|settings| &settings.lightning)
-            .is_equal_to(Lightning {
-                network: bitcoin::Network::Bitcoin,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(PathBuf::from("~/.cache/comit/lnd")),
-                }),
+                network: bitcoin::Network::Regtest,
+                lnd: Lnd::default(),
             })
     }
 }

@@ -96,29 +96,38 @@ pub struct Parity {
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lightning {
     pub network: bitcoin::Network,
-    pub lnd: Option<Lnd>,
+    pub lnd: Lnd,
 }
 
 impl Default for Lightning {
     fn default() -> Self {
         Self {
             network: bitcoin::Network::Regtest,
-            lnd: Some(Lnd::default()),
+            lnd: Lnd::default(),
+        }
+    }
+}
+
+impl From<Lightning> for file::Lightning {
+    fn from(lightning: Lightning) -> Self {
+        file::Lightning {
+            lnd: Some(lightning.lnd),
+            network: lightning.network,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub rest_api_socket: Option<SocketAddr>,
-    pub dir: Option<PathBuf>,
+    pub rest_api_socket: SocketAddr,
+    pub dir: PathBuf,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            rest_api_socket: Some(*LND_SOCKET),
-            dir: Some(default_lnd_dir()),
+            rest_api_socket: *LND_SOCKET,
+            dir: default_lnd_dir(),
         }
     }
 }
@@ -165,77 +174,40 @@ mod tests {
 
     #[test]
     fn lnd_deserializes_correctly() {
-        let file_contents = vec![
+        let actual = toml::from_str(
             r#"
             rest_api_socket = "127.0.0.1:8080"
             dir = "~/.local/share/comit/lnd"
             "#,
-            r#"
-            rest_api_socket = "127.0.0.1:8080"
-            "#,
-            r#"
-            dir = "~/.local/share/comit/lnd"
-            "#,
-        ];
+        );
 
-        let expected = vec![
-            Lnd {
-                rest_api_socket: Some(*LND_SOCKET),
-                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
-            },
-            Lnd {
-                rest_api_socket: Some(*LND_SOCKET),
-                dir: None,
-            },
-            Lnd {
-                rest_api_socket: None,
-                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
-            },
-        ];
+        let expected = Lnd {
+            rest_api_socket: *LND_SOCKET,
+            dir: PathBuf::from("~/.local/share/comit/lnd"),
+        };
 
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
+        assert_eq!(actual, Ok(expected));
     }
 
     #[test]
     fn lightning_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            network = "regtest"
-            "#,
+        let actual = toml::from_str(
             r#"
             network = "regtest"
             [lnd]
             rest_api_socket = "127.0.0.1:8080"
             dir = "/path/to/lnd"
             "#,
-        ];
+        );
 
-        let expected = vec![
-            Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: None,
+        let expected = Lightning {
+            network: bitcoin::Network::Regtest,
+            lnd: Lnd {
+                rest_api_socket: *LND_SOCKET,
+                dir: PathBuf::from("/path/to/lnd"),
             },
-            Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(PathBuf::from("/path/to/lnd")),
-                }),
-            },
-        ];
+        };
 
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Lightning>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
+        assert_eq!(actual, Ok(expected));
     }
 }

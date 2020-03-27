@@ -1,5 +1,5 @@
 use crate::{
-    config::{Bitcoind, Data, Lightning, Network, Parity},
+    config::{Bitcoind, Data, Lnd, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
@@ -34,6 +34,12 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ethereum::ChainId,
     pub parity: Option<Parity>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lightning {
+    pub network: bitcoin::Network,
+    pub lnd: Option<Lnd>,
 }
 
 impl File {
@@ -223,6 +229,7 @@ network = "regtest"
 
 [lightning.lnd]
 rest_api_socket = "127.0.0.1:8080"
+dir = "/foo/bar"
 "#;
         let file = File {
             network: Some(Network {
@@ -255,11 +262,8 @@ rest_api_socket = "127.0.0.1:8080"
             lightning: Some(Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(
-                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                        8080,
-                    )),
-                    dir: None,
+                    rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+                    dir: PathBuf::from("/foo/bar"),
                 }),
             }),
         };
