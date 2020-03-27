@@ -2,7 +2,7 @@ use crate::{
     config::settings::AllowedOrigins,
     http_api,
     network::LocalPeerId,
-    swap_protocols::{self, Facade, SwapId},
+    swap_protocols::{self, Facade, Facade2, SwapId},
 };
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -18,6 +18,7 @@ pub fn new_action_link(id: &SwapId, action: &str) -> String {
 
 pub fn create(
     dependencies: Facade,
+    facade2: Facade2,
     allowed_origins: &AllowedOrigins,
 ) -> BoxedFilter<(impl Reply,)> {
     let peer_id = dependencies.local_peer_id();
@@ -26,6 +27,7 @@ pub fn create(
     let peer_id = warp::any().map(move || peer_id.clone());
     let empty_json_body = warp::any().map(|| serde_json::json!({}));
     let dependencies = warp::any().map(move || dependencies.clone());
+    let facade2 = warp::any().map(move || facade2.clone());
 
     let cors = warp::cors()
         .allow_methods(vec!["GET", "POST"])
@@ -96,8 +98,10 @@ pub fn create(
             "han" / "ethereum" / "ether" / "halight" / "lightning" / "bitcoin"
         ))
         .and(warp::post())
+        .and(warp::body::json())
         .and(warp::path::end())
-        .and_then(http_api::routes::index::post_lightning_route);
+        .and(facade2.clone())
+        .and_then(http_api::routes::index::post_lightning_route_new);
 
     let herc20_erc20_halight_bitcoin = swaps
         .and(warp::path!(
@@ -123,6 +127,17 @@ pub fn create(
         .and(warp::path::end())
         .and_then(http_api::routes::index::post_lightning_route);
 
+    let get_halight_swap = swaps
+        .and(warp::get())
+        .and(warp::path::param())
+        .and(warp::path::end())
+        .and(facade2.clone())
+        .and(warp::header::exact(
+            "accept",
+            "application/vnd.comit.halight-preview+json",
+        ))
+        .and_then(http_api::routes::get_han_halight_swap);
+
     preflight_cors_route
         .or(rfc003_get_swap)
         .or(rfc003_post_swap)
@@ -135,6 +150,7 @@ pub fn create(
         .or(herc20_erc20_halight_bitcoin)
         .or(halight_bitcoin_han_ether)
         .or(halight_bitcoin_herc20_erc20)
+        .or(get_halight_swap)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

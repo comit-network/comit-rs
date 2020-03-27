@@ -22,13 +22,18 @@ use cnd::{
     config::{self, validation::validate_blockchain_config, Settings},
     db::Sqlite,
     http_api::route_factory,
-    jsonrpc, load_swaps,
+    jsonrpc,
+    lnd::LndConnectorParams,
+    load_swaps,
     network::Swarm,
     seed::RootSeed,
-    swap_protocols::{Facade, LedgerStates, SwapCommunicationStates, SwapErrorStates},
+    swap_protocols::{
+        halight::InvoiceStates, Facade, Facade2, LedgerStates, SwapCommunicationStates,
+        SwapErrorStates,
+    },
 };
 use rand::rngs::OsRng;
-use std::{process, sync::Arc};
+use std::{io::Read, process, sync::Arc};
 use structopt::StructOpt;
 use tokio::runtime;
 
@@ -105,6 +110,12 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
+    let lnd_connector_params = LndConnectorParams {
+        lnd_url: settings.lightning.lnd.rest_api_url.clone(),
+        retry_interval_ms: 0,
+        certificate: read_lnd_tls_cert(&settings)?,
+    };
+
     let alpha_ledger_state = Arc::new(LedgerStates::default());
     let beta_ledger_state = Arc::new(LedgerStates::default());
 
@@ -120,6 +131,7 @@ fn main() -> anyhow::Result<()> {
         &mut runtime,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
+        lnd_connector_params,
         Arc::clone(&swap_communication_states),
         Arc::clone(&alpha_ledger_state),
         Arc::clone(&beta_ledger_state),
@@ -134,12 +146,18 @@ fn main() -> anyhow::Result<()> {
         swap_communication_states,
         swap_error_states,
         seed,
-        swarm,
+        swarm: swarm.clone(),
         db: database,
     };
 
+    let facade2 = Facade2 {
+        swarm,
+        alpha_ledger_state: Arc::new(LedgerStates::default()),
+        beta_ledger_state: Arc::new(InvoiceStates::default()),
+    };
+
     runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
-    runtime.spawn(spawn_warp_instance(settings, deps));
+    runtime.spawn(spawn_warp_instance(settings, deps, facade2));
 
     // Block the current thread.
     ::std::thread::park();
@@ -157,8 +175,12 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
-    let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
+async fn spawn_warp_instance(settings: Settings, dependencies: Facade, facade2: Facade2) {
+    let routes = route_factory::create(
+        dependencies,
+        facade2,
+        &settings.http_api.cors.allowed_origins,
+    );
 
     let listen_addr = settings.http_api.socket;
 
@@ -199,4 +221,12 @@ fn dump_config(settings: Settings) -> anyhow::Result<()> {
     let serialized = toml::to_string(&file)?;
     println!("{}", serialized);
     Ok(())
+}
+
+fn read_lnd_tls_cert(settings: &Settings) -> anyhow::Result<reqwest::Certificate> {
+    let path = std::path::Path::join(&settings.lightning.lnd.dir, "tls.cert");
+
+    let mut buf = Vec::new();
+    std::fs::File::open(path)?.read_to_end(&mut buf)?;
+    Ok(reqwest::Certificate::from_pem(&buf)?)
 }

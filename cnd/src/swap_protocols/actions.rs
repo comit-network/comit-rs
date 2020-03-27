@@ -64,3 +64,14 @@ pub mod ethereum {
         pub min_block_timestamp: Option<Timestamp>,
     }
 }
+
+pub mod lightning {
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct AddHoldInvoice;
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct SettleInvoice;
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct CancelInvoice;
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct SendPayment;
+}

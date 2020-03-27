@@ -1,5 +1,8 @@
 pub mod actions;
 mod facade;
+mod facade2;
+pub mod halight;
+pub mod han;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;
@@ -9,7 +12,8 @@ mod swap_error_states;
 mod swap_id;
 
 pub use self::{
-    facade::*, ledger_states::*, swap_communication_states::*, swap_error_states::*, swap_id::*,
+    facade::*, facade2::*, ledger_states::*, swap_communication_states::*, swap_error_states::*,
+    swap_id::*,
 };
 
 use serde::{Deserialize, Serialize};

@@ -1,8 +1,10 @@
 mod bitcoin;
 pub mod ethereum;
+pub mod lightning;
 pub use self::{
     bitcoin::Bitcoin,
     ethereum::{Erc20, Erc20Quantity, Ether},
+    lightning::Lightning,
 };
 use crate::asset;
 use derivative::Derivative;

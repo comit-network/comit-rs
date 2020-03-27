@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 /// The message for the finalize protocol.
 #[derive(Clone, Copy, Deserialize, Debug, Serialize)]
 pub struct Message {
-    swap_id: SwapId,
+    pub swap_id: SwapId,
 }
 
 impl Message {

@@ -18,7 +18,7 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
-        SwapId, SwapProtocol,
+        Role, SwapId, SwapProtocol,
     },
     transaction,
 };
@@ -42,6 +42,28 @@ impl<I> Deref for Http<I> {
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Serialize for Http<Role> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<Role> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let role = String::deserialize(deserializer)?;
+        let role =
+            Role::from_str(role.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
+
+        Ok(Http(role))
     }
 }
 

@@ -5,11 +5,11 @@ use serde_hex::{SerHex, StrictPfx};
 /// The message for the Ethereum identity sharing protocol.
 #[derive(Clone, Copy, Deserialize, Debug, Serialize)]
 pub struct Message {
-    swap_id: SwapId,
+    pub swap_id: SwapId,
     /// An Ethereum address, serialized with a `0x` prefix as per convention in
     /// the Ethereum ecosystem.
     #[serde(with = "SerHex::<StrictPfx>")]
-    address: [u8; 20],
+    pub address: [u8; 20],
 }
 
 impl Message {

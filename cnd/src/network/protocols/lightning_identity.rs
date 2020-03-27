@@ -1,4 +1,4 @@
-use crate::{network::oneshot_protocol, swap_protocols::SwapId};
+use crate::{identity, network::oneshot_protocol, swap_protocols::SwapId};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, Strict};
 use serdebug::SerDebug;
@@ -6,16 +6,19 @@ use serdebug::SerDebug;
 /// The message for the Lightning identity sharing protocol.
 #[derive(Clone, Copy, Deserialize, Serialize, SerDebug)]
 pub struct Message {
-    swap_id: SwapId,
+    pub swap_id: SwapId,
     /// A Lightning node identifier is a compressed secp256k1 public key,
     /// serialized without a `0x` prefix.
     #[serde(with = "SerHex::<Strict>")]
-    pubkey: [u8; 33],
+    pub pubkey: [u8; 33],
 }
 
 impl Message {
-    pub fn new(swap_id: SwapId, pubkey: [u8; 33]) -> Self {
-        Self { swap_id, pubkey }
+    pub fn new(swap_id: SwapId, pubkey: identity::Lightning) -> Self {
+        Self {
+            swap_id,
+            pubkey: bitcoin::PublicKey::from(pubkey).key.serialize(),
+        }
     }
 }
 

@@ -10,7 +10,7 @@ const INFO: &str = "/comit/swap/announce/1.0.0";
 /// side.
 #[derive(Debug, Clone)]
 pub struct OutboundConfig {
-    swap_digest: SwapDigest,
+    pub swap_digest: SwapDigest,
 }
 
 impl OutboundConfig {

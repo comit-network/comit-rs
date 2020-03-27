@@ -3,8 +3,8 @@ mod handlers;
 use self::handlers::handle_get_swaps;
 use crate::{
     http_api::{problem, routes::into_rejection, Http},
-    network::ListenAddresses,
-    swap_protocols::Facade,
+    network::{DialInformation, ListenAddresses},
+    swap_protocols::{Facade, Facade2, NodeLocalSwapId, Role},
 };
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -76,4 +76,60 @@ pub async fn post_lightning_route() -> Result<warp::reply::Json, Rejection> {
             .set_status(StatusCode::BAD_REQUEST)
             .set_detail("This route is not yet supported."),
     ))
+}
+
+// `warp::reply::Json` is used as a return type to please the compiler
+// until proper logic is implemented
+#[allow(clippy::needless_pass_by_value)]
+pub async fn post_lightning_route_new(
+    body: Body,
+    facade: Facade2,
+) -> Result<impl Reply, Rejection> {
+    let reply = warp::reply::reply();
+
+    let id = NodeLocalSwapId::default();
+
+    // TODO: pass different type here
+    facade.save(id, body.clone()).await;
+
+    // TODO: pass different type here
+    // TODO: reconsider name of this fn
+    facade.initiate_communication(id, body).await;
+
+    // TODO: reply with generated id in location header
+    Ok(warp::reply::with_status(
+        warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),
+        StatusCode::CREATED,
+    ))
+}
+
+// TODO: Make this generic over all combinations
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Body {
+    pub alpha: HanEthereum,
+    pub beta: HalightLightning,
+    pub peer: DialInformation,
+    pub role: Http<Role>,
+}
+
+impl Body {
+    pub fn role(&self) -> Role {
+        self.role.0
+    }
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct HanEthereum {
+    pub amount: String,
+    pub identity: String,
+    pub chain_id: u32,
+    pub absolute_expiry: u32,
+}
+
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct HalightLightning {
+    pub amount: String,
+    pub identity: String,
+    pub network: String,
+    pub cltv_expiry: u32,
 }

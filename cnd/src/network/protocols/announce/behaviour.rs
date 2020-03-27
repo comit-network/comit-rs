@@ -26,7 +26,7 @@ use std::{
 #[derive(Debug)]
 pub struct Announce {
     /// Pending events to be emitted when polled.
-    events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourEvent>>,
+    events: VecDeque<NetworkBehaviourAction<OutboundConfig, BehaviourOutEvent>>,
     /// Stores connection state for nodes we connect to.
     connections: HashMap<PeerId, ConnectionState>,
 }
@@ -101,7 +101,7 @@ impl Announce {
 
 impl NetworkBehaviour for Announce {
     type ProtocolsHandler = Handler;
-    type OutEvent = BehaviourEvent;
+    type OutEvent = BehaviourOutEvent;
 
     fn new_handler(&mut self) -> Self::ProtocolsHandler {
         Handler::default()
@@ -196,7 +196,7 @@ impl NetworkBehaviour for Announce {
         match event {
             HandlerEvent::ReceivedConfirmation(confirmed) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::ReceivedConfirmation {
+                    BehaviourOutEvent::ReceivedConfirmation {
                         peer: peer_id,
                         swap_id: confirmed.swap_id,
                         swap_digest: confirmed.swap_digest,
@@ -205,7 +205,7 @@ impl NetworkBehaviour for Announce {
             }
             HandlerEvent::AwaitingConfirmation(sender) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::AwaitingConfirmation {
+                    BehaviourOutEvent::AwaitingConfirmation {
                         peer: peer_id,
                         io: sender,
                     },
@@ -213,7 +213,7 @@ impl NetworkBehaviour for Announce {
             }
             HandlerEvent::Error(error) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourEvent::Error {
+                    BehaviourOutEvent::Error {
                         peer: peer_id,
                         error,
                     },
@@ -256,7 +256,7 @@ enum ConnectionState {
 
 /// Event emitted  by the `Announce` behaviour.
 #[derive(Debug)]
-pub enum BehaviourEvent {
+pub enum BehaviourOutEvent {
     /// This event created when a confirmation message containing a `swap_id` is
     /// received in response to an announce message containing a
     /// `swap_digest`. The Event contains both the swap id and

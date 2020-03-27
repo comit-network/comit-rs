@@ -20,6 +20,15 @@ pub struct Behaviour<M> {
     events: VecDeque<NetworkBehaviourAction<oneshot_protocol::OutboundConfig<M>, OutEvent<M>>>,
 }
 
+impl<M> Behaviour<M> {
+    pub fn send(&mut self, peer_id: PeerId, message: M) {
+        self.events.push_back(NetworkBehaviourAction::SendEvent {
+            peer_id,
+            event: oneshot_protocol::OutboundConfig::new(message),
+        })
+    }
+}
+
 impl<M> Default for Behaviour<M> {
     fn default() -> Self {
         Behaviour {
