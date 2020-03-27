@@ -228,7 +228,7 @@ node_url = "http://localhost:8545/"
 network = "regtest"
 
 [lightning.lnd]
-rest_api_socket = "127.0.0.1:8080"
+rest_api_url = "https://localhost:8080"
 dir = "/foo/bar"
 "#;
         let file = File {
@@ -262,7 +262,7 @@ dir = "/foo/bar"
             lightning: Some(Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
-                    rest_api_socket: SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080),
+                    rest_api_url: "https://localhost:8080".parse().unwrap(),
                     dir: PathBuf::from("/foo/bar"),
                 }),
             }),

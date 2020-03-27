@@ -5,17 +5,14 @@ pub mod validation;
 
 use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 pub use self::{file::File, settings::Settings};
-use reqwest::Url;
 
 lazy_static::lazy_static! {
-    pub static ref LND_SOCKET: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -37,7 +34,7 @@ pub struct Bitcoin {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoind {
-    pub node_url: reqwest::Url,
+    pub node_url: Url,
 }
 
 impl Default for Bitcoin {
@@ -90,7 +87,7 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Parity {
-    pub node_url: reqwest::Url,
+    pub node_url: Url,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -119,14 +116,14 @@ impl From<Lightning> for file::Lightning {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub rest_api_socket: SocketAddr,
+    pub rest_api_url: Url,
     pub dir: PathBuf,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            rest_api_socket: *LND_SOCKET,
+            rest_api_url: LND_URL.clone(),
             dir: default_lnd_dir(),
         }
     }
@@ -176,13 +173,13 @@ mod tests {
     fn lnd_deserializes_correctly() {
         let actual = toml::from_str(
             r#"
-            rest_api_socket = "127.0.0.1:8080"
+            rest_api_url = "https://localhost:8080"
             dir = "~/.local/share/comit/lnd"
             "#,
         );
 
         let expected = Lnd {
-            rest_api_socket: *LND_SOCKET,
+            rest_api_url: LND_URL.clone(),
             dir: PathBuf::from("~/.local/share/comit/lnd"),
         };
 
@@ -195,7 +192,7 @@ mod tests {
             r#"
             network = "regtest"
             [lnd]
-            rest_api_socket = "127.0.0.1:8080"
+            rest_api_url = "https://localhost:8080"
             dir = "/path/to/lnd"
             "#,
         );
@@ -203,7 +200,7 @@ mod tests {
         let expected = Lightning {
             network: bitcoin::Network::Regtest,
             lnd: Lnd {
-                rest_api_socket: *LND_SOCKET,
+                rest_api_url: LND_URL.clone(),
                 dir: PathBuf::from("/path/to/lnd"),
             },
         };

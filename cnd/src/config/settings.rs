@@ -218,7 +218,7 @@ impl Settings {
                     lnd: match lightning.lnd {
                         None => Lnd::default(),
                         Some(lnd) => Lnd {
-                            rest_api_socket: lnd.rest_api_socket,
+                            rest_api_url: lnd.rest_api_url,
                             dir: lnd.dir,
                         },
                     },
