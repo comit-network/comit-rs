@@ -5,17 +5,14 @@ pub mod validation;
 
 use crate::swap_protocols::ledger::ethereum;
 use libp2p::Multiaddr;
+use reqwest::Url;
 use serde::{Deserialize, Serialize};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
-};
+use std::path::PathBuf;
 
 pub use self::{file::File, settings::Settings};
-use reqwest::Url;
 
 lazy_static::lazy_static! {
-    pub static ref LND_SOCKET: SocketAddr = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), 8080);
+    pub static ref LND_URL: Url = Url::parse("https://localhost:8080").expect("static string to be a valid url");
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
@@ -37,7 +34,7 @@ pub struct Bitcoin {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Bitcoind {
-    pub node_url: reqwest::Url,
+    pub node_url: Url,
 }
 
 impl Default for Bitcoin {
@@ -90,35 +87,44 @@ impl Default for Ethereum {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Parity {
-    pub node_url: reqwest::Url,
+    pub node_url: Url,
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lightning {
     pub network: bitcoin::Network,
-    pub lnd: Option<Lnd>,
+    pub lnd: Lnd,
 }
 
 impl Default for Lightning {
     fn default() -> Self {
         Self {
             network: bitcoin::Network::Regtest,
-            lnd: Some(Lnd::default()),
+            lnd: Lnd::default(),
+        }
+    }
+}
+
+impl From<Lightning> for file::Lightning {
+    fn from(lightning: Lightning) -> Self {
+        file::Lightning {
+            lnd: Some(lightning.lnd),
+            network: lightning.network,
         }
     }
 }
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Lnd {
-    pub rest_api_socket: Option<SocketAddr>,
-    pub dir: Option<PathBuf>,
+    pub rest_api_url: Url,
+    pub dir: PathBuf,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
         Self {
-            rest_api_socket: Some(*LND_SOCKET),
-            dir: Some(default_lnd_dir()),
+            rest_api_url: LND_URL.clone(),
+            dir: default_lnd_dir(),
         }
     }
 }
@@ -165,77 +171,40 @@ mod tests {
 
     #[test]
     fn lnd_deserializes_correctly() {
-        let file_contents = vec![
+        let actual = toml::from_str(
             r#"
-            rest_api_socket = "127.0.0.1:8080"
+            rest_api_url = "https://localhost:8080"
             dir = "~/.local/share/comit/lnd"
             "#,
-            r#"
-            rest_api_socket = "127.0.0.1:8080"
-            "#,
-            r#"
-            dir = "~/.local/share/comit/lnd"
-            "#,
-        ];
+        );
 
-        let expected = vec![
-            Lnd {
-                rest_api_socket: Some(*LND_SOCKET),
-                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
-            },
-            Lnd {
-                rest_api_socket: Some(*LND_SOCKET),
-                dir: None,
-            },
-            Lnd {
-                rest_api_socket: None,
-                dir: Some(PathBuf::from("~/.local/share/comit/lnd")),
-            },
-        ];
+        let expected = Lnd {
+            rest_api_url: LND_URL.clone(),
+            dir: PathBuf::from("~/.local/share/comit/lnd"),
+        };
 
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Lnd>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
+        assert_eq!(actual, Ok(expected));
     }
 
     #[test]
     fn lightning_deserializes_correctly() {
-        let file_contents = vec![
-            r#"
-            network = "regtest"
-            "#,
+        let actual = toml::from_str(
             r#"
             network = "regtest"
             [lnd]
-            rest_api_socket = "127.0.0.1:8080"
+            rest_api_url = "https://localhost:8080"
             dir = "/path/to/lnd"
             "#,
-        ];
+        );
 
-        let expected = vec![
-            Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: None,
+        let expected = Lightning {
+            network: bitcoin::Network::Regtest,
+            lnd: Lnd {
+                rest_api_url: LND_URL.clone(),
+                dir: PathBuf::from("/path/to/lnd"),
             },
-            Lightning {
-                network: bitcoin::Network::Regtest,
-                lnd: Some(Lnd {
-                    rest_api_socket: Some(*LND_SOCKET),
-                    dir: Some(PathBuf::from("/path/to/lnd")),
-                }),
-            },
-        ];
+        };
 
-        let actual = file_contents
-            .into_iter()
-            .map(toml::from_str)
-            .collect::<Result<Vec<Lightning>, toml::de::Error>>()
-            .unwrap();
-
-        assert_eq!(actual, expected);
+        assert_eq!(actual, Ok(expected));
     }
 }
