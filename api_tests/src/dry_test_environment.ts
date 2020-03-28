@@ -55,6 +55,7 @@ export default class DryTestEnvironment extends NodeEnvironment {
                         type: "pattern",
                         pattern: "%d %5.10p: %m",
                     },
+                    timeout: 5000,
                 },
             },
             categories: {
