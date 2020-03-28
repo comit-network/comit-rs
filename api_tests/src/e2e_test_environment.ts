@@ -258,19 +258,23 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         const tasks = [];
 
         if (this.bitcoinLedger) {
-            tasks.push(this.bitcoinLedger.stop);
+            tasks.push(this.bitcoinLedger.stop());
         }
 
         if (this.ethereumLedger) {
-            tasks.push(this.ethereumLedger.stop);
+            tasks.push(this.ethereumLedger.stop());
         }
 
         if (this.aliceLightning) {
-            tasks.push(this.aliceLightning.stop);
+            tasks.push(this.aliceLightning.stop());
         }
 
         if (this.bobLightning) {
-            tasks.push(this.bobLightning.stop);
+            tasks.push(this.bobLightning.stop());
+        }
+
+        for (const [, wallet] of Object.entries(this.global.lndWallets)) {
+            tasks.push(wallet.close());
         }
 
         await Promise.all(tasks);

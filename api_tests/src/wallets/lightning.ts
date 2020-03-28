@@ -172,4 +172,8 @@ export class LightningWallet implements Wallet {
         await sleep(500);
         return this.pollUntilChannelIsOpen(outpoint);
     }
+
+    public async close(): Promise<void> {
+        return this.bitcoinWallet.close();
+    }
 }

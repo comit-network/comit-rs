@@ -98,4 +98,8 @@ export class BitcoinWallet implements Wallet {
 
         return blockchainInfo.mediantime;
     }
+
+    public async close(): Promise<void> {
+        return this.inner.close();
+    }
 }

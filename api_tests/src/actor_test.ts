@@ -32,7 +32,8 @@ function nActorTest(
             throw e;
         } finally {
             for (const actorName of actorNames) {
-                await actors.getActorByName(actorName).stop();
+                const actor = actors.getActorByName(actorName);
+                await Promise.all([actor.stop(), actor.wallets.close()]);
             }
         }
         done();
