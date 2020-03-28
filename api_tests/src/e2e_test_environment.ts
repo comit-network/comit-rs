@@ -13,7 +13,7 @@ import EthereumLedger from "./ledgers/ethereum";
 import LightningLedger from "./ledgers/lightning";
 import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
-import { configure, Logger } from "log4js";
+import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -251,6 +251,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.logger.info("Tearing down test environment");
 
         await this.cleanupAll();
+
+        loggerShutdown();
+
         this.logger.info("Tearing down complete");
     }
 
