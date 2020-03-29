@@ -1,8 +1,5 @@
 use crate::swap_protocols::{
-    halight::{
-        Accepted, Cancelled, InvoiceAccepted, InvoiceCancelled, InvoiceOpened, InvoiceSettled,
-        Opened, Params, Settled,
-    },
+    halight::{InvoiceAccepted, InvoiceCancelled, InvoiceOpened, InvoiceSettled, Params, Settled},
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;
@@ -113,10 +110,10 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<Opened, Error> {
+    async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
         // At this stage there is no way for Alice to know when
         // the invoice is added on Bob's side
-        Ok(Opened)
+        Ok(())
     }
 }
 
@@ -127,7 +124,7 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<Accepted, Error> {
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_payment(params.secret_hash, PaymentStatus::InFlight)
             .await?
@@ -136,7 +133,7 @@ where
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
 
-        Ok(Accepted)
+        Ok(())
     }
 }
 
@@ -178,7 +175,7 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<Cancelled, Error> {
+    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
@@ -187,7 +184,7 @@ where
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
 
-        Ok(Cancelled)
+        Ok(())
     }
 }
 
@@ -244,7 +241,7 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<Opened, Error> {
+    async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
         let mut resp = client(&self.certificate)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()
@@ -255,7 +252,7 @@ where
             resp = reqwest::get(self.invoice_url(params.secret_hash)?).await?;
         }
         let _invoice_response = resp.json::<Invoice>().await?;
-        Ok(Opened)
+        Ok(())
     }
 }
 
@@ -266,7 +263,7 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<Accepted, Error> {
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_invoice(params.secret_hash, InvoiceState::Accepted)
             .await?
@@ -274,7 +271,7 @@ where
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
-        Ok(Accepted)
+        Ok(())
     }
 }
 
@@ -309,7 +306,7 @@ where
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<Cancelled, Error> {
+    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?
@@ -317,7 +314,7 @@ where
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
-        Ok(Cancelled)
+        Ok(())
     }
 }
 

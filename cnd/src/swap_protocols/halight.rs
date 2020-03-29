@@ -18,12 +18,12 @@ use tokio::sync::Mutex;
 
 #[async_trait::async_trait]
 pub trait InvoiceOpened<L, A, I> {
-    async fn invoice_opened(&self, params: Params<L, A, I>) -> anyhow::Result<Opened>;
+    async fn invoice_opened(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
 pub trait InvoiceAccepted<L, A, I> {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> anyhow::Result<Accepted>;
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
@@ -33,36 +33,32 @@ pub trait InvoiceSettled<L, A, I> {
 
 #[async_trait::async_trait]
 pub trait InvoiceCancelled<L, A, I> {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<Cancelled>;
+    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
+/// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum InvoiceState {
     None,
     Opened,
     Accepted,
-    Settled,
+    Settled(Settled),
     Cancelled,
 }
 
+/// Represents events that have occurred, transitioning the state.
 #[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
-    Opened(Opened),
-    Accepted(Accepted),
+    Opened,
+    Accepted,
     Settled(Settled),
-    Cancelled(Cancelled),
+    Cancelled,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Opened;
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Accepted;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Settled {
     pub secret: Secret,
 }
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Cancelled;
 
 #[derive(Default, Debug)]
 pub struct InvoiceStates {
@@ -70,17 +66,35 @@ pub struct InvoiceStates {
 }
 
 impl InvoiceState {
-    pub fn transition_to_opened(&mut self, _opened: Opened) {
-        unimplemented!()
+    pub fn transition_to_opened(&mut self) {
+        match std::mem::replace(self, InvoiceState::None) {
+            InvoiceState::None => *self = InvoiceState::Opened,
+            other => panic!("expected state None, got {:?}", other),
+        }
     }
-    pub fn transition_to_accepted(&mut self, _accepted: Accepted) {
-        unimplemented!()
+
+    pub fn transition_to_accepted(&mut self) {
+        match std::mem::replace(self, InvoiceState::None) {
+            InvoiceState::Opened => *self = InvoiceState::Accepted,
+            other => panic!("expected state Opened, got {:?}", other),
+        }
     }
-    pub fn transition_to_settled(&mut self, _settled: Settled) {
-        unimplemented!()
+
+    pub fn transition_to_settled(&mut self, settled: Settled) {
+        match std::mem::replace(self, InvoiceState::None) {
+            InvoiceState::Accepted => *self = InvoiceState::Settled(settled),
+            other => panic!("expected state Accepted, got {:?}", other),
+        }
     }
-    pub fn transition_to_cancelled(&mut self, _cancelled: Cancelled) {
-        unimplemented!()
+
+    pub fn transition_to_cancelled(&mut self) {
+        match std::mem::replace(self, InvoiceState::None) {
+            // Alice cancels invoice before Bob has accepted it.
+            InvoiceState::Opened => *self = InvoiceState::Accepted,
+            // Alice cancels invoice after Bob has accepted it.
+            InvoiceState::Accepted => *self = InvoiceState::Cancelled,
+            other => panic!("expected state Opened or Accepted, got {:?}", other),
+        }
     }
 }
 
@@ -118,10 +132,10 @@ impl state::Update<Event> for InvoiceStates {
         };
 
         match event {
-            Event::Opened(opened) => state.transition_to_opened(opened),
-            Event::Accepted(accepted) => state.transition_to_accepted(accepted),
+            Event::Opened => state.transition_to_opened(),
+            Event::Accepted => state.transition_to_accepted(),
             Event::Settled(settled) => state.transition_to_settled(settled),
-            Event::Cancelled(cancelled) => state.transition_to_cancelled(cancelled),
+            Event::Cancelled => state.transition_to_cancelled(),
         }
     }
 }
@@ -190,10 +204,10 @@ where
     Params<L, A, I>: Clone,
 {
     let opened = lnd_connector.invoice_opened(htlc_params.clone()).await?;
-    co.yield_(Event::Opened(opened.clone())).await;
+    co.yield_(Event::Opened).await;
 
     let accepted = lnd_connector.invoice_accepted(htlc_params.clone()).await?;
-    co.yield_(Event::Accepted(accepted)).await;
+    co.yield_(Event::Accepted).await;
 
     let settled = lnd_connector.invoice_settled(htlc_params.clone());
 
@@ -204,7 +218,7 @@ where
             co.yield_(Event::Settled(settled.clone())).await;
         }
         Ok(Either::Right((cancelled, _))) => {
-            co.yield_(Event::Cancelled(cancelled.clone())).await;
+            co.yield_(Event::Cancelled).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
