@@ -203,10 +203,10 @@ where
         + InvoiceCancelled<L, A, I>,
     Params<L, A, I>: Clone,
 {
-    let opened = lnd_connector.invoice_opened(htlc_params.clone()).await?;
+    lnd_connector.invoice_opened(htlc_params.clone()).await?;
     co.yield_(Event::Opened).await;
 
-    let accepted = lnd_connector.invoice_accepted(htlc_params.clone()).await?;
+    lnd_connector.invoice_accepted(htlc_params.clone()).await?;
     co.yield_(Event::Accepted).await;
 
     let settled = lnd_connector.invoice_settled(htlc_params.clone());
@@ -217,7 +217,7 @@ where
         Ok(Either::Left((settled, _))) => {
             co.yield_(Event::Settled(settled.clone())).await;
         }
-        Ok(Either::Right((cancelled, _))) => {
+        Ok(Either::Right((_cancelled, _))) => {
             co.yield_(Event::Cancelled).await;
         }
         Err(either) => {
