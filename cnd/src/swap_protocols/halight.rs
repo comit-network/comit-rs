@@ -13,7 +13,7 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
-use std::{any::Any, collections::HashMap, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 #[async_trait::async_trait]
@@ -62,7 +62,7 @@ pub struct Settled {
 
 #[derive(Default, Debug)]
 pub struct InvoiceStates {
-    states: Mutex<HashMap<SwapId, Box<dyn Any + Send>>>,
+    states: Mutex<HashMap<SwapId, InvoiceState>>,
 }
 
 impl InvoiceState {
@@ -99,20 +99,19 @@ impl InvoiceState {
 }
 
 #[async_trait::async_trait]
-impl<S> state::Insert<S> for InvoiceStates
-where
-    S: Send + 'static,
-{
-    async fn insert(&self, key: SwapId, value: S) {
+impl state::Insert<InvoiceState> for InvoiceStates {
+    async fn insert(&self, key: SwapId, value: InvoiceState) {
         let mut states = self.states.lock().await;
-        states.insert(key, Box::new(value));
+        states.insert(key, value);
     }
 }
 
 #[async_trait::async_trait]
 impl state::Get<InvoiceState> for InvoiceStates {
-    async fn get(&self, _key: &SwapId) -> anyhow::Result<Option<InvoiceState>> {
-        unimplemented!()
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Option<InvoiceState>> {
+        let states = self.states.lock().await;
+        let state = states.get(key).map(|s| *s);
+        Ok(state)
     }
 }
 
@@ -120,10 +119,7 @@ impl state::Get<InvoiceState> for InvoiceStates {
 impl state::Update<Event> for InvoiceStates {
     async fn update(&self, key: &SwapId, event: Event) {
         let mut states = self.states.lock().await;
-        let state = match states
-            .get_mut(key)
-            .and_then(|state| state.downcast_mut::<InvoiceState>())
-        {
+        let state = match states.get_mut(key) {
             Some(state) => state,
             None => {
                 tracing::warn!("Value not found for key {}", key);
