@@ -174,10 +174,10 @@ where
     async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
-        while !self
+        while self
             .find_payment(params.secret_hash, PaymentStatus::InFlight)
             .await?
-            .is_some()
+            .is_none()
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
@@ -225,10 +225,10 @@ where
     I: Send + 'static,
 {
     async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
-        while !self
+        while self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
-            .is_some()
+            .is_none()
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
@@ -332,10 +332,10 @@ where
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
         // updating the invoice status.
-        while !self
+        while self
             .find_invoice(params.secret_hash, InvoiceState::Accepted)
             .await?
-            .is_some()
+            .is_none()
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
@@ -375,10 +375,10 @@ where
     I: Send + 'static,
 {
     async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
-        while !self
+        while self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?
-            .is_some()
+            .is_none()
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
