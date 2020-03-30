@@ -7,6 +7,7 @@ use crate::{
     ethereum::{Bytes, U256},
     htlc_location,
     http_api::{action::ToSirenAction, problem},
+    identity,
     network::comit_ln,
     swap_protocols::{
         actions::{
@@ -133,7 +134,7 @@ impl Actions for AliceEthLnState {
             let cltv_delta = unimplemented!();
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
-            let self_public_key = self.finalized_swap.alpha_ledger_redeem_identity;
+            let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
 
             return vec![ActionKind::Init(lnd::AddHoldInvoice {
                 amount,
