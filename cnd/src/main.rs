@@ -53,9 +53,11 @@ fn main() -> anyhow::Result<()> {
 
     crate::trace::init_tracing(settings.logging.level)?;
 
-    let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
+    let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+
+    let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
 
     let mut runtime = runtime::Builder::new()
         .enable_all()
@@ -114,8 +116,6 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
-
-    let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
     let swarm = Swarm::new(
         &settings,
