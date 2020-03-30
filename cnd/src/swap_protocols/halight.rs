@@ -17,13 +17,13 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 #[async_trait::async_trait]
-pub trait InvoiceAdded<L, A, I> {
-    async fn invoice_added(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
+pub trait InvoiceOpened<L, A, I> {
+    async fn invoice_opened(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
-pub trait InvoicePaymentSent<L, A, I> {
-    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
+pub trait InvoiceAccepted<L, A, I> {
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
@@ -40,8 +40,8 @@ pub trait InvoiceCancelled<L, A, I> {
 #[derive(Debug, Clone, Copy)]
 pub enum InvoiceState {
     None,
-    Added,
-    PaymentSent,
+    Opened,
+    Accepted,
     Settled(Settled),
     Cancelled,
 }
@@ -49,8 +49,8 @@ pub enum InvoiceState {
 /// Represents events that have occurred, transitioning the state.
 #[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
-    Added,
-    PaymentSent,
+    Opened,
+    Accepted,
     Settled(Settled),
     Cancelled,
 }
@@ -68,32 +68,32 @@ pub struct InvoiceStates {
 impl InvoiceState {
     pub fn transition_to_opened(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::None => *self = InvoiceState::Added,
+            InvoiceState::None => *self = InvoiceState::Opened,
             other => panic!("expected state None, got {:?}", other),
         }
     }
 
     pub fn transition_to_accepted(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::Added => *self = InvoiceState::PaymentSent,
-            other => panic!("expected state Added, got {:?}", other),
+            InvoiceState::Opened => *self = InvoiceState::Accepted,
+            other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
     pub fn transition_to_settled(&mut self, settled: Settled) {
         match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::PaymentSent => *self = InvoiceState::Settled(settled),
-            other => panic!("expected state PaymentSent, got {:?}", other),
+            InvoiceState::Accepted => *self = InvoiceState::Settled(settled),
+            other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
     pub fn transition_to_cancelled(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
             // Alice cancels invoice before Bob has accepted it.
-            InvoiceState::Added => *self = InvoiceState::PaymentSent,
+            InvoiceState::Opened => *self = InvoiceState::Accepted,
             // Alice cancels invoice after Bob has accepted it.
-            InvoiceState::PaymentSent => *self = InvoiceState::Cancelled,
-            other => panic!("expected state Added or PaymentSent, got {:?}", other),
+            InvoiceState::Accepted => *self = InvoiceState::Cancelled,
+            other => panic!("expected state Opened or Accepted, got {:?}", other),
         }
     }
 }
@@ -128,8 +128,8 @@ impl state::Update<Event> for InvoiceStates {
         };
 
         match event {
-            Event::Added => state.transition_to_opened(),
-            Event::PaymentSent => state.transition_to_accepted(),
+            Event::Opened => state.transition_to_opened(),
+            Event::Accepted => state.transition_to_accepted(),
             Event::Settled(settled) => state.transition_to_settled(settled),
             Event::Cancelled => state.transition_to_cancelled(),
         }
@@ -144,15 +144,15 @@ pub async fn create_watcher<C, L, A, I>(
     finalized_at: NaiveDateTime,
 ) where
     // TODO: add FailedInsertSwap
-    C: InvoiceAdded<L, A, I>
-        + InvoicePaymentSent<L, A, I>
+    C: InvoiceOpened<L, A, I>
+        + InvoiceAccepted<L, A, I>
         + InvoiceSettled<L, A, I>
         + InvoiceCancelled<L, A, I>,
     L: Clone,
     A: Ord + Clone,
     I: Clone,
 {
-    invoice_states.insert(id, InvoiceState::Added).await;
+    invoice_states.insert(id, InvoiceState::Opened).await;
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
@@ -193,19 +193,17 @@ async fn watch_ledger<C, L, A, I>(
     _start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    C: InvoiceAdded<L, A, I>
-        + InvoicePaymentSent<L, A, I>
+    C: InvoiceOpened<L, A, I>
+        + InvoiceAccepted<L, A, I>
         + InvoiceSettled<L, A, I>
         + InvoiceCancelled<L, A, I>,
     Params<L, A, I>: Clone,
 {
-    lnd_connector.invoice_added(htlc_params.clone()).await?;
-    co.yield_(Event::Added).await;
+    lnd_connector.invoice_opened(htlc_params.clone()).await?;
+    co.yield_(Event::Opened).await;
 
-    lnd_connector
-        .invoice_payment_sent(htlc_params.clone())
-        .await?;
-    co.yield_(Event::PaymentSent).await;
+    lnd_connector.invoice_accepted(htlc_params.clone()).await?;
+    co.yield_(Event::Accepted).await;
 
     let settled = lnd_connector.invoice_settled(htlc_params.clone());
 

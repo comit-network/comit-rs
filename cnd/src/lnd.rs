@@ -1,7 +1,5 @@
 use crate::swap_protocols::{
-    halight::{
-        InvoiceAdded, InvoiceCancelled, InvoicePaymentSent, InvoiceSettled, Params, Settled,
-    },
+    halight::{InvoiceAccepted, InvoiceCancelled, InvoiceOpened, InvoiceSettled, Params, Settled},
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;
@@ -13,13 +11,13 @@ use std::{io::Read, path::PathBuf, time::Duration};
 #[serde(untagged)]
 enum InvoiceState {
     #[serde(rename = "0")]
-    Added,
+    Opened,
     #[serde(rename = "1")]
-    PaymentSent,
-    #[serde(rename = "2")]
     Settled,
-    #[serde(rename = "3")]
+    #[serde(rename = "2")]
     Cancelled,
+    #[serde(rename = "3")]
+    Accepted,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
@@ -147,13 +145,13 @@ impl LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAdded<L, A, I> for LndConnectorAsSender
+impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_added(&self, _params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
         // At this stage there is no way for Alice to know when
         // the invoice is added on Bob's side
         Ok(())
@@ -161,13 +159,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoicePaymentSent<L, A, I> for LndConnectorAsSender
+impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_payment(params.secret_hash, PaymentStatus::InFlight)
             .await?
@@ -285,13 +283,13 @@ impl LndConnectorAsRecipient {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAdded<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsRecipient
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_added(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
         let mut resp = client(self.certificate.certificate()?)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()
@@ -307,15 +305,15 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoicePaymentSent<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsRecipient
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
-            .find_invoice(params.secret_hash, InvoiceState::PaymentSent)
+            .find_invoice(params.secret_hash, InvoiceState::Accepted)
             .await?
             .is_some()
         {

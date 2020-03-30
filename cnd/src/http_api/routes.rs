@@ -147,7 +147,7 @@ impl Actions for AliceEthLnState {
             })];
         }
 
-        if let InvoiceState::Added = self.beta_ledger_state {
+        if let InvoiceState::Opened = self.beta_ledger_state {
             let eth_htlc = self.finalized_swap.han_params();
             let data = eth_htlc.into();
             let amount = self.finalized_swap.alpha_asset.clone();
@@ -164,7 +164,7 @@ impl Actions for AliceEthLnState {
 
         let mut actions = vec![];
 
-        if let InvoiceState::PaymentSent = self.beta_ledger_state {
+        if let InvoiceState::Accepted = self.beta_ledger_state {
             let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
@@ -179,7 +179,7 @@ impl Actions for AliceEthLnState {
         }
 
         if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let InvoiceState::PaymentSent = self.beta_ledger_state {
+            if let InvoiceState::Accepted = self.beta_ledger_state {
                 let to = htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
@@ -209,7 +209,7 @@ impl Actions for BobEthLnState {
         let mut actions = vec![];
 
         if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let InvoiceState::Added = self.beta_ledger_state {
+            if let InvoiceState::Opened = self.beta_ledger_state {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset.clone();
                 let secret_hash = self.finalized_swap.secret_hash;
