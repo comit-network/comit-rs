@@ -72,7 +72,6 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
 describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
     it(
         "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
-        // @ts-ignore: will use bob later
         twoActorTest(async ({ alice, bob }) => {
             const locationAlice = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
                 defaultHanEthereumEtherHalightLightningBitcoin(
