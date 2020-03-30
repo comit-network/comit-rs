@@ -128,15 +128,15 @@ impl ComitLN {
 
         match body.role() {
             Role::Alice => {
-                self.announce
-                    .start_announce_protocol(digest.clone(), body.peer);
-
                 if self.swaps_waiting_for_announcement.contains_key(&digest) {
                     // To fix this panic, we should either pass the local swap id to the
                     // announce behaviour or get a unique token from the behaviour that
                     // we can use to track the progress of the announcement
                     panic!("cannot send two swaps with the same digest at the same time!")
                 }
+
+                self.announce
+                    .start_announce_protocol(digest.clone(), body.peer);
 
                 self.swaps_waiting_for_announcement.insert(digest, id);
             }

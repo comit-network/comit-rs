@@ -52,6 +52,8 @@ impl Announce {
     /// * `swap_digest` - The swap to announce.
     /// * `dial_info` - The `PeerId` and address hint to dial to Bob's node.
     pub fn start_announce_protocol(&mut self, swap_digest: SwapDigest, dial_info: DialInformation) {
+        tracing::info!("Announcing swap {} to {}", swap_digest, dial_info.peer_id);
+
         match self.connections.entry(dial_info.peer_id.clone()) {
             Entry::Vacant(entry) => {
                 self.events.push_back(NetworkBehaviourAction::DialPeer {

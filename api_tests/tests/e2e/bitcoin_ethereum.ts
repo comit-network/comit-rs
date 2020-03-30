@@ -74,12 +74,9 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
         "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
         // @ts-ignore: will use bob later
         twoActorTest(async ({ alice, bob }) => {
-            const aliceLndPubkey = await global.lndWallets.alice.inner.getPubkey();
-            const bobLndPubkey = await global.lndWallets.bob.inner.getPubkey();
-
             const locationAlice = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
                 defaultHanEthereumEtherHalightLightningBitcoin(
-                    bobLndPubkey,
+                    await global.lndWallets.bob.inner.getPubkey(),
                     {
                         peer_id: await bob.cnd.getPeerId(),
                         address_hint: await bob.cnd
@@ -90,18 +87,20 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
                 )
             );
 
-            const locationBob = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+            const locationBob = await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
                 defaultHanEthereumEtherHalightLightningBitcoin(
-                    aliceLndPubkey,
+                    await global.lndWallets.alice.inner.getPubkey(),
                     {
                         peer_id: await alice.cnd.getPeerId(),
                         address_hint: await alice.cnd
                             .getPeerListenAddresses()
                             .then((addresses) => addresses[0]),
                     },
-                    "Alice"
+                    "Bob"
                 )
             );
+
+            await sleep(15000);
 
             expect(locationAlice).toBeDefined();
             expect(locationBob).toBeDefined();
