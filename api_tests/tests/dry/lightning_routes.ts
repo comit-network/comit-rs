@@ -20,7 +20,6 @@ describe("Lightning routes tests", () => {
             const body = defaultHanEthereumEtherHalightLightningBitcoin("", {
                 peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
             });
-            console.log(JSON.stringify(body, undefined, 2));
             const location = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
                 body
             );
