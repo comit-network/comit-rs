@@ -3,7 +3,7 @@ import { execAsync, HarnessGlobal, mkdirAsync, rimrafAsync } from "./utils";
 import NodeEnvironment from "jest-environment-node";
 import { Mutex } from "async-mutex";
 import path from "path";
-import { configure } from "log4js";
+import { configure, shutdown as loggerShutdown } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -55,6 +55,7 @@ export default class DryTestEnvironment extends NodeEnvironment {
                         type: "pattern",
                         pattern: "%d %5.10p: %m",
                     },
+                    timeout: 5000,
                 },
             },
             categories: {
@@ -83,6 +84,8 @@ export default class DryTestEnvironment extends NodeEnvironment {
 
     async teardown() {
         await super.teardown();
+
+        loggerShutdown();
     }
 
     private extractDocblockPragmas(

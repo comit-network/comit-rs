@@ -13,7 +13,7 @@ import EthereumLedger from "./ledgers/ethereum";
 import LightningLedger from "./ledgers/lightning";
 import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
-import { configure, Logger } from "log4js";
+import { configure, Logger, shutdown as loggerShutdown } from "log4js";
 
 // ************************ //
 // Setting global variables //
@@ -73,6 +73,7 @@ export default class E2ETestEnvironment extends NodeEnvironment {
                         type: "pattern",
                         pattern: "%d %5.10p: %m",
                     },
+                    timeout: 5000,
                 },
             },
             categories: {
@@ -251,6 +252,9 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         this.logger.info("Tearing down test environment");
 
         await this.cleanupAll();
+
+        loggerShutdown();
+
         this.logger.info("Tearing down complete");
     }
 
@@ -258,19 +262,23 @@ export default class E2ETestEnvironment extends NodeEnvironment {
         const tasks = [];
 
         if (this.bitcoinLedger) {
-            tasks.push(this.bitcoinLedger.stop);
+            tasks.push(this.bitcoinLedger.stop());
         }
 
         if (this.ethereumLedger) {
-            tasks.push(this.ethereumLedger.stop);
+            tasks.push(this.ethereumLedger.stop());
         }
 
         if (this.aliceLightning) {
-            tasks.push(this.aliceLightning.stop);
+            tasks.push(this.aliceLightning.stop());
         }
 
         if (this.bobLightning) {
-            tasks.push(this.bobLightning.stop);
+            tasks.push(this.bobLightning.stop());
+        }
+
+        for (const [, wallet] of Object.entries(this.global.lndWallets)) {
+            tasks.push(wallet.close());
         }
 
         await Promise.all(tasks);
