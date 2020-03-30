@@ -159,7 +159,7 @@ where
 {
     async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
         // At this stage there is no way for the sender to know when the invoice is
-        // added on recipient's side.
+        // added on receiver's side.
         Ok(())
     }
 }
@@ -244,13 +244,13 @@ where
 /// on the invoice state.  Since as the receiver, we add the invoice we have
 /// access to its state.
 #[derive(Clone, Debug)]
-pub struct LndConnectorAsRecipient {
+pub struct LndConnectorAsReceiver {
     lnd_url: Url,
     retry_interval_ms: u64,
     certificate: LazyCertificate,
 }
 
-impl From<LndConnectorParams> for LndConnectorAsRecipient {
+impl From<LndConnectorParams> for LndConnectorAsReceiver {
     fn from(params: LndConnectorParams) -> Self {
         Self {
             lnd_url: params.lnd_url,
@@ -260,7 +260,7 @@ impl From<LndConnectorParams> for LndConnectorAsRecipient {
     }
 }
 
-impl LndConnectorAsRecipient {
+impl LndConnectorAsReceiver {
     pub fn read_certificate(self) -> Result<Self, Error> {
         Ok(Self {
             certificate: self.certificate.read()?,
@@ -297,7 +297,7 @@ impl LndConnectorAsRecipient {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
@@ -320,7 +320,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
@@ -339,7 +339,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceSettled<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceSettled<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
@@ -363,7 +363,7 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceCancelled<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceCancelled<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,

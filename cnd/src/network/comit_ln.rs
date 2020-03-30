@@ -5,7 +5,7 @@ use crate::{
     htlc_location,
     http_api::routes::index::Body,
     identity,
-    lnd::{LndConnectorAsRecipient, LndConnectorAsSender, LndConnectorParams},
+    lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
     network::{
         oneshot_behaviour,
         protocols::{
@@ -62,7 +62,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     lnd_connector_as_sender: Arc<LndConnectorAsSender>,
     #[behaviour(ignore)]
-    lnd_connector_as_recipient: Arc<LndConnectorAsRecipient>,
+    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
 
     // FIXME: Ethereum stuff only (han-halight)
     #[behaviour(ignore)]
@@ -107,7 +107,7 @@ impl ComitLN {
             communication_state: Default::default(),
             secret_hashes: Default::default(),
             lnd_connector_as_sender: Arc::new(lnd_connector_params.clone().into()),
-            lnd_connector_as_recipient: Arc::new(lnd_connector_params.into()),
+            lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
             ethereum_connector,
             ethereum_ledger_state,
             seed,
@@ -531,7 +531,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             if body.role() == Role::Alice {
                 tokio::task::spawn({
-                    let lnd_connector = (*self.lnd_connector_as_recipient)
+                    let lnd_connector = (*self.lnd_connector_as_receiver)
                         .clone()
                         // TODO: Panicking now may not be the best.
                         // It would be great to do this part when REST API call is received
