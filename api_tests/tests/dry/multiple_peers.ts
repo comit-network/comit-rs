@@ -4,7 +4,6 @@
 
 import { threeActorTest } from "../../src/actor_test";
 import { createDefaultSwapRequest } from "../../src/utils";
-import { expect } from "chai";
 import { SwapDetails } from "comit-sdk";
 
 interface MatchInterface {
@@ -55,21 +54,21 @@ describe("Multiple peers tests", () => {
                 aliceToCharlieSwapUrl
             );
 
-            expect(
-                bobSwapDetails.properties,
-                "[Bob] should have same id as Alice"
-            ).to.have.property("id", aliceToBobSwapDetails.properties.id);
-            expect(
-                charlieSwapDetails.properties,
-                "[Charlie] should have same id as Alice"
-            ).to.have.property("id", aliceToCharlieSwapDetails.properties.id);
+            expect(bobSwapDetails.properties).toContainEntry([
+                "id",
+                aliceToBobSwapDetails.properties.id,
+            ]);
+            expect(charlieSwapDetails.properties).toContainEntry([
+                "id",
+                aliceToCharlieSwapDetails.properties.id,
+            ]);
 
             expect(
                 [
                     aliceToBobSwapDetails,
                     aliceToCharlieSwapDetails,
                 ].map((swapDetail) => toMatch(swapDetail))
-            ).to.have.deep.members([
+            ).toIncludeSameMembers([
                 toMatch(bobSwapDetails),
                 toMatch(charlieSwapDetails),
             ]);

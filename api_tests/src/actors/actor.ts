@@ -1,4 +1,3 @@
-import { expect } from "chai";
 import {
     BigNumber,
     Cnd,
@@ -489,7 +488,7 @@ export class Actor {
                 defaultAssetDescription(asset, ledger)
             );
 
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+            expect(currentWalletBalance.gte(balanceInclFees)).toBeTruthy();
 
             this.logger.debug(
                 "Balance check was positive, current balance is %d",
@@ -519,7 +518,7 @@ export class Actor {
                 defaultAssetDescription(asset, ledger)
             );
             const balanceInclFees = expectedBalance.minus(maximumFee);
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
+            expect(currentWalletBalance.gte(balanceInclFees)).toBeTruthy();
         }
     }
 
@@ -836,7 +835,7 @@ export class Actor {
     ): Promise<Entity> {
         const response = await this.cnd.fetch(location);
 
-        expect(response).to.have.status(200);
+        expect(response.status).toBe(200);
 
         if (predicate(response.data)) {
             return response.data;

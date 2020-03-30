@@ -4,7 +4,7 @@
 
 import { threeActorTest, twoActorTest } from "../../src/actor_test";
 import { createDefaultSwapRequest, sleep } from "../../src/utils";
-import { expect, request } from "chai";
+import { request } from "chai";
 import { Actor } from "../../src/actors/actor";
 
 // ******************************************** //
@@ -14,19 +14,27 @@ import { Actor } from "../../src/actors/actor";
 async function assertNoPeersAvailable(actor: Actor, message: string) {
     const peersResponse = await request(actor.cndHttpApiUrl()).get("/peers");
 
-    expect(peersResponse.status).to.equal(200);
-    expect(peersResponse.body.peers, message).to.be.empty;
+    expect(peersResponse.status).toEqual(200);
+    try {
+        expect(peersResponse.body.peers).toBeArrayOfSize(0);
+    } catch (e) {
+        throw new Error(message);
+    }
 }
 
 async function assertPeersAvailable(alice: Actor, bob: Actor, message: string) {
     const peersResponse = await request(alice.cndHttpApiUrl()).get("/peers");
 
-    expect(peersResponse.status).to.equal(200);
-    expect(peersResponse.body.peers, message).to.containSubset([
-        {
-            id: await bob.cnd.getPeerId(),
-        },
-    ]);
+    expect(peersResponse.status).toEqual(200);
+
+    const bobPeerId = await bob.cnd.getPeerId();
+    try {
+        expect(
+            peersResponse.body.peers.map((peer: any) => peer.id)
+        ).toIncludeAnyMembers([bobPeerId]);
+    } catch (e) {
+        throw new Error(message);
+    }
 }
 
 describe("Peers using IP tests", () => {
@@ -35,8 +43,8 @@ describe("Peers using IP tests", () => {
         twoActorTest(async ({ alice }) => {
             const res = await request(alice.cndHttpApiUrl()).get("/peers");
 
-            expect(res.status).to.equal(200);
-            expect(res.body.peers).to.be.empty;
+            expect(res.status).toEqual(200);
+            expect(res.body.peers).toBeArrayOfSize(0);
         })
     );
 

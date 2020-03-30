@@ -8,4 +8,5 @@ module.exports = {
     moduleFileExtensions: ["ts", "js", "json", "node"],
     testEnvironment: "<rootDir>/dist/src/dry_test_environment",
     testTimeout: 63000,
+    setupFilesAfterEnv: ["jest-extended"],
 };
