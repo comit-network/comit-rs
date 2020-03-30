@@ -1,7 +1,7 @@
 import { Actors } from "./actors";
 import { createActors } from "./create_actors";
 import JasmineSmacker from "smack-my-jasmine-up";
-import { timeout } from "./utils";
+import pTimeout from "p-timeout";
 import ProvidesCallback = jest.ProvidesCallback;
 
 /*
@@ -24,7 +24,7 @@ function nActorTest(
         const actors = await createActors(name, actorNames);
 
         try {
-            await timeout(60_000, testFn(actors));
+            await pTimeout(testFn(actors), 60_000);
         } catch (e) {
             for (const actorName of actorNames) {
                 await actors.getActorByName(actorName).dumpState();
