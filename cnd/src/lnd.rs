@@ -304,7 +304,8 @@ where
     I: Send + 'static,
 {
     async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
-        // TODO: Validate Params here (cltv_expiry and amount)
+        // FIXME: Do we want to validate that the user used the correct swap parameters
+        // when adding the invoice?
         let mut resp = client(self.certificate.certificate()?)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()
@@ -327,6 +328,10 @@ where
     I: Send + 'static,
 {
     async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+        // Validation that sender payed the correct invoice is provided by LND.
+        // Since the sender uses the params to make the payment (as apposed to
+        // the invoice) LND guarantees that the params match the invoice when
+        // updating the invoice status.
         while !self
             .find_invoice(params.secret_hash, InvoiceState::Accepted)
             .await?
