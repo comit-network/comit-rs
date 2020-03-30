@@ -90,7 +90,7 @@ impl InvoiceState {
     pub fn transition_to_cancelled(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
             // Alice cancels invoice before Bob has accepted it.
-            InvoiceState::Opened => *self = InvoiceState::Accepted,
+            InvoiceState::Opened => *self = InvoiceState::Cancelled,
             // Alice cancels invoice after Bob has accepted it.
             InvoiceState::Accepted => *self = InvoiceState::Cancelled,
             other => panic!("expected state Opened or Accepted, got {:?}", other),
