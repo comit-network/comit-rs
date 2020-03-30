@@ -447,7 +447,12 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             if body.role() == Role::Alice {
                 tokio::task::spawn({
-                    let lnd_connector = self.lnd_connector_as_recipient.clone();
+                    let lnd_connector = (*self.lnd_connector_as_recipient)
+                        .clone()
+                        // TODO: Panicking now may not be the best.
+                        // It would be great to do this part when REST API call is received
+                        .read_certificate()
+                        .expect("Failure reading tls certificate");
                     let bob_ln_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
                     let alice_ln_identity =
                         identity::Lightning::from_str(&body.beta.identity).unwrap();
@@ -455,7 +460,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
                     async move {
                         halight::create_watcher(
-                            lnd_connector.as_ref(),
+                            &lnd_connector,
                             invoice_states,
                             swap_id,
                             halight::Params {
@@ -475,7 +480,12 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
             } else {
                 // This is Bob
                 tokio::task::spawn({
-                    let lnd_connector = self.lnd_connector_as_sender.clone();
+                    let lnd_connector = (*self.lnd_connector_as_sender)
+                        .clone()
+                        // TODO: Panicking now may not be the best.
+                        // It would be great to do this part when REST API call is received
+                        .read_certificate()
+                        .expect("Failure reading tls certificate");
                     let alice_ln_identity =
                         self.lightning_identities.get(&swap_id).copied().unwrap();
                     let bob_ln_identity =
@@ -484,7 +494,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
                     async move {
                         halight::create_watcher(
-                            lnd_connector.as_ref(),
+                            &lnd_connector,
                             invoice_states,
                             swap_id,
                             halight::Params {

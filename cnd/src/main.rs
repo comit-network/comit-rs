@@ -33,7 +33,7 @@ use cnd::{
     },
 };
 use rand::rngs::OsRng;
-use std::{io::Read, process, sync::Arc};
+use std::{process, sync::Arc};
 use structopt::StructOpt;
 use tokio::runtime;
 
@@ -113,7 +113,7 @@ fn main() -> anyhow::Result<()> {
     let lnd_connector_params = LndConnectorParams {
         lnd_url: settings.lightning.lnd.rest_api_url.clone(),
         retry_interval_ms: 0,
-        certificate: read_lnd_tls_cert(&settings)?,
+        certificate_path: std::path::Path::join(&settings.lightning.lnd.dir, "tls.cert"),
     };
 
     let alpha_ledger_state = Arc::new(LedgerStates::default());
@@ -221,12 +221,4 @@ fn dump_config(settings: Settings) -> anyhow::Result<()> {
     let serialized = toml::to_string(&file)?;
     println!("{}", serialized);
     Ok(())
-}
-
-fn read_lnd_tls_cert(settings: &Settings) -> anyhow::Result<reqwest::Certificate> {
-    let path = std::path::Path::join(&settings.lightning.lnd.dir, "tls.cert");
-
-    let mut buf = Vec::new();
-    std::fs::File::open(path)?.read_to_end(&mut buf)?;
-    Ok(reqwest::Certificate::from_pem(&buf)?)
 }

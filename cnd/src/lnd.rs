@@ -5,7 +5,7 @@ use crate::swap_protocols::{
 use anyhow::Error;
 use reqwest::{Certificate, StatusCode, Url};
 use serde::Deserialize;
-use std::time::Duration;
+use std::{io::Read, path::PathBuf, time::Duration};
 
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -57,14 +57,48 @@ struct Payment {
 pub struct LndConnectorParams {
     pub lnd_url: Url,
     pub retry_interval_ms: u64,
-    pub certificate: Certificate,
+    pub certificate_path: PathBuf,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
+enum LazyCertificate {
+    Path(PathBuf),
+    Certificate(Certificate),
+}
+
+impl LazyCertificate {
+    pub fn new(path: PathBuf) -> Self {
+        Self::Path(path)
+    }
+
+    pub fn read(self) -> Result<Self, Error> {
+        use LazyCertificate::*;
+
+        match self {
+            Certificate(_) => Ok(self),
+            Path(path) => {
+                let mut buf = Vec::new();
+                std::fs::File::open(path)?.read_to_end(&mut buf)?;
+                let certificate = reqwest::Certificate::from_pem(&buf)?;
+                Ok(LazyCertificate::Certificate(certificate))
+            }
+        }
+    }
+
+    pub fn certificate(&self) -> Result<&Certificate, Error> {
+        use LazyCertificate::*;
+        match self {
+            Path(_) => Err(anyhow::anyhow!("Certificate was not read.")),
+            Certificate(certificate) => Ok(certificate),
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
 pub struct LndConnectorAsSender {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: Certificate,
+    certificate: LazyCertificate,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsSender {
@@ -72,12 +106,19 @@ impl From<LndConnectorParams> for LndConnectorAsSender {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: params.certificate,
+            certificate: LazyCertificate::new(params.certificate_path),
         }
     }
 }
 
 impl LndConnectorAsSender {
+    pub fn read_certificate(self) -> Result<Self, Error> {
+        Ok(Self {
+            certificate: self.certificate.read()?,
+            ..self
+        })
+    }
+
     fn payment_url(&self) -> Url {
         self.lnd_url
             .join("/v1/payments?include_incomplete=true")
@@ -89,7 +130,7 @@ impl LndConnectorAsSender {
         secret_hash: SecretHash,
         status: PaymentStatus,
     ) -> Result<Option<Payment>, Error> {
-        let payments = client(&self.certificate)?
+        let payments = client(self.certificate.certificate()?)?
             .get(self.payment_url())
             .send()
             .await?
@@ -188,11 +229,11 @@ where
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct LndConnectorAsRecipient {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: Certificate,
+    certificate: LazyCertificate,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsRecipient {
@@ -200,12 +241,19 @@ impl From<LndConnectorParams> for LndConnectorAsRecipient {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: params.certificate,
+            certificate: LazyCertificate::new(params.certificate_path),
         }
     }
 }
 
 impl LndConnectorAsRecipient {
+    pub fn read_certificate(self) -> Result<Self, Error> {
+        Ok(Self {
+            certificate: self.certificate.read()?,
+            ..self
+        })
+    }
+
     fn invoice_url(&self, secret_hash: SecretHash) -> Result<Url, Error> {
         Ok(self
             .lnd_url
@@ -219,7 +267,7 @@ impl LndConnectorAsRecipient {
         secret_hash: SecretHash,
         state: InvoiceState,
     ) -> Result<Option<Invoice>, Error> {
-        let invoice = client(&self.certificate)?
+        let invoice = client(self.certificate.certificate()?)?
             .get(self.invoice_url(secret_hash)?)
             .send()
             .await?
@@ -242,7 +290,7 @@ where
     I: Send + 'static,
 {
     async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
-        let mut resp = client(&self.certificate)?
+        let mut resp = client(self.certificate.certificate()?)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()
             .await?;
