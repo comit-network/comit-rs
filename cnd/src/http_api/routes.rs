@@ -5,6 +5,7 @@ pub mod rfc003;
 use crate::{
     asset, htlc_location,
     http_api::{action::ToSirenAction, problem},
+    network::comit_ln,
     swap_protocols::{
         actions::{ethereum, lightning, Actions},
         halight::InvoiceState,
@@ -51,26 +52,32 @@ pub async fn handle_get_han_halight_swap(
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
 
-    let entity = match facade.role_for_swap(id).await {
-        Some(Role::Alice) => {
+    let finalized_swap = facade
+        .get_finalized_swap(id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+
+    let entity = match finalized_swap.role {
+        Role::Alice => {
             let actions = AliceEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
+                finalized_swap,
             }
             .actions();
 
             make_entity(actions, id)
         }
-        Some(Role::Bob) => {
+        Role::Bob => {
             let actions = BobEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
+                finalized_swap,
             }
             .actions();
 
             make_entity(actions, id)
         }
-        None => unimplemented!("swap not found"),
     };
 
     Ok(entity)
@@ -90,6 +97,7 @@ pub struct AliceEthLnState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: InvoiceState,
+    pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
 #[derive(Debug)]
@@ -97,6 +105,7 @@ pub struct BobEthLnState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: InvoiceState,
+    pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
 // TODO this should be in COMIT library that doesn't exist yet

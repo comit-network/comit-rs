@@ -1,7 +1,7 @@
 use crate::{
     http_api::routes::index::Body,
-    network::Swarm,
-    swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, Role, SwapId},
+    network::{comit_ln, Swarm},
+    swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, SwapId},
 };
 use std::sync::Arc;
 
@@ -27,8 +27,8 @@ impl Facade2 {
     }
 
     // TODO this should NodeLocalSwapId
-    pub async fn role_for_swap(&self, id: SwapId) -> Option<Role> {
+    pub async fn get_finalized_swap(&self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
         // TODO this should read from the DB and not from the swarm
-        self.swarm.role_for_swap(id).await
+        self.swarm.get_finalized_swap(id).await
     }
 }

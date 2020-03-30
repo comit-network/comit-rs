@@ -1,5 +1,6 @@
 use crate::{
     asset,
+    asset::ethereum::TryFromWei,
     btsieve::ethereum::{Cache, Web3Connector},
     htlc_location,
     http_api::routes::index::Body,
@@ -20,6 +21,7 @@ use crate::{
     swap_protocols::{
         halight::{self, InvoiceStates},
         han, ledger,
+        ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, SecretHash},
         LedgerStates, NodeLocalSwapId, Role, SwapId,
     },
@@ -143,11 +145,65 @@ impl ComitLN {
         }
     }
 
-    pub fn role_for_swap(&self, id: SwapId) -> Option<Role> {
-        let id = NodeLocalSwapId(id.0);
+    pub fn get_finalized_swap(&self, id: SwapId) -> Option<FinalizedSwap> {
+        let local_id = NodeLocalSwapId(id.0);
 
-        self.swaps.get(&id).map(|swap| swap.role())
+        let body = match self.swaps.get(&local_id) {
+            Some(body) => body,
+            None => return None,
+        };
+
+        let alpha_ledger_redeem_identity = match body.role() {
+            Role::Alice => self.ethereum_identities.get(&id).copied().unwrap(),
+            Role::Bob => body.alpha.identity.parse().unwrap(),
+        };
+        let alpha_ledger_refund_identity = match body.role() {
+            Role::Alice => body.alpha.identity.parse().unwrap(),
+            Role::Bob => self.ethereum_identities.get(&id).copied().unwrap(),
+        };
+        let beta_ledger_redeem_identity = match body.role() {
+            Role::Alice => self.lightning_identities.get(&id).copied().unwrap(),
+            Role::Bob => body.beta.identity.parse().unwrap(),
+        };
+        let beta_ledger_refund_identity = match body.role() {
+            Role::Alice => body.beta.identity.parse().unwrap(),
+            Role::Bob => self.lightning_identities.get(&id).copied().unwrap(),
+        };
+
+        Some(FinalizedSwap {
+            alpha_ledger: Ethereum::new(ChainId::regtest()), // TODO: don't hardcode these
+            beta_ledger: lightning::Regtest,                 // TODO: don't hardcode these
+            alpha_asset: asset::Ether::try_from_wei(body.alpha.amount.as_str()).unwrap(), /* TODO: don't unwrap */
+            beta_asset: asset::Lightning::from_sat(body.beta.amount.parse().unwrap()), /* TODO: don't unwrap */
+            alpha_ledger_redeem_identity,
+            alpha_ledger_refund_identity,
+            beta_ledger_redeem_identity,
+            beta_ledger_refund_identity,
+            alpha_expiry: body.alpha.absolute_expiry,
+            beta_expiry: body.beta.cltv_expiry, // TODO: is this correct?
+            secret_hash: self.secret_hashes.get(&id).copied().unwrap(),
+            role: body.role(),
+        })
     }
+}
+
+// TODO: this is just a temporary struct and should likely be replaced with
+// something more generic Also reconsider whether we need to pass everything
+// back up the call chain TODO: is there a better name for this?
+#[derive(Debug)]
+pub struct FinalizedSwap {
+    pub alpha_ledger: Ethereum,
+    pub beta_ledger: lightning::Regtest,
+    pub alpha_asset: asset::Ether,
+    pub beta_asset: asset::Lightning,
+    pub alpha_ledger_refund_identity: identity::Ethereum,
+    pub alpha_ledger_redeem_identity: identity::Ethereum,
+    pub beta_ledger_refund_identity: identity::Lightning,
+    pub beta_ledger_redeem_identity: identity::Lightning,
+    pub alpha_expiry: u32,
+    pub beta_expiry: u32,
+    pub secret_hash: SecretHash,
+    pub role: Role,
 }
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for ComitLN {

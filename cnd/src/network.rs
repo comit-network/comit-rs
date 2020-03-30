@@ -266,10 +266,10 @@ impl Swarm {
         guard.initiate_communication(id, body)
     }
 
-    pub async fn role_for_swap(&self, id: SwapId) -> Option<Role> {
+    pub async fn get_finalized_swap(&self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
         let mut guard = self.swarm.lock().await;
 
-        guard.role_for_swap(id)
+        guard.get_finalized_swap(id)
     }
 
     // On Bob's side, when an announce message is received execute the required
@@ -419,8 +419,9 @@ impl ComitNode {
         self.comit_ln.initiate_communication(id, body)
     }
 
-    pub fn role_for_swap(&mut self, id: SwapId) -> Option<Role> {
-        self.comit_ln.role_for_swap(id)
+    // TODO: do we need all these layers of abstraction ?!
+    pub fn get_finalized_swap(&mut self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
+        self.comit_ln.get_finalized_swap(id)
     }
 }
 
