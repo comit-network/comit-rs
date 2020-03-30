@@ -127,7 +127,7 @@ impl Actions for AliceEthLnState {
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        if let InvoiceState::None = self.beta_ledger_state {
+        if let InvoiceState::Unknown = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
             let expiry = self.finalized_swap.alpha_expiry; // Lazy choice, if Bob has not funded by this time Alice will refund anyways.

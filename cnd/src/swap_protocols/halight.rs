@@ -41,7 +41,7 @@ pub trait InvoiceCancelled<L, A, I> {
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum InvoiceState {
-    None,
+    Unknown,
     Opened,
     Accepted,
     Settled(Settled),
@@ -69,28 +69,28 @@ pub struct InvoiceStates {
 
 impl InvoiceState {
     pub fn transition_to_opened(&mut self) {
-        match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::None => *self = InvoiceState::Opened,
-            other => panic!("expected state None, got {:?}", other),
+        match std::mem::replace(self, InvoiceState::Unknown) {
+            InvoiceState::Unknown => *self = InvoiceState::Opened,
+            other => panic!("expected state Unknown, got {:?}", other),
         }
     }
 
     pub fn transition_to_accepted(&mut self) {
-        match std::mem::replace(self, InvoiceState::None) {
+        match std::mem::replace(self, InvoiceState::Unknown) {
             InvoiceState::Opened => *self = InvoiceState::Accepted,
             other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
     pub fn transition_to_settled(&mut self, settled: Settled) {
-        match std::mem::replace(self, InvoiceState::None) {
+        match std::mem::replace(self, InvoiceState::Unknown) {
             InvoiceState::Accepted => *self = InvoiceState::Settled(settled),
             other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
     pub fn transition_to_cancelled(&mut self) {
-        match std::mem::replace(self, InvoiceState::None) {
+        match std::mem::replace(self, InvoiceState::Unknown) {
             // Alice cancels invoice before Bob has accepted it.
             InvoiceState::Opened => *self = InvoiceState::Cancelled,
             // Alice cancels invoice after Bob has accepted it.
