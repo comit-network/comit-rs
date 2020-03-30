@@ -94,6 +94,12 @@ impl LazyCertificate {
     }
 }
 
+/// LND connector for connecting to an LND node when sending a lightning
+/// payment.
+///
+/// When connecting to LND as the sender all state decisions must be made based
+/// on the payment status.  This is because only the receiver has the invoice,
+/// the sender makes payments using the swap parameters.
 #[derive(Clone, Debug)]
 pub struct LndConnectorAsSender {
     lnd_url: Url,
@@ -152,8 +158,8 @@ where
     I: Send + 'static,
 {
     async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
-        // At this stage there is no way for Alice to know when
-        // the invoice is added on Bob's side
+        // At this stage there is no way for the sender to know when the invoice is
+        // added on recipient's side.
         Ok(())
     }
 }
@@ -166,6 +172,8 @@ where
     I: Send + 'static,
 {
     async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+        // No validation of the parameters because once the payment has been
+        // sent the sender cannot cancel it.
         while !self
             .find_payment(params.secret_hash, PaymentStatus::InFlight)
             .await?
@@ -229,6 +237,12 @@ where
     }
 }
 
+/// LND connector for connecting to an LND node when receiving a lightning
+/// payment.
+///
+/// When connecting to LND as the receiver all state decisions can be made based
+/// on the invoice state.  Since as the receiver, we add the invoice we have
+/// access to its state.
 #[derive(Clone, Debug)]
 pub struct LndConnectorAsRecipient {
     lnd_url: Url,
@@ -290,6 +304,7 @@ where
     I: Send + 'static,
 {
     async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
+        // TODO: Validate Params here (cltv_expiry and amount)
         let mut resp = client(self.certificate.certificate()?)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()
