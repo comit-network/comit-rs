@@ -26,7 +26,7 @@ use crate::{
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug, Display},
     string::ToString,
@@ -75,8 +75,8 @@ pub async fn handle_action(
 
         match action {
             Action::Accept(_) => {
-                let body = serde_json::from_value::<AcceptBody>(body)
-                    .context("failed to deserialize accept body")?;
+                let body =
+                    AcceptBody::deserialize(&body).context("failed to deserialize accept body")?;
 
                 let channel = dependencies
                     .pending_request_for(swap_id)
@@ -112,7 +112,8 @@ pub async fn handle_action(
                 Ok(ActionResponseBody::None)
             }
             Action::Decline(_) => {
-                let body = serde_json::from_value::<DeclineBody>(body)?;
+                let body = DeclineBody::deserialize(&body)
+                    .context("failed to deserialize decline body")?;
 
                 let channel = dependencies
                     .pending_request_for(swap_id)

@@ -50,7 +50,7 @@ use libp2p_comit::{
     handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
@@ -1012,9 +1012,10 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AI, BI>>(
-                            response.body().clone(),
-                        ) {
+                        let accept_body =
+                            rfc003::messages::AcceptResponseBody::deserialize(response.body());
+
+                        match accept_body {
                             Ok(body) => Ok(Ok(rfc003::Accept {
                                 swap_id: id,
                                 beta_ledger_refund_identity: body.beta_ledger_refund_identity,
@@ -1025,9 +1026,10 @@ impl SendRequest for Swarm {
                     }
 
                     Some(Decision::Declined) => {
-                        match serde_json::from_value::<rfc003::messages::DeclineResponseBody>(
-                            response.body().clone(),
-                        ) {
+                        let decline_body =
+                            rfc003::messages::DeclineResponseBody::deserialize(response.body());
+
+                        match decline_body {
                             Ok(body) => Ok(Err(rfc003::Decline {
                                 swap_id: id,
                                 reason: body.reason,

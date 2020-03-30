@@ -128,7 +128,7 @@ pub async fn handle_post_swap(
     let seed = dependencies.derive_swap_seed(id);
     let secret_hash = seed.derive_secret().hash();
 
-    let body = serde_json::from_value(body)?;
+    let body = SwapRequestBody::deserialize(&body)?;
 
     match body {
         SwapRequestBody {

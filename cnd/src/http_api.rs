@@ -97,7 +97,7 @@ impl Serialize for Http<identity::Bitcoin> {
 }
 
 impl_serialize_type_with_fields!(htlc_location::Bitcoin { "txid" => txid, "vout" => vout });
-impl_serialize_http!(crate::ethereum::H160);
+impl_serialize_http!(crate::ethereum::Address);
 impl_serialize_http!(SwapId);
 
 impl Serialize for Http<SwapProtocol> {
@@ -489,7 +489,7 @@ mod tests {
         asset,
         asset::ethereum::FromWei,
         bitcoin::PublicKey,
-        ethereum::{H160, H256, U256},
+        ethereum::{Address, Hash, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
             ledger::{bitcoin, ethereum, Ethereum},
@@ -591,7 +591,7 @@ mod tests {
             output: vec![],
         };
         let ethereum_tx = transaction::Ethereum {
-            hash: H256::repeat_byte(1),
+            hash: Hash::from([1u8; 32]),
             ..transaction::Ethereum::default()
         };
 
@@ -618,7 +618,7 @@ mod tests {
                 .parse()
                 .unwrap();
 
-        let ethereum_identity = H160::repeat_byte(7);
+        let ethereum_identity = Address::from([7u8; 20]);
 
         let bitcoin_identity = Http(bitcoin_identity);
         let ethereum_identity = Http(ethereum_identity);

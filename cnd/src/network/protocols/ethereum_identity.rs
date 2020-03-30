@@ -16,7 +16,7 @@ impl Message {
     pub fn new(swap_id: SwapId, address: identity::Ethereum) -> Self {
         Self {
             swap_id,
-            address: address.0,
+            address: address.into(),
         }
     }
 }

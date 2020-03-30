@@ -2,7 +2,7 @@ use crate::{
     asset,
     asset::ethereum::FromWei,
     db::Swap,
-    ethereum::Bytes,
+    ethereum::{Address, Bytes},
     identity,
     swap_protocols::{
         ledger,
@@ -167,31 +167,23 @@ impl Arbitrary for Quickcheck<identity::Ethereum> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 20]>::arbitrary(g);
 
-        Quickcheck(identity::Ethereum::from(bytes))
+        Quickcheck(Address::from(bytes))
     }
 }
 
-impl Arbitrary for Quickcheck<crate::ethereum::U128> {
-    fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
-        let bytes = *Quickcheck::<[u8; 16]>::arbitrary(g);
-
-        Quickcheck(crate::ethereum::U128::from(&bytes))
-    }
-}
-
-impl Arbitrary for Quickcheck<crate::ethereum::H256> {
+impl Arbitrary for Quickcheck<crate::ethereum::Hash> {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         let bytes = *Quickcheck::<[u8; 32]>::arbitrary(g);
 
-        Quickcheck(crate::ethereum::H256::from(&bytes))
+        Quickcheck(crate::ethereum::Hash::from(bytes))
     }
 }
 
 impl Arbitrary for Quickcheck<transaction::Ethereum> {
     fn arbitrary<G: quickcheck::Gen>(g: &mut G) -> Self {
         Quickcheck(transaction::Ethereum {
-            hash: *Quickcheck::<crate::ethereum::H256>::arbitrary(g),
-            to: Option::<Quickcheck<crate::ethereum::H160>>::arbitrary(g).map(|i| i.0),
+            hash: *Quickcheck::<crate::ethereum::Hash>::arbitrary(g),
+            to: Option::<Quickcheck<crate::ethereum::Address>>::arbitrary(g).map(|i| i.0),
             value: *Quickcheck::<crate::ethereum::U256>::arbitrary(g),
             input: Bytes(Arbitrary::arbitrary(g)),
         })

@@ -6,15 +6,12 @@ use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
-    ethereum::{Address, Bytes, Input, Log, Transaction, TransactionReceipt, H256, U256},
+    ethereum::{Address, Block, Bytes, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
 use anyhow;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use genawaiter::{sync::Gen, GeneratorState};
-
-type Hash = H256;
-type Block = crate::ethereum::Block;
 
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
@@ -24,7 +21,7 @@ pub trait ReceiptByHash: Send + Sync + 'static {
 impl BlockHash for Block {
     type BlockHash = Hash;
 
-    fn block_hash(&self) -> H256 {
+    fn block_hash(&self) -> Hash {
         self.hash
             .expect("Connector returned latest block with null hash")
     }
@@ -33,7 +30,7 @@ impl BlockHash for Block {
 impl PreviousBlockHash for Block {
     type BlockHash = Hash;
 
-    fn previous_block_hash(&self) -> H256 {
+    fn previous_block_hash(&self) -> Hash {
         self.parent_hash
     }
 }
@@ -174,7 +171,7 @@ where
                     topic.as_ref().map_or(true, |topic| {
                         block
                             .logs_bloom
-                            .contains_input(Input::Raw(topic.0.as_ref()))
+                            .contains_input(Input::Raw(&topic.0.as_bytes()))
                     })
                 });
                 if !maybe_contains_transaction {
@@ -227,7 +224,7 @@ impl Predates for Block {
 
 #[derive(Clone, Copy, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 #[serde(transparent)]
-pub struct Topic(pub H256);
+pub struct Topic(pub Hash);
 
 /// Event works similar to web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs
