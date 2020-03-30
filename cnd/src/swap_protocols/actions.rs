@@ -41,10 +41,7 @@ pub mod bitcoin {
 
 pub mod ethereum {
     use crate::{
-        asset,
-        ethereum::{Bytes, U256},
-        identity,
-        swap_protocols::ledger::ethereum::ChainId,
+        asset, ethereum::Bytes, identity, swap_protocols::ledger::ethereum::ChainId,
         timestamp::Timestamp,
     };
 
@@ -52,7 +49,7 @@ pub mod ethereum {
     pub struct DeployContract {
         pub data: Bytes,
         pub amount: asset::Ether,
-        pub gas_limit: U256,
+        pub gas_limit: u64,
         pub chain_id: ChainId,
     }
 
@@ -60,7 +57,7 @@ pub mod ethereum {
     pub struct CallContract {
         pub to: identity::Ethereum,
         pub data: Option<Bytes>,
-        pub gas_limit: U256,
+        pub gas_limit: u64,
         pub chain_id: ChainId,
         pub min_block_timestamp: Option<Timestamp>,
     }
@@ -77,7 +74,7 @@ pub mod lnd {
         pub amount: asset::Lightning, // The number of satoshis to send.
         pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
         pub expiry: u32,
-        pub cltv_delta: u32,
+        pub cltv_expiry: u32,
         pub chain: Chain,
         pub network: Network,
         pub self_public_key: identity::Lightning,

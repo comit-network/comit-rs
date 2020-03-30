@@ -238,6 +238,8 @@ impl IntoResponsePayload for ethereum::DeployContract {
             gas_limit,
             chain_id,
         } = self;
+        let gas_limit = gas_limit.into();
+
         match query_params {
             ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumDeployContract {
                 data,
@@ -271,6 +273,8 @@ impl IntoResponsePayload for ethereum::CallContract {
             chain_id,
             min_block_timestamp,
         } = self;
+        let gas_limit = gas_limit.into();
+
         match query_params {
             ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumCallContract {
                 contract_address: to,

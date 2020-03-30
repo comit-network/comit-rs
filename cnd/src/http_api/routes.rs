@@ -4,10 +4,9 @@ pub mod rfc003;
 
 use crate::{
     asset,
-    ethereum::{Bytes, U256},
+    ethereum::Bytes,
     htlc_location,
     http_api::{action::ToSirenAction, problem},
-    identity,
     network::comit_ln,
     swap_protocols::{
         actions::{
@@ -15,15 +14,16 @@ use crate::{
             lnd::{self, Chain, Network},
             Actions,
         },
-        halight::InvoiceState,
+        halight::{InvoiceState, Settled},
         ledger::ethereum::ChainId,
-        rfc003::{LedgerState, Secret},
+        rfc003::LedgerState,
         state::Get,
         Facade2, Role, SwapId,
     },
     timestamp::Timestamp,
     transaction, Never,
 };
+use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use http_api_problem::HttpApiProblem;
 use warp::{Rejection, Reply};
 
@@ -130,8 +130,8 @@ impl Actions for AliceEthLnState {
         if let InvoiceState::None = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
-            let expiry = unimplemented!();
-            let cltv_delta = unimplemented!();
+            let expiry = self.finalized_swap.alpha_expiry; // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
+            let cltv_expiry = self.finalized_swap.beta_expiry;
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
             let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
@@ -140,7 +140,7 @@ impl Actions for AliceEthLnState {
                 amount,
                 secret_hash,
                 expiry,
-                cltv_delta,
+                cltv_expiry,
                 chain,
                 network,
                 self_public_key,
@@ -148,9 +148,10 @@ impl Actions for AliceEthLnState {
         }
 
         if let InvoiceState::Added = self.beta_ledger_state {
-            let data: Bytes = unimplemented!();
-            let amount = self.finalized_swap.alpha_asset;
-            let gas_limit: U256 = unimplemented!();
+            let eth_htlc = self.finalized_swap.han_params();
+            let data = eth_htlc.into();
+            let amount = self.finalized_swap.alpha_asset.clone();
+            let gas_limit = EtherHtlc::deploy_tx_gas_limit();
             let chain_id = ChainId::regtest();
 
             return vec![ActionKind::Fund(ethereum::DeployContract {
@@ -164,7 +165,7 @@ impl Actions for AliceEthLnState {
         let mut actions = vec![];
 
         if let InvoiceState::PaymentSent = self.beta_ledger_state {
-            let secret: Secret = unimplemented!();
+            let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
             let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
@@ -177,13 +178,13 @@ impl Actions for AliceEthLnState {
             }))
         }
 
-        if let LedgerState::Funded { .. } = self.alpha_ledger_state {
+        if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
             if let InvoiceState::PaymentSent = self.beta_ledger_state {
-                let to = self.finalized_swap.alpha_ledger_refund_identity;
-                let data: Option<Bytes> = unimplemented!();
-                let gas_limit: U256 = unimplemented!();
+                let to = htlc_location;
+                let data = None;
+                let gas_limit = EtherHtlc::refund_tx_gas_limit();
                 let chain_id = ChainId::regtest();
-                let min_block_timestamp: Option<Timestamp> = unimplemented!();
+                let min_block_timestamp = Some(Timestamp::from(self.finalized_swap.alpha_expiry));
 
                 actions.push(ActionKind::Refund(ethereum::CallContract {
                     to,
@@ -207,12 +208,12 @@ impl Actions for BobEthLnState {
     fn actions(&self) -> Vec<Self::ActionKind> {
         let mut actions = vec![];
 
-        if let LedgerState::Funded { .. } = self.alpha_ledger_state {
+        if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
             if let InvoiceState::Added = self.beta_ledger_state {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
-                let amount = self.finalized_swap.beta_asset;
+                let amount = self.finalized_swap.beta_asset.clone();
                 let secret_hash = self.finalized_swap.secret_hash;
-                let final_cltv_delta: u32 = unimplemented!();
+                let final_cltv_delta = self.finalized_swap.beta_expiry;
                 let chain = Chain::Bitcoin;
                 let network = Network::DevNet;
                 let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
@@ -225,26 +226,25 @@ impl Actions for BobEthLnState {
                     chain,
                     network,
                     self_public_key,
+                }));
+            }
+
+            if let InvoiceState::Settled(Settled { secret }) = self.beta_ledger_state {
+                let to = htlc_location;
+                let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
+                let gas_limit = EtherHtlc::redeem_tx_gas_limit();
+                let chain_id: ChainId = ChainId::regtest();
+                let min_block_timestamp = None;
+
+                actions.push(ActionKind::Redeem(ethereum::CallContract {
+                    to,
+                    data,
+                    gas_limit,
+                    chain_id,
+                    min_block_timestamp,
                 }))
             }
         }
-
-        if let LedgerState::Funded { .. } = self.alpha_ledger_state {
-            let to = self.finalized_swap.alpha_ledger_redeem_identity;
-            let data: Option<Bytes> = unimplemented!();
-            let gas_limit: U256 = unimplemented!();
-            let chain_id: ChainId = ChainId::regtest();
-            let min_block_timestamp: Option<Timestamp> = unimplemented!();
-
-            actions.push(ActionKind::Redeem(ethereum::CallContract {
-                to,
-                data,
-                gas_limit,
-                chain_id,
-                min_block_timestamp,
-            }))
-        }
-
         actions
     }
 }

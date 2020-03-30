@@ -22,12 +22,13 @@ use crate::{
         halight::{self, InvoiceStates},
         han, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
-        rfc003::{create_swap::HtlcParams, DeriveSecret, SecretHash},
+        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         LedgerStates, NodeLocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
     transaction,
 };
+use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use chrono::Utc;
 use futures::AsyncWriteExt;
 use libp2p::{multihash, swarm::NetworkBehaviourEventProcess, NetworkBehaviour};
@@ -153,6 +154,15 @@ impl ComitLN {
             None => return None,
         };
 
+        let secret = match body.role() {
+            Role::Alice => Some(
+                self.seed
+                    .derive_swap_seed_from_node_local(local_id)
+                    .derive_secret(),
+            ),
+            Role::Bob => None,
+        };
+
         let alpha_ledger_redeem_identity = match body.role() {
             Role::Alice => self.ethereum_identities.get(&id).copied().unwrap(),
             Role::Bob => body.alpha.identity.parse().unwrap(),
@@ -181,6 +191,8 @@ impl ComitLN {
             beta_ledger_refund_identity,
             alpha_expiry: body.alpha.absolute_expiry,
             beta_expiry: body.beta.cltv_expiry, // TODO: is this correct?
+            local_id,
+            secret,
             secret_hash: self.secret_hashes.get(&id).copied().unwrap(),
             role: body.role(),
         })
@@ -202,8 +214,24 @@ pub struct FinalizedSwap {
     pub beta_ledger_redeem_identity: identity::Lightning,
     pub alpha_expiry: u32,
     pub beta_expiry: u32,
+    pub local_id: NodeLocalSwapId,
     pub secret_hash: SecretHash,
+    pub secret: Option<Secret>,
     pub role: Role,
+}
+
+impl FinalizedSwap {
+    pub fn han_params(&self) -> EtherHtlc {
+        HtlcParams {
+            asset: self.alpha_asset.clone(),
+            ledger: Ethereum::new(ChainId::regtest()),
+            redeem_identity: self.alpha_ledger_redeem_identity,
+            refund_identity: self.alpha_ledger_refund_identity,
+            expiry: Timestamp::from(self.alpha_expiry),
+            secret_hash: self.secret_hash,
+        }
+        .into()
+    }
 }
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for ComitLN {
