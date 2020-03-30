@@ -76,7 +76,6 @@ jobs:
 
       # Ignore tests on macos due to missing docker
       - name: Run unit tests
-        if: matrix.os != 'macos-latest'
         run: make test
 
       - name: Upload cnd ${{ matrix.os }} binary
