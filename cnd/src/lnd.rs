@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    halight::{InvoiceAccepted, InvoiceCancelled, InvoiceOpened, InvoiceSettled, Params, Settled},
+    halight::{InvoiceAccepted, InvoiceAdded, InvoiceCancelled, InvoiceSettled, Params, Settled},
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;
@@ -11,7 +11,7 @@ use std::{io::Read, path::PathBuf, time::Duration};
 #[serde(untagged)]
 enum InvoiceState {
     #[serde(rename = "0")]
-    Open,
+    Added,
     #[serde(rename = "1")]
     Settled,
     #[serde(rename = "2")]
@@ -145,13 +145,13 @@ impl LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsSender
+impl<L, A, I> InvoiceAdded<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_added(&self, _params: Params<L, A, I>) -> Result<(), Error> {
         // At this stage there is no way for Alice to know when
         // the invoice is added on Bob's side
         Ok(())
@@ -283,13 +283,13 @@ impl LndConnectorAsRecipient {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoiceAdded<L, A, I> for LndConnectorAsRecipient
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_added(&self, params: Params<L, A, I>) -> Result<(), Error> {
         let mut resp = client(self.certificate.certificate()?)?
             .get(self.invoice_url(params.secret_hash)?)
             .send()

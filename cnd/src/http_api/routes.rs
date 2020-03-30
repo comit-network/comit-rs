@@ -122,7 +122,7 @@ impl Actions for AliceEthLnState {
             return vec![ActionKind::Init(unimplemented!())];
         }
 
-        if let InvoiceState::Opened = self.beta_ledger_state {
+        if let InvoiceState::Added = self.beta_ledger_state {
             return vec![ActionKind::Fund(unimplemented!())];
         }
 
@@ -148,7 +148,7 @@ impl Actions for BobEthLnState {
         let mut actions = vec![];
 
         if let LedgerState::Funded { .. } = self.alpha_ledger_state {
-            if let InvoiceState::Opened = self.beta_ledger_state {
+            if let InvoiceState::Added = self.beta_ledger_state {
                 actions.push(ActionKind::Fund(unimplemented!()));
             }
         }
