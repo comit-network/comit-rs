@@ -25,6 +25,7 @@ import { InvoiceState } from "@radar/lnrpc";
 import {
     defaultAssetDescription,
     defaultExpiryTimes,
+    defaultHanEthereumEtherHalightLightningBitcoin,
     defaultLedgerDescriptionForLedger,
     defaultLedgerKindForAsset,
 } from "./defaults";
@@ -68,6 +69,9 @@ export class Actor {
     private comitClient: ComitClient;
     readonly cnd: Cnd;
     private swap: Swap;
+
+    // Temporary use until `Swap` support han/halight
+    private swapLocation: string;
 
     private alphaLedger: Ledger;
     private alphaAsset: Asset;
@@ -201,8 +205,44 @@ export class Actor {
 
         if (isLightning) {
             this.logger.debug("Using lightning routes on cnd REST API");
+
+            // Is it a route supported by cnd?
+            if (
+                this.alphaLedger.name === "ethereum" &&
+                this.alphaAsset.name === "ether" &&
+                this.betaLedger.name === "lightning" &&
+                this.betaAsset.name === "bitcoin"
+            ) {
+                const thisPayload = defaultHanEthereumEtherHalightLightningBitcoin(
+                    "",
+                    {
+                        peer_id: await to.cnd.getPeerId(),
+                        address_hint: await to.cnd
+                            .getPeerListenAddresses()
+                            .then((addresses) => addresses[0]),
+                    }
+                );
+                this.swapLocation = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                    thisPayload
+                );
+
+                const toPayload = defaultHanEthereumEtherHalightLightningBitcoin(
+                    "",
+                    {
+                        peer_id: await this.cnd.getPeerId(),
+                        address_hint: await this.cnd
+                            .getPeerListenAddresses()
+                            .then((addresses) => addresses[0]),
+                    }
+                );
+                to.swapLocation = await to.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                    toPayload
+                );
+                console.log(this.swapLocation, to.swapLocation);
+            }
             return;
         }
+
         const comitClient: ComitClient = this.getComitClient();
 
         const payload = {

@@ -10,7 +10,7 @@ import { expect } from "chai";
 import { LedgerKind } from "../../src/ledgers/ledger";
 
 // ******************************************** //
-// Lightning Sanity Test                        //
+// Lnd Sanity Test                              //
 // ******************************************** //
 describe("E2E: Sanity - LND Alice pays Bob", () => {
     it(
@@ -64,7 +64,27 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
 });
 
 // ******************************************** //
-// Bitcoin/bitcoin Alpha Ledger/ Alpha Asset    //
+// Han/Ethereum/ether Alpha                     //
+// Halight/Lightning/bitcoin Beta               //
+// ******************************************** //
+describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
+    it(
+        "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
+        // @ts-ignore: will use bob later
+        twoActorTest(async ({ alice, bob }) => {
+            await alice.sendRequest(
+                { ledger: LedgerKind.Ethereum, asset: AssetKind.Ether },
+                {
+                    ledger: LedgerKind.Lightning,
+                    asset: AssetKind.Bitcoin,
+                }
+            );
+        })
+    );
+});
+
+// ******************************************** //
+// Bitcoin/bitcoin Alpha Ledger/Alpha Asset     //
 // Ethereum/ether Beta Ledger/Beta Asset        //
 // ******************************************** //
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
