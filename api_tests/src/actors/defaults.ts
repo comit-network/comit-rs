@@ -51,7 +51,8 @@ function defaultHerc20EthereumErc20RequestParams(
 }
 export function defaultHanEthereumEtherHalightLightningBitcoin(
     lndPubkey: string,
-    peer: Peer
+    peer: Peer,
+    role: "Alice" | "Bob"
 ): HanEthereumEtherHalightLightningBitcoinRequestBody {
     const {
         alphaAbsoluteExpiry,
@@ -63,7 +64,7 @@ export function defaultHanEthereumEtherHalightLightningBitcoin(
             betaCltvExpiry,
             lndPubkey
         ),
-        role: "Alice",
+        role,
         peer,
     };
 }

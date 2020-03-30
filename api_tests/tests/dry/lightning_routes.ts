@@ -17,9 +17,13 @@ describe("Lightning routes tests", () => {
     it(
         "lightning-routes-post-eth-lnbtc-return-400",
         oneActorTest(async ({ alice }) => {
-            const body = defaultHanEthereumEtherHalightLightningBitcoin("", {
-                peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
-            });
+            const body = defaultHanEthereumEtherHalightLightningBitcoin(
+                "",
+                {
+                    peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
+                },
+                "Alice"
+            );
             const location = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
                 body
             );

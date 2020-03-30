@@ -5,9 +5,11 @@
 
 import { twoActorTest } from "../../src/actor_test";
 import { AssetKind } from "../../src/asset";
-import { sleep } from "../../src/utils";
-import { expect } from "chai";
+import { HarnessGlobal, sleep } from "../../src/utils";
 import { LedgerKind } from "../../src/ledgers/ledger";
+import { defaultHanEthereumEtherHalightLightningBitcoin } from "../../src/actors/defaults";
+
+declare var global: HarnessGlobal;
 
 // ******************************************** //
 // Lnd Sanity Test                              //
@@ -56,7 +58,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
             await bob.lnSettleInvoice(secret, secretHash);
 
             const pay = await paymentPromise;
-            expect(pay.paymentPreimage.toString("hex")).equals(secret);
+            expect(pay.paymentPreimage.toString("hex")).toEqual(secret);
 
             await bob.lnAssertInvoiceSettled(secretHash);
         })
@@ -72,13 +74,37 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
         "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
         // @ts-ignore: will use bob later
         twoActorTest(async ({ alice, bob }) => {
-            await alice.sendRequest(
-                { ledger: LedgerKind.Ethereum, asset: AssetKind.Ether },
-                {
-                    ledger: LedgerKind.Lightning,
-                    asset: AssetKind.Bitcoin,
-                }
+            const aliceLndPubkey = await global.lndWallets.alice.inner.getPubkey();
+            const bobLndPubkey = await global.lndWallets.bob.inner.getPubkey();
+
+            const locationAlice = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                defaultHanEthereumEtherHalightLightningBitcoin(
+                    bobLndPubkey,
+                    {
+                        peer_id: await bob.cnd.getPeerId(),
+                        address_hint: await bob.cnd
+                            .getPeerListenAddresses()
+                            .then((addresses) => addresses[0]),
+                    },
+                    "Alice"
+                )
             );
+
+            const locationBob = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                defaultHanEthereumEtherHalightLightningBitcoin(
+                    aliceLndPubkey,
+                    {
+                        peer_id: await alice.cnd.getPeerId(),
+                        address_hint: await alice.cnd
+                            .getPeerListenAddresses()
+                            .then((addresses) => addresses[0]),
+                    },
+                    "Alice"
+                )
+            );
+
+            expect(locationAlice).toBeDefined();
+            expect(locationBob).toBeDefined();
         })
     );
 });
@@ -443,7 +469,7 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
             const responsePromise = alice.redeemWithHighFee();
 
-            return expect(responsePromise).to.be.rejected;
+            return expect(responsePromise).rejects.toThrow();
         })
     );
 });
