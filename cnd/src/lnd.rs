@@ -7,6 +7,8 @@ use reqwest::{Certificate, StatusCode, Url};
 use serde::Deserialize;
 use std::{io::Read, path::PathBuf, time::Duration};
 
+/// Invoice states.  These mirror the invoice states used by lightning.
+// ref: https://api.lightning.community/#invoicestate
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
 enum InvoiceState {
@@ -20,6 +22,8 @@ enum InvoiceState {
     Accepted,
 }
 
+/// Payment status.  These mirror the payment status' used by lightning.
+// ref: https://api.lightning.community/#paymentstatus
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
 enum PaymentStatus {
     #[serde(rename = "0")]
