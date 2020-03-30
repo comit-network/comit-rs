@@ -132,7 +132,7 @@ impl Actions for AliceEthLnState {
             actions.push(ActionKind::Refund(unimplemented!()));
         }
 
-        if let InvoiceState::Accepted = self.beta_ledger_state {
+        if let InvoiceState::PaymentSent = self.beta_ledger_state {
             actions.push(ActionKind::Redeem(unimplemented!()));
         }
 
@@ -153,7 +153,7 @@ impl Actions for BobEthLnState {
             }
         }
 
-        if let InvoiceState::Accepted = self.beta_ledger_state {
+        if let InvoiceState::PaymentSent = self.beta_ledger_state {
             actions.push(ActionKind::Refund(unimplemented!()));
         }
 

@@ -1,5 +1,7 @@
 use crate::swap_protocols::{
-    halight::{InvoiceAccepted, InvoiceAdded, InvoiceCancelled, InvoiceSettled, Params, Settled},
+    halight::{
+        InvoiceAdded, InvoiceCancelled, InvoicePaymentSent, InvoiceSettled, Params, Settled,
+    },
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;
@@ -13,11 +15,11 @@ enum InvoiceState {
     #[serde(rename = "0")]
     Added,
     #[serde(rename = "1")]
-    Settled,
+    PaymentSent,
     #[serde(rename = "2")]
-    Cancelled,
+    Settled,
     #[serde(rename = "3")]
-    Accepted,
+    Cancelled,
 }
 
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
@@ -159,13 +161,13 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsSender
+impl<L, A, I> InvoicePaymentSent<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
             .find_payment(params.secret_hash, PaymentStatus::InFlight)
             .await?
@@ -305,15 +307,15 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsRecipient
+impl<L, A, I> InvoicePaymentSent<L, A, I> for LndConnectorAsRecipient
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> Result<(), Error> {
         while !self
-            .find_invoice(params.secret_hash, InvoiceState::Accepted)
+            .find_invoice(params.secret_hash, InvoiceState::PaymentSent)
             .await?
             .is_some()
         {

@@ -22,8 +22,8 @@ pub trait InvoiceAdded<L, A, I> {
 }
 
 #[async_trait::async_trait]
-pub trait InvoiceAccepted<L, A, I> {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
+pub trait InvoicePaymentSent<L, A, I> {
+    async fn invoice_payment_sent(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
 }
 
 #[async_trait::async_trait]
@@ -41,7 +41,7 @@ pub trait InvoiceCancelled<L, A, I> {
 pub enum InvoiceState {
     None,
     Added,
-    Accepted,
+    PaymentSent,
     Settled(Settled),
     Cancelled,
 }
@@ -50,7 +50,7 @@ pub enum InvoiceState {
 #[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
     Added,
-    Accepted,
+    PaymentSent,
     Settled(Settled),
     Cancelled,
 }
@@ -75,25 +75,25 @@ impl InvoiceState {
 
     pub fn transition_to_accepted(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::Added => *self = InvoiceState::Accepted,
+            InvoiceState::Added => *self = InvoiceState::PaymentSent,
             other => panic!("expected state Added, got {:?}", other),
         }
     }
 
     pub fn transition_to_settled(&mut self, settled: Settled) {
         match std::mem::replace(self, InvoiceState::None) {
-            InvoiceState::Accepted => *self = InvoiceState::Settled(settled),
-            other => panic!("expected state Accepted, got {:?}", other),
+            InvoiceState::PaymentSent => *self = InvoiceState::Settled(settled),
+            other => panic!("expected state PaymentSent, got {:?}", other),
         }
     }
 
     pub fn transition_to_cancelled(&mut self) {
         match std::mem::replace(self, InvoiceState::None) {
             // Alice cancels invoice before Bob has accepted it.
-            InvoiceState::Added => *self = InvoiceState::Accepted,
+            InvoiceState::Added => *self = InvoiceState::PaymentSent,
             // Alice cancels invoice after Bob has accepted it.
-            InvoiceState::Accepted => *self = InvoiceState::Cancelled,
-            other => panic!("expected state Added or Accepted, got {:?}", other),
+            InvoiceState::PaymentSent => *self = InvoiceState::Cancelled,
+            other => panic!("expected state Added or PaymentSent, got {:?}", other),
         }
     }
 }
@@ -129,7 +129,7 @@ impl state::Update<Event> for InvoiceStates {
 
         match event {
             Event::Added => state.transition_to_opened(),
-            Event::Accepted => state.transition_to_accepted(),
+            Event::PaymentSent => state.transition_to_accepted(),
             Event::Settled(settled) => state.transition_to_settled(settled),
             Event::Cancelled => state.transition_to_cancelled(),
         }
@@ -145,7 +145,7 @@ pub async fn create_watcher<C, L, A, I>(
 ) where
     // TODO: add FailedInsertSwap
     C: InvoiceAdded<L, A, I>
-        + InvoiceAccepted<L, A, I>
+        + InvoicePaymentSent<L, A, I>
         + InvoiceSettled<L, A, I>
         + InvoiceCancelled<L, A, I>,
     L: Clone,
@@ -194,7 +194,7 @@ async fn watch_ledger<C, L, A, I>(
 ) -> anyhow::Result<()>
 where
     C: InvoiceAdded<L, A, I>
-        + InvoiceAccepted<L, A, I>
+        + InvoicePaymentSent<L, A, I>
         + InvoiceSettled<L, A, I>
         + InvoiceCancelled<L, A, I>,
     Params<L, A, I>: Clone,
@@ -202,8 +202,10 @@ where
     lnd_connector.invoice_added(htlc_params.clone()).await?;
     co.yield_(Event::Added).await;
 
-    lnd_connector.invoice_accepted(htlc_params.clone()).await?;
-    co.yield_(Event::Accepted).await;
+    lnd_connector
+        .invoice_payment_sent(htlc_params.clone())
+        .await?;
+    co.yield_(Event::PaymentSent).await;
 
     let settled = lnd_connector.invoice_settled(htlc_params.clone());
 
