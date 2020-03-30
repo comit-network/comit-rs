@@ -3,16 +3,24 @@ pub mod peers;
 pub mod rfc003;
 
 use crate::{
-    asset, htlc_location,
+    asset,
+    ethereum::{Bytes, U256},
+    htlc_location,
     http_api::{action::ToSirenAction, problem},
     network::comit_ln,
     swap_protocols::{
-        actions::{ethereum, lightning, Actions},
+        actions::{
+            ethereum,
+            lnd::{self, Chain, Network},
+            Actions,
+        },
         halight::InvoiceState,
-        rfc003::LedgerState,
+        ledger::ethereum::ChainId,
+        rfc003::{LedgerState, Secret},
         state::Get,
         Facade2, Role, SwapId,
     },
+    timestamp::Timestamp,
     transaction, Never,
 };
 use http_api_problem::HttpApiProblem;
@@ -111,54 +119,129 @@ pub struct BobEthLnState {
 // TODO this should be in COMIT library that doesn't exist yet
 impl Actions for AliceEthLnState {
     type ActionKind = ActionKind<
-        lightning::AddHoldInvoice,
+        lnd::AddHoldInvoice,
         ethereum::DeployContract,
-        lightning::SettleInvoice,
+        lnd::SettleInvoice,
         ethereum::CallContract,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
         if let InvoiceState::None = self.beta_ledger_state {
-            return vec![ActionKind::Init(unimplemented!())];
+            let amount = self.finalized_swap.beta_asset;
+            let secret_hash = self.finalized_swap.secret_hash;
+            let expiry = unimplemented!();
+            let cltv_delta = unimplemented!();
+            let chain = Chain::Bitcoin;
+            let network = Network::DevNet;
+            let self_public_key = self.finalized_swap.alpha_ledger_redeem_identity;
+
+            return vec![ActionKind::Init(lnd::AddHoldInvoice {
+                amount,
+                secret_hash,
+                expiry,
+                cltv_delta,
+                chain,
+                network,
+                self_public_key,
+            })];
         }
 
         if let InvoiceState::Added = self.beta_ledger_state {
-            return vec![ActionKind::Fund(unimplemented!())];
+            let data: Bytes = unimplemented!();
+            let amount = self.finalized_swap.alpha_asset;
+            let gas_limit: U256 = unimplemented!();
+            let chain_id = ChainId::regtest();
+
+            return vec![ActionKind::Fund(ethereum::DeployContract {
+                data,
+                amount,
+                gas_limit,
+                chain_id,
+            })];
         }
 
         let mut actions = vec![];
 
-        if let LedgerState::Funded { .. } = self.alpha_ledger_state {
-            actions.push(ActionKind::Refund(unimplemented!()));
-        }
-
         if let InvoiceState::PaymentSent = self.beta_ledger_state {
-            actions.push(ActionKind::Redeem(unimplemented!()));
+            let secret: Secret = unimplemented!();
+            let chain = Chain::Bitcoin;
+            let network = Network::DevNet;
+            let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+
+            actions.push(ActionKind::Redeem(lnd::SettleInvoice {
+                secret,
+                chain,
+                network,
+                self_public_key,
+            }))
         }
 
+        if let LedgerState::Funded { .. } = self.alpha_ledger_state {
+            if let InvoiceState::PaymentSent = self.beta_ledger_state {
+                let to = self.finalized_swap.alpha_ledger_refund_identity;
+                let data: Option<Bytes> = unimplemented!();
+                let gas_limit: U256 = unimplemented!();
+                let chain_id = ChainId::regtest();
+                let min_block_timestamp: Option<Timestamp> = unimplemented!();
+
+                actions.push(ActionKind::Refund(ethereum::CallContract {
+                    to,
+                    data,
+                    gas_limit,
+                    chain_id,
+                    min_block_timestamp,
+                }));
+            }
+        }
         actions
     }
 }
 
 impl Actions for BobEthLnState {
-    type ActionKind =
-        ActionKind<Never, lightning::SendPayment, ethereum::CallContract, lightning::CancelInvoice>;
+    // TODO: Verify and remove this comment; No refund action for Bob, if hold
+    // invoice payment expires then the money is never transferred anywhere so no
+    // need to refund.
+    type ActionKind = ActionKind<Never, lnd::SendPayment, ethereum::CallContract, Never>;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
         let mut actions = vec![];
 
         if let LedgerState::Funded { .. } = self.alpha_ledger_state {
             if let InvoiceState::Added = self.beta_ledger_state {
-                actions.push(ActionKind::Fund(unimplemented!()));
+                let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+                let amount = self.finalized_swap.beta_asset;
+                let secret_hash = self.finalized_swap.secret_hash;
+                let final_cltv_delta: u32 = unimplemented!();
+                let chain = Chain::Bitcoin;
+                let network = Network::DevNet;
+                let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
+
+                actions.push(ActionKind::Fund(lnd::SendPayment {
+                    to_public_key,
+                    amount,
+                    secret_hash,
+                    final_cltv_delta,
+                    chain,
+                    network,
+                    self_public_key,
+                }))
             }
         }
 
-        if let InvoiceState::PaymentSent = self.beta_ledger_state {
-            actions.push(ActionKind::Refund(unimplemented!()));
-        }
-
         if let LedgerState::Funded { .. } = self.alpha_ledger_state {
-            actions.push(ActionKind::Redeem(unimplemented!()));
+            let to = self.finalized_swap.alpha_ledger_redeem_identity;
+            let data: Option<Bytes> = unimplemented!();
+            let gas_limit: U256 = unimplemented!();
+            let chain_id: ChainId = ChainId::regtest();
+            let min_block_timestamp: Option<Timestamp> = unimplemented!();
+
+            actions.push(ActionKind::Redeem(ethereum::CallContract {
+                to,
+                data,
+                gas_limit,
+                chain_id,
+                min_block_timestamp,
+            }))
         }
 
         actions
