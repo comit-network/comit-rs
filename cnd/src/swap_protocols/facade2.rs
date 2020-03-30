@@ -17,9 +17,7 @@ pub struct Facade2 {
 
 impl Facade2 {
     pub async fn save(&self, _id: NodeLocalSwapId, _body: Body) {
-        // delegate to database
-
-        unimplemented!()
+        // TODO:  delegate to database
     }
 
     pub async fn initiate_communication(&self, id: NodeLocalSwapId, body: Body) {

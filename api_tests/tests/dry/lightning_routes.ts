@@ -17,12 +17,14 @@ describe("Lightning routes tests", () => {
     it(
         "lightning-routes-post-eth-lnbtc-return-400",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                defaultHanEthereumEtherHalightLightningBitcoin("", {
-                    peer_id: "",
-                })
+            const body = defaultHanEthereumEtherHalightLightningBitcoin("", {
+                peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
+            });
+            console.log(JSON.stringify(body, undefined, 2));
+            const location = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                body
             );
-            await expect(promise).rejects.toThrow("Route not yet supported");
+            expect(typeof location).toBe("string");
         })
     );
 
