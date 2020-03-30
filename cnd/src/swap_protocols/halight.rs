@@ -16,6 +16,8 @@ use genawaiter::{
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
+// TODO: Consider removing 'invoice_' prefix from all these methods
+
 #[async_trait::async_trait]
 pub trait InvoiceOpened<L, A, I> {
     async fn invoice_opened(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
