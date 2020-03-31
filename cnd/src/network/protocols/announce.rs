@@ -3,7 +3,7 @@ pub mod handler;
 pub mod protocol;
 
 use libp2p::{multihash, multihash::Multihash};
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
+use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
@@ -19,19 +19,26 @@ impl fmt::Display for SwapDigest {
 }
 
 impl Serialize for SwapDigest {
-    fn serialize<S>(&self, _serializer: S) -> Result<S::Ok, S::Error>
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        unimplemented!()
+        let bytes = self.inner.to_vec();
+        let hex = multihash::to_hex(bytes.as_slice());
+
+        serializer.serialize_str(&hex)
     }
 }
 
 impl<'de> Deserialize<'de> for SwapDigest {
-    fn deserialize<D>(_deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
     where
         D: Deserializer<'de>,
     {
-        unimplemented!()
+        let hex = String::deserialize(deserializer)?;
+        let bytes = hex::decode(hex).map_err(D::Error::custom)?;
+        let multihash = multihash::Multihash::from_bytes(bytes).map_err(D::Error::custom)?;
+
+        Ok(SwapDigest { inner: multihash })
     }
 }
