@@ -1,9 +1,5 @@
 use crate::swap_protocols::{
-    halight::{
-        data,
-        event::{Accepted, Cancelled, Opened, Settled},
-        Params,
-    },
+    halight::{data, Accepted, Cancelled, Opened, Params, Settled},
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;

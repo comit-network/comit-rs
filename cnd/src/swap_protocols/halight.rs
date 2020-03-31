@@ -17,28 +17,24 @@ use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
 /// Resolves when said event has occured.
-pub mod event {
-    use super::{data, Params};
+#[async_trait::async_trait]
+pub trait Opened<L, A, I> {
+    async fn opened(&self, params: Params<L, A, I>) -> anyhow::Result<data::Opened>;
+}
 
-    #[async_trait::async_trait]
-    pub trait Opened<L, A, I> {
-        async fn opened(&self, params: Params<L, A, I>) -> anyhow::Result<data::Opened>;
-    }
+#[async_trait::async_trait]
+pub trait Accepted<L, A, I> {
+    async fn accepted(&self, params: Params<L, A, I>) -> anyhow::Result<data::Accepted>;
+}
 
-    #[async_trait::async_trait]
-    pub trait Accepted<L, A, I> {
-        async fn accepted(&self, params: Params<L, A, I>) -> anyhow::Result<data::Accepted>;
-    }
+#[async_trait::async_trait]
+pub trait Settled<L, A, I> {
+    async fn settled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Settled>;
+}
 
-    #[async_trait::async_trait]
-    pub trait Settled<L, A, I> {
-        async fn settled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Settled>;
-    }
-
-    #[async_trait::async_trait]
-    pub trait Cancelled<L, A, I> {
-        async fn cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Cancelled>;
-    }
+#[async_trait::async_trait]
+pub trait Cancelled<L, A, I> {
+    async fn cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
@@ -163,10 +159,7 @@ pub async fn create_watcher<C, L, A, I>(
     finalized_at: NaiveDateTime,
 ) where
     // TODO: add FailedInsertSwap
-    C: event::Opened<L, A, I>
-        + event::Accepted<L, A, I>
-        + event::Settled<L, A, I>
-        + event::Cancelled<L, A, I>,
+    C: Opened<L, A, I> + Accepted<L, A, I> + Settled<L, A, I> + Cancelled<L, A, I>,
     L: Clone,
     A: Ord + Clone,
     I: Clone,
@@ -212,10 +205,7 @@ async fn watch_ledger<C, L, A, I>(
     _start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    C: event::Opened<L, A, I>
-        + event::Accepted<L, A, I>
-        + event::Settled<L, A, I>
-        + event::Cancelled<L, A, I>,
+    C: Opened<L, A, I> + Accepted<L, A, I> + Settled<L, A, I> + Cancelled<L, A, I>,
     Params<L, A, I>: Clone,
 {
     let opened = lnd_connector.opened(htlc_params.clone()).await?;
