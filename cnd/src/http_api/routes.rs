@@ -202,9 +202,6 @@ impl Actions for AliceEthLnState {
 }
 
 impl Actions for BobEthLnState {
-    // TODO: Verify and remove this comment; No refund action for Bob, if hold
-    // invoice payment expires then the money is never transferred anywhere so no
-    // need to refund.
     type ActionKind = ActionKind<Never, lnd::SendPayment, ethereum::CallContract, Never>;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
