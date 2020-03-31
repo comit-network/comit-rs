@@ -125,7 +125,6 @@ impl ComitLN {
                 multihash::Hash::SHA2256,
                 b"TODO REPLACE ME WITH THE ACTUAL SWAP DIGEST",
             )
-            .to_owned()
             .unwrap(),
         };
 
@@ -175,18 +174,18 @@ impl ComitLN {
         // place of truth
         let alpha_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => self.ethereum_identities.get(&id).copied().unwrap(),
-            Role::Bob => create_swap_params.ethereum_identity.clone(),
+            Role::Bob => create_swap_params.ethereum_identity,
         };
         let alpha_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.ethereum_identity.clone(),
+            Role::Alice => create_swap_params.ethereum_identity,
             Role::Bob => self.ethereum_identities.get(&id).copied().unwrap(),
         };
         let beta_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => self.lightning_identities.get(&id).copied().unwrap(),
-            Role::Bob => create_swap_params.lightning_identity.clone(),
+            Role::Bob => create_swap_params.lightning_identity,
         };
         let beta_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.lightning_identity.clone(),
+            Role::Alice => create_swap_params.lightning_identity,
             Role::Bob => self.lightning_identities.get(&id).copied().unwrap(),
         };
 
@@ -194,7 +193,7 @@ impl ComitLN {
             alpha_ledger: Ethereum::new(ChainId::regtest()), // TODO: don't hardcode these
             beta_ledger: lightning::Regtest,                 // TODO: don't hardcode these
             alpha_asset: create_swap_params.ethereum_amount.clone(),
-            beta_asset: create_swap_params.lightning_amount.clone(),
+            beta_asset: create_swap_params.lightning_amount,
             alpha_ledger_redeem_identity,
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
@@ -239,7 +238,7 @@ impl FinalizedSwap {
             ledger: Ethereum::new(ChainId::regtest()),
             redeem_identity: self.alpha_ledger_redeem_identity,
             refund_identity: self.alpha_ledger_refund_identity,
-            expiry: Timestamp::from(self.alpha_expiry),
+            expiry: self.alpha_expiry,
             secret_hash: self.secret_hash,
         }
         .into()
@@ -328,22 +327,15 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                         .register_addresses(peer.clone(), addresses.clone());
                     self.lightning_identity
                         .register_addresses(peer.clone(), addresses.clone());
-                    self.finalize
-                        .register_addresses(peer.clone(), addresses.clone());
+                    self.finalize.register_addresses(peer.clone(), addresses);
 
                     self.ethereum_identity.send(
                         peer.clone(),
-                        ethereum_identity::Message::new(
-                            id,
-                            create_swap_params.ethereum_identity.clone(),
-                        ),
+                        ethereum_identity::Message::new(id, create_swap_params.ethereum_identity),
                     );
                     self.lightning_identity.send(
                         peer,
-                        lightning_identity::Message::new(
-                            id,
-                            create_swap_params.lightning_identity.clone(),
-                        ),
+                        lightning_identity::Message::new(id, create_swap_params.lightning_identity),
                     );
 
                     self.communication_state
@@ -380,23 +372,19 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     .register_addresses(peer.clone(), addresses.clone());
                 self.lightning_identity
                     .register_addresses(peer.clone(), addresses.clone());
-                self.finalize
-                    .register_addresses(peer.clone(), addresses.clone());
+                self.finalize.register_addresses(peer.clone(), addresses);
 
                 let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
 
                 self.ethereum_identity.send(
                     peer.clone(),
-                    ethereum_identity::Message::new(
-                        swap_id,
-                        create_swap_params.ethereum_identity.clone(),
-                    ),
+                    ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity),
                 );
                 self.lightning_identity.send(
                     peer.clone(),
                     lightning_identity::Message::new(
                         swap_id,
-                        create_swap_params.lightning_identity.clone(),
+                        create_swap_params.lightning_identity,
                     ),
                 );
 
@@ -586,9 +574,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .read_certificate()
                         .expect("Failure reading tls certificate");
                     let bob_ln_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let alice_ln_identity = create_swap_params.lightning_identity.clone();
-                    let cltv_expiry = create_swap_params.lightning_cltv_expiry.into();
-                    let asset = create_swap_params.lightning_amount.clone();
+                    let alice_ln_identity = create_swap_params.lightning_identity;
+                    let cltv_expiry = create_swap_params.lightning_cltv_expiry;
+                    let asset = create_swap_params.lightning_amount;
 
                     async move {
                         halight::create_watcher(
@@ -620,9 +608,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .expect("Failure reading tls certificate");
                     let alice_lightning_identity =
                         self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let bob_lightning_identity = create_swap_params.lightning_identity.clone();
-                    let cltv_expiry = create_swap_params.lightning_cltv_expiry.into();
-                    let asset = create_swap_params.lightning_amount.clone();
+                    let bob_lightning_identity = create_swap_params.lightning_identity;
+                    let cltv_expiry = create_swap_params.lightning_cltv_expiry;
+                    let asset = create_swap_params.lightning_amount;
 
                     async move {
                         halight::create_watcher(
@@ -648,7 +636,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
             if create_swap_params.role == Role::Alice {
                 tokio::task::spawn({
                     let connector = self.ethereum_connector.clone();
-                    let alice_ethereum_identity = create_swap_params.ethereum_identity.clone();
+                    let alice_ethereum_identity = create_swap_params.ethereum_identity;
                     let bob_ethereum_identity =
                         self.ethereum_identities.get(&swap_id).copied().unwrap();
 
@@ -699,7 +687,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     let connector = self.ethereum_connector.clone();
                     let alice_ethereum_identity =
                         self.ethereum_identities.get(&swap_id).copied().unwrap();
-                    let bob_ethereum_identity = create_swap_params.ethereum_identity.clone();
+                    let bob_ethereum_identity = create_swap_params.ethereum_identity;
 
                     let asset = create_swap_params.ethereum_amount.clone();
                     let ledger = ledger::Ethereum::default(); // FIXME: get this from somewhere

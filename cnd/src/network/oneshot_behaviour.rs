@@ -72,7 +72,7 @@ where
     }
 
     fn addresses_of_peer(&mut self, peer: &PeerId) -> Vec<Multiaddr> {
-        self.address_book.get(peer).cloned().unwrap_or(Vec::new())
+        self.address_book.get(peer).cloned().unwrap_or_default()
     }
 
     fn inject_connected(&mut self, _: PeerId, _: ConnectedPoint) {

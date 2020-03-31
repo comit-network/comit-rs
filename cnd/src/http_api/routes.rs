@@ -20,7 +20,6 @@ use crate::{
         state::Get,
         Facade2, Role, SwapId,
     },
-    timestamp::Timestamp,
     transaction, Never,
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
@@ -186,7 +185,7 @@ impl Actions for AliceEthLnState {
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
                 let chain_id = ChainId::regtest();
-                let min_block_timestamp = Some(Timestamp::from(self.finalized_swap.alpha_expiry));
+                let min_block_timestamp = Some(self.finalized_swap.alpha_expiry);
 
                 actions.push(ActionKind::Refund(ethereum::CallContract {
                     to,
@@ -210,7 +209,7 @@ impl Actions for BobEthLnState {
         if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
             if let halight::State::Opened(_) = self.beta_ledger_state {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
-                let amount = self.finalized_swap.beta_asset.clone();
+                let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
                 let final_cltv_delta = self.finalized_swap.beta_expiry.into();
                 let chain = Chain::Bitcoin;

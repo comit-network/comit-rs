@@ -388,7 +388,7 @@ impl ComitNode {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
             comit_ln: ComitLN::new(
-                lnd_connector_params.clone(),
+                lnd_connector_params,
                 ethereum_connector.clone(),
                 alpha_ledger_state.clone(),
                 seed,

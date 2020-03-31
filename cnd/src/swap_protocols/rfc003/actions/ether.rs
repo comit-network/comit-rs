@@ -25,7 +25,7 @@ impl FundAction for (Ethereum, asset::Ether) {
         DeployContract {
             data: htlc.into(),
             amount: htlc_params.asset.clone(),
-            gas_limit: gas_limit.into(),
+            gas_limit,
             chain_id: htlc_params.ledger.chain_id,
         }
     }
@@ -48,7 +48,7 @@ impl RefundAction for (Ethereum, asset::Ether) {
         CallContract {
             to: htlc_location,
             data: None,
-            gas_limit: gas_limit.into(),
+            gas_limit,
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: Some(htlc_params.expiry),
         }
@@ -72,7 +72,7 @@ impl RedeemAction for (Ethereum, asset::Ether) {
         CallContract {
             to: htlc_location,
             data: Some(data),
-            gas_limit: gas_limit.into(),
+            gas_limit,
             chain_id: htlc_params.ledger.chain_id,
             min_block_timestamp: None,
         }

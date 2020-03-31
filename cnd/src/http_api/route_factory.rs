@@ -131,7 +131,7 @@ pub fn create(
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(facade2.clone())
+        .and(facade2)
         .and(warp::header::exact(
             "accept",
             "application/vnd.comit.halight-preview+json",

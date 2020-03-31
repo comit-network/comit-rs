@@ -125,7 +125,7 @@ impl state::Insert<State> for InvoiceStates {
 impl state::Get<State> for InvoiceStates {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
         let states = self.states.lock().await;
-        let state = states.get(key).map(|s| *s);
+        let state = states.get(key).copied();
         Ok(state)
     }
 }
@@ -220,7 +220,7 @@ where
 
     match future::try_select(settled, cancelled).await {
         Ok(Either::Left((settled, _))) => {
-            co.yield_(Event::Settled(settled.clone())).await;
+            co.yield_(Event::Settled(settled)).await;
         }
         Ok(Either::Right((cancelled, _))) => {
             co.yield_(Event::Cancelled(cancelled)).await;
