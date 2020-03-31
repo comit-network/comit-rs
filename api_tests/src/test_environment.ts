@@ -63,6 +63,7 @@ export default class TestEnvironment extends NodeEnvironment {
                         type: "pattern",
                         pattern: "%d %5.10p: %m",
                     },
+                    timeout: 2000,
                 },
             },
             categories: {

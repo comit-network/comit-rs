@@ -63,7 +63,11 @@ export class EthereumWallet implements Wallet {
             data,
         };
         const transactionResponse = await this.sendTransaction(tx);
-        const transactionReceipt = await transactionResponse.wait(1);
+        const transactionReceipt = await this.parity.provider.waitForTransaction(
+            transactionResponse.hash,
+            1
+        );
+        // const transactionReceipt = await transactionResponse.wait(1);
 
         if (!transactionReceipt.status) {
             throw new Error(
@@ -116,7 +120,7 @@ export class EthereumWallet implements Wallet {
             gasLimit: 21000,
         });
 
-        await response.wait(1);
+        await this.parity.provider.waitForTransaction(response.hash, 1);
 
         const balance = await this.getBalanceByAsset(asset);
 
@@ -140,7 +144,10 @@ export class EthereumWallet implements Wallet {
             data,
         };
         const transactionResponse = await this.parity.sendTransaction(tx);
-        const transactionReceipt = await transactionResponse.wait(1);
+        const transactionReceipt = await this.parity.provider.waitForTransaction(
+            transactionResponse.hash,
+            1
+        );
         return transactionReceipt.contractAddress;
     }
 
