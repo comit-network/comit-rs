@@ -207,7 +207,7 @@ impl NetworkBehaviour for Announce {
             }
             HandlerEvent::AwaitingConfirmation(sender) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
-                    BehaviourOutEvent::AwaitingConfirmation {
+                    BehaviourOutEvent::ReceivedAnnouncement {
                         peer: peer_id,
                         io: sender,
                     },
@@ -276,7 +276,7 @@ pub enum BehaviourOutEvent {
     /// contains a reply substream for the receiver to send back the
     /// `swap_id` that corresponds to the swap digest. Bob sends the
     /// confirmations message to Alice using the the reply substream.
-    AwaitingConfirmation {
+    ReceivedAnnouncement {
         /// The peer (Alice) that the reply substream is connected to.
         peer: PeerId,
         /// The substream (inc. `swap_digest`) to reply on (i.e., send

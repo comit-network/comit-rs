@@ -300,8 +300,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
 impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for ComitLN {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
-            // TODO: rename this to something better, like `ReceivedAnnouncement`
-            BehaviourOutEvent::AwaitingConfirmation { peer, mut io } => {
+            BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
                 if let Some(local_id) = self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
                     let id = SwapId::default();
