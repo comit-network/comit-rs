@@ -31,7 +31,9 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
     warp::reject::custom(problem)
 }
 
-// TODO this should accept `NodeLocalSwapId`
+// TODO: this should accept `NodeLocalSwapId`
+// This will be possible once the `swap_protocol::LedgerState` struct
+// is duplicated in `han::LedgerState` and `herc20::LedgerState`
 #[allow(clippy::needless_pass_by_value)]
 pub async fn get_han_halight_swap(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_get_han_halight_swap(facade, id)
