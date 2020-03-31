@@ -22,6 +22,7 @@ digest-macro-derive = { path = "../digest-macro-derive" }
 directories = "2.0"
 ethbloom = "0.9.0"
 fern = { version = "0.6", features = ["colored"] }
+fs2 = "0.4.3"
 futures = { version = "0.3", features = ["async-await"], default-features = false }
 genawaiter = "0.99"
 hex = "0.4"
