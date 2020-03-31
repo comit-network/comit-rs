@@ -14,7 +14,7 @@ use crate::{
             lnd::{self, Chain, Network},
             Actions,
         },
-        halight::{data, State},
+        halight::{self, data},
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
@@ -55,7 +55,7 @@ pub async fn handle_get_han_halight_swap(
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
 
-    let beta_ledger_state: State = facade
+    let beta_ledger_state: halight::State = facade
         .beta_ledger_state
         .get(&id)
         .await?
@@ -105,7 +105,7 @@ fn make_entity<A: ToSirenAction>(actions: Vec<A>, id: SwapId) -> siren::Entity {
 pub struct AliceEthLnState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
-    pub beta_ledger_state: State,
+    pub beta_ledger_state: halight::State,
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
@@ -113,7 +113,7 @@ pub struct AliceEthLnState {
 pub struct BobEthLnState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
-    pub beta_ledger_state: State,
+    pub beta_ledger_state: halight::State,
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
@@ -127,7 +127,7 @@ impl Actions for AliceEthLnState {
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
-        if let State::Unknown = self.beta_ledger_state {
+        if let halight::State::Unknown = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
             let expiry = self.finalized_swap.alpha_expiry; // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
@@ -147,7 +147,7 @@ impl Actions for AliceEthLnState {
             })];
         }
 
-        if let State::Opened(_) = self.beta_ledger_state {
+        if let halight::State::Opened(_) = self.beta_ledger_state {
             let eth_htlc = self.finalized_swap.han_params();
             let data = eth_htlc.into();
             let amount = self.finalized_swap.alpha_asset.clone();
@@ -164,7 +164,7 @@ impl Actions for AliceEthLnState {
 
         let mut actions = vec![];
 
-        if let State::Accepted(_) = self.beta_ledger_state {
+        if let halight::State::Accepted(_) = self.beta_ledger_state {
             let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
@@ -179,7 +179,7 @@ impl Actions for AliceEthLnState {
         }
 
         if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let State::Accepted(_) = self.beta_ledger_state {
+            if let halight::State::Accepted(_) = self.beta_ledger_state {
                 let to = htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
@@ -209,7 +209,7 @@ impl Actions for BobEthLnState {
         let mut actions = vec![];
 
         if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let State::Opened(_) = self.beta_ledger_state {
+            if let halight::State::Opened(_) = self.beta_ledger_state {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset.clone();
                 let secret_hash = self.finalized_swap.secret_hash;
@@ -229,7 +229,7 @@ impl Actions for BobEthLnState {
                 }));
             }
 
-            if let State::Settled(data::Settled { secret }) = self.beta_ledger_state {
+            if let halight::State::Settled(data::Settled { secret }) = self.beta_ledger_state {
                 let to = htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
