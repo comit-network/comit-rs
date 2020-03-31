@@ -1,5 +1,9 @@
 use crate::swap_protocols::{
-    halight::{InvoiceAccepted, InvoiceCancelled, InvoiceOpened, InvoiceSettled, Params, Settled},
+    halight::{
+        data,
+        event::{Accepted, Cancelled, Opened, Settled},
+        Params,
+    },
     rfc003::{Secret, SecretHash},
 };
 use anyhow::Error;
@@ -7,7 +11,7 @@ use reqwest::{Certificate, StatusCode, Url};
 use serde::Deserialize;
 use std::{io::Read, path::PathBuf, time::Duration};
 
-/// Invoice states.  These mirror the invoice states used by lightning.
+/// Invoice states.  These mirror the invoice states used by lnd.
 // ref: https://api.lightning.community/#invoicestate
 #[derive(Debug, Deserialize, PartialEq)]
 #[serde(untagged)]
@@ -22,7 +26,7 @@ enum InvoiceState {
     Accepted,
 }
 
-/// Payment status.  These mirror the payment status' used by lightning.
+/// Payment status.  These mirror the payment status' used by lnd.
 // ref: https://api.lightning.community/#paymentstatus
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
 enum PaymentStatus {
@@ -155,27 +159,27 @@ impl LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsSender
+impl<L, A, I> Opened<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, _params: Params<L, A, I>) -> Result<(), Error> {
+    async fn opened(&self, _params: Params<L, A, I>) -> Result<data::Opened, Error> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
-        Ok(())
+        Ok(data::Opened)
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsSender
+impl<L, A, I> Accepted<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn accepted(&self, params: Params<L, A, I>) -> Result<data::Accepted, Error> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         while self
@@ -186,18 +190,18 @@ where
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
 
-        Ok(())
+        Ok(data::Accepted)
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceSettled<L, A, I> for LndConnectorAsSender
+impl<L, A, I> Settled<L, A, I> for LndConnectorAsSender
 where
     A: Send + 'static,
     L: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_settled(&self, params: Params<L, A, I>) -> Result<Settled, Error> {
+    async fn settled(&self, params: Params<L, A, I>) -> Result<data::Settled, Error> {
         let payment = loop {
             match self
                 .find_payment(params.secret_hash, PaymentStatus::Succeed)
@@ -217,18 +221,18 @@ where
                 params.secret_hash
             )),
         }?;
-        Ok(Settled { secret })
+        Ok(data::Settled { secret })
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceCancelled<L, A, I> for LndConnectorAsSender
+impl<L, A, I> Cancelled<L, A, I> for LndConnectorAsSender
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn cancelled(&self, params: Params<L, A, I>) -> Result<data::Cancelled, Error> {
         while self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
@@ -237,7 +241,7 @@ where
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
 
-        Ok(())
+        Ok(data::Cancelled)
     }
 }
 
@@ -301,13 +305,13 @@ impl LndConnectorAsReceiver {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceOpened<L, A, I> for LndConnectorAsReceiver
+impl<L, A, I> Opened<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_opened(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn opened(&self, params: Params<L, A, I>) -> Result<data::Opened, Error> {
         // FIXME: Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         let mut resp = client(self.certificate.certificate()?)?
@@ -320,18 +324,18 @@ where
             resp = reqwest::get(self.invoice_url(params.secret_hash)?).await?;
         }
         let _invoice_response = resp.json::<Invoice>().await?;
-        Ok(())
+        Ok(data::Opened)
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceAccepted<L, A, I> for LndConnectorAsReceiver
+impl<L, A, I> Accepted<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn accepted(&self, params: Params<L, A, I>) -> Result<data::Accepted, Error> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
@@ -343,18 +347,18 @@ where
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
-        Ok(())
+        Ok(data::Accepted)
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceSettled<L, A, I> for LndConnectorAsReceiver
+impl<L, A, I> Settled<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_settled(&self, params: Params<L, A, I>) -> Result<Settled, Error> {
+    async fn settled(&self, params: Params<L, A, I>) -> Result<data::Settled, Error> {
         let invoice = loop {
             match self
                 .find_invoice(params.secret_hash, InvoiceState::Settled)
@@ -365,20 +369,20 @@ where
             }
         };
 
-        Ok(Settled {
+        Ok(data::Settled {
             secret: invoice.r_preimage,
         })
     }
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> InvoiceCancelled<L, A, I> for LndConnectorAsReceiver
+impl<L, A, I> Cancelled<L, A, I> for LndConnectorAsReceiver
 where
     L: Send + 'static,
     A: Send + 'static,
     I: Send + 'static,
 {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> Result<(), Error> {
+    async fn cancelled(&self, params: Params<L, A, I>) -> Result<data::Cancelled, Error> {
         while self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?
@@ -386,7 +390,7 @@ where
         {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
         }
-        Ok(())
+        Ok(data::Cancelled)
     }
 }
 

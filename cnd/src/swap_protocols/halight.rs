@@ -16,101 +16,118 @@ use genawaiter::{
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::Mutex;
 
-// TODO: Consider removing 'invoice_' prefix from all these methods
+/// Resolves when said event has occured.
+pub mod event {
+    use super::{data, Params};
 
-#[async_trait::async_trait]
-pub trait InvoiceOpened<L, A, I> {
-    async fn invoice_opened(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
-}
+    #[async_trait::async_trait]
+    pub trait Opened<L, A, I> {
+        async fn opened(&self, params: Params<L, A, I>) -> anyhow::Result<data::Opened>;
+    }
 
-#[async_trait::async_trait]
-pub trait InvoiceAccepted<L, A, I> {
-    async fn invoice_accepted(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
-}
+    #[async_trait::async_trait]
+    pub trait Accepted<L, A, I> {
+        async fn accepted(&self, params: Params<L, A, I>) -> anyhow::Result<data::Accepted>;
+    }
 
-#[async_trait::async_trait]
-pub trait InvoiceSettled<L, A, I> {
-    async fn invoice_settled(&self, params: Params<L, A, I>) -> anyhow::Result<Settled>;
-}
+    #[async_trait::async_trait]
+    pub trait Settled<L, A, I> {
+        async fn settled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Settled>;
+    }
 
-#[async_trait::async_trait]
-pub trait InvoiceCancelled<L, A, I> {
-    async fn invoice_cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<()>;
+    #[async_trait::async_trait]
+    pub trait Cancelled<L, A, I> {
+        async fn cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Cancelled>;
+    }
 }
 
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
-pub enum InvoiceState {
+pub enum State {
+    // TODO: Revisit this variant name.
     Unknown,
-    Opened,
-    Accepted,
-    Settled(Settled),
-    Cancelled,
+    Opened(data::Opened),
+    Accepted(data::Accepted),
+    Settled(data::Settled),
+    Cancelled(data::Cancelled),
 }
 
-/// Represents events that have occurred, transitioning the state.
+/// Represents events that have occurred, transitioning to said state.
 #[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
-    Opened,
-    Accepted,
-    Settled(Settled),
-    Cancelled,
+    Opened(data::Opened),
+    Accepted(data::Accepted),
+    Settled(data::Settled),
+    Cancelled(data::Cancelled),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Settled {
-    pub secret: Secret,
+/// Represents the data available at said state.
+pub mod data {
+    use super::*;
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Opened;
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Accepted;
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Settled {
+        pub secret: Secret,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Cancelled;
 }
 
 #[derive(Default, Debug)]
 pub struct InvoiceStates {
-    states: Mutex<HashMap<SwapId, InvoiceState>>,
+    states: Mutex<HashMap<SwapId, State>>,
 }
 
-impl InvoiceState {
-    pub fn transition_to_opened(&mut self) {
-        match std::mem::replace(self, InvoiceState::Unknown) {
-            InvoiceState::Unknown => *self = InvoiceState::Opened,
+impl State {
+    pub fn transition_to_opened(&mut self, opened: data::Opened) {
+        match std::mem::replace(self, State::Unknown) {
+            State::Unknown => *self = State::Opened(opened),
             other => panic!("expected state Unknown, got {:?}", other),
         }
     }
 
-    pub fn transition_to_accepted(&mut self) {
-        match std::mem::replace(self, InvoiceState::Unknown) {
-            InvoiceState::Opened => *self = InvoiceState::Accepted,
+    pub fn transition_to_accepted(&mut self, accepted: data::Accepted) {
+        match std::mem::replace(self, State::Unknown) {
+            State::Opened(_) => *self = State::Accepted(accepted),
             other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
-    pub fn transition_to_settled(&mut self, settled: Settled) {
-        match std::mem::replace(self, InvoiceState::Unknown) {
-            InvoiceState::Accepted => *self = InvoiceState::Settled(settled),
+    pub fn transition_to_settled(&mut self, settled: data::Settled) {
+        match std::mem::replace(self, State::Unknown) {
+            State::Accepted(_) => *self = State::Settled(settled),
             other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
-    pub fn transition_to_cancelled(&mut self) {
-        match std::mem::replace(self, InvoiceState::Unknown) {
+    pub fn transition_to_cancelled(&mut self, cancelled: data::Cancelled) {
+        match std::mem::replace(self, State::Unknown) {
             // Alice cancels invoice before Bob has accepted it.
-            InvoiceState::Opened => *self = InvoiceState::Cancelled,
+            State::Opened(_) => *self = State::Cancelled(cancelled),
             // Alice cancels invoice after Bob has accepted it.
-            InvoiceState::Accepted => *self = InvoiceState::Cancelled,
+            State::Accepted(_) => *self = State::Cancelled(cancelled),
             other => panic!("expected state Opened or Accepted, got {:?}", other),
         }
     }
 }
 
 #[async_trait::async_trait]
-impl state::Insert<InvoiceState> for InvoiceStates {
-    async fn insert(&self, key: SwapId, value: InvoiceState) {
+impl state::Insert<State> for InvoiceStates {
+    async fn insert(&self, key: SwapId, value: State) {
         let mut states = self.states.lock().await;
         states.insert(key, value);
     }
 }
 
 #[async_trait::async_trait]
-impl state::Get<InvoiceState> for InvoiceStates {
-    async fn get(&self, key: &SwapId) -> anyhow::Result<Option<InvoiceState>> {
+impl state::Get<State> for InvoiceStates {
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
         let states = self.states.lock().await;
         let state = states.get(key).map(|s| *s);
         Ok(state)
@@ -130,10 +147,10 @@ impl state::Update<Event> for InvoiceStates {
         };
 
         match event {
-            Event::Opened => state.transition_to_opened(),
-            Event::Accepted => state.transition_to_accepted(),
+            Event::Opened(opened) => state.transition_to_opened(opened),
+            Event::Accepted(accepted) => state.transition_to_accepted(accepted),
             Event::Settled(settled) => state.transition_to_settled(settled),
-            Event::Cancelled => state.transition_to_cancelled(),
+            Event::Cancelled(cancelled) => state.transition_to_cancelled(cancelled),
         }
     }
 }
@@ -146,15 +163,15 @@ pub async fn create_watcher<C, L, A, I>(
     finalized_at: NaiveDateTime,
 ) where
     // TODO: add FailedInsertSwap
-    C: InvoiceOpened<L, A, I>
-        + InvoiceAccepted<L, A, I>
-        + InvoiceSettled<L, A, I>
-        + InvoiceCancelled<L, A, I>,
+    C: event::Opened<L, A, I>
+        + event::Accepted<L, A, I>
+        + event::Settled<L, A, I>
+        + event::Cancelled<L, A, I>,
     L: Clone,
     A: Ord + Clone,
     I: Clone,
 {
-    invoice_states.insert(id, InvoiceState::Opened).await;
+    invoice_states.insert(id, State::Opened(data::Opened)).await;
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
@@ -195,28 +212,28 @@ async fn watch_ledger<C, L, A, I>(
     _start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()>
 where
-    C: InvoiceOpened<L, A, I>
-        + InvoiceAccepted<L, A, I>
-        + InvoiceSettled<L, A, I>
-        + InvoiceCancelled<L, A, I>,
+    C: event::Opened<L, A, I>
+        + event::Accepted<L, A, I>
+        + event::Settled<L, A, I>
+        + event::Cancelled<L, A, I>,
     Params<L, A, I>: Clone,
 {
-    lnd_connector.invoice_opened(htlc_params.clone()).await?;
-    co.yield_(Event::Opened).await;
+    let opened = lnd_connector.opened(htlc_params.clone()).await?;
+    co.yield_(Event::Opened(opened)).await;
 
-    lnd_connector.invoice_accepted(htlc_params.clone()).await?;
-    co.yield_(Event::Accepted).await;
+    let accepted = lnd_connector.accepted(htlc_params.clone()).await?;
+    co.yield_(Event::Accepted(accepted)).await;
 
-    let settled = lnd_connector.invoice_settled(htlc_params.clone());
+    let settled = lnd_connector.settled(htlc_params.clone());
 
-    let cancelled = lnd_connector.invoice_cancelled(htlc_params);
+    let cancelled = lnd_connector.cancelled(htlc_params);
 
     match future::try_select(settled, cancelled).await {
         Ok(Either::Left((settled, _))) => {
             co.yield_(Event::Settled(settled.clone())).await;
         }
-        Ok(Either::Right((_cancelled, _))) => {
-            co.yield_(Event::Cancelled).await;
+        Ok(Either::Right((cancelled, _))) => {
+            co.yield_(Event::Cancelled(cancelled)).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
