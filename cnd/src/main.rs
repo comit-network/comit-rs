@@ -113,7 +113,13 @@ fn main() -> anyhow::Result<()> {
     let lnd_connector_params = LndConnectorParams {
         lnd_url: settings.lightning.lnd.rest_api_url.clone(),
         retry_interval_ms: 0,
+        // TODO: don't hardcode these
         certificate_path: std::path::Path::join(&settings.lightning.lnd.dir, "tls.cert"),
+        macaroon_path: std::path::Path::join(&settings.lightning.lnd.dir, "data")
+            .join("chain")
+            .join("bitcoin")
+            .join("regtest")
+            .join("readonly.macaroon"),
     };
 
     let alpha_ledger_state = Arc::new(LedgerStates::default());

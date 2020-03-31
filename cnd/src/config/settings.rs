@@ -218,6 +218,8 @@ impl Settings {
                     lnd: match lightning.lnd {
                         None => Lnd::default(),
                         Some(lnd) => Lnd {
+                            // TODO: verify that we have https, which is required for the connector
+                            // to work
                             rest_api_url: lnd.rest_api_url,
                             dir: lnd.dir,
                         },
@@ -227,9 +229,13 @@ impl Settings {
         })
     }
 
+    // TODO: make these work
     pub fn lnd_macaroon_path(&self) -> Option<PathBuf> {
         let macaroon = "readonly.macaroon";
         let dirs = self.lnd_known_location();
+
+        // FIXME: this MUST look in the correct directory depending on the network that
+        // was configured
         locate_file(dirs, macaroon)
     }
 
