@@ -132,8 +132,8 @@ impl Actions for AliceEthLnState {
         if let halight::State::Unknown = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
-            let expiry = self.finalized_swap.alpha_expiry; // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
-            let cltv_expiry = self.finalized_swap.beta_expiry;
+            let expiry = self.finalized_swap.alpha_expiry.into(); // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
+            let cltv_expiry = self.finalized_swap.beta_expiry.into();
             let chain = Chain::Bitcoin;
             let network = Network::DevNet;
             let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
@@ -212,7 +212,7 @@ impl Actions for BobEthLnState {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset.clone();
                 let secret_hash = self.finalized_swap.secret_hash;
-                let final_cltv_delta = self.finalized_swap.beta_expiry;
+                let final_cltv_delta = self.finalized_swap.beta_expiry.into();
                 let chain = Chain::Bitcoin;
                 let network = Network::DevNet;
                 let self_public_key = self.finalized_swap.beta_ledger_refund_identity;

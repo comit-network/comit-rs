@@ -1,9 +1,7 @@
 use crate::{
     asset,
     btsieve::ethereum::{Cache, Web3Connector},
-    htlc_location,
-    http_api::routes::index::Body,
-    identity,
+    htlc_location, identity,
     lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
     network::{
         oneshot_behaviour,
@@ -22,7 +20,7 @@ use crate::{
         han, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        LedgerStates, NodeLocalSwapId, Role, SwapId,
+        CreateSwapParams, LedgerStates, NodeLocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
     transaction,
@@ -51,7 +49,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, NodeLocalSwapId>,
     #[behaviour(ignore)]
-    swaps: HashMap<NodeLocalSwapId, Body>,
+    swaps: HashMap<NodeLocalSwapId, CreateSwapParams>,
     #[behaviour(ignore)]
     swap_ids: HashMap<NodeLocalSwapId, SwapId>,
     #[behaviour(ignore)]
@@ -117,7 +115,11 @@ impl ComitLN {
         }
     }
 
-    pub fn initiate_communication(&mut self, id: NodeLocalSwapId, body: Body) {
+    pub fn initiate_communication(
+        &mut self,
+        id: NodeLocalSwapId,
+        create_swap_params: CreateSwapParams,
+    ) {
         let digest = SwapDigest {
             inner: multihash::encode(
                 multihash::Hash::SHA2256,
@@ -127,9 +129,9 @@ impl ComitLN {
             .unwrap(),
         };
 
-        self.swaps.insert(id, body.clone());
+        self.swaps.insert(id, create_swap_params.clone());
 
-        match body.role() {
+        match create_swap_params.role {
             Role::Alice => {
                 if self.swaps_waiting_for_announcement.contains_key(&digest) {
                     // To fix this panic, we should either pass the local swap id to the
@@ -139,7 +141,7 @@ impl ComitLN {
                 }
 
                 self.announce
-                    .start_announce_protocol(digest.clone(), body.peer);
+                    .start_announce_protocol(digest.clone(), create_swap_params.peer);
 
                 self.swaps_waiting_for_announcement.insert(digest, id);
             }
@@ -152,12 +154,12 @@ impl ComitLN {
     pub fn get_finalized_swap(&self, id: SwapId) -> Option<FinalizedSwap> {
         let local_id = NodeLocalSwapId(id.0);
 
-        let body = match self.swaps.get(&local_id) {
+        let create_swap_params = match self.swaps.get(&local_id) {
             Some(body) => body,
             None => return None,
         };
 
-        let secret = match body.role() {
+        let secret = match create_swap_params.role {
             Role::Alice => Some(
                 self.seed
                     .derive_swap_seed_from_node_local(local_id)
@@ -166,45 +168,52 @@ impl ComitLN {
             Role::Bob => None,
         };
 
-        let alpha_ledger_redeem_identity = match body.role() {
+        // TODO: The logic of deciding what identity is which is also present in
+        // impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::
+        // Message>> for ComitLN {     fn inject_event(&mut self, event:
+        // oneshot_behaviour::OutEvent<finalize::Message>) There should one
+        // place of truth
+        let alpha_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => self.ethereum_identities.get(&id).copied().unwrap(),
-            Role::Bob => body.alpha.identity.clone(),
+            Role::Bob => create_swap_params.ethereum_identity.clone(),
         };
-        let alpha_ledger_refund_identity = match body.role() {
-            Role::Alice => body.alpha.identity.clone(),
+        let alpha_ledger_refund_identity = match create_swap_params.role {
+            Role::Alice => create_swap_params.ethereum_identity.clone(),
             Role::Bob => self.ethereum_identities.get(&id).copied().unwrap(),
         };
-        let beta_ledger_redeem_identity = match body.role() {
+        let beta_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => self.lightning_identities.get(&id).copied().unwrap(),
-            Role::Bob => body.beta.identity.clone(),
+            Role::Bob => create_swap_params.lightning_identity.clone(),
         };
-        let beta_ledger_refund_identity = match body.role() {
-            Role::Alice => body.beta.identity.clone(),
+        let beta_ledger_refund_identity = match create_swap_params.role {
+            Role::Alice => create_swap_params.lightning_identity.clone(),
             Role::Bob => self.lightning_identities.get(&id).copied().unwrap(),
         };
 
         Some(FinalizedSwap {
             alpha_ledger: Ethereum::new(ChainId::regtest()), // TODO: don't hardcode these
             beta_ledger: lightning::Regtest,                 // TODO: don't hardcode these
-            alpha_asset: body.alpha.amount.clone(),          // TODO: don't unwrap
-            beta_asset: body.beta.amount.0.clone(),          // TODO: don't unwrap
+            alpha_asset: create_swap_params.ethereum_amount.clone(),
+            beta_asset: create_swap_params.lightning_amount.clone(),
             alpha_ledger_redeem_identity,
             alpha_ledger_refund_identity,
             beta_ledger_redeem_identity,
             beta_ledger_refund_identity,
-            alpha_expiry: body.alpha.absolute_expiry,
-            beta_expiry: body.beta.cltv_expiry, // TODO: is this correct?
+            alpha_expiry: create_swap_params.ethereum_absolute_expiry,
+            beta_expiry: create_swap_params.lightning_cltv_expiry,
             local_id,
             secret,
             secret_hash: self.secret_hashes.get(&id).copied().unwrap(),
-            role: body.role(),
+            role: create_swap_params.role,
         })
     }
 }
 
 // TODO: this is just a temporary struct and should likely be replaced with
 // something more generic Also reconsider whether we need to pass everything
-// back up the call chain TODO: is there a better name for this?
+// back up the call chain
+// TODO: is there a better name for this?
+// TODO: Should we really revert to alpha/beta terminology here?
 #[derive(Debug)]
 pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
@@ -215,8 +224,8 @@ pub struct FinalizedSwap {
     pub alpha_ledger_redeem_identity: identity::Ethereum,
     pub beta_ledger_refund_identity: identity::Lightning,
     pub beta_ledger_redeem_identity: identity::Lightning,
-    pub alpha_expiry: u32,
-    pub beta_expiry: u32,
+    pub alpha_expiry: Timestamp,
+    pub beta_expiry: Timestamp,
     pub local_id: NodeLocalSwapId,
     pub secret_hash: SecretHash,
     pub secret: Option<Secret>,
@@ -310,7 +319,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     // TODO: don't use global spawn function?
                     tokio::task::spawn(io.send(id));
 
-                    let body = self.swaps.get(&local_id).unwrap();
+                    let create_swap_params = self.swaps.get(&local_id).unwrap();
 
                     let addresses = self.announce.addresses_of_peer(&peer);
                     self.secret_hash
@@ -324,11 +333,17 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 
                     self.ethereum_identity.send(
                         peer.clone(),
-                        ethereum_identity::Message::new(id, body.alpha.identity.clone()),
+                        ethereum_identity::Message::new(
+                            id,
+                            create_swap_params.ethereum_identity.clone(),
+                        ),
                     );
                     self.lightning_identity.send(
                         peer,
-                        lightning_identity::Message::new(id, body.beta.identity.clone()),
+                        lightning_identity::Message::new(
+                            id,
+                            create_swap_params.lightning_identity.clone(),
+                        ),
                     );
 
                     self.communication_state
@@ -368,15 +383,21 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 self.finalize
                     .register_addresses(peer.clone(), addresses.clone());
 
-                let body = self.swaps.get(&local_swap_id).unwrap();
+                let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
 
                 self.ethereum_identity.send(
                     peer.clone(),
-                    ethereum_identity::Message::new(swap_id, body.alpha.identity.clone()),
+                    ethereum_identity::Message::new(
+                        swap_id,
+                        create_swap_params.ethereum_identity.clone(),
+                    ),
                 );
                 self.lightning_identity.send(
                     peer.clone(),
-                    lightning_identity::Message::new(swap_id, body.beta.identity.clone()),
+                    lightning_identity::Message::new(
+                        swap_id,
+                        create_swap_params.lightning_identity.clone(),
+                    ),
                 );
 
                 let seed = self.seed.derive_swap_seed_from_node_local(local_swap_id);
@@ -541,7 +562,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .copied()
                 .unwrap();
 
-            let body = self.swaps.get(&local_swap_id).cloned().expect("must exist");
+            let create_swap_params = self
+                .swaps
+                .get(&local_swap_id)
+                .cloned()
+                .expect("create swap params exist");
 
             let secret_hash = self
                 .secret_hashes
@@ -551,7 +576,8 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             let invoice_states = Arc::new(InvoiceStates::default());
 
-            if body.role() == Role::Alice {
+            // TODO: Transform in match for readability and to remove explanatory comments
+            if create_swap_params.role == Role::Alice {
                 tokio::task::spawn({
                     let lnd_connector = (*self.lnd_connector_as_receiver)
                         .clone()
@@ -560,9 +586,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .read_certificate()
                         .expect("Failure reading tls certificate");
                     let bob_ln_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let alice_ln_identity = body.beta.identity.clone();
-                    let expiry = Timestamp::from(body.beta.cltv_expiry);
-                    let asset = body.beta.amount.clone();
+                    let alice_ln_identity = create_swap_params.lightning_identity.clone();
+                    let cltv_expiry = create_swap_params.lightning_cltv_expiry.into();
+                    let asset = create_swap_params.lightning_amount.clone();
 
                     async move {
                         halight::create_watcher(
@@ -570,11 +596,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                             invoice_states,
                             swap_id,
                             halight::Params {
-                                asset: asset.0,
+                                asset,
                                 ledger: ledger::lightning::Regtest,
-                                redeem_identity: alice_ln_identity,
-                                refund_identity: bob_ln_identity,
-                                expiry,
+                                to_identity: alice_ln_identity,
+                                self_identity: bob_ln_identity,
+                                cltv_expiry,
                                 secret_hash,
                             },
                             Utc::now().naive_local(), // TODO don't create this here
@@ -592,11 +618,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         // It would be great to do this part when REST API call is received
                         .read_certificate()
                         .expect("Failure reading tls certificate");
-                    let alice_ln_identity =
+                    let alice_lightning_identity =
                         self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let bob_ln_identity = body.beta.identity.clone();
-                    let expiry = Timestamp::from(body.beta.cltv_expiry);
-                    let asset = body.beta.amount.clone();
+                    let bob_lightning_identity = create_swap_params.lightning_identity.clone();
+                    let cltv_expiry = create_swap_params.lightning_cltv_expiry.into();
+                    let asset = create_swap_params.lightning_amount.clone();
 
                     async move {
                         halight::create_watcher(
@@ -604,11 +630,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                             invoice_states,
                             swap_id,
                             halight::Params {
-                                asset: asset.0,
+                                asset,
                                 ledger: ledger::lightning::Regtest,
-                                redeem_identity: alice_ln_identity,
-                                refund_identity: bob_ln_identity,
-                                expiry,
+                                to_identity: alice_lightning_identity,
+                                self_identity: bob_lightning_identity,
+                                cltv_expiry,
                                 secret_hash,
                             },
                             Utc::now().naive_local(), // TODO don't create this here
@@ -619,22 +645,23 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 });
             }
 
-            if body.role() == Role::Alice {
+            if create_swap_params.role == Role::Alice {
                 tokio::task::spawn({
                     let connector = self.ethereum_connector.clone();
-                    let alice_ethereum_identity = body.alpha.identity.clone();
+                    let alice_ethereum_identity = create_swap_params.ethereum_identity.clone();
                     let bob_ethereum_identity =
                         self.ethereum_identities.get(&swap_id).copied().unwrap();
 
-                    let asset = body.alpha.amount.clone();
+                    let asset = create_swap_params.ethereum_amount.clone();
                     let ledger = ledger::Ethereum::default(); // FIXME: get this from somewhere
-                    let expiry = Timestamp::from(body.alpha.absolute_expiry);
+                    let expiry = create_swap_params.ethereum_absolute_expiry;
                     let secret_hash = self
                         .secret_hashes
                         .get(&swap_id)
                         .copied()
                         .expect("must exist");
 
+                    // TODO: Directly use EtherHtlc
                     let htlc_params = HtlcParams {
                         asset,
                         ledger,
@@ -672,13 +699,14 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     let connector = self.ethereum_connector.clone();
                     let alice_ethereum_identity =
                         self.ethereum_identities.get(&swap_id).copied().unwrap();
-                    let bob_ethereum_identity = body.alpha.identity.clone();
+                    let bob_ethereum_identity = create_swap_params.ethereum_identity.clone();
 
-                    let asset = body.alpha.amount.clone();
+                    let asset = create_swap_params.ethereum_amount.clone();
                     let ledger = ledger::Ethereum::default(); // FIXME: get this from somewhere
-                    let expiry = Timestamp::from(body.alpha.absolute_expiry);
+                    let expiry = create_swap_params.ethereum_absolute_expiry;
                     let secret_hash = self.secret_hashes.get(&swap_id).copied().unwrap();
 
+                    // TODO: Directly use EtherHtlc
                     let htlc_params = HtlcParams {
                         asset,
                         ledger,

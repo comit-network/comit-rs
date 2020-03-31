@@ -6,7 +6,7 @@ use crate::{
     http_api::{problem, routes::into_rejection, Http},
     identity,
     network::{DialInformation, ListenAddresses},
-    swap_protocols::{Facade, Facade2, NodeLocalSwapId, Role},
+    swap_protocols::{CreateSwapParams, Facade, Facade2, NodeLocalSwapId, Role},
 };
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -96,7 +96,7 @@ pub async fn post_lightning_route_new(
 
     // TODO: pass different type here
     // TODO: reconsider name of this fn
-    facade.initiate_communication(id, body).await;
+    facade.initiate_communication(id, body.into()).await;
 
     // TODO: reply with generated id in location header
     Ok(warp::reply::with_status(
@@ -114,9 +114,18 @@ pub struct Body {
     pub role: Http<Role>,
 }
 
-impl Body {
-    pub fn role(&self) -> Role {
-        self.role.0
+impl From<Body> for CreateSwapParams {
+    fn from(body: Body) -> Self {
+        Self {
+            role: body.role.0,
+            peer: body.peer,
+            ethereum_identity: body.alpha.identity,
+            ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
+            ethereum_amount: body.alpha.amount,
+            lightning_identity: body.beta.identity,
+            lightning_cltv_expiry: body.beta.cltv_expiry.into(),
+            lightning_amount: body.beta.amount.0,
+        }
     }
 }
 

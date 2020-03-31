@@ -239,8 +239,8 @@ where
 pub struct Params<L, A, I> {
     pub asset: A,
     pub ledger: L,
-    pub redeem_identity: I,
-    pub refund_identity: I,
-    pub expiry: Timestamp,
+    pub to_identity: I,
+    pub self_identity: I,
+    pub cltv_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }

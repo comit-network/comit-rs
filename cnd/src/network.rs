@@ -17,7 +17,6 @@ use crate::{
     config::Settings,
     db::{Save, Sqlite, Swap},
     htlc_location,
-    http_api::routes::index::Body,
     libp2p_comit_ext::{FromHeader, ToHeader},
     lnd::LndConnectorParams,
     network::{
@@ -33,8 +32,8 @@ use crate::{
             LedgerState, SwapCommunication,
         },
         state::Insert,
-        HashFunction, LedgerStates, NodeLocalSwapId, Role, SwapCommunicationStates, SwapId,
-        SwapProtocol,
+        CreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId, Role,
+        SwapCommunicationStates, SwapId, SwapProtocol,
     },
     transaction,
 };
@@ -260,10 +259,10 @@ impl Swarm {
         unimplemented!()
     }
 
-    pub async fn initiate_communication(&self, id: NodeLocalSwapId, body: Body) {
+    pub async fn initiate_communication(&self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
         let mut guard = self.swarm.lock().await;
 
-        guard.initiate_communication(id, body)
+        guard.initiate_communication(id, swap_params)
     }
 
     pub async fn get_finalized_swap(&self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
@@ -415,8 +414,8 @@ impl ComitNode {
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 
-    pub fn initiate_communication(&mut self, id: NodeLocalSwapId, body: Body) {
-        self.comit_ln.initiate_communication(id, body)
+    pub fn initiate_communication(&mut self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
+        self.comit_ln.initiate_communication(id, swap_params)
     }
 
     // TODO: do we need all these layers of abstraction ?!
