@@ -99,7 +99,7 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
                 )
             );
 
-            await sleep(15000);
+            await sleep(60000);
 
             expect(locationAlice).toBeDefined();
             expect(locationBob).toBeDefined();
