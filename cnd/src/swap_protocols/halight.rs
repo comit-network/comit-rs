@@ -187,7 +187,6 @@ pub async fn create_watcher<C, L, A, I>(
             }
             GeneratorState::Complete(Err(e)) => {
                 tracing::error!("swap {} failed with {:?}", id, e);
-                unimplemented!();
                 // TODO: Replace unimplemented with line below
                 // facade.insert_failed_swap(&id);
             }

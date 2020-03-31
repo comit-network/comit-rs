@@ -29,6 +29,8 @@ import {
     defaultLedgerKindForAsset,
 } from "./defaults";
 
+export type ActorNames = "alice" | "bob" | "charlie";
+
 export class Actor {
     public static defaultActionConfig = {
         maxTimeoutSecs: 20,
@@ -36,7 +38,7 @@ export class Actor {
     };
 
     public static async newInstance(
-        name: string,
+        name: ActorNames,
         ledgerConfig: LedgerConfig,
         projectRoot: string,
         cndLogFile: string,

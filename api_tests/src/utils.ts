@@ -11,6 +11,7 @@ import { LightningWallet } from "./wallets/lightning";
 import { BitcoinNodeConfig } from "./ledgers/bitcoin";
 import { EthereumNodeConfig } from "./ledgers/ethereum";
 import { Logger } from "log4js";
+import { LightningNodeConfig } from "./ledgers/lightning";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -30,6 +31,8 @@ export interface HarnessGlobal extends Global.Global {
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
+    aliceLnd?: LightningNodeConfig;
+    bobLnd?: LightningNodeConfig;
 }
 
 export const unlinkAsync = promisify(fs.unlink);

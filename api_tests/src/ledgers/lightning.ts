@@ -39,4 +39,6 @@ export interface LightningNodeConfig {
     p2pSocket: string;
     // sucks that we have to leak here that the instance is LND under the hood but we can't do much about that :)
     lnd: Lnd;
+    restPort: number;
+    dataDir: string;
 }

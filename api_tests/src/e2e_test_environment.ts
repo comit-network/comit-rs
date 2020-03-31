@@ -212,6 +212,8 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             this.aliceLightning.config.lnd,
             this.aliceLightning.config.p2pSocket
         );
+
+        this.global.ledgerConfigs.aliceLnd = this.aliceLightning.config;
     }
 
     /**
@@ -239,6 +241,8 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             this.bobLightning.config.lnd,
             this.bobLightning.config.p2pSocket
         );
+
+        this.global.ledgerConfigs.bobLnd = this.bobLightning.config;
     }
 
     private static async cleanLogDir(logDir: string) {
