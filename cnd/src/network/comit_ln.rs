@@ -390,9 +390,13 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 self.communication_state
                     .insert(swap_id, CommunicationState::default());
             }
-            BehaviourOutEvent::Error { .. } => {
+            BehaviourOutEvent::Error { peer, error } => {
                 // TODO: How do we know which swap failed ?!
-                unimplemented!("we failed to complete the announce protocol")
+                tracing::warn!(
+                    "failed to complete announce protocol with {} because {:?}",
+                    peer,
+                    error
+                );
             }
         }
     }
