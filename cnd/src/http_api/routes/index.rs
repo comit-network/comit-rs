@@ -2,7 +2,9 @@ mod handlers;
 
 use self::handlers::handle_get_swaps;
 use crate::{
+    asset,
     http_api::{problem, routes::into_rejection, Http},
+    identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{Facade, Facade2, NodeLocalSwapId, Role},
 };
@@ -120,16 +122,16 @@ impl Body {
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct HanEthereum {
-    pub amount: String,
-    pub identity: String,
+    pub amount: asset::Ether,
+    pub identity: identity::Ethereum,
     pub chain_id: u32,
     pub absolute_expiry: u32,
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct HalightLightning {
-    pub amount: String,
-    pub identity: String,
+    pub amount: Http<asset::Lightning>,
+    pub identity: identity::Lightning,
     pub network: String,
     pub cltv_expiry: u32,
 }
