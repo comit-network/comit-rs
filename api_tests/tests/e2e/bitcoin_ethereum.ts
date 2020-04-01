@@ -7,7 +7,6 @@ import { twoActorTest } from "../../src/actor_test";
 import { AssetKind } from "../../src/asset";
 import { HarnessGlobal, sleep } from "../../src/utils";
 import { LedgerKind } from "../../src/ledgers/ledger";
-import { defaultHanEthereumEtherHalightLightningBitcoin } from "../../src/actors/defaults";
 
 declare var global: HarnessGlobal;
 
@@ -73,36 +72,19 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
     it(
         "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
         twoActorTest(async ({ alice, bob }) => {
-            const locationAlice = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                defaultHanEthereumEtherHalightLightningBitcoin(
-                    await global.lndWallets.bob.inner.getPubkey(),
-                    {
-                        peer_id: await bob.cnd.getPeerId(),
-                        address_hint: await bob.cnd
-                            .getPeerListenAddresses()
-                            .then((addresses) => addresses[0]),
-                    },
-                    "Alice"
-                )
-            );
+            await alice.createSwap();
+            await bob.createSwap();
 
-            const locationBob = await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                defaultHanEthereumEtherHalightLightningBitcoin(
-                    await global.lndWallets.alice.inner.getPubkey(),
-                    {
-                        peer_id: await alice.cnd.getPeerId(),
-                        address_hint: await alice.cnd
-                            .getPeerListenAddresses()
-                            .then((addresses) => addresses[0]),
-                    },
-                    "Bob"
-                )
-            );
+            await alice.init();
 
-            await sleep(60000);
+            await alice.fund();
+            await bob.fund();
 
-            expect(locationAlice).toBeDefined();
-            expect(locationBob).toBeDefined();
+            await alice.redeem();
+            await bob.redeem();
+
+            await alice.assertSwapped();
+            await bob.assertSwapped();
         })
     );
 });

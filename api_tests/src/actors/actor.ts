@@ -25,6 +25,7 @@ import { InvoiceState } from "@radar/lnrpc";
 import {
     defaultAssetDescription,
     defaultExpiryTimes,
+    defaultHanEthereumEtherHalightLightningBitcoin,
     defaultLedgerDescriptionForLedger,
     defaultLedgerKindForAsset,
 } from "./defaults";
@@ -85,7 +86,7 @@ export class Actor {
     constructor(
         private readonly logger: Logger,
         private readonly cndInstance: CndInstance,
-        private name: string
+        private readonly name: ActorNames
     ) {
         this.wallets = new Wallets({});
         const socket = cndInstance.getConfigFile().http_api.socket;
@@ -278,6 +279,70 @@ export class Actor {
                 }
                 await this.actors.bob.assertBetaDeployed();
                 break;
+        }
+    }
+
+    public async createSwap() {
+        let counterparty: Actor;
+        let cryptoRole: "Alice" | "Bob";
+
+        switch (this.name) {
+            case "alice": {
+                counterparty = this.actors.bob;
+                cryptoRole = "Alice";
+                break;
+            }
+            case "bob": {
+                counterparty = this.actors.alice;
+                cryptoRole = "Bob";
+                break;
+            }
+            default: {
+                throw new Error(
+                    `createSwap does not support the actor ${this.name} yet`
+                );
+            }
+        }
+
+        // for now, we are only doing han-ethereum-ether-halight-lightning-bitcoin
+        await this.wallets.initializeForLedger(
+            "lightning",
+            this.logger,
+            this.name
+        );
+        await this.wallets.initializeForLedger(
+            "ethereum",
+            this.logger,
+            this.name
+        );
+        await counterparty.wallets.initializeForLedger(
+            "lightning",
+            counterparty.logger,
+            counterparty.name
+        );
+        await counterparty.wallets.initializeForLedger(
+            "ethereum",
+            counterparty.logger,
+            counterparty.name
+        );
+
+        await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+            defaultHanEthereumEtherHalightLightningBitcoin(
+                await counterparty.wallets.lightning.inner.getPubkey(),
+                {
+                    peer_id: await counterparty.cnd.getPeerId(),
+                    address_hint: await counterparty.cnd
+                        .getPeerListenAddresses()
+                        .then((addresses) => addresses[0]),
+                },
+                cryptoRole
+            )
+        );
+    }
+
+    public async init() {
+        if (!this.swap) {
+            throw new Error("Cannot init nonexistent swap");
         }
     }
 
