@@ -265,9 +265,9 @@ dependencies = [
 
 [[package]]
 name = "bitcoincore-rpc"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f41f59566728c0940ca4032d3b3c51089ddeed32f3b2071d80c285394861dc7"
+checksum = "8fd9841d25f6ea05395d39821f8320fcc920854b16ba2acdea7521b9e96308cc"
 dependencies = [
  "bitcoincore-rpc-json",
  "jsonrpc",
@@ -278,13 +278,12 @@ dependencies = [
 
 [[package]]
 name = "bitcoincore-rpc-json"
-version = "0.9.1"
+version = "0.10.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "42c8db224907013dc662cc5fecb35f853051dce42dd14d00dd82b42f4d82ff46"
+checksum = "1bafd8df8adc84be1df6203999a171f8b661775521846ec54c4ccaa86a720dfe"
 dependencies = [
  "bitcoin",
  "hex 0.3.2",
- "num-bigint 0.2.6",
  "serde",
  "serde_json",
 ]
@@ -2402,7 +2401,6 @@ dependencies = [
  "autocfg 1.0.0",
  "num-integer",
  "num-traits",
- "serde",
 ]
 
 [[package]]
