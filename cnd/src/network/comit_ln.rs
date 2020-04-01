@@ -120,13 +120,13 @@ impl ComitLN {
         id: NodeLocalSwapId,
         create_swap_params: CreateSwapParams,
     ) {
-        let digest = SwapDigest {
-            inner: multihash::encode(
+        let digest = SwapDigest::new(
+            multihash::encode(
                 multihash::Hash::SHA2256,
                 b"TODO REPLACE ME WITH THE ACTUAL SWAP DIGEST",
             )
             .unwrap(),
-        };
+        );
 
         self.swaps.insert(id, create_swap_params.clone());
 
