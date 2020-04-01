@@ -5,10 +5,7 @@ use crate::config::{
 use anyhow::Context;
 use log::LevelFilter;
 use reqwest::Url;
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::PathBuf,
-};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 /// This structs represents the settings as they are used through out the code.
 ///
@@ -241,57 +238,6 @@ impl Settings {
             },
         })
     }
-
-    // TODO: make these work
-    pub fn lnd_macaroon_path(&self) -> Option<PathBuf> {
-        let macaroon = "readonly.macaroon";
-        let dirs = self.lnd_known_location();
-
-        // FIXME: this MUST look in the correct directory depending on the network that
-        // was configured
-        locate_file(dirs, macaroon)
-    }
-
-    pub fn lnd_tls_cert_path(&self) -> Option<PathBuf> {
-        let cert = "tls.cert";
-        let dirs = self.lnd_known_location();
-        locate_file(dirs, cert)
-    }
-
-    pub fn lnd_tls_key_path(&self) -> Option<PathBuf> {
-        let key = "tls.key";
-        let dirs = self.lnd_known_location();
-        locate_file(dirs, key)
-    }
-
-    fn lnd_known_location(&self) -> Vec<PathBuf> {
-        let mut v = vec![];
-
-        if let Some(cnd_data_dir) = crate::data_dir() {
-            // We want to use generic terms for like `tls.cert` for lnd files
-            // so put them all in a directory.
-            let lnd_dir = cnd_data_dir.join("lnd");
-            v.push(lnd_dir);
-        }
-
-        if let Some(lnd_dir) = crate::lnd_dir() {
-            let network = format!("{}", self.lightning.network);
-            v.push(
-                lnd_dir
-                    .join("data")
-                    .join("chain")
-                    .join("bitcoin")
-                    .join(&network),
-            );
-        }
-        v
-    }
-}
-
-/// Looks sequentially in `dirs` for `file`.
-fn locate_file(dirs: Vec<PathBuf>, file: &str) -> Option<PathBuf> {
-    let path = dirs.iter().find(|dir| dir.join(file).exists());
-    path.cloned()
 }
 
 #[cfg(test)]
