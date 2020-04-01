@@ -24,7 +24,7 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use http_api_problem::HttpApiProblem;
-use warp::{Rejection, Reply};
+use warp::{http, Rejection, Reply};
 
 pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
     warp::reject::custom(problem)
@@ -255,8 +255,25 @@ pub enum ActionKind<TInit, TFund, TRedeem, TRefund> {
     Refund(TRefund),
 }
 
+// all our actions for this particular case don't have any parameters, so we can
+// just implement this generically
 impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, TRedeem, TRefund> {
-    fn to_siren_action(&self, _id: &SwapId) -> siren::Action {
-        unimplemented!()
+    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
+        let name = match self {
+            ActionKind::Init(_) => "init",
+            ActionKind::Fund(_) => "fund",
+            ActionKind::Redeem(_) => "redeem",
+            ActionKind::Refund(_) => "refund",
+        };
+
+        siren::Action {
+            name: name.to_owned(),
+            class: vec![],
+            method: Some(http::Method::GET),
+            href: format!("/swaps/{}/{}", id, name),
+            title: None,
+            _type: None,
+            fields: vec![],
+        }
     }
 }
