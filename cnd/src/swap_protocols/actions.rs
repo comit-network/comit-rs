@@ -76,7 +76,7 @@ pub mod lnd {
         pub expiry: u32,
         pub cltv_expiry: u32,
         pub chain: Chain,
-        pub network: Network,
+        pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
     }
 
@@ -84,7 +84,7 @@ pub mod lnd {
     pub struct SettleInvoice {
         pub secret: Secret,
         pub chain: Chain,
-        pub network: Network,
+        pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
     }
 
@@ -92,7 +92,7 @@ pub mod lnd {
     pub struct CancelInvoice {
         pub secret_hash: SecretHash, // The hash of the preimage used when adding the invoice.
         pub chain: Chain,
-        pub network: Network,
+        pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
     }
 
@@ -103,22 +103,14 @@ pub mod lnd {
         pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
         pub final_cltv_delta: u32,
         pub chain: Chain,
-        pub network: Network,
+        pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
     }
 
     /// The underlying chain i.e., layer 1, targeted by LND.
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Chain {
+        // TODO: Potentially extend this to include Litecoin.
         Bitcoin,
-        Ethereum,
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub enum Network {
-        DevNet,  /* Local developer network i.e., Regtest for Bitcoin, random chain id for
-                  * Ethereum. */
-        TestNet, // Public test network i.e., Ropsten for Ethereum, Testnet for Bitcoin.
-        MainNet, // Main public network i.e., Bitcoin for Bitcoin, Mainnet for Ethereum.
     }
 }

@@ -131,8 +131,40 @@ pub fn create(
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
-        .and(facade2)
+        .and(facade2.clone())
         .and_then(http_api::routes::get_han_halight_swap);
+
+    let lighting_action_init = swaps
+        .and(warp::get())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path("init"))
+        .and(warp::path::end())
+        .and(facade2.clone())
+        .and_then(http_api::routes::action_init);
+
+    let lighting_action_fund = swaps
+        .and(warp::get())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path("fund"))
+        .and(warp::path::end())
+        .and(facade2.clone())
+        .and_then(http_api::routes::action_fund);
+
+    let lighting_action_init = swaps
+        .and(warp::get())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path("redeem"))
+        .and(warp::path::end())
+        .and(facade2.clone())
+        .and_then(http_api::routes::action_redeem);
+
+    let lighting_action_init = swaps
+        .and(warp::get())
+        .and(warp::path::param::<SwapId>())
+        .and(warp::path("refund"))
+        .and(warp::path::end())
+        .and(facade2.clone())
+        .and_then(http_api::routes::action_refund);
 
     preflight_cors_route
         .or(rfc003_get_swap)
@@ -147,6 +179,7 @@ pub fn create(
         .or(halight_bitcoin_han_ether)
         .or(halight_bitcoin_herc20_erc20)
         .or(get_halight_swap)
+        .or(lighting_action_init)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

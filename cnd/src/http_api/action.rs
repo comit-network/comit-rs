@@ -6,8 +6,11 @@ use crate::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
             ethereum,
+            lnd::Chain,
         },
-        ledger, SwapId,
+        ledger,
+        rfc003::{Secret, SecretHash},
+        SwapId,
     },
     timestamp::Timestamp,
     transaction,
@@ -66,6 +69,30 @@ pub enum ActionResponseBody {
         chain_id: ledger::ethereum::ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
+    },
+    LndAddHoldInvoice {
+        amount: Http<asset::Lightning>,
+        secret_hash: SecretHash,
+        expiry: u32,
+        cltv_expiry: u32,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
+    },
+    LndSendPayment {
+        to_public_key: identity::Lightning,
+        amount: Http<asset::Lightning>,
+        secret_hash: SecretHash,
+        final_cltv_delta: u32,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
+    },
+    LndSettleInvoice {
+        secret: Secret,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
     },
     None,
 }

@@ -10,6 +10,7 @@ pub use self::{
     problem::*,
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
+use crate::swap_protocols::actions::lnd::Chain;
 
 pub const PATH: &str = "swaps";
 
@@ -138,6 +139,17 @@ impl Serialize for Http<identity::Bitcoin> {
     {
         let public_key = bitcoin::PublicKey::from(self.0);
         serializer.serialize_str(&public_key.to_string())
+    }
+}
+
+impl Serialize for Http<Chain> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            Chain::Bitcoin => serializer.serialize_str("bitcoin"),
+        }
     }
 }
 

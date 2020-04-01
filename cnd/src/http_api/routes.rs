@@ -6,12 +6,15 @@ use crate::{
     asset,
     ethereum::Bytes,
     htlc_location,
-    http_api::{action::ToSirenAction, problem},
+    http_api::{
+        action::{ActionResponseBody, ToSirenAction},
+        problem, Http,
+    },
     network::comit_ln,
     swap_protocols::{
         actions::{
             ethereum,
-            lnd::{self, Chain, Network},
+            lnd::{self, Chain},
             Actions,
         },
         halight::{self, data},
@@ -134,7 +137,7 @@ impl Actions for AliceEthLnState {
             let expiry = self.finalized_swap.alpha_expiry.into(); // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
             let cltv_expiry = self.finalized_swap.beta_expiry.into();
             let chain = Chain::Bitcoin;
-            let network = Network::DevNet;
+            let network = bitcoin::Network::Regtest;
             let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
 
             return vec![ActionKind::Init(lnd::AddHoldInvoice {
@@ -168,7 +171,7 @@ impl Actions for AliceEthLnState {
         if let halight::State::Accepted(_) = self.beta_ledger_state {
             let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
             let chain = Chain::Bitcoin;
-            let network = Network::DevNet;
+            let network = bitcoin::Network::Regtest;
             let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
 
             actions.push(ActionKind::Redeem(lnd::SettleInvoice {
@@ -213,7 +216,7 @@ impl Actions for BobEthLnState {
                 let secret_hash = self.finalized_swap.secret_hash;
                 let final_cltv_delta = self.finalized_swap.beta_expiry.into();
                 let chain = Chain::Bitcoin;
-                let network = Network::DevNet;
+                let network = bitcoin::Network::Regtest;
                 let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
 
                 actions.push(ActionKind::Fund(lnd::SendPayment {
@@ -276,4 +279,197 @@ impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, 
             fields: vec![],
         }
     }
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn action_init(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, facade)
+        .await
+        .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
+async fn handle_action_init(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+    tracing::trace!("received init action");
+    let alpha_ledger_state: LedgerState<
+        asset::Ether,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+
+    let beta_ledger_state: halight::State = facade
+        .beta_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+
+    let finalized_swap = facade
+        .get_finalized_swap(id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+
+    if let Role::Alice = finalized_swap.role {
+        let actions = AliceEthLnState {
+            alpha_ledger_state,
+            beta_ledger_state,
+            finalized_swap,
+        }
+        .actions();
+
+        for action in actions {
+            if let ActionKind::Init(lnd::AddHoldInvoice {
+                amount,
+                secret_hash,
+                expiry,
+                cltv_expiry,
+                chain,
+                network,
+                self_public_key,
+            }) = action
+            {
+                return Ok(ActionResponseBody::LndAddHoldInvoice {
+                    amount: Http(amount),
+                    secret_hash,
+                    expiry,
+                    cltv_expiry,
+                    chain: Http(chain),
+                    network: Http(network),
+                    self_public_key,
+                });
+            }
+        }
+    };
+    Err(LndActionError::NotFound.into())
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn action_fund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, facade)
+        .await
+        .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
+async fn handle_action_fund(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+    tracing::trace!("received fund action");
+    let alpha_ledger_state: LedgerState<
+        asset::Ether,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+
+    let beta_ledger_state: halight::State = facade
+        .beta_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+
+    let finalized_swap = facade
+        .get_finalized_swap(id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+
+    match finalized_swap.role {
+        Role::Alice => unimplemented!(),
+        Role::Bob => unimplemented!(),
+    }
+    unimplemented!()
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn action_redeem(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, facade)
+        .await
+        .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
+async fn handle_action_redeem(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+    tracing::trace!("received redeem action");
+    let alpha_ledger_state: LedgerState<
+        asset::Ether,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+
+    let beta_ledger_state: halight::State = facade
+        .beta_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+
+    let finalized_swap = facade
+        .get_finalized_swap(id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+
+    match finalized_swap.role {
+        Role::Alice => unimplemented!(),
+        Role::Bob => unimplemented!(),
+    }
+    unimplemented!()
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn action_refund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, facade)
+        .await
+        .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
+async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+    tracing::trace!("received refund action");
+    let alpha_ledger_state: LedgerState<
+        asset::Ether,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+
+    let beta_ledger_state: halight::State = facade
+        .beta_ledger_state
+        .get(&id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+
+    let finalized_swap = facade
+        .get_finalized_swap(id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+
+    match finalized_swap.role {
+        Role::Alice => unimplemented!(),
+        Role::Bob => unimplemented!(),
+    }
+    unimplemented!()
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+pub enum LndActionError {
+    #[error("swap not found")]
+    NotFound,
 }
