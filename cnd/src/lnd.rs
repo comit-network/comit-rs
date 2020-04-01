@@ -121,8 +121,10 @@ impl LazyMacaroon {
             Macaroon(_) => Ok(self),
             Path(path) => {
                 let mut buf = Vec::new();
-                std::fs::File::open(path)?.read_to_end(&mut buf)?;
+                std::fs::File::open(&path)?.read_to_end(&mut buf)?;
                 let hex = hex::encode(buf);
+
+                tracing::debug!("extracted macaroon from path {}: {}", path.display(), hex);
 
                 Ok(LazyMacaroon::Macaroon(hex))
             }
@@ -327,6 +329,13 @@ impl LndConnectorAsReceiver {
         })
     }
 
+    pub fn read_macaroon(self) -> Result<Self, Error> {
+        Ok(Self {
+            macaroon: self.macaroon.read()?,
+            ..self
+        })
+    }
+
     fn invoice_url(&self, secret_hash: SecretHash) -> Result<Url, Error> {
         Ok(self
             .lnd_url
@@ -351,13 +360,18 @@ impl LndConnectorAsReceiver {
             return Ok(None);
         }
 
+        // TODO: need to shortcut here until https://github.com/hyperium/hyper/issues/2171 or https://github.com/lightningnetwork/lnd/issues/4135 is resolved
+        if response.status() == StatusCode::INTERNAL_SERVER_ERROR {
+            return Ok(None);
+        }
+
         if !response.status().is_success() {
             let status_code = response.status();
             let lnd_error = response
                 .json::<LndError>()
                 .await
                 // yes we can fail while we already encoundered an error ...
-                .with_context(|| format!("encountered {} while fetching invoice but couldn't deserialize error response🙄🙄🙄 🙄", status_code))?;
+                .with_context(|| format!("encountered {} while fetching invoice but couldn't deserialize error response 🙄", status_code))?;
 
             return Err(lnd_error.into());
         }

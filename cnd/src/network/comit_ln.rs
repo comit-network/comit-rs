@@ -572,7 +572,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         // TODO: Panicking now may not be the best.
                         // It would be great to do this part when REST API call is received
                         .read_certificate()
-                        .expect("Failure reading tls certificate");
+                        .expect("Failure reading tls certificate")
+                        .read_macaroon()
+                        .expect("Failure reading macaroon");
                     let bob_ln_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
                     let alice_ln_identity = create_swap_params.lightning_identity;
                     let cltv_expiry = create_swap_params.lightning_cltv_expiry;
@@ -605,7 +607,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         // TODO: Panicking now may not be the best.
                         // It would be great to do this part when REST API call is received
                         .read_certificate()
-                        .expect("Failure reading tls certificate");
+                        .expect("Failure reading tls certificate")
+                        .read_macaroon()
+                        .expect("Failure reading macaroon");
                     let alice_lightning_identity =
                         self.lightning_identities.get(&swap_id).copied().unwrap();
                     let bob_lightning_identity = create_swap_params.lightning_identity;
