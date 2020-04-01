@@ -80,8 +80,6 @@ pub async fn post_lightning_route() -> Result<warp::reply::Json, Rejection> {
     ))
 }
 
-// `warp::reply::Json` is used as a return type to please the compiler
-// until proper logic is implemented
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_lightning_route_new(
     body: Body,
