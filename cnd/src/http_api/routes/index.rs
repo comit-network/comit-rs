@@ -91,10 +91,8 @@ pub async fn post_lightning_route_new(
 
     let id = NodeLocalSwapId::default();
 
-    // TODO: pass different type here
-    facade.save(id, body.clone()).await;
+    facade.save(id, ()).await;
 
-    // TODO: pass different type here
     // TODO: reconsider name of this fn
     facade.initiate_communication(id, body.into()).await;
 
@@ -108,8 +106,8 @@ pub async fn post_lightning_route_new(
 // TODO: Make this generic over all combinations
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Body {
-    pub alpha: HanEthereum,
-    pub beta: HalightLightning,
+    pub alpha: HanEthereumEther,
+    pub beta: HalightLightningBitcoin,
     pub peer: DialInformation,
     pub role: Http<Role>,
 }
@@ -130,7 +128,7 @@ impl From<Body> for CreateSwapParams {
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-pub struct HanEthereum {
+pub struct HanEthereumEther {
     pub amount: asset::Ether,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
@@ -138,7 +136,7 @@ pub struct HanEthereum {
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-pub struct HalightLightning {
+pub struct HalightLightningBitcoin {
     pub amount: Http<asset::Lightning>,
     pub identity: identity::Lightning,
     pub network: String,

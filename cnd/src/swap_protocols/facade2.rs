@@ -1,7 +1,5 @@
 use crate::{
-    asset,
-    http_api::routes::index::Body,
-    identity,
+    asset, identity,
     network::{comit_ln, DialInformation, Swarm},
     swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, Role, SwapId},
     timestamp::Timestamp,
@@ -35,7 +33,7 @@ pub struct Facade2 {
 }
 
 impl Facade2 {
-    pub async fn save(&self, _id: NodeLocalSwapId, _body: Body) {
+    pub async fn save(&self, _id: NodeLocalSwapId, _swap_params: ()) {
         // TODO:  delegate to database
     }
 
