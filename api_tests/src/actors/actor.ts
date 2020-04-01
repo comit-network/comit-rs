@@ -9,6 +9,7 @@ import {
     SwapDetails,
     TransactionStatus,
     Transaction,
+    Wallets as SdkWallets,
 } from "comit-sdk";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
@@ -326,7 +327,7 @@ export class Actor {
             counterparty.name
         );
 
-        await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
             defaultHanEthereumEtherHalightLightningBitcoin(
                 await counterparty.wallets.lightning.inner.getPubkey(),
                 {
@@ -338,12 +339,30 @@ export class Actor {
                 cryptoRole
             )
         );
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
     }
 
     public async init() {
         if (!this.swap) {
             throw new Error("Cannot init nonexistent swap");
         }
+
+        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
+            "init",
+            {
+                maxTimeoutSecs: 10,
+                tryIntervalSecs: 1,
+            }
+        );
+        await this.swap.doLedgerAction(response.data);
     }
 
     public async fund() {
