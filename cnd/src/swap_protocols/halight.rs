@@ -164,7 +164,7 @@ pub async fn create_watcher<C, L, A, I>(
     A: Ord + Clone,
     I: Clone,
 {
-    invoice_states.insert(id, State::Opened(data::Opened)).await;
+    invoice_states.insert(id, State::Unknown).await;
 
     // construct a generator that watches alpha and beta ledger concurrently
     let mut generator = Gen::new({
