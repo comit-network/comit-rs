@@ -3,6 +3,7 @@ use crate::config::{
 };
 use anyhow::Context;
 use log::LevelFilter;
+use reqwest::Url;
 use std::{
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::PathBuf,
@@ -69,6 +70,14 @@ fn derive_url_ethereum(ethereum: Option<file::Ethereum>) -> Ethereum {
                 parity: Parity { node_url },
             }
         }
+    }
+}
+
+fn check_url_lnd(lnd_url: Url) -> anyhow::Result<Url> {
+    if lnd_url.scheme() == "https" {
+        Ok(lnd_url)
+    } else {
+        Err(anyhow::anyhow!("HTTPS scheme is expected for lnd url."))
     }
 }
 
@@ -218,9 +227,7 @@ impl Settings {
                     lnd: match lightning.lnd {
                         None => Lnd::default(),
                         Some(lnd) => Lnd {
-                            // TODO: verify that we have https, which is required for the connector
-                            // to work
-                            rest_api_url: lnd.rest_api_url,
+                            rest_api_url: check_url_lnd(lnd.rest_api_url)?,
                             dir: lnd.dir,
                         },
                     },
@@ -494,5 +501,23 @@ mod tests {
                 network: bitcoin::Network::Regtest,
                 lnd: Lnd::default(),
             })
+    }
+
+    #[test]
+    fn error_on_http_url_for_lnd() {
+        let config_file = File {
+            lightning: Some(file::Lightning {
+                network: bitcoin::Network::Regtest,
+                lnd: Some(Lnd {
+                    rest_api_url: "http://localhost:8000/".parse().unwrap(),
+                    dir: Default::default(),
+                }),
+            }),
+            ..File::default()
+        };
+
+        let settings = Settings::from_config_file_and_defaults(config_file);
+
+        assert_that(&settings).is_err();
     }
 }
