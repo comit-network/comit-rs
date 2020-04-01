@@ -53,6 +53,11 @@ struct Invoice {
 }
 
 #[derive(Clone, Debug, Deserialize)]
+struct PaymentsResponse {
+    payments: Option<Vec<Payment>>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
 struct Payment {
     pub value_msat: Option<String>,
     pub payment_preimage: Option<Secret>,
@@ -195,17 +200,19 @@ impl LndConnectorAsSender {
         secret_hash: SecretHash,
         status: PaymentStatus,
     ) -> Result<Option<Payment>, Error> {
-        let payments = client(self.certificate.certificate()?, self.macaroon.macaroon()?)?
+        let response = client(self.certificate.certificate()?, self.macaroon.macaroon()?)?
             .get(self.payment_url())
             .send()
             .await?
-            .json::<Vec<Payment>>()
+            .json::<PaymentsResponse>()
             .await?;
-        let payment = payments
-            .iter()
-            .find(|&payment| payment.payment_hash == secret_hash && payment.status == status);
+        let payment = response
+            .payments
+            .unwrap_or_default()
+            .into_iter()
+            .find(|payment| payment.payment_hash == secret_hash && payment.status == status);
 
-        Ok(payment.cloned())
+        Ok(payment)
     }
 }
 
