@@ -38,6 +38,12 @@ use std::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct Http<I>(pub I);
 
+impl<I> From<I> for Http<I> {
+    fn from(inner: I) -> Self {
+        Http(inner)
+    }
+}
+
 impl<I> Deref for Http<I> {
     type Target = I;
 

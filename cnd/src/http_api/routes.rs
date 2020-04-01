@@ -350,7 +350,7 @@ async fn handle_action_init(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn action_fund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, facade)
+    handle_action_fund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -382,15 +382,69 @@ async fn handle_action_fund(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
     match finalized_swap.role {
-        Role::Alice => unimplemented!(),
-        Role::Bob => unimplemented!(),
+        Role::Alice => {
+            let actions = AliceEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            }
+            .actions();
+
+            for action in actions {
+                if let ActionKind::Fund(ethereum::DeployContract {
+                    amount,
+                    chain_id,
+                    gas_limit,
+                    data,
+                }) = action
+                {
+                    return Ok(ActionResponseBody::EthereumDeployContract {
+                        data,
+                        amount,
+                        gas_limit: gas_limit.into(),
+                        chain_id,
+                    });
+                }
+            }
+        }
+        Role::Bob => {
+            let actions = BobEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            }
+            .actions();
+
+            for action in actions {
+                if let ActionKind::Fund(lnd::SendPayment {
+                    to_public_key,
+                    amount,
+                    secret_hash,
+                    network,
+                    chain,
+                    final_cltv_delta,
+                    self_public_key,
+                }) = action
+                {
+                    return Ok(ActionResponseBody::LndSendPayment {
+                        to_public_key,
+                        amount: amount.into(),
+                        secret_hash,
+                        network: network.into(),
+                        chain: chain.into(),
+                        final_cltv_delta,
+                        self_public_key,
+                    });
+                }
+            }
+        }
     }
-    unimplemented!()
+    Err(LndActionError::NotFound.into())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn action_redeem(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, facade)
+    handle_action_redeem(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -422,15 +476,65 @@ async fn handle_action_redeem(id: SwapId, facade: Facade2) -> anyhow::Result<Act
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
     match finalized_swap.role {
-        Role::Alice => unimplemented!(),
-        Role::Bob => unimplemented!(),
+        Role::Alice => {
+            let actions = AliceEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            }
+            .actions();
+
+            for action in actions {
+                if let ActionKind::Redeem(lnd::SettleInvoice {
+                    secret,
+                    chain,
+                    network,
+                    self_public_key,
+                }) = action
+                {
+                    return Ok(ActionResponseBody::LndSettleInvoice {
+                        secret,
+                        chain: chain.into(),
+                        network: network.into(),
+                        self_public_key,
+                    });
+                }
+            }
+        }
+        Role::Bob => {
+            let actions = BobEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            }
+            .actions();
+
+            for action in actions {
+                if let ActionKind::Redeem(ethereum::CallContract {
+                    to,
+                    data,
+                    gas_limit,
+                    chain_id,
+                    min_block_timestamp,
+                }) = action
+                {
+                    return Ok(ActionResponseBody::EthereumCallContract {
+                        contract_address: to,
+                        data,
+                        gas_limit: gas_limit.into(),
+                        chain_id,
+                        min_block_timestamp,
+                    });
+                }
+            }
+        }
     }
-    unimplemented!()
+    Err(LndActionError::NotFound.into())
 }
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn action_refund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, facade)
+    handle_action_refund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -470,6 +574,8 @@ async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<Act
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum LndActionError {
+    // TODO: message is wrong, we also use this if the swap doesn't have the requested action (at
+    // the moment)
     #[error("swap not found")]
     NotFound,
 }
