@@ -5,10 +5,15 @@ use crate::swap_protocols::{
 use anyhow::{Context, Error};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
-    Certificate, StatusCode, Url,
+    StatusCode, Url,
 };
 use serde::Deserialize;
-use std::{io::Read, path::PathBuf, time::Duration};
+use std::{
+    convert::{TryFrom, TryInto},
+    io::Read,
+    path::PathBuf,
+    time::Duration,
+};
 
 /// Invoice states.  These mirror the invoice states used by lnd.
 // ref: https://api.lightning.community/#invoicestate
@@ -74,74 +79,57 @@ pub struct LndConnectorParams {
 }
 
 #[derive(Clone, Debug)]
-enum LazyCertificate {
+enum LazyFile<T> {
     Path(PathBuf),
-    Certificate(Certificate),
+    Inner(T),
 }
 
-impl LazyCertificate {
+impl<T> LazyFile<T>
+where
+    T: TryFrom<Vec<u8>, Error = Error>,
+{
     pub fn new(path: PathBuf) -> Self {
         Self::Path(path)
     }
 
     pub fn read(self) -> Result<Self, Error> {
-        use LazyCertificate::*;
-
         match self {
-            Certificate(_) => Ok(self),
-            Path(path) => {
+            LazyFile::Inner(_) => Ok(self),
+            LazyFile::Path(path) => {
                 let mut buf = Vec::new();
                 std::fs::File::open(path)?.read_to_end(&mut buf)?;
-                let certificate = reqwest::Certificate::from_pem(&buf)?;
-                Ok(LazyCertificate::Certificate(certificate))
+                let inner = buf.try_into()?;
+                Ok(LazyFile::Inner(inner))
             }
         }
     }
 
-    pub fn certificate(&self) -> Result<&Certificate, Error> {
-        use LazyCertificate::*;
+    pub fn inner(&self) -> Result<&T, Error> {
         match self {
-            Path(_) => Err(anyhow::anyhow!("Certificate was not read.")),
-            Certificate(certificate) => Ok(certificate),
+            LazyFile::Path(_) => Err(anyhow::anyhow!("File was not read.")),
+            LazyFile::Inner(inner) => Ok(inner),
         }
     }
 }
 
-// TODO remove this duplication with LazyCertificate
 #[derive(Clone, Debug)]
-enum LazyMacaroon {
-    Path(PathBuf),
-    Macaroon(String), // already hex encoded
+struct Certificate(reqwest::Certificate);
+
+impl TryFrom<Vec<u8>> for Certificate {
+    type Error = Error;
+    fn try_from(buf: Vec<u8>) -> Result<Self, Error> {
+        Ok(Certificate(reqwest::Certificate::from_pem(&buf)?))
+    }
 }
 
-impl LazyMacaroon {
-    pub fn new(path: PathBuf) -> Self {
-        Self::Path(path)
-    }
+#[derive(Clone, Debug)]
+/// The string is hex encoded
+struct Macaroon(String);
 
-    pub fn read(self) -> Result<Self, Error> {
-        use LazyMacaroon::*;
-
-        match self {
-            Macaroon(_) => Ok(self),
-            Path(path) => {
-                let mut buf = Vec::new();
-                std::fs::File::open(&path)?.read_to_end(&mut buf)?;
-                let hex = hex::encode(buf);
-
-                tracing::debug!("extracted macaroon from path {}: {}", path.display(), hex);
-
-                Ok(LazyMacaroon::Macaroon(hex))
-            }
-        }
-    }
-
-    pub fn macaroon(&self) -> Result<&str, Error> {
-        use LazyMacaroon::*;
-        match self {
-            Path(_) => Err(anyhow::anyhow!("Macaroon was not read.")),
-            Macaroon(hex) => Ok(hex.as_ref()),
-        }
+impl TryFrom<Vec<u8>> for Macaroon {
+    type Error = Error;
+    fn try_from(buf: Vec<u8>) -> Result<Self, Error> {
+        Ok(Macaroon(hex::encode(buf)))
     }
 }
 
@@ -159,8 +147,8 @@ impl LazyMacaroon {
 pub struct LndConnectorAsSender {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: LazyCertificate,
-    macaroon: LazyMacaroon,
+    certificate: LazyFile<Certificate>,
+    macaroon: LazyFile<Macaroon>,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsSender {
@@ -168,8 +156,8 @@ impl From<LndConnectorParams> for LndConnectorAsSender {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: LazyCertificate::new(params.certificate_path),
-            macaroon: LazyMacaroon::new(params.macaroon_path),
+            certificate: LazyFile::<Certificate>::new(params.certificate_path),
+            macaroon: LazyFile::<Macaroon>::new(params.macaroon_path),
         }
     }
 }
@@ -200,7 +188,7 @@ impl LndConnectorAsSender {
         secret_hash: SecretHash,
         status: PaymentStatus,
     ) -> Result<Option<Payment>, Error> {
-        let response = client(self.certificate.certificate()?, self.macaroon.macaroon()?)?
+        let response = client(self.certificate.inner()?, self.macaroon.inner()?)?
             .get(self.payment_url())
             .send()
             .await?
@@ -313,8 +301,8 @@ where
 pub struct LndConnectorAsReceiver {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: LazyCertificate,
-    macaroon: LazyMacaroon,
+    certificate: LazyFile<Certificate>,
+    macaroon: LazyFile<Macaroon>,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsReceiver {
@@ -322,8 +310,8 @@ impl From<LndConnectorParams> for LndConnectorAsReceiver {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: LazyCertificate::new(params.certificate_path),
-            macaroon: LazyMacaroon::new(params.macaroon_path),
+            certificate: LazyFile::<Certificate>::new(params.certificate_path),
+            macaroon: LazyFile::<Macaroon>::new(params.macaroon_path),
         }
     }
 }
@@ -357,7 +345,7 @@ impl LndConnectorAsReceiver {
         secret_hash: SecretHash,
         expected_state: InvoiceState,
     ) -> Result<Option<Invoice>, Error> {
-        let response = client(self.certificate.certificate()?, self.macaroon.macaroon()?)?
+        let response = client(self.certificate.inner()?, self.macaroon.inner()?)?
             .get(self.invoice_url(secret_hash)?)
             .send()
             .await?;
@@ -493,10 +481,13 @@ where
     }
 }
 
-fn client(certificate: &Certificate, macaroon: &str) -> Result<reqwest::Client, Error> {
-    let cert = certificate.clone();
+fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Client, Error> {
+    let cert = certificate.0.clone();
     let mut default_headers = HeaderMap::with_capacity(1);
-    default_headers.insert("Grpc-Metadata-macaroon", HeaderValue::from_str(macaroon)?);
+    default_headers.insert(
+        "Grpc-Metadata-macaroon",
+        HeaderValue::from_str(&macaroon.0)?,
+    );
 
     Ok(reqwest::Client::builder()
         .add_root_certificate(cert)
