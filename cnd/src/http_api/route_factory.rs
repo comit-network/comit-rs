@@ -132,10 +132,6 @@ pub fn create(
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade2)
-        .and(warp::header::exact(
-            "accept",
-            "application/vnd.comit.halight-preview+json",
-        ))
         .and_then(http_api::routes::get_han_halight_swap);
 
     preflight_cors_route
