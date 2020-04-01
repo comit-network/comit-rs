@@ -1,5 +1,6 @@
 use crate::config::{
-    file, Bitcoin, Bitcoind, Data, Ethereum, File, Lightning, Lnd, Network, Parity,
+    default_lnd_cert_path, default_lnd_readonly_macaroon_path, file, Bitcoin, Bitcoind, Data,
+    Ethereum, File, Lightning, Lnd, Network, Parity,
 };
 use anyhow::Context;
 use log::LevelFilter;
@@ -228,7 +229,12 @@ impl Settings {
                         None => Lnd::default(),
                         Some(lnd) => Lnd {
                             rest_api_url: check_url_lnd(lnd.rest_api_url)?,
-                            dir: lnd.dir,
+                            dir: lnd.dir.clone(),
+                            cert_path: default_lnd_cert_path(lnd.dir.clone()),
+                            readonly_macaroon_path: default_lnd_readonly_macaroon_path(
+                                lnd.dir,
+                                lightning.network,
+                            ),
                         },
                     },
                 },
@@ -508,7 +514,7 @@ mod tests {
         let config_file = File {
             lightning: Some(file::Lightning {
                 network: bitcoin::Network::Regtest,
-                lnd: Some(Lnd {
+                lnd: Some(file::Lnd {
                     rest_api_url: "http://localhost:8000/".parse().unwrap(),
                     dir: Default::default(),
                 }),

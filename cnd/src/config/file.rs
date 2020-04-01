@@ -1,11 +1,15 @@
 use crate::{
-    config::{Bitcoind, Data, Lnd, Network, Parity},
+    config::{Bitcoind, Data, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use std::{
+    ffi::OsStr,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -40,6 +44,12 @@ pub struct Ethereum {
 pub struct Lightning {
     pub network: bitcoin::Network,
     pub lnd: Option<Lnd>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lnd {
+    pub rest_api_url: reqwest::Url,
+    pub dir: PathBuf,
 }
 
 impl File {
@@ -141,7 +151,7 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::{
-        config::{Bitcoind, Lnd, Parity, Settings},
+        config::{Bitcoind, Parity, Settings},
         swap_protocols::ledger::ethereum,
     };
     use reqwest::Url;
