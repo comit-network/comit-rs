@@ -96,7 +96,6 @@ pub async fn post_lightning_route_new(
     // TODO: reconsider name of this fn
     facade.initiate_communication(id, body.into()).await;
 
-    // TODO: reply with generated id in location header
     Ok(warp::reply::with_status(
         warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),
         StatusCode::CREATED,
