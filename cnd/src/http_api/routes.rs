@@ -544,7 +544,7 @@ pub async fn action_refund(id: SwapId, facade: Facade2) -> Result<impl Reply, Re
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
     tracing::trace!("received refund action");
-    let alpha_ledger_state: LedgerState<
+    let _alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
@@ -554,7 +554,7 @@ async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<Act
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let _beta_ledger_state: halight::State = facade
         .beta_ledger_state
         .get(&id)
         .await?
