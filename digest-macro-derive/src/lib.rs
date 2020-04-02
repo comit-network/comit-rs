@@ -3,9 +3,9 @@ extern crate proc_macro;
 use crate::proc_macro::TokenStream;
 use proc_macro2::{Delimiter, Group, Punct, Spacing};
 use quote::{quote, ToTokens, TokenStreamExt};
-use syn::{Attribute, Data, Fields, Lit, Meta};
+use syn::{Attribute, Data, Fields, Lit, Meta, MetaList, NestedMeta, Type};
 
-#[proc_macro_derive(Digest, attributes(digest_prefix))]
+#[proc_macro_derive(Digest, attributes(digest))]
 pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
     let ast = syn::parse(input).unwrap();
     impl_digest_macro(&ast)
@@ -13,6 +13,8 @@ pub fn digest_macro_fn(input: TokenStream) -> TokenStream {
 
 fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
+
+    let hash_type = extract_hash_type(&ast.attrs);
 
     match &ast.data {
         Data::Struct(data) => {
@@ -25,7 +27,7 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
 
                     let types = fields.named.iter().map(|field| &field.ty);
 
-                    let bytes = fields.named.iter().map(|field| attr_to_bytes(&field.attrs));
+                    let bytes = fields.named.iter().map(|field| extract_bytes(&field.attrs));
                     (idents, types, bytes)
                 }
                 _ => panic!("Only supporting named fields."),
@@ -35,18 +37,21 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                     impl ::digest::Digest for #name
                         where #(#types: ::digest::IntoDigestInput),*
                     {
-                        fn digest(self) -> ::multihash::Multihash {
+                        type Hash = #hash_type;
+
+                        fn digest(self) -> Self::Hash {
+                            use ::digest::{Hash, IntoDigestInput};
                             let mut digests = vec![];
-                            #(digests.push(::digest::field_digest(self.#idents, #bytes.to_vec())););*
+                            #(digests.push(::digest::field_digest::<_, Self::Hash>(self.#idents, #bytes.to_vec())););*
 
                             digests.sort();
 
-                            let res = digests.into_iter().fold(vec![], |mut res, digest| {
-                                res.append(&mut digest.into_bytes());
-                                res
+                            let bytes = digests.into_iter().fold(vec![], |mut bytes, digest| {
+                                bytes.append(&mut digest.into_digest_input());
+                                bytes
                             });
 
-                            ::digest::digest(&res)
+                            Self::Hash::hash(&bytes)
                         }
                     }
             };
@@ -63,7 +68,7 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                 .variants
                 .iter()
                 .filter(|variant| variant.fields.is_empty())
-                .map(|variant| attr_to_bytes(&variant.attrs));
+                .map(|variant| extract_bytes(&variant.attrs));
 
             let tuple_variant_idents = data
                 .variants
@@ -81,30 +86,54 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                     Fields::Unnamed(_) => true,
                     _ => false,
                 })
-                .map(|variant| attr_to_bytes(&variant.attrs));
+                .map(|variant| extract_bytes(&variant.attrs));
 
             let gen = quote! {
                     impl ::digest::Digest for #name
                     {
-                        fn digest(self) -> ::multihash::Multihash {
+                        type Hash = #hash_type;
+
+                        fn digest(self) -> Self::Hash {
+                            use ::digest::{Hash, IntoDigestInput};
+
                             let bytes = match self {
                                 #(Self::#unit_variant_idents => #unit_variant_bytes.to_vec()),*,
                                 #(Self::#tuple_variant_idents(data) => {
                                         let mut bytes = #tuple_variant_bytes.to_vec();
-                                        bytes.append(&mut data.digest().into_bytes());
+                                        bytes.append(&mut data.digest().into_digest_input());
                                         bytes
                                 }),*
                             };
 
-                            ::digest::digest(&bytes)
+                            Self::Hash::hash(&bytes)
                         }
                     }
             };
             gen.into()
         }
         _ => {
-            panic!("DigestRootMacro only supports structs & enums.");
+            panic!("Digest derive macro only supports structs & enums.");
         }
+    }
+}
+
+fn extract_hash_type(attrs: &[Attribute]) -> Type {
+    let meta_list = extract_meta_list(attrs);
+
+    let path = &meta_list.nested.first();
+    if let Some(NestedMeta::Meta(Meta::NameValue(name_value))) = path {
+        if name_value.path.is_ident("hash") {
+            if let Lit::Str(ref lit_str) = name_value.lit {
+                if let Ok(hash_type) = syn::parse_str::<Type>(&lit_str.value()) {
+                    return hash_type;
+                }
+            }
+            panic!("hash type could not be resolved. Expected format: `#[digest(hash = \"MyHashType\")]` ")
+        } else {
+            panic!("Only `hash` identifier is supported for `digest()` outer attribute. Expected format: `#[digest(hash = \"MyHashType\")]`")
+        }
+    } else {
+        panic!("Could not find element inside `digest` attribute. Expected format: `#[digest(hash = \"MyHashType\")]`")
     }
 }
 
@@ -119,23 +148,43 @@ impl ToTokens for Bytes {
     }
 }
 
-fn attr_to_bytes(attrs: &[Attribute]) -> Bytes {
-    let attr = attrs
-        .get(0)
-        .expect("digest_prefix attribute must be the only attribute present on all fields");
-    let meta = attr.parse_meta().expect("Attribute is malformed");
+fn extract_bytes(attrs: &[Attribute]) -> Bytes {
+    let meta_list = extract_meta_list(attrs);
 
-    if let Meta::NameValue(name_value) = meta {
-        if name_value.path.is_ident("digest_prefix") {
-            if let Lit::Str(lit_str) = name_value.lit {
+    let path = &meta_list.nested.first();
+    if let Some(NestedMeta::Meta(Meta::NameValue(name_value))) = path {
+        if name_value.path.is_ident("prefix") {
+            if let Lit::Str(ref lit_str) = name_value.lit {
                 let str = lit_str.value();
-                let bytes =
-                    ::hex::decode(&str).expect("digest_prefix value should be in hex format");
+                let bytes = ::hex::decode(&str).expect("prefix value should be in hex format");
                 return Bytes(bytes);
             }
+            panic!("prefix could not be resolved. Expected format: `#[digest(prefix = \"0102..0A\")]` ")
+        } else {
+            panic!("Only `prefix` identifier is supported for `digest()` field attribute. Expected format: `#[digest(prefix = \"0102..0A\")]`")
         }
+    } else {
+        panic!("Could not find element inside `digest` attribute. Expected format: `#[digest(hash = \"MyHashType\")]`")
     }
-    panic!("Only `digest_prefix = \"0102..0A\"` attributes are supported");
+}
+
+fn extract_meta_list(attrs: &[Attribute]) -> MetaList {
+    attrs
+        .iter()
+        .find_map(|attr| {
+            attr.parse_meta()
+                .ok()
+                .map(|meta| {
+                    if let Meta::List(meta_list) = meta {
+                        if meta_list.path.is_ident("digest") {
+                            return Some(meta_list);
+                        }
+                    };
+                    None
+                })
+                .unwrap_or(None)
+        })
+        .expect("Could not find `digest` attribute.")
 }
 
 #[cfg(test)]

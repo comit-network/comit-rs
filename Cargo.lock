@@ -832,6 +832,7 @@ dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
  "multihash",
+ "serde",
 ]
 
 [[package]]
