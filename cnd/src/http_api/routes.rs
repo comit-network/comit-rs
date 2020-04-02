@@ -85,7 +85,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(dbg!(actions), id)
+            make_entity(actions, id)
         }
         Role::Bob => {
             let actions = BobEthLnState {
@@ -95,7 +95,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(dbg!(actions), id)
+            make_entity(actions, id)
         }
     };
 

@@ -44,17 +44,18 @@ enum PaymentStatus {
     Failed,
 }
 
+// TODO: don't deserialize fields we are not using
+// TODO: why do all of these have to be options, ffs
 #[derive(Debug, Deserialize)]
 struct Invoice {
     pub value: Option<String>,
     pub value_msat: Option<String>,
-    pub r_hash: SecretHash, // TODO: this is base64 and not hex
     pub amt_paid_sat: Option<String>,
     pub amt_paid_msat: Option<String>,
-    pub settled: bool,
-    pub cltv_expiry: String,
-    pub state: InvoiceState,
-    pub r_preimage: Secret, // TODO: this is base64 and not hex
+    pub settled: Option<bool>,
+    pub cltv_expiry: Option<String>,
+    pub state: Option<InvoiceState>,
+    pub r_preimage: Option<String>, // TODO: this is base64 and not hex
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -376,10 +377,14 @@ impl LndConnectorAsReceiver {
             .await
             .context("failed to deserialize response as invoice")?;
 
-        if invoice.state == expected_state {
-            Ok(Some(invoice))
+        if let Some(actual_state) = invoice.state {
+            if actual_state == expected_state {
+                Ok(Some(invoice))
+            } else {
+                tracing::debug!("invoice exists but is in state {}", actual_state);
+                Ok(None)
+            }
         } else {
-            tracing::debug!("invoice exists but is in state {}", invoice.state);
             Ok(None)
         }
     }
@@ -456,8 +461,12 @@ where
             }
         };
 
+        let preimage = invoice
+            .r_preimage
+            .ok_or_else(|| anyhow::anyhow!("settled invoice does not contain preimage?!"))?;
+
         Ok(data::Settled {
-            secret: invoice.r_preimage,
+            secret: Secret::from_vec(base64::decode(preimage.as_bytes())?.as_slice())?,
         })
     }
 }
