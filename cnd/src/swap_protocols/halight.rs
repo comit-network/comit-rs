@@ -59,7 +59,9 @@ pub enum Event {
 
 /// Represents the data available at said state.
 pub mod data {
+    // These empty types are useful because they give us additional type safety.
     use super::*;
+
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct Opened;
 
