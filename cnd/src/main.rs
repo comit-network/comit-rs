@@ -112,7 +112,8 @@ fn main() -> anyhow::Result<()> {
 
     let lnd_connector_params = LndConnectorParams {
         lnd_url: settings.lightning.lnd.rest_api_url.clone(),
-        retry_interval_ms: 0,
+        // FIXME: (tcharding) changing this because 0 means we will hot loop.
+        retry_interval_ms: 100,
         certificate_path: settings.lightning.lnd.cert_path.clone(),
         macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
     };
