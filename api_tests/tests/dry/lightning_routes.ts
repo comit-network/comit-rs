@@ -15,7 +15,7 @@ import {
 // ******************************************** //
 describe("Lightning routes tests", () => {
     it(
-        "lightning-routes-post-eth-lnbtc-return-400",
+        "lightning-routes-post-eth-lnbtc-return-200",
         oneActorTest(async ({ alice }) => {
             const body = defaultHanEthereumEtherHalightLightningBitcoin(
                 "",
