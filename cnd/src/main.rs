@@ -118,11 +118,13 @@ fn main() -> anyhow::Result<()> {
         macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
     };
 
+    // Han protocol
     let alpha_ledger_state = Arc::new(LedgerStates::default());
     let beta_ledger_state = Arc::new(LedgerStates::default());
-    let invoice_states = Arc::new(InvoiceStates::default());
-
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
+
+    // HALight
+    let invoice_states = Arc::new(InvoiceStates::default()); // TODO: We will need one of these for alpha and for beta.
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
