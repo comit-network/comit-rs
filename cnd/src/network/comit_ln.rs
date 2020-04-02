@@ -70,6 +70,8 @@ pub struct ComitLN {
     ethereum_connector: Arc<Cache<Web3Connector>>,
     #[behaviour(ignore)]
     ethereum_ledger_state: Arc<LedgerStates>,
+    #[behaviour(ignore)]
+    invoices_states: Arc<InvoiceStates>,
 
     // FIXME: Is this ok here?
     #[behaviour(ignore)]
@@ -92,6 +94,7 @@ impl ComitLN {
         lnd_connector_params: LndConnectorParams,
         ethereum_connector: Arc<Cache<Web3Connector>>,
         ethereum_ledger_state: Arc<LedgerStates>,
+        invoices_state: Arc<InvoiceStates>,
         seed: RootSeed,
     ) -> Self {
         ComitLN {
@@ -111,6 +114,7 @@ impl ComitLN {
             lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
             ethereum_connector,
             ethereum_ledger_state,
+            invoices_states: invoices_state,
             seed,
         }
     }
@@ -562,7 +566,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .copied()
                 .expect("must exist");
 
-            let invoice_states = Arc::new(InvoiceStates::default());
+            let invoice_states = self.invoices_states.clone();
 
             // TODO: Transform in match for readability and to remove explanatory comments
             if create_swap_params.role == Role::Alice {
@@ -584,7 +588,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
-                            swap_id,
+                            SwapId(local_swap_id.0), // Should directly pass the local swap id
                             halight::Params {
                                 asset,
                                 ledger: ledger::lightning::Regtest,
@@ -620,7 +624,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
-                            swap_id,
+                            SwapId(local_swap_id.0), // Should directly pass the local swap id
                             halight::Params {
                                 asset,
                                 ledger: ledger::lightning::Regtest,
@@ -677,7 +681,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         >(
                             connector.as_ref(),
                             ethereum_ledger_state,
-                            swap_id,
+                            SwapId(local_swap_id.0), // TODO: this is obviously ridiculous
                             htlc_params,
                             Utc::now().naive_local(), // TODO don't create this here
                         )
@@ -722,7 +726,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         >(
                             connector.as_ref(),
                             ethereum_ledger_state,
-                            swap_id,
+                            SwapId(local_swap_id.0), // TODO: this is obviously ridiculous
                             htlc_params,
                             Utc::now().naive_local(), // TODO don't create this here
                         )

@@ -119,6 +119,7 @@ fn main() -> anyhow::Result<()> {
 
     let alpha_ledger_state = Arc::new(LedgerStates::default());
     let beta_ledger_state = Arc::new(LedgerStates::default());
+    let invoice_states = Arc::new(InvoiceStates::default());
 
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
@@ -136,8 +137,15 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&swap_communication_states),
         Arc::clone(&alpha_ledger_state),
         Arc::clone(&beta_ledger_state),
+        Arc::clone(&invoice_states),
         &database,
     )?;
+
+    let facade2 = Facade2 {
+        swarm: swarm.clone(),
+        alpha_ledger_state: Arc::clone(&alpha_ledger_state),
+        beta_ledger_state: Arc::clone(&invoice_states),
+    };
 
     let deps = Facade {
         bitcoin_connector,
@@ -147,14 +155,8 @@ fn main() -> anyhow::Result<()> {
         swap_communication_states,
         swap_error_states,
         seed,
-        swarm: swarm.clone(),
         db: database,
-    };
-
-    let facade2 = Facade2 {
         swarm,
-        alpha_ledger_state: Arc::new(LedgerStates::default()),
-        beta_ledger_state: Arc::new(InvoiceStates::default()),
     };
 
     runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;

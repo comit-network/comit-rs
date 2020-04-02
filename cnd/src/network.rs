@@ -25,6 +25,7 @@ use crate::{
     },
     seed::RootSeed,
     swap_protocols::{
+        halight::InvoiceStates,
         ledger,
         rfc003::{
             self,
@@ -194,6 +195,7 @@ impl Swarm {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
+        invoice_states: Arc<InvoiceStates>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -208,6 +210,7 @@ impl Swarm {
             swap_communication_states,
             alpha_ledger_state,
             beta_ledger_state,
+            invoice_states,
             seed,
             database.clone(),
             runtime.handle().clone(),
@@ -369,6 +372,7 @@ impl ComitNode {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
+        invoice_states: Arc<InvoiceStates>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -391,6 +395,7 @@ impl ComitNode {
                 lnd_connector_params,
                 ethereum_connector.clone(),
                 alpha_ledger_state.clone(),
+                invoice_states,
                 seed,
             ),
             bitcoin_connector,

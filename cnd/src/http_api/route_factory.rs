@@ -150,7 +150,7 @@ pub fn create(
         .and(facade2.clone())
         .and_then(http_api::routes::action_fund);
 
-    let lighting_action_init = swaps
+    let lighting_action_redeem = swaps
         .and(warp::get())
         .and(warp::path::param::<SwapId>())
         .and(warp::path("redeem"))
@@ -158,7 +158,7 @@ pub fn create(
         .and(facade2.clone())
         .and_then(http_api::routes::action_redeem);
 
-    let lighting_action_init = swaps
+    let lighting_action_refund = swaps
         .and(warp::get())
         .and(warp::path::param::<SwapId>())
         .and(warp::path("refund"))
@@ -180,6 +180,9 @@ pub fn create(
         .or(halight_bitcoin_herc20_erc20)
         .or(get_halight_swap)
         .or(lighting_action_init)
+        .or(lighting_action_fund)
+        .or(lighting_action_redeem)
+        .or(lighting_action_refund)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)
