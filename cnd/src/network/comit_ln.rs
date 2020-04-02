@@ -608,7 +608,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
-                            SwapId(local_swap_id.0), // Should directly pass the local swap id
+                            local_swap_id,
                             halight::Params {
                                 asset,
                                 ledger: ledger::lightning::Regtest,
@@ -644,7 +644,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
-                            SwapId(local_swap_id.0), // Should directly pass the local swap id
+                            local_swap_id,
                             halight::Params {
                                 asset,
                                 ledger: ledger::lightning::Regtest,
@@ -701,7 +701,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         >(
                             connector.as_ref(),
                             ethereum_ledger_state,
-                            SwapId(local_swap_id.0), // TODO: this is obviously ridiculous
+                            local_swap_id,
                             htlc_params,
                             Utc::now().naive_local(), // TODO don't create this here
                         )
@@ -746,7 +746,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         >(
                             connector.as_ref(),
                             ethereum_ledger_state,
-                            SwapId(local_swap_id.0), // TODO: this is obviously ridiculous
+                            local_swap_id,
                             htlc_params,
                             Utc::now().naive_local(), // TODO don't create this here
                         )

@@ -6,7 +6,7 @@ use crate::swap_protocols::{
         },
         LedgerState,
     },
-    state, SwapId,
+    state, NodeLocalSwapId, SwapId,
 };
 use chrono::NaiveDateTime;
 use futures::future::{self, Either};
@@ -32,7 +32,7 @@ use std::sync::Arc;
 pub async fn create_watcher<C, S, L, A, H, I, T>(
     ethereum_connector: &C,
     ledger_state: Arc<S>,
-    id: SwapId,
+    local_id: NodeLocalSwapId,
     htlc_params: HtlcParams<L, A, I>,
     accepted_at: NaiveDateTime,
 ) where
@@ -47,6 +47,9 @@ pub async fn create_watcher<C, S, L, A, H, I, T>(
     I: Clone,
     T: Clone,
 {
+    // FIXME: Resolve this abuse.
+    let id = SwapId(local_id.0);
+
     ledger_state
         .insert(id, LedgerState::<A, H, T>::NotDeployed)
         .await;

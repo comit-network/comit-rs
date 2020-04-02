@@ -3,7 +3,7 @@ use crate::{
         rfc003::{Secret, SecretHash},
         state,
         state::{Insert as _, Update as _},
-        SwapId,
+        NodeLocalSwapId, SwapId,
     },
     timestamp::Timestamp,
 };
@@ -157,7 +157,7 @@ impl state::Update<Event> for InvoiceStates {
 pub async fn create_watcher<C, L, A, I>(
     lnd_connector: &C,
     invoice_states: Arc<InvoiceStates>,
-    id: SwapId,
+    local_id: NodeLocalSwapId,
     params: Params<L, A, I>,
     finalized_at: NaiveDateTime,
 ) where
@@ -167,6 +167,9 @@ pub async fn create_watcher<C, L, A, I>(
     A: Ord + Clone,
     I: Clone,
 {
+    // FIXME: Resolve this abuse.
+    let id = SwapId(local_id.0);
+
     invoice_states.insert(id, State::Unknown).await;
 
     // construct a generator that watches alpha and beta ledger concurrently
