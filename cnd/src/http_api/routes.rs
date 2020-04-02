@@ -21,7 +21,7 @@ use crate::{
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
-        Facade2, Role, SwapId,
+        Facade2, NodeLocalSwapId, Role, SwapId,
     },
     transaction, Never,
 };
@@ -37,7 +37,10 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 // This will be possible once the `swap_protocol::LedgerState` struct
 // is duplicated in `han::LedgerState` and `herc20::LedgerState`
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_han_halight_swap(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn get_han_halight_swap(
+    id: NodeLocalSwapId,
+    facade: Facade2,
+) -> Result<impl Reply, Rejection> {
     handle_get_han_halight_swap(facade, id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
@@ -47,13 +50,17 @@ pub async fn get_han_halight_swap(id: SwapId, facade: Facade2) -> Result<impl Re
 
 pub async fn handle_get_han_halight_swap(
     facade: Facade2,
-    id: SwapId,
+    id: NodeLocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
+    let swap_id = SwapId(id.0);
+
+    // This is ok, we use a new create_watcher in han.rs and call it with local id.
     let alpha_ledger_state: Option<
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
-    > = facade.alpha_ledger_state.get(&id).await?;
-    let beta_ledger_state = facade.beta_ledger_state.get(&id).await?;
-    let finalized_swap = facade.get_finalized_swap(id).await;
+    > = facade.alpha_ledger_state.get(&swap_id).await?;
+
+    let beta_ledger_state = facade.beta_ledger_state.get(&swap_id).await?;
+    let finalized_swap = facade.get_finalized_swap(swap_id).await;
 
     let (alpha_ledger_state, beta_ledger_state, finalized_swap) =
         match (alpha_ledger_state, beta_ledger_state, finalized_swap) {
@@ -85,7 +92,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(actions, id)
+            make_entity(actions, swap_id)
         }
         Role::Bob => {
             let actions = BobEthLnState {
@@ -95,7 +102,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(actions, id)
+            make_entity(actions, swap_id)
         }
     };
 
