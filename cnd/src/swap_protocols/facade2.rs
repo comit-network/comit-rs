@@ -1,7 +1,7 @@
 use crate::{
     asset, identity,
     network::{comit_ln, DialInformation, Swarm},
-    swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, Role, SwapId},
+    swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, Role},
     timestamp::Timestamp,
 };
 use std::sync::Arc;
@@ -41,8 +41,7 @@ impl Facade2 {
         self.swarm.initiate_communication(id, swap_params).await;
     }
 
-    // TODO this should NodeLocalSwapId
-    pub async fn get_finalized_swap(&self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         // TODO this should read from the DB and not from the swarm
         self.swarm.get_finalized_swap(id).await
     }

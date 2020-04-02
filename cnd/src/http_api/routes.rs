@@ -50,17 +50,20 @@ pub async fn get_han_halight_swap(
 
 pub async fn handle_get_han_halight_swap(
     facade: Facade2,
-    id: NodeLocalSwapId,
+    local_id: NodeLocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let swap_id = SwapId(id.0);
+    // FIXME: Resolve this abuse.
+    let swap_id = SwapId(local_id.0);
 
     // This is ok, we use a new create_watcher in han.rs and call it with local id.
     let alpha_ledger_state: Option<
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     > = facade.alpha_ledger_state.get(&swap_id).await?;
 
+    // And again here, we munge the swap_id when calling create_watcher.
     let beta_ledger_state = facade.beta_ledger_state.get(&swap_id).await?;
-    let finalized_swap = facade.get_finalized_swap(swap_id).await;
+
+    let finalized_swap = facade.get_finalized_swap(local_id).await;
 
     let (alpha_ledger_state, beta_ledger_state, finalized_swap) =
         match (alpha_ledger_state, beta_ledger_state, finalized_swap) {
@@ -274,6 +277,7 @@ pub enum ActionKind<TInit, TFund, TRedeem, TRefund> {
 // all our actions for this particular case don't have any parameters, so we can
 // just implement this generically
 impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, TRedeem, TRefund> {
+    // FIXME: for han-halight this is the node local swap id
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         let name = match self {
             ActionKind::Init(_) => "init",
@@ -295,7 +299,7 @@ impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, 
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_init(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_init(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -304,8 +308,14 @@ pub async fn action_init(id: SwapId, facade: Facade2) -> Result<impl Reply, Reje
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_init(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+async fn handle_action_init(
+    local_id: NodeLocalSwapId,
+    facade: Facade2,
+) -> anyhow::Result<ActionResponseBody> {
     tracing::trace!("received init action");
+    // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
+
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -323,7 +333,7 @@ async fn handle_action_init(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(id)
+        .get_finalized_swap(local_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
@@ -362,7 +372,7 @@ async fn handle_action_init(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_fund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_fund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -371,7 +381,12 @@ pub async fn action_fund(id: SwapId, facade: Facade2) -> Result<impl Reply, Reje
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_fund(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+async fn handle_action_fund(
+    local_id: NodeLocalSwapId,
+    facade: Facade2,
+) -> anyhow::Result<ActionResponseBody> {
+    // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     tracing::trace!("received fund action");
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -390,7 +405,7 @@ async fn handle_action_fund(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(id)
+        .get_finalized_swap(local_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
@@ -456,7 +471,7 @@ async fn handle_action_fund(id: SwapId, facade: Facade2) -> anyhow::Result<Actio
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_redeem(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_redeem(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -465,7 +480,12 @@ pub async fn action_redeem(id: SwapId, facade: Facade2) -> Result<impl Reply, Re
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_redeem(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+async fn handle_action_redeem(
+    local_id: NodeLocalSwapId,
+    facade: Facade2,
+) -> anyhow::Result<ActionResponseBody> {
+    // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     tracing::trace!("received redeem action");
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -484,7 +504,7 @@ async fn handle_action_redeem(id: SwapId, facade: Facade2) -> anyhow::Result<Act
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(id)
+        .get_finalized_swap(local_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
@@ -546,7 +566,7 @@ async fn handle_action_redeem(id: SwapId, facade: Facade2) -> anyhow::Result<Act
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(id: SwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_refund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_refund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -555,7 +575,12 @@ pub async fn action_refund(id: SwapId, facade: Facade2) -> Result<impl Reply, Re
 }
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
-async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<ActionResponseBody> {
+async fn handle_action_refund(
+    local_id: NodeLocalSwapId,
+    facade: Facade2,
+) -> anyhow::Result<ActionResponseBody> {
+    // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     tracing::trace!("received refund action");
     let _alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -574,7 +599,7 @@ async fn handle_action_refund(id: SwapId, facade: Facade2) -> anyhow::Result<Act
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(id)
+        .get_finalized_swap(local_id)
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 

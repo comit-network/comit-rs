@@ -268,7 +268,7 @@ impl Swarm {
         guard.initiate_communication(id, swap_params)
     }
 
-    pub async fn get_finalized_swap(&self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         let mut guard = self.swarm.lock().await;
 
         guard.get_finalized_swap(id)
@@ -424,7 +424,7 @@ impl ComitNode {
     }
 
     // TODO: do we need all these layers of abstraction ?!
-    pub fn get_finalized_swap(&mut self, id: SwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub fn get_finalized_swap(&mut self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.comit_ln.get_finalized_swap(id)
     }
 }

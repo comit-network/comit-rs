@@ -2,7 +2,7 @@ use crate::{
     config::settings::AllowedOrigins,
     http_api,
     network::LocalPeerId,
-    swap_protocols::{self, Facade, Facade2, SwapId},
+    swap_protocols::{self, Facade, Facade2, NodeLocalSwapId, SwapId},
 };
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 
@@ -136,7 +136,7 @@ pub fn create(
 
     let lighting_action_init = swaps
         .and(warp::get())
-        .and(warp::path::param::<SwapId>())
+        .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("init"))
         .and(warp::path::end())
         .and(facade2.clone())
@@ -144,7 +144,7 @@ pub fn create(
 
     let lighting_action_fund = swaps
         .and(warp::get())
-        .and(warp::path::param::<SwapId>())
+        .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("fund"))
         .and(warp::path::end())
         .and(facade2.clone())
@@ -152,7 +152,7 @@ pub fn create(
 
     let lighting_action_redeem = swaps
         .and(warp::get())
-        .and(warp::path::param::<SwapId>())
+        .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("redeem"))
         .and(warp::path::end())
         .and(facade2.clone())
@@ -160,7 +160,7 @@ pub fn create(
 
     let lighting_action_refund = swaps
         .and(warp::get())
-        .and(warp::path::param::<SwapId>())
+        .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
         .and(facade2.clone())

@@ -156,9 +156,7 @@ impl ComitLN {
 
     // TODO: change the signature of this to account for the swap not being
     // finalized yet
-    pub fn get_finalized_swap(&self, id: SwapId) -> Option<FinalizedSwap> {
-        let local_id = NodeLocalSwapId(id.0);
-
+    pub fn get_finalized_swap(&self, local_id: NodeLocalSwapId) -> Option<FinalizedSwap> {
         let create_swap_params = match self.swaps.get(&local_id) {
             Some(body) => body,
             None => return None,
