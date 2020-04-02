@@ -18,12 +18,8 @@ where
     S: Send + 'static,
 {
     async fn insert(&self, key: SwapId, value: S) {
-        let span = tracing::trace_span!("insert_state", id = tracing::field::display(key));
-        let _enter = span.enter();
-
         let mut states = self.states.lock().await;
         states.insert(key, Box::new(value));
-        tracing::trace!("inserted state")
     }
 }
 
@@ -33,22 +29,13 @@ where
     S: Clone + Send + 'static,
 {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<S>> {
-        let span = tracing::trace_span!("get_state", id = tracing::field::display(key));
-        let _enter = span.enter();
-
         let states = self.states.lock().await;
         match states.get(key) {
             Some(state) => match state.downcast_ref::<S>() {
-                Some(state) => {
-                    tracing::trace!("found state");
-                    Ok(Some(state.clone()))
-                }
+                Some(state) => Ok(Some(state.clone())),
                 None => Err(anyhow::anyhow!("invalid type")),
             },
-            None => {
-                tracing::trace!("state not present");
-                Ok(None)
-            }
+            None => Ok(None),
         }
     }
 }

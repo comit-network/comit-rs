@@ -118,29 +118,16 @@ impl State {
 #[async_trait::async_trait]
 impl state::Insert<State> for InvoiceStates {
     async fn insert(&self, key: SwapId, value: State) {
-        let span = tracing::trace_span!("insert_state", id = tracing::field::display(key));
-        let _enter = span.enter();
-
         let mut states = self.states.lock().await;
         states.insert(key, value);
-
-        tracing::trace!("inserted state")
     }
 }
 
 #[async_trait::async_trait]
 impl state::Get<State> for InvoiceStates {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
-        let span = tracing::trace_span!("get_state", id = tracing::field::display(key));
-        let _enter = span.enter();
-
         let states = self.states.lock().await;
         let state = states.get(key).copied();
-
-        match &state {
-            Some(_) => tracing::trace!("found state"),
-            None => tracing::trace!("state not present"),
-        }
 
         Ok(state)
     }

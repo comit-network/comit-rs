@@ -16,12 +16,13 @@ import { parseEther } from "ethers/utils";
 declare var global: HarnessGlobal;
 
 function defaultHanEthereumEtherRequestParams(
-    absoluteExpiry: number
+    absoluteExpiry: number,
+    identity: string
 ): HanEthereumEtherRequestParams {
     return {
         amount: "5000000000000000000",
         chain_id: 17,
-        identity: "0x00a329c0648769a73afac7f9381e08fb43dbea72",
+        identity,
         absolute_expiry: absoluteExpiry,
     };
 }
@@ -31,7 +32,7 @@ function defaultHalightLightningBitcoinRequestParams(
     lndPubkey: string
 ): HalightLightningBitcoinRequestParams {
     return {
-        amount: "10000000",
+        amount: "10000",
         network: "regtest",
         identity: lndPubkey,
         cltv_expiry: cltvExpiry,
@@ -52,14 +53,18 @@ function defaultHerc20EthereumErc20RequestParams(
 export function defaultHanEthereumEtherHalightLightningBitcoin(
     lndPubkey: string,
     peer: Peer,
-    role: "Alice" | "Bob"
+    role: "Alice" | "Bob",
+    ethereumIdentity: string
 ): HanEthereumEtherHalightLightningBitcoinRequestBody {
     const {
         alphaAbsoluteExpiry,
         betaCltvExpiry,
     } = defaultHalightHanHerc20Expiries();
     return {
-        alpha: defaultHanEthereumEtherRequestParams(alphaAbsoluteExpiry),
+        alpha: defaultHanEthereumEtherRequestParams(
+            alphaAbsoluteExpiry,
+            ethereumIdentity
+        ),
         beta: defaultHalightLightningBitcoinRequestParams(
             betaCltvExpiry,
             lndPubkey
@@ -90,7 +95,8 @@ export function defaultHerc20EthereumErc20HalightLightningBitcoin(
 
 export function defaultHalightLightningBitcoinHanEthereumEther(
     lndPubkey: string,
-    peer: Peer
+    peer: Peer,
+    ethereumIdentity: string
 ): HalightLightningBitcoinHanEthereumEtherRequestBody {
     const {
         alphaCltvExpiry,
@@ -101,7 +107,10 @@ export function defaultHalightLightningBitcoinHanEthereumEther(
             alphaCltvExpiry,
             lndPubkey
         ),
-        beta: defaultHanEthereumEtherRequestParams(betaAbsoluteExpiry),
+        beta: defaultHanEthereumEtherRequestParams(
+            betaAbsoluteExpiry,
+            ethereumIdentity
+        ),
         role: "Alice",
         peer,
     };

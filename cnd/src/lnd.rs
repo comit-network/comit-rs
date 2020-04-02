@@ -48,13 +48,13 @@ enum PaymentStatus {
 struct Invoice {
     pub value: Option<String>,
     pub value_msat: Option<String>,
-    pub r_hash: SecretHash,
+    pub r_hash: SecretHash, // TODO: this is base64 and not hex
     pub amt_paid_sat: Option<String>,
     pub amt_paid_msat: Option<String>,
     pub settled: bool,
     pub cltv_expiry: String,
     pub state: InvoiceState,
-    pub r_preimage: Secret,
+    pub r_preimage: Secret, // TODO: this is base64 and not hex
 }
 
 #[derive(Clone, Debug, Deserialize)]

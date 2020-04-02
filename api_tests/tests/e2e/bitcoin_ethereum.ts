@@ -72,8 +72,11 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
     it(
         "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
         twoActorTest(async ({ alice, bob }) => {
-            await alice.createSwap();
+            // make sure bob knows about the swap first
             await bob.createSwap();
+            await sleep(500);
+
+            await alice.createSwap();
 
             await alice.init();
 

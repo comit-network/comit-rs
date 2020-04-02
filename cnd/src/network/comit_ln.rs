@@ -154,6 +154,8 @@ impl ComitLN {
         }
     }
 
+    // TODO: change the signature of this to account for the swap not being
+    // finalized yet
     pub fn get_finalized_swap(&self, id: SwapId) -> Option<FinalizedSwap> {
         let local_id = NodeLocalSwapId(id.0);
 
@@ -171,26 +173,43 @@ impl ComitLN {
             Role::Bob => None,
         };
 
+        let id = match self.swap_ids.get(&local_id).copied() {
+            Some(id) => id,
+            None => return None,
+        };
+
         // TODO: The logic of deciding what identity is which is also present in
         // impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::
         // Message>> for ComitLN {     fn inject_event(&mut self, event:
         // oneshot_behaviour::OutEvent<finalize::Message>) There should one
         // place of truth
         let alpha_ledger_redeem_identity = match create_swap_params.role {
-            Role::Alice => self.ethereum_identities.get(&id).copied().unwrap(),
+            Role::Alice => match self.ethereum_identities.get(&id).copied() {
+                Some(identity) => identity,
+                None => return None,
+            },
             Role::Bob => create_swap_params.ethereum_identity,
         };
         let alpha_ledger_refund_identity = match create_swap_params.role {
             Role::Alice => create_swap_params.ethereum_identity,
-            Role::Bob => self.ethereum_identities.get(&id).copied().unwrap(),
+            Role::Bob => match self.ethereum_identities.get(&id).copied() {
+                Some(identity) => identity,
+                None => return None,
+            },
         };
         let beta_ledger_redeem_identity = match create_swap_params.role {
-            Role::Alice => self.lightning_identities.get(&id).copied().unwrap(),
+            Role::Alice => match self.lightning_identities.get(&id).copied() {
+                Some(identity) => identity,
+                None => return None,
+            },
             Role::Bob => create_swap_params.lightning_identity,
         };
         let beta_ledger_refund_identity = match create_swap_params.role {
             Role::Alice => create_swap_params.lightning_identity,
-            Role::Bob => self.lightning_identities.get(&id).copied().unwrap(),
+            Role::Bob => match self.lightning_identities.get(&id).copied() {
+                Some(identity) => identity,
+                None => return None,
+            },
         };
 
         Some(FinalizedSwap {
@@ -206,7 +225,10 @@ impl ComitLN {
             beta_expiry: create_swap_params.lightning_cltv_expiry,
             local_id,
             secret,
-            secret_hash: self.secret_hashes.get(&id).copied().unwrap(),
+            secret_hash: match self.secret_hashes.get(&id).copied() {
+                Some(secret_hash) => secret_hash,
+                None => return None,
+            },
             role: create_swap_params.role,
         })
     }

@@ -7,8 +7,8 @@ import {
     LedgerAction,
     Swap,
     SwapDetails,
-    TransactionStatus,
     Transaction,
+    TransactionStatus,
     Wallets as SdkWallets,
 } from "comit-sdk";
 import { Logger } from "log4js";
@@ -327,17 +327,39 @@ export class Actor {
             counterparty.name
         );
 
+        const createSwapPayload = defaultHanEthereumEtherHalightLightningBitcoin(
+            await counterparty.wallets.lightning.inner.getPubkey(),
+            {
+                peer_id: await counterparty.cnd.getPeerId(),
+                address_hint: await counterparty.cnd
+                    .getPeerListenAddresses()
+                    .then((addresses) => addresses[0]),
+            },
+            cryptoRole,
+            this.wallets.ethereum.account()
+        );
+
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: createSwapPayload.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Lightning,
+            network: createSwapPayload.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Ether,
+            quantity: createSwapPayload.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: createSwapPayload.beta.amount,
+            ledger: LedgerKind.Lightning,
+        };
+
         const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
-            defaultHanEthereumEtherHalightLightningBitcoin(
-                await counterparty.wallets.lightning.inner.getPubkey(),
-                {
-                    peer_id: await counterparty.cnd.getPeerId(),
-                    address_hint: await counterparty.cnd
-                        .getPeerListenAddresses()
-                        .then((addresses) => addresses[0]),
-                },
-                cryptoRole
-            )
+            createSwapPayload
         );
 
         this.swap = new Swap(
@@ -358,7 +380,7 @@ export class Actor {
         const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
             "init",
             {
-                maxTimeoutSecs: 10,
+                maxTimeoutSecs: 30,
                 tryIntervalSecs: 1,
             }
         );

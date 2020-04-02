@@ -49,26 +49,32 @@ pub async fn handle_get_han_halight_swap(
     facade: Facade2,
     id: SwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let alpha_ledger_state: LedgerState<
-        asset::Ether,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_state
-        .get(&id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+    let alpha_ledger_state: Option<
+        LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
+    > = facade.alpha_ledger_state.get(&id).await?;
+    let beta_ledger_state = facade.beta_ledger_state.get(&id).await?;
+    let finalized_swap = facade.get_finalized_swap(id).await;
 
-    let beta_ledger_state: halight::State = facade
-        .beta_ledger_state
-        .get(&id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+    let (alpha_ledger_state, beta_ledger_state, finalized_swap) =
+        match (alpha_ledger_state, beta_ledger_state, finalized_swap) {
+            (Some(alpha_ledger_state), Some(beta_ledger_state), Some(finalized_swap)) => {
+                (alpha_ledger_state, beta_ledger_state, finalized_swap)
+            }
+            _ => {
+                // TODO: for now we just default to an empty swap,
+                // This means any ID thrown at this function will yield a 200 - that is not
+                // desireable Once we have the database, we can actually check
+                // whether we have a swap with this ID available and get decide between a 404
+                // and an empty swap without actions
+                let empty_swap = siren::Entity::default().with_class_member("swap");
 
-    let finalized_swap = facade
-        .get_finalized_swap(id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+                tracing::debug!(
+                    "returning empty siren document because states are not yet completed"
+                );
+
+                return Ok(empty_swap);
+            }
+        };
 
     let entity = match finalized_swap.role {
         Role::Alice => {
@@ -79,7 +85,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(actions, id)
+            make_entity(dbg!(actions), id)
         }
         Role::Bob => {
             let actions = BobEthLnState {
@@ -89,7 +95,7 @@ pub async fn handle_get_han_halight_swap(
             }
             .actions();
 
-            make_entity(actions, id)
+            make_entity(dbg!(actions), id)
         }
     };
 
@@ -134,11 +140,11 @@ impl Actions for AliceEthLnState {
         if let halight::State::Unknown = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
-            let expiry = self.finalized_swap.alpha_expiry.into(); // Lazy choice, if Bob has not funded by this time Alice will refund anyways.
+            let expiry = 3600; // TODO: don't hardcode this
             let cltv_expiry = self.finalized_swap.beta_expiry.into();
             let chain = Chain::Bitcoin;
             let network = bitcoin::Network::Regtest;
-            let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
+            let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
 
             return vec![ActionKind::Init(lnd::AddHoldInvoice {
                 amount,
