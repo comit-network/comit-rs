@@ -12,7 +12,7 @@ use strum_macros::EnumDiscriminants;
     serde(rename_all = "SCREAMING_SNAKE_CASE")
 )]
 pub enum LedgerState<A, H, T> {
-    // TODO change this to None
+    // TODO: Think about this name - None, Unknown, NotDeployed
     NotDeployed,
     Deployed {
         htlc_location: H,

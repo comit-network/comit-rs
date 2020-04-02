@@ -40,7 +40,7 @@ pub trait Cancelled<L, A, I> {
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum State {
-    // TODO: Revisit this variant name.
+    // TODO: Think about this name - None, Unknown, NotDeployed
     Unknown,
     Opened(data::Opened),
     Accepted(data::Accepted),
