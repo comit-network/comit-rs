@@ -275,6 +275,10 @@ export class Actor {
                         quantity: "0",
                     },
                 ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.betaAsset),
+                    new BigNumber(this.betaAsset.quantity)
+                );
                 break;
             }
             case "bob": {
@@ -286,6 +290,10 @@ export class Actor {
                         quantity: "0",
                     },
                 ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.alphaAsset),
+                    new BigNumber(this.alphaAsset.quantity)
+                );
                 break;
             }
             default: {
