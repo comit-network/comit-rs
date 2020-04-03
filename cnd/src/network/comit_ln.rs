@@ -33,7 +33,7 @@ use libp2p::{
     swarm::{NetworkBehaviour, NetworkBehaviourEventProcess},
     NetworkBehaviour,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 use tracing_futures::Instrument;
 
 #[derive(NetworkBehaviour, Debug)]
@@ -599,23 +599,15 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .expect("Failure reading tls certificate")
                         .read_macaroon()
                         .expect("Failure reading macaroon");
-                    let bob_ln_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let alice_ln_identity = create_swap_params.lightning_identity;
-                    let cltv_expiry = create_swap_params.lightning_cltv_expiry;
-                    let asset = create_swap_params.lightning_amount;
 
                     async move {
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
                             local_swap_id,
-                            halight::Params {
-                                asset,
-                                ledger: ledger::lightning::Regtest,
-                                to_identity: alice_ln_identity,
-                                self_identity: bob_ln_identity,
-                                cltv_expiry,
+                            halight::Params::<Ethereum, asset::Ether, identity::Ethereum> {
                                 secret_hash,
+                                phantom_data: PhantomData,
                             },
                             Utc::now().naive_local(), // TODO don't create this here
                         )
@@ -634,24 +626,15 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .expect("Failure reading tls certificate")
                         .read_macaroon()
                         .expect("Failure reading macaroon");
-                    let alice_lightning_identity =
-                        self.lightning_identities.get(&swap_id).copied().unwrap();
-                    let bob_lightning_identity = create_swap_params.lightning_identity;
-                    let cltv_expiry = create_swap_params.lightning_cltv_expiry;
-                    let asset = create_swap_params.lightning_amount;
 
                     async move {
                         halight::create_watcher(
                             &lnd_connector,
                             invoice_states,
                             local_swap_id,
-                            halight::Params {
-                                asset,
-                                ledger: ledger::lightning::Regtest,
-                                to_identity: alice_lightning_identity,
-                                self_identity: bob_lightning_identity,
-                                cltv_expiry,
+                            halight::Params::<Ethereum, asset::Ether, identity::Ethereum> {
                                 secret_hash,
+                                phantom_data: PhantomData,
                             },
                             Utc::now().naive_local(), // TODO don't create this here
                         )

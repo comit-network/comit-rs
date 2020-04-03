@@ -1,11 +1,8 @@
-use crate::{
-    swap_protocols::{
-        rfc003::{Secret, SecretHash},
-        state,
-        state::{Insert as _, Update as _},
-        NodeLocalSwapId, SwapId,
-    },
-    timestamp::Timestamp,
+use crate::swap_protocols::{
+    rfc003::{Secret, SecretHash},
+    state,
+    state::{Insert as _, Update as _},
+    NodeLocalSwapId, SwapId,
 };
 use chrono::NaiveDateTime;
 use futures::future::{self, Either};
@@ -13,7 +10,7 @@ use genawaiter::{
     sync::{Co, Gen},
     GeneratorState,
 };
-use std::{collections::HashMap, sync::Arc};
+use std::{collections::HashMap, marker::PhantomData, sync::Arc};
 use tokio::sync::Mutex;
 
 /// Resolves when said event has occured.
@@ -241,10 +238,12 @@ where
 
 #[derive(Clone, Copy, Debug)]
 pub struct Params<L, A, I> {
-    pub asset: A,
-    pub ledger: L,
-    pub to_identity: I,
-    pub self_identity: I,
-    pub cltv_expiry: Timestamp,
+    pub phantom_data: PhantomData<(L, A, I)>,
+    // TODO: these are all unused
+    // pub asset: A,
+    // pub ledger: L,
+    // pub to_identity: I,
+    // pub self_identity: I,
+    // pub cltv_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }
