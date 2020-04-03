@@ -77,7 +77,7 @@ pub async fn create_watcher<D, S, L, A, H, I, T>(
             }
             GeneratorState::Complete(Err(e)) => {
                 tracing::error!("swap {} failed with {:?}", id, e);
-                dependencies.insert_failed_swap(&id);
+                dependencies.insert_failed_swap(&id).await;
                 return;
             }
         }
