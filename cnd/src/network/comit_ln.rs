@@ -181,6 +181,10 @@ impl ComitLN {
         // Message>> for ComitLN {     fn inject_event(&mut self, event:
         // oneshot_behaviour::OutEvent<finalize::Message>) There should one
         // place of truth
+
+        // TODO: To avoid mistakes here, we should create different types for incoming
+        // and outgoing identities This is best done on the libp2p-protocol
+        // level as we already differentiate there between Inbound and Outbound upgrades
         let alpha_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => match self.ethereum_identities.get(&id).copied() {
                 Some(identity) => identity,
