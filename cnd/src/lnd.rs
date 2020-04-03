@@ -21,7 +21,7 @@ use std::{
 #[serde(untagged)]
 enum InvoiceState {
     #[serde(rename = "0")]
-    Opened,
+    Open,
     #[serde(rename = "1")]
     Settled,
     #[serde(rename = "2")]
@@ -377,14 +377,14 @@ impl LndConnectorAsReceiver {
             .await
             .context("failed to deserialize response as invoice")?;
 
-        if let Some(actual_state) = invoice.state {
-            if actual_state == expected_state {
-                Ok(Some(invoice))
-            } else {
-                tracing::debug!("invoice exists but is in state {}", actual_state);
-                Ok(None)
-            }
+        // TODO: if we get here, it means the invoice exists but doesn't have a state
+        // field?! let's assume that means it is open
+        let actual_state = invoice.state.unwrap_or(InvoiceState::Open);
+
+        if actual_state == expected_state {
+            Ok(Some(invoice))
         } else {
+            tracing::debug!("invoice exists but is in state {}", actual_state);
             Ok(None)
         }
     }
@@ -409,7 +409,7 @@ where
         // FIXME: Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
-            .find_invoice(params.secret_hash, InvoiceState::Opened)
+            .find_invoice(params.secret_hash, InvoiceState::Open)
             .await?
             .is_none()
         {
