@@ -308,7 +308,6 @@ async fn handle_action_init(
     local_id: NodeLocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    tracing::trace!("received init action");
     // FIXME: The insert/get/update traits use a SwapId
     let id = SwapId(local_id.0);
 
@@ -383,7 +382,6 @@ async fn handle_action_fund(
 ) -> anyhow::Result<ActionResponseBody> {
     // FIXME: The insert/get/update traits use a SwapId
     let id = SwapId(local_id.0);
-    tracing::trace!("received fund action");
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -482,7 +480,6 @@ async fn handle_action_redeem(
 ) -> anyhow::Result<ActionResponseBody> {
     // FIXME: The insert/get/update traits use a SwapId
     let id = SwapId(local_id.0);
-    tracing::trace!("received redeem action");
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -577,7 +574,6 @@ async fn handle_action_refund(
 ) -> anyhow::Result<ActionResponseBody> {
     // FIXME: The insert/get/update traits use a SwapId
     let id = SwapId(local_id.0);
-    tracing::trace!("received refund action");
     let _alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
