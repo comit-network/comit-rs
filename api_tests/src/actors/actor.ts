@@ -4,6 +4,7 @@ import {
     Cnd,
     ComitClient,
     Entity,
+    HanEthereumEtherHalightLightningBitcoinRequestBody,
     LedgerAction,
     Swap,
     SwapDetails,
@@ -26,7 +27,6 @@ import { InvoiceState } from "@radar/lnrpc";
 import {
     defaultAssetDescription,
     defaultExpiryTimes,
-    defaultHanEthereumEtherHalightLightningBitcoin,
     defaultLedgerDescriptionForLedger,
     defaultLedgerKindForAsset,
 } from "./defaults";
@@ -85,7 +85,7 @@ export class Actor {
     public lndInstance: LndInstance;
 
     constructor(
-        private readonly logger: Logger,
+        public readonly logger: Logger,
         private readonly cndInstance: CndInstance,
         private readonly name: ActorNames
     ) {
@@ -243,6 +243,72 @@ export class Actor {
         await this.swap.accept(Actor.defaultActionConfig);
     }
 
+    public async createSwap(
+        createSwapPayload: HanEthereumEtherHalightLightningBitcoinRequestBody
+    ) {
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: createSwapPayload.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Lightning,
+            network: createSwapPayload.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Ether,
+            quantity: createSwapPayload.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: createSwapPayload.beta.amount,
+            ledger: LedgerKind.Lightning,
+        };
+
+        switch (this.name) {
+            case "alice": {
+                // Alice purchases beta asset with alpha asset
+                await this.setStartingBalance([
+                    this.alphaAsset,
+                    {
+                        ...this.betaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                break;
+            }
+            case "bob": {
+                // Bob purchases alpha asset with beta asset
+                await this.setStartingBalance([
+                    this.betaAsset,
+                    {
+                        ...this.alphaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                break;
+            }
+            default: {
+                throw new Error(
+                    `createSwap does not support the actor ${this.name} yet`
+                );
+            }
+        }
+
+        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+            createSwapPayload
+        );
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
+    }
+
     public async deploy() {
         if (!this.swap) {
             throw new Error("Cannot deploy htlc for nonexistent swap");
@@ -281,95 +347,6 @@ export class Actor {
                 await this.actors.bob.assertBetaDeployed();
                 break;
         }
-    }
-
-    public async createSwap() {
-        let counterparty: Actor;
-        let cryptoRole: "Alice" | "Bob";
-
-        switch (this.name) {
-            case "alice": {
-                counterparty = this.actors.bob;
-                cryptoRole = "Alice";
-                break;
-            }
-            case "bob": {
-                counterparty = this.actors.alice;
-                cryptoRole = "Bob";
-                break;
-            }
-            default: {
-                throw new Error(
-                    `createSwap does not support the actor ${this.name} yet`
-                );
-            }
-        }
-
-        // for now, we are only doing han-ethereum-ether-halight-lightning-bitcoin
-        await this.wallets.initializeForLedger(
-            "lightning",
-            this.logger,
-            this.name
-        );
-        await this.wallets.initializeForLedger(
-            "ethereum",
-            this.logger,
-            this.name
-        );
-        await counterparty.wallets.initializeForLedger(
-            "lightning",
-            counterparty.logger,
-            counterparty.name
-        );
-        await counterparty.wallets.initializeForLedger(
-            "ethereum",
-            counterparty.logger,
-            counterparty.name
-        );
-
-        const createSwapPayload = defaultHanEthereumEtherHalightLightningBitcoin(
-            await counterparty.wallets.lightning.inner.getPubkey(),
-            {
-                peer_id: await counterparty.cnd.getPeerId(),
-                address_hint: await counterparty.cnd
-                    .getPeerListenAddresses()
-                    .then((addresses) => addresses[0]),
-            },
-            cryptoRole,
-            this.wallets.ethereum.account()
-        );
-
-        this.alphaLedger = {
-            name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.alpha.chain_id,
-        };
-        this.betaLedger = {
-            name: LedgerKind.Lightning,
-            network: createSwapPayload.beta.network,
-        };
-        this.alphaAsset = {
-            name: AssetKind.Ether,
-            quantity: createSwapPayload.alpha.amount,
-            ledger: LedgerKind.Ethereum,
-        };
-        this.betaAsset = {
-            name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.beta.amount,
-            ledger: LedgerKind.Lightning,
-        };
-
-        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
-            createSwapPayload
-        );
-
-        this.swap = new Swap(
-            this.cnd,
-            location,
-            new SdkWallets({
-                ethereum: this.wallets.ethereum.inner,
-                lightning: this.wallets.lightning.inner,
-            })
-        );
     }
 
     public async init() {
