@@ -33,14 +33,11 @@ enum InvoiceState {
 /// Payment status.  These mirror the payment status' used by lnd.
 // ref: https://api.lightning.community/#paymentstatus
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
+#[serde(rename_all = "UPPERCASE")]
 enum PaymentStatus {
-    #[serde(rename = "0")]
     Unknown,
-    #[serde(rename = "1")]
     InFlight,
-    #[serde(rename = "2")]
     Succeed,
-    #[serde(rename = "3")]
     Failed,
 }
 
