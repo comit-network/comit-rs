@@ -84,13 +84,19 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
             await alice.init();
 
             await alice.fund();
-            await bob.fund();
+
+            // we must not wait for bob's funding because `sendpayment` on a hold-invoice is a blocking call :(
+            // TODO: fix this :)
+            // tslint:disable-next-line:no-floating-promises
+            bob.fund();
 
             await alice.redeem();
             await bob.redeem();
 
-            await alice.assertSwapped();
-            await bob.assertSwapped();
+            await sleep(2000); // TODO: ugly hack until we can assert on some status from cnd
+
+            await alice.assertBalances();
+            await bob.assertBalances();
         })
     );
 });

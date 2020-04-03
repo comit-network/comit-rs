@@ -556,6 +556,10 @@ export class Actor {
             }
         }
 
+        await this.assertBalances();
+    }
+
+    public async assertBalances() {
         for (const [
             assetKey,
             expectedBalanceChange,
