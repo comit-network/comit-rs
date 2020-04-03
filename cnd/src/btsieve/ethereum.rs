@@ -198,6 +198,10 @@ where
                     .hash
                     .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
 
+                let span =
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:?}", block_hash));
+                let _enter = span.enter();
+
                 let maybe_contains_transaction = topics.iter().all(|topic| {
                     topic.as_ref().map_or(true, |topic| {
                         block
@@ -206,32 +210,33 @@ where
                     })
                 });
                 if !maybe_contains_transaction {
-                    tracing::trace!(
-                        "bloom filter indicates that block does not contain transaction:
-                {:x}",
-                        block_hash,
-                    );
+                    tracing::trace!("bloom filter says no");
                     continue;
+                } else {
+                    tracing::trace!("bloom filter says yes");
                 }
 
-                tracing::trace!(
-                    "bloom filter indicates that we should check the block for transactions: {:x}",
-                    block_hash,
-                );
+                tracing::trace!("checking {} transactions", block.transactions.len());
+
                 for transaction in block.transactions.into_iter() {
-                    let receipt = fetch_receipt(connector, transaction.hash).await?;
+                    let tx_hash = transaction.hash;
+
+                    let span = tracing::trace_span!(
+                        "matching_transaction",
+                        txhash = format_args!("{:?}", tx_hash)
+                    );
+                    let _enter = span.enter();
+
+                    let receipt = fetch_receipt(connector, tx_hash).await?;
                     let status_is_ok = receipt.is_status_ok();
                     if let Some(log) = matcher(receipt) {
                         if !status_is_ok {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
-                            tracing::warn!(
-                                "transaction matched {:x} but status was NOT OK",
-                                transaction.hash,
-                            );
+                            tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched {:x}", transaction.hash,);
+                        tracing::trace!("transaction matched");
                         return Ok((transaction, log));
                     }
                 }
