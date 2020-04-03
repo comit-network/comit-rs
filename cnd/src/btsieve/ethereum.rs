@@ -148,23 +148,32 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
+                let block_hash = block
+                    .hash
+                    .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
+
+                let span =
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:?}", block_hash));
+                let _enter = span.enter();
+
+                tracing::trace!("checking {} transactions", block.transactions.len());
+
                 for transaction in block.transactions.into_iter() {
-                    let id = format!("{:x}", transaction.hash);
-                    let span = tracing::debug_span!("match", id = tracing::field::display(id));
-                    let _enter = span.enter();
+                    let tx_hash = transaction.hash;
+                    let span = tracing::trace_span!(
+                        "matching_transaction",
+                        txhash = format_args!("{:x}", tx_hash)
+                    );
 
                     if matcher(&transaction) {
-                        let receipt = fetch_receipt(connector, transaction.hash).await?;
+                        let receipt = fetch_receipt(connector, tx_hash).await?;
                         if !receipt.is_status_ok() {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
-                            tracing::warn!(
-                                "transaction matched {:x} but status was NOT OK",
-                                transaction.hash,
-                            );
+                            tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched {:x}", transaction.hash,);
+                        tracing::trace!("transaction matched");
                         return Ok((transaction, receipt));
                     }
                 }
