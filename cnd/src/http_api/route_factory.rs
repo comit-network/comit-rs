@@ -163,7 +163,7 @@ pub fn create(
         .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade2.clone())
+        .and(facade2)
         .and_then(http_api::routes::action_refund);
 
     preflight_cors_route
