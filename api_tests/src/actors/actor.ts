@@ -768,7 +768,7 @@ export class Actor {
     }
 
     private async assertLedgerState(
-        ledger: string,
+        ledger: "alpha_ledger" | "beta_ledger",
         status:
             | "NOT_DEPLOYED"
             | "DEPLOYED"
@@ -777,6 +777,22 @@ export class Actor {
             | "REFUNDED"
             | "INCORRECTLY_FUNDED"
     ) {
+        if (
+            ledger === "alpha_ledger" &&
+            this.alphaLedger.name === LedgerKind.Lightning
+        ) {
+            // FIXME: we don't return any state at the moment, hence we can't check this
+            return;
+        }
+
+        if (
+            ledger === "beta_ledger" &&
+            this.betaLedger.name === LedgerKind.Lightning
+        ) {
+            // FIXME: we don't return any state at the moment, hence we can't check this
+            return;
+        }
+
         this.logger.debug(
             "Waiting for cnd to see %s in state %s for swap @ %s",
             ledger,
