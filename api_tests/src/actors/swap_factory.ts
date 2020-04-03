@@ -223,7 +223,7 @@ function defaultHalightHanHerc20Expiries() {
     return {
         alphaAbsoluteExpiry,
         betaAbsoluteExpiry,
-        alphaCltvExpiry: 3500,
-        betaCltvExpiry: 3500,
+        alphaCltvExpiry: 350,
+        betaCltvExpiry: 350,
     };
 }
