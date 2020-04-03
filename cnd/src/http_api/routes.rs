@@ -570,7 +570,7 @@ async fn handle_action_refund(
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
     let id = SwapId(local_id.0); // FIXME: The insert/get/update traits use a SwapId
-    let _alpha_ledger_state: LedgerState<
+    let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
@@ -580,7 +580,7 @@ async fn handle_action_refund(
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
 
-    let _beta_ledger_state: halight::State = facade
+    let beta_ledger_state: halight::State = facade
         .beta_ledger_state
         .get(&id)
         .await?
@@ -592,10 +592,38 @@ async fn handle_action_refund(
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
     match finalized_swap.role {
-        Role::Alice => unimplemented!(),
-        Role::Bob => unimplemented!(),
+        Role::Alice => {
+            let actions = AliceEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            }
+            .actions();
+
+            for action in actions {
+                if let ActionKind::Refund(ethereum::CallContract {
+                    to,
+                    data,
+                    gas_limit,
+                    chain_id,
+                    min_block_timestamp,
+                }) = action
+                {
+                    return Ok(ActionResponseBody::EthereumCallContract {
+                        contract_address: to,
+                        data,
+                        gas_limit: gas_limit.into(),
+                        chain_id,
+                        min_block_timestamp,
+                    });
+                }
+            }
+        }
+        Role::Bob => {
+            // There is no refund action for Bob when he is the HALight sender.
+        }
     }
-    unimplemented!()
+    Err(LndActionError::NotFound.into())
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
