@@ -185,7 +185,14 @@ export default class E2ETestEnvironment extends NodeEnvironment {
             quantity: "15000000",
         });
 
+        await bob.mint({
+            name: AssetKind.Bitcoin,
+            ledger: LedgerKind.Lightning,
+            quantity: "15000000",
+        });
+
         await alice.openChannel(bob, 15000000);
+        await bob.openChannel(alice, 15000000);
     }
 
     /**
