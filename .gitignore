@@ -61,3 +61,5 @@ TAGS
 # Blockchain nodes artifacts
 blockchain_nodes/bitcoin/
 blockchain_nodes/parity/parity
+.yalc
+yalc.lock
