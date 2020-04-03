@@ -164,6 +164,7 @@ where
                         "matching_transaction",
                         txhash = format_args!("{:x}", tx_hash)
                     );
+                    let _enter = span.enter();
 
                     if matcher(&transaction) {
                         let receipt = fetch_receipt(connector, tx_hash).await?;
