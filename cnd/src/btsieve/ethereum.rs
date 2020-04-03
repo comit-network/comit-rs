@@ -174,7 +174,7 @@ where
                             tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched");
+                        tracing::info!("transaction matched");
                         return Ok((transaction, receipt));
                     }
                 }
@@ -246,7 +246,7 @@ where
                             tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched");
+                        tracing::info!("transaction matched");
                         return Ok((transaction, log));
                     }
                 }
