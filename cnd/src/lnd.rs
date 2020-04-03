@@ -33,7 +33,7 @@ enum InvoiceState {
 enum PaymentStatus {
     Unknown,
     InFlight,
-    Succeed,
+    Succeeded,
     Failed,
 }
 
@@ -243,7 +243,7 @@ where
     async fn settled(&self, params: Params<L, A, I>) -> Result<data::Settled, Error> {
         let payment = loop {
             match self
-                .find_payment(params.secret_hash, PaymentStatus::Succeed)
+                .find_payment(params.secret_hash, PaymentStatus::Succeeded)
                 .await?
             {
                 Some(payment) => break payment,
