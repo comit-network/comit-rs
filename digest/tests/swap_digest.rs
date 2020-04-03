@@ -1,7 +1,9 @@
-use digest::{digest, field_digest, Digest, IntoDigestInput};
+use digest::{field_digest, Digest, Hash, IntoDigestInput};
+// This is to ensure that it works even if other macros are used on the same
+// struct
+use serde::Serialize;
 
-use digest::multihash::Multihash;
-
+#[derive(Serialize)]
 struct MyString(String);
 
 impl IntoDigestInput for MyString {
@@ -16,11 +18,29 @@ impl From<&str> for MyString {
     }
 }
 
-#[derive(Digest)]
+#[derive(Debug, PartialEq, Ord, PartialOrd, Eq)]
+struct MultihashSha256(::multihash::Multihash);
+
+impl digest::Hash for MultihashSha256 {
+    fn hash(bytes: &[u8]) -> Self {
+        Self(multihash::Sha3_256::digest(bytes))
+    }
+}
+
+impl IntoDigestInput for MultihashSha256 {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.0.into_bytes()
+    }
+}
+
+#[derive(Digest, Serialize)]
+#[serde(rename_all = "lowercase")]
+#[digest(hash = "MultihashSha256")]
 struct DoubleFieldStruct {
-    #[digest_prefix = "0011"]
+    #[digest(prefix = "0011")]
+    #[serde(alias = "foooo")]
     foo: MyString,
-    #[digest_prefix = "FFAA"]
+    #[digest(prefix = "FFAA")]
     bar: MyString,
 }
 
@@ -30,29 +50,34 @@ struct OtherDoubleFieldStruct {
 }
 
 impl Digest for OtherDoubleFieldStruct {
-    fn digest(self) -> Multihash {
+    type Hash = MultihashSha256;
+
+    fn digest(self) -> Self::Hash {
         let mut digests = vec![];
-        let foo_digest = field_digest(self.foo, [0x00u8, 0x11u8].to_vec());
+        let foo_digest = field_digest::<_, Self::Hash>(self.foo, [0x00u8, 0x11u8].to_vec());
         digests.push(foo_digest);
-        let bar_digest = field_digest(self.bar, [0xFFu8, 0xAAu8].to_vec());
+        let bar_digest = field_digest::<_, Self::Hash>(self.bar, [0xFFu8, 0xAAu8].to_vec());
         digests.push(bar_digest);
 
         digests.sort();
 
         let res = digests.into_iter().fold(vec![], |mut res, digest| {
-            res.append(&mut digest.into_bytes());
+            res.append(&mut digest.0.into_bytes());
             res
         });
 
-        digest(&res)
+        Self::Hash::hash(&res)
     }
 }
 
-#[derive(Digest)]
+#[derive(Digest, Serialize)]
+#[digest(hash = "MultihashSha256")]
+#[serde(rename_all = "lowercase")]
 enum Enum {
-    #[digest_prefix = "0011"]
+    #[serde(alias = "foooo")]
+    #[digest(prefix = "0011")]
     Foo,
-    #[digest_prefix = "0E0F"]
+    #[digest(prefix = "0E0F")]
     Bar,
 }
 
@@ -62,13 +87,14 @@ enum OtherEnum {
 }
 
 impl Digest for OtherEnum {
-    fn digest(self) -> Multihash {
+    type Hash = MultihashSha256;
+    fn digest(self) -> Self::Hash {
         let bytes = match self {
             OtherEnum::Foo => vec![0x00u8, 0x11u8],
             OtherEnum::Bar => vec![0x00u8, 0x11u8],
         };
 
-        digest(&bytes)
+        Self::Hash::hash(&bytes)
     }
 }
 
@@ -78,8 +104,8 @@ fn given_same_strings_return_same_multihash() {
     let str2: MyString = "simple string".into();
 
     assert_eq!(
-        field_digest(str1, "foo".into()),
-        field_digest(str2, "foo".into())
+        field_digest::<_, MultihashSha256>(str1, "foo".into()),
+        field_digest::<_, MultihashSha256>(str2, "foo".into())
     )
 }
 
@@ -89,8 +115,8 @@ fn given_same_strings_different_names_return_diff_multihash() {
     let str2: MyString = "simple string".into();
 
     assert_ne!(
-        field_digest(str1, "foo".into()),
-        field_digest(str2, "bar".into())
+        field_digest::<_, MultihashSha256>(str1, "foo".into()),
+        field_digest::<_, MultihashSha256>(str2, "bar".into())
     )
 }
 
@@ -100,8 +126,8 @@ fn given_different_strings_return_different_multihash() {
     let str2: MyString = "longer string".into();
 
     assert_ne!(
-        field_digest(str1, "foo".into()),
-        field_digest(str2, "foo".into())
+        field_digest::<_, MultihashSha256>(str1, "foo".into()),
+        field_digest::<_, MultihashSha256>(str2, "foo".into())
     )
 }
 
