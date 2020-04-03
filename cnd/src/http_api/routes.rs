@@ -628,8 +628,6 @@ async fn handle_action_refund(
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
 pub enum LndActionError {
-    // TODO: message is wrong, we also use this if the swap doesn't have the requested action (at
-    // the moment)
-    #[error("swap not found")]
+    #[error("action not found")]
     NotFound,
 }
