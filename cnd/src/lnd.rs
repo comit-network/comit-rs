@@ -18,15 +18,11 @@ use std::{
 /// Invoice states.  These mirror the invoice states used by lnd.
 // ref: https://api.lightning.community/#invoicestate
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, strum_macros::Display)]
-#[serde(untagged)]
+#[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum InvoiceState {
-    #[serde(rename = "0")]
     Open,
-    #[serde(rename = "1")]
     Settled,
-    #[serde(rename = "2")]
     Cancelled,
-    #[serde(rename = "3")]
     Accepted,
 }
 
