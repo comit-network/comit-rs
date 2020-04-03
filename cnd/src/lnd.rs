@@ -38,16 +38,15 @@ enum PaymentStatus {
 }
 
 // TODO: don't deserialize fields we are not using
-// TODO: why do all of these have to be options, ffs
 #[derive(Debug, Deserialize)]
 struct Invoice {
-    pub value: Option<String>,
-    pub value_msat: Option<String>,
-    pub amt_paid_sat: Option<String>,
-    pub amt_paid_msat: Option<String>,
-    pub settled: Option<bool>,
-    pub cltv_expiry: Option<String>,
-    pub state: Option<InvoiceState>,
+    pub value: String,
+    pub value_msat: String,
+    pub amt_paid_sat: String,
+    pub amt_paid_msat: String,
+    pub expiry: String,
+    pub cltv_expiry: String,
+    pub state: InvoiceState,
     pub r_preimage: Option<String>, // TODO: this is base64 and not hex
 }
 
@@ -370,14 +369,10 @@ impl LndConnectorAsReceiver {
             .await
             .context("failed to deserialize response as invoice")?;
 
-        // TODO: if we get here, it means the invoice exists but doesn't have a state
-        // field?! let's assume that means it is open
-        let actual_state = invoice.state.unwrap_or(InvoiceState::Open);
-
-        if actual_state == expected_state {
+        if invoice.state == expected_state {
             Ok(Some(invoice))
         } else {
-            tracing::debug!("invoice exists but is in state {}", actual_state);
+            tracing::debug!("invoice exists but is in state {}", invoice.state);
             Ok(None)
         }
     }
