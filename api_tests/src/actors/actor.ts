@@ -370,6 +370,11 @@ export class Actor {
         }
 
         const txid = await this.swap.fund(Actor.defaultActionConfig);
+
+        if (txid instanceof Transaction) {
+            await txid.status(1);
+        }
+
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
 
         const role = await this.whoAmI();
