@@ -47,8 +47,7 @@ pub async fn create_watcher<C, S, L, A, H, I, T>(
     I: Clone,
     T: Clone,
 {
-    // FIXME: Resolve this abuse.
-    let id = SwapId(local_id.0);
+    let id = SwapId(local_id.0); // FIXME: Resolve this abuse.
 
     ledger_state
         .insert(id, LedgerState::<A, H, T>::NotDeployed)

@@ -167,8 +167,7 @@ pub async fn create_watcher<C, L, A, I>(
     A: Ord + Clone,
     I: Clone,
 {
-    // FIXME: Resolve this abuse.
-    let id = SwapId(local_id.0);
+    let id = SwapId(local_id.0); // FIXME: Resolve this abuse.
 
     invoice_states.insert(id, State::Unknown).await;
 

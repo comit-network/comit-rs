@@ -49,8 +49,7 @@ pub async fn handle_get_han_halight_swap(
     facade: Facade2,
     local_id: NodeLocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    // FIXME: Resolve this abuse.
-    let swap_id = SwapId(local_id.0);
+    let swap_id = SwapId(local_id.0); // FIXME: Resolve this abuse.
 
     // This is ok, we use a new create_watcher in han.rs and call it with local id.
     let alpha_ledger_state: Option<
