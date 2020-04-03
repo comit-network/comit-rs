@@ -114,7 +114,7 @@ impl From<Body> for CreateSwapParams {
         Self {
             role: body.role.0,
             peer: body.peer,
-            ethereum_identity: body.alpha.identity,
+            ethereum_identity: body.alpha.identity.into(),
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
             ethereum_amount: body.alpha.amount,
             lightning_identity: body.beta.identity,

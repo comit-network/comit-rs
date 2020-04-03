@@ -260,7 +260,7 @@ enum ConnectionState {
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
     /// This event created when a confirmation message containing a `swap_id` is
-    /// received in response to an announce message containing a
+    /// received in response to an announce messagunlo  e containing a
     /// `swap_digest`. The Event contains both the swap id and
     /// the swap digest. The announce message is sent by Alice to Bob.
     ReceivedConfirmation {

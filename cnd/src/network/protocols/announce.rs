@@ -2,11 +2,12 @@ pub mod behaviour;
 pub mod handler;
 pub mod protocol;
 
-use libp2p::{multihash, multihash::Multihash};
+use digest::IntoDigestInput;
+use multihash::{self, Multihash};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialOrd, Ord, PartialEq, Eq, Hash)]
 pub struct SwapDigest(Multihash);
 
 impl SwapDigest {
@@ -15,9 +16,21 @@ impl SwapDigest {
     }
 }
 
+impl IntoDigestInput for SwapDigest {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.0.into_bytes()
+    }
+}
+
+impl digest::Hash for SwapDigest {
+    fn hash(bytes: &[u8]) -> Self {
+        Self(multihash::Sha3_256::digest(bytes))
+    }
+}
+
 impl fmt::Display for SwapDigest {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", multihash::to_hex(self.0.to_vec().as_slice()))
+        write!(f, "{}", hex::encode(self.0.as_bytes()))
     }
 }
 
@@ -26,8 +39,7 @@ impl Serialize for SwapDigest {
     where
         S: Serializer,
     {
-        let bytes = self.0.to_vec();
-        let hex = multihash::to_hex(bytes.as_slice());
+        let hex = hex::encode(self.0.as_bytes());
 
         serializer.serialize_str(&hex)
     }

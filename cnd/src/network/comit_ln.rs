@@ -27,9 +27,9 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use chrono::Utc;
+use digest::Digest;
 use futures::AsyncWriteExt;
 use libp2p::{
-    multihash,
     swarm::{NetworkBehaviour, NetworkBehaviourEventProcess},
     NetworkBehaviour,
 };
@@ -124,13 +124,7 @@ impl ComitLN {
         id: NodeLocalSwapId,
         create_swap_params: CreateSwapParams,
     ) {
-        let digest = SwapDigest::new(
-            multihash::encode(
-                multihash::Hash::SHA2256,
-                b"TODO REPLACE ME WITH THE ACTUAL SWAP DIGEST",
-            )
-            .unwrap(),
-        );
+        let digest = create_swap_params.clone().digest();
 
         self.swaps.insert(id, create_swap_params.clone());
 
@@ -149,6 +143,7 @@ impl ComitLN {
                 self.swaps_waiting_for_announcement.insert(digest, id);
             }
             Role::Bob => {
+                tracing::info!("Swap waiting for announcement: {}", digest);
                 self.swaps_waiting_for_announcement.insert(digest, id);
             }
         }
@@ -190,10 +185,10 @@ impl ComitLN {
                 Some(identity) => identity,
                 None => return None,
             },
-            Role::Bob => create_swap_params.ethereum_identity,
+            Role::Bob => create_swap_params.ethereum_identity.into(),
         };
         let alpha_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.ethereum_identity,
+            Role::Alice => create_swap_params.ethereum_identity.into(),
             Role::Bob => match self.ethereum_identities.get(&id).copied() {
                 Some(identity) => identity,
                 None => return None,
@@ -359,7 +354,10 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 
                     self.ethereum_identity.send(
                         peer.clone(),
-                        ethereum_identity::Message::new(id, create_swap_params.ethereum_identity),
+                        ethereum_identity::Message::new(
+                            id,
+                            create_swap_params.ethereum_identity.into(),
+                        ),
                     );
                     self.lightning_identity.send(
                         peer,
@@ -406,7 +404,10 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 
                 self.ethereum_identity.send(
                     peer.clone(),
-                    ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity),
+                    ethereum_identity::Message::new(
+                        swap_id,
+                        create_swap_params.ethereum_identity.into(),
+                    ),
                 );
                 self.lightning_identity.send(
                     peer.clone(),
@@ -669,7 +670,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         asset,
                         ledger,
                         redeem_identity: bob_ethereum_identity,
-                        refund_identity: alice_ethereum_identity,
+                        refund_identity: alice_ethereum_identity.into(),
                         expiry,
                         secret_hash,
                     };
@@ -713,7 +714,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     let htlc_params = HtlcParams {
                         asset,
                         ledger,
-                        redeem_identity: bob_ethereum_identity,
+                        redeem_identity: bob_ethereum_identity.into(),
                         refund_identity: alice_ethereum_identity,
                         expiry,
                         secret_hash,
