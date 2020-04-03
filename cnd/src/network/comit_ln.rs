@@ -196,18 +196,18 @@ impl ComitLN {
             },
         };
         let beta_ledger_redeem_identity = match create_swap_params.role {
-            Role::Alice => match self.lightning_identities.get(&id).copied() {
-                Some(identity) => identity,
-                None => return None,
-            },
-            Role::Bob => create_swap_params.lightning_identity,
-        };
-        let beta_ledger_refund_identity = match create_swap_params.role {
             Role::Alice => create_swap_params.lightning_identity,
             Role::Bob => match self.lightning_identities.get(&id).copied() {
                 Some(identity) => identity,
                 None => return None,
             },
+        };
+        let beta_ledger_refund_identity = match create_swap_params.role {
+            Role::Alice => match self.lightning_identities.get(&id).copied() {
+                Some(identity) => identity,
+                None => return None,
+            },
+            Role::Bob => create_swap_params.lightning_identity,
         };
 
         Some(FinalizedSwap {
