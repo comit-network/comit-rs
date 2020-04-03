@@ -553,6 +553,7 @@ dependencies = [
  "http-api-problem",
  "impl-template",
  "lazy_static",
+ "levenshtein",
  "libp2p",
  "libp2p-comit",
  "libsqlite3-sys",
@@ -1631,6 +1632,12 @@ name = "lazy_static"
 version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e2abad23fbc42b3700f2f279844dc832adb2b2eb069b2df918f455c4e18cc646"
+
+[[package]]
+name = "levenshtein"
+version = "1.0.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "66189c12161c65c0023ceb53e2fccc0013311bcb36a7cbd0f9c5e938b408ac96"
 
 [[package]]
 name = "lexical-core"

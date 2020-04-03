@@ -80,9 +80,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = tracing::field::display(hex::encode(&expected_bytecode.0))
+                ))
                 .await?;
 
         Ok(Deployed {
@@ -114,7 +119,7 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_redeemed"))
+            .instrument(tracing::trace_span!("htlc_redeemed"))
             .await?;
 
         let log_data = log.data.0.as_ref();
@@ -150,7 +155,7 @@ impl
         };
 
         let (transaction, _) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_refunded"))
+            .instrument(tracing::trace_span!("htlc_refunded"))
             .await?;
 
         Ok(Refunded { transaction })
@@ -183,7 +188,7 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_funded"))
+            .instrument(tracing::trace_span!("htlc_funded"))
             .await?;
 
         let expected_asset = &htlc_params.asset;
@@ -215,9 +220,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.clone().bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = tracing::field::display(hex::encode(&expected_bytecode.0))
+                ))
                 .await?;
 
         Ok(Deployed {

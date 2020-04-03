@@ -41,7 +41,7 @@ impl PreviousBlockHash for Block {
 pub async fn watch_for_contract_creation<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
-    bytecode: Bytes,
+    bytecode: &Bytes,
 ) -> anyhow::Result<(Transaction, Address)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -50,7 +50,31 @@ where
         matching_transaction_and_receipt(blockchain_connector, start_of_swap, |transaction| {
             // transaction.to address is None if, and only if, the transaction
             // creates a contract.
-            transaction.to.is_none() && transaction.input == bytecode
+
+            let is_contract_creation = transaction.to.is_none();
+            let is_expected_contract = &transaction.input == bytecode;
+
+            if !is_contract_creation {
+                tracing::trace!("rejected because transaction doesn't create a contract");
+            }
+
+            if !is_expected_contract {
+                tracing::trace!("rejected because contract code doesn't match");
+
+                // only compute levenshtein distance if we are on trace level, converting to hex is expensive at this scale
+                if tracing::level_enabled!(tracing::level_filters::LevelFilter::TRACE) {
+                    let actual = hex::encode(&transaction.input);
+                    let expected = hex::encode(&bytecode);
+
+                    let distance = levenshtein::levenshtein(&actual, &expected);
+
+                    if distance < 10 {
+                        tracing::warn!("found contract with slightly different parameters (levenshtein-distance < 10), this could be a bug!")
+                    }
+                }
+            }
+
+            is_contract_creation && is_expected_contract
         })
         .await?;
 
@@ -125,6 +149,10 @@ where
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
                 for transaction in block.transactions.into_iter() {
+                    let id = format!("{:x}", transaction.hash);
+                    let span = tracing::debug_span!("match", id = tracing::field::display(id));
+                    let _enter = span.enter();
+
                     if matcher(&transaction) {
                         let receipt = fetch_receipt(connector, transaction.hash).await?;
                         if !receipt.is_status_ok() {
