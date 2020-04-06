@@ -14,7 +14,6 @@ import {
 // Lightning routes                               //
 // ******************************************** //
 
-// TODO: All these tests should use the SwapFactory, these `default` functions are broken as soon as we use both actors because the expiries are created with Date.now() and hence different for both actors
 describe("Lightning routes tests", () => {
     it(
         "lightning-routes-post-eth-lnbtc-return-201",
