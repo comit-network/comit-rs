@@ -5,11 +5,9 @@
 
 import { twoActorTest } from "../../src/actor_test";
 import { AssetKind } from "../../src/asset";
-import { HarnessGlobal, sleep } from "../../src/utils";
+import { sleep } from "../../src/utils";
 import { LedgerKind } from "../../src/ledgers/ledger";
 import SwapFactory from "../../src/actors/swap_factory";
-
-declare var global: HarnessGlobal;
 
 // ******************************************** //
 // Lnd Sanity Test                              //
