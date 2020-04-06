@@ -215,7 +215,6 @@ export function defaultHalightLightningBitcoinHerc20EthereumErc20(
     };
 }
 
-// TODO: this is absolutely broken because we now generate different expiries on each side because this function is called by each actor
 function defaultHalightHanHerc20Expiries() {
     const alphaAbsoluteExpiry = Math.round(Date.now() / 1000) + 8;
     const betaAbsoluteExpiry = Math.round(Date.now() / 1000) + 3;
