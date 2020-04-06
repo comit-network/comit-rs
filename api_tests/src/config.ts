@@ -153,7 +153,7 @@ function lightningConnector(
     nodeConfig: LightningNodeConfig
 ): LightningConnector {
     return {
-        network: "regtest", // TODO: don't hardcode this
+        network: "regtest",
         lnd: {
             rest_api_url: `https://localhost:${nodeConfig.restPort}`,
             dir: nodeConfig.dataDir,
