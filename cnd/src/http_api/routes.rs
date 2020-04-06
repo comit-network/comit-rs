@@ -6,7 +6,7 @@ use crate::{
     asset,
     ethereum::Bytes,
     htlc_location,
-    http_api::{action::ActionResponseBody, problem, Http},
+    http_api::{action::ActionResponseBody, problem},
     network::comit_ln,
     swap_protocols::{
         actions::{
@@ -346,36 +346,22 @@ async fn handle_action_init(
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
-    if let Role::Alice = finalized_swap.role {
-        let state = AliceEthLnState {
-            alpha_ledger_state,
-            beta_ledger_state,
-            finalized_swap,
-        };
+    let maybe_response = match finalized_swap.role {
+        Role::Alice => {
+            let state = AliceEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            };
 
-        if let Some(lnd::AddHoldInvoice {
-            amount,
-            secret_hash,
-            expiry,
-            cltv_expiry,
-            chain,
-            network,
-            self_public_key,
-        }) = state.init_action()
-        {
-            return Ok(ActionResponseBody::LndAddHoldInvoice {
-                amount: Http(amount),
-                secret_hash,
-                expiry,
-                cltv_expiry,
-                chain: Http(chain),
-                network: Http(network),
-                self_public_key,
-            });
+            state.init_action().map(ActionResponseBody::from)
         }
-    }
+        Role::Bob => None,
+    };
 
-    Err(LndActionError::NotFound.into())
+    let response = maybe_response.ok_or(LndActionError::NotFound)?;
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -414,7 +400,7 @@ async fn handle_action_fund(
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
-    match finalized_swap.role {
+    let maybe_response = match finalized_swap.role {
         Role::Alice => {
             let state = AliceEthLnState {
                 alpha_ledger_state,
@@ -422,20 +408,7 @@ async fn handle_action_fund(
                 finalized_swap,
             };
 
-            if let Some(ethereum::DeployContract {
-                amount,
-                chain_id,
-                gas_limit,
-                data,
-            }) = state.fund_action()
-            {
-                return Ok(ActionResponseBody::EthereumDeployContract {
-                    data,
-                    amount,
-                    gas_limit: gas_limit.into(),
-                    chain_id,
-                });
-            }
+            state.fund_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
             let state = BobEthLnState {
@@ -444,30 +417,13 @@ async fn handle_action_fund(
                 finalized_swap,
             };
 
-            if let Some(lnd::SendPayment {
-                to_public_key,
-                amount,
-                secret_hash,
-                network,
-                chain,
-                final_cltv_delta,
-                self_public_key,
-            }) = state.fund_action()
-            {
-                return Ok(ActionResponseBody::LndSendPayment {
-                    to_public_key,
-                    amount: amount.into(),
-                    secret_hash,
-                    network: network.into(),
-                    chain: chain.into(),
-                    final_cltv_delta,
-                    self_public_key,
-                });
-            }
+            state.fund_action().map(ActionResponseBody::from)
         }
-    }
+    };
 
-    Err(LndActionError::NotFound.into())
+    let response = maybe_response.ok_or(LndActionError::NotFound)?;
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -506,7 +462,7 @@ async fn handle_action_redeem(
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
-    match finalized_swap.role {
+    let maybe_response = match finalized_swap.role {
         Role::Alice => {
             let state = AliceEthLnState {
                 alpha_ledger_state,
@@ -514,20 +470,7 @@ async fn handle_action_redeem(
                 finalized_swap,
             };
 
-            if let Some(lnd::SettleInvoice {
-                secret,
-                chain,
-                network,
-                self_public_key,
-            }) = state.redeem_action()
-            {
-                return Ok(ActionResponseBody::LndSettleInvoice {
-                    secret,
-                    chain: chain.into(),
-                    network: network.into(),
-                    self_public_key,
-                });
-            }
+            state.redeem_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
             let state = BobEthLnState {
@@ -536,25 +479,13 @@ async fn handle_action_redeem(
                 finalized_swap,
             };
 
-            if let Some(ethereum::CallContract {
-                to,
-                data,
-                gas_limit,
-                chain_id,
-                min_block_timestamp,
-            }) = state.redeem_action()
-            {
-                return Ok(ActionResponseBody::EthereumCallContract {
-                    contract_address: to,
-                    data,
-                    gas_limit: gas_limit.into(),
-                    chain_id,
-                    min_block_timestamp,
-                });
-            }
+            state.redeem_action().map(ActionResponseBody::from)
         }
-    }
-    Err(LndActionError::NotFound.into())
+    };
+
+    let response = maybe_response.ok_or(LndActionError::NotFound)?;
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -593,32 +524,22 @@ async fn handle_action_refund(
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
-    if let Role::Alice = finalized_swap.role {
-        let state = AliceEthLnState {
-            alpha_ledger_state,
-            beta_ledger_state,
-            finalized_swap,
-        };
+    let maybe_response = match finalized_swap.role {
+        Role::Alice => {
+            let state = AliceEthLnState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            };
 
-        if let Some(ethereum::CallContract {
-            to,
-            data,
-            gas_limit,
-            chain_id,
-            min_block_timestamp,
-        }) = state.refund_action()
-        {
-            return Ok(ActionResponseBody::EthereumCallContract {
-                contract_address: to,
-                data,
-                gas_limit: gas_limit.into(),
-                chain_id,
-                min_block_timestamp,
-            });
+            state.refund_action().map(ActionResponseBody::from)
         }
-    }
+        _ => None,
+    };
 
-    Err(LndActionError::NotFound.into())
+    let response = maybe_response.ok_or(LndActionError::NotFound)?;
+
+    Ok(response)
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
