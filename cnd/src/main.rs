@@ -117,7 +117,6 @@ fn main() -> anyhow::Result<()> {
 
     let lnd_connector_params = LndConnectorParams {
         lnd_url: settings.lightning.lnd.rest_api_url.clone(),
-        // FIXME: (tcharding) changing this because 0 means we will hot loop.
         retry_interval_ms: 100,
         certificate_path: settings.lightning.lnd.cert_path.clone(),
         macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
@@ -129,7 +128,7 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
-    let invoice_states = Arc::new(InvoiceStates::default()); // TODO: We will need one of these for alpha and for beta.
+    let invoice_states = Arc::new(InvoiceStates::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 

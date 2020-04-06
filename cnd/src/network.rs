@@ -95,7 +95,6 @@ type FinalizeHandler = OneShotHandler<
     oneshot_protocol::OutEvent<finalize::Message>,
 >;
 
-// TODO make this less ugly
 type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
     ComitNode,
     EitherOutput<
@@ -158,7 +157,6 @@ type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
-    // TODO: reconsider pub visibility
     #[derivative(Debug = "ignore")]
     pub swarm: Arc<Mutex<ExpandedSwarm>>,
     local_peer_id: PeerId,
@@ -411,7 +409,6 @@ impl ComitNode {
         self.comit_ln.initiate_communication(id, swap_params)
     }
 
-    // TODO: do we need all these layers of abstraction ?!
     pub fn get_finalized_swap(&mut self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.comit_ln.get_finalized_swap(id)
     }

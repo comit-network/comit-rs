@@ -126,10 +126,6 @@ impl TryFrom<Vec<u8>> for Macaroon {
     }
 }
 
-// TODO: remove the duplication between these connectors by having one low-level
-// connector that is responsible for the connection and two more high-level ones
-// that implement the actual traits
-
 /// LND connector for connecting to an LND node when sending a lightning
 /// payment.
 ///
@@ -394,7 +390,7 @@ where
     I: Send + 'static,
 {
     async fn opened(&self, params: Params<L, A, I>) -> Result<data::Opened, Error> {
-        // FIXME: Do we want to validate that the user used the correct swap parameters
+        // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
             .find_invoice(params.secret_hash, InvoiceState::Open)

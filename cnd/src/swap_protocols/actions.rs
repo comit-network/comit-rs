@@ -110,7 +110,6 @@ pub mod lnd {
     /// The underlying chain i.e., layer 1, targeted by LND.
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub enum Chain {
-        // TODO: Potentially extend this to include Litecoin.
         Bitcoin,
     }
 }

@@ -9,13 +9,9 @@ use std::sync::Arc;
 
 /// This represent the information available on a swap
 /// before communication with the other node has started
-/// TODO: Find a better place
-/// TODO: Either make specific to han-halight or make it generic
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
 pub struct CreateSwapParams {
-    // TODO: Have a "skip" feature instead of prefixing with empty string and implement
-    // `IntoDigest` to return empty vec.
     #[digest(prefix = "")]
     pub role: Role,
     #[digest(prefix = "")]
@@ -40,7 +36,6 @@ impl IntoDigestInput for asset::Lightning {
     }
 }
 
-// TODO: The trait should not be needed for skipped fields
 impl IntoDigestInput for identity::Lightning {
     fn into_digest_input(self) -> Vec<u8> {
         vec![]
@@ -98,21 +93,20 @@ impl IntoDigestInput for Timestamp {
 #[derive(Clone, Debug)]
 pub struct Facade2 {
     pub swarm: Swarm,
-    pub alpha_ledger_state: Arc<LedgerStates>, // FIXME: For now this is Ethereum.
-    pub beta_ledger_state: Arc<InvoiceStates>, // FIXME: For now this is HALight.
+    pub alpha_ledger_state: Arc<LedgerStates>, /* We currently only support Han-HALight, this is
+                                                * Ethereum. */
+    pub beta_ledger_state: Arc<InvoiceStates>, /* We currently only support Han-HALight, this is
+                                                * Lightning. */
 }
 
 impl Facade2 {
-    pub async fn save(&self, _id: NodeLocalSwapId, _swap_params: ()) {
-        // TODO:  delegate to database
-    }
+    pub async fn save(&self, _id: NodeLocalSwapId, _swap_params: ()) {}
 
     pub async fn initiate_communication(&self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
         self.swarm.initiate_communication(id, swap_params).await;
     }
 
     pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        // TODO this should read from the DB and not from the swarm
         self.swarm.get_finalized_swap(id).await
     }
 }

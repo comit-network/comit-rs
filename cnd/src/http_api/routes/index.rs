@@ -91,7 +91,6 @@ pub async fn post_lightning_route_new(
 
     facade.save(id, ()).await;
 
-    // TODO: reconsider name of this fn
     facade.initiate_communication(id, body.into()).await;
 
     Ok(warp::reply::with_status(
@@ -100,7 +99,6 @@ pub async fn post_lightning_route_new(
     ))
 }
 
-// TODO: Make this generic over all combinations
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Body {
     pub alpha: HanEthereumEther,

@@ -67,11 +67,6 @@ pub async fn handle_get_han_halight_swap(
                 (alpha_ledger_state, beta_ledger_state, finalized_swap)
             }
             _ => {
-                // TODO: for now we just default to an empty swap,
-                // This means any ID thrown at this function will yield a 200 - that is not
-                // desireable Once we have the database, we can actually check
-                // whether we have a swap with this ID available and get decide between a 404
-                // and an empty swap without actions
                 let empty_swap = siren::Entity::default().with_class_member("swap");
 
                 tracing::debug!(
@@ -133,7 +128,6 @@ pub struct BobEthLnState {
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
-// TODO this should be in COMIT library that doesn't exist yet
 impl Actions for AliceEthLnState {
     type ActionKind = ActionKind<
         lnd::AddHoldInvoice,
@@ -146,7 +140,7 @@ impl Actions for AliceEthLnState {
         if let halight::State::Unknown = self.beta_ledger_state {
             let amount = self.finalized_swap.beta_asset;
             let secret_hash = self.finalized_swap.secret_hash;
-            let expiry = 3600; // TODO: don't hardcode this
+            let expiry = 3600;
             let cltv_expiry = self.finalized_swap.beta_expiry.into();
             let chain = Chain::Bitcoin;
             let network = bitcoin::Network::Regtest;
@@ -273,7 +267,6 @@ pub enum ActionKind<TInit, TFund, TRedeem, TRefund> {
 // all our actions for this particular case don't have any parameters, so we can
 // just implement this generically
 impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, TRedeem, TRefund> {
-    // FIXME: for han-halight this is the node local swap id
     fn to_siren_action(&self, id: &SwapId) -> siren::Action {
         let name = match self {
             ActionKind::Init(_) => "init",
@@ -308,7 +301,7 @@ async fn handle_action_init(
     local_id: NodeLocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0); // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
 
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -379,7 +372,7 @@ async fn handle_action_fund(
     local_id: NodeLocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0); // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -476,7 +469,7 @@ async fn handle_action_redeem(
     local_id: NodeLocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0); // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -569,7 +562,7 @@ async fn handle_action_refund(
     local_id: NodeLocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0); // FIXME: The insert/get/update traits use a SwapId
+    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,

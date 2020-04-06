@@ -37,7 +37,6 @@ pub trait Cancelled<L, A, I> {
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum State {
-    // TODO: Think about this name - None, Unknown, NotDeployed
     Unknown,
     Opened(data::Opened),
     Accepted(data::Accepted),
@@ -158,7 +157,6 @@ pub async fn create_watcher<C, L, A, I>(
     params: Params<L, A, I>,
     finalized_at: NaiveDateTime,
 ) where
-    // TODO: add FailedInsertSwap
     C: Opened<L, A, I> + Accepted<L, A, I> + Settled<L, A, I> + Cancelled<L, A, I>,
     L: Clone,
     A: Ord + Clone,
@@ -189,8 +187,6 @@ pub async fn create_watcher<C, L, A, I>(
             }
             GeneratorState::Complete(Err(e)) => {
                 tracing::error!("swap {} failed with {:?}", id, e);
-                // TODO: Replace unimplemented with line below
-                // facade.insert_failed_swap(&id);
             }
         }
     }
@@ -239,11 +235,5 @@ where
 #[derive(Clone, Copy, Debug)]
 pub struct Params<L, A, I> {
     pub phantom_data: PhantomData<(L, A, I)>,
-    // TODO: these are all unused
-    // pub asset: A,
-    // pub ledger: L,
-    // pub to_identity: I,
-    // pub self_identity: I,
-    // pub cltv_expiry: Timestamp,
     pub secret_hash: SecretHash,
 }

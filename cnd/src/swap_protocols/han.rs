@@ -16,8 +16,6 @@ use genawaiter::{
 };
 use std::sync::Arc;
 
-// TODO: this is currently only implemented for an Ethereum connector
-
 /// Returns a future that tracks the swap negotiated from the given request and
 /// accept response on a ledger.
 ///
@@ -77,7 +75,6 @@ pub async fn create_watcher<C, S, L, A, H, I, T>(
             }
             GeneratorState::Complete(Err(e)) => {
                 tracing::error!("swap {} failed with {:?}", id, e);
-                // TODO: dependencies.insert_failed_swap(&id);
                 return;
             }
         }

@@ -68,8 +68,6 @@ where
 
                     let distance = levenshtein::levenshtein(&actual, &expected);
 
-                    // TODO: find a meaningful value here
-                    // expiry is 4 bytes
                     if distance < 10 {
                         tracing::warn!("found contract with slightly different parameters (levenshtein-distance < 10), this could be a bug!")
                     }

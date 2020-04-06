@@ -36,7 +36,6 @@ impl fmt::Display for SwapId {
     }
 }
 
-// TODO: figure out appropriate names for this and the above type
 /// This is an identifier created, and used locally, by a node to identify a
 /// swap created by this node i.e., when a node is acting in the role of Alice
 /// we need an identifier.
