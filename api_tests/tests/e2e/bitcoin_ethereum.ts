@@ -92,7 +92,7 @@ describe("E2E: Ethereum/ether - Lightning/bitcoin", () => {
             await alice.redeem();
             await bob.redeem();
 
-            await sleep(2000); // TODO: ugly hack until we can assert on some status from cnd
+            await sleep(2000);
 
             await alice.assertBalances();
             await bob.assertBalances();
