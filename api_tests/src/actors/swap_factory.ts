@@ -56,7 +56,8 @@ export default class SwapFactory {
         const bobCreateSwapBody = await makeCreateSwapBody(
             bob,
             "Bob",
-            bob,
+            // TODO: Check that the DialInformation is actually used by Bob
+            alice,
             alphaAbsoluteExpiry,
             betaCltvExpiry
         );
