@@ -344,7 +344,7 @@ impl LndConnectorAsReceiver {
             return Ok(None);
         }
 
-        // TODO: need to shortcut here until https://github.com/hyperium/hyper/issues/2171 or https://github.com/lightningnetwork/lnd/issues/4135 is resolved
+        // Need to shortcut here until https://github.com/hyperium/hyper/issues/2171 or https://github.com/lightningnetwork/lnd/issues/4135 is resolved
         if response.status() == StatusCode::INTERNAL_SERVER_ERROR {
             return Ok(None);
         }
