@@ -6,11 +6,11 @@ use serdebug::SerDebug;
 /// The message for the Bitcoin identity sharing protocol.
 #[derive(Clone, Copy, Deserialize, Serialize, SerDebug)]
 pub struct Message {
-    swap_id: SwapId,
+    pub swap_id: SwapId,
     /// A compressed Bitcoin public key, serialized as hex without a `0x` prefix
     /// as per convention in the Bitcoin ecosystem.
     #[serde(with = "SerHex::<Strict>")]
-    pubkey: [u8; 33],
+    pub pubkey: [u8; 33],
 }
 
 impl Message {

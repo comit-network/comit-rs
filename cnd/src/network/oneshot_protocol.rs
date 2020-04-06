@@ -25,6 +25,12 @@ pub struct OutboundConfig<M> {
     msg: M,
 }
 
+impl<M> OutboundConfig<M> {
+    pub fn new(msg: M) -> Self {
+        Self { msg }
+    }
+}
+
 /// Events that are produced as part of the connection upgrade.
 ///
 /// The oneshot protocol is push-based, meaning the outbound upgrade will
