@@ -6,7 +6,7 @@ use crate::{
         actions::ethereum::{CallContract, DeployContract},
         ledger::Ethereum,
         rfc003::{
-            actions::{FundAction, RedeemAction, RefundAction},
+            actions::{MakeFundAction, MakeRedeemAction, MakeRefundAction},
             create_swap::HtlcParams,
             DeriveIdentities, Secret,
         },
@@ -14,11 +14,11 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 
-impl FundAction for (Ethereum, asset::Ether) {
+impl MakeFundAction for (Ethereum, asset::Ether) {
     type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
     type Output = DeployContract;
 
-    fn fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
+    fn make_fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
         let htlc = EtherHtlc::from(htlc_params.clone());
         let gas_limit = EtherHtlc::deploy_tx_gas_limit();
 
@@ -31,13 +31,13 @@ impl FundAction for (Ethereum, asset::Ether) {
     }
 }
 
-impl RefundAction for (Ethereum, asset::Ether) {
+impl MakeRefundAction for (Ethereum, asset::Ether) {
     type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
     type HtlcLocation = htlc_location::Ethereum;
     type FundTransaction = Transaction;
     type Output = CallContract;
 
-    fn refund_action(
+    fn make_refund_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
         _secret_source: &dyn DeriveIdentities,
@@ -55,12 +55,12 @@ impl RefundAction for (Ethereum, asset::Ether) {
     }
 }
 
-impl RedeemAction for (Ethereum, asset::Ether) {
+impl MakeRedeemAction for (Ethereum, asset::Ether) {
     type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
     type HtlcLocation = htlc_location::Ethereum;
     type Output = CallContract;
 
-    fn redeem_action(
+    fn make_redeem_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
         _secret_source: &dyn DeriveIdentities,

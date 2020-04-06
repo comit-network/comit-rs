@@ -4,7 +4,7 @@ use crate::{
         actions::bitcoin::{SendToAddress, SpendOutput},
         ledger,
         rfc003::{
-            actions::{FundAction, RedeemAction, RefundAction},
+            actions::{MakeFundAction, MakeRedeemAction, MakeRefundAction},
             create_swap::HtlcParams,
             DeriveIdentities, Secret,
         },
@@ -13,14 +13,14 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B> FundAction for (B, asset::Bitcoin)
+impl<B> MakeFundAction for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
     type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
     type Output = SendToAddress;
 
-    fn fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
+    fn make_fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
         let to = htlc_params.compute_address();
 
         SendToAddress {
@@ -31,7 +31,7 @@ where
     }
 }
 
-impl<B> RefundAction for (B, asset::Bitcoin)
+impl<B> MakeRefundAction for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
@@ -40,7 +40,7 @@ where
     type FundTransaction = Transaction;
     type Output = SpendOutput;
 
-    fn refund_action(
+    fn make_refund_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
@@ -59,7 +59,7 @@ where
     }
 }
 
-impl<B> RedeemAction for (B, asset::Bitcoin)
+impl<B> MakeRedeemAction for (B, asset::Bitcoin)
 where
     B: ledger::Bitcoin + ledger::bitcoin::Network,
 {
@@ -67,7 +67,7 @@ where
     type HtlcLocation = OutPoint;
     type Output = SpendOutput;
 
-    fn redeem_action(
+    fn make_redeem_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
         secret_source: &dyn DeriveIdentities,
