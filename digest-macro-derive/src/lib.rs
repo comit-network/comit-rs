@@ -25,9 +25,21 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                         .iter()
                         .map(|field| field.ident.as_ref().expect("Named field"));
 
-                    let types = fields.named.iter().map(|field| &field.ty);
+                    let fields = fields.named.iter().filter(|field| {
+                        let meta_list = extract_meta_list(&field.attrs);
 
-                    let bytes = fields.named.iter().map(|field| extract_bytes(&field.attrs));
+                        let path = &meta_list.nested.first();
+                        if let Some(NestedMeta::Meta(Meta::Path(path))) = path {
+                            if path.is_ident("ignore") {
+                                return false;
+                            }
+                        }
+                        true
+                    });
+
+                    let types = fields.clone().map(|field| &field.ty);
+
+                    let bytes = fields.map(|field| extract_bytes(&field.attrs));
                     (idents, types, bytes)
                 }
                 _ => panic!("Only supporting named fields."),
@@ -159,7 +171,9 @@ fn extract_bytes(attrs: &[Attribute]) -> Bytes {
                 let bytes = ::hex::decode(&str).expect("prefix value should be in hex format");
                 return Bytes(bytes);
             }
-            panic!("prefix could not be resolved. Expected format: `#[digest(prefix = \"0102..0A\")]` ")
+            panic!(
+                "prefix could not be resolved. Expected format: `#[digest(prefix = \"0102..0A\")]`"
+            )
         } else {
             panic!("Only `prefix` identifier is supported for `digest()` field attribute. Expected format: `#[digest(prefix = \"0102..0A\")]`")
         }
