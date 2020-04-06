@@ -5,8 +5,6 @@ import { parseEther } from "ethers/utils";
 
 declare var global: HarnessGlobal;
 
-// TODO: refactor the code in Actor.ts to use the swap factory instead
-
 export function defaultLedgerKindForAsset(asset: AssetKind): LedgerKind {
     switch (asset) {
         case AssetKind.Bitcoin:
