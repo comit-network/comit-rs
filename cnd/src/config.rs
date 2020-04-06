@@ -90,7 +90,7 @@ pub struct Parity {
     pub node_url: Url,
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Lightning {
     pub network: bitcoin::Network,
     pub lnd: Lnd,
@@ -108,29 +108,60 @@ impl Default for Lightning {
 impl From<Lightning> for file::Lightning {
     fn from(lightning: Lightning) -> Self {
         file::Lightning {
-            lnd: Some(lightning.lnd),
+            lnd: Some(file::Lnd {
+                rest_api_url: lightning.lnd.rest_api_url,
+                dir: lightning.lnd.dir,
+            }),
             network: lightning.network,
         }
     }
 }
 
-#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+#[derive(Clone, Debug, PartialEq, Serialize)]
 pub struct Lnd {
     pub rest_api_url: Url,
     pub dir: PathBuf,
+    pub cert_path: PathBuf,
+    pub readonly_macaroon_path: PathBuf,
 }
 
 impl Default for Lnd {
     fn default() -> Self {
+        Self::new(bitcoin::Network::Regtest)
+    }
+}
+
+impl Lnd {
+    fn new(network: bitcoin::Network) -> Self {
         Self {
             rest_api_url: LND_URL.clone(),
             dir: default_lnd_dir(),
+            cert_path: default_lnd_cert_path(default_lnd_dir()),
+            readonly_macaroon_path: default_lnd_readonly_macaroon_path(default_lnd_dir(), network),
         }
     }
 }
 
 fn default_lnd_dir() -> PathBuf {
     crate::lnd_dir().expect("no home directory")
+}
+
+fn default_lnd_cert_path(lnd_dir: PathBuf) -> PathBuf {
+    lnd_dir.join("tls.cert")
+}
+
+fn default_lnd_readonly_macaroon_path(lnd_dir: PathBuf, network: bitcoin::Network) -> PathBuf {
+    let network_dir = match network {
+        bitcoin::Network::Bitcoin => "mainnet",
+        bitcoin::Network::Testnet => "testnet",
+        bitcoin::Network::Regtest => "regtest",
+    };
+    lnd_dir
+        .join("data")
+        .join("chain")
+        .join("bitcoin")
+        .join(network_dir)
+        .join("readonly.macaroon")
 }
 
 #[cfg(test)]
@@ -178,7 +209,7 @@ mod tests {
             "#,
         );
 
-        let expected = Lnd {
+        let expected = file::Lnd {
             rest_api_url: LND_URL.clone(),
             dir: PathBuf::from("~/.local/share/comit/lnd"),
         };
@@ -197,12 +228,12 @@ mod tests {
             "#,
         );
 
-        let expected = Lightning {
+        let expected = file::Lightning {
             network: bitcoin::Network::Regtest,
-            lnd: Lnd {
+            lnd: Some(file::Lnd {
                 rest_api_url: LND_URL.clone(),
                 dir: PathBuf::from("/path/to/lnd"),
-            },
+            }),
         };
 
         assert_eq!(actual, Ok(expected));
