@@ -80,9 +80,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = %hex::encode(&expected_bytecode.0)
+                ))
                 .await?;
 
         Ok(Deployed {
@@ -215,9 +220,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.clone().bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.clone().bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = %hex::encode(&expected_bytecode.0)
+                ))
                 .await?;
 
         Ok(Deployed {
