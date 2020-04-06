@@ -32,10 +32,6 @@ impl<M> Behaviour<M> {
             })
     }
 
-    // TODO: if we decide to keep these different network behaviour (and not use a
-    // multi-protocols handler or something) then we should do our own
-    // connection handling in these as-well by extracting the one from the announce
-    // protocol in a reusable-manner
     pub fn register_addresses(&mut self, peer_id: PeerId, addresses: Vec<Multiaddr>) {
         self.address_book.insert(peer_id, addresses);
     }
