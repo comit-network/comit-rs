@@ -42,15 +42,15 @@ use async_trait::async_trait;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
+    Future,
 };
 use libp2p::{
-    core::either::{EitherError, EitherOutput},
+    core::either::EitherOutput,
     identity::{ed25519, Keypair},
     mdns::Mdns,
     swarm::{
         protocols_handler::{DummyProtocolsHandler, OneShotHandler},
-        IntoProtocolsHandlerSelect, NetworkBehaviourEventProcess, ProtocolsHandlerUpgrErr,
-        SwarmBuilder,
+        IntoProtocolsHandlerSelect, SwarmBuilder,
     },
     Multiaddr, NetworkBehaviour, PeerId,
 };
@@ -152,25 +152,6 @@ type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
         >,
         DummyProtocolsHandler,
     >,
-    EitherError<
-        EitherError<
-            libp2p_comit::handler::Error,
-            EitherError<
-                EitherError<
-                    EitherError<
-                        EitherError<
-                            announce::handler::Error,
-                            ProtocolsHandlerUpgrErr<oneshot_protocol::Error>,
-                        >,
-                        ProtocolsHandlerUpgrErr<oneshot_protocol::Error>,
-                    >,
-                    ProtocolsHandlerUpgrErr<oneshot_protocol::Error>,
-                >,
-                ProtocolsHandlerUpgrErr<oneshot_protocol::Error>,
-            >,
-        >,
-        void::Void,
-    >,
 >;
 
 #[derive(Clone, derivative::Derivative)]
@@ -217,12 +198,9 @@ impl Swarm {
         )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
-            .executor_fn({
-                let handle = runtime.handle().clone();
-                move |task| {
-                    handle.spawn(task);
-                }
-            })
+            .executor(Box::new(TokioExecutor {
+                handle: runtime.handle().clone(),
+            }))
             .build();
 
         for addr in settings.network.listen.clone() {
@@ -277,6 +255,16 @@ impl Swarm {
     // On Bob's side, when an announce message is received execute the required
     // communication protocols and write the finalized swap to the database.  Then
     // spawn the same as is done for Alice.
+}
+
+struct TokioExecutor {
+    handle: tokio::runtime::Handle,
+}
+
+impl libp2p::core::Executor for TokioExecutor {
+    fn exec(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>) {
+        let _ = self.handle.spawn(future);
+    }
 }
 
 struct SwarmWorker {
@@ -1187,7 +1175,7 @@ impl SendRequest for Swarm {
     }
 }
 
-impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
+impl libp2p::swarm::NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
@@ -1224,11 +1212,11 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     }
 }
 
-impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
+impl libp2p::swarm::NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
 }
 
-impl NetworkBehaviourEventProcess<()> for ComitNode {
+impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
 }
 

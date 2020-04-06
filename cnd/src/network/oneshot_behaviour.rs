@@ -1,8 +1,9 @@
 use crate::network::oneshot_protocol;
 use libp2p::{
-    core::{ConnectedPoint, Multiaddr, PeerId},
+    core::{connection::ConnectionId, Multiaddr, PeerId},
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, OneShotHandler, PollParameters, ProtocolsHandler,
+        NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
+        ProtocolsHandler,
     },
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -23,10 +24,12 @@ pub struct Behaviour<M> {
 
 impl<M> Behaviour<M> {
     pub fn send(&mut self, peer_id: PeerId, message: M) {
-        self.events.push_back(NetworkBehaviourAction::SendEvent {
-            peer_id,
-            event: oneshot_protocol::OutboundConfig::new(message),
-        })
+        self.events
+            .push_back(NetworkBehaviourAction::NotifyHandler {
+                peer_id,
+                handler: NotifyHandler::Any,
+                event: oneshot_protocol::OutboundConfig::new(message),
+            })
     }
 
     // TODO: if we decide to keep these different network behaviour (and not use a
@@ -75,15 +78,20 @@ where
         self.address_book.get(peer).cloned().unwrap_or_default()
     }
 
-    fn inject_connected(&mut self, _: PeerId, _: ConnectedPoint) {
+    fn inject_connected(&mut self, _: &PeerId) {
         // Do nothing, announce protocol is going to take care of connections.
     }
 
-    fn inject_disconnected(&mut self, _: &PeerId, _: ConnectedPoint) {
+    fn inject_disconnected(&mut self, _: &PeerId) {
         // Do nothing, announce protocol is going to take care of connections.
     }
 
-    fn inject_node_event(&mut self, peer: PeerId, event: oneshot_protocol::OutEvent<M>) {
+    fn inject_event(
+        &mut self,
+        peer: PeerId,
+        _: ConnectionId,
+        event: oneshot_protocol::OutEvent<M>,
+    ) {
         match event {
             oneshot_protocol::OutEvent::Received(message) => {
                 trace!(

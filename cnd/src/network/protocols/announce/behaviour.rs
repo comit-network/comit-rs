@@ -10,10 +10,10 @@ use crate::{
     swap_protocols::SwapId,
 };
 use libp2p::{
-    core::{ConnectedPoint, Multiaddr, PeerId},
+    core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
     swarm::{
-        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction, PollParameters,
-        ProtocolsHandler,
+        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction, NotifyHandler,
+        PollParameters, ProtocolsHandler,
     },
 };
 use std::{
@@ -58,6 +58,7 @@ impl Announce {
             Entry::Vacant(entry) => {
                 self.events.push_back(NetworkBehaviourAction::DialPeer {
                     peer_id: dial_info.peer_id.clone(),
+                    condition: Default::default(),
                 });
 
                 let mut address_hints = VecDeque::new();
@@ -90,10 +91,12 @@ impl Announce {
                         }
                     }
                     ConnectionState::Connected { .. } => {
-                        self.events.push_back(NetworkBehaviourAction::SendEvent {
-                            peer_id: dial_info.peer_id.clone(),
-                            event: OutboundConfig::new(swap_digest),
-                        });
+                        self.events
+                            .push_back(NetworkBehaviourAction::NotifyHandler {
+                                peer_id: dial_info.peer_id.clone(),
+                                handler: NotifyHandler::Any,
+                                event: OutboundConfig::new(swap_digest),
+                            });
                     }
                 }
             }
@@ -129,7 +132,16 @@ impl NetworkBehaviour for Announce {
             .unwrap_or_else(Vec::new)
     }
 
-    fn inject_connected(&mut self, peer_id: PeerId, endpoint: ConnectedPoint) {
+    fn inject_connected(&mut self, _: &PeerId) {}
+
+    fn inject_disconnected(&mut self, _: &PeerId) {}
+
+    fn inject_connection_established(
+        &mut self,
+        peer_id: &PeerId,
+        _: &ConnectionId,
+        endpoint: &ConnectedPoint,
+    ) {
         tracing::debug!("connected to {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
@@ -143,39 +155,46 @@ impl NetworkBehaviour for Announce {
 
                 match connection_state {
                     ConnectionState::Connected { mut addresses } => {
-                        addresses.insert(address);
+                        addresses.insert(address.clone());
                         self.connections
-                            .insert(peer_id, ConnectionState::Connected { addresses });
+                            .insert(peer_id.clone(), ConnectionState::Connected { addresses });
                     }
                     ConnectionState::Connecting {
                         pending_events,
                         address_hints: _we_no_longer_care_at_this_stage,
                     } => {
                         for event in pending_events {
-                            self.events.push_back(NetworkBehaviourAction::SendEvent {
-                                peer_id: peer_id.clone(),
-                                event,
-                            })
+                            self.events
+                                .push_back(NetworkBehaviourAction::NotifyHandler {
+                                    peer_id: peer_id.clone(),
+                                    handler: NotifyHandler::Any,
+                                    event,
+                                })
                         }
 
                         let mut addresses = HashSet::new();
-                        addresses.insert(address);
+                        addresses.insert(address.clone());
 
                         self.connections
-                            .insert(peer_id, ConnectionState::Connected { addresses });
+                            .insert(peer_id.clone(), ConnectionState::Connected { addresses });
                     }
                 }
             }
             Entry::Vacant(entry) => {
                 let mut addresses = HashSet::new();
-                addresses.insert(address);
+                addresses.insert(address.clone());
 
                 entry.insert(ConnectionState::Connected { addresses });
             }
         }
     }
 
-    fn inject_disconnected(&mut self, peer_id: &PeerId, endpoint: ConnectedPoint) {
+    fn inject_connection_closed(
+        &mut self,
+        peer_id: &PeerId,
+        _: &ConnectionId,
+        endpoint: &ConnectedPoint,
+    ) {
         tracing::debug!("disconnected from {} at {:?}", peer_id, endpoint);
 
         let address = match endpoint {
@@ -194,7 +213,7 @@ impl NetworkBehaviour for Announce {
         }
     }
 
-    fn inject_node_event(&mut self, peer_id: PeerId, event: HandlerEvent) {
+    fn inject_event(&mut self, peer_id: PeerId, _: ConnectionId, event: HandlerEvent) {
         match event {
             HandlerEvent::ReceivedConfirmation(confirmed) => {
                 self.events.push_back(NetworkBehaviourAction::GenerateEvent(
