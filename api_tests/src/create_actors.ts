@@ -1,12 +1,12 @@
 import { Actors } from "./actors";
-import { Actor } from "./actors/actor";
+import { Actor, ActorNames } from "./actors/actor";
 import { HarnessGlobal } from "./utils";
 
 declare var global: HarnessGlobal;
 
 export async function createActors(
     testName: string,
-    actorNames: string[]
+    actorNames: ActorNames[]
 ): Promise<Actors> {
     const actorsMap = new Map<string, Actor>();
 
