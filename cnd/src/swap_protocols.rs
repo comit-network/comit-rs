@@ -47,3 +47,42 @@ pub enum Role {
     Alice,
     Bob,
 }
+
+// TODO: eventually, these traits should be used for all swap protocols, that is
+// why there are here
+
+/// Describes how to get the `init` action from the current state.
+///
+/// If `init` is not feasible in the current state, this should return `None`.
+pub trait InitAction {
+    type Output;
+
+    fn init_action(&self) -> Option<Self::Output>;
+}
+
+/// Describes how to get the `fund` action from the current state.
+///
+/// If `fund` is not feasible in the current state, this should return `None`.
+pub trait FundAction {
+    type Output;
+
+    fn fund_action(&self) -> Option<Self::Output>;
+}
+
+/// Describes how to get the `redeem` action from the current state.
+///
+/// If `redeem` is not feasible in the current state, this should return `None`.
+pub trait RedeemAction {
+    type Output;
+
+    fn redeem_action(&self) -> Option<Self::Output>;
+}
+
+/// Describes how to get the `refund` action from the current state.
+///
+/// If `refund` is not feasible in the current state, this should return `None`.
+pub trait RefundAction {
+    type Output;
+
+    fn refund_action(&self) -> Option<Self::Output>;
+}

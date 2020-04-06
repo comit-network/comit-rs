@@ -6,24 +6,20 @@ use crate::{
     asset,
     ethereum::Bytes,
     htlc_location,
-    http_api::{
-        action::{ActionResponseBody, ToSirenAction},
-        problem, Http,
-    },
+    http_api::{action::ActionResponseBody, problem, Http},
     network::comit_ln,
     swap_protocols::{
         actions::{
             ethereum,
             lnd::{self, Chain},
-            Actions,
         },
         halight::{self, data},
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
-        Facade2, NodeLocalSwapId, Role, SwapId,
+        Facade2, FundAction, InitAction, NodeLocalSwapId, RedeemAction, RefundAction, Role, SwapId,
     },
-    transaction, Never,
+    transaction,
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use http_api_problem::HttpApiProblem;
@@ -67,7 +63,7 @@ pub async fn handle_get_han_halight_swap(
                 (alpha_ledger_state, beta_ledger_state, finalized_swap)
             }
             _ => {
-                let empty_swap = siren::Entity::default().with_class_member("swap");
+                let empty_swap = make_swap_entity(swap_id, vec![]);
 
                 tracing::debug!(
                     "returning empty siren document because states are not yet completed"
@@ -79,37 +75,64 @@ pub async fn handle_get_han_halight_swap(
 
     let entity = match finalized_swap.role {
         Role::Alice => {
-            let actions = AliceEthLnState {
+            let state = AliceEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            make_entity(actions, swap_id)
+            let maybe_action_names = vec![
+                state.init_action().map(|_| "init"),
+                state.fund_action().map(|_| "fund"),
+                state.redeem_action().map(|_| "redeem"),
+                state.refund_action().map(|_| "refund"),
+            ];
+
+            make_swap_entity(swap_id, maybe_action_names)
         }
         Role::Bob => {
-            let actions = BobEthLnState {
+            let state = BobEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            make_entity(actions, swap_id)
+            // Bob cannot init and refund in this swap combination
+            let maybe_action_names = vec![
+                state.fund_action().map(|_| "fund"),
+                state.redeem_action().map(|_| "redeem"),
+            ];
+
+            make_swap_entity(swap_id, maybe_action_names)
         }
     };
 
     Ok(entity)
 }
 
-fn make_entity<A: ToSirenAction>(actions: Vec<A>, id: SwapId) -> siren::Entity {
-    let entity = siren::Entity::default().with_class_member("swap");
+fn make_swap_entity(swap_id: SwapId, maybe_action_names: Vec<Option<&str>>) -> siren::Entity {
+    let swap = siren::Entity::default().with_class_member("swap");
 
-    actions.into_iter().fold(entity, |acc, action| {
-        let action = action.to_siren_action(&id);
-        acc.with_action(action)
-    })
+    maybe_action_names
+        .into_iter()
+        .filter_map(|action| action)
+        .fold(swap, |acc, action_name| {
+            let siren_action = make_siren_action(swap_id, action_name);
+
+            acc.with_action(siren_action)
+        })
+}
+
+fn make_siren_action(swap_id: SwapId, action_name: &str) -> siren::Action {
+    siren::Action {
+        name: action_name.to_owned(),
+        class: vec![],
+        method: Some(http::Method::GET),
+        href: format!("/swaps/{}/{}", swap_id, action_name),
+        title: None,
+        _type: None,
+        fields: vec![],
+    }
 }
 
 #[derive(Debug)]
@@ -128,95 +151,113 @@ pub struct BobEthLnState {
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
-impl Actions for AliceEthLnState {
-    type ActionKind = ActionKind<
-        lnd::AddHoldInvoice,
-        ethereum::DeployContract,
-        lnd::SettleInvoice,
-        ethereum::CallContract,
-    >;
+impl InitAction for AliceEthLnState {
+    type Output = lnd::AddHoldInvoice;
 
-    fn actions(&self) -> Vec<Self::ActionKind> {
-        if let halight::State::Unknown = self.beta_ledger_state {
-            let amount = self.finalized_swap.beta_asset;
-            let secret_hash = self.finalized_swap.secret_hash;
-            let expiry = 3600;
-            let cltv_expiry = self.finalized_swap.beta_expiry.into();
-            let chain = Chain::Bitcoin;
-            let network = bitcoin::Network::Regtest;
-            let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+    fn init_action(&self) -> Option<Self::Output> {
+        match self.beta_ledger_state {
+            halight::State::Unknown => {
+                let amount = self.finalized_swap.beta_asset;
+                let secret_hash = self.finalized_swap.secret_hash;
+                let expiry = 3600;
+                let cltv_expiry = self.finalized_swap.beta_expiry.into();
+                let chain = Chain::Bitcoin;
+                let network = bitcoin::Network::Regtest;
+                let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
 
-            return vec![ActionKind::Init(lnd::AddHoldInvoice {
-                amount,
-                secret_hash,
-                expiry,
-                cltv_expiry,
-                chain,
-                network,
-                self_public_key,
-            })];
+                Some(lnd::AddHoldInvoice {
+                    amount,
+                    secret_hash,
+                    expiry,
+                    cltv_expiry,
+                    chain,
+                    network,
+                    self_public_key,
+                })
+            }
+            _ => None,
         }
+    }
+}
 
-        if let halight::State::Opened(_) = self.beta_ledger_state {
-            let eth_htlc = self.finalized_swap.han_params();
-            let data = eth_htlc.into();
-            let amount = self.finalized_swap.alpha_asset.clone();
-            let gas_limit = EtherHtlc::deploy_tx_gas_limit();
-            let chain_id = ChainId::regtest();
+impl FundAction for AliceEthLnState {
+    type Output = ethereum::DeployContract;
 
-            return vec![ActionKind::Fund(ethereum::DeployContract {
-                data,
-                amount,
-                gas_limit,
-                chain_id,
-            })];
+    fn fund_action(&self) -> Option<Self::Output> {
+        match self.beta_ledger_state {
+            halight::State::Opened(_) => {
+                let eth_htlc = self.finalized_swap.han_params();
+                let data = eth_htlc.into();
+                let amount = self.finalized_swap.alpha_asset.clone();
+                let gas_limit = EtherHtlc::deploy_tx_gas_limit();
+                let chain_id = ChainId::regtest();
+
+                Some(ethereum::DeployContract {
+                    data,
+                    amount,
+                    gas_limit,
+                    chain_id,
+                })
+            }
+            _ => None,
         }
+    }
+}
 
-        let mut actions = vec![];
+impl RedeemAction for AliceEthLnState {
+    type Output = lnd::SettleInvoice;
 
-        if let halight::State::Accepted(_) = self.beta_ledger_state {
-            let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
-            let chain = Chain::Bitcoin;
-            let network = bitcoin::Network::Regtest;
-            let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+    fn redeem_action(&self) -> Option<Self::Output> {
+        match self.beta_ledger_state {
+            halight::State::Accepted(_) => {
+                let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
+                let chain = Chain::Bitcoin;
+                let network = bitcoin::Network::Regtest;
+                let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
 
-            actions.push(ActionKind::Redeem(lnd::SettleInvoice {
-                secret,
-                chain,
-                network,
-                self_public_key,
-            }))
+                Some(lnd::SettleInvoice {
+                    secret,
+                    chain,
+                    network,
+                    self_public_key,
+                })
+            }
+            _ => None,
         }
+    }
+}
 
-        if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let halight::State::Accepted(_) = self.beta_ledger_state {
-                let to = htlc_location;
+impl RefundAction for AliceEthLnState {
+    type Output = ethereum::CallContract;
+
+    fn refund_action(&self) -> Option<Self::Output> {
+        match (&self.alpha_ledger_state, &self.beta_ledger_state) {
+            (LedgerState::Funded { htlc_location, .. }, halight::State::Accepted(_)) => {
+                let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
                 let chain_id = ChainId::regtest();
                 let min_block_timestamp = Some(self.finalized_swap.alpha_expiry);
 
-                actions.push(ActionKind::Refund(ethereum::CallContract {
+                Some(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
                     chain_id,
                     min_block_timestamp,
-                }));
+                })
             }
+            _ => None,
         }
-        actions
     }
 }
 
-impl Actions for BobEthLnState {
-    type ActionKind = ActionKind<Never, lnd::SendPayment, ethereum::CallContract, Never>;
+impl FundAction for BobEthLnState {
+    type Output = lnd::SendPayment;
 
-    fn actions(&self) -> Vec<Self::ActionKind> {
-        let mut actions = vec![];
-
-        if let LedgerState::Funded { htlc_location, .. } = self.alpha_ledger_state {
-            if let halight::State::Opened(_) = self.beta_ledger_state {
+    fn fund_action(&self) -> Option<Self::Output> {
+        match (&self.alpha_ledger_state, &self.beta_ledger_state) {
+            (LedgerState::Funded { .. }, halight::State::Opened(_)) => {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
@@ -225,7 +266,7 @@ impl Actions for BobEthLnState {
                 let network = bitcoin::Network::Regtest;
                 let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
 
-                actions.push(ActionKind::Fund(lnd::SendPayment {
+                Some(lnd::SendPayment {
                     to_public_key,
                     amount,
                     secret_hash,
@@ -233,56 +274,37 @@ impl Actions for BobEthLnState {
                     chain,
                     network,
                     self_public_key,
-                }));
+                })
             }
+            _ => None,
+        }
+    }
+}
 
-            if let halight::State::Settled(data::Settled { secret }) = self.beta_ledger_state {
-                let to = htlc_location;
+impl RedeemAction for BobEthLnState {
+    type Output = ethereum::CallContract;
+
+    fn redeem_action(&self) -> Option<Self::Output> {
+        match (&self.alpha_ledger_state, &self.beta_ledger_state) {
+            (
+                LedgerState::Funded { htlc_location, .. },
+                halight::State::Settled(data::Settled { secret }),
+            ) => {
+                let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
                 let chain_id: ChainId = ChainId::regtest();
                 let min_block_timestamp = None;
 
-                actions.push(ActionKind::Redeem(ethereum::CallContract {
+                Some(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
                     chain_id,
                     min_block_timestamp,
-                }))
+                })
             }
-        }
-        actions
-    }
-}
-
-#[derive(Clone, Copy, Debug)]
-pub enum ActionKind<TInit, TFund, TRedeem, TRefund> {
-    Init(TInit),
-    Fund(TFund),
-    Redeem(TRedeem),
-    Refund(TRefund),
-}
-
-// all our actions for this particular case don't have any parameters, so we can
-// just implement this generically
-impl<TInit, TFund, TRedeem, TRefund> ToSirenAction for ActionKind<TInit, TFund, TRedeem, TRefund> {
-    fn to_siren_action(&self, id: &SwapId) -> siren::Action {
-        let name = match self {
-            ActionKind::Init(_) => "init",
-            ActionKind::Fund(_) => "fund",
-            ActionKind::Redeem(_) => "redeem",
-            ActionKind::Refund(_) => "refund",
-        };
-
-        siren::Action {
-            name: name.to_owned(),
-            class: vec![],
-            method: Some(http::Method::GET),
-            href: format!("/swaps/{}/{}", id, name),
-            title: None,
-            _type: None,
-            fields: vec![],
+            _ => None,
         }
     }
 }
@@ -325,36 +347,34 @@ async fn handle_action_init(
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
     if let Role::Alice = finalized_swap.role {
-        let actions = AliceEthLnState {
+        let state = AliceEthLnState {
             alpha_ledger_state,
             beta_ledger_state,
             finalized_swap,
-        }
-        .actions();
+        };
 
-        for action in actions {
-            if let ActionKind::Init(lnd::AddHoldInvoice {
-                amount,
+        if let Some(lnd::AddHoldInvoice {
+            amount,
+            secret_hash,
+            expiry,
+            cltv_expiry,
+            chain,
+            network,
+            self_public_key,
+        }) = state.init_action()
+        {
+            return Ok(ActionResponseBody::LndAddHoldInvoice {
+                amount: Http(amount),
                 secret_hash,
                 expiry,
                 cltv_expiry,
-                chain,
-                network,
+                chain: Http(chain),
+                network: Http(network),
                 self_public_key,
-            }) = action
-            {
-                return Ok(ActionResponseBody::LndAddHoldInvoice {
-                    amount: Http(amount),
-                    secret_hash,
-                    expiry,
-                    cltv_expiry,
-                    chain: Http(chain),
-                    network: Http(network),
-                    self_public_key,
-                });
-            }
+            });
         }
-    };
+    }
+
     Err(LndActionError::NotFound.into())
 }
 
@@ -396,62 +416,57 @@ async fn handle_action_fund(
 
     match finalized_swap.role {
         Role::Alice => {
-            let actions = AliceEthLnState {
+            let state = AliceEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            for action in actions {
-                if let ActionKind::Fund(ethereum::DeployContract {
-                    amount,
-                    chain_id,
-                    gas_limit,
+            if let Some(ethereum::DeployContract {
+                amount,
+                chain_id,
+                gas_limit,
+                data,
+            }) = state.fund_action()
+            {
+                return Ok(ActionResponseBody::EthereumDeployContract {
                     data,
-                }) = action
-                {
-                    return Ok(ActionResponseBody::EthereumDeployContract {
-                        data,
-                        amount,
-                        gas_limit: gas_limit.into(),
-                        chain_id,
-                    });
-                }
+                    amount,
+                    gas_limit: gas_limit.into(),
+                    chain_id,
+                });
             }
         }
         Role::Bob => {
-            let actions = BobEthLnState {
+            let state = BobEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            for action in actions {
-                if let ActionKind::Fund(lnd::SendPayment {
+            if let Some(lnd::SendPayment {
+                to_public_key,
+                amount,
+                secret_hash,
+                network,
+                chain,
+                final_cltv_delta,
+                self_public_key,
+            }) = state.fund_action()
+            {
+                return Ok(ActionResponseBody::LndSendPayment {
                     to_public_key,
-                    amount,
+                    amount: amount.into(),
                     secret_hash,
-                    network,
-                    chain,
+                    network: network.into(),
+                    chain: chain.into(),
                     final_cltv_delta,
                     self_public_key,
-                }) = action
-                {
-                    return Ok(ActionResponseBody::LndSendPayment {
-                        to_public_key,
-                        amount: amount.into(),
-                        secret_hash,
-                        network: network.into(),
-                        chain: chain.into(),
-                        final_cltv_delta,
-                        self_public_key,
-                    });
-                }
+                });
             }
         }
     }
+
     Err(LndActionError::NotFound.into())
 }
 
@@ -493,55 +508,49 @@ async fn handle_action_redeem(
 
     match finalized_swap.role {
         Role::Alice => {
-            let actions = AliceEthLnState {
+            let state = AliceEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            for action in actions {
-                if let ActionKind::Redeem(lnd::SettleInvoice {
+            if let Some(lnd::SettleInvoice {
+                secret,
+                chain,
+                network,
+                self_public_key,
+            }) = state.redeem_action()
+            {
+                return Ok(ActionResponseBody::LndSettleInvoice {
                     secret,
-                    chain,
-                    network,
+                    chain: chain.into(),
+                    network: network.into(),
                     self_public_key,
-                }) = action
-                {
-                    return Ok(ActionResponseBody::LndSettleInvoice {
-                        secret,
-                        chain: chain.into(),
-                        network: network.into(),
-                        self_public_key,
-                    });
-                }
+                });
             }
         }
         Role::Bob => {
-            let actions = BobEthLnState {
+            let state = BobEthLnState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
-            }
-            .actions();
+            };
 
-            for action in actions {
-                if let ActionKind::Redeem(ethereum::CallContract {
-                    to,
+            if let Some(ethereum::CallContract {
+                to,
+                data,
+                gas_limit,
+                chain_id,
+                min_block_timestamp,
+            }) = state.redeem_action()
+            {
+                return Ok(ActionResponseBody::EthereumCallContract {
+                    contract_address: to,
                     data,
-                    gas_limit,
+                    gas_limit: gas_limit.into(),
                     chain_id,
                     min_block_timestamp,
-                }) = action
-                {
-                    return Ok(ActionResponseBody::EthereumCallContract {
-                        contract_address: to,
-                        data,
-                        gas_limit: gas_limit.into(),
-                        chain_id,
-                        min_block_timestamp,
-                    });
-                }
+                });
             }
         }
     }
@@ -584,38 +593,31 @@ async fn handle_action_refund(
         .await
         .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
 
-    match finalized_swap.role {
-        Role::Alice => {
-            let actions = AliceEthLnState {
-                alpha_ledger_state,
-                beta_ledger_state,
-                finalized_swap,
-            }
-            .actions();
+    if let Role::Alice = finalized_swap.role {
+        let state = AliceEthLnState {
+            alpha_ledger_state,
+            beta_ledger_state,
+            finalized_swap,
+        };
 
-            for action in actions {
-                if let ActionKind::Refund(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id,
-                    min_block_timestamp,
-                }) = action
-                {
-                    return Ok(ActionResponseBody::EthereumCallContract {
-                        contract_address: to,
-                        data,
-                        gas_limit: gas_limit.into(),
-                        chain_id,
-                        min_block_timestamp,
-                    });
-                }
-            }
-        }
-        Role::Bob => {
-            // There is no refund action for Bob when he is the HALight sender.
+        if let Some(ethereum::CallContract {
+            to,
+            data,
+            gas_limit,
+            chain_id,
+            min_block_timestamp,
+        }) = state.refund_action()
+        {
+            return Ok(ActionResponseBody::EthereumCallContract {
+                contract_address: to,
+                data,
+                gas_limit: gas_limit.into(),
+                chain_id,
+                min_block_timestamp,
+            });
         }
     }
+
     Err(LndActionError::NotFound.into())
 }
 
