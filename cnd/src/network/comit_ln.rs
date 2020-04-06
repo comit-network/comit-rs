@@ -44,8 +44,6 @@ pub struct ComitLN {
     lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
     finalize: oneshot_behaviour::Behaviour<finalize::Message>,
 
-    // TODO: Quick and dirty state tracking that doesn't scale
-    // refactor this to something more elegant that covers all combinations
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, NodeLocalSwapId>,
     #[behaviour(ignore)]
@@ -65,7 +63,6 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
 
-    // FIXME: Ethereum stuff only (han-halight)
     #[behaviour(ignore)]
     ethereum_connector: Arc<Cache<Web3Connector>>,
     #[behaviour(ignore)]
@@ -73,7 +70,6 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     invoices_states: Arc<InvoiceStates>,
 
-    // FIXME: Is this ok here?
     #[behaviour(ignore)]
     pub seed: RootSeed,
 }
@@ -84,8 +80,6 @@ struct CommunicationState {
     lightning_identity_sent: bool,
     received_finalized: bool,
     sent_finalized: bool,
-    // TODO: this is "sent" for Alice and "received" for Bob
-    // needs to be modelled better, together with all of this state tracking
     secret_hash_sent_or_received: bool,
 }
 
@@ -149,8 +143,6 @@ impl ComitLN {
         }
     }
 
-    // TODO: change the signature of this to account for the swap not being
-    // finalized yet
     pub fn get_finalized_swap(&self, local_id: NodeLocalSwapId) -> Option<FinalizedSwap> {
         let create_swap_params = match self.swaps.get(&local_id) {
             Some(body) => body,
@@ -171,15 +163,6 @@ impl ComitLN {
             None => return None,
         };
 
-        // TODO: The logic of deciding what identity is which is also present in
-        // impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::
-        // Message>> for ComitLN {     fn inject_event(&mut self, event:
-        // oneshot_behaviour::OutEvent<finalize::Message>) There should one
-        // place of truth
-
-        // TODO: To avoid mistakes here, we should create different types for incoming
-        // and outgoing identities This is best done on the libp2p-protocol
-        // level as we already differentiate there between Inbound and Outbound upgrades
         let alpha_ledger_redeem_identity = match create_swap_params.role {
             Role::Alice => match self.ethereum_identities.get(&id).copied() {
                 Some(identity) => identity,
@@ -210,8 +193,8 @@ impl ComitLN {
         };
 
         Some(FinalizedSwap {
-            alpha_ledger: Ethereum::new(ChainId::regtest()), // TODO: don't hardcode these
-            beta_ledger: lightning::Regtest,                 // TODO: don't hardcode these
+            alpha_ledger: Ethereum::new(ChainId::regtest()),
+            beta_ledger: lightning::Regtest,
             alpha_asset: create_swap_params.ethereum_amount.clone(),
             beta_asset: create_swap_params.lightning_amount,
             alpha_ledger_redeem_identity,
@@ -231,11 +214,6 @@ impl ComitLN {
     }
 }
 
-// TODO: this is just a temporary struct and should likely be replaced with
-// something more generic Also reconsider whether we need to pass everything
-// back up the call chain
-// TODO: is there a better name for this?
-// TODO: Should we really revert to alpha/beta terminology here?
 #[derive(Debug)]
 pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
@@ -271,7 +249,6 @@ impl FinalizedSwap {
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for ComitLN {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<secret_hash::Message>) {
         let (peer, swap_id) = match event {
-            // TODO: Refactor this, Received/Sent is the same.
             oneshot_behaviour::OutEvent::Received {
                 peer,
                 message:
@@ -338,7 +315,6 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 
                     self.swap_ids.insert(local_id.clone(), id.clone());
 
-                    // TODO: don't use global spawn function?
                     tokio::task::spawn(io.send(id));
 
                     let create_swap_params = self.swaps.get(&local_id).unwrap();
@@ -367,7 +343,6 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     self.communication_state
                         .insert(id, CommunicationState::default());
                 } else {
-                    // TODO: if digest is not present, save it to some other kind of hashmap/hashset
                     tracing::warn!(
                         "Peer {} announced a swap ({}) we don't know about",
                         peer,
@@ -428,7 +403,6 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     .insert(swap_id, CommunicationState::default());
             }
             BehaviourOutEvent::Error { peer, error } => {
-                // TODO: How do we know which swap failed ?!
                 tracing::warn!(
                     "failed to complete announce protocol with {} because {:?}",
                     peer,
@@ -593,13 +567,10 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             let invoice_states = self.invoices_states.clone();
 
-            // TODO: Transform in match for readability and to remove explanatory comments
             if create_swap_params.role == Role::Alice {
                 tokio::task::spawn({
                     let lnd_connector = (*self.lnd_connector_as_receiver)
                         .clone()
-                        // TODO: Panicking now may not be the best.
-                        // It would be great to do this part when REST API call is received
                         .read_certificate()
                         .expect("Failure reading tls certificate")
                         .read_macaroon()
@@ -614,7 +585,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                                 secret_hash,
                                 phantom_data: PhantomData,
                             },
-                            Utc::now().naive_local(), // TODO don't create this here
+                            Utc::now().naive_local(),
                         )
                         .instrument(tracing::info_span!("halight"))
                         .await;
@@ -625,8 +596,6 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 tokio::task::spawn({
                     let lnd_connector = (*self.lnd_connector_as_sender)
                         .clone()
-                        // TODO: Panicking now may not be the best.
-                        // It would be great to do this part when REST API call is received
                         .read_certificate()
                         .expect("Failure reading tls certificate")
                         .read_macaroon()
@@ -641,7 +610,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                                 secret_hash,
                                 phantom_data: PhantomData,
                             },
-                            Utc::now().naive_local(), // TODO don't create this here
+                            Utc::now().naive_local(),
                         )
                         .instrument(tracing::info_span!("halight"))
                         .await;
@@ -665,7 +634,6 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .copied()
                         .expect("must exist");
 
-                    // TODO: Directly use EtherHtlc
                     let htlc_params = HtlcParams {
                         asset,
                         ledger,
@@ -691,7 +659,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                             ethereum_ledger_state,
                             local_swap_id,
                             htlc_params,
-                            Utc::now().naive_local(), // TODO don't create this here
+                            Utc::now().naive_local(),
                         )
                         .instrument(tracing::info_span!("han"))
                         .await
@@ -706,11 +674,10 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     let bob_ethereum_identity = create_swap_params.ethereum_identity;
 
                     let asset = create_swap_params.ethereum_amount.clone();
-                    let ledger = ledger::Ethereum::default(); // FIXME: get this from somewhere
+                    let ledger = ledger::Ethereum::default();
                     let expiry = create_swap_params.ethereum_absolute_expiry;
                     let secret_hash = self.secret_hashes.get(&swap_id).copied().unwrap();
 
-                    // TODO: Directly use EtherHtlc
                     let htlc_params = HtlcParams {
                         asset,
                         ledger,
@@ -736,7 +703,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                             ethereum_ledger_state,
                             local_swap_id,
                             htlc_params,
-                            Utc::now().naive_local(), // TODO don't create this here
+                            Utc::now().naive_local(),
                         )
                         .instrument(tracing::info_span!("han"))
                         .await
