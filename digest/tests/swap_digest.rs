@@ -42,6 +42,8 @@ struct DoubleFieldStruct {
     foo: MyString,
     #[digest(prefix = "FFAA")]
     bar: MyString,
+    #[digest(ignore)]
+    ignore: MyString,
 }
 
 struct OtherDoubleFieldStruct {
@@ -136,10 +138,12 @@ fn given_same_double_field_struct_return_same_multihash() {
     let struct1 = DoubleFieldStruct {
         foo: "first field".into(),
         bar: "second field".into(),
+        ignore: "Does not matter".into(),
     };
     let struct2 = DoubleFieldStruct {
         foo: "first field".into(),
         bar: "second field".into(),
+        ignore: "So it can be whatever you want".into(),
     };
 
     assert_eq!(struct1.digest(), struct2.digest())
@@ -150,10 +154,12 @@ fn given_different_double_field_struct_return_different_multihash() {
     let struct1 = DoubleFieldStruct {
         foo: "first field".into(),
         bar: "second field".into(),
+        ignore: "Does not matter".into(),
     };
     let struct2 = DoubleFieldStruct {
         foo: "first field".into(),
         bar: "different field".into(),
+        ignore: "So it can be whatever you want".into(),
     };
 
     assert_ne!(struct1.digest(), struct2.digest())
@@ -164,6 +170,7 @@ fn given_two_double_field_struct_with_same_data_return_same_multihash() {
     let struct1 = DoubleFieldStruct {
         foo: "foo field".into(),
         bar: "bar field".into(),
+        ignore: "this field does not matter".into(),
     };
     let struct2 = OtherDoubleFieldStruct {
         bar: "bar field".into(),
