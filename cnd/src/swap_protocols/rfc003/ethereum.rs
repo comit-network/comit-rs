@@ -10,8 +10,10 @@ use blockchain_contracts::ethereum::rfc003::{erc20_htlc::Erc20Htlc, ether_htlc::
 
 impl From<HtlcParams<Ethereum, asset::Ether, identity::Ethereum>> for EtherHtlc {
     fn from(htlc_params: HtlcParams<Ethereum, asset::Ether, identity::Ethereum>) -> Self {
-        let refund_address = blockchain_contracts::ethereum::Address(htlc_params.refund_identity.0);
-        let redeem_address = blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.0);
+        let refund_address =
+            blockchain_contracts::ethereum::Address(htlc_params.refund_identity.into());
+        let redeem_address =
+            blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.into());
 
         EtherHtlc::new(
             htlc_params.expiry.into(),
@@ -30,8 +32,10 @@ impl HtlcParams<Ethereum, asset::Ether, identity::Ethereum> {
 
 impl From<HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>> for Erc20Htlc {
     fn from(htlc_params: HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>) -> Self {
-        let refund_address = blockchain_contracts::ethereum::Address(htlc_params.refund_identity.0);
-        let redeem_address = blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.0);
+        let refund_address =
+            blockchain_contracts::ethereum::Address(htlc_params.refund_identity.into());
+        let redeem_address =
+            blockchain_contracts::ethereum::Address(htlc_params.redeem_identity.into());
         let token_contract_address =
             blockchain_contracts::ethereum::Address(htlc_params.asset.token_contract.into());
 

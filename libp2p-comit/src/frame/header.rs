@@ -72,7 +72,7 @@ impl Header {
     where
         V: DeserializeOwned,
     {
-        serde_json::from_value(self.inner.value())
+        V::deserialize(&self.inner.value())
     }
 
     /// Returns the parameter with the provided key converted into the type `P`.
@@ -91,7 +91,7 @@ impl Header {
             .take_parameter(key)
             .unwrap_or(serde_json::Value::Null);
 
-        serde_json::from_value(parameter)
+        P::deserialize(&parameter)
     }
 
     /// Returns the parameter with the provided key converted into the type `P`
@@ -105,7 +105,7 @@ impl Header {
     {
         self.inner
             .take_parameter(key)
-            .map(serde_json::from_value)
+            .map(|v| P::deserialize(&v))
             .unwrap_or_else(|| Ok(P::default()))
     }
 

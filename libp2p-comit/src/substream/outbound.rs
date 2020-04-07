@@ -7,6 +7,7 @@ use crate::{
 };
 use futures::{channel::oneshot, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
+use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
     pin::Pin,
@@ -85,7 +86,7 @@ impl Advance for State {
             } => match stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(Ok(frame))) => {
                     let response = match frame.kind {
-                        FrameKind::Response => serde_json::from_value(frame.payload),
+                        FrameKind::Response => Response::deserialize(&frame.payload),
                         FrameKind::Request => {
                             return Advanced::error(stream, handler::Error::UnexpectedFrame(frame))
                         }

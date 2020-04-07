@@ -7,6 +7,7 @@ use crate::{
 };
 use futures::{channel::oneshot, task::Poll, Future, Sink, Stream};
 use libp2p::swarm::ProtocolsHandlerEvent;
+use serde::Deserialize;
 use std::{
     collections::{HashMap, HashSet},
     pin::Pin,
@@ -52,23 +53,22 @@ impl Advance for State {
             WaitingMessage { mut stream } => match stream.as_mut().poll_next(cx) {
                 Poll::Ready(Some(Ok(frame))) => match frame.kind {
                     FrameKind::Request => {
-                        let request =
-                            serde_json::from_value::<UnvalidatedInboundRequest>(frame.payload)
-                                .map_err(handler::Error::MalformedFrame)
-                                .and_then(|request| {
-                                    known_headers
-                                        .get(request.request_type())
-                                        .ok_or_else(|| {
-                                            handler::Error::UnknownRequestType(
-                                                request.request_type().to_owned(),
-                                            )
-                                        })
-                                        .and_then(|known_headers| {
-                                            request
-                                                .ensure_no_unknown_mandatory_headers(known_headers)
-                                                .map_err(handler::Error::UnknownMandatoryHeader)
-                                        })
-                                });
+                        let request = UnvalidatedInboundRequest::deserialize(&frame.payload)
+                            .map_err(handler::Error::MalformedFrame)
+                            .and_then(|request| {
+                                known_headers
+                                    .get(request.request_type())
+                                    .ok_or_else(|| {
+                                        handler::Error::UnknownRequestType(
+                                            request.request_type().to_owned(),
+                                        )
+                                    })
+                                    .and_then(|known_headers| {
+                                        request
+                                            .ensure_no_unknown_mandatory_headers(known_headers)
+                                            .map_err(handler::Error::UnknownMandatoryHeader)
+                                    })
+                            });
 
                         match request {
                             Ok(request) => {
