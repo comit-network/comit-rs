@@ -19,10 +19,7 @@ use crate::{
     htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
     lnd::LndConnectorParams,
-    network::{
-        comit_ln::ComitLN,
-        protocols::{announce, ethereum_identity, finalize, lightning_identity, secret_hash},
-    },
+    network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
         halight::InvoiceStates,
@@ -45,18 +42,13 @@ use futures::{
     Future,
 };
 use libp2p::{
-    core::either::EitherOutput,
     identity::{ed25519, Keypair},
     mdns::Mdns,
-    swarm::{
-        protocols_handler::{DummyProtocolsHandler, OneShotHandler},
-        IntoProtocolsHandlerSelect, SwarmBuilder,
-    },
+    swarm::SwarmBuilder,
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -74,91 +66,12 @@ use tokio::{
     sync::Mutex,
 };
 
-type SecretHashHandler = OneShotHandler<
-    oneshot_protocol::InboundConfig<secret_hash::Message>,
-    oneshot_protocol::OutboundConfig<secret_hash::Message>,
-    oneshot_protocol::OutEvent<secret_hash::Message>,
->;
-type EthereumHandler = OneShotHandler<
-    oneshot_protocol::InboundConfig<ethereum_identity::Message>,
-    oneshot_protocol::OutboundConfig<ethereum_identity::Message>,
-    oneshot_protocol::OutEvent<ethereum_identity::Message>,
->;
-type LightningHandler = OneShotHandler<
-    oneshot_protocol::InboundConfig<lightning_identity::Message>,
-    oneshot_protocol::OutboundConfig<lightning_identity::Message>,
-    oneshot_protocol::OutEvent<lightning_identity::Message>,
->;
-type FinalizeHandler = OneShotHandler<
-    oneshot_protocol::InboundConfig<finalize::Message>,
-    oneshot_protocol::OutboundConfig<finalize::Message>,
-    oneshot_protocol::OutEvent<finalize::Message>,
->;
-
-type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
-    ComitNode,
-    EitherOutput<
-        EitherOutput<
-            ProtocolInEvent,
-            EitherOutput<
-                EitherOutput<
-                    EitherOutput<
-                        EitherOutput<
-                            announce::protocol::OutboundConfig,
-                            oneshot_protocol::OutboundConfig<secret_hash::Message>,
-                        >,
-                        oneshot_protocol::OutboundConfig<ethereum_identity::Message>,
-                    >,
-                    oneshot_protocol::OutboundConfig<lightning_identity::Message>,
-                >,
-                oneshot_protocol::OutboundConfig<finalize::Message>,
-            >,
-        >,
-        void::Void,
-    >,
-    EitherOutput<
-        EitherOutput<
-            ProtocolOutEvent,
-            EitherOutput<
-                EitherOutput<
-                    EitherOutput<
-                        EitherOutput<
-                            announce::handler::HandlerEvent,
-                            oneshot_protocol::OutEvent<secret_hash::Message>,
-                        >,
-                        oneshot_protocol::OutEvent<ethereum_identity::Message>,
-                    >,
-                    oneshot_protocol::OutEvent<lightning_identity::Message>,
-                >,
-                oneshot_protocol::OutEvent<finalize::Message>,
-            >,
-        >,
-        void::Void,
-    >,
-    IntoProtocolsHandlerSelect<
-        IntoProtocolsHandlerSelect<
-            ComitHandler,
-            IntoProtocolsHandlerSelect<
-                IntoProtocolsHandlerSelect<
-                    IntoProtocolsHandlerSelect<
-                        IntoProtocolsHandlerSelect<announce::handler::Handler, SecretHashHandler>,
-                        EthereumHandler,
-                    >,
-                    LightningHandler,
-                >,
-                FinalizeHandler,
-            >,
-        >,
-        DummyProtocolsHandler,
-    >,
->;
-
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
-    pub swarm: Arc<Mutex<ExpandedSwarm>>,
+    pub swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
     local_peer_id: PeerId,
 }
 
@@ -266,7 +179,7 @@ impl libp2p::core::Executor for TokioExecutor {
 }
 
 struct SwarmWorker {
-    swarm: Arc<Mutex<ExpandedSwarm>>,
+    swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
 }
 
 impl futures::Future for SwarmWorker {
