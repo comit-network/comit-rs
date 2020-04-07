@@ -300,7 +300,7 @@ pub enum BehaviourOutEvent {
         peer: PeerId,
         /// The substream (inc. `swap_digest`) to reply on (i.e., send
         /// `swap_id`).
-        io: ReplySubstream<NegotiatedSubstream>,
+        io: Box<ReplySubstream<NegotiatedSubstream>>,
     },
 
     /// Error while attempting to announce swap to the remote.

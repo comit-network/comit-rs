@@ -45,7 +45,7 @@ pub enum HandlerEvent {
     /// The event is created when a remote sends a `swap_digest`. The event
     /// contains a reply substream for the receiver to send back the
     /// `swap_id` that corresponds to the swap digest.
-    AwaitingConfirmation(ReplySubstream<NegotiatedSubstream>),
+    AwaitingConfirmation(Box<ReplySubstream<NegotiatedSubstream>>),
 
     /// Failed to announce swap to peer.
     Error(Error),
@@ -68,7 +68,7 @@ impl ProtocolsHandler for Handler {
         sender: <Self::InboundProtocol as InboundUpgrade<NegotiatedSubstream>>::Output,
     ) {
         self.events
-            .push_back(HandlerEvent::AwaitingConfirmation(sender))
+            .push_back(HandlerEvent::AwaitingConfirmation(Box::new(sender)))
     }
 
     fn inject_fully_negotiated_outbound(
