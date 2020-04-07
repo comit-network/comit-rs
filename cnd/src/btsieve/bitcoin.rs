@@ -5,11 +5,13 @@ pub use self::{
     bitcoind_connector::{BitcoindConnector, ChainInfo},
     cache::Cache,
 };
-use crate::btsieve::{
-    find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+use crate::{
+    btsieve::{
+        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+    },
+    identity,
 };
 use bitcoin::{
-    blockdata::script::Instruction,
     consensus::{encode::deserialize, Decodable},
     BitcoinHash, OutPoint,
 };
@@ -40,7 +42,7 @@ pub async fn watch_for_spent_outpoint<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
     from_outpoint: OutPoint,
-    unlock_script: Vec<Vec<u8>>,
+    identity: identity::Bitcoin,
 ) -> anyhow::Result<(bitcoin::Transaction, bitcoin::TxIn)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
@@ -50,20 +52,7 @@ where
             .input
             .iter()
             .filter(|txin| txin.previous_output == from_outpoint)
-            .find(|txin| {
-                unlock_script.iter().all(|item| {
-                    txin.witness.contains(item)
-                        || unlock_script.iter().all(|item| {
-                            txin.script_sig
-                                .iter(true)
-                                .any(|instruction| match instruction {
-                                    Instruction::PushBytes(data) => (item as &[u8]) == data,
-                                    Instruction::Op(_) => false,
-                                    Instruction::Error(_) => false,
-                                })
-                        })
-                })
-            })
+            .find(|txin| txin.witness.contains(&identity.to_bytes()))
             .cloned()
     })
     .await?;
