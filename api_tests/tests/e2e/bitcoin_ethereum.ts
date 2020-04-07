@@ -6,7 +6,6 @@
 import { twoActorTest } from "../../src/actor_test";
 import { AssetKind } from "../../src/asset";
 import { sleep } from "../../src/utils";
-import { expect } from "chai";
 import { LedgerKind } from "../../src/ledgers/ledger";
 
 // ******************************************** //
@@ -56,7 +55,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
             await bob.lnSettleInvoice(secret, secretHash);
 
             const pay = await paymentPromise;
-            expect(pay.paymentPreimage.toString("hex")).equals(secret);
+            expect(pay.paymentPreimage.toString("hex")).toEqual(secret);
 
             await bob.lnAssertInvoiceSettled(secretHash);
         })
@@ -64,7 +63,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
 });
 
 // ******************************************** //
-// Bitcoin/bitcoin Alpha Ledger/ Alpha Asset    //
+// Bitcoin/bitcoin Alpha Ledger/Alpha Asset     //
 // Ethereum/ether Beta Ledger/Beta Asset        //
 // ******************************************** //
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
@@ -423,7 +422,7 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
             const responsePromise = alice.redeemWithHighFee();
 
-            return expect(responsePromise).to.be.rejected;
+            return expect(responsePromise).rejects.toThrow();
         })
     );
 });

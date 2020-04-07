@@ -25,6 +25,7 @@ export class LndInstance implements LightningInstance {
             logger,
             bitcoindDataDir,
             await getPort(),
+            await getPort(),
             await getPort()
         );
     }
@@ -35,7 +36,8 @@ export class LndInstance implements LightningInstance {
         private readonly logger: Logger,
         private readonly bitcoindDataDir: string,
         private readonly lndP2pPort: number,
-        private readonly lndRpcPort: number
+        private readonly lndRpcPort: number,
+        private readonly lndRestPort: number
     ) {}
 
     public async start() {
@@ -178,16 +180,20 @@ export class LndInstance implements LightningInstance {
         return this.lndP2pPort;
     }
 
+    get restPort() {
+        return this.lndRestPort;
+    }
+
     get config(): LightningNodeConfig {
         return {
             p2pSocket: this.p2pSocket,
             lnd: this.lnd,
+            restPort: this.restPort,
+            dataDir: this.dataDir,
         };
     }
 
     private async createConfigFile() {
-        // We don't use REST but want a random port so we don't get used port errors.
-        const restPort = await getPort();
         const output = `[Application Options]
 debuglevel=trace
 
@@ -198,7 +204,7 @@ listen=127.0.0.1:${this.lndP2pPort}
 rpclisten=127.0.0.1:${this.lndRpcPort}
 
 ; REST interface
-restlisten=127.0.0.1:${restPort}
+restlisten=127.0.0.1:${this.lndRestPort}
 
 ; Do not seek out peers on the network
 nobootstrap=true
