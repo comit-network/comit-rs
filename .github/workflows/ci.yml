@@ -39,11 +39,6 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest]
-        include:
-          - os: ubuntu-latest
-            binary-suffix: ""
-          - os: macos-latest
-            binary-suffix: ""
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -79,25 +74,26 @@ jobs:
         if: matrix.os != 'macos-latest'
         run: make test
 
-      - name: Upload cnd ${{ matrix.os }} binary
-        if: matrix.os == 'ubuntu-latest'
+      - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
         uses: actions/upload-artifact@v1
         with:
-          name: cnd
+          name: cnd-${{ matrix.os }}
           path: target/debug/cnd
 
-
   e2e_test:
-    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
     needs: build
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
 
-      - name: Download cnd binary
+      - name: Download cnd-${{ matrix.os }} archive and extract cnd binary
         uses: actions/download-artifact@v1
         with:
-          name: cnd
+          name: cnd-${{ matrix.os }}
           path: target/debug/
 
       - name: Fix missing executable permission
