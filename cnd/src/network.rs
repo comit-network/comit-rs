@@ -34,6 +34,7 @@ use crate::{
     },
     transaction,
 };
+use anyhow::Context;
 use async_trait::async_trait;
 use futures::{
     channel::oneshot::{self, Sender},
@@ -58,7 +59,7 @@ use std::{
     io,
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{self, Poll},
 };
 use tokio::{
     runtime::{Handle, Runtime},
@@ -114,8 +115,8 @@ impl Swarm {
             .build();
 
         for addr in settings.network.listen.clone() {
-            libp2p::Swarm::listen_on(&mut swarm, addr)
-                .expect("Could not listen on specified address");
+            libp2p::Swarm::listen_on(&mut swarm, addr.clone())
+                .with_context(|| format!("Address is not supported: {:?}", addr))?;
         }
 
         let swarm = Arc::new(Mutex::new(swarm));
@@ -184,7 +185,7 @@ struct SwarmWorker {
 impl futures::Future for SwarmWorker {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Self::Output> {
         loop {
             let mutex = self.swarm.lock();
             futures::pin_mut!(mutex);
