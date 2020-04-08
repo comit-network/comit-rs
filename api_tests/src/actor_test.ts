@@ -24,7 +24,7 @@ function nActorTest(
         const actors = await createActors(name, actorNames);
 
         try {
-            await pTimeout(testFn(actors), 60_000);
+            await pTimeout(testFn(actors), 120_000);
         } catch (e) {
             for (const actorName of actorNames) {
                 await actors.getActorByName(actorName).dumpState();

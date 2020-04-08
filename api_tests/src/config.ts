@@ -1,9 +1,11 @@
 import * as tmp from "tmp";
-import { BitcoinNodeConfig } from "./ledgers/bitcoin";
-import { EthereumNodeConfig } from "./ledgers/ethereum";
 import { LedgerConfig } from "./utils";
 import getPort from "get-port";
-import { LightningNodeConfig } from "./ledgers/lightning";
+import {
+    BitcoinNodeConfig,
+    EthereumNodeConfig,
+    LightningNodeConfig,
+} from "./ledgers";
 import { ActorNames } from "./actors/actor";
 
 export interface CndConfigFile {

@@ -3,26 +3,22 @@ import { Asset } from "../asset";
 import BigNumber from "bignumber.js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
-import {
-    LightningWallet as LightningWalletSdk,
-    Lnd,
-    Outpoint,
-} from "comit-sdk";
+import { LightningWallet as LightningWalletSdk, Outpoint } from "comit-sdk";
 import { AddressType } from "@radar/lnrpc";
 import { Logger } from "log4js";
+import { LightningNodeConfig } from "../ledgers";
 
 export class LightningWallet implements Wallet {
     public static async newInstance(
         bitcoinWallet: BitcoinWallet,
         logger: Logger,
-        lnd: Lnd,
-        lndp2pSocket: string
+        config: LightningNodeConfig
     ) {
         const inner = await LightningWalletSdk.newInstance(
-            lnd.config.tls,
-            lnd.config.macaroonPath,
-            lnd.config.server,
-            lndp2pSocket
+            config.tlsCertPath,
+            config.macaroonPath,
+            config.grpcSocket,
+            config.p2pSocket
         );
 
         logger.debug("lnd getinfo:", await inner.lnd.lnrpc.getInfo());

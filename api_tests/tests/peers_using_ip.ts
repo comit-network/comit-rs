@@ -1,11 +1,7 @@
-/**
- * @logDir peers_ip
- */
-
-import { threeActorTest, twoActorTest } from "../../src/actor_test";
-import { createDefaultSwapRequest, sleep } from "../../src/utils";
+import { threeActorTest, twoActorTest } from "../src/actor_test";
+import { createDefaultSwapRequest, sleep } from "../src/utils";
 import { expect, request } from "chai";
-import { Actor } from "../../src/actors/actor";
+import { Actor } from "../src/actors/actor";
 
 // ******************************************** //
 // Peers using ips                              //
