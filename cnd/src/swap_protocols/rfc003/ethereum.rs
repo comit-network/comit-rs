@@ -51,7 +51,7 @@ impl From<HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>> for Erc20Htlc 
 }
 
 impl HtlcParams<Ethereum, asset::Erc20, identity::Ethereum> {
-    pub fn bytecode(self) -> Bytes {
-        Erc20Htlc::from(self).into()
+    pub fn bytecode(&self) -> Bytes {
+        Erc20Htlc::from(self.clone()).into()
     }
 }

@@ -23,10 +23,15 @@ use cnd::{
     db::Sqlite,
     file_lock::TryLockExclusive,
     http_api::route_factory,
-    jsonrpc, load_swaps,
+    jsonrpc,
+    lnd::LndConnectorParams,
+    load_swaps,
     network::Swarm,
     seed::RootSeed,
-    swap_protocols::{Facade, LedgerStates, SwapCommunicationStates, SwapErrorStates},
+    swap_protocols::{
+        halight::InvoiceStates, Facade, Facade2, LedgerStates, SwapCommunicationStates,
+        SwapErrorStates,
+    },
 };
 
 use rand::rngs::OsRng;
@@ -110,10 +115,20 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
+    let lnd_connector_params = LndConnectorParams {
+        lnd_url: settings.lightning.lnd.rest_api_url.clone(),
+        retry_interval_ms: 100,
+        certificate_path: settings.lightning.lnd.cert_path.clone(),
+        macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
+    };
+
+    // Han protocol
     let alpha_ledger_state = Arc::new(LedgerStates::default());
     let beta_ledger_state = Arc::new(LedgerStates::default());
-
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
+
+    // HALight
+    let invoice_states = Arc::new(InvoiceStates::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -123,11 +138,19 @@ fn main() -> anyhow::Result<()> {
         &mut runtime,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
+        lnd_connector_params,
         Arc::clone(&swap_communication_states),
         Arc::clone(&alpha_ledger_state),
         Arc::clone(&beta_ledger_state),
+        Arc::clone(&invoice_states),
         &database,
     )?;
+
+    let facade2 = Facade2 {
+        swarm: swarm.clone(),
+        alpha_ledger_state: Arc::clone(&alpha_ledger_state),
+        beta_ledger_state: Arc::clone(&invoice_states),
+    };
 
     let deps = Facade {
         bitcoin_connector,
@@ -137,12 +160,12 @@ fn main() -> anyhow::Result<()> {
         swap_communication_states,
         swap_error_states,
         seed,
-        swarm,
         db: database,
+        swarm,
     };
 
     runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
-    runtime.spawn(spawn_warp_instance(settings, deps));
+    runtime.spawn(spawn_warp_instance(settings, deps, facade2));
 
     // Block the current thread.
     ::std::thread::park();
@@ -160,8 +183,12 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
-    let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
+async fn spawn_warp_instance(settings: Settings, dependencies: Facade, facade2: Facade2) {
+    let routes = route_factory::create(
+        dependencies,
+        facade2,
+        &settings.http_api.cors.allowed_origins,
+    );
 
     let listen_addr = settings.http_api.socket;
 

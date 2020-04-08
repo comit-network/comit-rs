@@ -5,9 +5,12 @@ use crate::{
     swap_protocols::{
         actions::{
             bitcoin::{SendToAddress, SpendOutput},
-            ethereum,
+            ethereum, lnd,
+            lnd::Chain,
         },
-        ledger, SwapId,
+        ledger,
+        rfc003::{Secret, SecretHash},
+        SwapId,
     },
     timestamp::Timestamp,
     transaction,
@@ -67,6 +70,30 @@ pub enum ActionResponseBody {
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
+    LndAddHoldInvoice {
+        amount: Http<asset::Lightning>,
+        secret_hash: SecretHash,
+        expiry: u32,
+        cltv_expiry: u32,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
+    },
+    LndSendPayment {
+        to_public_key: identity::Lightning,
+        amount: Http<asset::Lightning>,
+        secret_hash: SecretHash,
+        final_cltv_delta: u32,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
+    },
+    LndSettleInvoice {
+        secret: Secret,
+        chain: Http<Chain>,
+        network: Http<bitcoin::Network>,
+        self_public_key: identity::Lightning,
+    },
     None,
 }
 
@@ -125,6 +152,110 @@ impl From<SendToAddress> for ActionResponseBody {
             to,
             amount: amount.as_sat().to_string(),
             network: Http(network),
+        }
+    }
+}
+
+impl From<lnd::AddHoldInvoice> for ActionResponseBody {
+    fn from(action: lnd::AddHoldInvoice) -> Self {
+        let lnd::AddHoldInvoice {
+            amount,
+            secret_hash,
+            expiry,
+            cltv_expiry,
+            chain,
+            network,
+            self_public_key,
+        } = action;
+
+        ActionResponseBody::LndAddHoldInvoice {
+            amount: Http(amount),
+            secret_hash,
+            expiry,
+            cltv_expiry,
+            chain: Http(chain),
+            network: Http(network),
+            self_public_key,
+        }
+    }
+}
+
+impl From<ethereum::DeployContract> for ActionResponseBody {
+    fn from(action: ethereum::DeployContract) -> Self {
+        let ethereum::DeployContract {
+            amount,
+            chain_id,
+            gas_limit,
+            data,
+        } = action;
+
+        ActionResponseBody::EthereumDeployContract {
+            data,
+            amount,
+            gas_limit: gas_limit.into(),
+            chain_id,
+        }
+    }
+}
+
+impl From<lnd::SendPayment> for ActionResponseBody {
+    fn from(action: lnd::SendPayment) -> Self {
+        let lnd::SendPayment {
+            to_public_key,
+            amount,
+            secret_hash,
+            network,
+            chain,
+            final_cltv_delta,
+            self_public_key,
+        } = action;
+
+        ActionResponseBody::LndSendPayment {
+            to_public_key,
+            amount: amount.into(),
+            secret_hash,
+            network: network.into(),
+            chain: chain.into(),
+            final_cltv_delta,
+            self_public_key,
+        }
+    }
+}
+
+impl From<lnd::SettleInvoice> for ActionResponseBody {
+    fn from(action: lnd::SettleInvoice) -> Self {
+        let lnd::SettleInvoice {
+            secret,
+            chain,
+            network,
+            self_public_key,
+        } = action;
+
+        ActionResponseBody::LndSettleInvoice {
+            secret,
+            chain: chain.into(),
+            network: network.into(),
+            self_public_key,
+        }
+    }
+}
+
+impl From<ethereum::CallContract> for ActionResponseBody {
+    fn from(action: ethereum::CallContract) -> Self {
+        let ethereum::CallContract {
+            to,
+            data,
+            gas_limit,
+            chain_id,
+            min_block_timestamp,
+        } = action;
+
+        ActionResponseBody::EthereumCallContract {
+            contract_address: to,
+            data,
+            gas_limit: gas_limit.into(),
+            chain_id,
+            min_block_timestamp,
         }
     }
 }
@@ -232,19 +363,8 @@ impl IntoResponsePayload for ethereum::DeployContract {
         self,
         query_params: ActionExecutionParameters,
     ) -> anyhow::Result<ActionResponseBody> {
-        let ethereum::DeployContract {
-            data,
-            amount,
-            gas_limit,
-            chain_id,
-        } = self;
         match query_params {
-            ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumDeployContract {
-                data,
-                amount,
-                gas_limit,
-                chain_id,
-            }),
+            ActionExecutionParameters::None {} => Ok(self.into()),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
                 action: "ethereum::ContractDeploy",
                 parameters: &["address", "fee_per_wu"],
@@ -264,21 +384,8 @@ impl IntoResponsePayload for ethereum::CallContract {
         self,
         query_params: ActionExecutionParameters,
     ) -> anyhow::Result<ActionResponseBody> {
-        let ethereum::CallContract {
-            to,
-            data,
-            gas_limit,
-            chain_id,
-            min_block_timestamp,
-        } = self;
         match query_params {
-            ActionExecutionParameters::None {} => Ok(ActionResponseBody::EthereumCallContract {
-                contract_address: to,
-                data,
-                gas_limit,
-                chain_id,
-                min_block_timestamp,
-            }),
+            ActionExecutionParameters::None {} => Ok(self.into()),
             _ => Err(anyhow::Error::from(UnexpectedQueryParameters {
                 action: "ethereum::SendTransaction",
                 parameters: &["address", "fee_per_wu"],

@@ -260,7 +260,12 @@ export default class TestEnvironment extends NodeEnvironment {
     private async setupLightningChannels() {
         const { alice, bob } = this.global.lndWallets;
 
-        await alice.connectPeer(bob);
+        const alicePeers = await alice.listPeers();
+        const bobPubkey = await bob.inner.getPubkey();
+
+        if (!alicePeers.find((peer) => peer.pubKey === bobPubkey)) {
+            await alice.connectPeer(bob);
+        }
 
         await alice.mint({
             name: AssetKind.Bitcoin,
@@ -287,6 +292,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private async startAliceLightning() {
         const config = await this.initLightningLedger("lnd-alice");
         this.global.lndWallets.alice = await this.initLightningWallet(config);
+        this.global.ledgerConfigs.aliceLnd = config;
     }
 
     /**
@@ -298,6 +304,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private async startBobLightning() {
         const config = await this.initLightningLedger("lnd-bob");
         this.global.lndWallets.bob = await this.initLightningWallet(config);
+        this.global.ledgerConfigs.bobLnd = config;
     }
 
     private async initLightningWallet(config: LightningNodeConfig) {

@@ -114,11 +114,11 @@ jobs:
         with:
           go-version: '1.13.3'
 
-      - name: Install LND v0.9.0-beta
+      - name: Install LND v0.9.1-beta
         run: |
           go get -d github.com/lightningnetwork/lnd
           cd ~/go/src/github.com/lightningnetwork/lnd
-          git checkout v0.9.0-beta
+          git checkout v0.9.1-beta
           make tags=invoicesrpc
           make tags=invoicesrpc install
 

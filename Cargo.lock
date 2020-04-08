@@ -506,7 +506,6 @@ dependencies = [
  "libsqlite3-sys",
  "log 0.4.8",
  "lru",
- "multihash",
  "num 0.2.1",
  "paste",
  "pem",
@@ -1099,6 +1098,7 @@ version = "0.99.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c86bd0361bcbde39b13475e6e36cb24c329964aa2611be285289d1e4b751c1a0"
 dependencies = [
+ "futures-core",
  "genawaiter-macro",
  "genawaiter-proc-macro",
  "proc-macro-hack",
@@ -3444,6 +3444,8 @@ version = "0.2.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "58b0b7fd92dc7b71f29623cc6836dd7200f32161a2313dd78be233a8405694f6"
 dependencies = [
+ "futures",
+ "futures-task",
  "pin-project",
  "tracing",
 ]

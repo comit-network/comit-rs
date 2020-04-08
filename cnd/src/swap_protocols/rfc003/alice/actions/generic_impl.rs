@@ -1,7 +1,7 @@
 use crate::swap_protocols::{
     actions::Actions,
     rfc003::{
-        actions::{Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+        actions::{Accept, Action, Decline, MakeFundAction, MakeRedeemAction, MakeRefundAction},
         alice,
         create_swap::HtlcParams,
         DeriveSecret, LedgerState, SwapCommunication,
@@ -22,18 +22,22 @@ where
     BI: Clone,
     AT: Clone,
     BT: Clone,
-    (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
-        + RefundAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH, FundTransaction = AT>,
-    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
+    (AL, AA): MakeFundAction<HtlcParams = HtlcParams<AL, AA, AI>>
+        + MakeRefundAction<
+            HtlcParams = HtlcParams<AL, AA, AI>,
+            HtlcLocation = AH,
+            FundTransaction = AT,
+        >,
+    (BL, BA): MakeRedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, BL>,
         Decline<BL, BL>,
         Infallible,
-        <(AL, AA) as FundAction>::Output,
-        <(BL, BA) as RedeemAction>::Output,
-        <(AL, AA) as RefundAction>::Output,
+        <(AL, AA) as MakeFundAction>::Output,
+        <(BL, BA) as MakeRedeemAction>::Output,
+        <(AL, AA) as MakeRefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -49,7 +53,7 @@ where
 
         use self::LedgerState::*;
         let mut actions = match alpha_state {
-            NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
+            NotDeployed => vec![Action::Fund(<(AL, AA)>::make_fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
             Funded {
@@ -61,7 +65,7 @@ where
                 htlc_location,
                 fund_transaction,
                 ..
-            } => vec![Action::Refund(<(AL, AA)>::refund_action(
+            } => vec![Action::Refund(<(AL, AA)>::make_refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source,
@@ -71,7 +75,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
+            actions.push(Action::Redeem(<(BL, BA)>::make_redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source, // Derive identities with this.
