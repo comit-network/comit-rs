@@ -1,37 +1,35 @@
 use crate::swap_protocols::{
     rfc003::{Secret, SecretHash},
-    state,
-    state::{Insert as _, Update as _},
-    NodeLocalSwapId, SwapId,
+    state, SwapId,
 };
 use chrono::NaiveDateTime;
-use futures::future::{self, Either};
-use genawaiter::{
-    sync::{Co, Gen},
-    GeneratorState,
+use futures::{
+    future::{self, Either},
+    Stream, TryFutureExt,
 };
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use genawaiter::sync::Gen;
+use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
-pub trait Opened<L, A, I> {
-    async fn opened(&self, params: Params<L, A, I>) -> anyhow::Result<data::Opened>;
+pub trait Opened {
+    async fn opened(&self, params: Params) -> anyhow::Result<data::Opened>;
 }
 
 #[async_trait::async_trait]
-pub trait Accepted<L, A, I> {
-    async fn accepted(&self, params: Params<L, A, I>) -> anyhow::Result<data::Accepted>;
+pub trait Accepted {
+    async fn accepted(&self, params: Params) -> anyhow::Result<data::Accepted>;
 }
 
 #[async_trait::async_trait]
-pub trait Settled<L, A, I> {
-    async fn settled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Settled>;
+pub trait Settled {
+    async fn settled(&self, params: Params) -> anyhow::Result<data::Settled>;
 }
 
 #[async_trait::async_trait]
-pub trait Cancelled<L, A, I> {
-    async fn cancelled(&self, params: Params<L, A, I>) -> anyhow::Result<data::Cancelled>;
+pub trait Cancelled {
+    async fn cancelled(&self, params: Params) -> anyhow::Result<data::Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
@@ -44,12 +42,31 @@ pub enum State {
     Cancelled(data::Cancelled),
 }
 
-/// Represents events that have occurred, transitioning to said state.
+/// Represents the events in the halight protocol.
 #[derive(Debug, Clone, Copy, PartialEq, strum_macros::Display)]
 pub enum Event {
+    /// The halight protocol was started.
+    Started,
+
+    /// The invoice was opened and is ready to accept a payment.
+    ///
+    /// On the recipient side, this means the hold invoice has been added to
+    /// lnd. On the (payment) sender side, we cannot (yet) know about this
+    /// so we just have to assume that this happens.
     Opened(data::Opened),
+
+    /// The payment to the invoice was accepted but the preimage has not yet
+    /// been revealed.
+    ///
+    /// On the recipient side, this means the hold invoice moved to the
+    /// `Accepted` state. On the (payment) sender side, we assume that once
+    /// the payment is `InFlight`, it also reached the recipient.
     Accepted(data::Accepted),
+
+    /// The payment is settled and therefore the preimage was revealed.
     Settled(data::Settled),
+
+    /// The payment was cancelled.
     Cancelled(data::Cancelled),
 }
 
@@ -112,14 +129,6 @@ impl State {
 }
 
 #[async_trait::async_trait]
-impl state::Insert<State> for InvoiceStates {
-    async fn insert(&self, key: SwapId, value: State) {
-        let mut states = self.states.lock().await;
-        states.insert(key, value);
-    }
-}
-
-#[async_trait::async_trait]
 impl state::Get<State> for InvoiceStates {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
         let states = self.states.lock().await;
@@ -133,107 +142,85 @@ impl state::Get<State> for InvoiceStates {
 impl state::Update<Event> for InvoiceStates {
     async fn update(&self, key: &SwapId, event: Event) {
         let mut states = self.states.lock().await;
-        let state = match states.get_mut(key) {
-            Some(state) => state,
-            None => {
-                tracing::warn!("Value not found for key {}", key);
-                return;
+        let entry = states.entry(*key);
+
+        match (event, entry) {
+            (Event::Started, Entry::Vacant(vacant)) => {
+                vacant.insert(State::Unknown);
             }
-        };
-
-        match event {
-            Event::Opened(opened) => state.transition_to_opened(opened),
-            Event::Accepted(accepted) => state.transition_to_accepted(accepted),
-            Event::Settled(settled) => state.transition_to_settled(settled),
-            Event::Cancelled(cancelled) => state.transition_to_cancelled(cancelled),
-        }
-    }
-}
-
-pub async fn create_watcher<C, L, A, I>(
-    lnd_connector: &C,
-    invoice_states: Arc<InvoiceStates>,
-    local_id: NodeLocalSwapId,
-    params: Params<L, A, I>,
-    finalized_at: NaiveDateTime,
-) where
-    C: Opened<L, A, I> + Accepted<L, A, I> + Settled<L, A, I> + Cancelled<L, A, I>,
-    L: Clone,
-    A: Ord + Clone,
-    I: Clone,
-{
-    let id = SwapId(local_id.0); // FIXME: Resolve this abuse.
-
-    invoice_states.insert(id, State::Unknown).await;
-
-    // construct a generator that watches alpha and beta ledger concurrently
-    let mut generator = Gen::new({
-        |co| async { watch_ledger::<C, L, A, I>(&lnd_connector, co, params, finalized_at).await }
-    });
-
-    loop {
-        // wait for events to be emitted as the generator executes
-        match generator.async_resume().await {
-            // every event that is yielded is passed on
-            GeneratorState::Yielded(event) => {
-                tracing::info!("swap {} yielded event {}", id, event);
-                invoice_states.update(&id, event).await;
+            (Event::Opened(opened), Entry::Occupied(mut state)) => {
+                state.get_mut().transition_to_opened(opened)
             }
-            // the generator stopped executing, this means there are no more events that can be
-            // watched.
-            GeneratorState::Complete(Ok(_)) => {
-                tracing::info!("swap {} finished", id);
-                return;
+            (Event::Accepted(accepted), Entry::Occupied(mut state)) => {
+                state.get_mut().transition_to_accepted(accepted)
             }
-            GeneratorState::Complete(Err(e)) => {
-                tracing::error!("swap {} failed with {:?}", id, e);
+            (Event::Settled(settled), Entry::Occupied(mut state)) => {
+                state.get_mut().transition_to_settled(settled)
+            }
+            (Event::Cancelled(cancelled), Entry::Occupied(mut state)) => {
+                state.get_mut().transition_to_cancelled(cancelled)
+            }
+            (Event::Started, Entry::Occupied(_)) => {
+                tracing::warn!(
+                    "Received Started event for {} although state is already present",
+                    key
+                );
+            }
+            (_, Entry::Vacant(_)) => {
+                tracing::warn!("State not found for {}", key);
             }
         }
     }
 }
 
-/// Returns a future that waits for events to happen on a ledger.
+/// Creates a new instance of the halight protocol.
 ///
-/// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_ledger<C, L, A, I>(
-    lnd_connector: &C,
-    co: Co<Event>,
-    htlc_params: Params<L, A, I>,
-    _start_of_swap: NaiveDateTime,
-) -> anyhow::Result<()>
+/// Returns a stream of events happening during the execution.
+pub fn new<'a, C>(
+    lnd_connector: &'a C,
+    params: Params,
+    _finalized_at: NaiveDateTime,
+) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
-    C: Opened<L, A, I> + Accepted<L, A, I> + Settled<L, A, I> + Cancelled<L, A, I>,
-    Params<L, A, I>: Clone,
+    C: Opened + Accepted + Settled + Cancelled,
 {
-    let opened = lnd_connector.opened(htlc_params.clone()).await?;
-    co.yield_(Event::Opened(opened)).await;
+    Gen::new({
+        |co| async move {
+            co.yield_(Ok(Event::Started)).await;
 
-    let accepted = lnd_connector.accepted(htlc_params.clone()).await?;
-    co.yield_(Event::Accepted(accepted)).await;
+            let opened_or_error = lnd_connector
+                .opened(params.clone())
+                .map_ok(Event::Opened)
+                .await;
+            co.yield_(opened_or_error).await;
 
-    let settled = lnd_connector.settled(htlc_params.clone());
+            let accepted_or_error = lnd_connector
+                .accepted(params.clone())
+                .map_ok(Event::Accepted)
+                .await;
+            co.yield_(accepted_or_error).await;
 
-    let cancelled = lnd_connector.cancelled(htlc_params);
+            let settled = lnd_connector.settled(params.clone());
+            let cancelled = lnd_connector.cancelled(params);
 
-    match future::try_select(settled, cancelled).await {
-        Ok(Either::Left((settled, _))) => {
-            co.yield_(Event::Settled(settled)).await;
+            match future::try_select(settled, cancelled).await {
+                Ok(Either::Left((settled, _))) => {
+                    co.yield_(Ok(Event::Settled(settled))).await;
+                }
+                Ok(Either::Right((cancelled, _))) => {
+                    co.yield_(Ok(Event::Cancelled(cancelled))).await;
+                }
+                Err(either) => {
+                    let (error, _other_future) = either.factor_first();
+
+                    co.yield_(Err(error)).await;
+                }
+            }
         }
-        Ok(Either::Right((cancelled, _))) => {
-            co.yield_(Event::Cancelled(cancelled)).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-
-            return Err(error);
-        }
-    }
-
-    Ok(())
+    })
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct Params<L, A, I> {
-    pub phantom_data: PhantomData<(L, A, I)>,
+pub struct Params {
     pub secret_hash: SecretHash,
 }

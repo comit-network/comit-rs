@@ -194,13 +194,8 @@ impl LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Opened<L, A, I> for LndConnectorAsSender
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn opened(&self, _params: Params<L, A, I>) -> Result<data::Opened, Error> {
+impl Opened for LndConnectorAsSender {
+    async fn opened(&self, _params: Params) -> Result<data::Opened, Error> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
         Ok(data::Opened)
@@ -208,13 +203,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Accepted<L, A, I> for LndConnectorAsSender
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn accepted(&self, params: Params<L, A, I>) -> Result<data::Accepted, Error> {
+impl Accepted for LndConnectorAsSender {
+    async fn accepted(&self, params: Params) -> Result<data::Accepted, Error> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         while self
@@ -230,13 +220,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Settled<L, A, I> for LndConnectorAsSender
-where
-    A: Send + 'static,
-    L: Send + 'static,
-    I: Send + 'static,
-{
-    async fn settled(&self, params: Params<L, A, I>) -> Result<data::Settled, Error> {
+impl Settled for LndConnectorAsSender {
+    async fn settled(&self, params: Params) -> Result<data::Settled, Error> {
         let payment = loop {
             match self
                 .find_payment(params.secret_hash, PaymentStatus::Succeeded)
@@ -261,13 +246,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Cancelled<L, A, I> for LndConnectorAsSender
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn cancelled(&self, params: Params<L, A, I>) -> Result<data::Cancelled, Error> {
+impl Cancelled for LndConnectorAsSender {
+    async fn cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
         while self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
@@ -383,13 +363,8 @@ struct LndError {
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Opened<L, A, I> for LndConnectorAsReceiver
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn opened(&self, params: Params<L, A, I>) -> Result<data::Opened, Error> {
+impl Opened for LndConnectorAsReceiver {
+    async fn opened(&self, params: Params) -> Result<data::Opened, Error> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
@@ -405,13 +380,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Accepted<L, A, I> for LndConnectorAsReceiver
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn accepted(&self, params: Params<L, A, I>) -> Result<data::Accepted, Error> {
+impl Accepted for LndConnectorAsReceiver {
+    async fn accepted(&self, params: Params) -> Result<data::Accepted, Error> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
@@ -428,13 +398,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Settled<L, A, I> for LndConnectorAsReceiver
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn settled(&self, params: Params<L, A, I>) -> Result<data::Settled, Error> {
+impl Settled for LndConnectorAsReceiver {
+    async fn settled(&self, params: Params) -> Result<data::Settled, Error> {
         let invoice = loop {
             match self
                 .find_invoice(params.secret_hash, InvoiceState::Settled)
@@ -456,13 +421,8 @@ where
 }
 
 #[async_trait::async_trait]
-impl<L, A, I> Cancelled<L, A, I> for LndConnectorAsReceiver
-where
-    L: Send + 'static,
-    A: Send + 'static,
-    I: Send + 'static,
-{
-    async fn cancelled(&self, params: Params<L, A, I>) -> Result<data::Cancelled, Error> {
+impl Cancelled for LndConnectorAsReceiver {
+    async fn cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
         while self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?

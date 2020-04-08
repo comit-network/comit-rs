@@ -20,6 +20,7 @@ use crate::{
         han, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
+        state::Update,
         CreateSwapParams, LedgerStates, NodeLocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
@@ -28,12 +29,12 @@ use crate::{
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use chrono::Utc;
 use digest::Digest;
-use futures::AsyncWriteExt;
+use futures::{AsyncWriteExt, TryStreamExt};
 use libp2p::{
     swarm::{NetworkBehaviour, NetworkBehaviourEventProcess},
     NetworkBehaviour,
 };
-use std::{collections::HashMap, marker::PhantomData, sync::Arc};
+use std::{collections::HashMap, sync::Arc};
 use tracing_futures::Instrument;
 
 #[derive(NetworkBehaviour, Debug)]
@@ -567,7 +568,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             let invoice_states = self.invoices_states.clone();
 
-            if create_swap_params.role == Role::Alice {
+            let role = create_swap_params.role;
+
+            if role == Role::Alice {
                 tokio::task::spawn({
                     let lnd_connector = (*self.lnd_connector_as_receiver)
                         .clone()
@@ -576,20 +579,15 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .read_macaroon()
                         .expect("Failure reading macaroon");
 
-                    async move {
-                        halight::create_watcher(
-                            &lnd_connector,
-                            invoice_states,
-                            local_swap_id,
-                            halight::Params::<Ethereum, asset::Ether, identity::Ethereum> {
-                                secret_hash,
-                                phantom_data: PhantomData,
-                            },
-                            Utc::now().naive_local(),
-                        )
-                        .instrument(tracing::info_span!("halight"))
-                        .await;
-                    }
+                    new_halight_swap(
+                        local_swap_id,
+                        secret_hash,
+                        invoice_states,
+                        lnd_connector,
+                    )
+                    .instrument(
+                        tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                    )
                 });
             } else {
                 // This is Bob
@@ -601,24 +599,19 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .read_macaroon()
                         .expect("Failure reading macaroon");
 
-                    async move {
-                        halight::create_watcher(
-                            &lnd_connector,
-                            invoice_states,
-                            local_swap_id,
-                            halight::Params::<Ethereum, asset::Ether, identity::Ethereum> {
-                                secret_hash,
-                                phantom_data: PhantomData,
-                            },
-                            Utc::now().naive_local(),
-                        )
-                        .instrument(tracing::info_span!("halight"))
-                        .await;
-                    }
+                    new_halight_swap(
+                        local_swap_id,
+                        secret_hash,
+                        invoice_states,
+                        lnd_connector,
+                    )
+                    .instrument(
+                        tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                    )
                 });
             }
 
-            if create_swap_params.role == Role::Alice {
+            if role == Role::Alice {
                 tokio::task::spawn({
                     let connector = self.ethereum_connector.clone();
                     let alice_ethereum_identity = create_swap_params.ethereum_identity;
@@ -634,40 +627,24 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                         .copied()
                         .expect("must exist");
 
-                    let htlc_params = HtlcParams {
-                        asset,
-                        ledger,
-                        redeem_identity: bob_ethereum_identity,
-                        refund_identity: alice_ethereum_identity.into(),
-                        expiry,
-                        secret_hash,
-                    };
-
-                    let ethereum_ledger_state = self.ethereum_ledger_state.clone();
-
-                    async move {
-                        han::create_watcher::<
-                            _,
-                            _,
-                            _,
-                            _,
-                            htlc_location::Ethereum,
-                            _,
-                            transaction::Ethereum,
-                        >(
-                            connector.as_ref(),
-                            ethereum_ledger_state,
-                            local_swap_id,
-                            htlc_params,
-                            Utc::now().naive_local(),
-                        )
-                        .instrument(tracing::info_span!("han"))
-                        .await
-                    }
+                    new_han_ethereum_ether_swap(
+                        local_swap_id,
+                        connector,
+                        self.ethereum_ledger_state.clone(),
+                        HtlcParams {
+                            asset,
+                            ledger,
+                            redeem_identity: bob_ethereum_identity,
+                            refund_identity: alice_ethereum_identity.into(),
+                            expiry,
+                            secret_hash,
+                        },
+                        role,
+                    )
                 });
             } else {
-                // This is Bob
                 tokio::task::spawn({
+                    // This is Bob
                     let connector = self.ethereum_connector.clone();
                     let alice_ethereum_identity =
                         self.ethereum_identities.get(&swap_id).copied().unwrap();
@@ -678,38 +655,69 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     let expiry = create_swap_params.ethereum_absolute_expiry;
                     let secret_hash = self.secret_hashes.get(&swap_id).copied().unwrap();
 
-                    let htlc_params = HtlcParams {
-                        asset,
-                        ledger,
-                        redeem_identity: bob_ethereum_identity.into(),
-                        refund_identity: alice_ethereum_identity,
-                        expiry,
-                        secret_hash,
-                    };
-
-                    let ethereum_ledger_state = self.ethereum_ledger_state.clone();
-
-                    async move {
-                        han::create_watcher::<
-                            _,
-                            _,
-                            _,
-                            _,
-                            htlc_location::Ethereum,
-                            _,
-                            transaction::Ethereum,
-                        >(
-                            connector.as_ref(),
-                            ethereum_ledger_state,
-                            local_swap_id,
-                            htlc_params,
-                            Utc::now().naive_local(),
-                        )
-                        .instrument(tracing::info_span!("han"))
-                        .await
-                    }
+                    new_han_ethereum_ether_swap(
+                        local_swap_id,
+                        connector,
+                        self.ethereum_ledger_state.clone(),
+                        HtlcParams {
+                            asset,
+                            ledger,
+                            redeem_identity: bob_ethereum_identity.into(),
+                            refund_identity: alice_ethereum_identity,
+                            expiry,
+                            secret_hash,
+                        },
+                        role,
+                    )
                 });
             }
         }
     }
+}
+
+/// Creates a new instance of the halight protocol.
+///
+/// This function delegates to the `halight` module for the actual protocol
+/// implementation. It's main purpose is to annotate the protocol instance with
+/// logging information and store the events yielded by the protocol in
+/// `InvoiceStates`.
+async fn new_halight_swap<C>(
+    local_swap_id: NodeLocalSwapId,
+    secret_hash: SecretHash,
+    invoice_states: Arc<InvoiceStates>,
+    lnd_connector: C,
+) where
+    C: halight::Opened + halight::Accepted + halight::Settled + halight::Cancelled,
+{
+    let mut events = halight::new(
+        &lnd_connector,
+        halight::Params { secret_hash },
+        Utc::now().naive_local(),
+    )
+    .inspect_ok(|event| tracing::info!("yielded event {}", event))
+    .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        invoice_states.update(&SwapId(local_swap_id.0), event).await;
+    }
+
+    tracing::info!("swap finished");
+}
+
+async fn new_han_ethereum_ether_swap(
+    local_swap_id: NodeLocalSwapId,
+    connector: Arc<Cache<Web3Connector>>,
+    ethereum_ledger_state: Arc<LedgerStates>,
+    htlc_params: HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+    role: Role,
+) {
+    han::create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
+        connector.as_ref(),
+        ethereum_ledger_state,
+        local_swap_id,
+        htlc_params,
+        Utc::now().naive_local(),
+    )
+    .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
+    .await
 }
