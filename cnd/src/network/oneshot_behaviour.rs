@@ -2,7 +2,8 @@ use crate::network::oneshot_protocol;
 use libp2p::{
     core::{connection::ConnectionId, Multiaddr, PeerId},
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, OneShotHandler, PollParameters, ProtocolsHandler,
+        NetworkBehaviour, NetworkBehaviourAction, NotifyHandler, OneShotHandler, PollParameters,
+        ProtocolsHandler,
     },
 };
 use serde::{de::DeserializeOwned, Serialize};
@@ -23,10 +24,12 @@ pub struct Behaviour<M> {
 
 impl<M> Behaviour<M> {
     pub fn send(&mut self, peer_id: PeerId, message: M) {
-        self.events.push_back(NetworkBehaviourAction::SendEvent {
-            peer_id,
-            event: oneshot_protocol::OutboundConfig::new(message),
-        })
+        self.events
+            .push_back(NetworkBehaviourAction::NotifyHandler {
+                peer_id,
+                handler: NotifyHandler::Any,
+                event: oneshot_protocol::OutboundConfig::new(message),
+            })
     }
 
     // If we decide to keep these different network behaviour (and not use a
