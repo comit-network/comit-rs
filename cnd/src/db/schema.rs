@@ -104,3 +104,15 @@ table! {
        counterparty -> Text,
    }
 }
+
+table! {
+    finalized_swaps {
+        id -> Integer,
+        local_swap_id -> Text,
+        shared_swap_id -> Text,
+        counterparty_alpha_identity -> Text,
+        counterparty_beta_identity -> Text,
+        secret_hash -> Text,
+        finalized_at -> Timestamp,
+    }
+}
