@@ -112,5 +112,6 @@ table! {
         alpha_identity -> Text,
         beta_identity -> Text,
         secret_hash -> Text,
+       at -> Timestamp,
     }
 }

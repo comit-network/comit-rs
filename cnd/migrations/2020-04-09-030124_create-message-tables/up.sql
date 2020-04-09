@@ -6,5 +6,6 @@ CREATE TABLE finalized_swaps
     swap_id UNIQUE      NOT NULL,
     alpha_identity      NOT NULL,
     beta_identity,      NOT NULL,
-    secret_hash         NOT NULL
+    secret_hash         NOT NULL,
+    at DATETIME DEFAULT CURRENT_TIMESTAMP
 )
