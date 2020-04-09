@@ -37,6 +37,7 @@ pub mod config;
 pub mod ethereum;
 pub mod http_api;
 pub mod init_swap;
+pub mod lightning;
 pub mod load_swaps;
 #[macro_use]
 pub mod network;
@@ -60,7 +61,10 @@ use std::{
 /// Define domain specific terms using identity module so that we can refer to
 /// things in an ergonomic fashion e.g., `identity::Bitcoin`.
 pub mod identity {
-    pub use crate::{bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum};
+    pub use crate::{
+        bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum,
+        lightning::PublicKey as Lightning,
+    };
 }
 
 /// Define domain specific terms using transaction module so that we can refer

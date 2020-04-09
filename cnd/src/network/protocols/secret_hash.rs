@@ -8,10 +8,10 @@ use serde_hex::{SerHex, Strict};
 /// The message for the secret hash sharing protocol.
 #[derive(Clone, Copy, Deserialize, Debug, Serialize)]
 pub struct Message {
-    swap_id: SwapId,
+    pub swap_id: SwapId,
     /// A SHA-256 hash, serialized as hex without a `0x` prefix.
     #[serde(with = "SerHex::<Strict>")]
-    secret_hash: [u8; 32],
+    pub secret_hash: [u8; 32],
 }
 
 impl Message {

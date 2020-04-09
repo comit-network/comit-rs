@@ -1,5 +1,4 @@
-mod oneshot_behaviour;
-
+pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
 pub mod transport;
