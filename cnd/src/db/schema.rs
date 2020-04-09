@@ -113,9 +113,7 @@ table! {
     dial_infos {
         id -> Integer,
         local_swap_id -> Text,
-        // We need something here, right?
-        peer_id -> Text, // Optional.  FIXME: Do we want this?
-        address_hints -> Text,  // Optional.  FIXME: Do we want this?
+        peer_id -> Text,
     }
 }
 
