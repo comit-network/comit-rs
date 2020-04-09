@@ -104,3 +104,13 @@ table! {
        counterparty -> Text,
    }
 }
+
+table! {
+    finalized_swaps {
+        id -> Integer,
+        swap_id -> Text,
+        alpha_identity -> Text,
+        beta_identity -> Text,
+        secret_hash -> Text,
+    }
+}
