@@ -1,11 +1,14 @@
 import { ChildProcess, spawn } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { writeFileAsync } from "../utils";
+import { existsAsync, writeFileAsync } from "../utils";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import waitForLogMessage from "../wait_for_log_message";
 import { BitcoinNodeConfig, LedgerInstance } from "./index";
+import findCacheDir from "find-cache-dir";
+import download from "download";
+import { platform } from "os";
 
 export class BitcoindInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -13,13 +16,11 @@ export class BitcoindInstance implements LedgerInstance {
     private password: string;
 
     public static async new(
-        projectRoot: string,
         dataDir: string,
         pidFile: string,
         logger: Logger
     ): Promise<BitcoindInstance> {
         return new BitcoindInstance(
-            projectRoot,
             dataDir,
             pidFile,
             logger,
@@ -31,7 +32,6 @@ export class BitcoindInstance implements LedgerInstance {
     }
 
     constructor(
-        private readonly projectRoot: string,
         private readonly dataDir: string,
         private readonly pidFile: string,
         private readonly logger: Logger,
@@ -42,22 +42,14 @@ export class BitcoindInstance implements LedgerInstance {
     ) {}
 
     public async start() {
-        const bin = process.env.BITCOIND_BIN
-            ? process.env.BITCOIND_BIN
-            : path.join(
-                  this.projectRoot,
-                  "blockchain_nodes",
-                  "bitcoin",
-                  "bitcoin-0.17.0",
-                  "bin",
-                  "bitcoind"
-              );
+        const bin = await this.findBinary("0.17.0");
+
         this.logger.info("Using binary", bin);
 
         await this.createConfigFile(this.dataDir);
 
         this.process = spawn(bin, [`-datadir=${this.dataDir}`], {
-            cwd: this.projectRoot,
+            cwd: this.dataDir,
             stdio: "ignore",
         });
 
@@ -101,6 +93,56 @@ export class BitcoindInstance implements LedgerInstance {
         };
     }
 
+    private async findBinary(version: string): Promise<string> {
+        const envOverride = process.env.BITCOIND_BIN;
+
+        if (envOverride) {
+            this.logger.info(
+                "Overriding bitcoind bin with BITCOIND_BIN: ",
+                envOverride
+            );
+
+            return envOverride;
+        }
+
+        const archiveName = `bitcoin-core-${version}`;
+
+        const cacheDir = findCacheDir({
+            name: archiveName,
+            create: true,
+            thunk: true,
+        });
+
+        // This path depends on the directory structure inside the archive
+        const binaryPath = cacheDir(`bitcoin-${version}`, "bin", "bitcoind");
+
+        if (await existsAsync(binaryPath)) {
+            return binaryPath;
+        }
+
+        const url = downloadUrlFor(version);
+
+        this.logger.info(
+            "Binary for version ",
+            version,
+            " not found at ",
+            binaryPath,
+            ", downloading from ",
+            url
+        );
+
+        const destination = cacheDir("");
+        await download(url, destination, {
+            decompress: true,
+            extract: true,
+            filename: archiveName,
+        });
+
+        this.logger.info("Download completed");
+
+        return binaryPath;
+    }
+
     private logPath() {
         return path.join(this.dataDir, "regtest", "debug.log");
     }
@@ -126,5 +168,16 @@ rpcbind=0.0.0.0:${this.rpcPort}
 `;
         const config = path.join(dataDir, "bitcoin.conf");
         await writeFileAsync(config, output);
+    }
+}
+
+function downloadUrlFor(version: string) {
+    switch (platform()) {
+        case "darwin":
+            return `https://bitcoincore.org/bin/bitcoin-core-${version}/bitcoin-${version}-osx64.tar.gz`;
+        case "linux":
+            return `https://bitcoincore.org/bin/bitcoin-core-${version}/bitcoin-${version}-x86_64-linux-gnu.tar.gz`;
+        default:
+            throw new Error(`Unsupported platform ${platform()}`);
     }
 }

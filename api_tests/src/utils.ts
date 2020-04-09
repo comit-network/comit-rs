@@ -20,9 +20,9 @@ export interface HarnessGlobal extends Global.Global {
         alice?: LightningWallet;
         bob?: LightningWallet;
     };
-    projectRoot: string;
     tokenContract: string;
     parityLockDir: string;
+    cargoTargetDir: string;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;

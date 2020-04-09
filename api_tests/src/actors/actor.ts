@@ -39,7 +39,7 @@ export class Actor {
     public static async newInstance(
         name: ActorNames,
         ledgerConfig: LedgerConfig,
-        projectRoot: string,
+        cargoTargetDirectory: string,
         cndLogFile: string,
         logger: Logger
     ) {
@@ -47,7 +47,7 @@ export class Actor {
         const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(
-            projectRoot,
+            cargoTargetDirectory,
             cndLogFile,
             logger,
             cndConfigFile
