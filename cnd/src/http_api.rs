@@ -10,6 +10,7 @@ pub use self::{
     problem::*,
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
+use crate::swap_protocols::actions::lnd::Chain;
 
 pub const PATH: &str = "swaps";
 
@@ -18,7 +19,7 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
-        SwapId, SwapProtocol,
+        Role, SwapId, SwapProtocol,
     },
     transaction,
 };
@@ -37,11 +38,39 @@ use std::{
 #[derive(Clone, Debug, PartialEq)]
 pub struct Http<I>(pub I);
 
+impl<I> From<I> for Http<I> {
+    fn from(inner: I) -> Self {
+        Http(inner)
+    }
+}
+
 impl<I> Deref for Http<I> {
     type Target = I;
 
     fn deref(&self) -> &Self::Target {
         &self.0
+    }
+}
+
+impl Serialize for Http<Role> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<Role> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let role = String::deserialize(deserializer)?;
+        let role =
+            Role::from_str(role.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
+
+        Ok(Http(role))
     }
 }
 
@@ -63,6 +92,29 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
         let value =
             u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
         let amount = asset::Bitcoin::from_sat(value);
+
+        Ok(Http(amount))
+    }
+}
+
+impl Serialize for Http<asset::Lightning> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(&self.0.as_sat().to_string())
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<asset::Lightning> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let value = String::deserialize(deserializer)?;
+        let value =
+            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
+        let amount = asset::Lightning::from_sat(value);
 
         Ok(Http(amount))
     }
@@ -93,6 +145,17 @@ impl Serialize for Http<identity::Bitcoin> {
     {
         let public_key = bitcoin::PublicKey::from(self.0);
         serializer.serialize_str(&public_key.to_string())
+    }
+}
+
+impl Serialize for Http<Chain> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match &self.0 {
+            Chain::Bitcoin => serializer.serialize_str("bitcoin"),
+        }
     }
 }
 

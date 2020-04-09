@@ -5,7 +5,9 @@ use crate::{
         actions::{ethereum, Actions},
         ledger::Ethereum,
         rfc003::{
-            actions::{erc20, Accept, Action, Decline, FundAction, RedeemAction, RefundAction},
+            actions::{
+                erc20, Accept, Action, Decline, MakeFundAction, MakeRedeemAction, MakeRefundAction,
+            },
             alice,
             create_swap::HtlcParams,
             DeriveSecret, LedgerState, SwapCommunication,
@@ -34,7 +36,7 @@ where
     BH: Clone,
     BI: Clone,
     BT: Clone,
-    (BL, BA): RedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
+    (BL, BA): MakeRedeemAction<HtlcParams = HtlcParams<BL, BA, BI>, HtlcLocation = BH>,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
@@ -42,7 +44,7 @@ where
         Decline<Ethereum, BL>,
         ethereum::DeployContract,
         ethereum::CallContract,
-        <(BL, BA) as RedeemAction>::Output,
+        <(BL, BA) as MakeRedeemAction>::Output,
         ethereum::CallContract,
     >;
 
@@ -77,7 +79,7 @@ where
         };
 
         if let Funded { htlc_location, .. } = beta_state {
-            actions.push(Action::Redeem(<(BL, BA)>::redeem_action(
+            actions.push(Action::Redeem(<(BL, BA)>::make_redeem_action(
                 HtlcParams::new_beta_params(request, response),
                 htlc_location.clone(),
                 &self.secret_source, // Derive identities with this.
@@ -107,17 +109,21 @@ where
     AH: Copy,
     AI: Clone,
     AT: Clone,
-    (AL, AA): FundAction<HtlcParams = HtlcParams<AL, AA, AI>>
-        + RefundAction<HtlcParams = HtlcParams<AL, AA, AI>, HtlcLocation = AH, FundTransaction = AT>,
+    (AL, AA): MakeFundAction<HtlcParams = HtlcParams<AL, AA, AI>>
+        + MakeRefundAction<
+            HtlcParams = HtlcParams<AL, AA, AI>,
+            HtlcLocation = AH,
+            FundTransaction = AT,
+        >,
 {
     #[allow(clippy::type_complexity)]
     type ActionKind = Action<
         Accept<AL, Ethereum>,
         Decline<AL, Ethereum>,
         Infallible,
-        <(AL, AA) as FundAction>::Output,
+        <(AL, AA) as MakeFundAction>::Output,
         ethereum::CallContract,
-        <(AL, AA) as RefundAction>::Output,
+        <(AL, AA) as MakeRefundAction>::Output,
     >;
 
     fn actions(&self) -> Vec<Self::ActionKind> {
@@ -134,14 +140,14 @@ where
         use self::LedgerState::*;
 
         let mut actions = match alpha_state {
-            NotDeployed => vec![Action::Fund(<(AL, AA)>::fund_action(
+            NotDeployed => vec![Action::Fund(<(AL, AA)>::make_fund_action(
                 HtlcParams::new_alpha_params(request, response),
             ))],
             Funded {
                 htlc_location,
                 fund_transaction,
                 ..
-            } => vec![Action::Refund(<(AL, AA)>::refund_action(
+            } => vec![Action::Refund(<(AL, AA)>::make_refund_action(
                 HtlcParams::new_alpha_params(request, response),
                 *htlc_location,
                 &self.secret_source,

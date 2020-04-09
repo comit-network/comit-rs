@@ -4,11 +4,13 @@ import {
     Cnd,
     ComitClient,
     Entity,
+    HanEthereumEtherHalightLightningBitcoinRequestBody,
     LedgerAction,
     Swap,
     SwapDetails,
-    TransactionStatus,
     Transaction,
+    TransactionStatus,
+    Wallets as SdkWallets,
 } from "comit-sdk";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
@@ -80,7 +82,7 @@ export class Actor {
     private readonly expectedBalanceChanges: Map<string, BigNumber>;
 
     constructor(
-        private readonly logger: Logger,
+        public readonly logger: Logger,
         private readonly cndInstance: CndInstance,
         private readonly name: ActorNames
     ) {
@@ -202,6 +204,7 @@ export class Actor {
             this.logger.debug("Using lightning routes on cnd REST API");
             return;
         }
+
         const comitClient: ComitClient = this.getComitClient();
 
         const payload = {
@@ -235,6 +238,80 @@ export class Actor {
         }
 
         await this.swap.accept(Actor.defaultActionConfig);
+    }
+
+    public async createSwap(
+        createSwapPayload: HanEthereumEtherHalightLightningBitcoinRequestBody
+    ) {
+        this.alphaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: createSwapPayload.alpha.chain_id,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Lightning,
+            network: createSwapPayload.beta.network,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Ether,
+            quantity: createSwapPayload.alpha.amount,
+            ledger: LedgerKind.Ethereum,
+        };
+        this.betaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: createSwapPayload.beta.amount,
+            ledger: LedgerKind.Lightning,
+        };
+
+        switch (this.name) {
+            case "alice": {
+                // Alice purchases beta asset with alpha asset
+                await this.setStartingBalance([
+                    this.alphaAsset,
+                    {
+                        ...this.betaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.betaAsset),
+                    new BigNumber(this.betaAsset.quantity)
+                );
+                break;
+            }
+            case "bob": {
+                // Bob purchases alpha asset with beta asset
+                await this.setStartingBalance([
+                    this.betaAsset,
+                    {
+                        ...this.alphaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.alphaAsset),
+                    new BigNumber(this.alphaAsset.quantity)
+                );
+                break;
+            }
+            default: {
+                throw new Error(
+                    `createSwap does not support the actor ${this.name} yet`
+                );
+            }
+        }
+
+        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+            createSwapPayload
+        );
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
     }
 
     public async deploy() {
@@ -277,12 +354,32 @@ export class Actor {
         }
     }
 
+    public async init() {
+        if (!this.swap) {
+            throw new Error("Cannot init nonexistent swap");
+        }
+
+        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
+            "init",
+            {
+                maxTimeoutSecs: 30,
+                tryIntervalSecs: 1,
+            }
+        );
+        await this.swap.doLedgerAction(response.data);
+    }
+
     public async fund() {
         if (!this.swap) {
             throw new Error("Cannot fund nonexistent swap");
         }
 
         const txid = await this.swap.fund(Actor.defaultActionConfig);
+
+        if (txid instanceof Transaction) {
+            await txid.status(1);
+        }
+
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
 
         const role = await this.whoAmI();
@@ -464,6 +561,10 @@ export class Actor {
             }
         }
 
+        await this.assertBalances();
+    }
+
+    public async assertBalances() {
         for (const [
             assetKey,
             expectedBalanceChange,
@@ -669,7 +770,7 @@ export class Actor {
     }
 
     private async assertLedgerState(
-        ledger: string,
+        ledger: "alpha_ledger" | "beta_ledger",
         status:
             | "NOT_DEPLOYED"
             | "DEPLOYED"
@@ -678,6 +779,20 @@ export class Actor {
             | "REFUNDED"
             | "INCORRECTLY_FUNDED"
     ) {
+        if (
+            ledger === "alpha_ledger" &&
+            this.alphaLedger.name === LedgerKind.Lightning
+        ) {
+            return;
+        }
+
+        if (
+            ledger === "beta_ledger" &&
+            this.betaLedger.name === LedgerKind.Lightning
+        ) {
+            return;
+        }
+
         this.logger.debug(
             "Waiting for cnd to see %s in state %s for swap @ %s",
             ledger,

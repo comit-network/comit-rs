@@ -119,7 +119,11 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_redeemed"))
+            .instrument(tracing::trace_span!(
+                "htlc_redeemed",
+                htlc = format_args!("{:x}", htlc_deployment.location),
+                topic = format_args!("{:x}", *REDEEM_LOG_MSG)
+            ))
             .await?;
 
         let log_data = log.data.0.as_ref();
@@ -155,7 +159,11 @@ impl
         };
 
         let (transaction, _) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_refunded"))
+            .instrument(tracing::trace_span!(
+                "htlc_refunded",
+                htlc = format_args!("{:x}", htlc_deployment.location),
+                topic = format_args!("{:x}", *REFUND_LOG_MSG)
+            ))
             .await?;
 
         Ok(Refunded { transaction })
@@ -188,7 +196,7 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_funded"))
+            .instrument(tracing::trace_span!("htlc_funded"))
             .await?;
 
         let expected_asset = &htlc_params.asset;

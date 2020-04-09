@@ -1,4 +1,4 @@
-use crate::swap_protocols::SwapId;
+use crate::swap_protocols::{NodeLocalSwapId, SwapId};
 use pem::{encode, Pem};
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -17,6 +17,7 @@ use thiserror;
 /// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
 /// solely to allow the compiler to provide us with type safety.
 
+// This will go away once rfc003 is gone.
 #[ambassador::delegatable_trait]
 pub trait DeriveSwapSeed {
     fn derive_swap_seed(&self, id: SwapId) -> SwapSeed;
@@ -24,6 +25,20 @@ pub trait DeriveSwapSeed {
 
 impl DeriveSwapSeed for RootSeed {
     fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
+        let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
+        SwapSeed(Seed(data))
+    }
+}
+
+// This exists because its safer than the above trait now that the swap_id comes
+// from Bob.  We do not want to derive the seed using information from Bob.
+#[ambassador::delegatable_trait]
+pub trait DeriveSwapSeedFromNodeLocal {
+    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed;
+}
+
+impl DeriveSwapSeedFromNodeLocal for RootSeed {
+    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed {
         let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
         SwapSeed(Seed(data))
     }

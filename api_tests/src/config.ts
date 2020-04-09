@@ -2,9 +2,9 @@ import * as tmp from "tmp";
 import { LedgerConfig } from "./utils";
 import getPort from "get-port";
 import {
+    LightningNodeConfig,
     BitcoinNodeConfig,
     EthereumNodeConfig,
-    LightningNodeConfig,
 } from "./ledgers";
 import { ActorNames } from "./actors/actor";
 

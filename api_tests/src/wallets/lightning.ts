@@ -4,7 +4,7 @@ import BigNumber from "bignumber.js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import { LightningWallet as LightningWalletSdk, Outpoint } from "comit-sdk";
-import { AddressType } from "@radar/lnrpc";
+import { AddressType, Peer } from "@radar/lnrpc";
 import { Logger } from "log4js";
 import { LightningNodeConfig } from "../ledgers";
 
@@ -92,8 +92,9 @@ export class LightningWallet implements Wallet {
         return this.inner.lnd.lnrpc.connectPeer({ addr: { pubkey, host } });
     }
 
-    public async listPeers() {
-        return this.inner.lnd.lnrpc.listPeers();
+    public async listPeers(): Promise<Peer[]> {
+        const response = await this.inner.lnd.lnrpc.listPeers();
+        return response.peers ? response.peers : [];
     }
 
     public async getChannels() {

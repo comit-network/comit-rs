@@ -4,6 +4,7 @@ import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
+import { ActorNames } from "../actors/actor";
 
 declare var global: HarnessGlobal;
 
@@ -50,7 +51,7 @@ export class Wallets {
     public async initializeForLedger<K extends keyof AllWallets>(
         name: K,
         logger: Logger,
-        actor?: string
+        actor?: ActorNames
     ) {
         switch (name) {
             case "ethereum":

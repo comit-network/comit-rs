@@ -4,21 +4,28 @@ import {
     defaultHalightLightningBitcoinHerc20EthereumErc20,
     defaultHanEthereumEtherHalightLightningBitcoin,
     defaultHerc20EthereumErc20HalightLightningBitcoin,
-} from "../src/actors/defaults";
+} from "../src/actors/swap_factory";
 
 // ******************************************** //
 // Lightning routes                               //
 // ******************************************** //
+
 describe("Lightning routes tests", () => {
     it(
-        "lightning-routes-post-eth-lnbtc-return-400",
+        "lightning-routes-post-eth-lnbtc-return-201",
         oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                defaultHanEthereumEtherHalightLightningBitcoin("", {
-                    peer_id: "",
-                })
+            const body = defaultHanEthereumEtherHalightLightningBitcoin(
+                "0346093cc4b9010fa3885df8dfcb6015bc2190bc9f46f5935a48df0417eeb7667e",
+                {
+                    peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
+                },
+                "Alice",
+                "0x00a329c0648769a73afac7f9381e08fb43dbea72"
             );
-            await expect(promise).rejects.toThrow("Route not yet supported");
+            const location = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                body
+            );
+            expect(typeof location).toBe("string");
         })
     );
 
@@ -38,9 +45,13 @@ describe("Lightning routes tests", () => {
         "lightning-routes-post-lnbtc-eth-return-400",
         oneActorTest(async ({ alice }) => {
             const promise = alice.cnd.createHalightLightningBitcoinHanEthereumEther(
-                defaultHalightLightningBitcoinHanEthereumEther("", {
-                    peer_id: "",
-                })
+                defaultHalightLightningBitcoinHanEthereumEther(
+                    "",
+                    {
+                        peer_id: "",
+                    },
+                    "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+                )
             );
             await expect(promise).rejects.toThrow("Route not yet supported");
         })

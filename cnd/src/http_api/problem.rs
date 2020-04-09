@@ -1,7 +1,8 @@
 use crate::{
     db,
-    http_api::routes::rfc003::handlers::{
-        post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
+    http_api::routes::{
+        rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
+        LndActionError,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -100,6 +101,10 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
         return HttpApiProblem::new("Swap not supported.")
             .set_status(StatusCode::BAD_REQUEST)
             .set_detail("The requested combination of ledgers and assets is not supported.");
+    }
+
+    if e.is::<LndActionError>() {
+        return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
     }
 
     tracing::error!("internal error occurred: {:#}", e);
