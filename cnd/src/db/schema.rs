@@ -104,3 +104,30 @@ table! {
        counterparty -> Text,
    }
 }
+
+// We need a way to tie the 'created' swaps with the 'finalized' swaps, possible
+// methods include:
+//
+// - Add a `local_id` row to the finalized swaps table then use an SQL join to
+//   get the right row.
+//
+// - Add `finalized_id` to 'created' swaps table that refers to the `id` in
+//   `finalized_swaps`.
+
+table! {
+    han_ethereum_ether_halight_lightning_bitcoin_created_swaps {
+        id -> Integer,
+        role -> Text,
+        dial_information -> Text,
+        ethereum_chain_id -> BigInt,
+        bitcoin_network -> Text,
+        ether_amount -> Text,
+        bitcoin_amount -> Text,
+        alpha_identity -> Text,
+        beta_identity -> Text,
+        secret_hash -> Text,
+        ethereum_expiry -> BigInt,
+        bitcoin_expiry -> BigInt, // FIXME: Is this correct?
+        local_id -> Text,
+    }
+}
