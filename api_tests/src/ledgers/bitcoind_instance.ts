@@ -42,7 +42,7 @@ export class BitcoindInstance implements LedgerInstance {
     ) {}
 
     public async start() {
-        const bin = await this.findBinary("0.17.0");
+        const bin = await this.findBinary("0.19.1");
 
         this.logger.info("Using binary", bin);
 
