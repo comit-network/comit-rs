@@ -485,7 +485,7 @@ dependencies = [
  "blockchain_contracts",
  "chrono",
  "config",
- "derivative 2.1.0",
+ "derivative 2.1.1",
  "diesel",
  "diesel_migrations",
  "digest 0.1.0",
@@ -712,9 +712,9 @@ dependencies = [
 
 [[package]]
 name = "derivative"
-version = "2.1.0"
+version = "2.1.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1eae4d76b7cefedd1b4f8cc24378b2fbd1ac1b66e3bbebe8e2192d3be81cb355"
+checksum = "cb582b60359da160a9477ee80f15c8d784c477e69c217ef2cdd4169c24ea380f"
 dependencies = [
  "proc-macro2 1.0.10",
  "quote 1.0.3",
@@ -1569,9 +1569,9 @@ checksum = "eb147597cdf94ed43ab7a9038716637d2d1bf2bc571da995d0028dec06bd3018"
 
 [[package]]
 name = "libp2p"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8a261244b8d7ff58f5d62ffa33589eb1ba7733a1dfee0902ad9fdfe62ada7009"
+checksum = "aa5aedb713f76577818529be8283e35ec5e8b3ecdccfe0231ba4d860687438ab"
 dependencies = [
  "bytes",
  "futures",
@@ -1598,7 +1598,7 @@ name = "libp2p-comit"
 version = "0.1.0"
 dependencies = [
  "bytes",
- "derivative 2.1.0",
+ "derivative 2.1.1",
  "futures",
  "futures_codec 0.4.0",
  "libp2p",
@@ -1612,9 +1612,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-core"
-version = "0.17.1"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1cfe1412f2afe1366a2661abd211bb1a27ee6a664d799071282f4fba997c6858"
+checksum = "a1d2c17158c4dca984a77a5927aac6f0862d7f50c013470a415f93be498b5739"
 dependencies = [
  "asn1_der",
  "bs58",
@@ -1646,9 +1646,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-core-derive"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a0eeb25d5f152a826eac57c7d1cc3de10d72dc4051e90fe4c0cd139f07a069a3"
+checksum = "329127858e4728db5ab60c33d5ae352a999325fdf190ed022ec7d3a4685ae2e6"
 dependencies = [
  "quote 1.0.3",
  "syn 1.0.17",
@@ -1656,9 +1656,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-dns"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "647178f8683bf868f7f14d5e5718dbdc2445b9f6b24ce99da96cecd7c5d2d1a6"
+checksum = "c0d0993481203d68e5ce2f787d033fb0cac6b850659ed6c784612db678977c71"
 dependencies = [
  "futures",
  "libp2p-core",
@@ -1667,9 +1667,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-mdns"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b752276b3bea2fca1c291f43cefc8082d8a639bb8f9052cf5adc6accfcd7b44e"
+checksum = "41e908d2aaf8ff0ec6ad1f02fe1844fd777fb0b03a68a226423630750ab99471"
 dependencies = [
  "async-std",
  "data-encoding",
@@ -1689,9 +1689,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-mplex"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0f317db8c062beecde87a8765ca03784e6f1a55daa5b9868bf60ebf9b9a2b92f"
+checksum = "0832882b06619b2e81d74e71447753ea3c068164a0bca67847d272e856a04a02"
 dependencies = [
  "bytes",
  "fnv",
@@ -1705,9 +1705,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-secio"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74130fa95effb780850ec790b7af777b893108d9b5983ab994b61d93d2eb0336"
+checksum = "a7a0509a7e47245259954fef58b85b81bf4d29ae33a4365e38d718a866698774"
 dependencies = [
  "aes-ctr",
  "ctr",
@@ -1735,9 +1735,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-swarm"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a4ec53df8978a5d6d9dac243fb1e3adf004f8b8d28f72e6f2160df34d5f39564"
+checksum = "622605817885e67b5572189c2507e514b786beb69ed85a120dbb245a7f15383d"
 dependencies = [
  "futures",
  "libp2p-core",
@@ -1750,9 +1750,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-tcp"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e25c9d9c5448c189bba7ecdd1ca23800516281476e82810eff711ef04abaf9eb"
+checksum = "b37ea44823d3ed223e4605da94b50177bc520f05ae2452286700549a32d81669"
 dependencies = [
  "async-std",
  "futures",
@@ -1765,9 +1765,9 @@ dependencies = [
 
 [[package]]
 name = "libp2p-yamux"
-version = "0.17.0"
+version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ee12c49426527908f81ffb6551b95f57149a8ea64f386bb7da3b123cdb9c01ba"
+checksum = "02f91aea50f6571e0bc6c058dc0e9b270afd41ec28dd94e9e4bf607e78b9ab87"
 dependencies = [
  "futures",
  "libp2p-core",
