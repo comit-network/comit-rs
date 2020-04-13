@@ -19,15 +19,17 @@ declare module "bitcoin-core" {
         | HexRawTransactionResponse
         | VerboseRawTransactionResponse;
 
-    interface ClientConstructorArgs {
+    export interface ClientConstructorArgs {
         network: string;
         username: string;
         password: string;
         host: string;
         port: number;
+        wallet?: string;
     }
 
     export default class BitcoinRpcClient {
+        public wallet;
         public constructor(args: ClientConstructorArgs);
 
         public getBlockchainInfo(): Promise<GetBlockchainInfoResponse>;
@@ -53,5 +55,7 @@ declare module "bitcoin-core" {
         ): Promise<string[]>;
 
         public sendRawTransaction(hexString: string): Promise<string>;
+
+        public createWallet(wallet: string): Promise<void>;
     }
 }

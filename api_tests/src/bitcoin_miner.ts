@@ -1,6 +1,6 @@
-import BitcoinRpcClient from "bitcoin-core";
 import { readFileAsync, sleep } from "./utils";
 import { BitcoinNodeConfig } from "./ledgers";
+import BitcoinRpcClient from "bitcoin-core";
 
 const configFile = process.argv[2];
 
@@ -18,13 +18,16 @@ async function run(configFile: string) {
         port: config.rpcPort,
         username: config.username,
         password: config.password,
+        wallet: config.minerWallet,
     });
 
+    const blockRewardAddress = await client.getNewAddress();
+
     // only coins after the first 101 are spendable
-    await client.generateToAddress(101, await client.getNewAddress());
+    await client.generateToAddress(101, blockRewardAddress);
 
     while (true) {
-        await client.generateToAddress(1, await client.getNewAddress());
+        await client.generateToAddress(1, blockRewardAddress);
 
         await sleep(1000);
     }
