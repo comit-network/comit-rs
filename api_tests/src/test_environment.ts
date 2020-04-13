@@ -113,19 +113,7 @@ export default class TestEnvironment extends NodeEnvironment {
     async teardown() {
         await super.teardown();
 
-        await this.cleanupAll();
-
         loggerShutdown();
-    }
-
-    async cleanupAll() {
-        const tasks = [];
-
-        for (const [, wallet] of Object.entries(this.global.lndWallets)) {
-            tasks.push(wallet.close());
-        }
-
-        await Promise.all(tasks);
     }
 
     /**

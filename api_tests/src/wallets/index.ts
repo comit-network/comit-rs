@@ -85,20 +85,6 @@ export class Wallets {
                 }
         }
     }
-
-    public async close(): Promise<void[]> {
-        const tasks = [];
-
-        if (this.wallets.lightning) {
-            tasks.push(this.wallets.lightning.close());
-        }
-
-        if (this.wallets.bitcoin) {
-            tasks.push(this.wallets.bitcoin.close());
-        }
-
-        return Promise.all(tasks);
-    }
 }
 
 export async function pollUntilMinted(

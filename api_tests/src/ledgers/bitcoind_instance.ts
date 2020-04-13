@@ -156,7 +156,7 @@ export class BitcoindInstance implements LedgerInstance {
 server=1
 printtoconsole=1
 rpcallowip=0.0.0.0/0
-nodebug=1
+debug=http, db, rpc
 rest=1
 acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
@@ -165,6 +165,7 @@ zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
 [regtest]
 bind=0.0.0.0:${this.p2pPort}
 rpcbind=0.0.0.0:${this.rpcPort}
+wallet=miner
 `;
         const config = path.join(dataDir, "bitcoin.conf");
         await writeFileAsync(config, output);
