@@ -1,41 +1,39 @@
 import { Logger } from "log4js";
 import * as bcoin from "bcoin";
 import BitcoinRpcClient from "bitcoin-core";
-import {
-    Asset,
-    BigNumber,
-    InMemoryBitcoinWallet as BitcoinWalletSdk,
-} from "comit-sdk";
+import { Asset, BigNumber } from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
 import { BitcoinNodeConfig } from "../ledgers";
+import { BitcoindWallet } from "./bitcoind_wallet";
 
 export class BitcoinWallet implements Wallet {
     public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
         const hdKey = bcoin.HDPrivateKey.generate().xprivkey(config.network);
-        const wallet = await BitcoinWalletSdk.newInstance(
-            config.network,
-            // config.host == "localhost", which appears to be invalid for bcoin
-            `127.0.0.1:${config.p2pPort}`,
-            hdKey
-        );
 
-        const bitcoinRpcClient = new BitcoinRpcClient({
+        const minerRpcClient = new BitcoinRpcClient({
             network: config.network,
             port: config.rpcPort,
             host: config.host,
             username: config.username,
             password: config.password,
+            wallet: "miner",
         });
 
-        return new BitcoinWallet(wallet, bitcoinRpcClient, logger);
+        const wallet = await BitcoindWallet.newInstance(
+            config.network,
+            hdKey,
+            config
+        );
+
+        return new BitcoinWallet(wallet, minerRpcClient, logger);
     }
 
     public MaximumFee = 100000;
 
     private constructor(
-        public readonly inner: BitcoinWalletSdk,
-        private readonly bitcoinRpcClient: BitcoinRpcClient,
+        public readonly inner: BitcoindWallet,
+        private readonly minerRpcClient: BitcoinRpcClient,
         private readonly logger: Logger
     ) {}
 
@@ -43,7 +41,7 @@ export class BitcoinWallet implements Wallet {
         minimumExpectedBalance: BigNumber,
         toAddress: string
     ): Promise<void> {
-        const blockHeight = await this.bitcoinRpcClient.getBlockCount();
+        const blockHeight = await this.minerRpcClient.getBlockCount();
         if (blockHeight < 101) {
             throw new Error(
                 "unable to mint bitcoin, coinbase transactions are not yet spendable"
@@ -53,7 +51,7 @@ export class BitcoinWallet implements Wallet {
         // make sure we have at least twice as much
         const amount = toBitcoin(minimumExpectedBalance.times(2).toString());
 
-        await this.bitcoinRpcClient.sendToAddress(toAddress, amount);
+        await this.minerRpcClient.sendToAddress(toAddress, amount);
 
         this.logger.info("Minted", amount, "bitcoin for", toAddress);
     }
@@ -94,12 +92,7 @@ export class BitcoinWallet implements Wallet {
     }
 
     public async getBlockchainTime(): Promise<number> {
-        const blockchainInfo = await this.bitcoinRpcClient.getBlockchainInfo();
-
+        const blockchainInfo = await this.minerRpcClient.getBlockchainInfo();
         return blockchainInfo.mediantime;
-    }
-
-    public async close(): Promise<void> {
-        return this.inner.close();
     }
 }

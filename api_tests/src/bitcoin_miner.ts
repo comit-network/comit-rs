@@ -18,14 +18,15 @@ async function run(configFile: string) {
         port: config.rpcPort,
         username: config.username,
         password: config.password,
+        wallet: "miner",
     });
 
     // only coins after the first 101 are spendable
-    await client.generateToAddress(101, await client.getNewAddress());
+    const address = await client.getNewAddress();
+    await client.generateToAddress(101, address);
 
     while (true) {
-        await client.generateToAddress(1, await client.getNewAddress());
-
+        await client.generateToAddress(1, address);
         await sleep(1000);
     }
 }

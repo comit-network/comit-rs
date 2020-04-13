@@ -34,6 +34,10 @@ export default class BitcoinMinerInstance {
 
         miner.unref();
 
+        miner.on("error", (error) => {
+            logger.error("bitcoin miner threw an error ", error);
+        });
+
         miner.on("exit", (code) => {
             logger.warn("bitcoin miner exited with code ", code);
         });
