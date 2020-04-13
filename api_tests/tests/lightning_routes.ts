@@ -1,10 +1,5 @@
-import { oneActorTest } from "../src/actor_test";
-import {
-    defaultHalightLightningBitcoinHanEthereumEther,
-    defaultHalightLightningBitcoinHerc20EthereumErc20,
-    defaultHanEthereumEtherHalightLightningBitcoin,
-    defaultHerc20EthereumErc20HalightLightningBitcoin,
-} from "../src/actors/swap_factory";
+import { twoActorTest } from "../src/actor_test";
+import SwapFactory from "../src/actors/swap_factory";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -12,60 +7,75 @@ import {
 
 describe("Lightning routes tests", () => {
     it(
-        "lightning-routes-post-eth-lnbtc-return-201",
-        oneActorTest(async ({ alice }) => {
-            const body = defaultHanEthereumEtherHalightLightningBitcoin(
-                "0346093cc4b9010fa3885df8dfcb6015bc2190bc9f46f5935a48df0417eeb7667e",
-                {
-                    peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb",
-                },
-                "Alice",
-                "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-201",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob, true))
+                .hanEthereumEtherHalightLightningBitcoin;
+
+            const aliceSwapLocation = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                bodies.alice
             );
-            const location = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                body
+            const bobSwapLocation = await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                bodies.bob
             );
-            expect(typeof location).toBe("string");
+
+            expect(bobSwapLocation).toBeTruthy();
+            expect(aliceSwapLocation).toBeTruthy();
         })
     );
 
     it(
-        "lightning-routes-post-erc20-lnbtc-return-400",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                defaultHerc20EthereumErc20HalightLightningBitcoin("", {
-                    peer_id: "",
-                })
-            );
-            await expect(promise).rejects.toThrow("Route not yet supported");
-        })
-    );
-
-    it(
-        "lightning-routes-post-lnbtc-eth-return-400",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.createHalightLightningBitcoinHanEthereumEther(
-                defaultHalightLightningBitcoinHanEthereumEther(
-                    "",
-                    {
-                        peer_id: "",
-                    },
-                    "0x00a329c0648769a73afac7f9381e08fb43dbea72"
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-400",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob, true))
+                .herc20EthereumErc20HalightLightningBitcoin;
+            await expect(
+                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                    bodies.alice
                 )
-            );
-            await expect(promise).rejects.toThrow("Route not yet supported");
+            ).rejects.toThrow("Route not yet supported.");
+            await expect(
+                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                    bodies.bob
+                )
+            ).rejects.toThrow("Route not yet supported.");
         })
     );
 
     it(
-        "lightning-routes-post-lnbtc-erc20-return-400",
-        oneActorTest(async ({ alice }) => {
-            const promise = alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                defaultHalightLightningBitcoinHerc20EthereumErc20("", {
-                    peer_id: "",
-                })
-            );
-            await expect(promise).rejects.toThrow("Route not yet supported");
+        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-400",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob, true))
+                .halightLightningBitcoinHanEthereumEther;
+            await expect(
+                alice.cnd.createHalightLightningBitcoinHanEthereumEther(
+                    bodies.alice
+                )
+            ).rejects.toThrow("Route not yet supported.");
+            await expect(
+                bob.cnd.createHalightLightningBitcoinHanEthereumEther(
+                    bodies.bob
+                )
+            ).rejects.toThrow("Route not yet supported.");
+        })
+    );
+
+    it(
+        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-400",
+        twoActorTest(async ({ alice, bob }) => {
+            const bodies = (await SwapFactory.newSwap(alice, bob, true))
+                .halightLightningBitcoinHerc20EthereumErc20;
+
+            await expect(
+                alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
+                    bodies.alice
+                )
+            ).rejects.toThrow("Route not yet supported.");
+            await expect(
+                bob.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
+                    bodies.bob
+                )
+            ).rejects.toThrow("Route not yet supported.");
         })
     );
 });
