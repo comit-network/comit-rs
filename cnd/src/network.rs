@@ -64,10 +64,7 @@ use std::{
     sync::Arc,
     task::{self, Poll},
 };
-use tokio::{
-    runtime::{Handle, Runtime},
-    sync::Mutex,
-};
+use tokio::{runtime::Handle, sync::Mutex};
 use tracing_futures::Instrument;
 
 #[derive(Clone, derivative::Derivative)]
@@ -75,7 +72,7 @@ use tracing_futures::Instrument;
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
-    pub swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
+    inner: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
     local_peer_id: PeerId,
 }
 
@@ -84,7 +81,6 @@ impl Swarm {
     pub fn new(
         settings: &Settings,
         seed: RootSeed,
-        runtime: &mut Runtime,
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         lnd_connector_params: LndConnectorParams,
@@ -93,6 +89,7 @@ impl Swarm {
         beta_ledger_states: Arc<LedgerStates>,
         halight_states: Arc<States>,
         database: &Sqlite,
+        task_executor: tokio::runtime::Handle,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
         let local_peer_id = PeerId::from(local_key_pair.clone().public());
@@ -109,12 +106,12 @@ impl Swarm {
             halight_states,
             seed,
             database.clone(),
-            runtime.handle().clone(),
+            task_executor.clone(),
         )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
             .executor(Box::new(TokioExecutor {
-                handle: runtime.handle().clone(),
+                handle: task_executor,
             }))
             .build();
 
@@ -125,12 +122,8 @@ impl Swarm {
 
         let swarm = Arc::new(Mutex::new(swarm));
 
-        runtime.spawn(SwarmWorker {
-            swarm: swarm.clone(),
-        });
-
         Ok(Self {
-            swarm,
+            inner: swarm,
             local_peer_id,
         })
     }
@@ -160,13 +153,13 @@ impl Swarm {
         id: NodeLocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
-        let mut guard = self.swarm.lock().await;
+        let mut guard = self.inner.lock().await;
 
         guard.initiate_communication(id, swap_params)
     }
 
     pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        let mut guard = self.swarm.lock().await;
+        let mut guard = self.inner.lock().await;
 
         guard.get_finalized_swap(id)
     }
@@ -186,8 +179,16 @@ impl libp2p::core::Executor for TokioExecutor {
     }
 }
 
-struct SwarmWorker {
-    swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
+/// The SwarmWorker, when spawned into a runtime, continuously polls the
+/// underlying swarm for events.
+///
+/// This is the main driver of the networking code.
+/// Note that the inner swarm is wrapped in an `Arc<Mutex>` and we only hold the
+/// lock for a short period of time, giving other parts of the code also the
+/// opportunity to acquire the lock and interact with the network.
+#[derive(Debug)]
+pub struct SwarmWorker {
+    pub swarm: Swarm,
 }
 
 impl futures::Future for SwarmWorker {
@@ -195,7 +196,7 @@ impl futures::Future for SwarmWorker {
 
     fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Self::Output> {
         loop {
-            let mutex = self.swarm.lock();
+            let mutex = self.swarm.inner.lock();
             futures::pin_mut!(mutex);
 
             let mut guard = futures::ready!(mutex.poll(cx));
@@ -960,7 +961,7 @@ impl ComitPeers for Swarm {
     async fn comit_peers(
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
-        let mut swarm = self.swarm.lock().await;
+        let mut swarm = self.inner.lock().await;
         Box::new(swarm.comit.connected_peers())
     }
 }
@@ -975,7 +976,7 @@ pub trait ListenAddresses {
 #[async_trait]
 impl ListenAddresses for Swarm {
     async fn listen_addresses(&self) -> Vec<Multiaddr> {
-        let swarm = self.swarm.lock().await;
+        let swarm = self.inner.lock().await;
 
         libp2p::Swarm::listeners(&swarm)
             .chain(libp2p::Swarm::external_addresses(&swarm))
@@ -994,7 +995,7 @@ pub trait PendingRequestFor {
 #[async_trait]
 impl PendingRequestFor for Swarm {
     async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
-        let swarm = self.swarm.lock().await;
+        let swarm = self.inner.lock().await;
         let mut response_channels = swarm.response_channels.lock().await;
         response_channels.remove(&swap)
     }
@@ -1032,7 +1033,7 @@ impl SendRequest for Swarm {
             .expect("constructing a frame::OutoingRequest should never fail!");
 
         let result = {
-            let mut guard = self.swarm.lock().await;
+            let mut guard = self.inner.lock().await;
             let swarm = &mut *guard;
 
             tracing::debug!(
