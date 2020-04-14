@@ -12,17 +12,17 @@ use std::sync::Arc;
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
 pub struct CreateSwapParams {
-    #[digest(prefix = "")]
+    #[digest(ignore)]
     pub role: Role,
-    #[digest(prefix = "")]
+    #[digest(ignore)]
     pub peer: DialInformation,
-    #[digest(prefix = "")]
+    #[digest(ignore)]
     pub ethereum_identity: EthereumIdentity,
     #[digest(prefix = "2001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "2002")]
     pub ethereum_amount: asset::Ether,
-    #[digest(prefix = "")]
+    #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
     #[digest(prefix = "3001")]
     pub lightning_cltv_expiry: Timestamp,
@@ -36,12 +36,6 @@ impl IntoDigestInput for asset::Lightning {
     }
 }
 
-impl IntoDigestInput for identity::Lightning {
-    fn into_digest_input(self) -> Vec<u8> {
-        vec![]
-    }
-}
-
 impl IntoDigestInput for asset::Ether {
     fn into_digest_input(self) -> Vec<u8> {
         self.to_bytes()
@@ -50,12 +44,6 @@ impl IntoDigestInput for asset::Ether {
 
 #[derive(Clone, Copy, Debug)]
 pub struct EthereumIdentity(identity::Ethereum);
-
-impl IntoDigestInput for EthereumIdentity {
-    fn into_digest_input(self) -> Vec<u8> {
-        vec![]
-    }
-}
 
 impl From<identity::Ethereum> for EthereumIdentity {
     fn from(inner: identity::Ethereum) -> Self {
@@ -66,18 +54,6 @@ impl From<identity::Ethereum> for EthereumIdentity {
 impl From<EthereumIdentity> for identity::Ethereum {
     fn from(outer: EthereumIdentity) -> Self {
         outer.0
-    }
-}
-
-impl IntoDigestInput for Role {
-    fn into_digest_input(self) -> Vec<u8> {
-        vec![]
-    }
-}
-
-impl IntoDigestInput for DialInformation {
-    fn into_digest_input(self) -> Vec<u8> {
-        vec![]
     }
 }
 
