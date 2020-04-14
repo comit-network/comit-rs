@@ -539,6 +539,15 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
             .expect("this should exist");
 
         if state.sent_finalized && state.received_finalized {
+            // EXECUTION START
+            // TODO - Starting the watchers should not be part of the communication's finalize. This is a different concern and should be properly separated.
+            // Move this code to main.rs
+            // The NetworkBehavior should just yield finalize, spawning the execution watchers should be separate from that.
+
+            // Finalize has to return the necessary "information" to start execution.
+            // Hence, the swap-id, parameters and connectors have to be returned so the watching can be started outside.
+            // Once this is separate, it should be straight forward to test the NetworkBehavior using [swarm].next()
+
             let local_swap_id = self
                 .swap_ids
                 .iter()
@@ -720,4 +729,32 @@ async fn new_han_ethereum_ether_swap(
     )
     .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
     .await
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::swap_protocols::CreateSwapParams;
+
+    #[test]
+    fn swap_communication_yields_correct_execution_parameters_for_alice() {
+
+        // -- Basic outline ot the test for Alice --
+
+        // GIVEN a swap as Alice
+        // use CreateSwapParams to create a swap
+
+        // WHEN passed to the network behavior
+        //      init swarm for Alice and Bob
+        //      use [swarm].next_event() pattern to test
+
+        // THEN (the necessary communications happens and) we receive the identities
+        // check that what is returned by finalize contains the right parameters to start execution
+    }
+
+    #[test]
+    fn swap_communication_yields_correct_execution_parameters_for_bob() {
+
+        // TODO: after test for Alice is done do same for Bob
+        // The output should include hash_secret in addition to identities
+    }
 }

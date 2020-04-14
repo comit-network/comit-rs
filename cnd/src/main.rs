@@ -152,6 +152,9 @@ fn main() -> anyhow::Result<()> {
         beta_ledger_state: Arc::clone(&invoice_states),
     };
 
+    // await finalized on the swarm here (using [swarm].next() and condition inside loop - is there a more elegant way...?)
+    // trigger the execution from parameters returned by finalized
+
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
