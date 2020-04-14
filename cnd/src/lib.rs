@@ -38,7 +38,6 @@ pub mod ethereum;
 pub mod http_api;
 pub mod init_swap;
 pub mod lightning;
-pub mod lnd;
 pub mod load_swaps;
 #[macro_use]
 pub mod network;

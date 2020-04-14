@@ -17,11 +17,10 @@ use crate::{
     db::{Save, Sqlite, Swap},
     htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    lnd::LndConnectorParams,
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
-        halight::InvoiceStates,
+        halight::{LndConnectorParams, StateStore},
         ledger,
         rfc003::{
             self,
@@ -87,7 +86,7 @@ impl Swarm {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<InvoiceStates>,
+        invoice_states: Arc<StateStore>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -271,7 +270,7 @@ impl ComitNode {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<InvoiceStates>,
+        invoice_states: Arc<StateStore>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,

@@ -1,7 +1,7 @@
 use crate::{
     asset, identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
-    swap_protocols::{halight::InvoiceStates, LedgerStates, NodeLocalSwapId, Role},
+    swap_protocols::{halight::StateStore, LedgerStates, NodeLocalSwapId, Role},
     timestamp::Timestamp,
 };
 use digest::{Digest, IntoDigestInput};
@@ -95,8 +95,8 @@ pub struct Facade2 {
     pub swarm: Swarm,
     pub alpha_ledger_state: Arc<LedgerStates>, /* We currently only support Han-HALight, this is
                                                 * Ethereum. */
-    pub beta_ledger_state: Arc<InvoiceStates>, /* We currently only support Han-HALight, this is
-                                                * Lightning. */
+    pub beta_ledger_state: Arc<StateStore>, /* We currently only support Han-HALight, this is
+                                             * Lightning. */
 }
 
 impl Facade2 {

@@ -23,21 +23,21 @@ use cnd::{
     db::Sqlite,
     file_lock::TryLockExclusive,
     http_api::route_factory,
-    jsonrpc,
-    lnd::LndConnectorParams,
-    load_swaps,
+    jsonrpc, load_swaps,
     network::Swarm,
     seed::RootSeed,
     swap_protocols::{
-        halight::InvoiceStates, Facade, Facade2, LedgerStates, SwapCommunicationStates,
+        halight::StateStore, Facade, Facade2, LedgerStates, SwapCommunicationStates,
         SwapErrorStates,
     },
 };
 
+use cnd::swap_protocols::halight::LndConnectorParams;
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
 use tokio::{net::TcpListener, runtime};
+
 mod cli;
 mod trace;
 
@@ -128,7 +128,7 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
-    let invoice_states = Arc::new(InvoiceStates::default());
+    let invoice_states = Arc::new(StateStore::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 

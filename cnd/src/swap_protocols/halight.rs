@@ -2,7 +2,6 @@ use crate::swap_protocols::{
     rfc003::{Secret, SecretHash},
     state, SwapId,
 };
-use chrono::NaiveDateTime;
 use futures::{
     future::{self, Either},
     Stream, TryFutureExt,
@@ -10,6 +9,10 @@ use futures::{
 use genawaiter::sync::Gen;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
+
+mod connector;
+
+pub use connector::*;
 
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
@@ -91,7 +94,7 @@ pub mod data {
 }
 
 #[derive(Default, Debug)]
-pub struct InvoiceStates {
+pub struct StateStore {
     states: Mutex<HashMap<SwapId, State>>,
 }
 
@@ -129,7 +132,7 @@ impl State {
 }
 
 #[async_trait::async_trait]
-impl state::Get<State> for InvoiceStates {
+impl state::Get<State> for StateStore {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
         let states = self.states.lock().await;
         let state = states.get(key).copied();
@@ -139,7 +142,7 @@ impl state::Get<State> for InvoiceStates {
 }
 
 #[async_trait::async_trait]
-impl state::Update<Event> for InvoiceStates {
+impl state::Update<Event> for StateStore {
     async fn update(&self, key: &SwapId, event: Event) {
         let mut states = self.states.lock().await;
         let entry = states.entry(*key);
@@ -177,9 +180,8 @@ impl state::Update<Event> for InvoiceStates {
 ///
 /// Returns a stream of events happening during the execution.
 pub fn new<'a, C>(
-    lnd_connector: &'a C,
+    connector: &'a C,
     params: Params,
-    _finalized_at: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: Opened + Accepted + Settled + Cancelled,
@@ -188,20 +190,17 @@ where
         |co| async move {
             co.yield_(Ok(Event::Started)).await;
 
-            let opened_or_error = lnd_connector
-                .opened(params.clone())
-                .map_ok(Event::Opened)
-                .await;
+            let opened_or_error = connector.opened(params.clone()).map_ok(Event::Opened).await;
             co.yield_(opened_or_error).await;
 
-            let accepted_or_error = lnd_connector
+            let accepted_or_error = connector
                 .accepted(params.clone())
                 .map_ok(Event::Accepted)
                 .await;
             co.yield_(accepted_or_error).await;
 
-            let settled = lnd_connector.settled(params.clone());
-            let cancelled = lnd_connector.cancelled(params);
+            let settled = connector.settled(params.clone());
+            let cancelled = connector.cancelled(params);
 
             match future::try_select(settled, cancelled).await {
                 Ok(Either::Left((settled, _))) => {

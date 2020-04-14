@@ -2,7 +2,6 @@ use crate::{
     asset,
     btsieve::ethereum::{Cache, Web3Connector},
     htlc_location, identity,
-    lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
     network::{
         oneshot_behaviour,
         protocols::{
@@ -16,7 +15,7 @@ use crate::{
     },
     seed::{DeriveSwapSeedFromNodeLocal, RootSeed},
     swap_protocols::{
-        halight::{self, InvoiceStates},
+        halight::{self, LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
         han, herc20, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
@@ -69,7 +68,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     ethereum_ledger_state: Arc<LedgerStates>,
     #[behaviour(ignore)]
-    invoices_states: Arc<InvoiceStates>,
+    halight_states: Arc<halight::StateStore>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -89,7 +88,7 @@ impl ComitLN {
         lnd_connector_params: LndConnectorParams,
         ethereum_connector: Arc<Cache<Web3Connector>>,
         ethereum_ledger_state: Arc<LedgerStates>,
-        invoices_state: Arc<InvoiceStates>,
+        invoices_state: Arc<halight::StateStore>,
         seed: RootSeed,
     ) -> Self {
         ComitLN {
@@ -109,7 +108,7 @@ impl ComitLN {
             lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
             ethereum_connector,
             ethereum_ledger_state,
-            invoices_states: invoices_state,
+            halight_states: invoices_state,
             seed,
         }
     }
@@ -566,7 +565,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .copied()
                 .expect("must exist");
 
-            let invoice_states = self.invoices_states.clone();
+            let invoice_states = self.halight_states.clone();
 
             let role = create_swap_params.role;
 
@@ -684,21 +683,17 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 async fn new_halight_swap<C>(
     local_swap_id: NodeLocalSwapId,
     secret_hash: SecretHash,
-    invoice_states: Arc<InvoiceStates>,
-    lnd_connector: C,
+    state_store: Arc<halight::StateStore>,
+    connector: C,
 ) where
     C: halight::Opened + halight::Accepted + halight::Settled + halight::Cancelled,
 {
-    let mut events = halight::new(
-        &lnd_connector,
-        halight::Params { secret_hash },
-        Utc::now().naive_local(),
-    )
-    .inspect_ok(|event| tracing::info!("yielded event {}", event))
-    .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+    let mut events = halight::new(&connector, halight::Params { secret_hash })
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
     while let Ok(Some(event)) = events.try_next().await {
-        invoice_states.update(&SwapId(local_swap_id.0), event).await;
+        state_store.update(&SwapId(local_swap_id.0), event).await;
     }
 
     tracing::info!("swap finished");
