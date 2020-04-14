@@ -38,7 +38,7 @@ pub trait Cancelled {
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum State {
-    Unknown,
+    None,
     Opened(data::Opened),
     Accepted(data::Accepted),
     Settled(data::Settled),
@@ -100,28 +100,28 @@ pub struct StateStore {
 
 impl State {
     pub fn transition_to_opened(&mut self, opened: data::Opened) {
-        match std::mem::replace(self, State::Unknown) {
-            State::Unknown => *self = State::Opened(opened),
+        match std::mem::replace(self, State::None) {
+            State::None => *self = State::Opened(opened),
             other => panic!("expected state Unknown, got {:?}", other),
         }
     }
 
     pub fn transition_to_accepted(&mut self, accepted: data::Accepted) {
-        match std::mem::replace(self, State::Unknown) {
+        match std::mem::replace(self, State::None) {
             State::Opened(_) => *self = State::Accepted(accepted),
             other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
     pub fn transition_to_settled(&mut self, settled: data::Settled) {
-        match std::mem::replace(self, State::Unknown) {
+        match std::mem::replace(self, State::None) {
             State::Accepted(_) => *self = State::Settled(settled),
             other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
     pub fn transition_to_cancelled(&mut self, cancelled: data::Cancelled) {
-        match std::mem::replace(self, State::Unknown) {
+        match std::mem::replace(self, State::None) {
             // Alice cancels invoice before Bob has accepted it.
             State::Opened(_) => *self = State::Cancelled(cancelled),
             // Alice cancels invoice after Bob has accepted it.
@@ -149,7 +149,7 @@ impl state::Update<Event> for StateStore {
 
         match (event, entry) {
             (Event::Started, Entry::Vacant(vacant)) => {
-                vacant.insert(State::Unknown);
+                vacant.insert(State::None);
             }
             (Event::Opened(opened), Entry::Occupied(mut state)) => {
                 state.get_mut().transition_to_opened(opened)

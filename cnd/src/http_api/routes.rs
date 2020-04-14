@@ -156,7 +156,7 @@ impl InitAction for AliceEthLnState {
 
     fn init_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
-            halight::State::Unknown => {
+            halight::State::None => {
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
                 let expiry = 3600;
