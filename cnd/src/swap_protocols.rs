@@ -3,6 +3,7 @@ mod facade;
 mod facade2;
 pub mod halight;
 pub mod han;
+pub mod herc20;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;

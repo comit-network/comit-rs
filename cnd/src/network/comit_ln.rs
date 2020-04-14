@@ -17,7 +17,7 @@ use crate::{
     seed::{DeriveSwapSeedFromNodeLocal, RootSeed},
     swap_protocols::{
         halight::{self, InvoiceStates},
-        han, ledger,
+        han, herc20, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         state::Update,
@@ -678,7 +678,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 /// Creates a new instance of the halight protocol.
 ///
 /// This function delegates to the `halight` module for the actual protocol
-/// implementation. It's main purpose is to annotate the protocol instance with
+/// implementation. Its main purpose is to annotate the protocol instance with
 /// logging information and store the events yielded by the protocol in
 /// `InvoiceStates`.
 async fn new_halight_swap<C>(
@@ -720,4 +720,33 @@ async fn new_han_ethereum_ether_swap(
     )
     .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
     .await
+}
+
+/// Creates a new instance of the herc20 protocol.
+///
+/// This function delegates to the `herc20` module for the actual protocol
+/// implementation. Its main purpose is to annotate the protocol instance with
+/// logging information and store the events yielded by the protocol in
+/// `InvoiceStates`.
+#[allow(dead_code)]
+async fn new_herc20_swap<C>(
+    local_swap_id: NodeLocalSwapId,
+    params: herc20::Params,
+    state_store: Arc<herc20::States>,
+    connector: C,
+) where
+    C: herc20::WaitForDeployed
+        + herc20::WaitForFunded
+        + herc20::WaitForRedeemed
+        + herc20::WaitForRefunded,
+{
+    let mut events = herc20::new(&connector, params)
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        state_store.update(&SwapId(local_swap_id.0), event).await;
+    }
+
+    tracing::info!("swap finished");
 }
