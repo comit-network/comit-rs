@@ -7,7 +7,7 @@ import SwapFactory from "../src/actors/swap_factory";
 
 describe("Lightning routes tests", () => {
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-201",
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-created",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .hanEthereumEtherHalightLightningBitcoin;
@@ -25,7 +25,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-400",
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .herc20EthereumErc20HalightLightningBitcoin;
@@ -43,7 +43,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-400",
+        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .halightLightningBitcoinHanEthereumEther;
@@ -61,7 +61,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-400",
+        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .halightLightningBitcoinHerc20EthereumErc20;
@@ -76,6 +76,25 @@ describe("Lightning routes tests", () => {
                     bodies.bob
                 )
             ).rejects.toThrow("Route not yet supported.");
+        })
+    );
+
+    it(
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-invalid-body",
+        twoActorTest(async ({ alice, bob }) => {
+            await expect(
+                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                    // @ts-ignore
+                    {}
+                )
+            ).rejects.toThrow("Invalid body.");
+
+            await expect(
+                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                    // @ts-ignore
+                    {}
+                )
+            ).rejects.toThrow("Invalid body.");
         })
     );
 });

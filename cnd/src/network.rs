@@ -28,7 +28,7 @@ use crate::{
             LedgerState, SwapCommunication,
         },
         state::Insert,
-        CreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId, Role,
+        HanEtherHalightCreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId, Role,
         SwapCommunicationStates, SwapId, SwapProtocol,
     },
     transaction,
@@ -150,7 +150,11 @@ impl Swarm {
         unimplemented!()
     }
 
-    pub async fn initiate_communication(&self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
+    pub async fn initiate_communication(
+        &self,
+        id: NodeLocalSwapId,
+        swap_params: HanEtherHalightCreateSwapParams,
+    ) {
         let mut guard = self.swarm.lock().await;
 
         guard.initiate_communication(id, swap_params)
@@ -317,7 +321,11 @@ impl ComitNode {
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 
-    pub fn initiate_communication(&mut self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
+    pub fn initiate_communication(
+        &mut self,
+        id: NodeLocalSwapId,
+        swap_params: HanEtherHalightCreateSwapParams,
+    ) {
         self.comit_ln.initiate_communication(id, swap_params)
     }
 
