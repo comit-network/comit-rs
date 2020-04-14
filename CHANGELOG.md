@@ -7,7 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Changed
+### Fixed
+
+- Deserialization problem of bitcoind's response: Bitcoind returns as chain/network either `main`,`test` or `regtest`. This fix was manually tested against bitcoind (0.17, 0.18 and 0.19).
+
+### Changed
 
 - Ensure that lnd parameters are defaulted if not present.
 
