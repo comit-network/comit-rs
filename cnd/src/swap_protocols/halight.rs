@@ -17,32 +17,32 @@ pub use connector::*;
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForOpened {
-    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<data::Opened>;
+    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<Opened>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForAccepted {
-    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<data::Accepted>;
+    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForSettled {
-    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<data::Settled>;
+    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForCancelled {
-    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<data::Cancelled>;
+    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum State {
     None,
-    Opened(data::Opened),
-    Accepted(data::Accepted),
-    Settled(data::Settled),
-    Cancelled(data::Cancelled),
+    Opened(Opened),
+    Accepted(Accepted),
+    Settled(Settled),
+    Cancelled(Cancelled),
 }
 
 /// Represents the events in the halight protocol.
@@ -56,7 +56,7 @@ pub enum Event {
     /// On the recipient side, this means the hold invoice has been added to
     /// lnd. On the (payment) sender side, we cannot (yet) know about this
     /// so we just have to assume that this happens.
-    Opened(data::Opened),
+    Opened(Opened),
 
     /// The payment to the invoice was accepted but the preimage has not yet
     /// been revealed.
@@ -64,61 +64,58 @@ pub enum Event {
     /// On the recipient side, this means the hold invoice moved to the
     /// `Accepted` state. On the (payment) sender side, we assume that once
     /// the payment is `InFlight`, it also reached the recipient.
-    Accepted(data::Accepted),
+    Accepted(Accepted),
 
     /// The payment is settled and therefore the preimage was revealed.
-    Settled(data::Settled),
+    Settled(Settled),
 
     /// The payment was cancelled.
-    Cancelled(data::Cancelled),
+    Cancelled(Cancelled),
 }
 
 /// Represents the data available at said state.
-pub mod data {
-    // These empty types are useful because they give us additional type safety.
-    use super::*;
+///
+/// These empty types are useful because they give us additional type safety.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Opened;
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Opened;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Accepted;
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Accepted;
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Settled {
-        pub secret: Secret,
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Cancelled;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Settled {
+    pub secret: Secret,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Cancelled;
 
 #[derive(Default, Debug)]
 pub struct States(Mutex<HashMap<SwapId, State>>);
 
 impl State {
-    pub fn transition_to_opened(&mut self, opened: data::Opened) {
+    pub fn transition_to_opened(&mut self, opened: Opened) {
         match std::mem::replace(self, State::None) {
             State::None => *self = State::Opened(opened),
             other => panic!("expected state Unknown, got {:?}", other),
         }
     }
 
-    pub fn transition_to_accepted(&mut self, accepted: data::Accepted) {
+    pub fn transition_to_accepted(&mut self, accepted: Accepted) {
         match std::mem::replace(self, State::None) {
             State::Opened(_) => *self = State::Accepted(accepted),
             other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
-    pub fn transition_to_settled(&mut self, settled: data::Settled) {
+    pub fn transition_to_settled(&mut self, settled: Settled) {
         match std::mem::replace(self, State::None) {
             State::Accepted(_) => *self = State::Settled(settled),
             other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
-    pub fn transition_to_cancelled(&mut self, cancelled: data::Cancelled) {
+    pub fn transition_to_cancelled(&mut self, cancelled: Cancelled) {
         match std::mem::replace(self, State::None) {
             // Alice cancels invoice before Bob has accepted it.
             State::Opened(_) => *self = State::Cancelled(cancelled),

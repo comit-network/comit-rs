@@ -13,7 +13,7 @@ use crate::{
             ethereum,
             lnd::{self, Chain},
         },
-        halight::{self, data},
+        halight::{self, Settled},
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
@@ -288,7 +288,7 @@ impl RedeemAction for BobEthLnState {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
             (
                 LedgerState::Funded { htlc_location, .. },
-                halight::State::Settled(data::Settled { secret }),
+                halight::State::Settled(Settled { secret }),
             ) => {
                 let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
