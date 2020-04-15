@@ -6,6 +6,7 @@ pub mod transport;
 
 pub use transport::ComitTransport;
 
+use crate::network::protocols::finalized;
 use crate::{
     asset::AssetKind,
     btsieve::{
@@ -228,6 +229,123 @@ pub struct ComitNode {
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
     #[behaviour(ignore)]
     task_executor: Handle,
+}
+
+// TODO implement this
+impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalized::Message>> for ComitNode {
+    fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<finalized::Message>) {
+        // TODO: Event matching logic, extract params
+
+        match event {}
+
+        !unimplemented!()
+
+        // let local_swap_id = event.local_swap_id;
+        //
+        // let create_swap_params = event.swap_params;
+        //
+        // let secret_hash = event.secret_hash;
+        //
+        // let invoice_states = event.invoice_state;
+        //
+        // let role = create_swap_params.role;
+
+        // TODO: The blockchain connectors should probably be constructed here?
+
+        // TODO: Spin up the blockchain watchers using code below (might equire pulling more code in from ComitLn)
+
+        // if role == Role::Alice {
+        //     tokio::task::spawn({
+        //         let lnd_connector = (*self.lnd_connector_as_receiver)
+        //             .clone()
+        //             .read_certificate()
+        //             .expect("Failure reading tls certificate")
+        //             .read_macaroon()
+        //             .expect("Failure reading macaroon");
+        //
+        //         new_halight_swap(local_swap_id, secret_hash, invoice_states, lnd_connector)
+        //             .instrument(
+        //                 tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+        //             )
+        //     });
+        // } else {
+        //     // This is Bob
+        //     tokio::task::spawn({
+        //         let lnd_connector = (*self.lnd_connector_as_sender)
+        //             .clone()
+        //             .read_certificate()
+        //             .expect("Failure reading tls certificate")
+        //             .read_macaroon()
+        //             .expect("Failure reading macaroon");
+        //
+        //         new_halight_swap(local_swap_id, secret_hash, invoice_states, lnd_connector)
+        //             .instrument(
+        //                 tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+        //             )
+        //     });
+        // }
+        //
+        // if role == Role::Alice {
+        //     tokio::task::spawn({
+        //         let connector = self.ethereum_connector.clone();
+        //         let alice_ethereum_identity = create_swap_params.ethereum_identity;
+        //         let bob_ethereum_identity =
+        //             self.ethereum_identities.get(&swap_id).copied().unwrap();
+        //
+        //         let asset = create_swap_params.ethereum_amount.clone();
+        //         let ledger = ledger::Ethereum::default();
+        //         let expiry = create_swap_params.ethereum_absolute_expiry;
+        //         let secret_hash = self
+        //             .secret_hashes
+        //             .get(&swap_id)
+        //             .copied()
+        //             .expect("must exist");
+        //
+        //         new_han_ethereum_ether_swap(
+        //             local_swap_id,
+        //             connector,
+        //             self.ethereum_ledger_state.clone(),
+        //             HtlcParams {
+        //                 asset,
+        //                 ledger,
+        //                 redeem_identity: bob_ethereum_identity,
+        //                 refund_identity: alice_ethereum_identity.into(),
+        //                 expiry,
+        //                 secret_hash,
+        //             },
+        //             role,
+        //         )
+        //     });
+        // } else {
+        //     tokio::task::spawn({
+        //         // This is Bob
+        //         let connector = self.ethereum_connector.clone();
+        //         let alice_ethereum_identity =
+        //             self.ethereum_identities.get(&swap_id).copied().unwrap();
+        //         let bob_ethereum_identity = create_swap_params.ethereum_identity;
+        //
+        //         let asset = create_swap_params.ethereum_amount.clone();
+        //         let ledger = ledger::Ethereum::default();
+        //         let expiry = create_swap_params.ethereum_absolute_expiry;
+        //         let secret_hash = self.secret_hashes.get(&swap_id).copied().unwrap();
+        //
+        //         new_han_ethereum_ether_swap(
+        //             local_swap_id,
+        //             connector,
+        //             self.ethereum_ledger_state.clone(),
+        //             HtlcParams {
+        //                 asset,
+        //                 ledger,
+        //                 redeem_identity: bob_ethereum_identity.into(),
+        //                 refund_identity: alice_ethereum_identity,
+        //                 expiry,
+        //                 secret_hash,
+        //             },
+        //             role,
+        //         )
+        //     });
+        // }
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -902,9 +1020,12 @@ where
     Save::save(&db, swap_request.clone()).await?;
 
     swap_communication_states
-        .insert(id, SwapCommunication::Proposed {
-            request: swap_request,
-        })
+        .insert(
+            id,
+            SwapCommunication::Proposed {
+                request: swap_request,
+            },
+        )
         .await;
 
     alpha_ledger_state
