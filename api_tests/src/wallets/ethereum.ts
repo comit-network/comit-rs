@@ -120,7 +120,21 @@ export class EthereumWallet implements Wallet {
             gasLimit: 21000,
         });
 
-        await this.parity.provider.waitForTransaction(response.hash, 1);
+        this.logger.debug(
+            "Transaction: ",
+            response.hash,
+            " sent, waiting to be confirmed."
+        );
+        const transactionReceipt = await this.parity.provider.waitForTransaction(
+            response.hash,
+            1
+        );
+        this.logger.debug(
+            "Transaction: ",
+            transactionReceipt.transactionHash,
+            " confirmed in block: ",
+            transactionReceipt.blockHash
+        );
 
         const balance = await this.getBalanceByAsset(asset);
 
