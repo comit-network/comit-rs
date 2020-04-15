@@ -4,7 +4,7 @@ use crate::{
     btsieve::ethereum::{
         watch_for_contract_creation, watch_for_event, Cache, Event, Topic, Web3Connector,
     },
-    ethereum::{H256, U256},
+    ethereum::{Hash, U256},
     htlc_location, identity,
     swap_protocols::{
         ledger::Ethereum,
@@ -24,10 +24,10 @@ use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
 lazy_static::lazy_static! {
-    static ref REDEEM_LOG_MSG: H256 = blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG.parse().expect("to be valid hex");
-    static ref REFUND_LOG_MSG: H256 = blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG.parse().expect("to be valid hex");
+    static ref REDEEM_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG.parse().expect("to be valid hex");
+    static ref REFUND_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG.parse().expect("to be valid hex");
     /// keccak('Transfer(address,address,uint256)')
-    static ref TRANSFER_LOG_MSG: H256 = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
+    static ref TRANSFER_LOG_MSG: Hash = "ddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef".parse().expect("to be valid hex");
 }
 
 #[async_trait::async_trait]
@@ -80,9 +80,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = %hex::encode(&expected_bytecode.0)
+                ))
                 .await?;
 
         Ok(Deployed {
@@ -114,7 +119,11 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_redeemed"))
+            .instrument(tracing::trace_span!(
+                "htlc_redeemed",
+                htlc = format_args!("{:x}", htlc_deployment.location),
+                topic = format_args!("{:x}", *REDEEM_LOG_MSG)
+            ))
             .await?;
 
         let log_data = log.data.0.as_ref();
@@ -150,7 +159,11 @@ impl
         };
 
         let (transaction, _) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_refunded"))
+            .instrument(tracing::trace_span!(
+                "htlc_refunded",
+                htlc = format_args!("{:x}", htlc_deployment.location),
+                topic = format_args!("{:x}", *REFUND_LOG_MSG)
+            ))
             .await?;
 
         Ok(Refunded { transaction })
@@ -183,7 +196,7 @@ impl
         };
 
         let (transaction, log) = watch_for_event(self, start_of_swap, event)
-            .instrument(tracing::info_span!("htlc_funded"))
+            .instrument(tracing::trace_span!("htlc_funded"))
             .await?;
 
         let expected_asset = &htlc_params.asset;
@@ -215,9 +228,14 @@ impl
         htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
+        let expected_bytecode = htlc_params.clone().bytecode();
+
         let (transaction, location) =
-            watch_for_contract_creation(self, start_of_swap, htlc_params.clone().bytecode())
-                .instrument(tracing::info_span!("htlc_deployed"))
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
+                .instrument(tracing::trace_span!(
+                    "htlc_deployed",
+                    expected_bytecode = %hex::encode(&expected_bytecode.0)
+                ))
                 .await?;
 
         Ok(Deployed {

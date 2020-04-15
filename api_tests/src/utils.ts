@@ -5,12 +5,14 @@ import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
 import rimraf from "rimraf";
-import { Mutex } from "async-mutex";
 import { exec } from "child_process";
 import { LightningWallet } from "./wallets/lightning";
-import { BitcoinNodeConfig } from "./ledgers/bitcoin";
-import { EthereumNodeConfig } from "./ledgers/ethereum";
 import { Logger } from "log4js";
+import {
+    BitcoinNodeConfig,
+    EthereumNodeConfig,
+    LightningNodeConfig,
+} from "./ledgers";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -18,18 +20,20 @@ export interface HarnessGlobal extends Global.Global {
         alice?: LightningWallet;
         bob?: LightningWallet;
     };
-    projectRoot: string;
     tokenContract: string;
-    parityAccountMutex: Mutex;
+    parityLockDir: string;
+    cargoTargetDir: string;
 
     getDataDir: (program: string) => Promise<string>;
     getLogFile: (pathElements: string[]) => string;
-    getLogger: (category: string) => Logger;
+    getLogger: (categories: string[]) => Logger;
 }
 
 export interface LedgerConfig {
     bitcoin?: BitcoinNodeConfig;
     ethereum?: EthereumNodeConfig;
+    aliceLnd?: LightningNodeConfig;
+    bobLnd?: LightningNodeConfig;
 }
 
 export const unlinkAsync = promisify(fs.unlink);
@@ -37,6 +41,7 @@ export const existsAsync = promisify(fs.exists);
 export const openAsync = promisify(fs.open);
 export const mkdirAsync = promisify(fs.mkdir);
 export const writeFileAsync = promisify(fs.writeFile);
+export const readFileAsync = promisify(fs.readFile);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 
@@ -44,19 +49,6 @@ export async function sleep(time: number) {
     return new Promise((res) => {
         setTimeout(res, time);
     });
-}
-
-export async function timeout<T>(ms: number, promise: Promise<T>): Promise<T> {
-    // Create a promise that rejects in <ms> milliseconds
-    const timeout = new Promise<T>((_, reject) => {
-        const id = setTimeout(() => {
-            clearTimeout(id);
-            reject(new Error(`timed out after ${ms}ms`));
-        }, ms);
-    });
-
-    // Returns a race between our timeout and the passed in promise
-    return Promise.race([promise, timeout]);
 }
 
 export const DEFAULT_ALPHA = {

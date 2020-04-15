@@ -6,15 +6,12 @@ use crate::{
     btsieve::{
         find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
-    ethereum::{Address, Bytes, Input, Log, Transaction, TransactionReceipt, H256, U256},
+    ethereum::{Address, Block, Bytes, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
 use anyhow;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use genawaiter::{sync::Gen, GeneratorState};
-
-type Hash = H256;
-type Block = crate::ethereum::Block;
 
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
@@ -24,7 +21,7 @@ pub trait ReceiptByHash: Send + Sync + 'static {
 impl BlockHash for Block {
     type BlockHash = Hash;
 
-    fn block_hash(&self) -> H256 {
+    fn block_hash(&self) -> Hash {
         self.hash
             .expect("Connector returned latest block with null hash")
     }
@@ -33,7 +30,7 @@ impl BlockHash for Block {
 impl PreviousBlockHash for Block {
     type BlockHash = Hash;
 
-    fn previous_block_hash(&self) -> H256 {
+    fn previous_block_hash(&self) -> Hash {
         self.parent_hash
     }
 }
@@ -41,7 +38,7 @@ impl PreviousBlockHash for Block {
 pub async fn watch_for_contract_creation<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,
-    bytecode: Bytes,
+    bytecode: &Bytes,
 ) -> anyhow::Result<(Transaction, Address)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
@@ -50,7 +47,32 @@ where
         matching_transaction_and_receipt(blockchain_connector, start_of_swap, |transaction| {
             // transaction.to address is None if, and only if, the transaction
             // creates a contract.
-            transaction.to.is_none() && transaction.input == bytecode
+
+            let is_contract_creation = transaction.to.is_none();
+            let is_expected_contract = &transaction.input == bytecode;
+
+            if !is_contract_creation {
+                tracing::trace!("rejected because transaction doesn't create a contract");
+            }
+
+            if !is_expected_contract {
+                tracing::trace!("rejected because contract code doesn't match");
+
+                // only compute levenshtein distance if we are on trace level, converting to hex is expensive at this scale
+                if tracing::level_enabled!(tracing::level_filters::LevelFilter::TRACE) {
+                    let actual = hex::encode(&transaction.input);
+                    let expected = hex::encode(&bytecode);
+
+                    let distance = levenshtein::levenshtein(&actual, &expected);
+
+                    // We probably need to find a meaningful value here, expiry is 4 bytes.
+                    if distance < 10 {
+                        tracing::warn!("found contract with slightly different parameters (levenshtein-distance < 10), this could be a bug!")
+                    }
+                }
+            }
+
+            is_contract_creation && is_expected_contract
         })
         .await?;
 
@@ -124,19 +146,33 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
+                let block_hash = block
+                    .hash
+                    .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
+
+                let span =
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block_hash));
+                let _enter = span.enter();
+
+                tracing::trace!("checking {} transactions", block.transactions.len());
+
                 for transaction in block.transactions.into_iter() {
+                    let tx_hash = transaction.hash;
+                    let span = tracing::trace_span!(
+                        "matching_transaction",
+                        txhash = format_args!("{:x}", tx_hash)
+                    );
+                    let _enter = span.enter();
+
                     if matcher(&transaction) {
-                        let receipt = fetch_receipt(connector, transaction.hash).await?;
+                        let receipt = fetch_receipt(connector, tx_hash).await?;
                         if !receipt.is_status_ok() {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
-                            tracing::warn!(
-                                "transaction matched {:x} but status was NOT OK",
-                                transaction.hash,
-                            );
+                            tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched {:x}", transaction.hash,);
+                        tracing::info!("transaction matched");
                         return Ok((transaction, receipt));
                     }
                 }
@@ -170,40 +206,50 @@ where
                     .hash
                     .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
 
+                let span =
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block_hash));
+                let _enter = span.enter();
+
                 let maybe_contains_transaction = topics.iter().all(|topic| {
                     topic.as_ref().map_or(true, |topic| {
                         block
                             .logs_bloom
-                            .contains_input(Input::Raw(topic.0.as_ref()))
+                            .contains_input(Input::Raw(&topic.0.as_bytes()))
                     })
                 });
                 if !maybe_contains_transaction {
                     tracing::trace!(
-                        "bloom filter indicates that block does not contain transaction:
-                {:x}",
-                        block_hash,
+                    "bloom filter indicates that this block will not contain an instance of the event"
+
                     );
                     continue;
+                } else {
+                    tracing::trace!(
+                        "bloom filter indicates that this block might contain an instance of the event"
+                    );
                 }
 
-                tracing::trace!(
-                    "bloom filter indicates that we should check the block for transactions: {:x}",
-                    block_hash,
-                );
+                tracing::trace!("checking {} transactions", block.transactions.len());
+
                 for transaction in block.transactions.into_iter() {
-                    let receipt = fetch_receipt(connector, transaction.hash).await?;
+                    let tx_hash = transaction.hash;
+
+                    let span = tracing::trace_span!(
+                        "matching_transaction",
+                        txhash = format_args!("{:x}", tx_hash)
+                    );
+                    let _enter = span.enter();
+
+                    let receipt = fetch_receipt(connector, tx_hash).await?;
                     let status_is_ok = receipt.is_status_ok();
                     if let Some(log) = matcher(receipt) {
                         if !status_is_ok {
                             // This can be caused by a failed attempt to complete an action,
                             // for example, sending a transaction with low gas.
-                            tracing::warn!(
-                                "transaction matched {:x} but status was NOT OK",
-                                transaction.hash,
-                            );
+                            tracing::warn!("transaction matched but status was NOT OK");
                             continue;
                         }
-                        tracing::trace!("transaction matched {:x}", transaction.hash,);
+                        tracing::info!("transaction matched");
                         return Ok((transaction, log));
                     }
                 }
@@ -227,7 +273,7 @@ impl Predates for Block {
 
 #[derive(Clone, Copy, Default, Eq, PartialEq, serde::Serialize, serdebug::SerDebug)]
 #[serde(transparent)]
-pub struct Topic(pub H256);
+pub struct Topic(pub Hash);
 
 /// Event works similar to web3 filters:
 /// https://web3js.readthedocs.io/en/1.0/web3-eth-subscribe.html?highlight=filter#subscribe-logs

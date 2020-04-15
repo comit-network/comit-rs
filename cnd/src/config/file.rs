@@ -1,11 +1,15 @@
 use crate::{
-    config::{Bitcoind, Data, Lightning, Network, Parity},
+    config::{Bitcoind, Data, Network, Parity},
     swap_protocols::ledger::ethereum,
 };
 use config as config_rs;
 use log::LevelFilter;
 use serde::{Deserialize, Serialize};
-use std::{ffi::OsStr, net::SocketAddr, path::Path};
+use std::{
+    ffi::OsStr,
+    net::SocketAddr,
+    path::{Path, PathBuf},
+};
 
 /// This struct aims to represent the configuration file as it appears on disk.
 ///
@@ -34,6 +38,18 @@ pub struct Bitcoin {
 pub struct Ethereum {
     pub chain_id: ethereum::ChainId,
     pub parity: Option<Parity>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lightning {
+    pub network: bitcoin::Network,
+    pub lnd: Option<Lnd>,
+}
+
+#[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
+pub struct Lnd {
+    pub rest_api_url: reqwest::Url,
+    pub dir: PathBuf,
 }
 
 impl File {
@@ -135,7 +151,7 @@ pub enum None {
 mod tests {
     use super::*;
     use crate::{
-        config::{Bitcoind, Lnd, Parity, Settings},
+        config::{Bitcoind, Parity, Settings},
         swap_protocols::ledger::ethereum,
     };
     use reqwest::Url;
@@ -222,7 +238,8 @@ node_url = "http://localhost:8545/"
 network = "regtest"
 
 [lightning.lnd]
-rest_api_socket = "127.0.0.1:8080"
+rest_api_url = "https://localhost:8080"
+dir = "/foo/bar"
 "#;
         let file = File {
             network: Some(Network {
@@ -255,11 +272,8 @@ rest_api_socket = "127.0.0.1:8080"
             lightning: Some(Lightning {
                 network: bitcoin::Network::Regtest,
                 lnd: Some(Lnd {
-                    rest_api_socket: Some(SocketAddr::new(
-                        IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)),
-                        8080,
-                    )),
-                    dir: None,
+                    rest_api_url: "https://localhost:8080".parse().unwrap(),
+                    dir: PathBuf::from("/foo/bar"),
                 }),
             }),
         };

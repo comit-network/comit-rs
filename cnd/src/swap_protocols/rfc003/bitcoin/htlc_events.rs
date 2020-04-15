@@ -92,12 +92,14 @@ where
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
-        let (transaction, _) =
-            watch_for_spent_outpoint(self, start_of_swap, htlc_deployment.location, vec![vec![
-                1u8,
-            ]])
-            .instrument(tracing::info_span!("htlc_redeemed"))
-            .await?;
+        let (transaction, _) = watch_for_spent_outpoint(
+            self,
+            start_of_swap,
+            htlc_deployment.location,
+            htlc_params.redeem_identity,
+        )
+        .instrument(tracing::info_span!("htlc_redeemed"))
+        .await?;
 
         let secret = extract_secret(&transaction, &htlc_params.secret_hash)
             .expect("Redeem transaction must contain secret");
@@ -118,14 +120,18 @@ where
 {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
+        htlc_params: &HtlcParams<B, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
-        let (transaction, _) =
-            watch_for_spent_outpoint(self, start_of_swap, htlc_deployment.location, vec![vec![]])
-                .instrument(tracing::info_span!("htlc_refunded"))
-                .await?;
+        let (transaction, _) = watch_for_spent_outpoint(
+            self,
+            start_of_swap,
+            htlc_deployment.location,
+            htlc_params.refund_identity,
+        )
+        .instrument(tracing::info_span!("htlc_refunded"))
+        .await?;
 
         Ok(Refunded { transaction })
     }

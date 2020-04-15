@@ -168,7 +168,7 @@ mod tests {
     #[test]
     fn erc20_quantity_to_header() -> Result<(), serde_json::Error> {
         let quantity = asset::Erc20::new(
-            Address::zero(),
+            Address::from([0u8; 20]),
             asset::Erc20Quantity::from_wei(U256::from(100_000_000_000_000u64)),
         );
         let header = AssetKind::from(quantity).to_header()?;

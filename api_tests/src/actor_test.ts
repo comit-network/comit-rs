@@ -1,7 +1,6 @@
 import { Actors } from "./actors";
 import { createActors } from "./create_actors";
-import JasmineSmacker from "smack-my-jasmine-up";
-import { timeout } from "./utils";
+import pTimeout from "p-timeout";
 import ProvidesCallback = jest.ProvidesCallback;
 
 /*
@@ -13,7 +12,8 @@ function nActorTest(
     testFn: (actors: Actors) => Promise<void>
 ): ProvidesCallback {
     return async (done) => {
-        const name = JasmineSmacker.getCurrentTestName();
+        // @ts-ignore
+        const name = jasmine.currentTestName;
         if (!name.match(/[A-z0-9\-]+/)) {
             // We use the test name as a file name for the log and hence need to restrict it.
             throw new Error(
@@ -24,7 +24,7 @@ function nActorTest(
         const actors = await createActors(name, actorNames);
 
         try {
-            await timeout(60_000, testFn(actors));
+            await pTimeout(testFn(actors), 120_000);
         } catch (e) {
             for (const actorName of actorNames) {
                 await actors.getActorByName(actorName).dumpState();
@@ -32,7 +32,8 @@ function nActorTest(
             throw e;
         } finally {
             for (const actorName of actorNames) {
-                await actors.getActorByName(actorName).stop();
+                const actor = actors.getActorByName(actorName);
+                await Promise.all([actor.stop(), actor.wallets.close()]);
             }
         }
         done();

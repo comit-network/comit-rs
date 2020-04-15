@@ -2,15 +2,15 @@ use anyhow::Context;
 use async_trait::async_trait;
 use cnd::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, TransactionReceipt, H256},
+    ethereum::{Block, Hash, TransactionReceipt},
 };
 use futures::{stream::BoxStream, StreamExt};
 use std::{collections::HashMap, time::Duration};
 use tokio::{stream, sync::Mutex, time::throttle};
 
 pub struct EthereumConnectorMock {
-    all_blocks: HashMap<H256, Block>,
-    receipts: HashMap<H256, TransactionReceipt>,
+    all_blocks: HashMap<Hash, Block>,
+    receipts: HashMap<Hash, TransactionReceipt>,
     latest_blocks: Mutex<BoxStream<'static, Block>>,
 }
 
@@ -18,7 +18,7 @@ impl EthereumConnectorMock {
     pub fn new(
         latest_blocks: Vec<Block>,
         all_blocks: Vec<Block>,
-        receipts: Vec<(H256, TransactionReceipt)>,
+        receipts: Vec<(Hash, TransactionReceipt)>,
     ) -> Self {
         let all_blocks = all_blocks
             .into_iter()
@@ -61,7 +61,7 @@ impl LatestBlock for EthereumConnectorMock {
 #[async_trait]
 impl BlockByHash for EthereumConnectorMock {
     type Block = Block;
-    type BlockHash = H256;
+    type BlockHash = Hash;
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         self.all_blocks
@@ -73,7 +73,7 @@ impl BlockByHash for EthereumConnectorMock {
 
 #[async_trait]
 impl ReceiptByHash for EthereumConnectorMock {
-    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
         self.receipts
             .get(&transaction_hash)
             .cloned()

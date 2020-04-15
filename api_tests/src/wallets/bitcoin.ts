@@ -8,7 +8,7 @@ import {
 } from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
-import { BitcoinNodeConfig } from "../ledgers/bitcoin";
+import { BitcoinNodeConfig } from "../ledgers";
 
 export class BitcoinWallet implements Wallet {
     public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {
@@ -97,5 +97,9 @@ export class BitcoinWallet implements Wallet {
         const blockchainInfo = await this.bitcoinRpcClient.getBlockchainInfo();
 
         return blockchainInfo.mediantime;
+    }
+
+    public async close(): Promise<void> {
+        return this.inner.close();
     }
 }

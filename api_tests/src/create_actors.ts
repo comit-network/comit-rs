@@ -1,29 +1,25 @@
 import { Actors } from "./actors";
-import { Actor } from "./actors/actor";
+import { Actor, ActorNames } from "./actors/actor";
 import { HarnessGlobal } from "./utils";
 
 declare var global: HarnessGlobal;
 
 export async function createActors(
     testName: string,
-    actorNames: string[]
+    actorNames: ActorNames[]
 ): Promise<Actors> {
     const actorsMap = new Map<string, Actor>();
 
     const listPromises: Promise<Actor>[] = [];
     for (const name of actorNames) {
-        const cndLogFile = global.getLogFile([
-            "tests",
-            testName,
-            `cnd-${name}.log`,
-        ]);
-        const actorLogger = global.getLogger(`tests/${testName}/${name}`);
+        const cndLogFile = global.getLogFile([testName, `cnd-${name}.log`]);
+        const actorLogger = global.getLogger([testName, name]);
 
         listPromises.push(
             Actor.newInstance(
                 name,
                 global.ledgerConfigs,
-                global.projectRoot,
+                global.cargoTargetDir,
                 cndLogFile,
                 actorLogger
             )

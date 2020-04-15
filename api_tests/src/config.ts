@@ -1,8 +1,12 @@
 import * as tmp from "tmp";
-import { BitcoinNodeConfig } from "./ledgers/bitcoin";
-import { EthereumNodeConfig } from "./ledgers/ethereum";
 import { LedgerConfig } from "./utils";
 import getPort from "get-port";
+import {
+    LightningNodeConfig,
+    BitcoinNodeConfig,
+    EthereumNodeConfig,
+} from "./ledgers";
+import { ActorNames } from "./actors/actor";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -18,14 +22,14 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: string) {
+    public static async for(name: ActorNames) {
         return new E2ETestActorConfig(await getPort(), await getPort(), name);
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: string
+        public readonly name: ActorNames
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -50,14 +54,55 @@ export class E2ETestActorConfig {
             logging: {
                 level: "Trace",
             },
-            ...createLedgerConnectors(ledgerConfig),
+            ...this.createLedgerConnectors(ledgerConfig),
         };
+    }
+
+    private createLedgerConnectors(
+        ledgerConfig: LedgerConfig
+    ): LedgerConnectors {
+        const config: LedgerConnectors = {};
+
+        if (ledgerConfig.bitcoin) {
+            config.bitcoin = bitcoinConnector(ledgerConfig.bitcoin);
+        }
+
+        if (ledgerConfig.ethereum) {
+            config.ethereum = ethereumConnector(ledgerConfig.ethereum);
+        }
+
+        switch (this.name) {
+            case "alice": {
+                if (ledgerConfig.aliceLnd) {
+                    config.lightning = lightningConnector(
+                        ledgerConfig.aliceLnd
+                    );
+                }
+                break;
+            }
+            case "bob": {
+                if (ledgerConfig.bobLnd) {
+                    config.lightning = lightningConnector(ledgerConfig.bobLnd);
+                }
+                break;
+            }
+            case "charlie":
+                {
+                    console.warn(
+                        "generating lnd config for charlie is not supported at this stage"
+                    );
+                }
+                break;
+        }
+
+        return config;
     }
 }
 
 interface LedgerConnectors {
     bitcoin?: BitcoinConnector;
     ethereum?: EthereumConnector;
+    lightning?: LightningConnector;
 }
 
 interface Parity {
@@ -78,18 +123,14 @@ interface BitcoinConnector {
     bitcoind: Bitcoind;
 }
 
-function createLedgerConnectors(ledgerConfig: LedgerConfig): LedgerConnectors {
-    const config: LedgerConnectors = {};
+interface Lnd {
+    rest_api_url: string;
+    dir: string;
+}
 
-    if (ledgerConfig.bitcoin) {
-        config.bitcoin = bitcoinConnector(ledgerConfig.bitcoin);
-    }
-
-    if (ledgerConfig.ethereum) {
-        config.ethereum = ethereumConnector(ledgerConfig.ethereum);
-    }
-
-    return config;
+interface LightningConnector {
+    network: string;
+    lnd: Lnd;
 }
 
 function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
@@ -106,6 +147,18 @@ function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
         chain_id: 17,
         parity: {
             node_url: nodeConfig.rpc_url,
+        },
+    };
+}
+
+function lightningConnector(
+    nodeConfig: LightningNodeConfig
+): LightningConnector {
+    return {
+        network: "regtest",
+        lnd: {
+            rest_api_url: `https://localhost:${nodeConfig.restPort}`,
+            dir: nodeConfig.dataDir,
         },
     };
 }

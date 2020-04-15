@@ -1,0 +1,124 @@
+name: CI
+
+on:
+  push:
+    branches-ignore:
+      - 'staging.tmp'
+      - 'trying.tmp'
+
+jobs:
+  static_analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v1
+
+      - name: Extract toolchain version from rust-toolchain
+        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
+
+      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+
+      - name: Cache ~/.cargo/bin directory
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/bin
+          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory
+
+      - name: Check formatting
+        run: make check_format
+
+      - name: Run linter
+        run: make clippy
+
+  build:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v1
+
+      - name: Extract toolchain version from rust-toolchain
+        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
+
+      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: ${{ env.RUST_TOOLCHAIN }}
+          override: true
+
+      - name: Cache target directory
+        uses: actions/cache@v1
+        with:
+          path: target
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-target-directory-${{ hashFiles('Cargo.lock') }}
+
+      - name: Cache ~/.cargo/registry directory
+        uses: actions/cache@v1
+        with:
+          path: ~/.cargo/registry
+          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}
+
+      - name: Build ${{ matrix.os }} binary
+        run: make build
+
+      # Ignore tests on macos due to missing docker
+      - name: Run unit tests
+        if: matrix.os != 'macos-latest'
+        run: make test
+
+      - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
+        uses: actions/upload-artifact@v1
+        with:
+          name: cnd-${{ matrix.os }}
+          path: target/debug/cnd
+
+  e2e_test:
+    strategy:
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    needs: build
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v1
+
+      - name: Download cnd-${{ matrix.os }} archive and extract cnd binary
+        uses: actions/download-artifact@v1
+        with:
+          name: cnd-${{ matrix.os }}
+          path: target/debug/
+
+      - name: Fix missing executable permission
+        run: |
+          chmod a+x target/debug/cnd
+
+      - name: Install NodeJS 12.x
+        uses: actions/setup-node@v1
+        with:
+          node-version: '12.x'
+
+      - name: Install Go 1.13.3.
+        uses: actions/setup-go@v1
+        with:
+          go-version: '1.13.3'
+
+      - name: Install LND v0.9.1-beta
+        run: |
+          go get -d github.com/lightningnetwork/lnd
+          cd ~/go/src/github.com/lightningnetwork/lnd
+          git checkout v0.9.1-beta
+          make tags=invoicesrpc
+          make tags=invoicesrpc install
+
+      - name: Run e2e tests
+        run: |
+          export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH
+          make ci_gha

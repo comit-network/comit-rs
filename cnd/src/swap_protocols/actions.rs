@@ -41,9 +41,7 @@ pub mod bitcoin {
 
 pub mod ethereum {
     use crate::{
-        asset,
-        ethereum::{Address, Bytes, U256},
-        swap_protocols::ledger::ethereum::ChainId,
+        asset, ethereum::Bytes, identity, swap_protocols::ledger::ethereum::ChainId,
         timestamp::Timestamp,
     };
 
@@ -51,16 +49,67 @@ pub mod ethereum {
     pub struct DeployContract {
         pub data: Bytes,
         pub amount: asset::Ether,
-        pub gas_limit: U256,
+        pub gas_limit: u64,
         pub chain_id: ChainId,
     }
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct CallContract {
-        pub to: Address,
+        pub to: identity::Ethereum,
         pub data: Option<Bytes>,
-        pub gas_limit: U256,
+        pub gas_limit: u64,
         pub chain_id: ChainId,
         pub min_block_timestamp: Option<Timestamp>,
+    }
+}
+
+pub mod lnd {
+    use crate::{
+        asset, identity,
+        swap_protocols::rfc003::{Secret, SecretHash},
+    };
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct AddHoldInvoice {
+        pub amount: asset::Lightning, // The number of satoshis to send.
+        pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
+        pub expiry: u32,
+        pub cltv_expiry: u32,
+        pub chain: Chain,
+        pub network: bitcoin::Network,
+        pub self_public_key: identity::Lightning,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct SettleInvoice {
+        pub secret: Secret,
+        pub chain: Chain,
+        pub network: bitcoin::Network,
+        pub self_public_key: identity::Lightning,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct CancelInvoice {
+        pub secret_hash: SecretHash, // The hash of the preimage used when adding the invoice.
+        pub chain: Chain,
+        pub network: bitcoin::Network,
+        pub self_public_key: identity::Lightning,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct SendPayment {
+        pub to_public_key: identity::Lightning,
+        pub amount: asset::Lightning, // The number of satoshis to send.
+        pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
+        pub final_cltv_delta: u32,
+        pub chain: Chain,
+        pub network: bitcoin::Network,
+        pub self_public_key: identity::Lightning,
+    }
+
+    /// The underlying chain i.e., layer 1, targeted by LND.
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum Chain {
+        Bitcoin,
     }
 }

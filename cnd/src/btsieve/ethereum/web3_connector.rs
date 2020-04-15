@@ -1,7 +1,7 @@
 use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
     config::validation::FetchNetworkId,
-    ethereum::{TransactionReceipt, H256},
+    ethereum::{Hash, TransactionReceipt},
     jsonrpc,
     swap_protocols::ledger::ethereum::ChainId,
 };
@@ -45,7 +45,7 @@ impl LatestBlock for Web3Connector {
 #[async_trait]
 impl BlockByHash for Web3Connector {
     type Block = crate::ethereum::Block;
-    type BlockHash = crate::ethereum::H256;
+    type BlockHash = crate::ethereum::Hash;
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let block = self
@@ -64,7 +64,7 @@ impl BlockByHash for Web3Connector {
 
 #[async_trait]
 impl ReceiptByHash for Web3Connector {
-    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
         let receipt = self
             .client
             .send(jsonrpc::Request::new("eth_getTransactionReceipt", vec![

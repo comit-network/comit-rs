@@ -5,8 +5,9 @@ import tempWrite from "temp-write";
 import { promisify } from "util";
 import { CndConfigFile } from "../config";
 import { sleep } from "../utils";
-import { LogReader } from "../ledgers/log_reader";
+import waitForLogMessage from "../wait_for_log_message";
 import { Logger } from "log4js";
+import path from "path";
 
 const openAsync = promisify(fs.open);
 
@@ -14,7 +15,7 @@ export class CndInstance {
     private process: ChildProcess;
 
     constructor(
-        private readonly projectRoot: string,
+        private readonly cargoTargetDirectory: string,
         private readonly logFile: string,
         private readonly logger: Logger,
         private readonly configFile: CndConfigFile
@@ -27,7 +28,7 @@ export class CndInstance {
     public async start() {
         const bin = process.env.CND_BIN
             ? process.env.CND_BIN
-            : this.projectRoot + "/target/debug/cnd";
+            : path.join(this.cargoTargetDirectory, "debug", "cnd");
 
         this.logger.info("Using binary", bin);
 
@@ -37,7 +38,7 @@ export class CndInstance {
         );
 
         this.process = spawn(bin, ["--config", configFile], {
-            cwd: this.projectRoot,
+            cwd: this.cargoTargetDirectory,
             stdio: [
                 "ignore", // stdin
                 await openAsync(this.logFile, "w"), // stdout
@@ -45,8 +46,7 @@ export class CndInstance {
             ],
         });
 
-        const logReader = new LogReader(this.logFile);
-        await logReader.waitForLogMessage("Starting HTTP server on");
+        await waitForLogMessage(this.logFile, "Starting HTTP server on");
 
         // we emit the log _before_ we start the http server, let's make sure it actually starts up
         await sleep(1000);

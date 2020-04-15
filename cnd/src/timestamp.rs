@@ -20,6 +20,10 @@ impl Timestamp {
     pub fn plus(self, seconds: u32) -> Self {
         Self(self.0.checked_add(seconds).unwrap_or(std::u32::MAX))
     }
+
+    pub fn to_bytes(self) -> [u8; 4] {
+        self.0.to_le_bytes()
+    }
 }
 
 impl From<u32> for Timestamp {

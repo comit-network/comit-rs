@@ -1,5 +1,5 @@
-mod oneshot_behaviour;
-
+pub mod comit_ln;
+pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
 pub mod transport;
@@ -17,8 +17,11 @@ use crate::{
     db::{Save, Sqlite, Swap},
     htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
+    lnd::LndConnectorParams,
+    network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
+        halight::InvoiceStates,
         ledger,
         rfc003::{
             self,
@@ -26,31 +29,29 @@ use crate::{
             LedgerState, SwapCommunication,
         },
         state::Insert,
-        HashFunction, LedgerStates, Role, SwapCommunicationStates, SwapId, SwapProtocol,
+        CreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId, Role,
+        SwapCommunicationStates, SwapId, SwapProtocol,
     },
     transaction,
 };
+use anyhow::Context;
 use async_trait::async_trait;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
+    Future,
 };
 use libp2p::{
-    core::either::{EitherError, EitherOutput},
     identity::{ed25519, Keypair},
     mdns::Mdns,
-    swarm::{
-        protocols_handler::DummyProtocolsHandler, IntoProtocolsHandlerSelect,
-        NetworkBehaviourEventProcess, SwarmBuilder,
-    },
+    swarm::SwarmBuilder,
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
     frame::{OutboundRequest, Response, ValidatedInboundRequest},
-    handler::{ComitHandler, ProtocolInEvent, ProtocolOutEvent},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
@@ -58,27 +59,19 @@ use std::{
     io,
     pin::Pin,
     sync::Arc,
-    task::{Context, Poll},
+    task::{self, Poll},
 };
 use tokio::{
     runtime::{Handle, Runtime},
     sync::Mutex,
 };
 
-type ExpandedSwarm = libp2p::swarm::ExpandedSwarm<
-    ComitNode,
-    EitherOutput<ProtocolInEvent, void::Void>,
-    EitherOutput<ProtocolOutEvent, void::Void>,
-    IntoProtocolsHandlerSelect<ComitHandler, DummyProtocolsHandler>,
-    EitherError<libp2p_comit::handler::Error, void::Void>,
->;
-
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]
 pub struct Swarm {
     #[derivative(Debug = "ignore")]
-    swarm: Arc<Mutex<ExpandedSwarm>>,
+    pub swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
     local_peer_id: PeerId,
 }
 
@@ -90,9 +83,11 @@ impl Swarm {
         runtime: &mut Runtime,
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
+        lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
+        invoice_states: Arc<InvoiceStates>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -103,26 +98,25 @@ impl Swarm {
         let behaviour = ComitNode::new(
             bitcoin_connector,
             ethereum_connector,
+            lnd_connector_params,
             swap_communication_states,
             alpha_ledger_state,
             beta_ledger_state,
+            invoice_states,
             seed,
             database.clone(),
             runtime.handle().clone(),
         )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
-            .executor_fn({
-                let handle = runtime.handle().clone();
-                move |task| {
-                    handle.spawn(task);
-                }
-            })
+            .executor(Box::new(TokioExecutor {
+                handle: runtime.handle().clone(),
+            }))
             .build();
 
         for addr in settings.network.listen.clone() {
-            libp2p::Swarm::listen_on(&mut swarm, addr)
-                .expect("Could not listen on specified address");
+            libp2p::Swarm::listen_on(&mut swarm, addr.clone())
+                .with_context(|| format!("Address is not supported: {:?}", addr))?;
         }
 
         let swarm = Arc::new(Mutex::new(swarm));
@@ -157,19 +151,41 @@ impl Swarm {
         unimplemented!()
     }
 
+    pub async fn initiate_communication(&self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
+        let mut guard = self.swarm.lock().await;
+
+        guard.initiate_communication(id, swap_params)
+    }
+
+    pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+        let mut guard = self.swarm.lock().await;
+
+        guard.get_finalized_swap(id)
+    }
+
     // On Bob's side, when an announce message is received execute the required
     // communication protocols and write the finalized swap to the database.  Then
     // spawn the same as is done for Alice.
 }
 
+struct TokioExecutor {
+    handle: tokio::runtime::Handle,
+}
+
+impl libp2p::core::Executor for TokioExecutor {
+    fn exec(&self, future: Pin<Box<dyn Future<Output = ()> + Send>>) {
+        let _ = self.handle.spawn(future);
+    }
+}
+
 struct SwarmWorker {
-    swarm: Arc<Mutex<ExpandedSwarm>>,
+    swarm: Arc<Mutex<libp2p::Swarm<ComitNode>>>,
 }
 
 impl futures::Future for SwarmWorker {
     type Output = ();
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
+    fn poll(self: Pin<&mut Self>, cx: &mut task::Context<'_>) -> Poll<Self::Output> {
         loop {
             let mutex = self.swarm.lock();
             futures::pin_mut!(mutex);
@@ -191,6 +207,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     comit: Comit,
+    comit_ln: ComitLN,
     mdns: Mdns,
 
     #[behaviour(ignore)]
@@ -250,9 +267,11 @@ impl ComitNode {
     pub fn new(
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
+        lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
+        invoice_states: Arc<InvoiceStates>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -271,6 +290,13 @@ impl ComitNode {
         Ok(Self {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
+            comit_ln: ComitLN::new(
+                lnd_connector_params,
+                ethereum_connector.clone(),
+                alpha_ledger_state.clone(),
+                invoice_states,
+                seed,
+            ),
             bitcoin_connector,
             ethereum_connector,
             alpha_ledger_state,
@@ -290,6 +316,14 @@ impl ComitNode {
     ) -> impl futures::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
+    }
+
+    pub fn initiate_communication(&mut self, id: NodeLocalSwapId, swap_params: CreateSwapParams) {
+        self.comit_ln.initiate_communication(id, swap_params)
+    }
+
+    pub fn get_finalized_swap(&mut self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+        self.comit_ln.get_finalized_swap(id)
     }
 }
 
@@ -1012,9 +1046,10 @@ impl SendRequest for Swarm {
 
                 match decision {
                     Some(Decision::Accepted) => {
-                        match serde_json::from_value::<rfc003::messages::AcceptResponseBody<AI, BI>>(
-                            response.body().clone(),
-                        ) {
+                        let accept_body =
+                            rfc003::messages::AcceptResponseBody::deserialize(response.body());
+
+                        match accept_body {
                             Ok(body) => Ok(Ok(rfc003::Accept {
                                 swap_id: id,
                                 beta_ledger_refund_identity: body.beta_ledger_refund_identity,
@@ -1025,9 +1060,10 @@ impl SendRequest for Swarm {
                     }
 
                     Some(Decision::Declined) => {
-                        match serde_json::from_value::<rfc003::messages::DeclineResponseBody>(
-                            response.body().clone(),
-                        ) {
+                        let decline_body =
+                            rfc003::messages::DeclineResponseBody::deserialize(response.body());
+
+                        match decline_body {
                             Ok(body) => Ok(Err(rfc003::Decline {
                                 swap_id: id,
                                 reason: body.reason,
@@ -1051,7 +1087,7 @@ impl SendRequest for Swarm {
     }
 }
 
-impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
+impl libp2p::swarm::NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: BehaviourOutEvent) {
         match event {
             BehaviourOutEvent::PendingInboundRequest { request, peer_id } => {
@@ -1088,8 +1124,12 @@ impl NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNode {
     }
 }
 
-impl NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
+impl libp2p::swarm::NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for ComitNode {
     fn inject_event(&mut self, _event: libp2p::mdns::MdnsEvent) {}
+}
+
+impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
+    fn inject_event(&mut self, _event: ()) {}
 }
 
 impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest

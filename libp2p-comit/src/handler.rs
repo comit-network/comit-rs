@@ -90,6 +90,12 @@ pub enum ProtocolInEvent {
     Message(OutboundMessage),
 }
 
+impl Clone for ProtocolInEvent {
+    fn clone(&self) -> Self {
+        unimplemented!("we cannot implement clone because we have channels in the messages")
+    }
+}
+
 /// Different kinds of `OutboundOpenInfo` that we may want to pass when emitted
 /// an instance of `ProtocolsHandlerEvent::OutboundSubstreamRequest`.
 #[derive(Debug)]
