@@ -27,8 +27,7 @@ use cnd::{
     network::Swarm,
     seed::RootSeed,
     swap_protocols::{
-        halight::StateStore, Facade, Facade2, LedgerStates, SwapCommunicationStates,
-        SwapErrorStates,
+        halight::States, Facade, Facade2, LedgerStates, SwapCommunicationStates, SwapErrorStates,
     },
 };
 
@@ -128,7 +127,7 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
-    let invoice_states = Arc::new(StateStore::default());
+    let invoice_states = Arc::new(States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 

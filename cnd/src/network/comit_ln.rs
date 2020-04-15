@@ -68,7 +68,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     ethereum_ledger_state: Arc<LedgerStates>,
     #[behaviour(ignore)]
-    halight_states: Arc<halight::StateStore>,
+    halight_states: Arc<halight::States>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -88,7 +88,7 @@ impl ComitLN {
         lnd_connector_params: LndConnectorParams,
         ethereum_connector: Arc<Cache<Web3Connector>>,
         ethereum_ledger_state: Arc<LedgerStates>,
-        invoices_state: Arc<halight::StateStore>,
+        invoices_state: Arc<halight::States>,
         seed: RootSeed,
     ) -> Self {
         ComitLN {
@@ -683,7 +683,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 async fn new_halight_swap<C>(
     local_swap_id: NodeLocalSwapId,
     secret_hash: SecretHash,
-    state_store: Arc<halight::StateStore>,
+    state_store: Arc<halight::States>,
     connector: C,
 ) where
     C: halight::Opened + halight::Accepted + halight::Settled + halight::Cancelled,

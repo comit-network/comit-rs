@@ -94,9 +94,7 @@ pub mod data {
 }
 
 #[derive(Default, Debug)]
-pub struct StateStore {
-    states: Mutex<HashMap<SwapId, State>>,
-}
+pub struct States(Mutex<HashMap<SwapId, State>>);
 
 impl State {
     pub fn transition_to_opened(&mut self, opened: data::Opened) {
@@ -132,9 +130,9 @@ impl State {
 }
 
 #[async_trait::async_trait]
-impl state::Get<State> for StateStore {
+impl state::Get<State> for States {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
-        let states = self.states.lock().await;
+        let states = self.0.lock().await;
         let state = states.get(key).copied();
 
         Ok(state)
@@ -142,9 +140,9 @@ impl state::Get<State> for StateStore {
 }
 
 #[async_trait::async_trait]
-impl state::Update<Event> for StateStore {
+impl state::Update<Event> for States {
     async fn update(&self, key: &SwapId, event: Event) {
-        let mut states = self.states.lock().await;
+        let mut states = self.0.lock().await;
         let entry = states.entry(*key);
 
         match (event, entry) {

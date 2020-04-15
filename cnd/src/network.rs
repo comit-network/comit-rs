@@ -20,7 +20,7 @@ use crate::{
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
-        halight::{LndConnectorParams, StateStore},
+        halight::{LndConnectorParams, States},
         ledger,
         rfc003::{
             self,
@@ -86,7 +86,7 @@ impl Swarm {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<StateStore>,
+        invoice_states: Arc<States>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -270,7 +270,7 @@ impl ComitNode {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<StateStore>,
+        invoice_states: Arc<States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
