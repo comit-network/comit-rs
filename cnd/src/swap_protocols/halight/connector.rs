@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    halight::{data, Accepted, Cancelled, Opened, Params, Settled},
+    halight::{data, Params, WaitForAccepted, WaitForCancelled, WaitForOpened, WaitForSettled},
     rfc003::{Secret, SecretHash},
 };
 use anyhow::{Context, Error};
@@ -193,8 +193,8 @@ impl LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl Opened for LndConnectorAsSender {
-    async fn opened(&self, _params: Params) -> Result<data::Opened, Error> {
+impl WaitForOpened for LndConnectorAsSender {
+    async fn wait_for_opened(&self, _params: Params) -> Result<data::Opened, Error> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
         Ok(data::Opened)
@@ -202,8 +202,8 @@ impl Opened for LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl Accepted for LndConnectorAsSender {
-    async fn accepted(&self, params: Params) -> Result<data::Accepted, Error> {
+impl WaitForAccepted for LndConnectorAsSender {
+    async fn wait_for_accepted(&self, params: Params) -> Result<data::Accepted, Error> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         while self
@@ -219,8 +219,8 @@ impl Accepted for LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl Settled for LndConnectorAsSender {
-    async fn settled(&self, params: Params) -> Result<data::Settled, Error> {
+impl WaitForSettled for LndConnectorAsSender {
+    async fn wait_for_settled(&self, params: Params) -> Result<data::Settled, Error> {
         let payment = loop {
             match self
                 .find_payment(params.secret_hash, PaymentStatus::Succeeded)
@@ -245,8 +245,8 @@ impl Settled for LndConnectorAsSender {
 }
 
 #[async_trait::async_trait]
-impl Cancelled for LndConnectorAsSender {
-    async fn cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
+impl WaitForCancelled for LndConnectorAsSender {
+    async fn wait_for_cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
         while self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
@@ -362,8 +362,8 @@ struct LndError {
 }
 
 #[async_trait::async_trait]
-impl Opened for LndConnectorAsReceiver {
-    async fn opened(&self, params: Params) -> Result<data::Opened, Error> {
+impl WaitForOpened for LndConnectorAsReceiver {
+    async fn wait_for_opened(&self, params: Params) -> Result<data::Opened, Error> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
@@ -379,8 +379,8 @@ impl Opened for LndConnectorAsReceiver {
 }
 
 #[async_trait::async_trait]
-impl Accepted for LndConnectorAsReceiver {
-    async fn accepted(&self, params: Params) -> Result<data::Accepted, Error> {
+impl WaitForAccepted for LndConnectorAsReceiver {
+    async fn wait_for_accepted(&self, params: Params) -> Result<data::Accepted, Error> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
@@ -397,8 +397,8 @@ impl Accepted for LndConnectorAsReceiver {
 }
 
 #[async_trait::async_trait]
-impl Settled for LndConnectorAsReceiver {
-    async fn settled(&self, params: Params) -> Result<data::Settled, Error> {
+impl WaitForSettled for LndConnectorAsReceiver {
+    async fn wait_for_settled(&self, params: Params) -> Result<data::Settled, Error> {
         let invoice = loop {
             match self
                 .find_invoice(params.secret_hash, InvoiceState::Settled)
@@ -420,8 +420,8 @@ impl Settled for LndConnectorAsReceiver {
 }
 
 #[async_trait::async_trait]
-impl Cancelled for LndConnectorAsReceiver {
-    async fn cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
+impl WaitForCancelled for LndConnectorAsReceiver {
+    async fn wait_for_cancelled(&self, params: Params) -> Result<data::Cancelled, Error> {
         while self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?

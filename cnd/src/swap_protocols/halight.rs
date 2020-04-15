@@ -16,23 +16,23 @@ pub use connector::*;
 
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
-pub trait Opened {
-    async fn opened(&self, params: Params) -> anyhow::Result<data::Opened>;
+pub trait WaitForOpened {
+    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<data::Opened>;
 }
 
 #[async_trait::async_trait]
-pub trait Accepted {
-    async fn accepted(&self, params: Params) -> anyhow::Result<data::Accepted>;
+pub trait WaitForAccepted {
+    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<data::Accepted>;
 }
 
 #[async_trait::async_trait]
-pub trait Settled {
-    async fn settled(&self, params: Params) -> anyhow::Result<data::Settled>;
+pub trait WaitForSettled {
+    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<data::Settled>;
 }
 
 #[async_trait::async_trait]
-pub trait Cancelled {
-    async fn cancelled(&self, params: Params) -> anyhow::Result<data::Cancelled>;
+pub trait WaitForCancelled {
+    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<data::Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
@@ -182,23 +182,26 @@ pub fn new<'a, C>(
     params: Params,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
-    C: Opened + Accepted + Settled + Cancelled,
+    C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
     Gen::new({
         |co| async move {
             co.yield_(Ok(Event::Started)).await;
 
-            let opened_or_error = connector.opened(params.clone()).map_ok(Event::Opened).await;
+            let opened_or_error = connector
+                .wait_for_opened(params.clone())
+                .map_ok(Event::Opened)
+                .await;
             co.yield_(opened_or_error).await;
 
             let accepted_or_error = connector
-                .accepted(params.clone())
+                .wait_for_accepted(params.clone())
                 .map_ok(Event::Accepted)
                 .await;
             co.yield_(accepted_or_error).await;
 
-            let settled = connector.settled(params.clone());
-            let cancelled = connector.cancelled(params);
+            let settled = connector.wait_for_settled(params.clone());
+            let cancelled = connector.wait_for_cancelled(params);
 
             match future::try_select(settled, cancelled).await {
                 Ok(Either::Left((settled, _))) => {

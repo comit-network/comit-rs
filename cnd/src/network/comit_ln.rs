@@ -686,7 +686,10 @@ async fn new_halight_swap<C>(
     state_store: Arc<halight::States>,
     connector: C,
 ) where
-    C: halight::Opened + halight::Accepted + halight::Settled + halight::Cancelled,
+    C: halight::WaitForOpened
+        + halight::WaitForAccepted
+        + halight::WaitForSettled
+        + halight::WaitForCancelled,
 {
     let mut events = halight::new(&connector, halight::Params { secret_hash })
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
