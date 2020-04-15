@@ -37,13 +37,13 @@ impl IntoDigestInput for MultihashSha256 {
 #[serde(rename_all = "lowercase")]
 #[digest(hash = "MultihashSha256")]
 struct DoubleFieldStruct {
+    #[digest(ignore)]
+    ignore: String,
     #[digest(prefix = "0011")]
     #[serde(alias = "foooo")]
     foo: MyString,
     #[digest(prefix = "FFAA")]
     bar: MyString,
-    #[digest(ignore)]
-    ignore: MyString,
 }
 
 struct OtherDoubleFieldStruct {

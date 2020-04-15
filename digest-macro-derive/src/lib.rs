@@ -20,11 +20,6 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
         Data::Struct(data) => {
             let (idents, types, bytes) = match &data.fields {
                 Fields::Named(fields) => {
-                    let idents = fields
-                        .named
-                        .iter()
-                        .map(|field| field.ident.as_ref().expect("Named field"));
-
                     let fields = fields.named.iter().filter(|field| {
                         let meta_list = extract_meta_list(&field.attrs);
 
@@ -36,6 +31,10 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                         }
                         true
                     });
+
+                    let idents = fields
+                        .clone()
+                        .map(|field| field.ident.as_ref().expect("Named field"));
 
                     let types = fields.clone().map(|field| &field.ty);
 

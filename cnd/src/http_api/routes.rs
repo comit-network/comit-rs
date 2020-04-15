@@ -13,7 +13,7 @@ use crate::{
             ethereum,
             lnd::{self, Chain},
         },
-        halight::{self, data},
+        halight::{self, Settled},
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
@@ -156,7 +156,7 @@ impl InitAction for AliceEthLnState {
 
     fn init_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
-            halight::State::Unknown => {
+            halight::State::None => {
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
                 let expiry = 3600;
@@ -288,7 +288,7 @@ impl RedeemAction for BobEthLnState {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
             (
                 LedgerState::Funded { htlc_location, .. },
-                halight::State::Settled(data::Settled { secret }),
+                halight::State::Settled(Settled { secret }),
             ) => {
                 let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));

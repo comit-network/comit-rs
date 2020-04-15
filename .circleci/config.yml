@@ -130,7 +130,7 @@ commands:
             - cargo
       - restore_cache:
           keys:
-            - target-folder-{{ checksum "Cargo.lock" }}
+            - target-folder-v1-{{ checksum "Cargo.lock" }}
             # We don't want the target folder to blow up over time, hence we only download the cache if it exactly matches `Cargo.lock`
       - restore_cache:
           keys:
@@ -146,7 +146,7 @@ commands:
             - ~/.cargo
           key: cargo-{{ .Branch }}
       - save_cache:
-          key: target-folder-{{ checksum "Cargo.lock" }}
+          key: target-folder-v1-{{ checksum "Cargo.lock" }}
           paths:
             - "./target"
       - save_cache:

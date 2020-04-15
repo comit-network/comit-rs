@@ -2,7 +2,6 @@ use crate::swap_protocols::{
     rfc003::{Secret, SecretHash},
     state, SwapId,
 };
-use chrono::NaiveDateTime;
 use futures::{
     future::{self, Either},
     Stream, TryFutureExt,
@@ -11,35 +10,39 @@ use genawaiter::sync::Gen;
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
+mod connector;
+
+pub use connector::*;
+
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
-pub trait Opened {
-    async fn opened(&self, params: Params) -> anyhow::Result<data::Opened>;
+pub trait WaitForOpened {
+    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<Opened>;
 }
 
 #[async_trait::async_trait]
-pub trait Accepted {
-    async fn accepted(&self, params: Params) -> anyhow::Result<data::Accepted>;
+pub trait WaitForAccepted {
+    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted>;
 }
 
 #[async_trait::async_trait]
-pub trait Settled {
-    async fn settled(&self, params: Params) -> anyhow::Result<data::Settled>;
+pub trait WaitForSettled {
+    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled>;
 }
 
 #[async_trait::async_trait]
-pub trait Cancelled {
-    async fn cancelled(&self, params: Params) -> anyhow::Result<data::Cancelled>;
+pub trait WaitForCancelled {
+    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
 #[derive(Debug, Clone, Copy)]
 pub enum State {
-    Unknown,
-    Opened(data::Opened),
-    Accepted(data::Accepted),
-    Settled(data::Settled),
-    Cancelled(data::Cancelled),
+    None,
+    Opened(Opened),
+    Accepted(Accepted),
+    Settled(Settled),
+    Cancelled(Cancelled),
 }
 
 /// Represents the events in the halight protocol.
@@ -53,7 +56,7 @@ pub enum Event {
     /// On the recipient side, this means the hold invoice has been added to
     /// lnd. On the (payment) sender side, we cannot (yet) know about this
     /// so we just have to assume that this happens.
-    Opened(data::Opened),
+    Opened(Opened),
 
     /// The payment to the invoice was accepted but the preimage has not yet
     /// been revealed.
@@ -61,64 +64,59 @@ pub enum Event {
     /// On the recipient side, this means the hold invoice moved to the
     /// `Accepted` state. On the (payment) sender side, we assume that once
     /// the payment is `InFlight`, it also reached the recipient.
-    Accepted(data::Accepted),
+    Accepted(Accepted),
 
     /// The payment is settled and therefore the preimage was revealed.
-    Settled(data::Settled),
+    Settled(Settled),
 
     /// The payment was cancelled.
-    Cancelled(data::Cancelled),
+    Cancelled(Cancelled),
 }
 
 /// Represents the data available at said state.
-pub mod data {
-    // These empty types are useful because they give us additional type safety.
-    use super::*;
+///
+/// These empty types are useful because they give us additional type safety.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Opened;
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Opened;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Accepted;
 
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Accepted;
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Settled {
-        pub secret: Secret,
-    }
-
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    pub struct Cancelled;
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Settled {
+    pub secret: Secret,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Cancelled;
 
 #[derive(Default, Debug)]
-pub struct InvoiceStates {
-    states: Mutex<HashMap<SwapId, State>>,
-}
+pub struct States(Mutex<HashMap<SwapId, State>>);
 
 impl State {
-    pub fn transition_to_opened(&mut self, opened: data::Opened) {
-        match std::mem::replace(self, State::Unknown) {
-            State::Unknown => *self = State::Opened(opened),
+    pub fn transition_to_opened(&mut self, opened: Opened) {
+        match std::mem::replace(self, State::None) {
+            State::None => *self = State::Opened(opened),
             other => panic!("expected state Unknown, got {:?}", other),
         }
     }
 
-    pub fn transition_to_accepted(&mut self, accepted: data::Accepted) {
-        match std::mem::replace(self, State::Unknown) {
+    pub fn transition_to_accepted(&mut self, accepted: Accepted) {
+        match std::mem::replace(self, State::None) {
             State::Opened(_) => *self = State::Accepted(accepted),
             other => panic!("expected state Opened, got {:?}", other),
         }
     }
 
-    pub fn transition_to_settled(&mut self, settled: data::Settled) {
-        match std::mem::replace(self, State::Unknown) {
+    pub fn transition_to_settled(&mut self, settled: Settled) {
+        match std::mem::replace(self, State::None) {
             State::Accepted(_) => *self = State::Settled(settled),
             other => panic!("expected state Accepted, got {:?}", other),
         }
     }
 
-    pub fn transition_to_cancelled(&mut self, cancelled: data::Cancelled) {
-        match std::mem::replace(self, State::Unknown) {
+    pub fn transition_to_cancelled(&mut self, cancelled: Cancelled) {
+        match std::mem::replace(self, State::None) {
             // Alice cancels invoice before Bob has accepted it.
             State::Opened(_) => *self = State::Cancelled(cancelled),
             // Alice cancels invoice after Bob has accepted it.
@@ -129,9 +127,9 @@ impl State {
 }
 
 #[async_trait::async_trait]
-impl state::Get<State> for InvoiceStates {
+impl state::Get<State> for States {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
-        let states = self.states.lock().await;
+        let states = self.0.lock().await;
         let state = states.get(key).copied();
 
         Ok(state)
@@ -139,14 +137,14 @@ impl state::Get<State> for InvoiceStates {
 }
 
 #[async_trait::async_trait]
-impl state::Update<Event> for InvoiceStates {
+impl state::Update<Event> for States {
     async fn update(&self, key: &SwapId, event: Event) {
-        let mut states = self.states.lock().await;
+        let mut states = self.0.lock().await;
         let entry = states.entry(*key);
 
         match (event, entry) {
             (Event::Started, Entry::Vacant(vacant)) => {
-                vacant.insert(State::Unknown);
+                vacant.insert(State::None);
             }
             (Event::Opened(opened), Entry::Occupied(mut state)) => {
                 state.get_mut().transition_to_opened(opened)
@@ -177,31 +175,30 @@ impl state::Update<Event> for InvoiceStates {
 ///
 /// Returns a stream of events happening during the execution.
 pub fn new<'a, C>(
-    lnd_connector: &'a C,
+    connector: &'a C,
     params: Params,
-    _finalized_at: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
-    C: Opened + Accepted + Settled + Cancelled,
+    C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
     Gen::new({
         |co| async move {
             co.yield_(Ok(Event::Started)).await;
 
-            let opened_or_error = lnd_connector
-                .opened(params.clone())
+            let opened_or_error = connector
+                .wait_for_opened(params.clone())
                 .map_ok(Event::Opened)
                 .await;
             co.yield_(opened_or_error).await;
 
-            let accepted_or_error = lnd_connector
-                .accepted(params.clone())
+            let accepted_or_error = connector
+                .wait_for_accepted(params.clone())
                 .map_ok(Event::Accepted)
                 .await;
             co.yield_(accepted_or_error).await;
 
-            let settled = lnd_connector.settled(params.clone());
-            let cancelled = lnd_connector.cancelled(params);
+            let settled = connector.wait_for_settled(params.clone());
+            let cancelled = connector.wait_for_cancelled(params);
 
             match future::try_select(settled, cancelled).await {
                 Ok(Either::Left((settled, _))) => {
