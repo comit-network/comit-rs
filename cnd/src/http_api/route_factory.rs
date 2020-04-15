@@ -93,14 +93,14 @@ pub fn create(
         .and(dependencies)
         .and_then(http_api::routes::index::get_info);
 
-    let han_ether_halight_bitcoin = warp::post()
+    let han_ethereum_halight_bitcoin = warp::post()
         .and(warp::path!(
             "swaps" / "han" / "ethereum" / "ether" / "halight" / "lightning" / "bitcoin"
         ))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade2.clone())
-        .and_then(http_api::routes::index::post_han_ether_halight_bitcoin);
+        .and_then(http_api::routes::index::post_han_ethereum_halight_bitcoin);
 
     let herc20_halight_bitcoin = warp::post()
         .and(warp::path!(
@@ -134,7 +134,7 @@ pub fn create(
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade2.clone())
-        .and_then(http_api::routes::get_han_halight_swap);
+        .and_then(http_api::routes::get_halight_swap);
 
     let lightning_action_init = swaps
         .and(warp::get())
@@ -144,7 +144,7 @@ pub fn create(
         .and(facade2.clone())
         .and_then(http_api::routes::action_init);
 
-    let lighting_action_fund = swaps
+    let lightning_action_fund = swaps
         .and(warp::get())
         .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("fund"))
@@ -152,7 +152,7 @@ pub fn create(
         .and(facade2.clone())
         .and_then(http_api::routes::action_fund);
 
-    let lighting_action_redeem = swaps
+    let lightning_action_redeem = swaps
         .and(warp::get())
         .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("redeem"))
@@ -160,7 +160,7 @@ pub fn create(
         .and(facade2.clone())
         .and_then(http_api::routes::action_redeem);
 
-    let lighting_action_refund = swaps
+    let lightning_action_refund = swaps
         .and(warp::get())
         .and(warp::path::param::<NodeLocalSwapId>())
         .and(warp::path("refund"))
@@ -176,15 +176,15 @@ pub fn create(
         .or(get_peers)
         .or(get_info_siren)
         .or(get_info)
-        .or(han_ether_halight_bitcoin)
+        .or(han_ethereum_halight_bitcoin)
         .or(herc20_halight_bitcoin)
         .or(halight_bitcoin_han_ether)
         .or(halight_bitcoin_herc20)
         .or(get_halight_swap)
         .or(lightning_action_init)
-        .or(lighting_action_fund)
-        .or(lighting_action_redeem)
-        .or(lighting_action_refund)
+        .or(lightning_action_fund)
+        .or(lightning_action_redeem)
+        .or(lightning_action_refund)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

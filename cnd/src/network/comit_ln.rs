@@ -20,7 +20,7 @@ use crate::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         state::Update,
-        HanEtherHalightCreateSwapParams, LedgerStates, NodeLocalSwapId, Role, SwapId,
+        HanEtherereumHalightBitcoinCreateSwapParams, LedgerStates, NodeLocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
     transaction,
@@ -47,7 +47,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, NodeLocalSwapId>,
     #[behaviour(ignore)]
-    swaps: HashMap<NodeLocalSwapId, HanEtherHalightCreateSwapParams>,
+    swaps: HashMap<NodeLocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
     swap_ids: HashMap<NodeLocalSwapId, SwapId>,
     #[behaviour(ignore)]
@@ -116,7 +116,7 @@ impl ComitLN {
     pub fn initiate_communication(
         &mut self,
         id: NodeLocalSwapId,
-        create_swap_params: HanEtherHalightCreateSwapParams,
+        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         let digest = create_swap_params.clone().digest();
 

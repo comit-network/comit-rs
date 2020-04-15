@@ -11,7 +11,7 @@ use std::sync::Arc;
 /// before communication with the other node has started
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
-pub struct HanEtherHalightCreateSwapParams {
+pub struct HanEtherereumHalightBitcoinCreateSwapParams {
     #[digest(ignore)]
     pub role: Role,
     #[digest(ignore)]
@@ -82,7 +82,7 @@ impl Facade2 {
     pub async fn initiate_communication(
         &self,
         id: NodeLocalSwapId,
-        swap_params: HanEtherHalightCreateSwapParams,
+        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         self.swarm.initiate_communication(id, swap_params).await;
     }

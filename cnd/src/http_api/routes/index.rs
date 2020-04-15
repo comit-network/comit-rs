@@ -6,7 +6,9 @@ use crate::{
     http_api::{problem, routes::into_rejection, Http},
     identity,
     network::{DialInformation, ListenAddresses},
-    swap_protocols::{Facade, Facade2, HanEtherHalightCreateSwapParams, NodeLocalSwapId, Role},
+    swap_protocols::{
+        Facade, Facade2, HanEtherereumHalightBitcoinCreateSwapParams, NodeLocalSwapId, Role,
+    },
 };
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -69,7 +71,7 @@ pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn post_han_ether_halight_bitcoin(
+pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
     facade: Facade2,
 ) -> Result<impl Reply, Rejection> {
@@ -160,7 +162,9 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<HanEthereumEther, HalightLightningBitcoin>> for HanEtherHalightCreateSwapParams {
+impl From<Body<HanEthereumEther, HalightLightningBitcoin>>
+    for HanEtherereumHalightBitcoinCreateSwapParams
+{
     fn from(body: Body<HanEthereumEther, HalightLightningBitcoin>) -> Self {
         Self {
             role: body.role.0,
