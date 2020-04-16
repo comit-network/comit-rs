@@ -132,4 +132,6 @@ jobs:
       - name: Run e2e tests
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH
-          make e2e_only
+          cd api_tests
+          yarn install
+          yarn ci
