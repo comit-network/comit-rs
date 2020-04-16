@@ -1,5 +1,11 @@
 import { twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
+import {
+    HalightLightningBitcoinHanEthereumEtherRequestBody,
+    HalightLightningBitcoinHerc20EthereumErc20RequestBody,
+    HanEthereumEtherHalightLightningBitcoinRequestBody,
+    Herc20EthereumErc20HalightLightningBitcoinRequestBody,
+} from "comit-sdk";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -7,7 +13,7 @@ import SwapFactory from "../src/actors/swap_factory";
 
 describe("Lightning routes tests", () => {
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-201",
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-created",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .hanEthereumEtherHalightLightningBitcoin;
@@ -25,7 +31,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-400",
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .herc20EthereumErc20HalightLightningBitcoin;
@@ -43,7 +49,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-400",
+        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .halightLightningBitcoinHanEthereumEther;
@@ -61,7 +67,7 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-400",
+        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .halightLightningBitcoinHerc20EthereumErc20;
@@ -76,6 +82,50 @@ describe("Lightning routes tests", () => {
                     bodies.bob
                 )
             ).rejects.toThrow("Route not yet supported.");
+        })
+    );
+
+    it(
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
+            await expect(
+                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                    {} as HanEthereumEtherHalightLightningBitcoinRequestBody
+                )
+            ).rejects.toThrow("Invalid body.");
+        })
+    );
+
+    it(
+        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
+            await expect(
+                alice.cnd.createHalightLightningBitcoinHanEthereumEther(
+                    {} as HalightLightningBitcoinHanEthereumEtherRequestBody
+                )
+            ).rejects.toThrow("Invalid body.");
+        })
+    );
+
+    it(
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
+            await expect(
+                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                    {} as Herc20EthereumErc20HalightLightningBitcoinRequestBody
+                )
+            ).rejects.toThrow("Invalid body.");
+        })
+    );
+
+    it(
+        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-invalid-body",
+        twoActorTest(async ({ alice }) => {
+            await expect(
+                alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
+                    {} as HalightLightningBitcoinHerc20EthereumErc20RequestBody
+                )
+            ).rejects.toThrow("Invalid body.");
         })
     );
 });

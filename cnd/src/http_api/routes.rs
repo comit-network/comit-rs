@@ -30,18 +30,18 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_han_halight_swap(
+pub async fn get_halight_swap(
     id: NodeLocalSwapId,
     facade: Facade2,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_han_halight_swap(facade, id)
+    handle_get_halight_swap(facade, id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
-pub async fn handle_get_han_halight_swap(
+pub async fn handle_get_halight_swap(
     facade: Facade2,
     local_id: NodeLocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
@@ -75,7 +75,7 @@ pub async fn handle_get_han_halight_swap(
 
     let entity = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceEthLnState {
+            let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -91,7 +91,7 @@ pub async fn handle_get_han_halight_swap(
             make_swap_entity(swap_id, maybe_action_names)
         }
         Role::Bob => {
-            let state = BobEthLnState {
+            let state = BobHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -136,7 +136,7 @@ fn make_siren_action(swap_id: SwapId, action_name: &str) -> siren::Action {
 }
 
 #[derive(Debug)]
-pub struct AliceEthLnState {
+pub struct AliceHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
@@ -144,14 +144,14 @@ pub struct AliceEthLnState {
 }
 
 #[derive(Debug)]
-pub struct BobEthLnState {
+pub struct BobHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
-impl InitAction for AliceEthLnState {
+impl InitAction for AliceHanEthereumHalightBitcoinState {
     type Output = lnd::AddHoldInvoice;
 
     fn init_action(&self) -> Option<Self::Output> {
@@ -180,7 +180,7 @@ impl InitAction for AliceEthLnState {
     }
 }
 
-impl FundAction for AliceEthLnState {
+impl FundAction for AliceHanEthereumHalightBitcoinState {
     type Output = ethereum::DeployContract;
 
     fn fund_action(&self) -> Option<Self::Output> {
@@ -204,7 +204,7 @@ impl FundAction for AliceEthLnState {
     }
 }
 
-impl RedeemAction for AliceEthLnState {
+impl RedeemAction for AliceHanEthereumHalightBitcoinState {
     type Output = lnd::SettleInvoice;
 
     fn redeem_action(&self) -> Option<Self::Output> {
@@ -227,7 +227,7 @@ impl RedeemAction for AliceEthLnState {
     }
 }
 
-impl RefundAction for AliceEthLnState {
+impl RefundAction for AliceHanEthereumHalightBitcoinState {
     type Output = ethereum::CallContract;
 
     fn refund_action(&self) -> Option<Self::Output> {
@@ -252,7 +252,7 @@ impl RefundAction for AliceEthLnState {
     }
 }
 
-impl FundAction for BobEthLnState {
+impl FundAction for BobHanEthereumHalightBitcoinState {
     type Output = lnd::SendPayment;
 
     fn fund_action(&self) -> Option<Self::Output> {
@@ -281,7 +281,7 @@ impl FundAction for BobEthLnState {
     }
 }
 
-impl RedeemAction for BobEthLnState {
+impl RedeemAction for BobHanEthereumHalightBitcoinState {
     type Output = ethereum::CallContract;
 
     fn redeem_action(&self) -> Option<Self::Output> {
@@ -348,7 +348,7 @@ async fn handle_action_init(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceEthLnState {
+            let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -402,7 +402,7 @@ async fn handle_action_fund(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceEthLnState {
+            let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -411,7 +411,7 @@ async fn handle_action_fund(
             state.fund_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
-            let state = BobEthLnState {
+            let state = BobHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -464,7 +464,7 @@ async fn handle_action_redeem(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceEthLnState {
+            let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -473,7 +473,7 @@ async fn handle_action_redeem(
             state.redeem_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
-            let state = BobEthLnState {
+            let state = BobHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -526,7 +526,7 @@ async fn handle_action_refund(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceEthLnState {
+            let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
