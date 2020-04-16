@@ -64,8 +64,6 @@ clean:
 
 all: format build clippy test doc e2e
 
-ci: check_format doc clippy test build e2e
-
 build:
 	$(CARGO) build --all --all-targets $(BUILD_ARGS)
 
@@ -81,7 +79,7 @@ doc:
 e2e: build
 	(cd ./api_tests; yarn install; yarn test)
 
-ci_gha:
+e2e_only:
 	(cd ./api_tests; yarn install; yarn ci)
 
 check_format: check_rust_format check_toml_format check_ts_format

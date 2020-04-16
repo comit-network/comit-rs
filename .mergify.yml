@@ -2,7 +2,10 @@ pull_request_rules:
   - name: comment on broken dependabot PRs, asking for help
     conditions:
       - "author=dependabot-preview[bot]"
-      - "status-failure=ci/circleci: debug-build-test"
+      - "status-failure=static_analysis"
+      - "status-failure=lint"
+      - "status-failure=build (ubuntu)"
+      - "status-failure=e2e_test (ubuntu)"
     actions:
       comment:
         message: "The build on this dependency update is broken and needs attention."
@@ -12,7 +15,10 @@ pull_request_rules:
   - name: instruct bors to merge dependabot PRs with passing tests
     conditions:
       - "author=dependabot-preview[bot]"
-      - "status-success=ci/circleci: debug-build-test"
+      - "status-success=static_analysis"
+      - "status-success=lint"
+      - "status-success=build (ubuntu)"
+      - "status-success=e2e_test (ubuntu)"
       - "status-success=license/cla"
       - label!=no-mergify
     actions:
@@ -22,7 +28,10 @@ pull_request_rules:
     conditions:
       - "#approved-reviews-by>=2"
       - "#changes-requested-reviews-by=0"
-      - "status-success=ci/circleci: debug-build-test"
+      - "status-success=static_analysis"
+      - "status-success=lint"
+      - "status-success=build (ubuntu)"
+      - "status-success=e2e_test (ubuntu)"
       - "status-success=license/cla"
       - -conflict
       - label!=work-in-progress
