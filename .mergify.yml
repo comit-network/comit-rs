@@ -2,10 +2,7 @@ pull_request_rules:
   - name: comment on broken dependabot PRs, asking for help
     conditions:
       - "author=dependabot-preview[bot]"
-      - "status-failure=static_analysis"
-      - "status-failure=lint"
       - "status-failure=build (ubuntu)"
-      - "status-failure=e2e_test (ubuntu)"
     actions:
       comment:
         message: "The build on this dependency update is broken and needs attention."
