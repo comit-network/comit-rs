@@ -348,9 +348,9 @@ dependencies = [
 
 [[package]]
 name = "blockchain_contracts"
-version = "0.3.1"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f1d96fd22884503a21dc47fdb102c37131973d12682960c9b3405b95b6625dc7"
+checksum = "8f92228e44179c99d5c61e0c8c3d869c070e6a6fe65ae62006eadc572568db1f"
 dependencies = [
  "bitcoin",
  "byteorder",
