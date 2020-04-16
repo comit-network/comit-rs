@@ -444,8 +444,24 @@ fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Cli
         HeaderValue::from_str(&macaroon.0)?,
     );
 
-    Ok(reqwest::Client::builder()
+    // The generated, self-signed lnd certificate is deemed invalid on macOS
+    // Catalina because of new certificate requirements in macOS Catalina: https://support.apple.com/en-us/HT210176
+    // By using this conditional compilation step for macOS we accept invalid
+    // certificates. This is only a minimal security risk because by default the
+    // certificate that lnd generates is configured to only allow connections
+    // from localhost. Ticket that will resolve that issue: https://github.com/lightningnetwork/lnd/issues/4201
+    #[cfg(target_os = "macos")]
+    let client = reqwest::Client::builder()
+        .danger_accept_invalid_certs(true)
         .add_root_certificate(cert)
         .default_headers(default_headers)
-        .build()?)
+        .build()?;
+
+    #[cfg(not(target_os = "macos"))]
+    let client = reqwest::Client::builder()
+        .add_root_certificate(cert)
+        .default_headers(default_headers)
+        .build()?;
+
+    Ok(client)
 }
