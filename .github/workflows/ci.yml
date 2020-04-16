@@ -69,6 +69,9 @@ jobs:
       - name: Build ${{ matrix.os }} binary
         run: make build
 
+      - name: Build docs
+        run: make doc
+
       # Ignore tests on macos due to missing docker
       - name: Run unit tests
         if: matrix.os != 'macos-latest'
@@ -82,6 +85,8 @@ jobs:
 
   e2e_test:
     strategy:
+      # Do not cancel ubuntu even if macos fails
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
@@ -121,4 +126,4 @@ jobs:
       - name: Run e2e tests
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH
-          make ci_gha
+          make e2e_only

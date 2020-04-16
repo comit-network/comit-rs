@@ -1,2 +1,7 @@
-status = ["ci/circleci: debug-build-test"]
+status = [
+    "static_analysis",
+    "lint",
+    "build (ubuntu-latest)",
+    "e2e_test (ubuntu-latest)"
+]
 pr_status = ["license/cla"]
