@@ -1,7 +1,7 @@
 status = [
     "static_analysis",
     "lint",
-    "build (ubuntu)",
-    "e2e_test (ubuntu)"
+    "build (ubuntu-latest)",
+    "e2e_test (ubuntu-latest)"
 ]
 pr_status = ["license/cla"]
