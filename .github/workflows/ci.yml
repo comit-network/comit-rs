@@ -85,6 +85,8 @@ jobs:
 
   e2e_test:
     strategy:
+      # Do not cancel ubuntu even if macos fails
+      fail-fast: false
       matrix:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
