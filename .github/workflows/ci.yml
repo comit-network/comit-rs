@@ -110,6 +110,12 @@ jobs:
         with:
           node-version: '12.x'
 
+      - name: Cache node_modules directory
+        uses: actions/cache@v1
+        with:
+          path: api_tests/node_modules
+          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
+
       - name: Install Go 1.13.3.
         uses: actions/setup-go@v1
         with:
