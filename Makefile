@@ -65,14 +65,14 @@ clean:
 all: format build clippy test doc e2e
 
 build:
-	$(CARGO) build --all --all-targets $(BUILD_ARGS)
+	$(CARGO) build --workspace --all-targets $(BUILD_ARGS)
 
 clippy: install_clippy
 	$(CARGO) clippy --all-targets -- -D warnings
 
 test:
-	$(CARGO) test --all
 
+	$(CARGO) test --workspace
 doc:
 	$(CARGO) doc
 
