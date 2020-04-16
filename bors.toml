@@ -5,3 +5,4 @@ status = [
     "e2e_test (ubuntu-latest)"
 ]
 pr_status = ["license/cla"]
+block_labels = ["no-mergify"]
