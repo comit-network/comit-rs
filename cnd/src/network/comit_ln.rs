@@ -1,48 +1,57 @@
 use crate::{
-    asset,
-    btsieve::ethereum::{Cache, Web3Connector},
-    htlc_location, identity,
+    asset, identity,
     network::{
         oneshot_behaviour,
         protocols::{
             announce,
-            announce::{
-                behaviour::{Announce, BehaviourOutEvent},
-                SwapDigest,
-            },
+            announce::{behaviour::Announce, SwapDigest},
             ethereum_identity, finalize, lightning_identity, secret_hash,
         },
     },
     seed::{DeriveSwapSeedFromNodeLocal, RootSeed},
     swap_protocols::{
-        halight::{self, LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
-        han, herc20, ledger,
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        state::Update,
-        HanEtherereumHalightBitcoinCreateSwapParams, LedgerStates, NodeLocalSwapId, Role, SwapId,
+        HanEtherereumHalightBitcoinCreateSwapParams, NodeLocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
-    transaction,
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
-use chrono::Utc;
 use digest::Digest;
-use futures::{AsyncWriteExt, TryStreamExt};
+use futures::AsyncWriteExt;
 use libp2p::{
-    swarm::{NetworkBehaviour, NetworkBehaviourEventProcess},
+    swarm::{
+        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
+    },
     NetworkBehaviour,
 };
-use std::{collections::HashMap, sync::Arc};
-use tracing_futures::Instrument;
+use std::{
+    collections::{HashMap, VecDeque},
+    task::{Context, Poll},
+};
+
+/// Event emitted  by the `ComitLn` behaviour.
+#[derive(Debug)]
+pub enum BehaviourOutEvent {
+    SwapFinalized {
+        local_swap_id: NodeLocalSwapId,
+        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        secret_hash: SecretHash,
+        ethereum_identity: identity::Ethereum,
+    },
+}
 
 #[derive(NetworkBehaviour, Debug)]
+#[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct ComitLN {
     announce: Announce,
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
     lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
     finalize: oneshot_behaviour::Behaviour<finalize::Message>,
+
+    #[behaviour(ignore)]
+    events: VecDeque<BehaviourOutEvent>,
 
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, NodeLocalSwapId>,
@@ -58,17 +67,6 @@ pub struct ComitLN {
     communication_state: HashMap<SwapId, CommunicationState>,
     #[behaviour(ignore)]
     secret_hashes: HashMap<SwapId, SecretHash>,
-    #[behaviour(ignore)]
-    lnd_connector_as_sender: Arc<LndConnectorAsSender>,
-    #[behaviour(ignore)]
-    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
-
-    #[behaviour(ignore)]
-    ethereum_connector: Arc<Cache<Web3Connector>>,
-    #[behaviour(ignore)]
-    ethereum_ledger_state: Arc<LedgerStates>,
-    #[behaviour(ignore)]
-    halight_states: Arc<halight::States>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -84,19 +82,14 @@ struct CommunicationState {
 }
 
 impl ComitLN {
-    pub fn new(
-        lnd_connector_params: LndConnectorParams,
-        ethereum_connector: Arc<Cache<Web3Connector>>,
-        ethereum_ledger_state: Arc<LedgerStates>,
-        invoices_state: Arc<halight::States>,
-        seed: RootSeed,
-    ) -> Self {
+    pub fn new(seed: RootSeed) -> Self {
         ComitLN {
             announce: Default::default(),
             secret_hash: Default::default(),
             ethereum_identity: Default::default(),
             lightning_identity: Default::default(),
             finalize: Default::default(),
+            events: VecDeque::new(),
             swaps_waiting_for_announcement: Default::default(),
             swaps: Default::default(),
             swap_ids: Default::default(),
@@ -104,11 +97,6 @@ impl ComitLN {
             lightning_identities: Default::default(),
             communication_state: Default::default(),
             secret_hashes: Default::default(),
-            lnd_connector_as_sender: Arc::new(lnd_connector_params.clone().into()),
-            lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
-            ethereum_connector,
-            ethereum_ledger_state,
-            halight_states: invoices_state,
             seed,
         }
     }
@@ -212,6 +200,19 @@ impl ComitLN {
             role: create_swap_params.role,
         })
     }
+
+    fn poll<BIE>(
+        &mut self,
+        _cx: &mut Context<'_>,
+        _params: &mut impl PollParameters,
+    ) -> Poll<NetworkBehaviourAction<BIE, BehaviourOutEvent>> {
+        if let Some(event) = self.events.pop_front() {
+            return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
+        }
+
+        // We trust in libp2p to poll us.
+        Poll::Pending
+    }
 }
 
 #[derive(Debug)]
@@ -306,9 +307,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
 }
 
 impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for ComitLN {
-    fn inject_event(&mut self, event: BehaviourOutEvent) {
+    fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
         match event {
-            BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
+            announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
                 if let Some(local_id) = self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
                     let id = SwapId::default();
@@ -354,7 +355,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     });
                 }
             }
-            BehaviourOutEvent::ReceivedConfirmation {
+            announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
                 peer,
                 swap_digest,
                 swap_id,
@@ -402,7 +403,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 self.communication_state
                     .insert(swap_id, CommunicationState::default());
             }
-            BehaviourOutEvent::Error { peer, error } => {
+            announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
                 tracing::warn!(
                     "failed to complete announce protocol with {} because {:?}",
                     peer,
@@ -565,186 +566,14 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .copied()
                 .expect("must exist");
 
-            let invoice_states = self.halight_states.clone();
+            let ethereum_identity = self.ethereum_identities.get(&swap_id).copied().unwrap();
 
-            let role = create_swap_params.role;
-
-            if role == Role::Alice {
-                tokio::task::spawn({
-                    let lnd_connector = (*self.lnd_connector_as_receiver)
-                        .clone()
-                        .read_certificate()
-                        .expect("Failure reading tls certificate")
-                        .read_macaroon()
-                        .expect("Failure reading macaroon");
-
-                    new_halight_swap(
-                        local_swap_id,
-                        secret_hash,
-                        invoice_states,
-                        lnd_connector,
-                    )
-                    .instrument(
-                        tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
-                    )
-                });
-            } else {
-                // This is Bob
-                tokio::task::spawn({
-                    let lnd_connector = (*self.lnd_connector_as_sender)
-                        .clone()
-                        .read_certificate()
-                        .expect("Failure reading tls certificate")
-                        .read_macaroon()
-                        .expect("Failure reading macaroon");
-
-                    new_halight_swap(
-                        local_swap_id,
-                        secret_hash,
-                        invoice_states,
-                        lnd_connector,
-                    )
-                    .instrument(
-                        tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
-                    )
-                });
-            }
-
-            if role == Role::Alice {
-                tokio::task::spawn({
-                    let connector = self.ethereum_connector.clone();
-                    let alice_ethereum_identity = create_swap_params.ethereum_identity;
-                    let bob_ethereum_identity =
-                        self.ethereum_identities.get(&swap_id).copied().unwrap();
-
-                    let asset = create_swap_params.ethereum_amount.clone();
-                    let ledger = ledger::Ethereum::default();
-                    let expiry = create_swap_params.ethereum_absolute_expiry;
-                    let secret_hash = self
-                        .secret_hashes
-                        .get(&swap_id)
-                        .copied()
-                        .expect("must exist");
-
-                    new_han_ethereum_ether_swap(
-                        local_swap_id,
-                        connector,
-                        self.ethereum_ledger_state.clone(),
-                        HtlcParams {
-                            asset,
-                            ledger,
-                            redeem_identity: bob_ethereum_identity,
-                            refund_identity: alice_ethereum_identity.into(),
-                            expiry,
-                            secret_hash,
-                        },
-                        role,
-                    )
-                });
-            } else {
-                tokio::task::spawn({
-                    // This is Bob
-                    let connector = self.ethereum_connector.clone();
-                    let alice_ethereum_identity =
-                        self.ethereum_identities.get(&swap_id).copied().unwrap();
-                    let bob_ethereum_identity = create_swap_params.ethereum_identity;
-
-                    let asset = create_swap_params.ethereum_amount.clone();
-                    let ledger = ledger::Ethereum::default();
-                    let expiry = create_swap_params.ethereum_absolute_expiry;
-                    let secret_hash = self.secret_hashes.get(&swap_id).copied().unwrap();
-
-                    new_han_ethereum_ether_swap(
-                        local_swap_id,
-                        connector,
-                        self.ethereum_ledger_state.clone(),
-                        HtlcParams {
-                            asset,
-                            ledger,
-                            redeem_identity: bob_ethereum_identity.into(),
-                            refund_identity: alice_ethereum_identity,
-                            expiry,
-                            secret_hash,
-                        },
-                        role,
-                    )
-                });
-            }
+            self.events.push_back(BehaviourOutEvent::SwapFinalized {
+                local_swap_id,
+                swap_params: create_swap_params,
+                secret_hash,
+                ethereum_identity,
+            });
         }
     }
-}
-
-/// Creates a new instance of the halight protocol.
-///
-/// This function delegates to the `halight` module for the actual protocol
-/// implementation. Its main purpose is to annotate the protocol instance with
-/// logging information and store the events yielded by the protocol in
-/// `InvoiceStates`.
-async fn new_halight_swap<C>(
-    local_swap_id: NodeLocalSwapId,
-    secret_hash: SecretHash,
-    state_store: Arc<halight::States>,
-    connector: C,
-) where
-    C: halight::WaitForOpened
-        + halight::WaitForAccepted
-        + halight::WaitForSettled
-        + halight::WaitForCancelled,
-{
-    let mut events = halight::new(&connector, halight::Params { secret_hash })
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
-
-    while let Ok(Some(event)) = events.try_next().await {
-        state_store.update(&SwapId(local_swap_id.0), event).await;
-    }
-
-    tracing::info!("swap finished");
-}
-
-async fn new_han_ethereum_ether_swap(
-    local_swap_id: NodeLocalSwapId,
-    connector: Arc<Cache<Web3Connector>>,
-    ethereum_ledger_state: Arc<LedgerStates>,
-    htlc_params: HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
-    role: Role,
-) {
-    han::create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
-        connector.as_ref(),
-        ethereum_ledger_state,
-        local_swap_id,
-        htlc_params,
-        Utc::now().naive_local(),
-    )
-    .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
-    .await
-}
-
-/// Creates a new instance of the herc20 protocol.
-///
-/// This function delegates to the `herc20` module for the actual protocol
-/// implementation. Its main purpose is to annotate the protocol instance with
-/// logging information and store the events yielded by the protocol in
-/// `InvoiceStates`.
-#[allow(dead_code)]
-async fn new_herc20_swap<C>(
-    local_swap_id: NodeLocalSwapId,
-    params: herc20::Params,
-    state_store: Arc<herc20::States>,
-    connector: C,
-) where
-    C: herc20::WaitForDeployed
-        + herc20::WaitForFunded
-        + herc20::WaitForRedeemed
-        + herc20::WaitForRefunded,
-{
-    let mut events = herc20::new(&connector, params)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
-
-    while let Ok(Some(event)) = events.try_next().await {
-        state_store.update(&SwapId(local_swap_id.0), event).await;
-    }
-
-    tracing::info!("swap finished");
 }

@@ -7,27 +7,30 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
+    asset,
     asset::AssetKind,
     btsieve::{
         bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Web3Connector},
+        ethereum::{self, Cache, Web3Connector},
     },
     comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
-    htlc_location,
+    htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
-        halight::{LndConnectorParams, States},
-        ledger,
+        halight,
+        halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
+        han, herc20, ledger,
         rfc003::{
             self,
+            create_swap::HtlcParams,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
-            LedgerState, SwapCommunication,
+            LedgerState, SecretHash, SwapCommunication,
         },
-        state::Insert,
+        state::{Insert, Update},
         HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId,
         Role, SwapCommunicationStates, SwapId, SwapProtocol,
     },
@@ -35,10 +38,11 @@ use crate::{
 };
 use anyhow::Context;
 use async_trait::async_trait;
+use chrono::Utc;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future,
+    Future, TryStreamExt,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -64,6 +68,7 @@ use tokio::{
     runtime::{Handle, Runtime},
     sync::Mutex,
 };
+use tracing_futures::Instrument;
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
@@ -86,7 +91,7 @@ impl Swarm {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<States>,
+        halight_state: Arc<States>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -101,7 +106,7 @@ impl Swarm {
             swap_communication_states,
             alpha_ledger_state,
             beta_ledger_state,
-            invoice_states,
+            halight_state,
             seed,
             database.clone(),
             runtime.handle().clone(),
@@ -231,6 +236,13 @@ pub struct ComitNode {
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
     #[behaviour(ignore)]
     task_executor: Handle,
+
+    #[behaviour(ignore)]
+    lnd_connector_as_sender: Arc<LndConnectorAsSender>,
+    #[behaviour(ignore)]
+    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
+    #[behaviour(ignore)]
+    halight_state: Arc<States>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -274,7 +286,7 @@ impl ComitNode {
         swap_communication_states: Arc<SwapCommunicationStates>,
         alpha_ledger_state: Arc<LedgerStates>,
         beta_ledger_state: Arc<LedgerStates>,
-        invoice_states: Arc<States>,
+        halight_state: Arc<States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -293,13 +305,7 @@ impl ComitNode {
         Ok(Self {
             comit: Comit::new(known_headers),
             mdns: Mdns::new()?,
-            comit_ln: ComitLN::new(
-                lnd_connector_params,
-                ethereum_connector.clone(),
-                alpha_ledger_state.clone(),
-                invoice_states,
-                seed,
-            ),
+            comit_ln: ComitLN::new(seed),
             bitcoin_connector,
             ethereum_connector,
             alpha_ledger_state,
@@ -309,6 +315,9 @@ impl ComitNode {
             db,
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             task_executor,
+            lnd_connector_as_sender: Arc::new(lnd_connector_params.clone().into()),
+            lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
+            halight_state,
         })
     }
 
@@ -1137,6 +1146,184 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<libp2p::mdns::MdnsEvent> for Co
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
+}
+
+impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> for ComitNode {
+    fn inject_event(&mut self, event: comit_ln::BehaviourOutEvent) {
+        match event {
+            comit_ln::BehaviourOutEvent::SwapFinalized {
+                local_swap_id,
+                swap_params,
+                secret_hash,
+                ethereum_identity,
+            } => {
+                let role = swap_params.role;
+                let create_swap_params = swap_params;
+
+                match role {
+                    Role::Alice => {
+                        tokio::task::spawn({
+                            let lnd_connector = (*self.lnd_connector_as_receiver)
+                                .clone()
+                                .read_certificate()
+                                .expect("Failure reading tls certificate")
+                                .read_macaroon()
+                                .expect("Failure reading macaroon");
+
+                            new_halight_swap(local_swap_id, secret_hash, self.halight_state.clone(), lnd_connector)
+                                .instrument(
+                                    tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                                )
+                        });
+
+                        tokio::task::spawn({
+                            let connector = self.ethereum_connector.clone();
+                            let alice_ethereum_identity = create_swap_params.ethereum_identity;
+                            let bob_ethereum_identity = ethereum_identity;
+
+                            let asset = create_swap_params.ethereum_amount.clone();
+                            let ledger = ledger::Ethereum::default();
+                            let expiry = create_swap_params.ethereum_absolute_expiry;
+                            let secret_hash = secret_hash;
+
+                            new_han_ethereum_ether_swap(
+                                local_swap_id,
+                                connector,
+                                self.alpha_ledger_state.clone(),
+                                HtlcParams {
+                                    asset,
+                                    ledger,
+                                    redeem_identity: bob_ethereum_identity,
+                                    refund_identity: alice_ethereum_identity.into(),
+                                    expiry,
+                                    secret_hash,
+                                },
+                                role,
+                            )
+                        });
+                    }
+
+                    Role::Bob => {
+                        tokio::task::spawn({
+                            let lnd_connector = (*self.lnd_connector_as_sender)
+                                .clone()
+                                .read_certificate()
+                                .expect("Failure reading tls certificate")
+                                .read_macaroon()
+                                .expect("Failure reading macaroon");
+
+                            new_halight_swap(local_swap_id, secret_hash, self.halight_state.clone(), lnd_connector)
+                                .instrument(
+                                    tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                                )
+                        });
+
+                        tokio::task::spawn({
+                            // This is Bob
+                            let connector = self.ethereum_connector.clone();
+                            let alice_ethereum_identity = ethereum_identity;
+                            let bob_ethereum_identity = create_swap_params.ethereum_identity;
+
+                            let asset = create_swap_params.ethereum_amount.clone();
+                            let ledger = ledger::Ethereum::default();
+                            let expiry = create_swap_params.ethereum_absolute_expiry;
+                            let secret_hash = secret_hash;
+
+                            new_han_ethereum_ether_swap(
+                                local_swap_id,
+                                connector,
+                                self.alpha_ledger_state.clone(),
+                                HtlcParams {
+                                    asset,
+                                    ledger,
+                                    redeem_identity: bob_ethereum_identity.into(),
+                                    refund_identity: alice_ethereum_identity,
+                                    expiry,
+                                    secret_hash,
+                                },
+                                role,
+                            )
+                        });
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Creates a new instance of the halight protocol.
+///
+/// This function delegates to the `halight` module for the actual protocol
+/// implementation. Its main purpose is to annotate the protocol instance with
+/// logging information and store the events yielded by the protocol in
+/// `halight::States`.
+async fn new_halight_swap<C>(
+    local_swap_id: NodeLocalSwapId,
+    secret_hash: SecretHash,
+    state_store: Arc<halight::States>,
+    connector: C,
+) where
+    C: halight::WaitForOpened
+        + halight::WaitForAccepted
+        + halight::WaitForSettled
+        + halight::WaitForCancelled,
+{
+    let mut events = halight::new(&connector, halight::Params { secret_hash })
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        state_store.update(&SwapId(local_swap_id.0), event).await;
+    }
+
+    tracing::info!("swap finished");
+}
+
+async fn new_han_ethereum_ether_swap(
+    local_swap_id: NodeLocalSwapId,
+    connector: Arc<Cache<Web3Connector>>,
+    ethereum_ledger_state: Arc<LedgerStates>,
+    htlc_params: HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
+    role: Role,
+) {
+    han::create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
+        connector.as_ref(),
+        ethereum_ledger_state,
+        local_swap_id,
+        htlc_params,
+        Utc::now().naive_local(),
+    )
+    .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
+    .await
+}
+
+/// Creates a new instance of the herc20 protocol.
+///
+/// This function delegates to the `herc20` module for the actual protocol
+/// implementation. Its main purpose is to annotate the protocol instance with
+/// logging information and store the events yielded by the protocol in
+/// `herc20::States`.
+#[allow(dead_code)]
+async fn new_herc20_swap<C>(
+    local_swap_id: NodeLocalSwapId,
+    params: herc20::Params,
+    state_store: Arc<herc20::States>,
+    connector: C,
+) where
+    C: herc20::WaitForDeployed
+        + herc20::WaitForFunded
+        + herc20::WaitForRedeemed
+        + herc20::WaitForRefunded,
+{
+    let mut events = herc20::new(&connector, params)
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        state_store.update(&SwapId(local_swap_id.0), event).await;
+    }
+
+    tracing::info!("swap finished");
 }
 
 impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest

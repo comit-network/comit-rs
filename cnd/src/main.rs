@@ -127,7 +127,7 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
-    let invoice_states = Arc::new(States::default());
+    let halight_state = Arc::new(States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -141,14 +141,14 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&swap_communication_states),
         Arc::clone(&alpha_ledger_state),
         Arc::clone(&beta_ledger_state),
-        Arc::clone(&invoice_states),
+        Arc::clone(&halight_state),
         &database,
     )?;
 
     let facade2 = Facade2 {
         swarm: swarm.clone(),
         alpha_ledger_state: Arc::clone(&alpha_ledger_state),
-        beta_ledger_state: Arc::clone(&invoice_states),
+        beta_ledger_state: Arc::clone(&halight_state),
     };
 
     let deps = Facade {
