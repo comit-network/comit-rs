@@ -578,3 +578,122 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        asset::{ethereum::FromWei, Ether},
+        lightning,
+        network::{test_swarm, DialInformation},
+        swap_protocols::EthereumIdentity,
+    };
+    use digest::Digest;
+    use futures::future;
+    use libp2p::{multiaddr::Multiaddr, PeerId};
+    use rand::thread_rng;
+
+    fn make_alice_swap_params(
+        bob_peer_id: PeerId,
+        bob_addr: Multiaddr,
+        ether: asset::Ether,
+        lnbtc: asset::Lightning,
+        ethereum_absolute_expiry: Timestamp,
+        lightning_cltv_expiry: Timestamp,
+    ) -> HanEtherereumHalightBitcoinCreateSwapParams {
+        HanEtherereumHalightBitcoinCreateSwapParams {
+            role: Role::Alice,
+            peer: DialInformation {
+                peer_id: bob_peer_id,
+                address_hint: Some(bob_addr),
+            },
+            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_absolute_expiry,
+            ethereum_amount: ether,
+            lightning_identity: lightning::PublicKey::random(),
+            lightning_cltv_expiry,
+            lightning_amount: lnbtc,
+        }
+    }
+
+    fn make_bob_swap_params(
+        alice_peer_id: PeerId,
+        ether: asset::Ether,
+        lnbtc: asset::Lightning,
+        ethereum_absolute_expiry: Timestamp,
+        lightning_cltv_expiry: Timestamp,
+    ) -> HanEtherereumHalightBitcoinCreateSwapParams {
+        HanEtherereumHalightBitcoinCreateSwapParams {
+            role: Role::Bob,
+            peer: DialInformation {
+                peer_id: alice_peer_id,
+                address_hint: None,
+            },
+            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_absolute_expiry,
+            ethereum_amount: ether,
+            lightning_identity: lightning::PublicKey::random(),
+            lightning_cltv_expiry,
+            lightning_amount: lnbtc,
+        }
+    }
+
+    #[tokio::test]
+    async fn finalize_lightning_ethereum_swap_success() {
+        // arrange
+        let (mut alice_swarm, _, alice_peer_id) =
+            test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
+        let (mut bob_swarm, bob_addr, bob_peer_id) =
+            test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
+
+        let ether = Ether::from_wei(9_001_000_000_000_000_000_000u128);
+        let lnbtc = asset::Lightning::from_sat(42);
+        let ethereum_expiry = Timestamp::from(100);
+        let lightning_expiry = Timestamp::from(200);
+
+        alice_swarm.initiate_communication(
+            LocalSwapId::default(),
+            make_alice_swap_params(
+                bob_peer_id,
+                bob_addr,
+                ether.clone(),
+                lnbtc,
+                ethereum_expiry,
+                lightning_expiry,
+            ),
+        );
+        bob_swarm.initiate_communication(
+            LocalSwapId::default(),
+            make_bob_swap_params(
+                alice_peer_id,
+                ether,
+                lnbtc,
+                ethereum_expiry,
+                lightning_expiry,
+            ),
+        );
+
+        // act
+        let (alice_event, bob_event) = future::join(alice_swarm.next(), bob_swarm.next()).await;
+
+        // assert
+        match (alice_event, bob_event) {
+            (
+                BehaviourOutEvent::SwapFinalized {
+                    local_swap_id: _alice_local_swap_id,
+                    swap_params: alice_swap_params,
+                    secret_hash: _alice_secret_hash,
+                    ethereum_identity: _alice_eth_id,
+                },
+                BehaviourOutEvent::SwapFinalized {
+                    local_swap_id: _bob_local_swap_id,
+                    swap_params: bob_swap_params,
+                    secret_hash: _bob_secret_hash,
+                    ethereum_identity: _bob_eth_id,
+                },
+            ) => {
+                assert_eq!(bob_swap_params.digest(), alice_swap_params.digest());
+            }
+        }
+    }
+}

@@ -28,6 +28,20 @@ impl Address {
     }
 }
 
+#[cfg(test)]
+impl Address {
+    /// Generates a random address for use in tests where the actual value
+    /// doesn't / shouldn't matter.
+    pub fn random() -> Address {
+        use rand::RngCore;
+
+        let mut buffer = [0u8; 20];
+        rand::thread_rng().fill_bytes(&mut buffer);
+
+        Address(buffer)
+    }
+}
+
 impl From<[u8; 20]> for Address {
     fn from(bytes: [u8; 20]) -> Self {
         Address(bytes)

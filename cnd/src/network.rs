@@ -2,6 +2,8 @@ pub mod comit_ln;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
+#[cfg(test)]
+pub mod test_swarm;
 pub mod transport;
 
 pub use transport::ComitTransport;
