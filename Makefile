@@ -79,9 +79,6 @@ doc:
 e2e: build
 	(cd ./api_tests; yarn install; yarn test)
 
-e2e_only:
-	(cd ./api_tests; yarn install; yarn ci)
-
 check_format: check_rust_format check_toml_format check_ts_format
 
 MODIFIED_FILES = $(shell git status --untracked-files=no --short)

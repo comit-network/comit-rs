@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Extract toolchain version from rust-toolchain
         run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
@@ -42,7 +42,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Extract toolchain version from rust-toolchain
         run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
@@ -93,7 +93,7 @@ jobs:
     needs: build
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v1
+        uses: actions/checkout@v2
 
       - name: Download cnd-${{ matrix.os }} archive and extract cnd binary
         uses: actions/download-artifact@v1
@@ -109,6 +109,12 @@ jobs:
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
+
+      - name: Cache node_modules directory
+        uses: actions/cache@v1
+        with:
+          path: api_tests/node_modules
+          key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
 
       - name: Install Go 1.13.3.
         uses: actions/setup-go@v1
@@ -126,4 +132,6 @@ jobs:
       - name: Run e2e tests
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$HOME/go/bin:$PATH
-          make e2e_only
+          cd api_tests
+          yarn install
+          yarn ci
