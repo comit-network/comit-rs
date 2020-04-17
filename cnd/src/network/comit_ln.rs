@@ -577,3 +577,166 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        ethereum::Address,
+        network::{derive_key_pair, oneshot_behaviour, transport, DialInformation, TokioExecutor},
+        swap_protocols::{EthereumIdentity, SwapCommunicationStates, SwapErrorStates},
+    };
+    use anyhow::Context;
+    use bitcoin::secp256k1;
+    use futures::{pin_mut, prelude::*};
+    use libp2p::{
+        core::{muxing::StreamMuxer, upgrade},
+        identity,
+        mplex::MplexConfig,
+        multihash::{Multihash, Sha3_256},
+        secio::SecioConfig,
+        swarm::{Swarm, SwarmBuilder, SwarmEvent},
+        tcp::TcpConfig,
+        Multiaddr, PeerId, Transport,
+    };
+    use rand::{random, thread_rng};
+    use spectral::prelude::*;
+    use std::{str::FromStr, sync::Arc};
+    use tokio::runtime;
+    use uuid::Uuid;
+
+    fn random_swap_digest() -> SwapDigest {
+        SwapDigest::new(Sha3_256::digest(b"hello world"))
+    }
+
+    #[test]
+    fn lightning_to_ethereum_integration_test() {
+        let (alice_key_pair, alice_peer_id, alice_seed) = {
+            let seed = RootSeed::new_random(thread_rng()).unwrap();
+            let key_pair = derive_key_pair(&seed);
+            let peer_id = PeerId::from(key_pair.clone().public());
+            (key_pair, peer_id, seed)
+        };
+
+        let (bob_key_pair, bob_peer_id, bob_seed) = {
+            let seed = RootSeed::new_random(thread_rng()).unwrap();
+            let key_pair = derive_key_pair(&seed);
+            let peer_id = PeerId::from(key_pair.clone().public());
+            (key_pair, peer_id, seed)
+        };
+
+        let mut alice_runtime = runtime::Builder::new()
+            .enable_all()
+            .threaded_scheduler()
+            .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
+            .build()
+            .unwrap();
+
+        let mut alice_swarm = SwarmBuilder::new(
+            transport::build_comit_transport(alice_key_pair).unwrap(),
+            ComitLN::new(alice_seed),
+            alice_peer_id.clone(),
+        )
+        .executor(Box::new(TokioExecutor {
+            handle: alice_runtime.handle().clone(),
+        }))
+        .build();
+
+        // let mut alice_swarm = {
+        //     let transport= transport::build_comit_transport(alice_key_pair).unwrap();
+        //     let protocol = super::ComitLN::new(alice_seed);
+        //     Swarm::new(transport, protocol, alice_peer_id.clone())
+        // };
+
+        let mut bob_runtime = runtime::Builder::new()
+            .enable_all()
+            .threaded_scheduler()
+            .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
+            .build()
+            .unwrap();
+
+        let mut bob_swarm = SwarmBuilder::new(
+            transport::build_comit_transport(bob_key_pair).unwrap(),
+            ComitLN::new(bob_seed),
+            bob_peer_id.clone(),
+        )
+        .executor(Box::new(TokioExecutor {
+            handle: bob_runtime.handle().clone(),
+        }))
+        .build();
+
+        // let mut bob_swarm = {
+        //     let transport = transport::build_comit_transport(bob_key_pair).unwrap();
+        //     let protocol = super::ComitLN::new(bob_seed);
+        //     Swarm::new(transport, protocol, bob_peer_id.clone())
+        // };
+
+        let bob_addr: Multiaddr = "/ip4/127.0.0.1/tcp/0".parse().unwrap();
+        Swarm::listen_on(&mut bob_swarm, bob_addr.clone())
+            .with_context(|| format!("Address is not supported: {:?}", bob_addr))
+            .unwrap();
+
+        let bob_addr: libp2p::core::Multiaddr = bob_runtime.block_on(async {
+            loop {
+                let bob_swarm_fut = bob_swarm.next_event();
+                pin_mut!(bob_swarm_fut);
+                match bob_swarm_fut.await {
+                    SwarmEvent::NewListenAddr(addr) => return addr,
+                    _ => {}
+                }
+            }
+        });
+
+        let send_swap_digest = random_swap_digest();
+
+        let dial_info = DialInformation {
+            peer_id: bob_peer_id.clone(),
+            address_hint: Some(bob_addr.clone()),
+        };
+
+        let ethereum_id = EthereumIdentity::from(Address::default());
+
+        let secp_pubkey = secp256k1::PublicKey::from_str(
+            "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275",
+        )
+        .unwrap();
+        let lightning_id = crate::lightning::PublicKey::from(secp_pubkey);
+
+        let swap_params = HanEtherereumHalightBitcoinCreateSwapParams {
+            role: Role::Alice,
+            peer: dial_info,
+            ethereum_identity: ethereum_id,
+            ethereum_absolute_expiry: Timestamp::from(10),
+            ethereum_amount: asset::Ether::zero(),
+            lightning_identity: lightning_id,
+            lightning_cltv_expiry: Timestamp::from(10),
+            lightning_amount: asset::Lightning::from_sat(0),
+        };
+
+        let alice_node_id = NodeLocalSwapId::default();
+        alice_swarm.initiate_communication(alice_node_id, swap_params);
+
+        // trying to check if swap finalized or other events occur on bob
+        // doing something wrong here causing the test to hang
+        bob_runtime.block_on(async move {
+            loop {
+                let bob_swarm_fut = bob_swarm.next_event();
+                pin_mut!(bob_swarm_fut);
+                match bob_swarm_fut.await {
+                    SwarmEvent::Behaviour(behavior_event) => {
+                        // never enters this block causing the test to hang
+                        // if let BehaviourOutEvent::SwapFinalized {..} = behavior_event {
+                        //     //assert_eq!(io.swap_digest, send_swap_digest);
+                        //     // assert_eq!(peer, peer)
+                        //
+                        //     return;
+                        // }
+
+                        return;
+                    }
+                    _ => {}
+                }
+            }
+        })
+    }
+}

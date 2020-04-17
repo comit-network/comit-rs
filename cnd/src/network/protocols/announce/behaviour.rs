@@ -66,6 +66,7 @@ impl Announce {
                     address_hints.push_back(address);
                 }
 
+                /// OutboundConfig is pushed again into this vector below?
                 let pending_events = vec![OutboundConfig::new(swap_digest)];
 
                 entry.insert(ConnectionState::Connecting {
@@ -81,6 +82,7 @@ impl Announce {
                         pending_events,
                         address_hints,
                     } => {
+                        /// OutboundConfig is pushed twice into this vector?
                         pending_events.push(OutboundConfig::new(swap_digest));
                         if let Some(address) = dial_info.address_hint {
                             // We push to the front because we consider the new address to be the
