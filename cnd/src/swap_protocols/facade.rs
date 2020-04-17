@@ -50,8 +50,8 @@ use std::{convert::TryInto, fmt::Debug, sync::Arc};
 pub struct Facade {
     pub bitcoin_connector: Arc<btsieve::bitcoin::Cache<BitcoindConnector>>,
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-    pub alpha_ledger_state: Arc<LedgerStates>,
-    pub beta_ledger_state: Arc<LedgerStates>,
+    pub alpha_ledger_states: Arc<LedgerStates>,
+    pub beta_ledger_states: Arc<LedgerStates>,
     pub swap_communication_states: Arc<SwapCommunicationStates>,
     pub swap_error_states: Arc<SwapErrorStates>,
     pub seed: RootSeed,

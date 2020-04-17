@@ -102,12 +102,12 @@ pub async fn build_rfc003_siren_entity(
             .await?
             .ok_or_else(|| anyhow::anyhow!("swap communication state not found for {}", id))?;
         let alpha_ledger_state: rfc003::LedgerState<AA, AH, AT> = dependencies
-            .alpha_ledger_state
+            .alpha_ledger_states
             .get(&id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
         let beta_ledger_state: rfc003::LedgerState<BA, BH, BT> = dependencies
-            .beta_ledger_state
+            .beta_ledger_states
             .get(&id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;

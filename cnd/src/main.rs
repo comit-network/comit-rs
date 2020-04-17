@@ -122,12 +122,12 @@ fn main() -> anyhow::Result<()> {
     };
 
     // Han protocol
-    let alpha_ledger_state = Arc::new(LedgerStates::default());
-    let beta_ledger_state = Arc::new(LedgerStates::default());
+    let alpha_ledger_states = Arc::new(LedgerStates::default());
+    let beta_ledger_states = Arc::new(LedgerStates::default());
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
-    let halight_state = Arc::new(States::default());
+    let halight_states = Arc::new(States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -139,23 +139,23 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&ethereum_connector),
         lnd_connector_params,
         Arc::clone(&swap_communication_states),
-        Arc::clone(&alpha_ledger_state),
-        Arc::clone(&beta_ledger_state),
-        Arc::clone(&halight_state),
+        Arc::clone(&alpha_ledger_states),
+        Arc::clone(&beta_ledger_states),
+        Arc::clone(&halight_states),
         &database,
     )?;
 
     let facade2 = Facade2 {
         swarm: swarm.clone(),
-        alpha_ledger_state: Arc::clone(&alpha_ledger_state),
-        beta_ledger_state: Arc::clone(&halight_state),
+        alpha_ledger_states: Arc::clone(&alpha_ledger_states),
+        beta_ledger_states: Arc::clone(&halight_states),
     };
 
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
-        alpha_ledger_state,
-        beta_ledger_state,
+        alpha_ledger_states,
+        beta_ledger_states,
         swap_communication_states,
         swap_error_states,
         seed,

@@ -71,11 +71,11 @@ where
         })
         .await;
     dependencies
-        .alpha_ledger_state
+        .alpha_ledger_states
         .insert(id, LedgerState::<AA, AH, AT>::NotDeployed)
         .await;
     dependencies
-        .beta_ledger_state
+        .beta_ledger_states
         .insert(id, LedgerState::<BA, BH, BT>::NotDeployed)
         .await;
 

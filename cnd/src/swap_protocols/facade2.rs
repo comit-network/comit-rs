@@ -69,11 +69,12 @@ impl IntoDigestInput for Timestamp {
 #[derive(Clone, Debug)]
 pub struct Facade2 {
     pub swarm: Swarm,
-    pub alpha_ledger_state: Arc<LedgerStates>, /* We currently only support Han-HALight, this is
-                                                * Ethereum. */
-    pub beta_ledger_state: Arc<halight::States>, /* We currently only support Han-HALight, this
-                                                  * is
-                                                  * Lightning. */
+    pub alpha_ledger_states: Arc<LedgerStates>, /* We currently only support Han-HALight, this
+                                                 * is
+                                                 * Ethereum. */
+    pub beta_ledger_states: Arc<halight::States>, /* We currently only support Han-HALight, this
+                                                   * is
+                                                   * Lightning. */
 }
 
 impl Facade2 {

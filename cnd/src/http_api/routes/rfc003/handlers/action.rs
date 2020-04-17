@@ -50,12 +50,12 @@ pub async fn handle_action(
             .await?
             .ok_or_else(|| anyhow::anyhow!("swap communication state not found for {}", swap_id))?;
         let alpha_ledger_state: LedgerState<AA, AH, AT> = dependencies
-            .alpha_ledger_state
+            .alpha_ledger_states
             .get(&swap_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
         let beta_ledger_state: LedgerState<BA, BH, BT> = dependencies
-            .beta_ledger_state
+            .beta_ledger_states
             .get(&swap_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
