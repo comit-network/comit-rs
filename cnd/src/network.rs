@@ -89,9 +89,9 @@ impl Swarm {
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
-        alpha_ledger_state: Arc<LedgerStates>,
-        beta_ledger_state: Arc<LedgerStates>,
-        halight_state: Arc<States>,
+        alpha_ledger_states: Arc<LedgerStates>,
+        beta_ledger_states: Arc<LedgerStates>,
+        halight_states: Arc<States>,
         database: &Sqlite,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
@@ -104,9 +104,9 @@ impl Swarm {
             ethereum_connector,
             lnd_connector_params,
             swap_communication_states,
-            alpha_ledger_state,
-            beta_ledger_state,
-            halight_state,
+            alpha_ledger_states,
+            beta_ledger_states,
+            halight_states,
             seed,
             database.clone(),
             runtime.handle().clone(),
@@ -225,9 +225,9 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     pub swap_communication_states: Arc<SwapCommunicationStates>,
     #[behaviour(ignore)]
-    pub alpha_ledger_state: Arc<LedgerStates>,
+    pub alpha_ledger_states: Arc<LedgerStates>,
     #[behaviour(ignore)]
-    pub beta_ledger_state: Arc<LedgerStates>,
+    pub beta_ledger_states: Arc<LedgerStates>,
     #[behaviour(ignore)]
     pub seed: RootSeed,
     #[behaviour(ignore)]
@@ -242,7 +242,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
     #[behaviour(ignore)]
-    halight_state: Arc<States>,
+    halight_states: Arc<States>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -284,9 +284,9 @@ impl ComitNode {
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
-        alpha_ledger_state: Arc<LedgerStates>,
-        beta_ledger_state: Arc<LedgerStates>,
-        halight_state: Arc<States>,
+        alpha_ledger_states: Arc<LedgerStates>,
+        beta_ledger_states: Arc<LedgerStates>,
+        halight_states: Arc<States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -308,8 +308,8 @@ impl ComitNode {
             comit_ln: ComitLN::new(seed),
             bitcoin_connector,
             ethereum_connector,
-            alpha_ledger_state,
-            beta_ledger_state,
+            alpha_ledger_states,
+            beta_ledger_states,
             swap_communication_states,
             seed,
             db,
@@ -317,7 +317,7 @@ impl ComitNode {
             task_executor,
             lnd_connector_as_sender: Arc::new(lnd_connector_params.clone().into()),
             lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
-            halight_state,
+            halight_states,
         })
     }
 
@@ -349,8 +349,8 @@ impl ComitNode {
 async fn handle_request(
     db: Sqlite,
     swap_communication_states: Arc<SwapCommunicationStates>,
-    alpha_ledger_state: Arc<LedgerStates>,
-    beta_ledger_state: Arc<LedgerStates>,
+    alpha_ledger_states: Arc<LedgerStates>,
+    beta_ledger_states: Arc<LedgerStates>,
     counterparty: PeerId,
     mut request: ValidatedInboundRequest,
 ) -> Result<SwapId, Response> {
@@ -406,8 +406,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -445,8 +445,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -484,8 +484,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -523,8 +523,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -562,8 +562,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -601,8 +601,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -640,8 +640,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -680,8 +680,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -720,8 +720,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -760,8 +760,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -799,8 +799,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -838,8 +838,8 @@ async fn handle_request(
                             >(
                                 db.clone(),
                                 swap_communication_states.clone(),
-                                alpha_ledger_state.clone(),
-                                beta_ledger_state.clone(),
+                                alpha_ledger_states.clone(),
+                                beta_ledger_states.clone(),
                                 counterparty,
                                 request,
                             )
@@ -1112,8 +1112,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNod
                 let response_channels = self.response_channels.clone();
                 let db = self.db.clone();
                 let swap_communication_states = self.swap_communication_states.clone();
-                let alpha_ledger_state = self.alpha_ledger_state.clone();
-                let beta_ledger_state = self.beta_ledger_state.clone();
+                let alpha_ledger_state = self.alpha_ledger_states.clone();
+                let beta_ledger_state = self.beta_ledger_states.clone();
 
                 self.task_executor.spawn(async move {
                     match handle_request(
@@ -1170,7 +1170,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            new_halight_swap(local_swap_id, secret_hash, self.halight_state.clone(), lnd_connector)
+                            new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1189,7 +1189,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
-                                self.alpha_ledger_state.clone(),
+                                self.alpha_ledger_states.clone(),
                                 HtlcParams {
                                     asset,
                                     ledger,
@@ -1212,7 +1212,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            new_halight_swap(local_swap_id, secret_hash, self.halight_state.clone(), lnd_connector)
+                            new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1232,7 +1232,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
-                                self.alpha_ledger_state.clone(),
+                                self.alpha_ledger_states.clone(),
                                 HtlcParams {
                                     asset,
                                     ledger,

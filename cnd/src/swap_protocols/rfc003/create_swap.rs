@@ -33,7 +33,7 @@ use std::sync::Arc;
 /// implementation is still waiting for that.
 pub async fn create_watcher<D, S, L, A, H, I, T>(
     dependencies: D,
-    ledger_state: Arc<S>,
+    ledger_states: Arc<S>,
     id: SwapId,
     htlc_params: HtlcParams<L, A, I>,
     accepted_at: NaiveDateTime,
@@ -50,7 +50,7 @@ pub async fn create_watcher<D, S, L, A, H, I, T>(
     I: Clone,
     T: Clone,
 {
-    ledger_state
+    ledger_states
         .insert(id, LedgerState::<A, H, T>::NotDeployed)
         .await;
 
@@ -67,7 +67,7 @@ pub async fn create_watcher<D, S, L, A, H, I, T>(
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
                 tracing::info!("swap {} yielded event {}", id, event);
-                ledger_state.update(&id, event).await;
+                ledger_states.update(&id, event).await;
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.

@@ -56,7 +56,7 @@ where
     tokio::task::spawn(
         create_watcher::<_, _, _, _, AH, _, AT>(
             dependencies.clone(),
-            dependencies.alpha_ledger_state.clone(),
+            dependencies.alpha_ledger_states.clone(),
             id,
             swap.alpha_htlc_params(),
             accepted_at,
@@ -67,7 +67,7 @@ where
     tokio::task::spawn(
         create_watcher::<_, _, _, _, BH, _, BT>(
             dependencies.clone(),
-            dependencies.beta_ledger_state.clone(),
+            dependencies.beta_ledger_states.clone(),
             id,
             swap.beta_htlc_params(),
             accepted_at,
