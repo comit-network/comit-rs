@@ -135,3 +135,31 @@ jobs:
           cd api_tests
           yarn install
           yarn ci
+
+      - name: Upload bitcoind log
+        if: failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-bitcoind.log
+          path: api_tests/log/bitcoind/regtest/debug.log
+
+      - name: Upload parity log
+        if: failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-parity.log
+          path: api_tests/log/parity/parity.log
+
+      - name: Upload lnd logs
+        if: failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-logs-lnd
+          path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
+
+      - name: Upload e2e logs
+        if: failure()
+        uses: actions/upload-artifact@v2-preview
+        with:
+          name: e2e-test-logs
+          path: api_tests/log/tests/
