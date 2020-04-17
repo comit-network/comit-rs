@@ -797,11 +797,6 @@
   dependencies:
     uuid "^3.0.1"
 
-"@wcjiang/whereis@^1.0.0":
-  version "1.0.0"
-  resolved "https://registry.yarnpkg.com/@wcjiang/whereis/-/whereis-1.0.0.tgz#0e6c0020634784eba683a677660307a24fdc3f8a"
-  integrity sha512-WwYgGSo0krJvcmHHTdif9ooQJW154vEhq6uAGT1PDMsZv5eTsuzYtLl1jojQZKzHRIgIptOM5MCLMg/0verHxw==
-
 abab@^2.0.0:
   version "2.0.3"
   resolved "https://registry.yarnpkg.com/abab/-/abab-2.0.3.tgz#623e2075e02eb2d3f2475e49f99c91846467907a"
