@@ -78,6 +78,7 @@ jobs:
         run: make test
 
       - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
+        if: matrix.os == 'ubuntu-latest'
         uses: actions/upload-artifact@v1
         with:
           name: cnd-${{ matrix.os }}
@@ -88,7 +89,7 @@ jobs:
       # Do not cancel ubuntu even if macos fails
       fail-fast: false
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     needs: build
     steps:
