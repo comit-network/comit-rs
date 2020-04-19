@@ -583,27 +583,21 @@ mod tests {
     use super::*;
     use crate::{
         ethereum::Address,
-        network::{derive_key_pair, oneshot_behaviour, transport, DialInformation, TokioExecutor},
-        swap_protocols::{EthereumIdentity, SwapCommunicationStates, SwapErrorStates},
+        network::{derive_key_pair, transport, DialInformation, TokioExecutor},
+        swap_protocols::EthereumIdentity,
     };
     use anyhow::Context;
     use bitcoin::secp256k1;
-    use futures::{pin_mut, prelude::*};
+    use futures::pin_mut;
     use libp2p::{
-        core::{muxing::StreamMuxer, upgrade},
-        identity,
-        mplex::MplexConfig,
-        multihash::{Multihash, Sha3_256},
-        secio::SecioConfig,
+        multihash::Sha3_256,
         swarm::{Swarm, SwarmBuilder, SwarmEvent},
-        tcp::TcpConfig,
-        Multiaddr, PeerId, Transport,
+        Multiaddr, PeerId,
     };
-    use rand::{random, thread_rng};
-    use spectral::prelude::*;
-    use std::{str::FromStr, sync::Arc};
+    use rand::thread_rng;
+
+    use std::str::FromStr;
     use tokio::runtime;
-    use uuid::Uuid;
 
     fn random_swap_digest() -> SwapDigest {
         SwapDigest::new(Sha3_256::digest(b"hello world"))
@@ -714,6 +708,7 @@ mod tests {
         };
 
         let alice_node_id = NodeLocalSwapId::default();
+
         alice_swarm.initiate_communication(alice_node_id, swap_params);
 
         // trying to check if swap finalized or other events occur on bob
@@ -723,7 +718,7 @@ mod tests {
                 let bob_swarm_fut = bob_swarm.next_event();
                 pin_mut!(bob_swarm_fut);
                 match bob_swarm_fut.await {
-                    SwarmEvent::Behaviour(behavior_event) => {
+                    SwarmEvent::Behaviour(_behavior_event) => {
                         // never enters this block causing the test to hang
                         // if let BehaviourOutEvent::SwapFinalized {..} = behavior_event {
                         //     //assert_eq!(io.swap_digest, send_swap_digest);
