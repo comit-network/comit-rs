@@ -22,6 +22,7 @@ import { EthereumWallet } from "./wallets/ethereum";
 import { LedgerInstance, LightningNodeConfig } from "./ledgers";
 import { ParityInstance } from "./ledgers/parity_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
+import BitcoinRpcClient from "bitcoin-core";
 
 export default class TestEnvironment extends NodeEnvironment {
     private readonly testSuite: string;
@@ -113,19 +114,7 @@ export default class TestEnvironment extends NodeEnvironment {
     async teardown() {
         await super.teardown();
 
-        await this.cleanupAll();
-
         loggerShutdown();
-    }
-
-    async cleanupAll() {
-        const tasks = [];
-
-        for (const [, wallet] of Object.entries(this.global.lndWallets)) {
-            tasks.push(wallet.close());
-        }
-
-        await Promise.all(tasks);
     }
 
     /**
@@ -170,7 +159,23 @@ export default class TestEnvironment extends NodeEnvironment {
         const config = await this.startLedger(
             lockDir,
             bitcoind,
-            async (bitcoind) => bitcoind.config
+            async (bitcoind) => {
+                const config = bitcoind.config;
+                const rpcClient = new BitcoinRpcClient({
+                    network: config.network,
+                    port: config.rpcPort,
+                    host: config.host,
+                    username: config.username,
+                    password: config.password,
+                });
+
+                const name = "miner";
+                await rpcClient.createWallet(name);
+
+                this.logger.info(`Created miner wallet with name ${name}`);
+
+                return { ...bitcoind.config, minerWallet: name };
+            }
         );
 
         const minerPidFile = path.join(lockDir, "miner.pid");
