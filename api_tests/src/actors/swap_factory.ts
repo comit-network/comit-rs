@@ -240,7 +240,7 @@ function defaultHanEthereumEtherRequestParams(
 ): HanEthereumEtherRequestParams {
     return {
         amount: "5000000000000000000",
-        chain_id: 17,
+        chain_id: 1337,
         identity,
         absolute_expiry: absoluteExpiry,
     };
@@ -266,7 +266,7 @@ function defaultHerc20EthereumErc20RequestParams(
     return {
         amount: "9000000000000000000",
         contract_address: tokenContractAddress,
-        chain_id: 17,
+        chain_id: 1337,
         identity,
         absolute_expiry: absoluteExpiry,
     };

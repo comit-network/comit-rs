@@ -21,7 +21,7 @@ export interface HarnessGlobal extends Global.Global {
         bob?: LightningWallet;
     };
     tokenContract: string;
-    parityLockDir: string;
+    gethLockDir: string;
     cargoTargetDir: string;
 
     getDataDir: (program: string) => Promise<string>;
@@ -71,7 +71,7 @@ export const DEFAULT_ALPHA = {
 const DEFAULT_BETA = {
     ledger: {
         name: "ethereum",
-        chain_id: 17,
+        chain_id: 1337,
     },
     asset: {
         name: "ether",
