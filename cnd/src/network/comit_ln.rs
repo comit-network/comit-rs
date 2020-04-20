@@ -604,7 +604,7 @@ mod tests {
         prelude::*,
         ready,
     };
-    use std::{str::FromStr, sync::Arc};
+    use std::{str::FromStr, sync::Arc, thread::sleep, time};
     use tokio::{macros::support::Pin, runtime, sync::Mutex};
 
     fn random_swap_digest() -> SwapDigest {
@@ -612,12 +612,30 @@ mod tests {
     }
 
     async fn start_communication(
-        swarm: Arc<Mutex<Swarm<ComitLN>>>,
-        params: HanEtherereumHalightBitcoinCreateSwapParams,
-        node_id: NodeLocalSwapId,
+        alice_swarm: Arc<Mutex<Swarm<ComitLN>>>,
+        bob_swarm: Arc<Mutex<Swarm<ComitLN>>>,
+        alice_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        bob_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        alice_node_id: NodeLocalSwapId,
+        bob_node_id: NodeLocalSwapId,
     ) {
-        let mut guard = swarm.lock().await;
-        guard.initiate_communication(node_id, params);
+        println!("entered init...");
+
+        async {
+            // init bob first, because his swap has to be available for alice' announce
+            // message
+            sleep(time::Duration::from_secs(1));
+            let mut bob_guard = bob_swarm.lock().await;
+            bob_guard.initiate_communication(bob_node_id, bob_params);
+            println!("Bob initialised");
+
+            // init alice after bob
+            sleep(time::Duration::from_secs(1));
+            let mut alice_guard = alice_swarm.lock().await;
+            alice_guard.initiate_communication(alice_node_id, alice_params);
+            println!("Alice initialised");
+        }
+        .await;
     }
 
     #[test]
@@ -716,23 +734,26 @@ mod tests {
         let bob_swarm = Arc::new(Mutex::new(bob_swarm));
 
         // construct future to asynchroniously kick off the swap communication for alice
-        let future_init_alice = start_communication(
+        let future_init = start_communication(
             alice_swarm.clone(),
-            swap_params_alice,
-            NodeLocalSwapId::default(),
-        );
-        // construct future to asynchroniously kick off the swap communication for bob
-        let future_init_bob = start_communication(
             bob_swarm.clone(),
+            swap_params_alice,
             swap_params_bob,
+            NodeLocalSwapId::default(),
             NodeLocalSwapId::default(),
         );
 
         // future to poll for the finalized event of alice behaviour
         let alice_future = async {
+            println!("Start listening for events for alice");
             loop {
+                // sleep(time::Duration::from_millis(300));
+
                 let mut guard = alice_swarm.lock().await;
+
                 let next = guard.next_event().await;
+
+                println!("Got alice event: {:?}", next);
                 match next {
                     SwarmEvent::Behaviour(behavior_event) => match behavior_event {
                         BehaviourOutEvent::SwapFinalized {
@@ -754,9 +775,14 @@ mod tests {
 
         // future to poll for the finalized event of bob behaviour
         let bob_future = async {
+            println!("Start listening for events for bob");
             loop {
+                // sleep(time::Duration::from_millis(300));
+
                 let mut guard = bob_swarm.lock().await;
                 let next = guard.next_event().await;
+
+                println!("Got bob event: {:?}", next);
                 match next {
                     SwarmEvent::Behaviour(behavior_event) => match behavior_event {
                         BehaviourOutEvent::SwapFinalized {
@@ -777,7 +803,7 @@ mod tests {
         };
 
         // join all futures
-        let joined = join4(alice_future, bob_future, future_init_alice, future_init_bob);
+        let joined = join3(alice_future, bob_future, future_init);
 
         runtime.block_on(joined);
 
