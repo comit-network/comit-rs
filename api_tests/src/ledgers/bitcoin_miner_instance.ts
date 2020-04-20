@@ -1,6 +1,7 @@
 import { spawn } from "child_process";
-import { existsAsync, writeFileAsync } from "../utils";
 import { Logger } from "log4js";
+import { promises as asyncFs } from "fs";
+import { existsAsync } from "../utils";
 
 export default class BitcoinMinerInstance {
     public static async start(
@@ -28,7 +29,7 @@ export default class BitcoinMinerInstance {
             stdio: "ignore",
         });
 
-        await writeFileAsync(pidFile, miner.pid, {
+        await asyncFs.writeFile(pidFile, miner.pid, {
             encoding: "utf-8",
         });
 

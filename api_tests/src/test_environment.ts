@@ -1,12 +1,6 @@
 import { Config } from "@jest/types";
-import {
-    execAsync,
-    existsAsync,
-    HarnessGlobal,
-    mkdirAsync,
-    readFileAsync,
-    writeFileAsync,
-} from "./utils";
+import { execAsync, existsAsync, HarnessGlobal } from "./utils";
+import { promises as asyncFs } from "fs";
 import NodeEnvironment from "jest-environment-node";
 import path from "path";
 import { LightningWallet } from "./wallets/lightning";
@@ -87,7 +81,7 @@ export default class TestEnvironment extends NodeEnvironment {
         });
 
         const testLogDir = path.join(this.logDir, "tests", this.testSuite);
-        await mkdirAsync(testLogDir, { recursive: true });
+        await asyncFs.mkdir(testLogDir, { recursive: true });
 
         this.global.getLogFile = (pathElements) =>
             path.join(testLogDir, ...pathElements);
@@ -100,7 +94,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
         this.global.getDataDir = async (program) => {
             const dir = path.join(this.logDir, program);
-            await mkdirAsync(dir, { recursive: true });
+            await asyncFs.mkdir(dir, { recursive: true });
 
             return dir;
         };
@@ -362,7 +356,7 @@ export default class TestEnvironment extends NodeEnvironment {
                 "Found config file, we'll be using that configuration instead of starting another instance"
             );
 
-            const config = await readFileAsync(configFile, {
+            const config = await asyncFs.readFile(configFile, {
                 encoding: "utf-8",
             });
 
@@ -374,7 +368,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
             const config = await makeConfig(instance);
 
-            await writeFileAsync(configFile, JSON.stringify(config), {
+            await asyncFs.writeFile(configFile, JSON.stringify(config), {
                 encoding: "utf-8",
             });
 
@@ -387,7 +381,7 @@ export default class TestEnvironment extends NodeEnvironment {
     private async getLockDirectory(process: string): Promise<string> {
         const dir = path.join(this.locksDir, process);
 
-        await mkdirAsync(dir, {
+        await asyncFs.mkdir(dir, {
             recursive: true,
         });
 

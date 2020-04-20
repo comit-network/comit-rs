@@ -1,6 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
-import { existsAsync, waitUntilFileExists, writeFileAsync } from "../utils";
+import { existsAsync, waitUntilFileExists } from "../utils";
 import * as path from "path";
+import { promises as asyncFs } from "fs";
 import getPort from "get-port";
 import waitForLogMessage from "../wait_for_log_message";
 import { Lnd } from "comit-sdk";
@@ -66,7 +67,7 @@ export class LndInstance implements LedgerInstance {
 
         this.logger.debug("lnd started with PID", this.process.pid);
 
-        await writeFileAsync(this.pidFile, this.process.pid, {
+        await asyncFs.writeFile(this.pidFile, this.process.pid, {
             encoding: "utf-8",
         });
     }
@@ -202,7 +203,7 @@ bitcoin.node=bitcoind
 bitcoind.dir=${this.bitcoindDataDir}
 `;
         const config = path.join(this.dataDir, "lnd.conf");
-        await writeFileAsync(config, output);
+        await asyncFs.writeFile(config, output);
     }
 
     private async findBinary(version: string): Promise<string> {
