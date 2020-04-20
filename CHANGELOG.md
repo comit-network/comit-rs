@@ -7,6 +7,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Fixed
+-   Fix windows build
+
 ## [0.7.3] - 2020-04-14
 
 ### Fixed

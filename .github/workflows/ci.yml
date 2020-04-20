@@ -38,7 +38,7 @@ jobs:
   build:
     strategy:
       matrix:
-        os: [macos-latest, ubuntu-latest]
+        os: [macos-latest, ubuntu-latest, windows-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -74,7 +74,7 @@ jobs:
 
       # Ignore tests on macos due to missing docker
       - name: Run unit tests
-        if: matrix.os != 'macos-latest'
+        if: matrix.os == 'ubuntu-latest'
         run: make test
 
       - name: Upload cnd-${{ matrix.os }} archive that contains the cnd binary
