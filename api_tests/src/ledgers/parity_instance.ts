@@ -158,8 +158,11 @@ export class ParityInstance implements LedgerInstance {
         });
         const binaryPath = cacheDir(binaryName);
 
-        if (await existsAsync(binaryPath)) {
+        try {
+            await existsAsync(binaryPath);
             return binaryPath;
+        } catch (e) {
+            // Continue and download the file
         }
 
         const url = downloadUrl(version);

@@ -1,6 +1,7 @@
 import { ethers } from "ethers";
 import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
+import { promises as asyncFs } from "fs";
 import * as fs from "fs";
 import { promisify } from "util";
 import { Global } from "@jest/types";
@@ -36,7 +37,8 @@ export interface LedgerConfig {
     bobLnd?: LightningNodeConfig;
 }
 
-export const existsAsync = promisify(fs.exists);
+export const existsAsync = (filepath: string) =>
+    asyncFs.access(filepath, fs.constants.F_OK);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 
@@ -112,7 +114,11 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
 export async function waitUntilFileExists(filepath: string) {
     let logFileExists = false;
     do {
-        await sleep(500);
-        logFileExists = await existsAsync(filepath);
+        try {
+            await existsAsync(filepath);
+            logFileExists = true;
+        } catch (e) {
+            await sleep(500);
+        }
     } while (!logFileExists);
 }

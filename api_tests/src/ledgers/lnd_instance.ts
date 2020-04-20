@@ -226,8 +226,11 @@ bitcoind.dir=${this.bitcoindDataDir}
         // This path depends on the directory structure inside the archive
         const binaryPath = cacheDir(`lnd-${getArch()}-${version}`, "lnd");
 
-        if (await existsAsync(binaryPath)) {
+        try {
+            await existsAsync(binaryPath);
             return binaryPath;
+        } catch (e) {
+            // Continue and download the file
         }
 
         const url = downloadUrlFor(version);

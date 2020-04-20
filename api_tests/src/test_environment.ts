@@ -174,9 +174,10 @@ export default class TestEnvironment extends NodeEnvironment {
 
         const minerPidFile = path.join(lockDir, "miner.pid");
 
-        const minerAlreadyRunning = await existsAsync(minerPidFile);
-
-        if (!minerAlreadyRunning) {
+        try {
+            await existsAsync(minerPidFile);
+        } catch (e) {
+            // miner is not running
             const tsNode = path.join(this.nodeModulesBinDir, "ts-node");
             const minerProgram = path.join(this.srcDir, "bitcoin_miner.ts");
 
@@ -349,9 +350,10 @@ export default class TestEnvironment extends NodeEnvironment {
         const configFile = path.join(lockDir, "config.json");
 
         this.logger.info("Checking for config file ", configFile);
-        const configFileExists = await existsAsync(configFile);
 
-        if (configFileExists) {
+        try {
+            await existsAsync(configFile);
+
             this.logger.info(
                 "Found config file, we'll be using that configuration instead of starting another instance"
             );
@@ -361,7 +363,7 @@ export default class TestEnvironment extends NodeEnvironment {
             });
 
             return JSON.parse(config);
-        } else {
+        } catch (e) {
             this.logger.info("No config file found, starting ledger");
 
             await instance.start();

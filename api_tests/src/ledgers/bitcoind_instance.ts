@@ -116,8 +116,11 @@ export class BitcoindInstance implements LedgerInstance {
         // This path depends on the directory structure inside the archive
         const binaryPath = cacheDir(`bitcoin-${version}`, "bin", "bitcoind");
 
-        if (await existsAsync(binaryPath)) {
+        try {
+            await existsAsync(binaryPath);
             return binaryPath;
+        } catch (e) {
+            // Continue and download the file
         }
 
         const url = downloadUrlFor(version);
