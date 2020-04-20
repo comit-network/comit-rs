@@ -22,7 +22,7 @@ export interface HarnessGlobal extends Global.Global {
         bob?: LightningWallet;
     };
     tokenContract: string;
-    parityLockDir: string;
+    gethLockDir: string;
     cargoTargetDir: string;
 
     getDataDir: (program: string) => Promise<string>;
@@ -39,6 +39,7 @@ export interface LedgerConfig {
 
 export const existsAsync = (filepath: string) =>
     asyncFs.access(filepath, fs.constants.F_OK);
+export const openAsync = promisify(fs.open);
 export const rimrafAsync = promisify(rimraf);
 export const execAsync = promisify(exec);
 
@@ -68,7 +69,7 @@ export const DEFAULT_ALPHA = {
 const DEFAULT_BETA = {
     ledger: {
         name: "ethereum",
-        chain_id: 17,
+        chain_id: 1337,
     },
     asset: {
         name: "ether",

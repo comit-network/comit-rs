@@ -144,7 +144,7 @@ function bitcoinConnector(nodeConfig: BitcoinNodeConfig): BitcoinConnector {
 
 function ethereumConnector(nodeConfig: EthereumNodeConfig): EthereumConnector {
     return {
-        chain_id: 17,
+        chain_id: nodeConfig.chain_id,
         parity: {
             node_url: nodeConfig.rpc_url,
         },
