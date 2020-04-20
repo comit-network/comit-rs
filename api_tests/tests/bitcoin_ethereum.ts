@@ -5,6 +5,7 @@
 
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
+import { sleep } from "../src/utils";
 
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
     it(
@@ -71,6 +72,9 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
             await alice.underfund();
 
             await bob.assertAlphaIncorrectlyFunded();
+
+            // It is meaningless to assert before cnd processes a new block
+            await sleep(3000);
             await bob.assertBetaNotDeployed();
             await alice.assertAlphaIncorrectlyFunded();
             await alice.assertBetaNotDeployed();
@@ -116,6 +120,8 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
             await alice.overfund();
 
+            // It is meaningless to assert before cnd processes a new block
+            await sleep(3000);
             await bob.assertAlphaIncorrectlyFunded();
             await bob.assertBetaNotDeployed();
             await alice.assertAlphaIncorrectlyFunded();
