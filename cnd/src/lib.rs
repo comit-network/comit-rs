@@ -108,18 +108,18 @@ pub fn data_dir() -> Option<PathBuf> {
         .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
 }
 
-/// Returns `/Users/[username]/Library/Application Support/Lnd/`.
-/// exists.
-#[cfg(target_os = "macos")]
+/// Returns `/Users/[username]/Library/Application Support/Lnd/` for macos.
+/// Returns `%LOCALAPPDATA%/Lnd for windows.
+/// Returns `~/.lnd` if $HOME exists for linux.
 pub fn lnd_default_dir() -> Option<PathBuf> {
-    directories::ProjectDirs::from("", "", "Lnd")
-        .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
-}
-
-/// Returns `~/.lnd` if $HOME exists.
-#[cfg(target_os = "linux")]
-pub fn lnd_default_dir() -> Option<PathBuf> {
-    directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+    if cfg!(target_os = "macos") || cfg!(target_os = "windows") {
+        directories::ProjectDirs::from("", "", "Lnd")
+            .map(|proj_dirs| proj_dirs.data_dir().to_path_buf())
+    } else if cfg!(target_os = "linux") {
+        directories::UserDirs::new().map(|d| d.home_dir().to_path_buf().join(".lnd"))
+    } else {
+        None
+    }
 }
 
 /// Returns the directory used by lnd.
