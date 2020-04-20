@@ -588,23 +588,47 @@ mod tests {
     };
     use anyhow::Context;
     use bitcoin::secp256k1;
-    use futures::pin_mut;
+    use futures::{pin_mut, task, StreamExt, TryFutureExt};
     use libp2p::{
         multihash::Sha3_256,
-        swarm::{Swarm, SwarmBuilder, SwarmEvent},
-        Multiaddr, PeerId,
+        swarm::{SwarmBuilder, SwarmEvent},
+        Multiaddr, PeerId, Swarm,
     };
     use rand::thread_rng;
 
-    use std::str::FromStr;
-    use tokio::runtime;
+    use crate::{asset::ethereum::FromWei, network::ComitNode};
+    use bitcoin::hashes::core::mem::swap;
+    use futures::{
+        future::{join3, join4},
+        join,
+        prelude::*,
+        ready,
+    };
+    use std::{str::FromStr, sync::Arc};
+    use tokio::{macros::support::Pin, runtime, sync::Mutex};
 
     fn random_swap_digest() -> SwapDigest {
-        SwapDigest::new(Sha3_256::digest(b"hello world"))
+        SwapDigest::new(Sha3_256::digest(b"swapt digest"))
+    }
+
+    async fn start_communication(
+        swarm: Arc<Mutex<Swarm<ComitLN>>>,
+        params: HanEtherereumHalightBitcoinCreateSwapParams,
+        node_id: NodeLocalSwapId,
+    ) {
+        let mut guard = swarm.lock().await;
+        guard.initiate_communication(node_id, params);
     }
 
     #[test]
     fn lightning_to_ethereum_integration_test() {
+        let mut runtime = runtime::Builder::new()
+            .enable_all()
+            .threaded_scheduler()
+            .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
+            .build()
+            .unwrap();
+
         let (alice_key_pair, alice_peer_id, alice_seed) = {
             let seed = RootSeed::new_random(thread_rng()).unwrap();
             let key_pair = derive_key_pair(&seed);
@@ -619,35 +643,15 @@ mod tests {
             (key_pair, peer_id, seed)
         };
 
-        let mut alice_runtime = runtime::Builder::new()
-            .enable_all()
-            .threaded_scheduler()
-            .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
-            .build()
-            .unwrap();
-
         let mut alice_swarm = SwarmBuilder::new(
             transport::build_comit_transport(alice_key_pair).unwrap(),
             ComitLN::new(alice_seed),
             alice_peer_id.clone(),
         )
         .executor(Box::new(TokioExecutor {
-            handle: alice_runtime.handle().clone(),
+            handle: runtime.handle().clone(),
         }))
         .build();
-
-        // let mut alice_swarm = {
-        //     let transport= transport::build_comit_transport(alice_key_pair).unwrap();
-        //     let protocol = super::ComitLN::new(alice_seed);
-        //     Swarm::new(transport, protocol, alice_peer_id.clone())
-        // };
-
-        let mut bob_runtime = runtime::Builder::new()
-            .enable_all()
-            .threaded_scheduler()
-            .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
-            .build()
-            .unwrap();
 
         let mut bob_swarm = SwarmBuilder::new(
             transport::build_comit_transport(bob_key_pair).unwrap(),
@@ -655,31 +659,14 @@ mod tests {
             bob_peer_id.clone(),
         )
         .executor(Box::new(TokioExecutor {
-            handle: bob_runtime.handle().clone(),
+            handle: runtime.handle().clone(),
         }))
         .build();
 
-        // let mut bob_swarm = {
-        //     let transport = transport::build_comit_transport(bob_key_pair).unwrap();
-        //     let protocol = super::ComitLN::new(bob_seed);
-        //     Swarm::new(transport, protocol, bob_peer_id.clone())
-        // };
-
-        let bob_addr: Multiaddr = "/ip4/127.0.0.1/tcp/0".parse().unwrap();
+        let bob_addr: Multiaddr = "/ip4/127.0.0.1/tcp/3000".parse().unwrap();
         Swarm::listen_on(&mut bob_swarm, bob_addr.clone())
             .with_context(|| format!("Address is not supported: {:?}", bob_addr))
             .unwrap();
-
-        let bob_addr: libp2p::core::Multiaddr = bob_runtime.block_on(async {
-            loop {
-                let bob_swarm_fut = bob_swarm.next_event();
-                pin_mut!(bob_swarm_fut);
-                match bob_swarm_fut.await {
-                    SwarmEvent::NewListenAddr(addr) => return addr,
-                    _ => {}
-                }
-            }
-        });
 
         let send_swap_digest = random_swap_digest();
 
@@ -696,9 +683,9 @@ mod tests {
         .unwrap();
         let lightning_id = crate::lightning::PublicKey::from(secp_pubkey);
 
-        let swap_params = HanEtherereumHalightBitcoinCreateSwapParams {
+        let swap_params_alice = HanEtherereumHalightBitcoinCreateSwapParams {
             role: Role::Alice,
-            peer: dial_info,
+            peer: dial_info.clone(),
             ethereum_identity: ethereum_id,
             ethereum_absolute_expiry: Timestamp::from(10),
             ethereum_amount: asset::Ether::zero(),
@@ -707,31 +694,138 @@ mod tests {
             lightning_amount: asset::Lightning::from_sat(0),
         };
 
-        let alice_node_id = NodeLocalSwapId::default();
+        let swap_params_bob = HanEtherereumHalightBitcoinCreateSwapParams {
+            role: Role::Bob,
+            peer: dial_info, /* not relevant for Bob, should be optional or somehow related
+                              * to role */
+            ethereum_identity: ethereum_id,
+            ethereum_absolute_expiry: Timestamp::from(10),
+            ethereum_amount: asset::Ether::zero(),
+            lightning_identity: lightning_id,
+            lightning_cltv_expiry: Timestamp::from(10),
+            lightning_amount: asset::Lightning::from_sat(0),
+        };
 
-        alice_swarm.initiate_communication(alice_node_id, swap_params);
+        let ethereum_identity_bob: Address = swap_params_bob.ethereum_identity.clone().into();
+        let ethereum_identity_alice: Address = swap_params_alice.ethereum_identity.clone().into();
 
-        // trying to check if swap finalized or other events occur on bob
-        // doing something wrong here causing the test to hang
-        bob_runtime.block_on(async move {
+        // let alice_swarm_arc = Arc::new(alice_swarm);
+        // let bob_swarm_arc = Arc::new(bob_swarm);
+
+        let alice_swarm = Arc::new(Mutex::new(alice_swarm));
+        let bob_swarm = Arc::new(Mutex::new(bob_swarm));
+
+        // construct future to asynchroniously kick off the swap communication for alice
+        let future_init_alice = start_communication(
+            alice_swarm.clone(),
+            swap_params_alice,
+            NodeLocalSwapId::default(),
+        );
+        // construct future to asynchroniously kick off the swap communication for bob
+        let future_init_bob = start_communication(
+            bob_swarm.clone(),
+            swap_params_bob,
+            NodeLocalSwapId::default(),
+        );
+
+        // future to poll for the finalized event of alice behaviour
+        let alice_future = async {
             loop {
-                let bob_swarm_fut = bob_swarm.next_event();
-                pin_mut!(bob_swarm_fut);
-                match bob_swarm_fut.await {
-                    SwarmEvent::Behaviour(_behavior_event) => {
-                        // never enters this block causing the test to hang
-                        // if let BehaviourOutEvent::SwapFinalized {..} = behavior_event {
-                        //     //assert_eq!(io.swap_digest, send_swap_digest);
-                        //     // assert_eq!(peer, peer)
-                        //
-                        //     return;
-                        // }
-
-                        return;
+                let mut guard = alice_swarm.lock().await;
+                let next = guard.next_event().await;
+                match next {
+                    SwarmEvent::Behaviour(behavior_event) => match behavior_event {
+                        BehaviourOutEvent::SwapFinalized {
+                            local_swap_id,
+                            swap_params,
+                            secret_hash,
+                            ethereum_identity,
+                        } => {
+                            assert_eq!(ethereum_identity_bob, ethereum_identity);
+                            break;
+                        }
+                    },
+                    _ => {
+                        continue;
                     }
-                    _ => {}
                 }
             }
-        })
+        };
+
+        // future to poll for the finalized event of bob behaviour
+        let bob_future = async {
+            loop {
+                let mut guard = bob_swarm.lock().await;
+                let next = guard.next_event().await;
+                match next {
+                    SwarmEvent::Behaviour(behavior_event) => match behavior_event {
+                        BehaviourOutEvent::SwapFinalized {
+                            local_swap_id,
+                            swap_params,
+                            secret_hash,
+                            ethereum_identity,
+                        } => {
+                            assert_eq!(ethereum_identity_alice, ethereum_identity);
+                            break;
+                        }
+                    },
+                    _ => {
+                        continue;
+                    }
+                }
+            }
+        };
+
+        // join all futures
+        let joined = join4(alice_future, bob_future, future_init_alice, future_init_bob);
+
+        runtime.block_on(joined);
+
+        // Old impl with poll, but that did not make sense, because the exit
+        // clause is wrong.
+        //
+        // let poll_alice = futures::future::poll_fn(move |cx| -> Poll<()> {
+        //     loop {
+        //         let mutex = alice_swarm.lock();
+        //         futures::pin_mut!(mutex);
+        //         let mut guard = futures::ready!(mutex.poll(cx));
+        //
+        //         let event = ready!(guard.poll_next_unpin(cx));
+        //         match event {
+        //             Some(BehaviourOutEvent::SwapFinalized {
+        //                 local_swap_id,
+        //                 swap_params,
+        //                 secret_hash,
+        //                 ethereum_identity,
+        //             }) => {
+        //                 assert_eq!(ethereum_identity_bob, ethereum_identity);
+        //                 return Poll::Ready(());
+        //             }
+        //             _ => (),
+        //         }
+        //     }
+        // });
+        //
+        // let poll_bob = futures::future::poll_fn(move |cx| -> Poll<()> {
+        //     loop {
+        //         let mutex = bob_swarm.lock();
+        //         futures::pin_mut!(mutex);
+        //         let mut guard = futures::ready!(mutex.poll(cx));
+        //
+        //         let event = ready!(guard.poll_next_unpin(cx));
+        //         match event {
+        //             Some(BehaviourOutEvent::SwapFinalized {
+        //                 local_swap_id,
+        //                 swap_params,
+        //                 secret_hash,
+        //                 ethereum_identity,
+        //             }) => {
+        //                 assert_eq!(ethereum_identity_alice,
+        // ethereum_identity);                 return Poll::Ready(());
+        //             }
+        //             _ => (),
+        //         }
+        //     }
+        // });
     }
 }
