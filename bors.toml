@@ -1,6 +1,5 @@
 status = [
     "static_analysis",
-    "lint",
     "build (ubuntu-latest)",
     "e2e_test (ubuntu-latest)"
 ]

@@ -18,7 +18,7 @@ AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
 CARGO_TOML_FILES = $(wildcard **/Cargo.toml)
 
 # All our targets go into .PHONY because none of them actually create files
-.PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
+.PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format check_github_workflows_format
 
 default: init_git_hooks build format
 
@@ -79,7 +79,7 @@ doc:
 e2e: build
 	(cd ./api_tests; yarn install; yarn test)
 
-check_format: check_rust_format check_toml_format check_ts_format
+check_format: check_rust_format check_toml_format check_ts_format check_github_workflows_format
 
 MODIFIED_FILES = $(shell git status --untracked-files=no --short)
 MODIFIED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(MODIFIED_FILES))
@@ -93,6 +93,7 @@ endif
 
 STAGED_FILES = $(shell git diff --staged --name-only)
 STAGED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(STAGED_FILES))
+STAGED_WORKFLOW_FILES = $(filter .github/workflows%.yml,$(STAGED_FILES))
 
 check_rust_format: install_rustfmt
 	$(CARGO_NIGHTLY) fmt -- --check
@@ -105,4 +106,9 @@ ifeq ($(CI),true)
 	(cd ./api_tests; yarn install; yarn run check)
 else ifneq (,$(STAGED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run check)
+endif
+
+check_github_workflows_format:
+ifneq (,$(STAGED_WORKFLOW_FILES))
+	(npx @stoplight/spectral lint .github/workflows/*.yml --ignore-unknown-format --verbose)
 endif
