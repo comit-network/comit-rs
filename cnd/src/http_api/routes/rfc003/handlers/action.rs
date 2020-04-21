@@ -2,8 +2,8 @@ use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Save},
     http_api::{
         action::{
-            ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
-            ToSirenAction,
+            rfc003::ToSirenAction, ActionExecutionParameters, ActionResponseBody,
+            IntoResponsePayload, ListRequiredFields,
         },
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},

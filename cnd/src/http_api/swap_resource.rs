@@ -3,7 +3,7 @@
 use crate::{
     db::{Swap, SwapTypes},
     http_api::{
-        action::ToSirenAction,
+        action::rfc003::ToSirenAction,
         route_factory::swap_path,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,

@@ -9,7 +9,8 @@ use crate::{
             lnd::Chain,
         },
         ledger,
-        rfc003::{Secret, SecretHash, SwapId},
+        rfc003::{Secret, SecretHash},
+        LocalSwapId,
     },
     timestamp::Timestamp,
     transaction,
@@ -21,8 +22,16 @@ use serde::{Deserialize, Serialize};
 use std::convert::Infallible;
 use warp::http::StatusCode;
 
+pub mod rfc003 {
+    use crate::swap_protocols::rfc003::SwapId;
+
+    pub trait ToSirenAction {
+        fn to_siren_action(&self, id: &SwapId) -> siren::Action;
+    }
+}
+
 pub trait ToSirenAction {
-    fn to_siren_action(&self, id: &SwapId) -> siren::Action;
+    fn to_siren_action(&self, id: &LocalSwapId) -> siren::Action;
 }
 
 pub trait ListRequiredFields {
