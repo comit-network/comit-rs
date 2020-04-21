@@ -1,12 +1,14 @@
 import { ChildProcess, spawn } from "child_process";
-import { waitUntilFileExists, writeFileAsync } from "../utils";
+import { existsAsync, waitUntilFileExists, writeFileAsync } from "../utils";
 import * as path from "path";
 import getPort from "get-port";
 import waitForLogMessage from "../wait_for_log_message";
 import { Lnd } from "comit-sdk";
-import whereis from "@wcjiang/whereis";
 import { Logger } from "log4js";
 import { LightningNodeConfig, LedgerInstance } from "./index";
+import findCacheDir from "find-cache-dir";
+import download from "download";
+import { platform } from "os";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -70,9 +72,8 @@ export class LndInstance implements LedgerInstance {
     }
 
     private async execBinary() {
-        const bin = process.env.LND_BIN
-            ? process.env.LND_BIN
-            : await whereis("lnd");
+        const bin = await this.findBinary("v0.9.1-beta");
+
         this.logger.debug(`Using binary ${bin}`);
         this.process = spawn(bin, ["--lnddir", this.dataDir], {
             stdio: ["ignore", "ignore", "ignore"], // stdin, stdout, stderr.  These are all logged already.
@@ -203,4 +204,66 @@ bitcoind.dir=${this.bitcoindDataDir}
         const config = path.join(this.dataDir, "lnd.conf");
         await writeFileAsync(config, output);
     }
+
+    private async findBinary(version: string): Promise<string> {
+        const envOverride = process.env.LND_BIN;
+
+        if (envOverride) {
+            this.logger.info("Overriding lnd bin with LND_BIN: ", envOverride);
+
+            return envOverride;
+        }
+
+        const archiveName = `lnd-${version}`;
+
+        const cacheDir = findCacheDir({
+            name: archiveName,
+            create: true,
+            thunk: true,
+        });
+
+        // This path depends on the directory structure inside the archive
+        const binaryPath = cacheDir(`lnd-${getArch()}-${version}`, "lnd");
+
+        if (await existsAsync(binaryPath)) {
+            return binaryPath;
+        }
+
+        const url = downloadUrlFor(version);
+
+        this.logger.info(
+            "Binary for version ",
+            version,
+            " not found at ",
+            binaryPath,
+            ", downloading from ",
+            url
+        );
+
+        const destination = cacheDir("");
+        await download(url, destination, {
+            decompress: true,
+            extract: true,
+            filename: archiveName,
+        });
+
+        this.logger.info("Download completed");
+
+        return binaryPath;
+    }
+}
+
+function getArch(): string {
+    switch (platform()) {
+        case "darwin":
+            return "darwin-amd64";
+        case "linux":
+            return "linux-amd64";
+        default:
+            throw new Error(`Unsupported platform ${platform()}`);
+    }
+}
+
+function downloadUrlFor(version: string) {
+    return `https://github.com/lightningnetwork/lnd/releases/download/${version}/lnd-${getArch()}-${version}.tar.gz`;
 }
