@@ -1,8 +1,9 @@
 import glob from "glob";
-import { readFileAsync, rimrafAsync } from "../utils";
+import { rimrafAsync } from "../utils";
 import { promisify } from "util";
 import processExists from "process-exists";
 import path from "path";
+import { promises as asyncFs } from "fs";
 
 const globAsync = promisify(glob);
 
@@ -12,7 +13,7 @@ export default async function killNodes(locksDir: any) {
     });
 
     for (const pidFile of pidFiles) {
-        const content = await readFileAsync(path.join(locksDir, pidFile), {
+        const content = await asyncFs.readFile(path.join(locksDir, pidFile), {
             encoding: "utf-8",
         });
         const pid = parseInt(content, 10);

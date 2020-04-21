@@ -1,6 +1,7 @@
 import { ChildProcess, spawn } from "child_process";
 import waitForLogMessage from "../wait_for_log_message";
-import { existsAsync, mkdirAsync, writeFileAsync } from "../utils";
+import { existsAsync } from "../utils";
+import { promises as asyncFs } from "fs";
 import getPort from "get-port";
 import { Logger } from "log4js";
 import { LedgerInstance } from "./index";
@@ -79,7 +80,7 @@ export class ParityInstance implements LedgerInstance {
 
         this.logger.info("parity started with PID", this.process.pid);
 
-        await writeFileAsync(this.pidFile, this.process.pid, {
+        await asyncFs.writeFile(this.pidFile, this.process.pid, {
             encoding: "utf-8",
         });
     }
@@ -99,9 +100,9 @@ export class ParityInstance implements LedgerInstance {
      */
     private static async writeFile(pathToFile: string, content: string) {
         const { dir } = path.parse(pathToFile);
-        await mkdirAsync(dir, { recursive: true });
+        await asyncFs.mkdir(dir, { recursive: true });
 
-        await writeFileAsync(pathToFile, content, {
+        await asyncFs.writeFile(pathToFile, content, {
             encoding: "utf-8",
         });
     }
@@ -157,8 +158,11 @@ export class ParityInstance implements LedgerInstance {
         });
         const binaryPath = cacheDir(binaryName);
 
-        if (await existsAsync(binaryPath)) {
+        try {
+            await existsAsync(binaryPath);
             return binaryPath;
+        } catch (e) {
+            // Continue and download the file
         }
 
         const url = downloadUrl(version);

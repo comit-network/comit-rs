@@ -1,6 +1,7 @@
-import { readFileAsync, sleep } from "./utils";
+import { sleep } from "./utils";
 import { BitcoinNodeConfig } from "./ledgers";
 import BitcoinRpcClient from "bitcoin-core";
+import { promises as asyncFs } from "fs";
 
 const configFile = process.argv[2];
 
@@ -8,9 +9,11 @@ const configFile = process.argv[2];
 run(configFile);
 
 async function run(configFile: string) {
-    const config: BitcoinNodeConfig = await readFileAsync(configFile, {
-        encoding: "utf-8",
-    }).then(JSON.parse);
+    const config: BitcoinNodeConfig = await asyncFs
+        .readFile(configFile, {
+            encoding: "utf-8",
+        })
+        .then(JSON.parse);
 
     const client = new BitcoinRpcClient({
         network: "regtest",
