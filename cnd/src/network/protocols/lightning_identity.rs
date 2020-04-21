@@ -1,4 +1,4 @@
-use crate::{identity, network::oneshot_protocol, swap_protocols::SwapId};
+use crate::{identity, network::oneshot_protocol, swap_protocols::rfc003::SwapId};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, Strict};
 use serdebug::SerDebug;

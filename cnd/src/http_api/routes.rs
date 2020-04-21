@@ -15,9 +15,9 @@ use crate::{
         },
         halight::{self, Settled},
         ledger::ethereum::ChainId,
-        rfc003::LedgerState,
+        rfc003::{LedgerState, SwapId},
         state::Get,
-        Facade2, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role, SwapId,
+        Facade2, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
     },
     transaction,
 };

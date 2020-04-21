@@ -1,6 +1,6 @@
 use crate::{
     network::oneshot_protocol,
-    swap_protocols::{rfc003::SecretHash, SwapId},
+    swap_protocols::rfc003::{SecretHash, SwapId},
 };
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, Strict};

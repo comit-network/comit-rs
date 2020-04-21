@@ -21,9 +21,9 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            SwapCommunication,
+            SwapCommunication, SwapId,
         },
-        state, InsertFailedSwap, LedgerStates, SwapCommunicationStates, SwapErrorStates, SwapId,
+        state, InsertFailedSwap, LedgerStates, SwapCommunicationStates, SwapErrorStates,
     },
     transaction,
 };

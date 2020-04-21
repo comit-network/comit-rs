@@ -18,10 +18,10 @@ use crate::{
             self,
             actions::{Action, ActionKind},
             messages::{Decision, IntoAcceptMessage},
-            LedgerState, SwapCommunication,
+            LedgerState, SwapCommunication, SwapId,
         },
         state::{Get, Insert},
-        Facade, SwapId,
+        Facade,
     },
 };
 use anyhow::Context;

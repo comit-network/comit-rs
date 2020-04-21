@@ -7,7 +7,7 @@ use crate::{
         },
         DialInformation,
     },
-    swap_protocols::SwapId,
+    swap_protocols::rfc003::SwapId,
 };
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},

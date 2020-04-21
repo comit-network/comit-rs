@@ -1,4 +1,4 @@
-use crate::{network::oneshot_protocol, swap_protocols::SwapId};
+use crate::{network::oneshot_protocol, swap_protocols::rfc003::SwapId};
 use serde::{Deserialize, Serialize};
 
 /// The message for the finalize protocol.

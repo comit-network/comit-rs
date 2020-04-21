@@ -28,11 +28,11 @@ use crate::{
             self,
             create_swap::HtlcParams,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
-            LedgerState, SecretHash, SwapCommunication,
+            LedgerState, SecretHash, SwapCommunication, SwapId,
         },
         state::{Insert, Update},
         HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, LocalSwapId, Role,
-        SwapCommunicationStates, SwapId, SwapProtocol,
+        SwapCommunicationStates, SwapProtocol,
     },
     transaction,
 };

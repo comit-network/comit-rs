@@ -19,7 +19,8 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
-        Role, SwapId, SwapProtocol,
+        rfc003::SwapId,
+        Role, SwapProtocol,
     },
     transaction,
 };

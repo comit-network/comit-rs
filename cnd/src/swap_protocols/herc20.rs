@@ -1,8 +1,8 @@
 use crate::{
     asset, htlc_location, identity,
     swap_protocols::{
-        rfc003::{Secret, SecretHash},
-        state, SwapId,
+        rfc003::{Secret, SecretHash, SwapId},
+        state,
     },
     transaction,
 };

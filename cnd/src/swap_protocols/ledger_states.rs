@@ -1,7 +1,6 @@
 use crate::swap_protocols::{
-    rfc003::{create_swap::SwapEvent, LedgerState},
+    rfc003::{create_swap::SwapEvent, LedgerState, SwapId},
     state::{Get, Insert, Update},
-    swap_id::SwapId,
 };
 use async_trait::async_trait;
 use std::{any::Any, collections::HashMap};

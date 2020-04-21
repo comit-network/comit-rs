@@ -1,7 +1,7 @@
 use crate::{
     db::{DetermineTypes, Retrieve},
     http_api::swap_resource::{build_rfc003_siren_entity, IncludeState, OnFail},
-    swap_protocols::{Facade, SwapId},
+    swap_protocols::{rfc003::SwapId, Facade},
 };
 
 pub async fn handle_get_swap(dependencies: Facade, id: SwapId) -> anyhow::Result<siren::Entity> {

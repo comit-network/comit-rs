@@ -6,6 +6,7 @@ pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
 pub mod messages;
+pub mod swap_id;
 
 pub mod actions;
 mod secret;
@@ -14,6 +15,7 @@ pub use self::{
     create_swap::create_watcher,
     ledger_state::{HtlcState, LedgerState},
     secret::{FromErr, Secret, SecretHash},
+    swap_id::SwapId,
 };
 
 pub use self::messages::{Accept, Decline, Request};

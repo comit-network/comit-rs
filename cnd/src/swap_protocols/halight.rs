@@ -1,6 +1,6 @@
 use crate::swap_protocols::{
-    rfc003::{Secret, SecretHash},
-    state, SwapId,
+    rfc003::{Secret, SecretHash, SwapId},
+    state,
 };
 use futures::{
     future::{self, Either},

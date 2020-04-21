@@ -1,7 +1,11 @@
 use crate::{
     asset::{self, AssetKind},
     libp2p_comit_ext::{FromHeader, ToHeader},
-    swap_protocols::{ledger::Ethereum, rfc003::messages::Decision, SwapId, SwapProtocol},
+    swap_protocols::{
+        ledger::Ethereum,
+        rfc003::{messages::Decision, SwapId},
+        SwapProtocol,
+    },
 };
 use libp2p_comit::frame::Header;
 use serde::de::Error;

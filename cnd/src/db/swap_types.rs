@@ -6,7 +6,7 @@ use crate::{
         Sqlite,
     },
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl},
-    swap_protocols::{Role, SwapId},
+    swap_protocols::{rfc003::SwapId, Role},
 };
 use async_trait::async_trait;
 use strum_macros::{Display, EnumString};

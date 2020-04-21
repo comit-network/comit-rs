@@ -4,9 +4,9 @@ use crate::swap_protocols::{
         events::{
             Deployed, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed, Refunded,
         },
-        LedgerState,
+        LedgerState, SwapId,
     },
-    state, LocalSwapId, SwapId,
+    state, LocalSwapId,
 };
 use chrono::NaiveDateTime;
 use futures::future::{self, Either};

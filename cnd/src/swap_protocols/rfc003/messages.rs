@@ -1,7 +1,7 @@
 use crate::{
     swap_protocols::{
-        rfc003::{DeriveIdentities, SecretHash},
-        HashFunction, SwapId,
+        rfc003::{DeriveIdentities, SecretHash, SwapId},
+        HashFunction,
     },
     timestamp::Timestamp,
 };

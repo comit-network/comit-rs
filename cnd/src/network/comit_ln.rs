@@ -11,8 +11,8 @@ use crate::{
     seed::{DeriveSwapSeedFromNodeLocal, RootSeed},
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
-        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role, SwapId,
+        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash, SwapId},
+        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role,
     },
     timestamp::Timestamp,
 };
