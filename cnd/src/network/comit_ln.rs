@@ -12,7 +12,7 @@ use crate::{
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        HanEtherereumHalightBitcoinCreateSwapParams, NodeLocalSwapId, Role, SwapId,
+        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role, SwapId,
     },
     timestamp::Timestamp,
 };
@@ -34,7 +34,7 @@ use std::{
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
     SwapFinalized {
-        local_swap_id: NodeLocalSwapId,
+        local_swap_id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
         secret_hash: SecretHash,
         ethereum_identity: identity::Ethereum,
@@ -54,11 +54,11 @@ pub struct ComitLN {
     events: VecDeque<BehaviourOutEvent>,
 
     #[behaviour(ignore)]
-    swaps_waiting_for_announcement: HashMap<SwapDigest, NodeLocalSwapId>,
+    swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
     #[behaviour(ignore)]
-    swaps: HashMap<NodeLocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
+    swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
-    swap_ids: HashMap<NodeLocalSwapId, SwapId>,
+    swap_ids: HashMap<LocalSwapId, SwapId>,
     #[behaviour(ignore)]
     ethereum_identities: HashMap<SwapId, identity::Ethereum>,
     #[behaviour(ignore)]
@@ -103,7 +103,7 @@ impl ComitLN {
 
     pub fn initiate_communication(
         &mut self,
-        id: NodeLocalSwapId,
+        id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         let digest = create_swap_params.clone().digest();
@@ -131,7 +131,7 @@ impl ComitLN {
         }
     }
 
-    pub fn get_finalized_swap(&self, local_id: NodeLocalSwapId) -> Option<FinalizedSwap> {
+    pub fn get_finalized_swap(&self, local_id: LocalSwapId) -> Option<FinalizedSwap> {
         let create_swap_params = match self.swaps.get(&local_id) {
             Some(body) => body,
             None => return None,
@@ -227,7 +227,7 @@ pub struct FinalizedSwap {
     pub beta_ledger_redeem_identity: identity::Lightning,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
-    pub local_id: NodeLocalSwapId,
+    pub local_id: LocalSwapId,
     pub secret_hash: SecretHash,
     pub secret: Option<Secret>,
     pub role: Role,

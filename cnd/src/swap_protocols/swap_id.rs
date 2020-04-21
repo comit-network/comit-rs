@@ -37,37 +37,37 @@ impl fmt::Display for SwapId {
 }
 
 /// This is an identifier created, and used locally, by a node to identify a
-/// swap created by this node i.e., when a node is acting in the role of Alice
-/// we need an identifier.
+/// swap created by this node i.e., when a swap is created via the REST API we
+/// create one of these to identify the swap.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct NodeLocalSwapId(pub Uuid);
+pub struct LocalSwapId(pub Uuid);
 
-impl Default for NodeLocalSwapId {
+impl Default for LocalSwapId {
     fn default() -> Self {
-        NodeLocalSwapId(Uuid::new_v4())
+        LocalSwapId(Uuid::new_v4())
     }
 }
 
-impl FromStr for NodeLocalSwapId {
+impl FromStr for LocalSwapId {
     type Err = uuid::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::from_str(s).map(NodeLocalSwapId)
+        Uuid::from_str(s).map(LocalSwapId)
     }
 }
 
-impl From<Uuid> for NodeLocalSwapId {
+impl From<Uuid> for LocalSwapId {
     fn from(uuid: Uuid) -> Self {
-        NodeLocalSwapId(uuid)
+        LocalSwapId(uuid)
     }
 }
 
-impl From<NodeLocalSwapId> for Uuid {
-    fn from(swap_id: NodeLocalSwapId) -> Self {
+impl From<LocalSwapId> for Uuid {
+    fn from(swap_id: LocalSwapId) -> Self {
         swap_id.0
     }
 }
 
-impl fmt::Display for NodeLocalSwapId {
+impl fmt::Display for LocalSwapId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
     }

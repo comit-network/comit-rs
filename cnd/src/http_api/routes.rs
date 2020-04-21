@@ -17,7 +17,7 @@ use crate::{
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
-        Facade2, FundAction, InitAction, NodeLocalSwapId, RedeemAction, RefundAction, Role, SwapId,
+        Facade2, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role, SwapId,
     },
     transaction,
 };
@@ -30,10 +30,7 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_halight_swap(
-    id: NodeLocalSwapId,
-    facade: Facade2,
-) -> Result<impl Reply, Rejection> {
+pub async fn get_halight_swap(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_get_halight_swap(facade, id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
@@ -43,7 +40,7 @@ pub async fn get_halight_swap(
 
 pub async fn handle_get_halight_swap(
     facade: Facade2,
-    local_id: NodeLocalSwapId,
+    local_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
     let swap_id = SwapId(local_id.0);
 
@@ -310,7 +307,7 @@ impl RedeemAction for BobHanEthereumHalightBitcoinState {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_init(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_init(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -320,7 +317,7 @@ pub async fn action_init(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(
-    local_id: NodeLocalSwapId,
+    local_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
     let id = SwapId(local_id.0);
@@ -365,7 +362,7 @@ async fn handle_action_init(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_fund(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_fund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -375,7 +372,7 @@ pub async fn action_fund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(
-    local_id: NodeLocalSwapId,
+    local_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
     let id = SwapId(local_id.0);
@@ -427,7 +424,7 @@ async fn handle_action_fund(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_redeem(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_redeem(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -437,7 +434,7 @@ pub async fn action_redeem(id: NodeLocalSwapId, facade: Facade2) -> Result<impl 
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_redeem(
-    local_id: NodeLocalSwapId,
+    local_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
     let id = SwapId(local_id.0);
@@ -489,7 +486,7 @@ async fn handle_action_redeem(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_refund(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
     handle_action_refund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -499,7 +496,7 @@ pub async fn action_refund(id: NodeLocalSwapId, facade: Facade2) -> Result<impl 
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_refund(
-    local_id: NodeLocalSwapId,
+    local_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
     let id = SwapId(local_id.0);

@@ -31,8 +31,8 @@ use crate::{
             LedgerState, SecretHash, SwapCommunication,
         },
         state::{Insert, Update},
-        HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, NodeLocalSwapId,
-        Role, SwapCommunicationStates, SwapId, SwapProtocol,
+        HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, LocalSwapId, Role,
+        SwapCommunicationStates, SwapId, SwapProtocol,
     },
     transaction,
 };
@@ -150,7 +150,7 @@ impl Swarm {
 
     pub async fn initiate_communication(
         &self,
-        id: NodeLocalSwapId,
+        id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         let mut guard = self.inner.lock().await;
@@ -158,7 +158,7 @@ impl Swarm {
         guard.initiate_communication(id, swap_params)
     }
 
-    pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         let mut guard = self.inner.lock().await;
 
         guard.get_finalized_swap(id)
@@ -333,13 +333,13 @@ impl ComitNode {
 
     pub fn initiate_communication(
         &mut self,
-        id: NodeLocalSwapId,
+        id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         self.comit_ln.initiate_communication(id, swap_params)
     }
 
-    pub fn get_finalized_swap(&mut self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.comit_ln.get_finalized_swap(id)
     }
 }
@@ -1259,7 +1259,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
 /// logging information and store the events yielded by the protocol in
 /// `halight::States`.
 async fn new_halight_swap<C>(
-    local_swap_id: NodeLocalSwapId,
+    local_swap_id: LocalSwapId,
     secret_hash: SecretHash,
     state_store: Arc<halight::States>,
     connector: C,
@@ -1281,7 +1281,7 @@ async fn new_halight_swap<C>(
 }
 
 async fn new_han_ethereum_ether_swap(
-    local_swap_id: NodeLocalSwapId,
+    local_swap_id: LocalSwapId,
     connector: Arc<Cache<Web3Connector>>,
     ethereum_ledger_state: Arc<LedgerStates>,
     htlc_params: HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
@@ -1306,7 +1306,7 @@ async fn new_han_ethereum_ether_swap(
 /// `herc20::States`.
 #[allow(dead_code)]
 async fn new_herc20_swap<C>(
-    local_swap_id: NodeLocalSwapId,
+    local_swap_id: LocalSwapId,
     params: herc20::Params,
     state_store: Arc<herc20::States>,
     connector: C,

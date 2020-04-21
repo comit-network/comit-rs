@@ -1,4 +1,4 @@
-use crate::swap_protocols::{NodeLocalSwapId, SwapId};
+use crate::swap_protocols::{LocalSwapId, SwapId};
 use pem::{encode, Pem};
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -34,11 +34,11 @@ impl DeriveSwapSeed for RootSeed {
 // from Bob.  We do not want to derive the seed using information from Bob.
 #[ambassador::delegatable_trait]
 pub trait DeriveSwapSeedFromNodeLocal {
-    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed;
+    fn derive_swap_seed_from_node_local(&self, id: LocalSwapId) -> SwapSeed;
 }
 
 impl DeriveSwapSeedFromNodeLocal for RootSeed {
-    fn derive_swap_seed_from_node_local(&self, id: NodeLocalSwapId) -> SwapSeed {
+    fn derive_swap_seed_from_node_local(&self, id: LocalSwapId) -> SwapSeed {
         let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
         SwapSeed(Seed(data))
     }

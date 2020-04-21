@@ -7,7 +7,7 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        Facade, Facade2, HanEtherereumHalightBitcoinCreateSwapParams, NodeLocalSwapId, Role,
+        Facade, Facade2, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -82,7 +82,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
 
     let reply = warp::reply::reply();
 
-    let id = NodeLocalSwapId::default();
+    let id = LocalSwapId::default();
 
     facade.save(id, ()).await;
 

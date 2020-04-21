@@ -1,7 +1,7 @@
 use crate::{
     asset, identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
-    swap_protocols::{halight, LedgerStates, NodeLocalSwapId, Role},
+    swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
     timestamp::Timestamp,
 };
 use digest::{Digest, IntoDigestInput};
@@ -78,17 +78,17 @@ pub struct Facade2 {
 }
 
 impl Facade2 {
-    pub async fn save(&self, _id: NodeLocalSwapId, _swap_params: ()) {}
+    pub async fn save(&self, _id: LocalSwapId, _swap_params: ()) {}
 
     pub async fn initiate_communication(
         &self,
-        id: NodeLocalSwapId,
+        id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) {
         self.swarm.initiate_communication(id, swap_params).await;
     }
 
-    pub async fn get_finalized_swap(&self, id: NodeLocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.swarm.get_finalized_swap(id).await
     }
 }
