@@ -50,8 +50,8 @@ impl fmt::Display for LocalSwapId {
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
 pub struct SharedSwapId(Uuid);
 
+#[cfg(test)]
 impl SharedSwapId {
-    /// Construct an all zero swap id (for testing).
     pub fn nil() -> Self {
         SharedSwapId(Uuid::nil())
     }
