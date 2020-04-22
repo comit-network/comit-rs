@@ -24,7 +24,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{self, Value as JsonValue};
 
 pub use self::{
-    behaviour::{BehaviourOutEvent, Comit},
+    behaviour::{BehaviourOutEvent, Rfc003Comit},
     handler::{ComitHandler, PendingInboundRequest, PendingOutboundRequest},
     protocol::{Config, Frames},
 };

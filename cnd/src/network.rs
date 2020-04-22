@@ -50,7 +50,7 @@ use libp2p::{
 };
 use libp2p_comit::{
     frame::{OutboundRequest, ValidatedInboundRequest},
-    BehaviourOutEvent, Comit, PendingInboundRequest,
+    BehaviourOutEvent, PendingInboundRequest, Rfc003Comit,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -217,9 +217,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
-    /// The rfc003 network behaviour.
-    comit: Comit,
-    /// The new split protocols network behaviour.
+    rfc003_comit: Rfc003Comit,
     comit_ln: ComitLN,
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
@@ -321,7 +319,7 @@ impl ComitNode {
         known_headers.insert("SWAP".into(), swap_headers);
 
         Ok(Self {
-            comit: Comit::new(known_headers),
+            rfc003_comit: Rfc003Comit::new(known_headers),
             mdns: Mdns::new()?,
             comit_ln: ComitLN::new(seed),
             bitcoin_connector,
@@ -347,7 +345,7 @@ impl ComitNode {
         request: OutboundRequest,
     ) -> impl futures::Future<Output = Result<libp2p_comit::frame::Response, ()>> + Send + 'static + Unpin
     {
-        self.comit
+        self.rfc003_comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 
@@ -982,7 +980,7 @@ impl ComitPeers for Swarm {
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.inner.lock().await;
-        Box::new(swarm.comit.connected_peers())
+        Box::new(swarm.rfc003_comit.connected_peers())
     }
 }
 

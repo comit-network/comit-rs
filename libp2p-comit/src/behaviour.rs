@@ -43,7 +43,7 @@ pub enum BehaviourOutEvent {
 
 /// Network behaviour that handles the COMIT messaging protocol.
 #[derive(Debug)]
-pub struct Comit {
+pub struct Rfc003Comit {
     events_sender: UnboundedSender<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
     events: UnboundedReceiver<NetworkBehaviourAction<ProtocolInEvent, BehaviourOutEvent>>,
 
@@ -51,7 +51,7 @@ pub struct Comit {
     connections: HashMap<PeerId, ConnectionState>,
 }
 
-impl Comit {
+impl Rfc003Comit {
     pub fn new(known_request_headers: HashMap<String, HashSet<String>>) -> Self {
         let (events_sender, events) = mpsc::unbounded();
 
@@ -151,7 +151,7 @@ impl Comit {
     }
 }
 
-impl NetworkBehaviour for Comit {
+impl NetworkBehaviour for Rfc003Comit {
     type ProtocolsHandler = ComitHandler;
     type OutEvent = BehaviourOutEvent;
 
