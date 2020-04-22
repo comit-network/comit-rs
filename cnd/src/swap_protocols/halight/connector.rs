@@ -67,44 +67,37 @@ struct Payment {
 
 #[derive(Clone, Debug)]
 pub struct LndConnectorParams {
-    pub lnd_url: Url,
-    pub retry_interval_ms: u64,
-    pub certificate_path: PathBuf,
-    pub macaroon_path: PathBuf,
+    lnd_url: Url,
+    retry_interval_ms: u64,
+    certificate: Certificate,
+    macaroon: Macaroon,
 }
 
-#[derive(Clone, Debug)]
-enum LazyFile<T> {
-    Path(PathBuf),
-    Inner(T),
+impl LndConnectorParams {
+    pub fn new(
+        lnd_url: Url,
+        retry_interval_ms: u64,
+        certificate_path: PathBuf,
+        macaroon_path: PathBuf,
+    ) -> anyhow::Result<LndConnectorParams> {
+        let certificate = read_file(certificate_path)?;
+        let macaroon = read_file(macaroon_path)?;
+        Ok(LndConnectorParams {
+            lnd_url,
+            retry_interval_ms,
+            certificate,
+            macaroon,
+        })
+    }
 }
 
-impl<T> LazyFile<T>
+fn read_file<T>(path: PathBuf) -> anyhow::Result<T>
 where
     T: TryFrom<Vec<u8>, Error = Error>,
 {
-    pub fn new(path: PathBuf) -> Self {
-        Self::Path(path)
-    }
-
-    pub fn read(self) -> Result<Self, Error> {
-        match self {
-            LazyFile::Inner(_) => Ok(self),
-            LazyFile::Path(path) => {
-                let mut buf = Vec::new();
-                std::fs::File::open(path)?.read_to_end(&mut buf)?;
-                let inner = buf.try_into()?;
-                Ok(LazyFile::Inner(inner))
-            }
-        }
-    }
-
-    pub fn inner(&self) -> Result<&T, Error> {
-        match self {
-            LazyFile::Path(_) => Err(anyhow::anyhow!("File was not read.")),
-            LazyFile::Inner(inner) => Ok(inner),
-        }
-    }
+    let mut buf = Vec::new();
+    std::fs::File::open(path)?.read_to_end(&mut buf)?;
+    Ok(buf.try_into()?)
 }
 
 #[derive(Clone, Debug)]
@@ -138,8 +131,8 @@ impl TryFrom<Vec<u8>> for Macaroon {
 pub struct LndConnectorAsSender {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: LazyFile<Certificate>,
-    macaroon: LazyFile<Macaroon>,
+    certificate: Certificate,
+    macaroon: Macaroon,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsSender {
@@ -147,27 +140,13 @@ impl From<LndConnectorParams> for LndConnectorAsSender {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: LazyFile::<Certificate>::new(params.certificate_path),
-            macaroon: LazyFile::<Macaroon>::new(params.macaroon_path),
+            certificate: params.certificate,
+            macaroon: params.macaroon,
         }
     }
 }
 
 impl LndConnectorAsSender {
-    pub fn read_certificate(self) -> Result<Self, Error> {
-        Ok(Self {
-            certificate: self.certificate.read()?,
-            ..self
-        })
-    }
-
-    pub fn read_macaroon(self) -> Result<Self, Error> {
-        Ok(Self {
-            macaroon: self.macaroon.read()?,
-            ..self
-        })
-    }
-
     fn payment_url(&self) -> Url {
         self.lnd_url
             .join("/v1/payments?include_incomplete=true")
@@ -179,7 +158,7 @@ impl LndConnectorAsSender {
         secret_hash: SecretHash,
         status: PaymentStatus,
     ) -> Result<Option<Payment>, Error> {
-        let response = client(self.certificate.inner()?, self.macaroon.inner()?)?
+        let response = client(&self.certificate, &self.macaroon)?
             .get(self.payment_url())
             .send()
             .await?
@@ -272,8 +251,8 @@ impl WaitForCancelled for LndConnectorAsSender {
 pub struct LndConnectorAsReceiver {
     lnd_url: Url,
     retry_interval_ms: u64,
-    certificate: LazyFile<Certificate>,
-    macaroon: LazyFile<Macaroon>,
+    certificate: Certificate,
+    macaroon: Macaroon,
 }
 
 impl From<LndConnectorParams> for LndConnectorAsReceiver {
@@ -281,27 +260,13 @@ impl From<LndConnectorParams> for LndConnectorAsReceiver {
         Self {
             lnd_url: params.lnd_url,
             retry_interval_ms: params.retry_interval_ms,
-            certificate: LazyFile::<Certificate>::new(params.certificate_path),
-            macaroon: LazyFile::<Macaroon>::new(params.macaroon_path),
+            certificate: params.certificate,
+            macaroon: params.macaroon,
         }
     }
 }
 
 impl LndConnectorAsReceiver {
-    pub fn read_certificate(self) -> Result<Self, Error> {
-        Ok(Self {
-            certificate: self.certificate.read()?,
-            ..self
-        })
-    }
-
-    pub fn read_macaroon(self) -> Result<Self, Error> {
-        Ok(Self {
-            macaroon: self.macaroon.read()?,
-            ..self
-        })
-    }
-
     fn invoice_url(&self, secret_hash: SecretHash) -> Result<Url, Error> {
         Ok(self
             .lnd_url
@@ -316,7 +281,7 @@ impl LndConnectorAsReceiver {
         secret_hash: SecretHash,
         expected_state: InvoiceState,
     ) -> Result<Option<Invoice>, Error> {
-        let response = client(self.certificate.inner()?, self.macaroon.inner()?)?
+        let response = client(&self.certificate, &self.macaroon)?
             .get(self.invoice_url(secret_hash)?)
             .send()
             .await?;

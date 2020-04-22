@@ -89,12 +89,17 @@ pub async fn post_han_ethereum_halight_bitcoin(
 
     facade.save(id, ()).await;
 
-    facade.initiate_communication(id, body.into()).await;
-
-    Ok(warp::reply::with_status(
-        warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),
-        StatusCode::CREATED,
-    ))
+    facade
+        .initiate_communication(id, body.into())
+        .await
+        .map(|_| {
+            warp::reply::with_status(
+                warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),
+                StatusCode::CREATED,
+            )
+        })
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
 }
 
 // `warp::reply::Json` is used as a return type to please the compiler

@@ -8,7 +8,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ## Fixed
--   Fix windows build
+-   Fix windows build.
+-   Return an error when creating a halight swap if lnd certificate or macaroon are unavailable instead of failing silently.
 
 ## [0.7.3] - 2020-04-14
 
