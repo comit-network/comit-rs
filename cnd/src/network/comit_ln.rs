@@ -11,8 +11,8 @@ use crate::{
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
-        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash, SwapId},
-        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role,
+        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
+        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
     timestamp::Timestamp,
 };
@@ -58,15 +58,15 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
-    swap_ids: HashMap<LocalSwapId, SwapId>,
+    swap_ids: HashMap<LocalSwapId, SharedSwapId>,
     #[behaviour(ignore)]
-    ethereum_identities: HashMap<SwapId, identity::Ethereum>,
+    ethereum_identities: HashMap<SharedSwapId, identity::Ethereum>,
     #[behaviour(ignore)]
-    lightning_identities: HashMap<SwapId, identity::Lightning>,
+    lightning_identities: HashMap<SharedSwapId, identity::Lightning>,
     #[behaviour(ignore)]
-    communication_state: HashMap<SwapId, CommunicationState>,
+    communication_state: HashMap<SharedSwapId, CommunicationState>,
     #[behaviour(ignore)]
-    secret_hashes: HashMap<SwapId, SecretHash>,
+    secret_hashes: HashMap<SharedSwapId, SecretHash>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -131,18 +131,18 @@ impl ComitLN {
         }
     }
 
-    pub fn get_finalized_swap(&self, local_id: LocalSwapId) -> Option<FinalizedSwap> {
-        let create_swap_params = match self.swaps.get(&local_id) {
+    pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
+        let create_swap_params = match self.swaps.get(&swap_id) {
             Some(body) => body,
             None => return None,
         };
 
         let secret = match create_swap_params.role {
-            Role::Alice => Some(self.seed.derive_swap_seed(local_id).derive_secret()),
+            Role::Alice => Some(self.seed.derive_swap_seed(swap_id).derive_secret()),
             Role::Bob => None,
         };
 
-        let id = match self.swap_ids.get(&local_id).copied() {
+        let id = match self.swap_ids.get(&swap_id).copied() {
             Some(id) => id,
             None => return None,
         };
@@ -187,7 +187,7 @@ impl ComitLN {
             beta_ledger_refund_identity,
             alpha_expiry: create_swap_params.ethereum_absolute_expiry,
             beta_expiry: create_swap_params.lightning_cltv_expiry,
-            local_id,
+            swap_id,
             secret,
             secret_hash: match self.secret_hashes.get(&id).copied() {
                 Some(secret_hash) => secret_hash,
@@ -223,7 +223,7 @@ pub struct FinalizedSwap {
     pub beta_ledger_redeem_identity: identity::Lightning,
     pub alpha_expiry: Timestamp,
     pub beta_expiry: Timestamp,
-    pub local_id: LocalSwapId,
+    pub swap_id: LocalSwapId,
     pub secret_hash: SecretHash,
     pub secret: Option<Secret>,
     pub role: Role,
@@ -306,15 +306,17 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
     fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
         match event {
             announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
-                if let Some(local_id) = self.swaps_waiting_for_announcement.remove(&io.swap_digest)
+                if let Some(local_swap_id) =
+                    self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
-                    let id = SwapId::default();
+                    let shared_swap_id = SharedSwapId::default();
 
-                    self.swap_ids.insert(local_id.clone(), id.clone());
+                    self.swap_ids
+                        .insert(local_swap_id.clone(), shared_swap_id.clone());
 
-                    tokio::task::spawn(io.send(id));
+                    tokio::task::spawn(io.send(shared_swap_id));
 
-                    let create_swap_params = self.swaps.get(&local_id).unwrap();
+                    let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
 
                     let addresses = self.announce.addresses_of_peer(&peer);
                     self.secret_hash
@@ -328,17 +330,20 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     self.ethereum_identity.send(
                         peer.clone(),
                         ethereum_identity::Message::new(
-                            id,
+                            shared_swap_id,
                             create_swap_params.ethereum_identity.into(),
                         ),
                     );
                     self.lightning_identity.send(
                         peer,
-                        lightning_identity::Message::new(id, create_swap_params.lightning_identity),
+                        lightning_identity::Message::new(
+                            shared_swap_id,
+                            create_swap_params.lightning_identity,
+                        ),
                     );
 
                     self.communication_state
-                        .insert(id, CommunicationState::default());
+                        .insert(shared_swap_id, CommunicationState::default());
                 } else {
                     tracing::warn!(
                         "Peer {} announced a swap ({}) we don't know about",

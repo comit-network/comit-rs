@@ -1,4 +1,4 @@
-use crate::{network::protocols::announce::SwapDigest, swap_protocols::rfc003::SwapId};
+use crate::{network::protocols::announce::SwapDigest, swap_protocols::SharedSwapId};
 use futures::prelude::*;
 use libp2p::core::upgrade::{self, InboundUpgrade, OutboundUpgrade, UpgradeInfo};
 use serde::Deserialize;
@@ -50,7 +50,7 @@ where
 
             let message = upgrade::read_one(&mut socket, 1024).await?;
             let mut de = serde_json::Deserializer::from_slice(&message);
-            let swap_id = SwapId::deserialize(&mut de)?;
+            let swap_id = SharedSwapId::deserialize(&mut de)?;
             tracing::trace!("Received: {}", swap_id);
 
             Ok(Confirmed {
@@ -64,7 +64,7 @@ where
 #[derive(Debug)]
 pub struct Confirmed {
     pub swap_digest: SwapDigest,
-    pub swap_id: SwapId,
+    pub swap_id: SharedSwapId,
 }
 
 /// Configuration for an upgrade to the `Announce` protocol on the inbound side.
@@ -128,7 +128,7 @@ where
     ///
     /// Consumes the substream, returning a reply future that resolves
     /// when the reply has been sent on the underlying connection.
-    pub async fn send(mut self, swap_id: SwapId) -> Result<(), Error> {
+    pub async fn send(mut self, swap_id: SharedSwapId) -> Result<(), Error> {
         tracing::trace!("Sending: {}", swap_id);
 
         let bytes = serde_json::to_vec(&swap_id)?;

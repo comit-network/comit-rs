@@ -7,7 +7,7 @@ use crate::{
         },
         DialInformation,
     },
-    swap_protocols::rfc003::SwapId,
+    swap_protocols::SharedSwapId,
 };
 use libp2p::{
     core::{connection::ConnectionId, ConnectedPoint, Multiaddr, PeerId},
@@ -285,8 +285,8 @@ pub enum BehaviourOutEvent {
     ReceivedConfirmation {
         /// The peer (Bob) that the swap has been announced to.
         peer: PeerId,
-        /// The swap_id returned by the peer (Bob).
-        swap_id: SwapId,
+        /// The swap id returned by the peer (Bob).
+        swap_id: SharedSwapId,
         /// The swap_digest
         swap_digest: SwapDigest,
     },
