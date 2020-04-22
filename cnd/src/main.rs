@@ -24,7 +24,7 @@ use cnd::{
     file_lock::TryLockExclusive,
     http_api::route_factory,
     jsonrpc, load_swaps,
-    network::Swarm,
+    network::{Swarm, SwarmWorker},
     seed::RootSeed,
     swap_protocols::{
         halight::States, Facade, Facade2, LedgerStates, SwapCommunicationStates, SwapErrorStates,
@@ -134,7 +134,6 @@ fn main() -> anyhow::Result<()> {
     let swarm = Swarm::new(
         &settings,
         seed,
-        &mut runtime,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
         lnd_connector_params,
@@ -143,6 +142,7 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&beta_ledger_states),
         Arc::clone(&halight_states),
         &database,
+        runtime.handle().clone(),
     )?;
 
     let facade2 = Facade2 {
@@ -160,13 +160,21 @@ fn main() -> anyhow::Result<()> {
         swap_error_states,
         seed,
         db: database,
-        swarm,
+        swarm: swarm.clone(),
     };
 
+    let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
 
-    let http_server_future = spawn_warp_instance(settings, deps, facade2);
-    runtime.block_on(http_server_future)?;
+    runtime.spawn(make_http_api_worker(
+        settings,
+        deps,
+        facade2,
+        http_api_listener,
+    ));
+    runtime.spawn(make_network_api_worker(swarm));
+
+    ::std::thread::park();
 
     Ok(())
 }
@@ -182,24 +190,48 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(
+/// Binds to the socket for the HTTP API specified in the settings
+///
+/// Fails if we cannot bind to the socket.
+/// We do this ourselves so we can shut down if this fails and don't just panic
+/// some worker thread in tokio.
+async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net::TcpListener> {
+    let listen_addr = settings.http_api.socket;
+    let listener = TcpListener::bind(listen_addr).await?;
+
+    Ok(listener)
+}
+
+/// Construct the worker that is going to process HTTP API requests.
+async fn make_http_api_worker(
     settings: Settings,
     dependencies: Facade,
     facade2: Facade2,
-) -> anyhow::Result<()> {
+    incoming_requests: tokio::net::TcpListener,
+) {
     let routes = route_factory::create(
         dependencies,
         facade2,
         &settings.http_api.cors.allowed_origins,
     );
 
-    let listen_addr = settings.http_api.socket;
-    let listener = TcpListener::bind(listen_addr).await?;
+    match incoming_requests.local_addr() {
+        Ok(socket) => {
+            tracing::info!("Starting HTTP server on {} ...", socket);
+            warp::serve(routes).serve_incoming(incoming_requests).await;
+        }
+        Err(e) => {
+            tracing::error!("Cannot start HTTP server because {:?}", e);
+        }
+    }
+}
 
-    tracing::info!("Starting HTTP server on {} ...", listen_addr);
-    warp::serve(routes).serve_incoming(listener).await;
+/// Construct the worker that is going to process network (i.e. COMIT)
+/// communication.
+async fn make_network_api_worker(swarm: Swarm) {
+    let worker = SwarmWorker { swarm };
 
-    Ok(())
+    worker.await
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file
