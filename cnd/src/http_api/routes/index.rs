@@ -89,7 +89,20 @@ pub async fn post_han_ethereum_halight_bitcoin(
 
     facade.save(id, ()).await;
 
-    facade.initiate_communication(id, body.into()).await;
+    // A better way for solving this would be to move the role to the URL,
+    // so that serde can handle the validation based on the role.
+    // Since this is not trivial this check remains for now.
+    let swap_params: HanEtherereumHalightBitcoinCreateSwapParams = body.into();
+    if swap_params.role == Role::Bob && swap_params.peer.address_hint.is_some() {
+        tracing::error!("Unexpected field address_hint for role Bob");
+        return Err(warp::reject::custom(
+            HttpApiProblem::new("Unexpected field address_hint")
+                .set_status(StatusCode::BAD_REQUEST)
+                .set_detail("Unexpected field address_hint for role Bob."),
+        ));
+    }
+
+    facade.initiate_communication(id, swap_params).await;
 
     Ok(warp::reply::with_status(
         warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),

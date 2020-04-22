@@ -94,7 +94,7 @@ export default class SwapFactory {
                     bobIdentities.lightning
                 ),
                 role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
+                peer: await makePeerIdOnly(alice),
             },
         };
 
@@ -123,7 +123,7 @@ export default class SwapFactory {
                     bobIdentities.lightning
                 ),
                 role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
+                peer: await makePeerIdOnly(alice),
             },
         };
 
@@ -152,7 +152,7 @@ export default class SwapFactory {
                 ),
 
                 role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
+                peer: await makePeerIdOnly(alice),
             },
         };
 
@@ -183,7 +183,7 @@ export default class SwapFactory {
                 ),
 
                 role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
+                peer: await makePeerIdOnly(alice),
             },
         };
 
@@ -231,6 +231,12 @@ async function makePeer(actor: Actor): Promise<Peer> {
         address_hint: await actor.cnd
             .getPeerListenAddresses()
             .then((addresses) => addresses[0]),
+    };
+}
+
+async function makePeerIdOnly(actor: Actor): Promise<Peer> {
+    return {
+        peer_id: await actor.cnd.getPeerId(),
     };
 }
 

@@ -346,6 +346,37 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 }
 
                 if let Some(local_swap_id) =
+                    self.swaps_waiting_for_announcement.get(&io.swap_digest)
+                {
+                    let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
+                    if peer != create_swap_params.peer.peer_id {
+                        tracing::warn!(
+                                "Peer {} announced a swap ({}), but the peer-id {} of the swap awaiting announcement does not match.",
+                                peer,
+                                io.swap_digest,
+                                create_swap_params.peer.peer_id
+                            );
+                        tokio::task::spawn(async move {
+                            let _ = io.io.close().await;
+                        });
+
+                        return;
+                    }
+                } else {
+                    tracing::warn!(
+                        "Peer {} announced a swap ({}) we don't know about",
+                        peer,
+                        io.swap_digest
+                    );
+
+                    tokio::task::spawn(async move {
+                        let _ = io.io.close().await;
+                    });
+
+                    return;
+                }
+
+                if let Some(local_swap_id) =
                     self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
                     let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
