@@ -4,9 +4,9 @@ use crate::{
         rfc003::{
             create_swap::{create_watcher, OngoingSwap},
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
+            state::Insert,
             Accept, Request, SwapCommunication,
         },
-        state::Insert,
         Facade,
     },
 };

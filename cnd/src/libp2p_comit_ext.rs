@@ -20,7 +20,7 @@ macro_rules! header {
                 reason: Some(SwapDeclineReason::MissingMandatoryHeader),
             };
 
-            return Err(Response::empty().with_header(
+            return Err(libp2p_comit::frame::Response::empty().with_header(
                 "decision",
                 Decision::Declined
                     .to_header()
@@ -44,7 +44,7 @@ macro_rules! body {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Err(Response::empty().with_header(
+                return Err(libp2p_comit::frame::Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_header()
@@ -70,7 +70,7 @@ macro_rules! header_internal {
                     reason: Some(SwapDeclineReason::BadJsonField),
                 };
 
-                return Err(Response::empty().with_header(
+                return Err(libp2p_comit::frame::Response::empty().with_header(
                     "decision",
                     Decision::Declined
                         .to_header()

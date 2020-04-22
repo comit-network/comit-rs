@@ -18,14 +18,13 @@ use crate::{
             self,
             actions::{Action, ActionKind},
             messages::{Decision, IntoAcceptMessage},
+            state::{Get, Insert},
             LedgerState, SwapCommunication, SwapId,
         },
-        state::{Get, Insert},
         Facade,
     },
 };
 use anyhow::Context;
-use libp2p_comit::frame::Response;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug, Display},
@@ -207,11 +206,13 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     }
 }
 
-fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
+fn rfc003_accept_response<AI, BI>(
+    message: rfc003::messages::Accept<AI, BI>,
+) -> libp2p_comit::frame::Response
 where
     rfc003::messages::AcceptResponseBody<AI, BI>: Serialize,
 {
-    Response::empty()
+    libp2p_comit::frame::Response::empty()
         .with_header(
             "decision",
             Decision::Accepted
@@ -227,8 +228,8 @@ where
         )
 }
 
-fn rfc003_decline_response(message: rfc003::messages::Decline) -> Response {
-    Response::empty()
+fn rfc003_decline_response(message: rfc003::messages::Decline) -> libp2p_comit::frame::Response {
+    libp2p_comit::frame::Response::empty()
         .with_header(
             "decision",
             Decision::Declined

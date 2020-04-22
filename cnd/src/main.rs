@@ -27,7 +27,8 @@ use cnd::{
     network::{Swarm, SwarmWorker},
     seed::RootSeed,
     swap_protocols::{
-        halight::States, Facade, Facade2, LedgerStates, SwapCommunicationStates, SwapErrorStates,
+        halight::States, rfc003, rfc003::SwapCommunicationStates, Facade, Facade2, LedgerStates,
+        SwapErrorStates,
     },
 };
 
@@ -121,10 +122,14 @@ fn main() -> anyhow::Result<()> {
         macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
     };
 
-    // Han protocol
+    // RCF003 protocol
+    let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
+    let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
+    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
+
+    // Han/HErc20 protocols (A.K.A split protocols)
     let alpha_ledger_states = Arc::new(LedgerStates::default());
     let beta_ledger_states = Arc::new(LedgerStates::default());
-    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // HALight
     let halight_states = Arc::new(States::default());
@@ -138,6 +143,8 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&ethereum_connector),
         lnd_connector_params,
         Arc::clone(&swap_communication_states),
+        Arc::clone(&rfc003_alpha_ledger_states),
+        Arc::clone(&rfc003_beta_ledger_states),
         Arc::clone(&alpha_ledger_states),
         Arc::clone(&beta_ledger_states),
         Arc::clone(&halight_states),
@@ -145,22 +152,24 @@ fn main() -> anyhow::Result<()> {
         runtime.handle().clone(),
     )?;
 
-    let facade2 = Facade2 {
-        swarm: swarm.clone(),
-        alpha_ledger_states: Arc::clone(&alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&halight_states),
-    };
-
+    // RCF003 protocol
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
-        alpha_ledger_states,
-        beta_ledger_states,
+        alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
+        beta_ledger_states: Arc::clone(&&rfc003_beta_ledger_states),
         swap_communication_states,
         swap_error_states,
         seed,
         db: database,
         swarm: swarm.clone(),
+    };
+
+    // split protocols
+    let facade2 = Facade2 {
+        swarm: swarm.clone(),
+        alpha_ledger_states: Arc::clone(&alpha_ledger_states),
+        beta_ledger_states: Arc::clone(&halight_states),
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;

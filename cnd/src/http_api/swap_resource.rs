@@ -10,7 +10,9 @@ use crate::{
     },
     seed::DeriveSwapSeed,
     swap_protocols::{
-        actions::Actions, rfc003, rfc003::SwapId, state::Get, Facade, HashFunction, SwapProtocol,
+        actions::Actions,
+        rfc003::{self, state::Get, SwapId},
+        Facade, HashFunction, SwapProtocol,
     },
 };
 use anyhow::anyhow;

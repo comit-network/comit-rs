@@ -21,9 +21,9 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            SwapCommunication, SwapId,
+            state, LedgerStates, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        state, InsertFailedSwap, LedgerStates, SwapCommunicationStates, SwapErrorStates,
+        InsertFailedSwap, SwapErrorStates,
     },
     transaction,
 };
@@ -32,7 +32,7 @@ use chrono::NaiveDateTime;
 use futures::channel::oneshot::Sender;
 use impl_template::impl_template;
 use libp2p::{Multiaddr, PeerId};
-use libp2p_comit::frame::{OutboundRequest, Response};
+use libp2p_comit::frame::OutboundRequest;
 use serde::de::DeserializeOwned;
 use std::{convert::TryInto, fmt::Debug, sync::Arc};
 

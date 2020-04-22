@@ -6,9 +6,9 @@ use crate::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            Accept, LedgerState, Request, SecretHash, SwapId,
+            state, Accept, LedgerState, Request, SecretHash, SwapId,
         },
-        state, HashFunction, InsertFailedSwap,
+        HashFunction, InsertFailedSwap,
     },
     timestamp::Timestamp,
 };

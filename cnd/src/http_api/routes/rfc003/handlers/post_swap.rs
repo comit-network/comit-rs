@@ -10,10 +10,10 @@ use crate::{
         rfc003::{
             self,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
+            state::Insert,
             Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
             SwapCommunication, SwapId,
         },
-        state::Insert,
         Facade, HashFunction, Role,
     },
     timestamp::Timestamp,

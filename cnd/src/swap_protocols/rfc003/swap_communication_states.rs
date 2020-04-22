@@ -1,6 +1,6 @@
-use crate::swap_protocols::{
-    rfc003::SwapId,
+use crate::swap_protocols::rfc003::{
     state::{Get, Insert},
+    SwapId,
 };
 use async_trait::async_trait;
 use std::{any::Any, clone::Clone, collections::HashMap};

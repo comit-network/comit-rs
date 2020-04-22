@@ -557,7 +557,8 @@ mod tests {
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
             ledger::{bitcoin, ethereum, Ethereum},
-            HashFunction, SwapId, SwapProtocol,
+            rfc003::SwapId,
+            HashFunction, SwapProtocol,
         },
         transaction,
     };

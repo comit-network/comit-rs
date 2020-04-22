@@ -1,4 +1,6 @@
 pub mod comit_ln;
+pub mod halight;
+pub mod han;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
@@ -7,42 +9,39 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset,
     asset::AssetKind,
     btsieve::{
         bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Cache, Web3Connector},
+        ethereum::{self, Web3Connector},
     },
     comit_api::LedgerKind,
     config::Settings,
     db::{Save, Sqlite, Swap},
-    htlc_location, identity,
+    htlc_location,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
-        halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        han, herc20, ledger,
+        ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
-            LedgerState, SecretHash, SwapCommunication, SwapId,
+            state::Insert,
+            LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        state::{Insert, Update},
         HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, LocalSwapId, Role,
-        SwapCommunicationStates, SwapProtocol,
+        SwapProtocol,
     },
     transaction,
 };
 use anyhow::Context;
 use async_trait::async_trait;
-use chrono::Utc;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future, TryStreamExt,
+    Future,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -51,7 +50,7 @@ use libp2p::{
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use libp2p_comit::{
-    frame::{OutboundRequest, Response, ValidatedInboundRequest},
+    frame::{OutboundRequest, ValidatedInboundRequest},
     BehaviourOutEvent, Comit, PendingInboundRequest,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
@@ -85,6 +84,8 @@ impl Swarm {
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
+        rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
+        rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
         alpha_ledger_states: Arc<LedgerStates>,
         beta_ledger_states: Arc<LedgerStates>,
         halight_states: Arc<States>,
@@ -101,6 +102,8 @@ impl Swarm {
             ethereum_connector,
             lnd_connector_params,
             swap_communication_states,
+            rfc003_alpha_ledger_states,
+            rfc003_beta_ledger_states,
             alpha_ledger_states,
             beta_ledger_states,
             halight_states,
@@ -215,33 +218,46 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
+    /// The rfc003 network behaviour.
     comit: Comit,
+    /// The new spilt protocols network behaviour.
     comit_ln: ComitLN,
+    /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
 
+    // blockchain connectors
     #[behaviour(ignore)]
     pub bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
     #[behaviour(ignore)]
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     #[behaviour(ignore)]
-    pub swap_communication_states: Arc<SwapCommunicationStates>,
+    lnd_connector_as_sender: Arc<LndConnectorAsSender>,
     #[behaviour(ignore)]
-    pub alpha_ledger_states: Arc<LedgerStates>,
-    #[behaviour(ignore)]
-    pub beta_ledger_states: Arc<LedgerStates>,
+    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
+
     #[behaviour(ignore)]
     pub seed: RootSeed,
     #[behaviour(ignore)]
     pub db: Sqlite,
     #[behaviour(ignore)]
-    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<Response>>>>,
-    #[behaviour(ignore)]
     task_executor: Handle,
 
+    // rfc003
     #[behaviour(ignore)]
-    lnd_connector_as_sender: Arc<LndConnectorAsSender>,
+    pub swap_communication_states: Arc<SwapCommunicationStates>,
     #[behaviour(ignore)]
-    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
+    pub rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
+    #[behaviour(ignore)]
+    pub rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
+    #[behaviour(ignore)]
+    response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<libp2p_comit::frame::Response>>>>,
+
+    // These likely go away once han and herc20 is done.
+    #[behaviour(ignore)]
+    pub alpha_ledger_states: Arc<LedgerStates>,
+    #[behaviour(ignore)]
+    pub beta_ledger_states: Arc<LedgerStates>,
+
     #[behaviour(ignore)]
     halight_states: Arc<States>,
 }
@@ -285,6 +301,8 @@ impl ComitNode {
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
         lnd_connector_params: LndConnectorParams,
         swap_communication_states: Arc<SwapCommunicationStates>,
+        rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
+        rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
         alpha_ledger_states: Arc<LedgerStates>,
         beta_ledger_states: Arc<LedgerStates>,
         halight_states: Arc<States>,
@@ -309,6 +327,8 @@ impl ComitNode {
             comit_ln: ComitLN::new(seed),
             bitcoin_connector,
             ethereum_connector,
+            rfc003_alpha_ledger_states,
+            rfc003_beta_ledger_states,
             alpha_ledger_states,
             beta_ledger_states,
             swap_communication_states,
@@ -326,7 +346,8 @@ impl ComitNode {
         &mut self,
         peer_id: DialInformation,
         request: OutboundRequest,
-    ) -> impl futures::Future<Output = Result<Response, ()>> + Send + 'static + Unpin {
+    ) -> impl futures::Future<Output = Result<libp2p_comit::frame::Response, ()>> + Send + 'static + Unpin
+    {
         self.comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
@@ -350,11 +371,11 @@ impl ComitNode {
 async fn handle_request(
     db: Sqlite,
     swap_communication_states: Arc<SwapCommunicationStates>,
-    alpha_ledger_states: Arc<LedgerStates>,
-    beta_ledger_states: Arc<LedgerStates>,
+    alpha_ledger_states: Arc<rfc003::LedgerStates>,
+    beta_ledger_states: Arc<rfc003::LedgerStates>,
     counterparty: PeerId,
     mut request: ValidatedInboundRequest,
-) -> Result<SwapId, Response> {
+) -> Result<SwapId, libp2p_comit::frame::Response> {
     match request.request_type() {
         "SWAP" => {
             let protocol: SwapProtocol = header!(request
@@ -857,7 +878,7 @@ async fn handle_request(
                                 reason: Some(SwapDeclineReason::UnsupportedSwap),
                             };
 
-                            Err(Response::empty()
+                            Err(libp2p_comit::frame::Response::empty()
                                 .with_header(
                                     "decision",
                                     Decision::Declined
@@ -880,7 +901,7 @@ async fn handle_request(
         request_type => {
             tracing::warn!("request type '{}' is unknown", request_type);
 
-            Err(Response::empty().with_header(
+            Err(libp2p_comit::frame::Response::empty().with_header(
                 "decision",
                 Decision::Declined
                     .to_header()
@@ -894,8 +915,8 @@ async fn handle_request(
 async fn insert_state_for_bob<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT, DB>(
     db: DB,
     swap_communication_states: Arc<SwapCommunicationStates>,
-    alpha_ledger_state: Arc<LedgerStates>,
-    beta_ledger_state: Arc<LedgerStates>,
+    alpha_ledger_state: Arc<rfc003::LedgerStates>,
+    beta_ledger_state: Arc<rfc003::LedgerStates>,
     counterparty: PeerId,
     swap_request: Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
@@ -989,12 +1010,18 @@ impl ListenAddresses for Swarm {
 #[async_trait]
 #[ambassador::delegatable_trait]
 pub trait PendingRequestFor {
-    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>>;
+    async fn pending_request_for(
+        &self,
+        swap: SwapId,
+    ) -> Option<Sender<libp2p_comit::frame::Response>>;
 }
 
 #[async_trait]
 impl PendingRequestFor for Swarm {
-    async fn pending_request_for(&self, swap: SwapId) -> Option<Sender<Response>> {
+    async fn pending_request_for(
+        &self,
+        swap: SwapId,
+    ) -> Option<Sender<libp2p_comit::frame::Response>> {
         let swarm = self.inner.lock().await;
         let mut response_channels = swarm.response_channels.lock().await;
         response_channels.remove(&swap)
@@ -1113,8 +1140,8 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<BehaviourOutEvent> for ComitNod
                 let response_channels = self.response_channels.clone();
                 let db = self.db.clone();
                 let swap_communication_states = self.swap_communication_states.clone();
-                let alpha_ledger_state = self.alpha_ledger_states.clone();
-                let beta_ledger_state = self.beta_ledger_states.clone();
+                let alpha_ledger_state = self.rfc003_alpha_ledger_states.clone();
+                let beta_ledger_state = self.rfc003_beta_ledger_states.clone();
 
                 self.task_executor.spawn(async move {
                     match handle_request(
@@ -1171,7 +1198,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                            self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1187,7 +1214,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             let expiry = create_swap_params.ethereum_absolute_expiry;
                             let secret_hash = secret_hash;
 
-                            new_han_ethereum_ether_swap(
+                            self::han::new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
                                 self.alpha_ledger_states.clone(),
@@ -1213,7 +1240,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                            self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1230,7 +1257,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             let expiry = create_swap_params.ethereum_absolute_expiry;
                             let secret_hash = secret_hash;
 
-                            new_han_ethereum_ether_swap(
+                            self::han::new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
                                 self.alpha_ledger_states.clone(),
@@ -1250,81 +1277,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
             }
         }
     }
-}
-
-/// Creates a new instance of the halight protocol.
-///
-/// This function delegates to the `halight` module for the actual protocol
-/// implementation. Its main purpose is to annotate the protocol instance with
-/// logging information and store the events yielded by the protocol in
-/// `halight::States`.
-async fn new_halight_swap<C>(
-    local_swap_id: LocalSwapId,
-    secret_hash: SecretHash,
-    state_store: Arc<halight::States>,
-    connector: C,
-) where
-    C: halight::WaitForOpened
-        + halight::WaitForAccepted
-        + halight::WaitForSettled
-        + halight::WaitForCancelled,
-{
-    let mut events = halight::new(&connector, halight::Params { secret_hash })
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
-
-    while let Ok(Some(event)) = events.try_next().await {
-        state_store.update(&SwapId(local_swap_id.0), event).await;
-    }
-
-    tracing::info!("swap finished");
-}
-
-async fn new_han_ethereum_ether_swap(
-    local_swap_id: LocalSwapId,
-    connector: Arc<Cache<Web3Connector>>,
-    ethereum_ledger_state: Arc<LedgerStates>,
-    htlc_params: HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
-    role: Role,
-) {
-    han::create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
-        connector.as_ref(),
-        ethereum_ledger_state,
-        local_swap_id,
-        htlc_params,
-        Utc::now().naive_local(),
-    )
-    .instrument(tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role))
-    .await
-}
-
-/// Creates a new instance of the herc20 protocol.
-///
-/// This function delegates to the `herc20` module for the actual protocol
-/// implementation. Its main purpose is to annotate the protocol instance with
-/// logging information and store the events yielded by the protocol in
-/// `herc20::States`.
-#[allow(dead_code)]
-async fn new_herc20_swap<C>(
-    local_swap_id: LocalSwapId,
-    params: herc20::Params,
-    state_store: Arc<herc20::States>,
-    connector: C,
-) where
-    C: herc20::WaitForDeployed
-        + herc20::WaitForFunded
-        + herc20::WaitForRedeemed
-        + herc20::WaitForRefunded,
-{
-    let mut events = herc20::new(&connector, params)
-        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
-
-    while let Ok(Some(event)) = events.try_next().await {
-        state_store.update(&SwapId(local_swap_id.0), event).await;
-    }
-
-    tracing::info!("swap finished");
 }
 
 impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest

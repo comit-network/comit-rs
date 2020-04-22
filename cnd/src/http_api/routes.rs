@@ -15,7 +15,7 @@ use crate::{
         },
         halight::{self, Settled},
         ledger::ethereum::ChainId,
-        rfc003::{LedgerState, SwapId},
+        rfc003::LedgerState,
         state::Get,
         Facade2, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
     },
@@ -30,8 +30,11 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_halight_swap(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_get_halight_swap(facade, id)
+pub async fn get_halight_swap(
+    swap_id: LocalSwapId,
+    facade: Facade2,
+) -> Result<impl Reply, Rejection> {
+    handle_get_halight_swap(facade, swap_id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
@@ -40,19 +43,16 @@ pub async fn get_halight_swap(id: LocalSwapId, facade: Facade2) -> Result<impl R
 
 pub async fn handle_get_halight_swap(
     facade: Facade2,
-    local_id: LocalSwapId,
+    swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let swap_id = SwapId(local_id.0);
-
     // This is ok, we use a new create_watcher in han.rs and call it with local id.
     let alpha_ledger_state: Option<
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     > = facade.alpha_ledger_states.get(&swap_id).await?;
 
-    // And again here, we munge the swap_id when calling create_watcher.
     let beta_ledger_state = facade.beta_ledger_states.get(&swap_id).await?;
 
-    let finalized_swap = facade.get_finalized_swap(local_id).await;
+    let finalized_swap = facade.get_finalized_swap(swap_id).await;
 
     let (alpha_ledger_state, beta_ledger_state, finalized_swap) =
         match (alpha_ledger_state, beta_ledger_state, finalized_swap) {
@@ -107,7 +107,7 @@ pub async fn handle_get_halight_swap(
     Ok(entity)
 }
 
-fn make_swap_entity(swap_id: SwapId, maybe_action_names: Vec<Option<&str>>) -> siren::Entity {
+fn make_swap_entity(swap_id: LocalSwapId, maybe_action_names: Vec<Option<&str>>) -> siren::Entity {
     let swap = siren::Entity::default().with_class_member("swap");
 
     maybe_action_names
@@ -120,7 +120,7 @@ fn make_swap_entity(swap_id: SwapId, maybe_action_names: Vec<Option<&str>>) -> s
         })
 }
 
-fn make_siren_action(swap_id: SwapId, action_name: &str) -> siren::Action {
+fn make_siren_action(swap_id: LocalSwapId, action_name: &str) -> siren::Action {
     siren::Action {
         name: action_name.to_owned(),
         class: vec![],
@@ -307,8 +307,8 @@ impl RedeemAction for BobHanEthereumHalightBitcoinState {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_init(id, facade)
+pub async fn action_init(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_init(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -317,31 +317,29 @@ pub async fn action_init(id: LocalSwapId, facade: Facade2) -> Result<impl Reply,
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(
-    local_id: LocalSwapId,
+    swap_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0);
-
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
         .alpha_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
         .beta_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(local_id)
+        .get_finalized_swap(swap_id)
         .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
@@ -362,8 +360,8 @@ async fn handle_action_init(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_fund(id, facade)
+pub async fn action_fund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_fund(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -372,30 +370,29 @@ pub async fn action_fund(id: LocalSwapId, facade: Facade2) -> Result<impl Reply,
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(
-    local_id: LocalSwapId,
+    swap_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
         .alpha_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
         .beta_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(local_id)
+        .get_finalized_swap(swap_id)
         .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
@@ -424,8 +421,8 @@ async fn handle_action_fund(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_redeem(id, facade)
+pub async fn action_redeem(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_redeem(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -434,30 +431,29 @@ pub async fn action_redeem(id: LocalSwapId, facade: Facade2) -> Result<impl Repl
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_redeem(
-    local_id: LocalSwapId,
+    swap_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
         .alpha_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
         .beta_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(local_id)
+        .get_finalized_swap(swap_id)
         .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
@@ -486,8 +482,8 @@ async fn handle_action_redeem(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
-    handle_action_refund(id, facade)
+pub async fn action_refund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+    handle_action_refund(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -496,30 +492,29 @@ pub async fn action_refund(id: LocalSwapId, facade: Facade2) -> Result<impl Repl
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_refund(
-    local_id: LocalSwapId,
+    swap_id: LocalSwapId,
     facade: Facade2,
 ) -> anyhow::Result<ActionResponseBody> {
-    let id = SwapId(local_id.0);
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
         .alpha_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
         .beta_ledger_states
-        .get(&id)
+        .get(&swap_id)
         .await?
-        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", id))?;
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
     let finalized_swap = facade
-        .get_finalized_swap(local_id)
+        .get_finalized_swap(swap_id)
         .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", id))?;
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
