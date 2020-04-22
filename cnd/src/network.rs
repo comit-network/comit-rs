@@ -1,6 +1,4 @@
 pub mod comit_ln;
-pub mod halight;
-pub mod han;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
@@ -22,8 +20,9 @@ use crate::{
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
+        halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        ledger,
+        han, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -1198,7 +1197,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                            halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1214,7 +1213,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             let expiry = create_swap_params.ethereum_absolute_expiry;
                             let secret_hash = secret_hash;
 
-                            self::han::new_han_ethereum_ether_swap(
+                            han::new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
                                 self.alpha_ledger_states.clone(),
