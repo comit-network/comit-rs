@@ -1,0 +1,13 @@
+name: Label slow PRs
+
+on:
+  schedule:
+    - cron: "0 2 * * MON"
+
+jobs:
+  label-slow-prs:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: coblox/label-slow-prs@v0.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
