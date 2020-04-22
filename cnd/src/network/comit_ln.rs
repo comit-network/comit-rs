@@ -8,7 +8,7 @@ use crate::{
             ethereum_identity, finalize, lightning_identity, secret_hash,
         },
     },
-    seed::{DeriveSwapSeedFromNodeLocal, RootSeed},
+    seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash, SwapId},
@@ -138,11 +138,7 @@ impl ComitLN {
         };
 
         let secret = match create_swap_params.role {
-            Role::Alice => Some(
-                self.seed
-                    .derive_swap_seed_from_node_local(local_id)
-                    .derive_secret(),
-            ),
+            Role::Alice => Some(self.seed.derive_swap_seed(local_id).derive_secret()),
             Role::Bob => None,
         };
 
@@ -393,7 +389,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     ),
                 );
 
-                let seed = self.seed.derive_swap_seed_from_node_local(local_swap_id);
+                let seed = self.seed.derive_swap_seed(local_swap_id);
                 let secret_hash = seed.derive_secret().hash();
 
                 self.secret_hashes.insert(swap_id, secret_hash);

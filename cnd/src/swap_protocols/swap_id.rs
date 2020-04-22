@@ -6,7 +6,13 @@ use uuid::Uuid;
 /// swap created by this node i.e., when a swap is created via the REST API we
 /// create one of these to identify the swap.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct LocalSwapId(pub Uuid);
+pub struct LocalSwapId(Uuid);
+
+impl LocalSwapId {
+    pub fn as_bytes(&self) -> &[u8] {
+        self.0.as_bytes()
+    }
+}
 
 impl Default for LocalSwapId {
     fn default() -> Self {

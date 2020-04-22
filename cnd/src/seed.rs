@@ -17,7 +17,8 @@ use thiserror;
 /// `RootSeed` and `SwapSeed` are the same underlying type (`Seed`), they exist
 /// solely to allow the compiler to provide us with type safety.
 
-// This will go away once rfc003 is gone.
+// This will go away once rfc003 is gone (because now the swap_id comes from Bob
+// we derive it differently).
 #[ambassador::delegatable_trait]
 pub trait Rfc003DeriveSwapSeed {
     fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed;
@@ -30,16 +31,14 @@ impl Rfc003DeriveSwapSeed for RootSeed {
     }
 }
 
-// This exists because its safer than the above trait now that the swap_id comes
-// from Bob.  We do not want to derive the seed using information from Bob.
 #[ambassador::delegatable_trait]
-pub trait DeriveSwapSeedFromNodeLocal {
-    fn derive_swap_seed_from_node_local(&self, id: LocalSwapId) -> SwapSeed;
+pub trait DeriveSwapSeed {
+    fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed;
 }
 
-impl DeriveSwapSeedFromNodeLocal for RootSeed {
-    fn derive_swap_seed_from_node_local(&self, id: LocalSwapId) -> SwapSeed {
-        let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
+impl DeriveSwapSeed for RootSeed {
+    fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed {
+        let data = self.sha256_with_seed(&[b"SWAP", swap_id.as_bytes()]);
         SwapSeed(Seed(data))
     }
 }
