@@ -779,7 +779,7 @@ mod tests {
                 },
                 "beta_ledger": {
                     "name": "ethereum",
-                    "chain_id": 17
+                    "chain_id": 1337
                 },
                 "alpha_asset": {
                     "name": "bitcoin",
@@ -809,7 +809,7 @@ mod tests {
                 },
                 "beta_ledger": {
                     "name": "ethereum",
-                    "chain_id": 17
+                    "chain_id": 1337
                 },
                 "alpha_asset": {
                     "name": "bitcoin",
@@ -841,7 +841,7 @@ mod tests {
             .is_ok()
             .map(|b| &b.beta_ledger)
             .is_equal_to(&HttpLedger::Ethereum(ledger::Ethereum {
-                chain_id: ChainId::from(17),
+                chain_id: ChainId::from(1337),
             }));
     }
 }

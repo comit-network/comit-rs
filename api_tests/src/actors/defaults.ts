@@ -37,7 +37,7 @@ export function defaultLedgerDescriptionForLedger(ledger: LedgerKind): Ledger {
         case LedgerKind.Ethereum: {
             return {
                 name: LedgerKind.Ethereum,
-                chain_id: 17,
+                chain_id: 1337,
             };
         }
     }

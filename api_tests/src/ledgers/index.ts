@@ -24,6 +24,8 @@ export interface LightningNodeConfig {
 export interface EthereumNodeConfig {
     rpc_url: string;
     tokenContract: string;
+    dev_account_key: string;
+    chain_id: number;
 }
 
 export interface LedgerInstance {

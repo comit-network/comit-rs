@@ -1,15 +1,11 @@
 import { JsonMap, stringify } from "@iarna/toml";
 import { ChildProcess, spawn } from "child_process";
-import * as fs from "fs";
 import tempWrite from "temp-write";
-import { promisify } from "util";
 import { CndConfigFile } from "../config";
-import { sleep } from "../utils";
+import { openAsync, sleep } from "../utils";
 import waitForLogMessage from "../wait_for_log_message";
 import { Logger } from "log4js";
 import path from "path";
-
-const openAsync = promisify(fs.open);
 
 export class CndInstance {
     private process: ChildProcess;

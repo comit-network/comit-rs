@@ -55,10 +55,12 @@ export class Wallets {
     ) {
         switch (name) {
             case "ethereum":
-                this.wallets.ethereum = new EthereumWallet(
+                this.wallets.ethereum = await EthereumWallet.new_instance(
+                    global.ledgerConfigs.ethereum.dev_account_key,
                     global.ledgerConfigs.ethereum.rpc_url,
                     logger,
-                    global.parityLockDir
+                    global.gethLockDir,
+                    global.ledgerConfigs.ethereum.chain_id
                 );
                 break;
             case "bitcoin":

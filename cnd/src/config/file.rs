@@ -229,7 +229,7 @@ network = "regtest"
 node_url = "http://localhost:18443/"
 
 [ethereum]
-chain_id = 17
+chain_id = 1337
 
 [ethereum.parity]
 node_url = "http://localhost:8545/"
@@ -353,7 +353,7 @@ dir = "/foo/bar"
     fn ethereum_deserializes_correctly() {
         let file_contents = vec![
             r#"
-            chain_id = 17
+            chain_id = 1337
             [parity]
             node_url = "http://example.com:8545"
             "#,

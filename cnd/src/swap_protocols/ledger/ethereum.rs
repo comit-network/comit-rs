@@ -39,7 +39,7 @@ impl ChainId {
     }
 
     pub fn regtest() -> ChainId {
-        ChainId(17)
+        ChainId(1337)
     }
 }
 

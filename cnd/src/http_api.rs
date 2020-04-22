@@ -622,13 +622,13 @@ mod tests {
         let input = &[
             HttpLedger::from(Ethereum::new(ethereum::ChainId::from(1))),
             HttpLedger::from(Ethereum::new(ethereum::ChainId::from(3))),
-            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(17))),
+            HttpLedger::from(Ethereum::new(ethereum::ChainId::from(1337))),
         ];
 
         let expected = &[
             r#"{"name":"ethereum","chain_id":1}"#,
             r#"{"name":"ethereum","chain_id":3}"#,
-            r#"{"name":"ethereum","chain_id":17}"#,
+            r#"{"name":"ethereum","chain_id":1337}"#,
         ];
 
         let actual = input

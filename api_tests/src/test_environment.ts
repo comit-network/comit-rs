@@ -14,7 +14,7 @@ import ledgerLock from "./ledgers/ledger_lock";
 import BitcoinMinerInstance from "./ledgers/bitcoin_miner_instance";
 import { EthereumWallet } from "./wallets/ethereum";
 import { LedgerInstance, LightningNodeConfig } from "./ledgers";
-import { ParityInstance } from "./ledgers/parity_instance";
+import { GethInstance } from "./ledgers/geth_instance";
 import { LndInstance } from "./ledgers/lnd_instance";
 import BitcoinRpcClient from "bitcoin-core";
 
@@ -98,7 +98,7 @@ export default class TestEnvironment extends NodeEnvironment {
 
             return dir;
         };
-        this.global.parityLockDir = await this.getLockDirectory("parity");
+        this.global.gethLockDir = await this.getLockDirectory("geth");
 
         this.logger.info("Starting up test environment");
 
@@ -201,38 +201,38 @@ export default class TestEnvironment extends NodeEnvironment {
      * Once this function returns, the necessary configuration values have been set inside the test environment.
      */
     private async startEthereum() {
-        const lockDir = await this.getLockDirectory("parity");
+        const lockDir = await this.getLockDirectory("geth");
         const release = await ledgerLock(lockDir);
 
-        const parity = await ParityInstance.new(
-            await this.global.getDataDir("parity"),
-            path.join(lockDir, "parity.pid"),
+        const geth = await GethInstance.new(
+            await this.global.getDataDir("geth"),
+            path.join(lockDir, "geth.pid"),
             this.logger
         );
-        const config = await this.startLedger(
-            lockDir,
-            parity,
-            async (parity) => {
-                const rpcUrl = parity.rpcUrl;
+        const config = await this.startLedger(lockDir, geth, async (geth) => {
+            const rpcUrl = geth.rpcUrl;
+            const devAccountKey = geth.devAccountKey();
+            const erc20Wallet = await EthereumWallet.new_instance(
+                devAccountKey,
+                rpcUrl,
+                this.logger,
+                lockDir,
+                geth.CHAIN_ID
+            );
+            const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
 
-                const erc20Wallet = new EthereumWallet(
-                    rpcUrl,
-                    this.logger,
-                    lockDir
-                );
-                const erc20TokenContract = await erc20Wallet.deployErc20TokenContract();
+            this.logger.info(
+                "ERC20 token contract deployed at",
+                erc20TokenContract
+            );
 
-                this.logger.info(
-                    "ERC20 token contract deployed at",
-                    erc20TokenContract
-                );
-
-                return {
-                    rpc_url: rpcUrl,
-                    tokenContract: erc20TokenContract,
-                };
-            }
-        );
+            return {
+                rpc_url: rpcUrl,
+                tokenContract: erc20TokenContract,
+                dev_account_key: devAccountKey,
+                chain_id: geth.CHAIN_ID,
+            };
+        });
 
         this.global.ledgerConfigs.ethereum = config;
         this.global.tokenContract = config.tokenContract;
