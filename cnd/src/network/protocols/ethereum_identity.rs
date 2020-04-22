@@ -1,11 +1,11 @@
-use crate::{identity, network::oneshot_protocol, swap_protocols::SwapId};
+use crate::{identity, network::oneshot_protocol, swap_protocols::SharedSwapId};
 use serde::{Deserialize, Serialize};
 use serde_hex::{SerHex, StrictPfx};
 
 /// The message for the Ethereum identity sharing protocol.
 #[derive(Clone, Copy, Deserialize, Debug, Serialize)]
 pub struct Message {
-    pub swap_id: SwapId,
+    pub swap_id: SharedSwapId,
     /// An Ethereum address, serialized with a `0x` prefix as per convention in
     /// the Ethereum ecosystem.
     #[serde(with = "SerHex::<StrictPfx>")]
@@ -13,7 +13,7 @@ pub struct Message {
 }
 
 impl Message {
-    pub fn new(swap_id: SwapId, address: identity::Ethereum) -> Self {
+    pub fn new(swap_id: SharedSwapId, address: identity::Ethereum) -> Self {
         Self {
             swap_id,
             address: address.into(),
@@ -29,12 +29,11 @@ impl oneshot_protocol::Message for Message {
 mod tests {
     use super::*;
     use spectral::prelude::*;
-    use uuid::Uuid;
 
     #[test]
     fn serialization_format_stability_test() {
         let given = Message {
-            swap_id: SwapId(Uuid::nil()),
+            swap_id: SharedSwapId::nil(),
             address: [0u8; 20],
         };
 

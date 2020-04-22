@@ -1,14 +1,14 @@
-use crate::{network::oneshot_protocol, swap_protocols::SwapId};
+use crate::{network::oneshot_protocol, swap_protocols::SharedSwapId};
 use serde::{Deserialize, Serialize};
 
 /// The message for the finalize protocol.
 #[derive(Clone, Copy, Deserialize, Debug, Serialize)]
 pub struct Message {
-    pub swap_id: SwapId,
+    pub swap_id: SharedSwapId,
 }
 
 impl Message {
-    pub fn new(swap_id: SwapId) -> Self {
+    pub fn new(swap_id: SharedSwapId) -> Self {
         Self { swap_id }
     }
 }
@@ -21,12 +21,11 @@ impl oneshot_protocol::Message for Message {
 mod tests {
     use super::*;
     use spectral::prelude::*;
-    use uuid::Uuid;
 
     #[test]
     fn serialization_format_stability_test() {
         let given = Message {
-            swap_id: SwapId(Uuid::nil()),
+            swap_id: SharedSwapId::nil(),
         };
 
         let actual = serde_json::to_string(&given);

@@ -7,7 +7,7 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        Facade, Facade2, HanEtherereumHalightBitcoinCreateSwapParams, NodeLocalSwapId, Role,
+        Facade, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -21,7 +21,7 @@ pub struct InfoResource {
     listen_addresses: Vec<Multiaddr>,
 }
 
-pub async fn get_info(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
+pub async fn get_info(id: PeerId, dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
     let listen_addresses = dependencies.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(&InfoResource {
@@ -30,7 +30,10 @@ pub async fn get_info(id: PeerId, dependencies: Facade) -> Result<impl Reply, Re
     }))
 }
 
-pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Reply, Rejection> {
+pub async fn get_info_siren(
+    id: PeerId,
+    dependencies: Rfc003Facade,
+) -> Result<impl Reply, Rejection> {
     let listen_addresses = dependencies.listen_addresses().await.to_vec();
 
     Ok(warp::reply::json(
@@ -56,7 +59,7 @@ pub async fn get_info_siren(id: PeerId, dependencies: Facade) -> Result<impl Rep
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
+pub async fn get_swaps(dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
     handle_get_swaps(dependencies)
         .await
         .map(|swaps| {
@@ -73,7 +76,7 @@ pub async fn get_swaps(dependencies: Facade) -> Result<impl Reply, Rejection> {
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
-    facade: Facade2,
+    facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     let body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
         .map_err(anyhow::Error::new)
@@ -82,7 +85,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
 
     let reply = warp::reply::reply();
 
-    let id = NodeLocalSwapId::default();
+    let id = LocalSwapId::default();
 
     facade.save(id, ()).await;
 
@@ -99,7 +102,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_herc20_halight_bitcoin(
     body: serde_json::Value,
-    _facade: Facade2,
+    _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
     let _body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
         .map_err(anyhow::Error::new)
@@ -119,7 +122,7 @@ pub async fn post_herc20_halight_bitcoin(
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_halight_bitcoin_han_ether(
     body: serde_json::Value,
-    _facade: Facade2,
+    _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
     let _body = Body::<HalightLightningBitcoin, HanEthereumEther>::deserialize(&body)
         .map_err(anyhow::Error::new)
@@ -139,7 +142,7 @@ pub async fn post_halight_bitcoin_han_ether(
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_halight_bitcoin_herc20(
     body: serde_json::Value,
-    _facade: Facade2,
+    _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
     let _body = Body::<HalightLightningBitcoin, Herc20EthereumErc20>::deserialize(&body)
         .map_err(anyhow::Error::new)

@@ -1,10 +1,10 @@
 use crate::{
     db::{DetermineTypes, Retrieve},
     http_api::swap_resource::{build_rfc003_siren_entity, IncludeState, OnFail},
-    swap_protocols::Facade,
+    swap_protocols::Rfc003Facade,
 };
 
-pub async fn handle_get_swaps(dependencies: Facade) -> anyhow::Result<siren::Entity> {
+pub async fn handle_get_swaps(dependencies: Rfc003Facade) -> anyhow::Result<siren::Entity> {
     let mut entity = siren::Entity::default().with_class_member("swaps");
 
     for swap in Retrieve::all(&dependencies).await?.into_iter() {

@@ -6,9 +6,8 @@ use crate::{
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
-            DeriveIdentities,
+            DeriveIdentities, SwapId,
         },
-        SwapId,
     },
 };
 use serde::Deserialize;

@@ -4,21 +4,21 @@ use crate::{
         rfc003::{
             create_swap::{create_watcher, OngoingSwap},
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
+            state::Insert,
             Accept, Request, SwapCommunication,
         },
-        state::Insert,
-        Facade,
+        Rfc003Facade,
     },
 };
 use tracing_futures::Instrument;
 
 #[allow(clippy::cognitive_complexity)]
 pub async fn init_accepted_swap<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
-    dependencies: &Facade,
+    dependencies: &Rfc003Facade,
     accepted: AcceptedSwap<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
-    Facade: HtlcFunded<AL, AA, AH, AI, AT>
+    Rfc003Facade: HtlcFunded<AL, AA, AH, AI, AT>
         + HtlcFunded<BL, BA, BH, BI, BT>
         + HtlcDeployed<AL, AA, AH, AI, AT>
         + HtlcDeployed<BL, BA, BH, BI, BT>

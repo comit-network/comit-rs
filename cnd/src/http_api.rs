@@ -19,7 +19,8 @@ use crate::{
     network::DialInformation,
     swap_protocols::{
         ledger::{self, bitcoin::Network, ethereum::ChainId, Bitcoin},
-        Role, SwapId, SwapProtocol,
+        rfc003::SwapId,
+        Role, SwapProtocol,
     },
     transaction,
 };
@@ -556,7 +557,8 @@ mod tests {
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
             ledger::{bitcoin, ethereum, Ethereum},
-            HashFunction, SwapId, SwapProtocol,
+            rfc003::SwapId,
+            HashFunction, SwapProtocol,
         },
         transaction,
     };

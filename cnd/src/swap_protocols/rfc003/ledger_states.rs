@@ -1,7 +1,7 @@
-use crate::swap_protocols::{
-    rfc003::{create_swap::SwapEvent, LedgerState},
+use crate::swap_protocols::rfc003::{
+    create_swap::SwapEvent,
     state::{Get, Insert, Update},
-    LocalSwapId,
+    LedgerState, SwapId,
 };
 use async_trait::async_trait;
 use std::{any::Any, collections::HashMap};
@@ -9,7 +9,7 @@ use tokio::sync::Mutex;
 
 #[derive(Default, Debug)]
 pub struct LedgerStates {
-    states: Mutex<HashMap<LocalSwapId, Box<dyn Any + Send>>>,
+    states: Mutex<HashMap<SwapId, Box<dyn Any + Send>>>,
 }
 
 #[async_trait]
@@ -17,7 +17,7 @@ impl<S> Insert<S> for LedgerStates
 where
     S: Send + 'static,
 {
-    async fn insert(&self, key: LocalSwapId, value: S) {
+    async fn insert(&self, key: SwapId, value: S) {
         let mut states = self.states.lock().await;
         states.insert(key, Box::new(value));
     }
@@ -28,7 +28,7 @@ impl<S> Get<S> for LedgerStates
 where
     S: Clone + Send + 'static,
 {
-    async fn get(&self, key: &LocalSwapId) -> anyhow::Result<Option<S>> {
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Option<S>> {
         let states = self.states.lock().await;
         match states.get(key) {
             Some(state) => match state.downcast_ref::<S>() {
@@ -48,7 +48,7 @@ where
     H: Send,
     T: Send,
 {
-    async fn update(&self, key: &LocalSwapId, event: SwapEvent<A, H, T>) {
+    async fn update(&self, key: &SwapId, event: SwapEvent<A, H, T>) {
         let mut states = self.states.lock().await;
         let ledger_state = match states
             .get_mut(key)
@@ -83,7 +83,7 @@ mod tests {
     #[tokio::test]
     async fn insert_and_get_ledger_state() {
         let ledger_states = LedgerStates::default();
-        let id = LocalSwapId::default();
+        let id = SwapId::default();
 
         ledger_states.insert(id, LedgerState::<asset::Bitcoin, htlc_location::Bitcoin, transaction::Bitcoin>::NotDeployed).await;
 

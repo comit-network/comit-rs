@@ -21,7 +21,7 @@ pub use self::{
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{Role, SwapId},
+    swap_protocols::{rfc003::SwapId, Role},
 };
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use std::{

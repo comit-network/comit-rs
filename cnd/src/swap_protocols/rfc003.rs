@@ -1,3 +1,4 @@
+pub mod actions;
 pub mod alice;
 pub mod bitcoin;
 pub mod bob;
@@ -5,15 +6,20 @@ pub mod create_swap;
 pub mod ethereum;
 pub mod events;
 pub mod ledger_state;
+pub mod ledger_states;
 pub mod messages;
-
-pub mod actions;
 mod secret;
+pub mod state;
+pub mod swap_communication_states;
+pub mod swap_id;
 
 pub use self::{
     create_swap::create_watcher,
     ledger_state::{HtlcState, LedgerState},
+    ledger_states::LedgerStates,
     secret::{FromErr, Secret, SecretHash},
+    swap_communication_states::SwapCommunicationStates,
+    swap_id::SwapId,
 };
 
 pub use self::messages::{Accept, Decline, Request};

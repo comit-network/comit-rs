@@ -6,7 +6,7 @@ use crate::swap_protocols::{
         },
         LedgerState,
     },
-    state, NodeLocalSwapId, SwapId,
+    state, LocalSwapId,
 };
 use chrono::NaiveDateTime;
 use futures::future::{self, Either};
@@ -30,7 +30,7 @@ use std::sync::Arc;
 pub async fn create_watcher<C, S, L, A, H, I, T>(
     ethereum_connector: &C,
     ledger_state: Arc<S>,
-    local_id: NodeLocalSwapId,
+    swap_id: LocalSwapId,
     htlc_params: HtlcParams<L, A, I>,
     accepted_at: NaiveDateTime,
 ) where
@@ -45,10 +45,8 @@ pub async fn create_watcher<C, S, L, A, H, I, T>(
     I: Clone,
     T: Clone,
 {
-    let id = SwapId(local_id.0);
-
     ledger_state
-        .insert(id, LedgerState::<A, H, T>::NotDeployed)
+        .insert(swap_id, LedgerState::<A, H, T>::NotDeployed)
         .await;
 
     // construct a generator that watches alpha and beta ledger concurrently
@@ -64,17 +62,17 @@ pub async fn create_watcher<C, S, L, A, H, I, T>(
         match generator.async_resume().await {
             // every event that is yielded is passed on
             GeneratorState::Yielded(event) => {
-                tracing::info!("swap {} yielded event {}", id, event);
-                ledger_state.update(&id, event).await;
+                tracing::info!("swap {} yielded event {}", swap_id, event);
+                ledger_state.update(&swap_id, event).await;
             }
             // the generator stopped executing, this means there are no more events that can be
             // watched.
             GeneratorState::Complete(Ok(_)) => {
-                tracing::info!("swap {} finished", id);
+                tracing::info!("swap {} finished", swap_id);
                 return;
             }
             GeneratorState::Complete(Err(e)) => {
-                tracing::error!("swap {} failed with {:?}", id, e);
+                tracing::error!("swap {} failed with {:?}", swap_id, e);
                 return;
             }
         }

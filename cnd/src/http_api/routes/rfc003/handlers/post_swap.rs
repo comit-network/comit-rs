@@ -5,16 +5,16 @@ use crate::{
     identity,
     init_swap::init_accepted_swap,
     network::{DialInformation, SendRequest},
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
             self,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
+            state::Insert,
             Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
-            SwapCommunication,
+            SwapCommunication, SwapId,
         },
-        state::Insert,
-        Facade, HashFunction, Role, SwapId,
+        HashFunction, Rfc003Facade, Role,
     },
     timestamp::Timestamp,
     transaction,
@@ -26,7 +26,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
 async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     id: SwapId,
     peer: DialInformation,
     swap_request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
@@ -48,7 +48,7 @@ where
     Accept<AI, BI>: Copy,
     rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Clone,
     <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
-    Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
+    Rfc003Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
         + HtlcFunded<AL, AA, AH, AI, AT>
         + HtlcFunded<BL, BA, BH, BI, BT>
         + HtlcDeployed<AL, AA, AH, AI, AT>
@@ -121,11 +121,11 @@ where
 }
 
 pub async fn handle_post_swap(
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
-    let seed = dependencies.derive_swap_seed(id);
+    let seed = dependencies.rfc003_derive_swap_seed(id);
     let secret_hash = seed.derive_secret().hash();
 
     let body = SwapRequestBody::deserialize(&body)?;

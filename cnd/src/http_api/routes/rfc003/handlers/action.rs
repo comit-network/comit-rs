@@ -2,8 +2,8 @@ use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Save},
     http_api::{
         action::{
-            ActionExecutionParameters, ActionResponseBody, IntoResponsePayload, ListRequiredFields,
-            ToSirenAction,
+            rfc003::ToSirenAction, ActionExecutionParameters, ActionResponseBody,
+            IntoResponsePayload, ListRequiredFields,
         },
         route_factory::new_action_link,
         routes::rfc003::decline::{to_swap_decline_reason, DeclineBody},
@@ -11,21 +11,20 @@ use crate::{
     init_swap::init_accepted_swap,
     libp2p_comit_ext::ToHeader,
     network::PendingRequestFor,
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         actions::Actions,
         rfc003::{
             self,
             actions::{Action, ActionKind},
             messages::{Decision, IntoAcceptMessage},
-            LedgerState, SwapCommunication,
+            state::{Get, Insert},
+            LedgerState, SwapCommunication, SwapId,
         },
-        state::{Get, Insert},
-        Facade, SwapId,
+        Rfc003Facade,
     },
 };
 use anyhow::Context;
-use libp2p_comit::frame::Response;
 use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug, Display},
@@ -40,7 +39,7 @@ pub async fn handle_action(
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let types = dependencies.determine_types(&swap_id).await?;
 
@@ -59,7 +58,7 @@ pub async fn handle_action(
             .get(&swap_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
-        let secret_source = dependencies.derive_swap_seed(swap_id);
+        let secret_source = dependencies.rfc003_derive_swap_seed(swap_id);
 
         let state = RoleState::new(
             swap_communication,
@@ -85,8 +84,8 @@ pub async fn handle_action(
                         format!("unable to find response channel for swap {}", swap_id)
                     })?;
 
-                let accept_message =
-                    body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
+                let accept_message = body
+                    .into_accept_message(swap_id, &dependencies.rfc003_derive_swap_seed(swap_id));
 
                 Save::save(&dependencies, accept_message).await?;
 
@@ -207,11 +206,13 @@ trait SelectAction<Accept, Decline, Deploy, Fund, Redeem, Refund>:
     }
 }
 
-fn rfc003_accept_response<AI, BI>(message: rfc003::messages::Accept<AI, BI>) -> Response
+fn rfc003_accept_response<AI, BI>(
+    message: rfc003::messages::Accept<AI, BI>,
+) -> libp2p_comit::frame::Response
 where
     rfc003::messages::AcceptResponseBody<AI, BI>: Serialize,
 {
-    Response::empty()
+    libp2p_comit::frame::Response::empty()
         .with_header(
             "decision",
             Decision::Accepted
@@ -227,8 +228,8 @@ where
         )
 }
 
-fn rfc003_decline_response(message: rfc003::messages::Decline) -> Response {
-    Response::empty()
+fn rfc003_decline_response(message: rfc003::messages::Decline) -> libp2p_comit::frame::Response {
+    libp2p_comit::frame::Response::empty()
         .with_header(
             "decision",
             Decision::Declined

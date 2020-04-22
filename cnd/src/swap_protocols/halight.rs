@@ -1,6 +1,6 @@
 use crate::swap_protocols::{
     rfc003::{Secret, SecretHash},
-    state, SwapId,
+    state, LocalSwapId,
 };
 use futures::{
     future::{self, Either},
@@ -91,7 +91,7 @@ pub struct Settled {
 pub struct Cancelled;
 
 #[derive(Default, Debug)]
-pub struct States(Mutex<HashMap<SwapId, State>>);
+pub struct States(Mutex<HashMap<LocalSwapId, State>>);
 
 impl State {
     pub fn transition_to_opened(&mut self, opened: Opened) {
@@ -128,7 +128,7 @@ impl State {
 
 #[async_trait::async_trait]
 impl state::Get<State> for States {
-    async fn get(&self, key: &SwapId) -> anyhow::Result<Option<State>> {
+    async fn get(&self, key: &LocalSwapId) -> anyhow::Result<Option<State>> {
         let states = self.0.lock().await;
         let state = states.get(key).copied();
 
@@ -138,7 +138,7 @@ impl state::Get<State> for States {
 
 #[async_trait::async_trait]
 impl state::Update<Event> for States {
-    async fn update(&self, key: &SwapId, event: Event) {
+    async fn update(&self, key: &LocalSwapId, event: Event) {
         let mut states = self.0.lock().await;
         let entry = states.entry(*key);
 

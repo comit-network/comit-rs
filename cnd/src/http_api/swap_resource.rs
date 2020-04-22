@@ -3,14 +3,16 @@
 use crate::{
     db::{Swap, SwapTypes},
     http_api::{
-        action::ToSirenAction,
+        action::rfc003::ToSirenAction,
         route_factory::swap_path,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
-        actions::Actions, rfc003, state::Get, Facade, HashFunction, SwapId, SwapProtocol,
+        actions::Actions,
+        rfc003::{self, state::Get, SwapId},
+        HashFunction, Rfc003Facade, SwapProtocol,
     },
 };
 use anyhow::anyhow;
@@ -80,7 +82,7 @@ pub enum OnFail {
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
 pub async fn build_rfc003_siren_entity(
-    dependencies: &Facade,
+    dependencies: &Rfc003Facade,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,
@@ -117,7 +119,7 @@ pub async fn build_rfc003_siren_entity(
         let beta_ledger = LedgerState::from(beta_ledger_state.clone());
         let parameters = SwapParameters::from(swap_communication.request().clone());
 
-        let secret_source = dependencies.derive_swap_seed(id);
+        let secret_source = dependencies.rfc003_derive_swap_seed(id);
 
         let actions = {
             let state = RoleState::new(
