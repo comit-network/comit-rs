@@ -11,7 +11,7 @@ use crate::{
     init_swap::init_accepted_swap,
     libp2p_comit_ext::ToHeader,
     network::PendingRequestFor,
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         actions::Actions,
         rfc003::{
@@ -58,7 +58,7 @@ pub async fn handle_action(
             .get(&swap_id)
             .await?
             .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
-        let secret_source = dependencies.derive_swap_seed(swap_id);
+        let secret_source = dependencies.rfc003_derive_swap_seed(swap_id);
 
         let state = RoleState::new(
             swap_communication,
@@ -84,8 +84,8 @@ pub async fn handle_action(
                         format!("unable to find response channel for swap {}", swap_id)
                     })?;
 
-                let accept_message =
-                    body.into_accept_message(swap_id, &dependencies.derive_swap_seed(swap_id));
+                let accept_message = body
+                    .into_accept_message(swap_id, &dependencies.rfc003_derive_swap_seed(swap_id));
 
                 Save::save(&dependencies, accept_message).await?;
 

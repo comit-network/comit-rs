@@ -8,7 +8,7 @@ use crate::{
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         actions::Actions,
         rfc003::{self, state::Get, SwapId},
@@ -119,7 +119,7 @@ pub async fn build_rfc003_siren_entity(
         let beta_ledger = LedgerState::from(beta_ledger_state.clone());
         let parameters = SwapParameters::from(swap_communication.request().clone());
 
-        let secret_source = dependencies.derive_swap_seed(id);
+        let secret_source = dependencies.rfc003_derive_swap_seed(id);
 
         let actions = {
             let state = RoleState::new(

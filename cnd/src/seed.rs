@@ -19,12 +19,12 @@ use thiserror;
 
 // This will go away once rfc003 is gone.
 #[ambassador::delegatable_trait]
-pub trait DeriveSwapSeed {
-    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed;
+pub trait Rfc003DeriveSwapSeed {
+    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed;
 }
 
-impl DeriveSwapSeed for RootSeed {
-    fn derive_swap_seed(&self, id: SwapId) -> SwapSeed {
+impl Rfc003DeriveSwapSeed for RootSeed {
+    fn rfc003_derive_swap_seed(&self, id: SwapId) -> SwapSeed {
         let data = self.sha256_with_seed(&[b"SWAP", id.0.as_bytes()]);
         SwapSeed(Seed(data))
     }

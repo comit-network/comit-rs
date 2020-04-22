@@ -5,7 +5,7 @@ use crate::{
     identity,
     init_swap::init_accepted_swap,
     network::{DialInformation, SendRequest},
-    seed::DeriveSwapSeed,
+    seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
             self,
@@ -125,7 +125,7 @@ pub async fn handle_post_swap(
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
-    let seed = dependencies.derive_swap_seed(id);
+    let seed = dependencies.rfc003_derive_swap_seed(id);
     let secret_hash = seed.derive_secret().hash();
 
     let body = SwapRequestBody::deserialize(&body)?;

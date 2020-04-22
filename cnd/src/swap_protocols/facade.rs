@@ -11,7 +11,7 @@ use crate::{
         ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
         SendRequest, Swarm,
     },
-    seed::{DeriveSwapSeed, RootSeed, SwapSeed},
+    seed::{Rfc003DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
@@ -40,7 +40,7 @@ use std::{convert::TryInto, fmt::Debug, sync::Arc};
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
 #[derive(Clone, Debug, ambassador::Delegate)]
-#[delegate(DeriveSwapSeed, target = "seed")]
+#[delegate(Rfc003DeriveSwapSeed, target = "seed")]
 #[delegate(LocalPeerId, target = "swarm")]
 #[delegate(ComitPeers, target = "swarm")]
 #[delegate(ListenAddresses, target = "swarm")]
