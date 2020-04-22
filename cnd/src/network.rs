@@ -220,7 +220,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 pub struct ComitNode {
     /// The rfc003 network behaviour.
     comit: Comit,
-    /// The new spilt protocols network behaviour.
+    /// The new split protocols network behaviour.
     comit_ln: ComitLN,
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
