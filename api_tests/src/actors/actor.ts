@@ -369,6 +369,21 @@ export class Actor {
         await this.swap.doLedgerAction(response.data);
     }
 
+    public async waitForAction(
+        action: string,
+        maxTimeoutSecs?: number,
+        tryIntervalSecs?: number
+    ) {
+        if (!this.swap) {
+            throw new Error("Cannot init nonexistent swap");
+        }
+
+        return this.swap.tryExecuteSirenAction<LedgerAction>(action, {
+            maxTimeoutSecs: maxTimeoutSecs ? maxTimeoutSecs : 3,
+            tryIntervalSecs: tryIntervalSecs ? tryIntervalSecs : 1,
+        });
+    }
+
     public async fund() {
         if (!this.swap) {
             throw new Error("Cannot fund nonexistent swap");
