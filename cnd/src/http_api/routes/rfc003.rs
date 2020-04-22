@@ -14,7 +14,7 @@ use crate::{
     },
     swap_protocols::{
         rfc003::{actions::ActionKind, SwapId},
-        Facade,
+        Rfc003Facade,
     },
 };
 use warp::{
@@ -27,7 +27,7 @@ use crate::http_api::problem;
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_swap(
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
     handle_post_swap(dependencies, body)
@@ -43,7 +43,7 @@ pub async fn post_swap(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swap(dependencies: Facade, id: SwapId) -> Result<impl Reply, Rejection> {
+pub async fn get_swap(dependencies: Rfc003Facade, id: SwapId) -> Result<impl Reply, Rejection> {
     handle_get_swap(dependencies, id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
@@ -57,7 +57,7 @@ pub async fn action(
     id: SwapId,
     action_kind: ActionKind,
     query_params: ActionExecutionParameters,
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     body: serde_json::Value,
 ) -> Result<impl Reply, Rejection> {
     handle_action(method, id, action_kind, body, query_params, dependencies)

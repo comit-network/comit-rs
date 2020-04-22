@@ -27,8 +27,8 @@ use cnd::{
     network::{Swarm, SwarmWorker},
     seed::RootSeed,
     swap_protocols::{
-        halight::States, rfc003, rfc003::SwapCommunicationStates, Facade, Facade2, LedgerStates,
-        SwapErrorStates,
+        halight::States, rfc003, rfc003::SwapCommunicationStates, Facade, LedgerStates,
+        Rfc003Facade, SwapErrorStates,
     },
 };
 
@@ -153,7 +153,7 @@ fn main() -> anyhow::Result<()> {
     )?;
 
     // RCF003 protocol
-    let deps = Facade {
+    let rfc003_facade = Rfc003Facade {
         bitcoin_connector,
         ethereum_connector,
         alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
@@ -166,19 +166,19 @@ fn main() -> anyhow::Result<()> {
     };
 
     // split protocols
-    let facade2 = Facade2 {
+    let facade = Facade {
         swarm: swarm.clone(),
         alpha_ledger_states: Arc::clone(&alpha_ledger_states),
         beta_ledger_states: Arc::clone(&halight_states),
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
-    runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
+    runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
 
     runtime.spawn(make_http_api_worker(
         settings,
-        deps,
-        facade2,
+        rfc003_facade,
+        facade,
         http_api_listener,
     ));
     runtime.spawn(make_network_api_worker(swarm));
@@ -214,13 +214,13 @@ async fn bind_http_api_socket(settings: &Settings) -> anyhow::Result<tokio::net:
 /// Construct the worker that is going to process HTTP API requests.
 async fn make_http_api_worker(
     settings: Settings,
-    dependencies: Facade,
-    facade2: Facade2,
+    rfc003_facade: Rfc003Facade,
+    facade: Facade,
     incoming_requests: tokio::net::TcpListener,
 ) {
     let routes = route_factory::create(
-        dependencies,
-        facade2,
+        rfc003_facade,
+        facade,
         &settings.http_api.cors.allowed_origins,
     );
 

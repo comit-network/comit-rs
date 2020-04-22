@@ -21,7 +21,7 @@ use crate::{
             state::{Get, Insert},
             LedgerState, SwapCommunication, SwapId,
         },
-        Facade,
+        Rfc003Facade,
     },
 };
 use anyhow::Context;
@@ -39,7 +39,7 @@ pub async fn handle_action(
     action_kind: ActionKind,
     body: serde_json::Value,
     query_params: ActionExecutionParameters,
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let types = dependencies.determine_types(&swap_id).await?;
 

@@ -1,314 +1,91 @@
 use crate::{
-    asset,
-    btsieve::{
-        self,
-        bitcoin::BitcoindConnector,
-        ethereum::{self, Web3Connector},
-    },
-    db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
-    htlc_location, identity,
-    network::{
-        ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
-        SendRequest, Swarm,
-    },
-    seed::{Rfc003DeriveSwapSeed, RootSeed, SwapSeed},
-    swap_protocols::{
-        ledger::{bitcoin, Ethereum},
-        rfc003::{
-            self,
-            create_swap::HtlcParams,
-            events::{
-                Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
-                Refunded,
-            },
-            state, LedgerStates, SwapCommunication, SwapCommunicationStates, SwapId,
-        },
-        InsertFailedSwap, SwapErrorStates,
-    },
-    transaction,
+    asset, identity,
+    network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
+    swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
+    timestamp::Timestamp,
 };
-use async_trait::async_trait;
-use chrono::NaiveDateTime;
-use futures::channel::oneshot::Sender;
-use impl_template::impl_template;
-use libp2p::{Multiaddr, PeerId};
-use libp2p_comit::frame::OutboundRequest;
-use serde::de::DeserializeOwned;
-use std::{convert::TryInto, fmt::Debug, sync::Arc};
+use digest::{Digest, IntoDigestInput};
+use std::sync::Arc;
+
+/// This represent the information available on a swap
+/// before communication with the other node has started
+#[derive(Clone, Digest, Debug)]
+#[digest(hash = "SwapDigest")]
+pub struct HanEtherereumHalightBitcoinCreateSwapParams {
+    #[digest(ignore)]
+    pub role: Role,
+    #[digest(ignore)]
+    pub peer: DialInformation,
+    #[digest(ignore)]
+    pub ethereum_identity: EthereumIdentity,
+    #[digest(prefix = "2001")]
+    pub ethereum_absolute_expiry: Timestamp,
+    #[digest(prefix = "2002")]
+    pub ethereum_amount: asset::Ether,
+    #[digest(ignore)]
+    pub lightning_identity: identity::Lightning,
+    #[digest(prefix = "3001")]
+    pub lightning_cltv_expiry: Timestamp,
+    #[digest(prefix = "3002")]
+    pub lightning_amount: asset::Lightning,
+}
+
+impl IntoDigestInput for asset::Lightning {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
+    }
+}
+
+impl IntoDigestInput for asset::Ether {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct EthereumIdentity(identity::Ethereum);
+
+impl From<identity::Ethereum> for EthereumIdentity {
+    fn from(inner: identity::Ethereum) -> Self {
+        EthereumIdentity(inner)
+    }
+}
+
+impl From<EthereumIdentity> for identity::Ethereum {
+    fn from(outer: EthereumIdentity) -> Self {
+        outer.0
+    }
+}
+
+impl IntoDigestInput for Timestamp {
+    fn into_digest_input(self) -> Vec<u8> {
+        self.to_bytes().to_vec()
+    }
+}
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
-#[derive(Clone, Debug, ambassador::Delegate)]
-#[delegate(Rfc003DeriveSwapSeed, target = "seed")]
-#[delegate(LocalPeerId, target = "swarm")]
-#[delegate(ComitPeers, target = "swarm")]
-#[delegate(ListenAddresses, target = "swarm")]
-#[delegate(PendingRequestFor, target = "swarm")]
-#[delegate(Retrieve, target = "db")]
-#[delegate(DetermineTypes, target = "db")]
+#[derive(Clone, Debug)]
 pub struct Facade {
-    pub bitcoin_connector: Arc<btsieve::bitcoin::Cache<BitcoindConnector>>,
-    pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-    pub alpha_ledger_states: Arc<LedgerStates>,
-    pub beta_ledger_states: Arc<LedgerStates>,
-    pub swap_communication_states: Arc<SwapCommunicationStates>,
-    pub swap_error_states: Arc<SwapErrorStates>,
-    pub seed: RootSeed,
     pub swarm: Swarm,
-    pub db: Sqlite,
+    // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
+    pub alpha_ledger_states: Arc<LedgerStates>,
+    pub beta_ledger_states: Arc<halight::States>,
 }
 
-#[async_trait]
-impl<AL, BL, AA, BA, AI, BI> state::Insert<SwapCommunication<AL, BL, AA, BA, AI, BI>> for Facade
-where
-    SwapCommunication<AL, BL, AA, BA, AI, BI>: Send + 'static,
-{
-    async fn insert(&self, key: SwapId, value: SwapCommunication<AL, BL, AA, BA, AI, BI>) {
-        self.swap_communication_states.insert(key, value).await
-    }
-}
+impl Facade {
+    pub async fn save(&self, _id: LocalSwapId, _swap_params: ()) {}
 
-#[async_trait]
-impl<AL, BL, AA, BA, AI, BI> state::Get<SwapCommunication<AL, BL, AA, BA, AI, BI>> for Facade
-where
-    SwapCommunication<AL, BL, AA, BA, AI, BI>: Clone + Send + 'static,
-{
-    #[allow(clippy::type_complexity)]
-    async fn get(
+    pub async fn initiate_communication(
         &self,
-        key: &SwapId,
-    ) -> anyhow::Result<Option<SwapCommunication<AL, BL, AA, BA, AI, BI>>> {
-        self.swap_communication_states.get(key).await
+        id: LocalSwapId,
+        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+    ) {
+        self.swarm.initiate_communication(id, swap_params).await;
     }
-}
 
-#[async_trait]
-impl InsertFailedSwap for Facade {
-    async fn insert_failed_swap(&self, id: &SwapId) {
-        self.swap_error_states.insert_failed_swap(&id).await
-    }
-}
-
-#[async_trait]
-impl SendRequest for Facade {
-    async fn send_request<AL, BL, AA, BA, AI, BI>(
-        &self,
-        peer_identity: DialInformation,
-        request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
-    ) -> Result<rfc003::Response<AI, BI>, RequestError>
-    where
-        rfc003::messages::AcceptResponseBody<AI, BI>: DeserializeOwned,
-        rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Send + 'static + Clone,
-        <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
-    {
-        self.swarm.send_request(peer_identity, request).await
-    }
-}
-
-#[async_trait]
-impl<AL, BL, AA, BA, AI, BI> LoadAcceptedSwap<AL, BL, AA, BA, AI, BI> for Facade
-where
-    Sqlite: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>,
-    AcceptedSwap<AL, BL, AA, BA, AI, BI>: Send + 'static,
-{
-    async fn load_accepted_swap(
-        &self,
-        swap_id: &SwapId,
-    ) -> anyhow::Result<AcceptedSwap<AL, BL, AA, BA, AI, BI>> {
-        self.db.load_accepted_swap(swap_id).await
-    }
-}
-
-#[async_trait]
-impl<T> Save<T> for Facade
-where
-    T: Send + 'static,
-    Sqlite: Save<T>,
-{
-    async fn save(&self, data: T) -> anyhow::Result<()> {
-        self.db.save(data).await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcFunded<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        asset::Bitcoin,
-        htlc_location::Bitcoin,
-        identity::Bitcoin,
-        transaction::Bitcoin,
-    > for Facade
-{
-    async fn htlc_funded(
-        &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<asset::Bitcoin, transaction::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcDeployed<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        asset::Bitcoin,
-        htlc_location::Bitcoin,
-        identity::Bitcoin,
-        transaction::Bitcoin,
-    > for Facade
-{
-    async fn htlc_deployed(
-        &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<htlc_location::Bitcoin, transaction::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcRedeemed<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        asset::Bitcoin,
-        htlc_location::Bitcoin,
-        identity::Bitcoin,
-        transaction::Bitcoin,
-    > for Facade
-{
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcRefunded<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        asset::Bitcoin,
-        htlc_location::Bitcoin,
-        identity::Bitcoin,
-        transaction::Bitcoin,
-    > for Facade
-{
-    async fn htlc_refunded(
-        &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
-        htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
-        self.bitcoin_connector
-            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcFunded<
-        Ethereum,
-        ((asset::Ether, asset::Erc20)),
-        htlc_location::Ethereum,
-        identity::Ethereum,
-        transaction::Ethereum,
-    > for Facade
-{
-    async fn htlc_funded(
-        &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
-        htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded<__TYPE0__, transaction::Ethereum>> {
-        self.ethereum_connector
-            .htlc_funded(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcDeployed<
-        Ethereum,
-        ((asset::Ether, asset::Erc20)),
-        htlc_location::Ethereum,
-        identity::Ethereum,
-        transaction::Ethereum,
-    > for Facade
-{
-    async fn htlc_deployed(
-        &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
-        self.ethereum_connector
-            .htlc_deployed(htlc_params, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcRedeemed<
-        Ethereum,
-        ((asset::Ether, asset::Erc20)),
-        htlc_location::Ethereum,
-        identity::Ethereum,
-        transaction::Ethereum,
-    > for Facade
-{
-    async fn htlc_redeemed(
-        &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
-        htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
-        self.ethereum_connector
-            .htlc_redeemed(htlc_params, htlc_deployment, start_of_swap)
-            .await
-    }
-}
-
-#[impl_template]
-#[async_trait::async_trait]
-impl
-    HtlcRefunded<
-        Ethereum,
-        ((asset::Ether, asset::Erc20)),
-        htlc_location::Ethereum,
-        identity::Ethereum,
-        transaction::Ethereum,
-    > for Facade
-{
-    async fn htlc_refunded(
-        &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
-        htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded<transaction::Ethereum>> {
-        self.ethereum_connector
-            .htlc_refunded(htlc_params, htlc_deployment, start_of_swap)
-            .await
+    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+        self.swarm.get_finalized_swap(id).await
     }
 }

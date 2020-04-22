@@ -14,7 +14,7 @@ use crate::{
             Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
             SwapCommunication, SwapId,
         },
-        Facade, HashFunction, Role,
+        HashFunction, Rfc003Facade, Role,
     },
     timestamp::Timestamp,
     transaction,
@@ -26,7 +26,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
 
 async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     id: SwapId,
     peer: DialInformation,
     swap_request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
@@ -48,7 +48,7 @@ where
     Accept<AI, BI>: Copy,
     rfc003::Request<AL, BL, AA, BA, AI, BI>: TryInto<OutboundRequest> + Clone,
     <rfc003::Request<AL, BL, AA, BA, AI, BI> as TryInto<OutboundRequest>>::Error: Debug,
-    Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
+    Rfc003Facade: LoadAcceptedSwap<AL, BL, AA, BA, AI, BI>
         + HtlcFunded<AL, AA, AH, AI, AT>
         + HtlcFunded<BL, BA, BH, BI, BT>
         + HtlcDeployed<AL, AA, AH, AI, AT>
@@ -121,7 +121,7 @@ where
 }
 
 pub async fn handle_post_swap(
-    dependencies: Facade,
+    dependencies: Rfc003Facade,
     body: serde_json::Value,
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();

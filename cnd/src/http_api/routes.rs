@@ -17,7 +17,7 @@ use crate::{
         ledger::ethereum::ChainId,
         rfc003::LedgerState,
         state::Get,
-        Facade2, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
+        Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
     },
     transaction,
 };
@@ -32,7 +32,7 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 #[allow(clippy::needless_pass_by_value)]
 pub async fn get_halight_swap(
     swap_id: LocalSwapId,
-    facade: Facade2,
+    facade: Facade,
 ) -> Result<impl Reply, Rejection> {
     handle_get_halight_swap(facade, swap_id)
         .await
@@ -42,7 +42,7 @@ pub async fn get_halight_swap(
 }
 
 pub async fn handle_get_halight_swap(
-    facade: Facade2,
+    facade: Facade,
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
     // This is ok, we use a new create_watcher in han.rs and call it with local id.
@@ -307,7 +307,7 @@ impl RedeemAction for BobHanEthereumHalightBitcoinState {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
     handle_action_init(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -318,7 +318,7 @@ pub async fn action_init(swap_id: LocalSwapId, facade: Facade2) -> Result<impl R
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(
     swap_id: LocalSwapId,
-    facade: Facade2,
+    facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -360,7 +360,7 @@ async fn handle_action_init(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_fund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
     handle_action_fund(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -371,7 +371,7 @@ pub async fn action_fund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl R
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(
     swap_id: LocalSwapId,
-    facade: Facade2,
+    facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -421,7 +421,7 @@ async fn handle_action_fund(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_redeem(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
     handle_action_redeem(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -432,7 +432,7 @@ pub async fn action_redeem(swap_id: LocalSwapId, facade: Facade2) -> Result<impl
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_redeem(
     swap_id: LocalSwapId,
-    facade: Facade2,
+    facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
         asset::Ether,
@@ -482,7 +482,7 @@ async fn handle_action_redeem(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl Reply, Rejection> {
+pub async fn action_refund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
     handle_action_refund(swap_id, facade)
         .await
         .map(|body| warp::reply::json(&body))
@@ -493,7 +493,7 @@ pub async fn action_refund(swap_id: LocalSwapId, facade: Facade2) -> Result<impl
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_refund(
     swap_id: LocalSwapId,
-    facade: Facade2,
+    facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
         asset::Ether,

@@ -12,7 +12,7 @@ use crate::{
     swap_protocols::{
         actions::Actions,
         rfc003::{self, state::Get, SwapId},
-        Facade, HashFunction, SwapProtocol,
+        HashFunction, Rfc003Facade, SwapProtocol,
     },
 };
 use anyhow::anyhow;
@@ -82,7 +82,7 @@ pub enum OnFail {
 // `with_swap_types!` macro and can be iteratively improved
 #[allow(clippy::cognitive_complexity)]
 pub async fn build_rfc003_siren_entity(
-    dependencies: &Facade,
+    dependencies: &Rfc003Facade,
     swap: Swap,
     types: SwapTypes,
     include_state: IncludeState,

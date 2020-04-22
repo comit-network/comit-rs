@@ -70,18 +70,6 @@ impl FromStr for SharedSwapId {
     }
 }
 
-impl From<Uuid> for SharedSwapId {
-    fn from(uuid: Uuid) -> Self {
-        SharedSwapId(uuid)
-    }
-}
-
-impl From<SharedSwapId> for Uuid {
-    fn from(swap_id: SharedSwapId) -> Self {
-        swap_id.0
-    }
-}
-
 impl fmt::Display for SharedSwapId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
