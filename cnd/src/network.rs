@@ -1188,12 +1188,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
         match event {
             comit_ln::BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
-                swap_params,
+                swap_params: create_swap_params,
                 secret_hash,
                 ethereum_identity,
             } => {
-                let role = swap_params.role;
-                let create_swap_params = swap_params;
+                let role = create_swap_params.role;
 
                 match self.lnd_connector_params {
                     None => { tracing::error!("Internal Failure: lnd connectors are not initialised, no action has been taken. This should be unreachable.") }
@@ -1216,7 +1215,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
-                                    let secret_hash = secret_hash;
 
                                     han::new_han_ethereum_ether_swap(
                                         local_swap_id,
@@ -1252,7 +1250,6 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
-                                    let secret_hash = secret_hash;
 
                                     self::han::new_han_ethereum_ether_swap(
                                         local_swap_id,
