@@ -51,6 +51,11 @@ it(
 
         await alice.createSwap(bodies.alice);
 
+        const config = {
+            maxTimeoutSecs: 1,
+            tryIntervalSecs: 0.3,
+        };
+
         // Due to the asynchronous nature of the announce protocol (and the fact that there is not error handling (yet)),
         // this test only tests that the "init" action does not become available.
         //
@@ -61,10 +66,10 @@ it(
         //      2.1) Internally the announce protocol runs into an Error because Alice' peer-id does not match the one she gave Bob.
         //              This Error, is however not visible to the outside.
         //              The application is responsible for removing swaps that do not move forward after a given time.
-        const aliceResponsePromise = alice.waitForAction("init");
+        const aliceResponsePromise = alice.init(config);
         return expect(aliceResponsePromise).rejects.toThrowError();
         // Same for Bob's side
-        const bobResponsePromise = bob.waitForAction("fund");
+        const bobResponsePromise = bob.fund(config);
         return expect(bobResponsePromise).rejects.toThrowError();
     })
 );

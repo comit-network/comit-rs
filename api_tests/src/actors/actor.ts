@@ -354,42 +354,32 @@ export class Actor {
         }
     }
 
-    public async init() {
+    public async init(config?: {
+        maxTimeoutSecs: number;
+        tryIntervalSecs: number;
+    }) {
         if (!this.swap) {
             throw new Error("Cannot init nonexistent swap");
         }
 
         const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
             "init",
-            {
-                maxTimeoutSecs: 30,
-                tryIntervalSecs: 1,
-            }
+            config ? config : Actor.defaultActionConfig
         );
         await this.swap.doLedgerAction(response.data);
     }
 
-    public async waitForAction(
-        action: string,
-        maxTimeoutSecs?: number,
-        tryIntervalSecs?: number
-    ) {
-        if (!this.swap) {
-            throw new Error("Cannot init nonexistent swap");
-        }
-
-        return this.swap.tryExecuteSirenAction<LedgerAction>(action, {
-            maxTimeoutSecs: maxTimeoutSecs ? maxTimeoutSecs : 3,
-            tryIntervalSecs: tryIntervalSecs ? tryIntervalSecs : 1,
-        });
-    }
-
-    public async fund() {
+    public async fund(config?: {
+        maxTimeoutSecs: number;
+        tryIntervalSecs: number;
+    }) {
         if (!this.swap) {
             throw new Error("Cannot fund nonexistent swap");
         }
 
-        const txid = await this.swap.fund(Actor.defaultActionConfig);
+        const txid = await this.swap.fund(
+            config ? config : Actor.defaultActionConfig
+        );
 
         if (txid instanceof Transaction) {
             await txid.status(1);
