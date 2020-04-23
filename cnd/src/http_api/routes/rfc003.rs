@@ -52,6 +52,21 @@ pub async fn get_swap(dependencies: Rfc003Facade, id: SwapId) -> Result<impl Rep
 }
 
 #[allow(clippy::needless_pass_by_value)]
+pub async fn get_swaps(dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
+    handlers::handle_get_swaps(dependencies)
+        .await
+        .map(|swaps| {
+            Ok(warp::reply::with_header(
+                warp::reply::json(&swaps),
+                "content-type",
+                "application/vnd.siren+json",
+            ))
+        })
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::needless_pass_by_value)]
 pub async fn action(
     method: http::Method,
     id: SwapId,
