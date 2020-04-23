@@ -39,6 +39,9 @@ jobs:
     strategy:
       matrix:
         os: [macos-latest, ubuntu-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            e2e: true
     runs-on: ${{ matrix.os }}
     steps:
       - name: Checkout sources
@@ -84,40 +87,22 @@ jobs:
           name: cnd-${{ matrix.os }}
           path: target/debug/cnd
 
-  e2e_test:
-    strategy:
-      # Do not cancel ubuntu even if macos fails
-      fail-fast: false
-      matrix:
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    needs: build
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v2
-
-      - name: Download cnd-${{ matrix.os }} archive and extract cnd binary
-        uses: actions/download-artifact@v1
-        with:
-          name: cnd-${{ matrix.os }}
-          path: target/debug/
-
-      - name: Fix missing executable permission
-        run: |
-          chmod a+x target/debug/cnd
-
+      ## Run e2e tests
       - name: Install NodeJS 12.x
+        if: matrix.e2e
         uses: actions/setup-node@v1
         with:
           node-version: '12.x'
 
       - name: Cache node_modules directory
+        if: matrix.e2e
         uses: actions/cache@v1
         with:
           path: api_tests/node_modules
           key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
 
       - name: Run e2e tests
+        if: matrix.e2e
         run: |
           export PATH=$HOME/.cargo/bin:$HOME/.local/bin:$PATH
           cd api_tests
@@ -125,28 +110,28 @@ jobs:
           yarn ci
 
       - name: Upload bitcoind log
-        if: failure()
+        if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: e2e-logs-bitcoind.log
           path: api_tests/log/bitcoind/regtest/debug.log
 
       - name: Upload parity log
-        if: failure()
+        if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: e2e-logs-parity.log
           path: api_tests/log/parity/parity.log
 
       - name: Upload lnd logs
-        if: failure()
+        if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: e2e-logs-lnd
           path: api_tests/log/lnd-*/logs/bitcoin/regtest/lnd.log
 
       - name: Upload e2e logs
-        if: failure()
+        if: matrix.e2e && failure()
         uses: actions/upload-artifact@v2-preview
         with:
           name: e2e-test-logs
