@@ -1,18 +1,47 @@
 use crate::swap_protocols::{
     rfc003::{Secret, SecretHash},
-    state, LocalSwapId,
+    state,
+    state::Update,
+    LocalSwapId,
 };
 use futures::{
     future::{self, Either},
-    Stream, TryFutureExt,
+    Stream, TryFutureExt, TryStreamExt,
 };
 use genawaiter::sync::Gen;
-use std::collections::{hash_map::Entry, HashMap};
+use std::{
+    collections::{hash_map::Entry, HashMap},
+    sync::Arc,
+};
 use tokio::sync::Mutex;
 
 mod connector;
 
 pub use connector::*;
+
+/// Creates a new instance of the halight protocol.
+///
+/// This function delegates to the `new` function for the actual protocol
+/// implementation. Its main purpose is to annotate the protocol instance with
+/// logging information and store the events yielded by the protocol.
+pub async fn new_halight_swap<C>(
+    id: LocalSwapId,
+    secret_hash: SecretHash,
+    state_store: Arc<States>,
+    connector: C,
+) where
+    C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
+{
+    let mut events = new(&connector, Params { secret_hash })
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        state_store.update(&id, event).await;
+    }
+
+    tracing::info!("swap finished");
+}
 
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
@@ -174,10 +203,7 @@ impl state::Update<Event> for States {
 /// Creates a new instance of the halight protocol.
 ///
 /// Returns a stream of events happening during the execution.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+fn new<'a, C>(connector: &'a C, params: Params) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {

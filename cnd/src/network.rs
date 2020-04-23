@@ -1,6 +1,4 @@
 pub mod comit_ln;
-pub mod halight;
-pub mod han;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
@@ -22,8 +20,9 @@ use crate::{
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
+        halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        ledger,
+        han, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -51,7 +50,7 @@ use libp2p::{
 };
 use libp2p_comit::{
     frame::{OutboundRequest, ValidatedInboundRequest},
-    BehaviourOutEvent, Comit, PendingInboundRequest,
+    BehaviourOutEvent, PendingInboundRequest, Rfc003Comit,
 };
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
@@ -218,9 +217,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
-    /// The rfc003 network behaviour.
-    comit: Comit,
-    /// The new split protocols network behaviour.
+    rfc003_comit: Rfc003Comit,
     comit_ln: ComitLN,
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
@@ -322,7 +319,7 @@ impl ComitNode {
         known_headers.insert("SWAP".into(), swap_headers);
 
         Ok(Self {
-            comit: Comit::new(known_headers),
+            rfc003_comit: Rfc003Comit::new(known_headers),
             mdns: Mdns::new()?,
             comit_ln: ComitLN::new(seed),
             bitcoin_connector,
@@ -348,7 +345,7 @@ impl ComitNode {
         request: OutboundRequest,
     ) -> impl futures::Future<Output = Result<libp2p_comit::frame::Response, ()>> + Send + 'static + Unpin
     {
-        self.comit
+        self.rfc003_comit
             .send_request((peer_id.peer_id, peer_id.address_hint), request)
     }
 
@@ -983,7 +980,7 @@ impl ComitPeers for Swarm {
         &self,
     ) -> Box<dyn Iterator<Item = (PeerId, Vec<Multiaddr>)> + Send + 'static> {
         let mut swarm = self.inner.lock().await;
-        Box::new(swarm.comit.connected_peers())
+        Box::new(swarm.rfc003_comit.connected_peers())
     }
 }
 
@@ -1198,7 +1195,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                 .read_macaroon()
                                 .expect("Failure reading macaroon");
 
-                            self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                            halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
                                 .instrument(
                                     tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                 )
@@ -1214,7 +1211,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             let expiry = create_swap_params.ethereum_absolute_expiry;
                             let secret_hash = secret_hash;
 
-                            self::han::new_han_ethereum_ether_swap(
+                            han::new_han_ethereum_ether_swap(
                                 local_swap_id,
                                 connector,
                                 self.alpha_ledger_states.clone(),
