@@ -10,6 +10,7 @@ import { LightningNodeConfig, LedgerInstance } from "./index";
 import findCacheDir from "find-cache-dir";
 import download from "download";
 import { platform } from "os";
+import { lock } from "proper-lockfile";
 
 export class LndInstance implements LedgerInstance {
     private process: ChildProcess;
@@ -224,10 +225,25 @@ bitcoind.dir=${this.bitcoindDataDir}
         });
 
         // This path depends on the directory structure inside the archive
-        const binaryPath = cacheDir(`lnd-${getArch()}-${version}`, "lnd");
+        const dirPath = cacheDir(`lnd-${getArch()}-${version}`);
+        const binaryPath = path.join(dirPath, "lnd");
+
+        // Recursively create the dir for lock file in case it does not exist
+        await asyncFs.mkdir(dirPath, { recursive: true });
+
+        // We do not want both actors to download the lnd binary at the same time
+        const lockRelease = await lock(dirPath, {
+            lockfilePath: path.join(dirPath, "lock"),
+            retries: {
+                retries: 6 * 5, // Let's give it at least 5min to download (minTimeout * retries = min total wait)
+                minTimeout: 10000,
+                maxTimeout: 30000,
+            },
+        });
 
         try {
             await existsAsync(binaryPath);
+            await lockRelease();
             return binaryPath;
         } catch (e) {
             // Continue and download the file
@@ -252,7 +268,7 @@ bitcoind.dir=${this.bitcoindDataDir}
         });
 
         this.logger.info("Download completed");
-
+        await lockRelease();
         return binaryPath;
     }
 }
