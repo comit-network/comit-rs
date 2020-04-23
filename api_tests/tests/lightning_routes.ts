@@ -13,20 +13,23 @@ import {
 
 describe("Lightning routes tests", () => {
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-created",
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .hanEthereumEtherHalightLightningBitcoin;
 
-            const aliceSwapLocation = await alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                bodies.alice
-            );
-            const bobSwapLocation = await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                bodies.bob
-            );
-
-            expect(bobSwapLocation).toBeTruthy();
-            expect(aliceSwapLocation).toBeTruthy();
+            await expect(
+                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                    bodies.alice
+                )
+            ).rejects.toThrow("lightning is not configured.");
+            try {
+                await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                    bodies.bob
+                );
+            } catch (err) {
+                expect(err.status).toBe(400);
+            }
         })
     );
 

@@ -16,6 +16,7 @@ use crate::{
     config::Settings,
     db::{Save, Sqlite, Swap},
     htlc_location,
+    http_api::LedgerNotConfigured,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit_ln::ComitLN,
     seed::RootSeed,
@@ -81,7 +82,7 @@ impl Swarm {
         seed: RootSeed,
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        lnd_connector_params: LndConnectorParams,
+        lnd_connector_params: Option<LndConnectorParams>,
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
@@ -154,7 +155,7 @@ impl Swarm {
         &self,
         id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
-    ) {
+    ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
 
         guard.initiate_communication(id, swap_params)
@@ -228,9 +229,7 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
     #[behaviour(ignore)]
-    lnd_connector_as_sender: Arc<LndConnectorAsSender>,
-    #[behaviour(ignore)]
-    lnd_connector_as_receiver: Arc<LndConnectorAsReceiver>,
+    lnd_connector_params: Option<Arc<LndConnectorParams>>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -296,7 +295,7 @@ impl ComitNode {
     pub fn new(
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        lnd_connector_params: LndConnectorParams,
+        lnd_connector_params: Option<LndConnectorParams>,
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
@@ -333,8 +332,7 @@ impl ComitNode {
             db,
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             task_executor,
-            lnd_connector_as_sender: Arc::new(lnd_connector_params.clone().into()),
-            lnd_connector_as_receiver: Arc::new(lnd_connector_params.into()),
+            lnd_connector_params: lnd_connector_params.map(Arc::new),
             halight_states,
         })
     }
@@ -353,12 +351,24 @@ impl ComitNode {
         &mut self,
         id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
-    ) {
-        self.comit_ln.initiate_communication(id, swap_params)
+    ) -> anyhow::Result<()> {
+        self.supports_halight()?;
+
+        self.comit_ln.initiate_communication(id, swap_params);
+        Ok(())
     }
 
     pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.comit_ln.get_finalized_swap(id)
+    }
+
+    fn supports_halight(&self) -> anyhow::Result<()> {
+        match self.lnd_connector_params {
+            Some(_) => Ok(()),
+            None => Err(anyhow::Error::from(LedgerNotConfigured {
+                ledger: "lightning",
+            })),
+        }
     }
 }
 
@@ -1054,7 +1064,7 @@ impl SendRequest for Swarm {
         let id = request.swap_id;
         let request = request
             .try_into()
-            .expect("constructing a frame::OutoingRequest should never fail!");
+            .expect("constructing a frame::OutgoingRequest should never fail!");
 
         let result = {
             let mut guard = self.inner.lock().await;
@@ -1178,97 +1188,86 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
         match event {
             comit_ln::BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
-                swap_params,
+                swap_params: create_swap_params,
                 secret_hash,
                 ethereum_identity,
             } => {
-                let role = swap_params.role;
-                let create_swap_params = swap_params;
+                let role = create_swap_params.role;
 
-                match role {
-                    Role::Alice => {
-                        tokio::task::spawn({
-                            let lnd_connector = (*self.lnd_connector_as_receiver)
-                                .clone()
-                                .read_certificate()
-                                .expect("Failure reading tls certificate")
-                                .read_macaroon()
-                                .expect("Failure reading macaroon");
+                match self.lnd_connector_params {
+                    None => { tracing::error!("Internal Failure: lnd connectors are not initialised, no action has been taken. This should be unreachable.") }
+                    Some(ref lnd_connector_params) => {
+                        match role {
+                            Role::Alice => {
+                                tokio::task::spawn({
+                                    let lnd_connector: LndConnectorAsReceiver = (**lnd_connector_params).clone().into();
+                                    halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                                        .instrument(
+                                            tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                                        )
+                                });
 
-                            halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
-                                .instrument(
-                                    tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
-                                )
-                        });
+                                tokio::task::spawn({
+                                    let connector = self.ethereum_connector.clone();
+                                    let alice_ethereum_identity = create_swap_params.ethereum_identity;
+                                    let bob_ethereum_identity = ethereum_identity;
 
-                        tokio::task::spawn({
-                            let connector = self.ethereum_connector.clone();
-                            let alice_ethereum_identity = create_swap_params.ethereum_identity;
-                            let bob_ethereum_identity = ethereum_identity;
+                                    let asset = create_swap_params.ethereum_amount.clone();
+                                    let ledger = ledger::Ethereum::default();
+                                    let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                            let asset = create_swap_params.ethereum_amount.clone();
-                            let ledger = ledger::Ethereum::default();
-                            let expiry = create_swap_params.ethereum_absolute_expiry;
-                            let secret_hash = secret_hash;
+                                    han::new_han_ethereum_ether_swap(
+                                        local_swap_id,
+                                        connector,
+                                        self.alpha_ledger_states.clone(),
+                                        HtlcParams {
+                                            asset,
+                                            ledger,
+                                            redeem_identity: bob_ethereum_identity,
+                                            refund_identity: alice_ethereum_identity.into(),
+                                            expiry,
+                                            secret_hash,
+                                        },
+                                        role,
+                                    )
+                                });
+                            }
 
-                            han::new_han_ethereum_ether_swap(
-                                local_swap_id,
-                                connector,
-                                self.alpha_ledger_states.clone(),
-                                HtlcParams {
-                                    asset,
-                                    ledger,
-                                    redeem_identity: bob_ethereum_identity,
-                                    refund_identity: alice_ethereum_identity.into(),
-                                    expiry,
-                                    secret_hash,
-                                },
-                                role,
-                            )
-                        });
-                    }
+                            Role::Bob => {
+                                tokio::task::spawn({
+                                    let lnd_connector: LndConnectorAsSender = (**lnd_connector_params).clone().into();
+                                    self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                                        .instrument(
+                                            tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
+                                        )
+                                });
 
-                    Role::Bob => {
-                        tokio::task::spawn({
-                            let lnd_connector = (*self.lnd_connector_as_sender)
-                                .clone()
-                                .read_certificate()
-                                .expect("Failure reading tls certificate")
-                                .read_macaroon()
-                                .expect("Failure reading macaroon");
+                                tokio::task::spawn({
+                                    let connector = self.ethereum_connector.clone();
+                                    let alice_ethereum_identity = ethereum_identity;
+                                    let bob_ethereum_identity = create_swap_params.ethereum_identity;
 
-                            self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
-                                .instrument(
-                                    tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
-                                )
-                        });
+                                    let asset = create_swap_params.ethereum_amount.clone();
+                                    let ledger = ledger::Ethereum::default();
+                                    let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                        tokio::task::spawn({
-                            // This is Bob
-                            let connector = self.ethereum_connector.clone();
-                            let alice_ethereum_identity = ethereum_identity;
-                            let bob_ethereum_identity = create_swap_params.ethereum_identity;
-
-                            let asset = create_swap_params.ethereum_amount.clone();
-                            let ledger = ledger::Ethereum::default();
-                            let expiry = create_swap_params.ethereum_absolute_expiry;
-                            let secret_hash = secret_hash;
-
-                            self::han::new_han_ethereum_ether_swap(
-                                local_swap_id,
-                                connector,
-                                self.alpha_ledger_states.clone(),
-                                HtlcParams {
-                                    asset,
-                                    ledger,
-                                    redeem_identity: bob_ethereum_identity.into(),
-                                    refund_identity: alice_ethereum_identity,
-                                    expiry,
-                                    secret_hash,
-                                },
-                                role,
-                            )
-                        });
+                                    self::han::new_han_ethereum_ether_swap(
+                                        local_swap_id,
+                                        connector,
+                                        self.alpha_ledger_states.clone(),
+                                        HtlcParams {
+                                            asset,
+                                            ledger,
+                                            redeem_identity: bob_ethereum_identity.into(),
+                                            refund_identity: alice_ethereum_identity,
+                                            expiry,
+                                            secret_hash,
+                                        },
+                                        role,
+                                    )
+                                });
+                            }
+                        }
                     }
                 }
             }

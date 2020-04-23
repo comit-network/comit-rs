@@ -115,12 +115,19 @@ fn main() -> anyhow::Result<()> {
         ))
     };
 
-    let lnd_connector_params = LndConnectorParams {
-        lnd_url: settings.lightning.lnd.rest_api_url.clone(),
-        retry_interval_ms: 100,
-        certificate_path: settings.lightning.lnd.cert_path.clone(),
-        macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
-    };
+    let lnd_connector_params = LndConnectorParams::new(
+        settings.lightning.lnd.rest_api_url.clone(),
+        100,
+        settings.lightning.lnd.cert_path.clone(),
+        settings.lightning.lnd.readonly_macaroon_path.clone(),
+    )
+    .map_err(|err| {
+        tracing::warn!(
+            "Could not read initialise lnd configuration, halight will not be available: {:?}",
+            err
+        );
+    })
+    .ok();
 
     // RCF003 protocol
     let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());

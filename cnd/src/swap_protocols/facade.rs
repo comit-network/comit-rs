@@ -81,8 +81,8 @@ impl Facade {
         &self,
         id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
-    ) {
-        self.swarm.initiate_communication(id, swap_params).await;
+    ) -> anyhow::Result<()> {
+        self.swarm.initiate_communication(id, swap_params).await
     }
 
     pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {

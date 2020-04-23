@@ -32,6 +32,12 @@ pub struct UnexpectedQueryParameters {
     pub parameters: &'static [&'static str],
 }
 
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("{ledger:?} is not properly configured, swap involving this ledger are not available.")]
+pub struct LedgerNotConfigured {
+    pub ledger: &'static str,
+}
+
 // tracing trippers clippy warning, issue reported: https://github.com/tokio-rs/tracing/issues/553
 #[allow(clippy::cognitive_complexity)]
 pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
@@ -105,6 +111,14 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
 
     if e.is::<LndActionError>() {
         return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
+    }
+
+    if let Some(err) = e.downcast_ref::<LedgerNotConfigured>() {
+        tracing::warn!("{}", e);
+
+        return HttpApiProblem::new(format!("{} is not configured.", err.ledger))
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail(format!("{} ledger is not properly configured, swap involving this ledger are not available.", err.ledger));
     }
 
     tracing::error!("internal error occurred: {:#}", e);
