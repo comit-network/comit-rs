@@ -12,7 +12,7 @@ use crate::{
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
+        HnethHlnbtcCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
     timestamp::Timestamp,
 };
@@ -35,7 +35,7 @@ use std::{
 pub enum BehaviourOutEvent {
     SwapFinalized {
         local_swap_id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: HnethHlnbtcCreateSwapParams,
         secret_hash: SecretHash,
         ethereum_identity: identity::Ethereum,
     },
@@ -56,7 +56,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
     #[behaviour(ignore)]
-    swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
+    swaps: HashMap<LocalSwapId, HnethHlnbtcCreateSwapParams>,
     #[behaviour(ignore)]
     swap_ids: HashMap<LocalSwapId, SharedSwapId>,
     #[behaviour(ignore)]
@@ -104,7 +104,7 @@ impl ComitLN {
     pub fn initiate_communication(
         &mut self,
         id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: HnethHlnbtcCreateSwapParams,
     ) {
         let digest = create_swap_params.clone().digest();
 

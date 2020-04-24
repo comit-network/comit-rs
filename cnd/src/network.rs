@@ -30,8 +30,7 @@ use crate::{
             state::Insert,
             LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, LocalSwapId, Role,
-        SwapProtocol,
+        HashFunction, HnethHlnbtcCreateSwapParams, LedgerStates, LocalSwapId, Role, SwapProtocol,
     },
     transaction,
 };
@@ -153,7 +152,7 @@ impl Swarm {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: HnethHlnbtcCreateSwapParams,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
 
@@ -349,7 +348,7 @@ impl ComitNode {
     pub fn initiate_communication(
         &mut self,
         id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: HnethHlnbtcCreateSwapParams,
     ) -> anyhow::Result<()> {
         self.supports_hlnbtc()?;
 

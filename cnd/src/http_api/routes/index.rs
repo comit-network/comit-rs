@@ -8,8 +8,7 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        hlnbtc, hneth, Facade, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId,
-        Rfc003Facade, Role,
+        hlnbtc, hneth, Facade, HnethHlnbtcCreateSwapParams, LocalSwapId, Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -85,7 +84,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    let swap_params: HanEtherereumHalightBitcoinCreateSwapParams = body.clone().into();
+    let swap_params: HnethHlnbtcCreateSwapParams = body.clone().into();
 
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
@@ -181,9 +180,7 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<HanEthereumEther, HalightLightningBitcoin>>
-    for HanEtherereumHalightBitcoinCreateSwapParams
-{
+impl From<Body<HanEthereumEther, HalightLightningBitcoin>> for HnethHlnbtcCreateSwapParams {
     fn from(body: Body<HanEthereumEther, HalightLightningBitcoin>) -> Self {
         Self {
             role: body.role.0,
