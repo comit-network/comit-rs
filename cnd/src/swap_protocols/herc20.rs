@@ -23,6 +23,67 @@ pub use connector_impls::*;
 
 /// Htlc ERC20 Token atomic swap protocol (HERC20).
 
+/// Data required to create a swap that involves ERC20 Tokens.
+#[derive(Clone, Copy, Debug)]
+pub struct CreatedSwap {}
+
+/// Creates a new instance of the herc20 protocol.
+///
+/// Returns a stream of events happening during the execution.
+pub fn new<'a, C>(
+    connector: &'a C,
+    params: Params,
+) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+where
+    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+{
+    Gen::new({
+        |co| async move {
+            if let Err(error) = watch_ledger(connector, params, &co).await {
+                co.yield_(Err(error)).await;
+            }
+        }
+    })
+}
+
+async fn watch_ledger<C, R>(
+    connector: &C,
+    params: Params,
+    co: &Co<anyhow::Result<Event>, R>,
+) -> anyhow::Result<()>
+where
+    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+{
+    co.yield_(Ok(Event::Started)).await;
+
+    let deployed = connector.wait_for_deployed(params.clone()).await?;
+
+    co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
+
+    let funded = connector
+        .wait_for_funded(params.clone(), deployed.clone())
+        .await?;
+    co.yield_(Ok(Event::Funded(funded))).await;
+
+    let redeemed = connector.wait_for_redeemed(params.clone(), deployed.clone());
+    let refunded = connector.wait_for_refunded(params, deployed);
+
+    match future::try_select(redeemed, refunded).await {
+        Ok(Either::Left((redeemed, _))) => {
+            co.yield_(Ok(Event::Redeemed(redeemed))).await;
+        }
+        Ok(Either::Right((refunded, _))) => {
+            co.yield_(Ok(Event::Refunded(refunded))).await;
+        }
+        Err(either) => {
+            let (error, _other_future) = either.factor_first();
+            return Err(error);
+        }
+    }
+
+    Ok(())
+}
+
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForDeployed {
@@ -189,63 +250,6 @@ impl state::Update<Event> for States {
             }
         }
     }
-}
-
-/// Creates a new instance of the herc20 protocol.
-///
-/// Returns a stream of events happening during the execution.
-pub fn new<'a, C>(
-    connector: &'a C,
-    params: Params,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
-where
-    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
-{
-    Gen::new({
-        |co| async move {
-            if let Err(error) = watch_ledger(connector, params, &co).await {
-                co.yield_(Err(error)).await;
-            }
-        }
-    })
-}
-
-async fn watch_ledger<C, R>(
-    connector: &C,
-    params: Params,
-    co: &Co<anyhow::Result<Event>, R>,
-) -> anyhow::Result<()>
-where
-    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
-{
-    co.yield_(Ok(Event::Started)).await;
-
-    let deployed = connector.wait_for_deployed(params.clone()).await?;
-
-    co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
-
-    let funded = connector
-        .wait_for_funded(params.clone(), deployed.clone())
-        .await?;
-    co.yield_(Ok(Event::Funded(funded))).await;
-
-    let redeemed = connector.wait_for_redeemed(params.clone(), deployed.clone());
-    let refunded = connector.wait_for_refunded(params, deployed);
-
-    match future::try_select(redeemed, refunded).await {
-        Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Ok(Event::Redeemed(redeemed))).await;
-        }
-        Ok(Either::Right((refunded, _))) => {
-            co.yield_(Ok(Event::Refunded(refunded))).await;
-        }
-        Err(either) => {
-            let (error, _other_future) = either.factor_first();
-            return Err(error);
-        }
-    }
-
-    Ok(())
 }
 
 #[derive(Clone, Debug)]

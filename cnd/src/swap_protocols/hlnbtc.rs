@@ -22,6 +22,16 @@ pub use connector::*;
 
 /// Htlc Lightning Bitcoin atomic swap protocol (HLNBTC).
 
+/// Data required to create a swap that involves a bitcoin on the lightning
+/// network.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Bitcoin,
+    pub identity: identity::Lightning,
+    pub network: String,
+    pub cltv_expiry: u32,
+}
+
 /// Creates a new instance of the hlnbtc protocol.
 ///
 /// This function delegates to the `new` function for the actual protocol
@@ -85,16 +95,6 @@ where
             }
         }
     })
-}
-
-/// Data required to create a swap that involves a bitcoin on the lightning
-/// network.
-#[derive(Clone, Debug)]
-pub struct CreatedSwap {
-    pub amount: asset::Bitcoin,
-    pub identity: identity::Lightning,
-    pub network: String,
-    pub cltv_expiry: u32,
 }
 
 /// Resolves when said event has occured.
