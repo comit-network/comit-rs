@@ -9,7 +9,6 @@ use std::{
     io::{self, Write},
     path::{Path, PathBuf},
 };
-use thiserror;
 
 /// We create a `RootSeed` either randomly or by reading in the PEM file from
 /// disk.  This `RootSeed` is used to generate a per swap `SwapSeed` which is
@@ -254,7 +253,6 @@ impl From<[u8; SEED_LENGTH]> for RootSeed {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use pem;
     use rand::rngs::OsRng;
 
     #[test]
