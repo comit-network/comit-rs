@@ -1,7 +1,6 @@
 status = [
     "static_analysis",
     "build (ubuntu-latest)",
-    "e2e_test (ubuntu-latest)"
 ]
 pr_status = ["license/cla"]
 block_labels = ["no-mergify"]
