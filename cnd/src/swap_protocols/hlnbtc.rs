@@ -6,8 +6,7 @@ use crate::swap_protocols::{asset, identity};
 /// network.
 #[derive(Clone, Debug)]
 pub struct CreatedSwap {
-    // FIXME: Should this be `asset::bitcoin`?
-    pub amount: asset::Lightning,
+    pub amount: asset::Bitcoin,
     pub identity: identity::Lightning,
     pub network: String,
     pub cltv_expiry: u32,

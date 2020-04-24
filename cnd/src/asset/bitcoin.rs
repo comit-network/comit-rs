@@ -12,6 +12,10 @@ impl Bitcoin {
     pub fn as_sat(self) -> u64 {
         Amount::as_sat(self.0)
     }
+
+    pub fn to_le_bytes(self) -> [u8; 8] {
+        self.0.as_sat().to_le_bytes()
+    }
 }
 
 impl From<Bitcoin> for Amount {

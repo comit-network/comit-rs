@@ -29,10 +29,10 @@ pub struct HanEtherereumHalightBitcoinCreateSwapParams {
     #[digest(prefix = "3001")]
     pub lightning_cltv_expiry: Timestamp,
     #[digest(prefix = "3002")]
-    pub lightning_amount: asset::Lightning,
+    pub bitcoin_amount: asset::Bitcoin,
 }
 
-impl IntoDigestInput for asset::Lightning {
+impl IntoDigestInput for asset::Bitcoin {
     fn into_digest_input(self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }

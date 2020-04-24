@@ -193,7 +193,7 @@ impl From<Body<HanEthereumEther, HalightLightningBitcoin>>
             ethereum_amount: body.alpha.amount,
             lightning_identity: body.beta.identity,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
-            lightning_amount: body.beta.amount.0,
+            bitcoin_amount: body.beta.amount.0,
         }
     }
 }
@@ -219,7 +219,7 @@ impl From<HanEthereumEther> for hneth::CreatedSwap {
 
 #[derive(serde::Deserialize, Clone, Debug)]
 struct HalightLightningBitcoin {
-    pub amount: Http<asset::Lightning>,
+    pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
     pub network: String,
     pub cltv_expiry: u32,
