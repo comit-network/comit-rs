@@ -32,6 +32,20 @@ impl PublicKey {
     }
 }
 
+#[cfg(test)]
+impl PublicKey {
+    /// Generates a random public key for use in tests where the actual value
+    /// doesn't / shouldn't matter.
+    pub fn random() -> PublicKey {
+        use secp256k1::{rand::thread_rng, Secp256k1};
+
+        let secp = Secp256k1::new();
+        let mut rng = thread_rng();
+        let (_, public_key) = secp.generate_keypair(&mut rng);
+        PublicKey::from(public_key)
+    }
+}
+
 impl From<secp256k1::PublicKey> for PublicKey {
     fn from(key: secp256k1::PublicKey) -> Self {
         Self(bitcoin::PublicKey {
