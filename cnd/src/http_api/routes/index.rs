@@ -8,7 +8,7 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        hlnbtc, hneth, Facade, HnethHlnbtcCreateSwapParams, LocalSwapId, Rfc003Facade, Role,
+        herc20, hlnbtc, hneth, Facade, HnethHlnbtcCreateSwapParams, LocalSwapId, Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -79,7 +79,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
+    let body = Body::<Hneth, Hlnbtc>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -119,7 +119,7 @@ pub async fn post_herc20_halight_bitcoin(
     body: serde_json::Value,
     _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
+    let _body = Body::<Herc20, Hlnbtc>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -139,7 +139,7 @@ pub async fn post_halight_bitcoin_han_ether(
     body: serde_json::Value,
     _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<HalightLightningBitcoin, HanEthereumEther>::deserialize(&body)
+    let _body = Body::<Hlnbtc, Hneth>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -159,7 +159,7 @@ pub async fn post_halight_bitcoin_herc20(
     body: serde_json::Value,
     _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<HalightLightningBitcoin, Herc20EthereumErc20>::deserialize(&body)
+    let _body = Body::<Hlnbtc, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -180,8 +180,8 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<HanEthereumEther, HalightLightningBitcoin>> for HnethHlnbtcCreateSwapParams {
-    fn from(body: Body<HanEthereumEther, HalightLightningBitcoin>) -> Self {
+impl From<Body<Hneth, Hlnbtc>> for HnethHlnbtcCreateSwapParams {
+    fn from(body: Body<Hneth, Hlnbtc>) -> Self {
         Self {
             role: body.role.0,
             peer: body.peer,
@@ -196,15 +196,15 @@ impl From<Body<HanEthereumEther, HalightLightningBitcoin>> for HnethHlnbtcCreate
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-struct HanEthereumEther {
+struct Hneth {
     pub amount: asset::Ether,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
     pub absolute_expiry: u32,
 }
 
-impl From<HanEthereumEther> for hneth::CreatedSwap {
-    fn from(p: HanEthereumEther) -> Self {
+impl From<Hneth> for hneth::CreatedSwap {
+    fn from(p: Hneth) -> Self {
         hneth::CreatedSwap {
             amount: p.amount,
             identity: p.identity,
@@ -215,15 +215,15 @@ impl From<HanEthereumEther> for hneth::CreatedSwap {
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-struct HalightLightningBitcoin {
+struct Hlnbtc {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
     pub network: String,
     pub cltv_expiry: u32,
 }
 
-impl From<HalightLightningBitcoin> for hlnbtc::CreatedSwap {
-    fn from(p: HalightLightningBitcoin) -> Self {
+impl From<Hlnbtc> for hlnbtc::CreatedSwap {
+    fn from(p: Hlnbtc) -> Self {
         hlnbtc::CreatedSwap {
             amount: *p.amount,
             identity: p.identity,
@@ -234,10 +234,22 @@ impl From<HalightLightningBitcoin> for hlnbtc::CreatedSwap {
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
-struct Herc20EthereumErc20 {
+struct Herc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
-    pub contract_address: crate::ethereum::Address,
+    pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,
+}
+
+impl From<Herc20> for herc20::CreatedSwap {
+    fn from(p: Herc20) -> Self {
+        herc20::CreatedSwap {
+            amount: p.amount,
+            identity: p.identity,
+            chain_id: p.chain_id,
+            contract_address: p.contract_address,
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
 }

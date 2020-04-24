@@ -24,8 +24,14 @@ pub use connector_impls::*;
 /// Htlc ERC20 Token atomic swap protocol (HERC20).
 
 /// Data required to create a swap that involves ERC20 Tokens.
-#[derive(Clone, Copy, Debug)]
-pub struct CreatedSwap {}
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Erc20Quantity,
+    pub identity: identity::Ethereum,
+    pub chain_id: u32,
+    pub contract_address: identity::Ethereum,
+    pub absolute_expiry: u32,
+}
 
 /// Creates a new instance of the herc20 protocol.
 ///
