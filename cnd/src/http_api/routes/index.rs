@@ -1,6 +1,3 @@
-mod handlers;
-
-use self::handlers::handle_get_swaps;
 use crate::{
     asset,
     http_api::{problem, routes::into_rejection, Http},
@@ -56,21 +53,6 @@ pub async fn get_info_siren(
                     .with_class_member("rfc003"),
             ),
     ))
-}
-
-#[allow(clippy::needless_pass_by_value)]
-pub async fn get_swaps(dependencies: Rfc003Facade) -> Result<impl Reply, Rejection> {
-    handle_get_swaps(dependencies)
-        .await
-        .map(|swaps| {
-            Ok(warp::reply::with_header(
-                warp::reply::json(&swaps),
-                "content-type",
-                "application/vnd.siren+json",
-            ))
-        })
-        .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
 }
 
 #[allow(clippy::needless_pass_by_value)]

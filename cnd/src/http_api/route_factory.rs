@@ -60,7 +60,7 @@ pub fn create(
         .and(warp::get())
         .and(warp::path::end())
         .and(rfc003_facade.clone())
-        .and_then(http_api::routes::index::get_swaps);
+        .and_then(http_api::routes::rfc003::get_swaps);
 
     let rfc003_action = warp::method()
         .and(rfc003)
