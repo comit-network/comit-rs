@@ -21,6 +21,8 @@ use crate::{ethereum::Bytes, timestamp::Timestamp};
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
 pub use connector_impls::*;
 
+/// Htlc ERC20 Token atomic swap protocol (HERC20).
+
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForDeployed {

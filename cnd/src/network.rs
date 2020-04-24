@@ -23,7 +23,7 @@ use crate::{
     swap_protocols::{
         halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        han, ledger,
+        hneth, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -1216,7 +1216,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                                    han::new_han_ethereum_ether_swap(
+                                    hneth::new_han_ethereum_ether_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),
@@ -1251,7 +1251,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                                    self::han::new_han_ethereum_ether_swap(
+                                    self::hneth::new_han_ethereum_ether_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),

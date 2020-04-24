@@ -1,8 +1,9 @@
 pub mod actions;
 mod facade;
 pub mod halight;
-pub mod han;
 pub mod herc20;
+pub mod hlnbtc;
+pub mod hneth;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;
@@ -13,6 +14,7 @@ mod swap_id;
 
 pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*, swap_id::*};
 
+use crate::{asset, identity};
 use serde::{Deserialize, Serialize};
 
 #[derive(

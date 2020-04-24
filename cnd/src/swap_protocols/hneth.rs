@@ -3,7 +3,7 @@ use crate::{
     btsieve::ethereum::{Cache, Web3Connector},
     htlc_location, identity,
     swap_protocols::{
-        han, ledger,
+        ledger,
         rfc003::{
             create_swap::{HtlcParams, SwapEvent},
             events::{
@@ -24,6 +24,17 @@ use genawaiter::{
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
+/// Htlc Native Ethereum atomic swap protocol (HNETH).
+
+/// Data required to create a swap that involves Ether.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Ether,
+    pub identity: identity::Ethereum,
+    pub chain_id: u32,
+    pub absolute_expiry: u32,
+}
+
 pub async fn new_han_ethereum_ether_swap(
     swap_id: LocalSwapId,
     connector: Arc<Cache<Web3Connector>>,
@@ -31,7 +42,7 @@ pub async fn new_han_ethereum_ether_swap(
     htlc_params: HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
     role: Role,
 ) {
-    han::create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
+    create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
         connector.as_ref(),
         ethereum_ledger_state,
         swap_id,
