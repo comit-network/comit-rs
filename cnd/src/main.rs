@@ -27,12 +27,12 @@ use cnd::{
     network::{Swarm, SwarmWorker},
     seed::RootSeed,
     swap_protocols::{
-        halight::States, rfc003, rfc003::SwapCommunicationStates, Facade, LedgerStates,
+        hlnbtc::States, rfc003, rfc003::SwapCommunicationStates, Facade, LedgerStates,
         Rfc003Facade, SwapErrorStates,
     },
 };
 
-use cnd::swap_protocols::halight::LndConnectorParams;
+use cnd::swap_protocols::hlnbtc::LndConnectorParams;
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
@@ -123,7 +123,7 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|err| {
         tracing::warn!(
-            "Could not read initialise lnd configuration, halight will not be available: {:?}",
+            "Could not read initialise lnd configuration, hlnbtc will not be available: {:?}",
             err
         );
     })
@@ -138,8 +138,7 @@ fn main() -> anyhow::Result<()> {
     let alpha_ledger_states = Arc::new(LedgerStates::default());
     let beta_ledger_states = Arc::new(LedgerStates::default());
 
-    // HALight
-    let halight_states = Arc::new(States::default());
+    let hlnbtc_states = Arc::new(States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -154,7 +153,7 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&rfc003_beta_ledger_states),
         Arc::clone(&alpha_ledger_states),
         Arc::clone(&beta_ledger_states),
-        Arc::clone(&halight_states),
+        Arc::clone(&hlnbtc_states),
         &database,
         runtime.handle().clone(),
     )?;
@@ -176,7 +175,7 @@ fn main() -> anyhow::Result<()> {
     let facade = Facade {
         swarm: swarm.clone(),
         alpha_ledger_states: Arc::clone(&alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&halight_states),
+        beta_ledger_states: Arc::clone(&hlnbtc_states),
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;

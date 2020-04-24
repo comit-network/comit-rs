@@ -1,6 +1,5 @@
 pub mod actions;
 mod facade;
-pub mod halight;
 pub mod herc20;
 pub mod hlnbtc;
 pub mod hneth;

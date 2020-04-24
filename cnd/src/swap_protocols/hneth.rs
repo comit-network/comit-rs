@@ -35,7 +35,18 @@ pub struct CreatedSwap {
     pub absolute_expiry: u32,
 }
 
-pub async fn new_han_ethereum_ether_swap(
+/// Returns a future that tracks the swap negotiated from the given request and
+/// accept response on a ledger.
+///
+/// The current implementation is naive in the sense that it does not take into
+/// account situations where it is clear that no more events will happen even
+/// though in theory, there could. For example:
+/// - funded
+/// - refunded
+///
+/// It is highly unlikely for Bob to fund the HTLC now, yet the current
+/// implementation is still waiting for that.
+pub async fn new_swap(
     swap_id: LocalSwapId,
     connector: Arc<Cache<Web3Connector>>,
     ethereum_ledger_state: Arc<LedgerStates>,
@@ -53,17 +64,6 @@ pub async fn new_han_ethereum_ether_swap(
     .await
 }
 
-/// Returns a future that tracks the swap negotiated from the given request and
-/// accept response on a ledger.
-///
-/// The current implementation is naive in the sense that it does not take into
-/// account situations where it is clear that no more events will happen even
-/// though in theory, there could. For example:
-/// - funded
-/// - refunded
-///
-/// It is highly unlikely for Bob to fund the HTLC now, yet the current
-/// implementation is still waiting for that.
 async fn create_watcher<C, S, L, A, H, I, T>(
     ethereum_connector: &C,
     ledger_state: Arc<S>,

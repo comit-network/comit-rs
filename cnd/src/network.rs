@@ -21,8 +21,7 @@ use crate::{
     network::comit_ln::ComitLN,
     seed::RootSeed,
     swap_protocols::{
-        halight,
-        halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
+        hlnbtc::{self, LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
         hneth, ledger,
         rfc003::{
             self,
@@ -88,7 +87,7 @@ impl Swarm {
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
         alpha_ledger_states: Arc<LedgerStates>,
         beta_ledger_states: Arc<LedgerStates>,
-        halight_states: Arc<States>,
+        hlnbtc_states: Arc<States>,
         database: &Sqlite,
         task_executor: tokio::runtime::Handle,
     ) -> anyhow::Result<Self> {
@@ -106,7 +105,7 @@ impl Swarm {
             rfc003_beta_ledger_states,
             alpha_ledger_states,
             beta_ledger_states,
-            halight_states,
+            hlnbtc_states,
             seed,
             database.clone(),
             task_executor.clone(),
@@ -255,7 +254,7 @@ pub struct ComitNode {
     pub beta_ledger_states: Arc<LedgerStates>,
 
     #[behaviour(ignore)]
-    halight_states: Arc<States>,
+    hlnbtc_states: Arc<States>,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -301,7 +300,7 @@ impl ComitNode {
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
         alpha_ledger_states: Arc<LedgerStates>,
         beta_ledger_states: Arc<LedgerStates>,
-        halight_states: Arc<States>,
+        hlnbtc_states: Arc<States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -333,7 +332,7 @@ impl ComitNode {
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             task_executor,
             lnd_connector_params: lnd_connector_params.map(Arc::new),
-            halight_states,
+            hlnbtc_states,
         })
     }
 
@@ -352,7 +351,7 @@ impl ComitNode {
         id: LocalSwapId,
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
-        self.supports_halight()?;
+        self.supports_hlnbtc()?;
 
         self.comit_ln.initiate_communication(id, swap_params);
         Ok(())
@@ -362,7 +361,7 @@ impl ComitNode {
         self.comit_ln.get_finalized_swap(id)
     }
 
-    fn supports_halight(&self) -> anyhow::Result<()> {
+    fn supports_hlnbtc(&self) -> anyhow::Result<()> {
         match self.lnd_connector_params {
             Some(_) => Ok(()),
             None => Err(anyhow::Error::from(LedgerNotConfigured {
@@ -1201,7 +1200,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             Role::Alice => {
                                 tokio::task::spawn({
                                     let lnd_connector: LndConnectorAsReceiver = (**lnd_connector_params).clone().into();
-                                    halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                                    hlnbtc::new_swap(local_swap_id, secret_hash, self.hlnbtc_states.clone(), lnd_connector)
                                         .instrument(
                                             tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                         )
@@ -1216,7 +1215,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                                    hneth::new_han_ethereum_ether_swap(
+                                    hneth::new_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),
@@ -1236,7 +1235,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                             Role::Bob => {
                                 tokio::task::spawn({
                                     let lnd_connector: LndConnectorAsSender = (**lnd_connector_params).clone().into();
-                                    self::halight::new_halight_swap(local_swap_id, secret_hash, self.halight_states.clone(), lnd_connector)
+                                    self::hlnbtc::new_swap(local_swap_id, secret_hash, self.hlnbtc_states.clone(), lnd_connector)
                                         .instrument(
                                             tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
                                         )
@@ -1251,7 +1250,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
 
-                                    self::hneth::new_han_ethereum_ether_swap(
+                                    self::hneth::new_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),

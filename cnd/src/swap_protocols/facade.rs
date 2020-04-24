@@ -3,7 +3,7 @@ use crate::{
     db::CreatedSwap,
     identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
-    swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
+    swap_protocols::{hlnbtc, LedgerStates, LocalSwapId, Role},
     timestamp::Timestamp,
 };
 use digest::{Digest, IntoDigestInput};
@@ -73,7 +73,7 @@ pub struct Facade {
     pub swarm: Swarm,
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
     pub alpha_ledger_states: Arc<LedgerStates>,
-    pub beta_ledger_states: Arc<halight::States>,
+    pub beta_ledger_states: Arc<hlnbtc::States>,
 }
 
 impl Facade {

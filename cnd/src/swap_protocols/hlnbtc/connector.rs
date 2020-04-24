@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    halight::{
+    hlnbtc::{
         Accepted, Cancelled, Opened, Params, Settled, WaitForAccepted, WaitForCancelled,
         WaitForOpened, WaitForSettled,
     },
