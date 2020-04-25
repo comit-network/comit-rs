@@ -179,6 +179,8 @@ pub struct Log {
 /// This type contains only the fields we are actually using.
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Block {
+    /// Hash of the block 
+    pub hash: Hash, 
     /// Hash of the parent
     #[serde(rename = "parentHash")]
     pub parent_hash: Hash,
