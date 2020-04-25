@@ -5,11 +5,12 @@ use crate::{
 use async_trait::async_trait;
 use bitcoin::{BlockHash, Network};
 use reqwest::{Client, Url};
-use serde::Deserialize;
+use serde::{de, export::fmt, Deserialize, Deserializer};
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {
     bestblockhash: BlockHash,
+    #[serde(deserialize_with = "deserialize_bitcoind_values")]
     pub chain: Network,
 }
 
@@ -96,6 +97,35 @@ impl FetchNetworkId<Network> for BitcoindConnector {
     }
 }
 
+pub fn deserialize_bitcoind_values<'de, D>(deserializer: D) -> Result<bitcoin::Network, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = bitcoin::Network;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a bitcoin network")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match v {
+                "main" => Ok(bitcoin::Network::Bitcoin),
+                "test" => Ok(bitcoin::Network::Testnet),
+                "regtest" => Ok(bitcoin::Network::Regtest),
+                unknown => Err(E::custom(format!("unknown bitcoin network {}", unknown))),
+            }
+        }
+    }
+
+    deserializer.deserialize_str(Visitor)
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -154,5 +184,32 @@ mod tests {
             let raw_block_by_hash_url = connector.raw_block_by_hash_url(&block_id.into());
             assert_eq!(raw_block_by_hash_url, Url::parse("http://localhost:8080/rest/block/2a593b84b1943521be01f97a59fc7feba30e7e8527fb2ba20b0158ca09016d02.hex").unwrap());
         }
+    }
+
+    #[test]
+    fn test_custom_serde_deserializer() {
+        let chain_info = r#"{
+    "chain": "test",
+    "bestblockhash": "00000000000000c473d592c8637824b8362d522af18bfb1d0e92107b96ecdc5c"
+  }
+  "#;
+        let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
+        assert_eq!(info.chain, Network::Testnet);
+
+        let chain_info = r#"{
+    "chain": "main",
+    "bestblockhash": "00000000000000c473d592c8637824b8362d522af18bfb1d0e92107b96ecdc5c"
+  }
+  "#;
+        let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
+        assert_eq!(info.chain, Network::Bitcoin);
+
+        let chain_info = r#"{
+    "chain": "regtest",
+    "bestblockhash": "00000000000000c473d592c8637824b8362d522af18bfb1d0e92107b96ecdc5c"
+  }
+  "#;
+        let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
+        assert_eq!(info.chain, Network::Regtest);
     }
 }

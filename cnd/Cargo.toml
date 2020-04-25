@@ -1,7 +1,7 @@
 [package]
 authors = ["CoBloX developers <team@coblox.tech>"]
 name = "cnd"
-version = "0.7.2"
+version = "0.7.3"
 edition = "2018"
 description = "Reference implementation of a COMIT network daemon."
 
@@ -31,7 +31,7 @@ http-api-problem = { version = "0.15", features = ["with_warp"] }
 impl-template = "1.0.0-alpha"
 lazy_static = "1"
 levenshtein = "1"
-libp2p = { version = "0.17", default-features = false, features = ["tcp", "secio", "yamux", "mplex", "mdns", "dns"] }
+libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio", "yamux", "mplex", "mdns", "dns"] }
 libp2p-comit = { path = "../libp2p-comit" }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
