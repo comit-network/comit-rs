@@ -216,7 +216,7 @@ pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
     pub beta_ledger: lightning::Regtest,
     pub alpha_asset: asset::Ether,
-    pub beta_asset: asset::Lightning,
+    pub beta_asset: asset::Bitcoin,
     pub alpha_ledger_refund_identity: identity::Ethereum,
     pub alpha_ledger_redeem_identity: identity::Ethereum,
     pub beta_ledger_refund_identity: identity::Lightning,
@@ -624,7 +624,7 @@ mod tests {
         bob_peer_id: PeerId,
         bob_addr: Multiaddr,
         ether: asset::Ether,
-        lnbtc: asset::Lightning,
+        lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
         lightning_cltv_expiry: Timestamp,
     ) -> HanEtherereumHalightBitcoinCreateSwapParams {
@@ -646,7 +646,7 @@ mod tests {
     fn make_bob_swap_params(
         alice_peer_id: PeerId,
         ether: asset::Ether,
-        lnbtc: asset::Lightning,
+        lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
         lightning_cltv_expiry: Timestamp,
     ) -> HanEtherereumHalightBitcoinCreateSwapParams {
@@ -674,7 +674,7 @@ mod tests {
             test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
 
         let ether = Ether::from_wei(9_001_000_000_000_000_000_000u128);
-        let lnbtc = asset::Lightning::from_sat(42);
+        let lnbtc = asset::Bitcoin::from_sat(42);
         let ethereum_expiry = Timestamp::from(100);
         let lightning_expiry = Timestamp::from(200);
 

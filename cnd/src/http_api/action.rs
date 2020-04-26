@@ -79,7 +79,7 @@ pub enum ActionResponseBody {
         min_block_timestamp: Option<Timestamp>,
     },
     LndAddHoldInvoice {
-        amount: Http<asset::Lightning>,
+        amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
         expiry: u32,
         cltv_expiry: u32,
@@ -89,7 +89,7 @@ pub enum ActionResponseBody {
     },
     LndSendPayment {
         to_public_key: identity::Lightning,
-        amount: Http<asset::Lightning>,
+        amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
         final_cltv_delta: u32,
         chain: Http<Chain>,
