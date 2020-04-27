@@ -8,7 +8,6 @@ use crate::{
     },
     ethereum::{Address, Block, Bytes, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
-use anyhow;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use genawaiter::{sync::Gen, GeneratorState};
