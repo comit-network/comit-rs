@@ -71,8 +71,8 @@ pub mod lnd {
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct AddHoldInvoice {
-        pub amount: asset::Lightning, // The number of satoshis to send.
-        pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
+        pub amount: asset::Bitcoin,  // The number of satoshis to send.
+        pub secret_hash: SecretHash, // The hash to use within the payment's HTLC.
         pub expiry: u32,
         pub cltv_expiry: u32,
         pub chain: Chain,
@@ -99,8 +99,8 @@ pub mod lnd {
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct SendPayment {
         pub to_public_key: identity::Lightning,
-        pub amount: asset::Lightning, // The number of satoshis to send.
-        pub secret_hash: SecretHash,  // The hash to use within the payment's HTLC.
+        pub amount: asset::Bitcoin,  // The number of satoshis to send.
+        pub secret_hash: SecretHash, // The hash to use within the payment's HTLC.
         pub final_cltv_delta: u32,
         pub chain: Chain,
         pub network: bitcoin::Network,

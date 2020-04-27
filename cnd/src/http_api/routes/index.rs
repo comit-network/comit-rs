@@ -179,7 +179,7 @@ pub struct HanEthereumEther {
 
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct HalightLightningBitcoin {
-    pub amount: Http<asset::Lightning>,
+    pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
     pub network: String,
     pub cltv_expiry: u32,

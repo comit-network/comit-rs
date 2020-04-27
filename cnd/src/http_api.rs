@@ -98,29 +98,6 @@ impl<'de> Deserialize<'de> for Http<asset::Bitcoin> {
     }
 }
 
-impl Serialize for Http<asset::Lightning> {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        serializer.serialize_str(&self.0.as_sat().to_string())
-    }
-}
-
-impl<'de> Deserialize<'de> for Http<asset::Lightning> {
-    fn deserialize<D>(deserializer: D) -> Result<Self, <D as Deserializer<'de>>::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        let value = String::deserialize(deserializer)?;
-        let value =
-            u64::from_str(value.as_str()).map_err(<D as Deserializer<'de>>::Error::custom)?;
-        let amount = asset::Lightning::from_sat(value);
-
-        Ok(Http(amount))
-    }
-}
-
 impl Serialize for Http<transaction::Bitcoin> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
