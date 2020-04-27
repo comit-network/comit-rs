@@ -44,7 +44,7 @@
         "chai-string": "^1.5.0",
         "chai-subset": "^1.6.0",
         "chmod": "^0.2.1",
-        "comit-sdk": "^0.15.5",
+        "comit-sdk": "^0.15.6",
         "download": "^8.0.0",
         "ethers": "^4.0.47",
         "find-cache-dir": "^3.3.1",
