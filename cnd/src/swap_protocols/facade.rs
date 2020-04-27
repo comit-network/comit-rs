@@ -1,5 +1,7 @@
 use crate::{
-    asset, identity,
+    asset,
+    db::CreatedSwap,
+    identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
     timestamp::Timestamp,
@@ -75,7 +77,9 @@ pub struct Facade {
 }
 
 impl Facade {
-    pub async fn save(&self, _id: LocalSwapId, _swap_params: ()) {}
+    pub async fn save<A, B>(&self, _: CreatedSwap<A, B>) -> anyhow::Result<()> {
+        unimplemented!()
+    }
 
     pub async fn initiate_communication(
         &self,

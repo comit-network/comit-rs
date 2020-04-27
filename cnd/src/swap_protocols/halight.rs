@@ -1,8 +1,11 @@
-use crate::swap_protocols::{
-    rfc003::{Secret, SecretHash},
-    state,
-    state::Update,
-    LocalSwapId,
+use crate::{
+    asset, identity,
+    swap_protocols::{
+        rfc003::{Secret, SecretHash},
+        state,
+        state::Update,
+        LocalSwapId,
+    },
 };
 use futures::{
     future::{self, Either},
@@ -18,6 +21,18 @@ use tokio::sync::Mutex;
 mod connector;
 
 pub use connector::*;
+
+/// Htlc Lightning Bitcoin atomic swap protocol.
+
+/// Data required to create a swap that involves bitcoin on the lightning
+/// network.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Bitcoin,
+    pub identity: identity::Lightning,
+    pub network: String,
+    pub cltv_expiry: u32,
+}
 
 /// Creates a new instance of the halight protocol.
 ///
