@@ -133,26 +133,6 @@ impl Swarm {
         })
     }
 
-    /// This is the API for Alice to call in order to execute the appropriate
-    /// communication protocols to announce a swap to Bob (i.e., to send the
-    /// known swap parameters and receive the remaining swap parameters) in
-    /// order to finalize this swap.
-    ///
-    /// `id` is an identifier use to access the database to get the known swap
-    /// parameters.
-    // Identifier type will be defined in ticket: https://github.com/comit-network/comit-rs/issues/2173
-    pub async fn finalize_announce_swap(&mut self, _id: String) -> anyhow::Result<()> {
-        // 1. Load parameters for the swap from the database and call down to
-        // the swarm to execute the required communication protocols.
-        //
-        // 2. Write the remaining parameters to the database (keyed by swap_id).
-        //
-        // 3. Spawn the swap using `swap_id` as an argument.  `spawn()` can then
-        // load the swap from the database and spawn it.
-
-        unimplemented!()
-    }
-
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
