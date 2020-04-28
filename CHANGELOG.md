@@ -7,9 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## Changed
+## [0.7.3] - 2020-04-14
 
-- Ensure that lnd parameters are defaulted if not present.
+### Fixed
+
+-   Deserialization problem of bitcoind's response: Bitcoind returns as chain/network either `main`,`test` or `regtest`. This fix was manually tested against bitcoind (0.17, 0.18 and 0.19).
+
+### Changed
+
+-   Ensure that lnd parameters are defaulted if not present.
 
 ## [0.7.2] - 2020-03-26
 
@@ -115,7 +121,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Move config files to standard location based on platform (OSX, Windows, Linux).
 -   Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.7.2...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.7.3...HEAD
+
+[0.7.3]: https://github.com/comit-network/comit-rs/compare/0.7.2...0.7.3
 
 [0.7.2]: https://github.com/comit-network/comit-rs/compare/0.7.1...0.7.2
 
