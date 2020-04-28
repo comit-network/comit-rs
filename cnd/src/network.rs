@@ -335,9 +335,7 @@ impl ComitNode {
         swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         self.supports_halight()?;
-
-        self.comit_ln.initiate_communication(id, swap_params);
-        Ok(())
+        self.comit_ln.initiate_communication(id, swap_params)
     }
 
     pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
