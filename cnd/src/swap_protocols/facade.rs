@@ -78,7 +78,7 @@ pub struct Facade {
 
 impl Facade {
     pub async fn save<A, B>(&self, _: CreatedSwap<A, B>) -> anyhow::Result<()> {
-        unimplemented!()
+        Ok(())
     }
 
     pub async fn initiate_communication(
