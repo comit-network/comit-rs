@@ -18,18 +18,22 @@ describe("Lightning routes tests", () => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .hanEthereumEtherHalightLightningBitcoin;
 
-            await expect(
-                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                    bodies.alice
-                )
-            ).rejects.toThrow("lightning is not configured.");
-            try {
-                await bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                    bodies.bob
-                );
-            } catch (err) {
-                expect(err.status).toBe(400);
-            }
+            const aliceResponse = alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                bodies.alice
+            );
+            const bobResponse = bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                bodies.bob
+            );
+
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
+
+            await expect(aliceResponse).rejects.toMatchObject(expectedProblem);
+            await expect(bobResponse).rejects.toMatchObject(expectedProblem);
         })
     );
 
