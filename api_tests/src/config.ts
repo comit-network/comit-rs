@@ -88,7 +88,7 @@ export class E2ETestActorConfig {
             }
             case "charlie":
                 {
-                    console.warn(
+                    console.debug(
                         "generating lnd config for charlie is not supported at this stage"
                     );
                 }
