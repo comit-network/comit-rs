@@ -7,6 +7,7 @@ import {
     EthereumNodeConfig,
 } from "./ledgers";
 import { ActorNames } from "./actors/actor";
+import { Logger } from "log4js";
 
 export interface CndConfigFile {
     http_api: HttpApi;
@@ -22,14 +23,20 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorNames) {
-        return new E2ETestActorConfig(await getPort(), await getPort(), name);
+    public static async for(name: ActorNames, logger: Logger) {
+        return new E2ETestActorConfig(
+            await getPort(),
+            await getPort(),
+            name,
+            logger
+        );
     }
 
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorNames
+        public readonly name: ActorNames,
+        private readonly logger: Logger
     ) {
         this.httpApiPort = httpApiPort;
         this.comitPort = comitPort;
@@ -88,7 +95,7 @@ export class E2ETestActorConfig {
             }
             case "charlie":
                 {
-                    console.warn(
+                    this.logger.warn(
                         "generating lnd config for charlie is not supported at this stage"
                     );
                 }

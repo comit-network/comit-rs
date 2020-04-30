@@ -43,7 +43,7 @@ export class Actor {
         cndLogFile: string,
         logger: Logger
     ) {
-        const actorConfig = await E2ETestActorConfig.for(name);
+        const actorConfig = await E2ETestActorConfig.for(name, logger);
         const cndConfigFile = actorConfig.generateCndConfigFile(ledgerConfig);
 
         const cndInstance = new CndInstance(
