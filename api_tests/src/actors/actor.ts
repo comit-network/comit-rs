@@ -587,10 +587,9 @@ export class Actor {
 
             const balanceInclFees = expectedBalance - maximumFee;
 
-            const currentWalletBalance = await wallet
-                .getBalanceByAsset(defaultAssetDescription(asset, ledger))
-                .then((balance) => BigInt(balance.toString(10)));
-
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetDescription(asset, ledger)
+            );
             expect(currentWalletBalance).toBeGreaterThanOrEqual(
                 balanceInclFees
             );
@@ -617,9 +616,9 @@ export class Actor {
                 maximumFee
             );
             const expectedBalance = this.startingBalances.get(assetKey);
-            const currentWalletBalance = await wallet
-                .getBalanceByAsset(defaultAssetDescription(asset, ledger))
-                .then((balance) => BigInt(balance.toString(10)));
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetDescription(asset, ledger)
+            );
             const balanceInclFees = expectedBalance - maximumFee;
             expect(currentWalletBalance).toBeGreaterThanOrEqual(
                 balanceInclFees

@@ -4,7 +4,6 @@ import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
 import {
     Asset,
-    BigNumber,
     BitcoindWallet as BitcoinWalletSdk,
     BitcoindWallet,
 } from "comit-sdk";
@@ -58,7 +57,7 @@ export class BitcoinWallet implements Wallet {
     ) {}
 
     public async mintToAddress(
-        minimumExpectedBalance: BigNumber,
+        minimumExpectedBalance: bigint,
         toAddress: string
     ): Promise<void> {
         const blockHeight = await this.defaultClient.getBlockCount();
@@ -69,7 +68,9 @@ export class BitcoinWallet implements Wallet {
         }
 
         // make sure we have at least twice as much
-        const amount = toBitcoin(minimumExpectedBalance.times(2).toString());
+        const amount = toBitcoin(
+            (minimumExpectedBalance * BigInt(2)).toString()
+        );
 
         await this.minerClient.sendToAddress(toAddress, amount);
 
@@ -83,17 +84,15 @@ export class BitcoinWallet implements Wallet {
             );
         }
 
-        const startingBalance = new BigNumber(
-            await this.getBalanceByAsset(asset)
-        );
+        const startingBalance = await this.getBalanceByAsset(asset);
 
-        const minimumExpectedBalance = new BigNumber(asset.quantity);
+        const minimumExpectedBalance = BigInt(asset.quantity);
 
         await this.mintToAddress(minimumExpectedBalance, await this.address());
 
         await pollUntilMinted(
             this,
-            startingBalance.plus(minimumExpectedBalance),
+            startingBalance + minimumExpectedBalance,
             asset
         );
     }
@@ -102,13 +101,13 @@ export class BitcoinWallet implements Wallet {
         return this.inner.getAddress();
     }
 
-    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
+    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
         if (asset.name !== "bitcoin") {
             throw new Error(
                 `Cannot read balance for asset ${asset.name} with BitcoinWallet`
             );
         }
-        return new BigNumber(toSatoshi(await this.inner.getBalance()));
+        return BigInt(toSatoshi(await this.inner.getBalance()));
     }
 
     public async getBlockchainTime(): Promise<number> {

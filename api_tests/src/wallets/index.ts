@@ -1,4 +1,4 @@
-import { Asset, BigNumber } from "comit-sdk";
+import { Asset } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
@@ -17,7 +17,7 @@ interface AllWallets {
 export interface Wallet {
     MaximumFee: number;
     mint(asset: Asset): Promise<void>;
-    getBalanceByAsset(asset: Asset): Promise<BigNumber>;
+    getBalanceByAsset(asset: Asset): Promise<bigint>;
     getBlockchainTime(): Promise<number>;
 }
 
@@ -91,11 +91,11 @@ export class Wallets {
 
 export async function pollUntilMinted(
     wallet: Wallet,
-    minimumBalance: BigNumber,
+    minimumBalance: BigInt,
     asset: Asset
 ): Promise<void> {
     const currentBalance = await wallet.getBalanceByAsset(asset);
-    if (currentBalance.gte(minimumBalance)) {
+    if (currentBalance >= minimumBalance) {
         return;
     } else {
         await sleep(500);
