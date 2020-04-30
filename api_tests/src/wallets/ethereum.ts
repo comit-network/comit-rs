@@ -76,18 +76,8 @@ export class EthereumWallet implements Wallet {
             value: "0x0",
             data,
         };
-        const transactionResponse = await this.sendTransaction(tx);
-        const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
-            transactionResponse.hash,
-            1
-        );
-        // const transactionReceipt = await transactionResponse.wait(1);
 
-        if (!transactionReceipt.status) {
-            throw new Error(
-                `Minting ${asset.quantity} tokens to address ${toAddress} failed`
-            );
-        }
+        await this.sendTransaction(tx);
 
         this.logger.info(
             "Minted",
@@ -119,12 +109,37 @@ export class EthereumWallet implements Wallet {
                 this.ethereumDevAccount.address
             );
             const signedTx = await this.ethereumDevAccount.sign(tx);
-            return this.jsonRpcProvider.sendTransaction(signedTx);
+            const transactionResponse = await this.jsonRpcProvider.sendTransaction(
+                signedTx
+            );
+
+            this.logger.debug(
+                "Transaction: ",
+                transactionResponse.hash,
+                " sent, waiting to be confirmed."
+            );
+
+            const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
+                transactionResponse.hash,
+                1
+            );
+            if (!transactionReceipt.status) {
+                throw new Error(
+                    `Transaction ${transactionReceipt.transactionHash} failed with status 1`
+                );
+            }
+            this.logger.debug(
+                "Transaction: ",
+                transactionReceipt.transactionHash,
+                " confirmed in block: ",
+                transactionReceipt.blockHash
+            );
+            return transactionReceipt;
         } finally {
             await release();
         }
 
-        this.logger.debug("Lock for ethereum-dev-account account released");
+        this.logger.debug("Lock for ethereum-dev-account account released.");
     }
 
     private async mintEther(asset: Asset): Promise<void> {
@@ -132,28 +147,12 @@ export class EthereumWallet implements Wallet {
 
         // make sure we have at least twice as much
         const value = new BigNumberEthers(minimumExpectedBalance).mul(2);
-        const response = await this.sendTransaction({
+        await this.sendTransaction({
             to: this.account(),
             value,
             gasLimit: 21000,
             chainId: this.chainId,
         });
-
-        this.logger.debug(
-            "Transaction: ",
-            response.hash,
-            " sent, waiting to be confirmed."
-        );
-        const transactionReceipt = await this.jsonRpcProvider.waitForTransaction(
-            response.hash,
-            1
-        );
-        this.logger.debug(
-            "Transaction: ",
-            transactionReceipt.transactionHash,
-            " confirmed in block: ",
-            transactionReceipt.blockHash
-        );
 
         const balance = await this.getBalanceByAsset(asset);
 

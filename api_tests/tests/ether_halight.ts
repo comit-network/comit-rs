@@ -30,6 +30,7 @@ it(
         await alice.redeem();
         await bob.redeem();
 
+        // Wait until the wallet sees the new balance.
         await sleep(2000);
 
         await alice.assertBalances();
