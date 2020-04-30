@@ -1,48 +1,43 @@
 import { threeActorTest, twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, sleep } from "../src/utils";
-import { expect, request } from "chai";
 import { Actor } from "../src/actors/actor";
 
 // ******************************************** //
 // Peers using ips                              //
 // ******************************************** //
 
-async function assertNoPeersAvailable(actor: Actor, message: string) {
-    const peersResponse = await request(actor.cndHttpApiUrl()).get("/peers");
+async function assertNoPeersAvailable(actor: Actor) {
+    const peersResponse = await actor.cnd.fetch("/peers");
+    const body = peersResponse.data as {
+        peers: { id: string; endpoints: string[] }[];
+    };
 
-    expect(peersResponse.status).to.equal(200);
-    expect(peersResponse.body.peers, message).to.be.empty;
+    expect(peersResponse.status).toBe(200);
+    expect(body.peers).toHaveLength(0);
 }
 
-async function assertPeersAvailable(alice: Actor, bob: Actor, message: string) {
-    const peersResponse = await request(alice.cndHttpApiUrl()).get("/peers");
+async function assertPeersAvailable(alice: Actor, bob: Actor) {
+    const peersResponse = await alice.cnd.fetch("/peers");
+    const body = peersResponse.data as {
+        peers: { id: string; endpoints: string[] }[];
+    };
 
-    expect(peersResponse.status).to.equal(200);
-    expect(peersResponse.body.peers, message).to.containSubset([
-        {
-            id: await bob.cnd.getPeerId(),
-        },
-    ]);
+    expect(peersResponse.status).toBe(200);
+    expect(body.peers[0].id).toBe(await bob.cnd.getPeerId());
 }
 
 describe("Peers using IP tests", () => {
     it(
         "alice-empty-peer-list",
         twoActorTest(async ({ alice }) => {
-            const res = await request(alice.cndHttpApiUrl()).get("/peers");
-
-            expect(res.status).to.equal(200);
-            expect(res.body.peers).to.be.empty;
+            await assertNoPeersAvailable(alice);
         })
     );
 
     it(
         "alice-send-request-wrong-peer-id",
         threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertNoPeersAvailable(
-                alice,
-                "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
-            );
+            await assertNoPeersAvailable(alice);
 
             // Alice send swap request to Bob
             const swapRequest = await createDefaultSwapRequest(bob);
@@ -58,52 +53,29 @@ describe("Peers using IP tests", () => {
 
             await sleep(1000);
 
-            await assertNoPeersAvailable(
-                alice,
-                "[Alice] Should not see any peers because the address did not resolve to the given PeerID"
-            );
+            await assertNoPeersAvailable(alice);
 
-            await assertNoPeersAvailable(
-                bob,
-                "[Bob] Should not see Alice's PeerID because she dialed to a different PeerID"
-            );
+            await assertNoPeersAvailable(bob);
 
-            await assertNoPeersAvailable(
-                charlie,
-                "[Charlie] Should not see Alice's PeerID because there was no communication so far"
-            );
+            await assertNoPeersAvailable(charlie);
         })
     );
 
     it(
         "alice-send-swap-request-to-charlie",
         threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertNoPeersAvailable(
-                alice,
-                "[Alice] Should not yet see Bob's nor Charlie's peer id in her list of peers"
-            );
+            await assertNoPeersAvailable(alice);
 
             // Alice send swap request to Bob
             await alice.cnd.postSwap(await createDefaultSwapRequest(charlie));
 
             await sleep(1000);
 
-            await assertNoPeersAvailable(
-                bob,
-                "[Bob] Should not see any peer ids in his list of peers"
-            );
+            await assertNoPeersAvailable(bob);
 
-            await assertPeersAvailable(
-                alice,
-                charlie,
-                "[Alice] Should see Charlie's peer id in her list of peers after sending a swap request to him using his ip address"
-            );
+            await assertPeersAvailable(alice, charlie);
 
-            await assertPeersAvailable(
-                charlie,
-                alice,
-                "[Charlie] Should see Alice's peer ID in his list of peers after receiving a swap request from Alice"
-            );
+            await assertPeersAvailable(charlie, alice);
         })
     );
 });
