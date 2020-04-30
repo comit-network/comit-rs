@@ -1,6 +1,4 @@
-import { expect } from "chai";
 import {
-    BigNumber,
     Cnd,
     ComitClient,
     Entity,
@@ -78,8 +76,8 @@ export class Actor {
     private betaLedger: Ledger;
     private betaAsset: Asset;
 
-    private readonly startingBalances: Map<string, BigNumber>;
-    private readonly expectedBalanceChanges: Map<string, BigNumber>;
+    private readonly startingBalances: Map<string, bigint>;
+    private readonly expectedBalanceChanges: Map<string, bigint>;
 
     constructor(
         public readonly logger: Logger,
@@ -189,11 +187,11 @@ export class Actor {
 
         this.expectedBalanceChanges.set(
             toKey(this.betaAsset),
-            new BigNumber(this.betaAsset.quantity)
+            BigInt(this.betaAsset.quantity)
         );
         to.expectedBalanceChanges.set(
             toKey(this.alphaAsset),
-            new BigNumber(to.alphaAsset.quantity)
+            BigInt(to.alphaAsset.quantity)
         );
 
         const isLightning =
@@ -274,7 +272,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.betaAsset),
-                    new BigNumber(this.betaAsset.quantity)
+                    BigInt(this.betaAsset.quantity)
                 );
                 break;
             }
@@ -289,7 +287,7 @@ export class Actor {
                 ]);
                 this.expectedBalanceChanges.set(
                     toKey(this.alphaAsset),
-                    new BigNumber(this.alphaAsset.quantity)
+                    BigInt(this.alphaAsset.quantity)
                 );
                 break;
             }
@@ -583,18 +581,19 @@ export class Actor {
             const { asset, ledger } = toKind(assetKey);
 
             const wallet = this.wallets[ledger];
-            const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKey)
-            ).plus(expectedBalanceChange);
-            const maximumFee = wallet.MaximumFee;
+            const expectedBalance =
+                this.startingBalances.get(assetKey) + expectedBalanceChange;
+            const maximumFee = BigInt(wallet.MaximumFee);
 
-            const balanceInclFees = expectedBalance.minus(maximumFee);
+            const balanceInclFees = expectedBalance - maximumFee;
 
-            const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
+            const currentWalletBalance = await wallet
+                .getBalanceByAsset(defaultAssetDescription(asset, ledger))
+                .then((balance) => BigInt(balance.toString(10)));
+
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                balanceInclFees
             );
-
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
 
             this.logger.debug(
                 "Balance check was positive, current balance is %d",
@@ -610,21 +609,21 @@ export class Actor {
             const { asset, ledger } = toKind(assetKey);
 
             const wallet = this.wallets[ledger];
-            const maximumFee = wallet.MaximumFee;
+            const maximumFee = BigInt(wallet.MaximumFee);
 
             this.logger.debug(
                 "Checking that %s balance changed by max %d (MaximumFee)",
                 assetKey,
                 maximumFee
             );
-            const expectedBalance = new BigNumber(
-                this.startingBalances.get(assetKey)
+            const expectedBalance = this.startingBalances.get(assetKey);
+            const currentWalletBalance = await wallet
+                .getBalanceByAsset(defaultAssetDescription(asset, ledger))
+                .then((balance) => BigInt(balance.toString(10)));
+            const balanceInclFees = expectedBalance - maximumFee;
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                balanceInclFees
             );
-            const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
-            );
-            const balanceInclFees = expectedBalance.minus(maximumFee);
-            expect(currentWalletBalance).to.be.bignumber.gte(balanceInclFees);
         }
     }
 
@@ -875,7 +874,7 @@ export class Actor {
     private async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
             if (parseFloat(asset.quantity) === 0) {
-                this.startingBalances.set(toKey(asset), new BigNumber(0));
+                this.startingBalances.set(toKey(asset), BigInt(0));
                 continue;
             }
 
@@ -895,7 +894,10 @@ export class Actor {
                 asset.name,
                 balance.toString()
             );
-            this.startingBalances.set(toKey(asset), balance);
+            this.startingBalances.set(
+                toKey(asset),
+                BigInt(balance.toString(10))
+            );
         }
     }
 
@@ -950,7 +952,7 @@ export class Actor {
     ): Promise<Entity> {
         const response = await this.cnd.fetch(location);
 
-        expect(response).to.have.status(200);
+        expect(response.status).toEqual(200);
 
         if (predicate(response.data)) {
             return response.data;
