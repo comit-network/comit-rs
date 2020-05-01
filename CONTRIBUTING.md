@@ -37,7 +37,7 @@ For changes related to our implementation, please [create a feature request](/is
 
 ## Pull Requests
 
-If you wish to directly contribute to the code, please make pull requests against `master`.
+If you wish to directly contribute to the code, please make pull requests against the `dev` branch as this repository uses the [GitFlow branching model](https://datasift.github.io/gitflow/IntroducingGitFlow.html).
 Refer to [GitHub documentation](https://help.github.com/articles/about-pull-requests/) on using the Pull Request feature.
 You can also find more details in the [Open Source Guides](https://opensource.guide/how-to-contribute/#opening-a-pull-request).
 
