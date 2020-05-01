@@ -4,13 +4,11 @@
 import { tv4, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
 import chaiEach = require("chai-each");
-import chaiHttp = require("chai-http");
 import chaiJsonSchema = require("chai-json-schema");
 import chaiSubset = require("chai-subset");
 import * as sirenJsonSchema from "../siren.schema.json";
 
 use(chaiAsPromised);
-use(chaiHttp);
 use(chaiSubset);
 use(chaiEach);
 use(chaiJsonSchema);
