@@ -6,38 +6,40 @@ import { Actor } from "../src/actors/actor";
 // Peers using ips                              //
 // ******************************************** //
 
-async function assertNoPeersAvailable(actor: Actor) {
+async function assertPeersAvailable(actor: Actor, peers: Actor[]) {
     const peersResponse = await actor.cnd.fetch("/peers");
     const body = peersResponse.data as {
         peers: { id: string; endpoints: string[] }[];
     };
 
-    expect(peersResponse.status).toBe(200);
-    expect(body.peers).toHaveLength(0);
-}
+    const promises = peers.map(async (actor) => {
+        return { id: await actor.cnd.getPeerId() };
+    });
 
-async function assertPeersAvailable(alice: Actor, bob: Actor) {
-    const peersResponse = await alice.cnd.fetch("/peers");
-    const body = peersResponse.data as {
-        peers: { id: string; endpoints: string[] }[];
-    };
+    const expectedPeers = await Promise.all(promises);
 
     expect(peersResponse.status).toBe(200);
-    expect(body.peers[0].id).toBe(await bob.cnd.getPeerId());
+    expect(body.peers).toHaveLength(peers.length);
+
+    // We only want to check the ids
+    const actualPeers = body.peers.map((actor) => {
+        return { id: actor.id };
+    });
+    expect(actualPeers).toEqual(expect.arrayContaining(expectedPeers));
 }
 
 describe("Peers using IP tests", () => {
     it(
         "alice-empty-peer-list",
         twoActorTest(async ({ alice }) => {
-            await assertNoPeersAvailable(alice);
+            await assertPeersAvailable(alice, []);
         })
     );
 
     it(
         "alice-send-request-wrong-peer-id",
         threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertNoPeersAvailable(alice);
+            await assertPeersAvailable(alice, []);
 
             // Alice send swap request to Bob
             const swapRequest = await createDefaultSwapRequest(bob);
@@ -53,29 +55,29 @@ describe("Peers using IP tests", () => {
 
             await sleep(1000);
 
-            await assertNoPeersAvailable(alice);
+            await assertPeersAvailable(alice, []);
 
-            await assertNoPeersAvailable(bob);
+            await assertPeersAvailable(bob, []);
 
-            await assertNoPeersAvailable(charlie);
+            await assertPeersAvailable(charlie, []);
         })
     );
 
     it(
         "alice-send-swap-request-to-charlie",
         threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertNoPeersAvailable(alice);
+            await assertPeersAvailable(alice, []);
 
             // Alice send swap request to Bob
             await alice.cnd.postSwap(await createDefaultSwapRequest(charlie));
 
             await sleep(1000);
 
-            await assertNoPeersAvailable(bob);
+            await assertPeersAvailable(bob, []);
 
-            await assertPeersAvailable(alice, charlie);
+            await assertPeersAvailable(alice, [charlie]);
 
-            await assertPeersAvailable(charlie, alice);
+            await assertPeersAvailable(charlie, [alice]);
         })
     );
 });
