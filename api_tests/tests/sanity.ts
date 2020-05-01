@@ -103,7 +103,8 @@ describe("Sanity", () => {
 
             const body = res.data as { id: string; listen_addresses: string[] };
 
-            expect(body.id).toMatch(/^[a-zA-Z0-9]+$/);
+            expect(typeof body.id).toEqual("string");
+            expect(body.id).toBeTruthy();
             // At least 2 ipv4 addresses, lookup and external interface
             expect(body.listen_addresses.length).toBeGreaterThanOrEqual(2);
         })
