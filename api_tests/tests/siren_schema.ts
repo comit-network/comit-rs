@@ -1,14 +1,29 @@
-import { oneActorTest } from "../src/actor_test";
+import { oneActorTest, twoActorTest } from "../src/actor_test";
 import { extendSchemaMatcher } from "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
-import { Link } from "comit-sdk";
+import { EmbeddedRepresentationSubEntity, Entity, Link } from "comit-sdk";
 import axios from "axios";
+import { createDefaultSwapRequest } from "../src/utils";
+import { Actor } from "../src/actors/actor";
+import * as swapPropertiesJsonSchema from "../swap.schema.json";
 
 extendSchemaMatcher();
 
 // ******************************************** //
 // Siren Schema tests                                 //
 // ******************************************** //
+
+async function assertValidSirenDocument(swapsEntity: Entity, alice: Actor) {
+    const selfLink = swapsEntity.links.find((link: Link) =>
+        link.rel.includes("self")
+    ).href;
+
+    const swapResponse = await alice.cnd.fetch(selfLink);
+    const swapEntity = swapResponse.data as Entity;
+
+    expect(swapEntity).toMatchSchema(sirenJsonSchema);
+    expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
+}
 
 describe("Siren Schema", () => {
     it(
@@ -82,6 +97,31 @@ describe("Siren Schema", () => {
                 class: ["swaps", "rfc003"],
                 href: "/swaps/rfc003",
             });
+        })
+    );
+
+    it(
+        "get-single-swap-is-valid-siren",
+        twoActorTest(async ({ alice, bob }) => {
+            // Alice send swap request to Bob
+            await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
+
+            const aliceSwapEntity = await alice
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
+                .then(
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+
+            await assertValidSirenDocument(aliceSwapEntity, alice);
+
+            const bobsSwapEntity = await bob
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
+                .then(
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+            await assertValidSirenDocument(bobsSwapEntity, bob);
         })
     );
 });
