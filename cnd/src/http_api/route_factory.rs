@@ -8,12 +8,16 @@ use warp::{self, filters::BoxedFilter, Filter, Reply};
 
 pub const RFC003: &str = "rfc003";
 
-pub fn swap_path(id: SwapId) -> String {
+pub fn rfc003_swap_path(id: SwapId) -> String {
     format!("/{}/{}/{}", http_api::PATH, RFC003, id)
 }
 
+pub fn swap_path(id: LocalSwapId) -> String {
+    format!("/{}/{}", http_api::PATH, id)
+}
+
 pub fn new_action_link(id: &SwapId, action: &str) -> String {
-    format!("{}/{}", swap_path(*id), action)
+    format!("{}/{}", rfc003_swap_path(*id), action)
 }
 
 pub fn create(

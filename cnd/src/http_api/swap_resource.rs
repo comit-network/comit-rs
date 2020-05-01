@@ -4,7 +4,7 @@ use crate::{
     db::{Swap, SwapTypes},
     http_api::{
         action::rfc003::ToSirenAction,
-        route_factory::swap_path,
+        route_factory,
         routes::rfc003::{LedgerState, SwapCommunication, SwapState},
         Http, HttpAsset, HttpLedger,
     },
@@ -161,7 +161,10 @@ pub async fn build_rfc003_siren_entity(
                 tracing::error!("failed to set properties of entity: {:?}", e);
                 HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
             })?
-            .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
+            .with_link(siren::NavigationalLink::new(
+                &["self"],
+                route_factory::rfc003_swap_path(id),
+            ))
             .with_link(
                 siren::NavigationalLink::new(
                     &["describedBy"],
