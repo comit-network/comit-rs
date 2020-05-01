@@ -4,6 +4,7 @@ use crate::{
         rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
         LndActionError,
     },
+    network::comit_ln::SwapExists,
 };
 use http_api_problem::HttpApiProblem;
 use warp::{
@@ -47,7 +48,13 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
     };
 
     if let Some(db::Error::SwapNotFound) = e.downcast_ref::<db::Error>() {
+        tracing::error!("swap was not found");
         return HttpApiProblem::new("Swap not found.").set_status(StatusCode::NOT_FOUND);
+    }
+
+    if e.downcast_ref::<SwapExists>().is_some() {
+        tracing::error!("swap already exists, returning 400");
+        return HttpApiProblem::new("Swap already exists.").set_status(StatusCode::BAD_REQUEST);
     }
 
     if let Some(e) = e.downcast_ref::<UnexpectedQueryParameters>() {

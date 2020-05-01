@@ -27,6 +27,7 @@ use libp2p::{
 };
 use std::{
     collections::{HashMap, VecDeque},
+    fmt,
     task::{Context, Poll},
 };
 
@@ -105,30 +106,27 @@ impl ComitLN {
         &mut self,
         id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
-    ) {
+    ) -> anyhow::Result<()> {
         let digest = create_swap_params.clone().digest();
 
+        if self.swaps_waiting_for_announcement.contains_key(&digest) {
+            anyhow::bail!(SwapExists)
+        }
         self.swaps.insert(id, create_swap_params.clone());
+        self.swaps_waiting_for_announcement
+            .insert(digest.clone(), id);
 
         match create_swap_params.role {
             Role::Alice => {
-                if self.swaps_waiting_for_announcement.contains_key(&digest) {
-                    // To fix this panic, we should either pass the local swap id to the
-                    // announce behaviour or get a unique token from the behaviour that
-                    // we can use to track the progress of the announcement
-                    panic!("cannot send two swaps with the same digest at the same time!")
-                }
-
                 self.announce
-                    .start_announce_protocol(digest.clone(), create_swap_params.peer);
-
-                self.swaps_waiting_for_announcement.insert(digest, id);
+                    .start_announce_protocol(digest, create_swap_params.peer);
             }
             Role::Bob => {
                 tracing::info!("Swap waiting for announcement: {}", digest);
-                self.swaps_waiting_for_announcement.insert(digest, id);
             }
         }
+
+        Ok(())
     }
 
     pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
@@ -208,6 +206,17 @@ impl ComitLN {
 
         // We trust in libp2p to poll us.
         Poll::Pending
+    }
+}
+
+#[derive(thiserror::Error, Clone, Copy, Debug)]
+pub struct SwapExists;
+
+impl fmt::Display for SwapExists {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        // This impl is required to build but want to use a static string for
+        // this when returning it via the REST API.
+        write!(f, "")
     }
 }
 
@@ -596,6 +605,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             let ethereum_identity = self.ethereum_identities.get(&swap_id).copied().unwrap();
 
+            self.swaps_waiting_for_announcement
+                .retain(|_, id| *id != local_swap_id);
+
             self.events.push_back(BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
                 swap_params: create_swap_params,
@@ -678,27 +690,31 @@ mod tests {
         let ethereum_expiry = Timestamp::from(100);
         let lightning_expiry = Timestamp::from(200);
 
-        alice_swarm.initiate_communication(
-            LocalSwapId::default(),
-            make_alice_swap_params(
-                bob_peer_id,
-                bob_addr,
-                ether.clone(),
-                lnbtc,
-                ethereum_expiry,
-                lightning_expiry,
-            ),
-        );
-        bob_swarm.initiate_communication(
-            LocalSwapId::default(),
-            make_bob_swap_params(
-                alice_peer_id,
-                ether,
-                lnbtc,
-                ethereum_expiry,
-                lightning_expiry,
-            ),
-        );
+        alice_swarm
+            .initiate_communication(
+                LocalSwapId::default(),
+                make_alice_swap_params(
+                    bob_peer_id,
+                    bob_addr,
+                    ether.clone(),
+                    lnbtc,
+                    ethereum_expiry,
+                    lightning_expiry,
+                ),
+            )
+            .expect("initiate communication for alice");
+        bob_swarm
+            .initiate_communication(
+                LocalSwapId::default(),
+                make_bob_swap_params(
+                    alice_peer_id,
+                    ether,
+                    lnbtc,
+                    ethereum_expiry,
+                    lightning_expiry,
+                ),
+            )
+            .expect("initiate communication for bob");
 
         // act
         let (alice_event, bob_event) = future::join(alice_swarm.next(), bob_swarm.next()).await;

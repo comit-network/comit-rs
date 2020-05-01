@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 /// This represent the information available on a swap
 /// before communication with the other node has started
-#[derive(Clone, Digest, Debug)]
+#[derive(Clone, Digest, Debug, PartialEq)]
 #[digest(hash = "SwapDigest")]
 pub struct HanEtherereumHalightBitcoinCreateSwapParams {
     #[digest(ignore)]
@@ -42,7 +42,7 @@ impl IntoDigestInput for asset::Ether {
     }
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EthereumIdentity(identity::Ethereum);
 
 impl From<identity::Ethereum> for EthereumIdentity {
