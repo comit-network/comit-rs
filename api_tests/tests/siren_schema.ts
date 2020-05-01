@@ -1,8 +1,10 @@
 import { oneActorTest } from "../src/actor_test";
-import { expect } from "chai";
+import { extendSchemaMatcher } from "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import { Link } from "comit-sdk";
 import axios from "axios";
+
+extendSchemaMatcher();
 
 // ******************************************** //
 // Siren Schema tests                                 //
@@ -14,8 +16,8 @@ describe("Siren Schema", () => {
         oneActorTest(async ({ alice }) => {
             const res = await alice.cnd.fetch("/");
 
-            expect(res.status).to.equal(200);
-            expect(res.data).to.be.jsonSchema(sirenJsonSchema);
+            expect(res.status).toBe(200);
+            expect(res.data).toMatchSchema(sirenJsonSchema);
         })
     );
 
@@ -29,12 +31,14 @@ describe("Siren Schema", () => {
             });
             const body = res.data as any;
 
-            expect(body.properties.id).to.be.a("string");
-            expect(body.properties.listen_addresses).to.be.an("array");
+            expect(typeof body.properties.id).toBe("string");
+            expect(
+                Array.isArray(body.properties.listen_addresses)
+            ).toBeTruthy();
             // At least 2 ipv4 addresses, lookup and external interface
-            expect(body.properties.listen_addresses.length).to.be.greaterThan(
-                1
-            );
+            expect(
+                body.properties.listen_addresses.length
+            ).toBeGreaterThanOrEqual(2);
         })
     );
 
@@ -57,7 +61,7 @@ describe("Siren Schema", () => {
                     link.class.includes("swaps")
             );
 
-            expect(swapsLink).to.be.deep.equal({
+            expect(swapsLink).toMatchObject({
                 rel: ["collection"],
                 class: ["swaps"],
                 href: "/swaps",
@@ -73,7 +77,7 @@ describe("Siren Schema", () => {
                     link.class.includes("rfc003")
             );
 
-            expect(rfc003SwapsLink).to.be.deep.equal({
+            expect(rfc003SwapsLink).toMatchObject({
                 rel: ["collection", "edit"],
                 class: ["swaps", "rfc003"],
                 href: "/swaps/rfc003",
