@@ -10,7 +10,7 @@ use reqwest::{
     header::{HeaderMap, HeaderValue},
     StatusCode, Url,
 };
-use serde::Deserialize;
+use serde::{de, export::fmt, Deserialize, Deserializer};
 use std::{
     convert::{TryFrom, TryInto},
     io::Read,
@@ -49,7 +49,8 @@ struct Invoice {
     pub expiry: String,
     pub cltv_expiry: String,
     pub state: InvoiceState,
-    pub r_preimage: Option<String>,
+    #[serde(deserialize_with = "deserialize_r_preimage")]
+    pub r_preimage: Option<[u8; 32]>,
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -382,7 +383,7 @@ impl WaitForSettled for LndConnectorAsReceiver {
             .ok_or_else(|| anyhow::anyhow!("settled invoice does not contain preimage?!"))?;
 
         Ok(Settled {
-            secret: Secret::from_vec(base64::decode(preimage.as_bytes())?.as_slice())?,
+            secret: Secret::from_vec(&preimage)?,
         })
     }
 }
@@ -429,4 +430,110 @@ fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Cli
         .build()?;
 
     Ok(client)
+}
+
+pub fn deserialize_r_preimage<'de, D>(deserializer: D) -> Result<Option<[u8; 32]>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = Option<[u8; 32]>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a lightning r_preimage which is a base64 of an 32 byte array")
+        }
+
+        fn visit_unit<E>(self) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            Ok(None)
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            match v {
+                "" => Ok(None),
+                base64_preimage => {
+                    let vec = base64::decode(base64_preimage.as_bytes()).map_err(E::custom)?;
+                    if vec.len() != 32 {
+                        return Err(de::Error::invalid_length(vec.len(), &"32"));
+                    }
+                    let mut r_preimage = [0; 32];
+                    let vec = &vec[..32];
+                    r_preimage.copy_from_slice(vec);
+                    Ok(Some(r_preimage))
+                }
+            }
+        }
+    }
+
+    deserializer.deserialize_any(Visitor)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use spectral::prelude::*;
+
+    #[test]
+    fn deserialize_ln_invoice_preimage_present() {
+        let r_preimage = [
+            0x17u8, 0x23u8, 0x4cu8, 0x08u8, 0xf1u8, 0x39u8, 0x9eu8, 0x6fu8, 0x7au8, 0xfdu8, 0x06u8,
+            0x54u8, 0x35u8, 0x79u8, 0x85u8, 0x37u8, 0x3cu8, 0xc3u8, 0x61u8, 0x81u8, 0x1au8, 0x06u8,
+            0xdau8, 0x57u8, 0x35u8, 0xc3u8, 0x5eu8, 0xd3u8, 0xb6u8, 0xc2u8, 0xf9u8, 0xffu8,
+        ];
+
+        let invoice_json = r#"{
+      "r_preimage": "FyNMCPE5nm96/QZUNXmFNzzDYYEaBtpXNcNe07bC+f8=",
+      "value": "10000",
+      "value_msat": "10000000",
+      "expiry": "3600",
+      "cltv_expiry": "350",
+      "amt_paid_sat": "0",
+      "amt_paid_msat": "0",
+      "state": "SETTLED"
+    }"#;
+        let invoice = serde_json::from_str::<Invoice>(invoice_json).unwrap();
+        assert_that(&invoice.r_preimage)
+            .is_some()
+            .is_equal_to(&r_preimage);
+    }
+
+    #[test]
+    fn deserialize_ln_invoice_preimage_empty() {
+        let invoice_json = r#"{
+      "r_preimage": "",
+      "value": "10000",
+      "value_msat": "10000000",
+      "expiry": "3600",
+      "cltv_expiry": "350",
+      "amt_paid_sat": "0",
+      "amt_paid_msat": "0",
+      "state": "SETTLED"
+    }"#;
+
+        let invoice = serde_json::from_str::<Invoice>(invoice_json).unwrap();
+        assert_that(&invoice.r_preimage).is_none()
+    }
+    #[test]
+    fn deserialize_ln_invoice_preimage_not_present() {
+        let invoice_json = r#"{
+      "r_preimage": null,
+      "value": "10000",
+      "value_msat": "10000000",
+      "expiry": "3600",
+      "cltv_expiry": "350",
+      "amt_paid_sat": "0",
+      "amt_paid_msat": "0",
+      "state": "SETTLED"
+    }"#;
+
+        let invoice = serde_json::from_str::<Invoice>(invoice_json).unwrap();
+        assert_that(&invoice.r_preimage).is_none()
+    }
 }
