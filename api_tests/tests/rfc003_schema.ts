@@ -1,5 +1,5 @@
 import { Actor } from "../src/actors/actor";
-import { expect, request } from "chai";
+import { expect } from "chai";
 import "chai/register-should";
 import "../src/setup_chai";
 import * as sirenJsonSchema from "../siren.schema.json";
@@ -26,8 +26,8 @@ async function assertValidSirenDocument(
         link.rel.includes("self")
     ).href;
 
-    const swapResponse = await request(alice.cndHttpApiUrl()).get(selfLink);
-    const swapEntity = swapResponse.body as Entity;
+    const swapResponse = await alice.cnd.fetch(selfLink);
+    const swapEntity = swapResponse.data as Entity;
 
     expect(swapEntity, message).to.be.jsonSchema(sirenJsonSchema);
     expect(swapEntity.properties, message).to.be.jsonSchema(
@@ -39,9 +39,9 @@ describe("Rfc003 schema tests", () => {
     it(
         "get-all-swaps-is-valid-siren",
         twoActorTest(async ({ alice }) => {
-            const res = await request(alice.cndHttpApiUrl()).get("/swaps");
+            const res = await alice.cnd.fetch("/swaps");
 
-            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
+            expect(res.data).to.be.jsonSchema(sirenJsonSchema);
         })
     );
 
@@ -111,11 +111,11 @@ describe("Rfc003 schema tests", () => {
 // ******************************************** //
 
 async function assertSwapsInProgress(actor: Actor, message: string) {
-    const res = await request(actor.cndHttpApiUrl()).get("/swaps");
+    const res = await actor.cnd.fetch("/swaps");
 
-    const swapEntities = res.body.entities as EmbeddedRepresentationSubEntity[];
+    const body = res.data as { entities: EmbeddedRepresentationSubEntity[] };
 
-    expect(swapEntities.map((entity) => entity.properties, message))
+    expect(body.entities.map((entity) => entity.properties, message))
         .to.each.have.property("status")
         .that.is.equal("IN_PROGRESS");
 }
@@ -201,7 +201,7 @@ describe("Rfc003 schema swap reject tests", () => {
             );
             const declineRes = await bob.cnd.executeSirenAction(decline);
 
-            declineRes.should.have.status(200);
+            expect(declineRes.status).to.equal(200);
 
             expect(
                 await bob.pollCndUntil(
