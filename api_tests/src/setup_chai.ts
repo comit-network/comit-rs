@@ -2,13 +2,11 @@
 // This is to reduce noise in our actual test files
 
 import { tv4, use } from "chai";
-import chaiAsPromised from "chai-as-promised";
 import chaiEach = require("chai-each");
 import chaiJsonSchema = require("chai-json-schema");
 import chaiSubset = require("chai-subset");
 import * as sirenJsonSchema from "../siren.schema.json";
 
-use(chaiAsPromised);
 use(chaiSubset);
 use(chaiEach);
 use(chaiJsonSchema);
