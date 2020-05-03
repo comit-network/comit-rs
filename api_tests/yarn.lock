@@ -513,10 +513,10 @@
   resolved "https://registry.yarnpkg.com/@protobufjs/utf8/-/utf8-1.1.0.tgz#a777360b5b39a1a2e5106f8e858f2fd2d060c570"
   integrity sha1-p3c2C1s5oaLlEG+OhY8v0tBgxXA=
 
-"@radar/lnrpc@^0.9.0-beta":
-  version "0.9.0-beta"
-  resolved "https://registry.yarnpkg.com/@radar/lnrpc/-/lnrpc-0.9.0-beta.tgz#870e9eea4f9659516c46888dc7db31dd3cdd7062"
-  integrity sha512-ZsHOUHdtjEwwdRzO/lsn398Zxu7eAkfLr5uOBHb9aeSrP14CgW6EUGGzmQIWcDPQAJzcsLVLt048Y76iHSz7Sw==
+"@radar/lnrpc@^0.10.0-beta":
+  version "0.10.0-beta"
+  resolved "https://registry.yarnpkg.com/@radar/lnrpc/-/lnrpc-0.10.0-beta.tgz#43d8f41faf2883706c249bd58beeb37311314448"
+  integrity sha512-I+owC4OygW/aWXzKIaQpAIOhLDV0ScnoP/vg7PxEvnl/l6ZxpQ1dP4EkdXlXc/QW6eNgyujVmQL2wLD4vn7ylg==
   dependencies:
     "@grpc/proto-loader" "^0.4.0"
     "@types/google-protobuf" "^3.2.7"

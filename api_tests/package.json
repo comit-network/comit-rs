@@ -17,7 +17,7 @@
     "license": "ISC",
     "dependencies": {
         "@iarna/toml": "^2.2.5",
-        "@radar/lnrpc": "^0.9.0-beta",
+        "@radar/lnrpc": "^0.10.0-beta",
         "@types/chai": "^4.2.11",
         "@types/chai-as-promised": "^7.1.2",
         "@types/chai-json-schema": "^1.4.5",
