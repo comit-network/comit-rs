@@ -64,7 +64,7 @@
         "temp-write": "^4.0.0",
         "tmp": "^0.2.1",
         "ts-jest": "^25.4.0",
-        "ts-node": "^8.9.1",
+        "ts-node": "^8.10.1",
         "tslint": "^6.1.2",
         "tslint-config-prettier": "^1.18.0",
         "tslint-no-unused-expression-chai": "^0.1.4",
