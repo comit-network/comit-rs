@@ -1,7 +1,8 @@
 import { oneActorTest } from "../src/actor_test";
-import { expect, request } from "chai";
+import { expect } from "chai";
 import * as sirenJsonSchema from "../siren.schema.json";
 import { Link } from "comit-sdk";
+import axios from "axios";
 
 // ******************************************** //
 // Siren Schema tests                                 //
@@ -11,36 +12,42 @@ describe("Siren Schema", () => {
     it(
         "can-fetch-root-document-as-siren",
         oneActorTest(async ({ alice }) => {
-            const res = await request(alice.cndHttpApiUrl()).get("/");
+            const res = await alice.cnd.fetch("/");
 
-            expect(res).to.have.status(200);
-            expect(res.body).to.be.jsonSchema(sirenJsonSchema);
+            expect(res.status).to.equal(200);
+            expect(res.data).to.be.jsonSchema(sirenJsonSchema);
         })
     );
 
     it(
         "returns-listen-addresses-on-root-document-as-siren",
         oneActorTest(async ({ alice }) => {
-            const res = await request(alice.cndHttpApiUrl())
-                .get("/")
-                .set("accept", "application/vnd.siren+json");
+            const res = await axios({
+                baseURL: alice.cndHttpApiUrl(),
+                url: "/",
+                headers: { accept: "application/vnd.siren+json" },
+            });
+            const body = res.data as any;
 
-            expect(res.body.properties.id).to.be.a("string");
-            expect(res.body.properties.listen_addresses).to.be.an("array");
+            expect(body.properties.id).to.be.a("string");
+            expect(body.properties.listen_addresses).to.be.an("array");
             // At least 2 ipv4 addresses, lookup and external interface
-            expect(
-                res.body.properties.listen_addresses.length
-            ).to.be.greaterThan(1);
+            expect(body.properties.listen_addresses.length).to.be.greaterThan(
+                1
+            );
         })
     );
 
     it(
         "returns-links-to-create-swap-endpoints-on-root-document-as-siren",
         oneActorTest(async ({ alice }) => {
-            const res = await request(alice.cndHttpApiUrl())
-                .get("/")
-                .set("accept", "application/vnd.siren+json");
-            const links = res.body.links;
+            const res = await axios({
+                baseURL: alice.cndHttpApiUrl(),
+                url: "/",
+                headers: { accept: "application/vnd.siren+json" },
+            });
+            const body = res.data as any;
+            const links = body.links;
 
             const swapsLink = links.find(
                 (link: Link) =>
