@@ -1,12 +1,27 @@
-import { oneActorTest } from "../src/actor_test";
-import { expect } from "chai";
+import { oneActorTest, twoActorTest } from "../src/actor_test";
+import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
-import { Link } from "comit-sdk";
+import { EmbeddedRepresentationSubEntity, Entity, Link } from "comit-sdk";
 import axios from "axios";
+import { createDefaultSwapRequest } from "../src/utils";
+import { Actor } from "../src/actors/actor";
+import * as swapPropertiesJsonSchema from "../swap.schema.json";
 
 // ******************************************** //
 // Siren Schema tests                                 //
 // ******************************************** //
+
+async function assertValidSirenDocument(swapsEntity: Entity, alice: Actor) {
+    const selfLink = swapsEntity.links.find((link: Link) =>
+        link.rel.includes("self")
+    ).href;
+
+    const swapResponse = await alice.cnd.fetch(selfLink);
+    const swapEntity = swapResponse.data as Entity;
+
+    expect(swapEntity).toMatchSchema(sirenJsonSchema);
+    expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
+}
 
 describe("Siren Schema", () => {
     it(
@@ -14,8 +29,8 @@ describe("Siren Schema", () => {
         oneActorTest(async ({ alice }) => {
             const res = await alice.cnd.fetch("/");
 
-            expect(res.status).to.equal(200);
-            expect(res.data).to.be.jsonSchema(sirenJsonSchema);
+            expect(res.status).toBe(200);
+            expect(res.data).toMatchSchema(sirenJsonSchema);
         })
     );
 
@@ -29,12 +44,14 @@ describe("Siren Schema", () => {
             });
             const body = res.data as any;
 
-            expect(body.properties.id).to.be.a("string");
-            expect(body.properties.listen_addresses).to.be.an("array");
+            expect(typeof body.properties.id).toBe("string");
+            expect(
+                Array.isArray(body.properties.listen_addresses)
+            ).toBeTruthy();
             // At least 2 ipv4 addresses, lookup and external interface
-            expect(body.properties.listen_addresses.length).to.be.greaterThan(
-                1
-            );
+            expect(
+                body.properties.listen_addresses.length
+            ).toBeGreaterThanOrEqual(2);
         })
     );
 
@@ -57,7 +74,7 @@ describe("Siren Schema", () => {
                     link.class.includes("swaps")
             );
 
-            expect(swapsLink).to.be.deep.equal({
+            expect(swapsLink).toMatchObject({
                 rel: ["collection"],
                 class: ["swaps"],
                 href: "/swaps",
@@ -73,11 +90,36 @@ describe("Siren Schema", () => {
                     link.class.includes("rfc003")
             );
 
-            expect(rfc003SwapsLink).to.be.deep.equal({
+            expect(rfc003SwapsLink).toMatchObject({
                 rel: ["collection", "edit"],
                 class: ["swaps", "rfc003"],
                 href: "/swaps/rfc003",
             });
+        })
+    );
+
+    it(
+        "get-single-swap-is-valid-siren",
+        twoActorTest(async ({ alice, bob }) => {
+            // Alice send swap request to Bob
+            await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
+
+            const aliceSwapEntity = await alice
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
+                .then(
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+
+            await assertValidSirenDocument(aliceSwapEntity, alice);
+
+            const bobsSwapEntity = await bob
+                .pollCndUntil("/swaps", (body) => body.entities.length > 0)
+                .then(
+                    (body) =>
+                        body.entities[0] as EmbeddedRepresentationSubEntity
+                );
+            await assertValidSirenDocument(bobsSwapEntity, bob);
         })
     );
 });

@@ -164,7 +164,7 @@ pub async fn build_rfc003_siren_entity(
             .with_link(siren::NavigationalLink::new(&["self"], swap_path(id)))
             .with_link(
                 siren::NavigationalLink::new(
-                    &["describedBy"],
+                    &["describedby"],
                     "https://github.com/comit-network/RFCs/blob/master/RFC-003-SWAP-Basic.adoc",
                 )
                 .with_type("text/html")

@@ -200,7 +200,7 @@ impl Settings {
             data: {
                 let default_data_dir =
                     crate::data_dir().context("unable to determine default data path")?;
-                data.unwrap_or_else(|| Data {
+                data.unwrap_or(Data {
                     dir: default_data_dir,
                 })
             },

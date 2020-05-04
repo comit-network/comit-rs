@@ -12,7 +12,6 @@ import {
 } from "comit-sdk";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
-import "../setup_chai";
 import { Asset, AssetKind, toKey, toKind } from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
