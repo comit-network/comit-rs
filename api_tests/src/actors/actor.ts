@@ -801,7 +801,6 @@ export class Actor {
 
         do {
             swapEntity = await this.swap.fetchDetails();
-            console.log(JSON.stringify(swapEntity, null, 2));
 
             await sleep(200);
         } while (swapEntity.properties.state[ledger].status !== status);
