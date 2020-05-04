@@ -783,16 +783,10 @@ export class Actor {
             | "REFUNDED"
             | "INCORRECTLY_FUNDED"
     ) {
+        // This is hackery of the higest order.
         if (
-            ledger === "alpha_ledger" &&
+            this.betaLedger.name === LedgerKind.Lightning ||
             this.alphaLedger.name === LedgerKind.Lightning
-        ) {
-            return;
-        }
-
-        if (
-            ledger === "beta_ledger" &&
-            this.betaLedger.name === LedgerKind.Lightning
         ) {
             return;
         }

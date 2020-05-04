@@ -6,7 +6,7 @@ mod swap_state;
 use crate::{
     http_api::{
         action::ActionExecutionParameters,
-        route_factory::swap_path,
+        route_factory,
         routes::{
             into_rejection,
             rfc003::handlers::{handle_action, handle_get_swap, handle_post_swap},
@@ -34,8 +34,11 @@ pub async fn post_swap(
         .await
         .map(|swap_created| {
             let body = warp::reply::json(&swap_created);
-            let response =
-                warp::reply::with_header(body, header::LOCATION, swap_path(swap_created.id));
+            let response = warp::reply::with_header(
+                body,
+                header::LOCATION,
+                route_factory::rfc003_swap_path(swap_created.id),
+            );
             warp::reply::with_status(response, warp::http::StatusCode::CREATED)
         })
         .map_err(problem::from_anyhow)
