@@ -36,11 +36,11 @@ describe("Rfc003 schema tests", () => {
                 );
 
             const protocolLink = aliceSwapEntity.links.find((link: Link) =>
-                link.rel.includes("describedBy")
+                link.rel.includes("describedby")
             );
 
             expect(protocolLink).toStrictEqual({
-                rel: ["describedBy"],
+                rel: ["describedby"],
                 class: ["protocol-spec"],
                 type: "text/html",
                 href:
@@ -57,7 +57,8 @@ describe("Rfc003 schema tests", () => {
 async function assertSwapsInProgress(actor: Actor) {
     const res = await actor.cnd.fetch("/swaps");
     const body = res.data as { entities: EmbeddedRepresentationSubEntity[] };
-    expect.assertions(body.entities.length);
+
+    expect(body.entities.length).toBeGreaterThan(0);
 
     body.entities.map((entity) => {
         expect(entity.properties).toHaveProperty("status", "IN_PROGRESS");
@@ -120,15 +121,8 @@ describe("Rfc003 schema swap reject tests", () => {
             expect(bobSwapDetails.properties).toMatchSchema(
                 swapPropertiesJsonSchema
             );
-            expect(bobSwapDetails.actions).toEqual(
-                expect.arrayContaining([
-                    {
-                        name: "accept",
-                    },
-                    {
-                        name: "decline",
-                    },
-                ])
+            expect(bobSwapDetails.actions.map((action) => action.name)).toEqual(
+                expect.arrayContaining(["accept", "decline"])
             );
 
             /// Decline the swap
