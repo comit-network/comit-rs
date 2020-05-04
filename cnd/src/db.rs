@@ -21,9 +21,10 @@ pub use self::{
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{rfc003::SwapId, Role},
+    swap_protocols::{rfc003::SwapId, LocalSwapId, Role},
 };
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
+use libp2p::PeerId;
 use std::{
     ffi::OsStr,
     path::{Path, PathBuf},
@@ -130,6 +131,25 @@ struct QueryableSwapRole {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
+}
+
+/// Data required to create a swap.
+///
+/// 'create' a swap is defined as the process of initiating a swap within `cnd`.
+/// The data required to do so is assumed to have been negotiated between the
+/// two parties prior to each creating the swap.
+#[derive(Debug, Clone)]
+pub struct CreatedSwap<A, B> {
+    /// Node specific swap identifier.
+    pub swap_id: LocalSwapId,
+    /// The parameters used on the alpha ledger.
+    pub alpha: A,
+    /// The parameters used on the beta ledger.
+    pub beta: B,
+    /// Peer ID of the swap counterparty.
+    pub peer: PeerId,
+    /// Role of the node in this swap, Alice or Bob.
+    pub role: Role,
 }
 
 #[cfg(test)]

@@ -1,10 +1,12 @@
 use crate::{
     asset,
+    db::CreatedSwap,
     http_api::{problem, routes::into_rejection, Http},
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        Facade, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Rfc003Facade, Role,
+        halight, han, Facade, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId,
+        Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -65,18 +67,31 @@ pub async fn post_han_ethereum_halight_bitcoin(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
+    let swap_params: HanEtherereumHalightBitcoinCreateSwapParams = body.clone().into();
+
+    let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let id = LocalSwapId::default();
-
-    facade.save(id, ()).await;
+    let swap = CreatedSwap::<han::CreatedSwap, halight::CreatedSwap> {
+        swap_id,
+        alpha: body.alpha.into(),
+        beta: body.beta.into(),
+        peer: body.peer.peer_id,
+        role: body.role.0,
+    };
 
     facade
-        .initiate_communication(id, body.into())
+        .save(swap)
+        .await
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    facade
+        .initiate_communication(swap_id, swap_params)
         .await
         .map(|_| {
             warp::reply::with_status(
-                warp::reply::with_header(reply, "Location", format!("/swaps/{}", id)),
+                warp::reply::with_header(reply, "Location", format!("/swaps/{}", swap_id)),
                 StatusCode::CREATED,
             )
         })
@@ -177,6 +192,17 @@ pub struct HanEthereumEther {
     pub absolute_expiry: u32,
 }
 
+impl From<HanEthereumEther> for han::CreatedSwap {
+    fn from(p: HanEthereumEther) -> Self {
+        han::CreatedSwap {
+            amount: p.amount,
+            identity: p.identity,
+            chain_id: p.chain_id,
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
+}
+
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct HalightLightningBitcoin {
     pub amount: Http<asset::Bitcoin>,
@@ -185,11 +211,22 @@ pub struct HalightLightningBitcoin {
     pub cltv_expiry: u32,
 }
 
+impl From<HalightLightningBitcoin> for halight::CreatedSwap {
+    fn from(p: HalightLightningBitcoin) -> Self {
+        halight::CreatedSwap {
+            amount: *p.amount,
+            identity: p.identity,
+            network: p.network,
+            cltv_expiry: p.cltv_expiry,
+        }
+    }
+}
+
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Herc20EthereumErc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
-    pub contract_address: crate::ethereum::Address,
+    pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,
 }

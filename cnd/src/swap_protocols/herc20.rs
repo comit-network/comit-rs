@@ -21,7 +21,19 @@ use crate::{ethereum::Bytes, timestamp::Timestamp};
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
 pub use connector_impls::*;
 
-/// Resolves when said event has occured.
+/// Htlc ERC20 Token atomic swap protocol.
+
+/// Data required to create a swap that involves an ERC20 token.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Erc20Quantity,
+    pub identity: identity::Ethereum,
+    pub chain_id: u32,
+    pub contract_address: identity::Ethereum,
+    pub absolute_expiry: u32,
+}
+
+/// Resolves when said event has occurred.
 #[async_trait::async_trait]
 pub trait WaitForDeployed {
     async fn wait_for_deployed(&self, params: Params) -> anyhow::Result<Deployed>;

@@ -24,6 +24,17 @@ use genawaiter::{
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
+/// Htlc Native Ethereum atomic swap protocol.
+
+/// Data required to create a swap that involves Ether.
+#[derive(Clone, Debug)]
+pub struct CreatedSwap {
+    pub amount: asset::Ether,
+    pub identity: identity::Ethereum,
+    pub chain_id: u32,
+    pub absolute_expiry: u32,
+}
+
 pub async fn new_han_ethereum_ether_swap(
     swap_id: LocalSwapId,
     connector: Arc<Cache<Web3Connector>>,
