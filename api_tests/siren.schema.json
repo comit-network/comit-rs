@@ -71,7 +71,7 @@
                 "href": {
                     "description": "The URI of the linked sub-entity.",
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri-reference"
                 },
                 "type": {
                     "$ref": "#/definitions/MediaType"
@@ -127,7 +127,7 @@
                 "href": {
                     "description": "The URI of the action.",
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri-reference"
                 },
                 "title": {
                     "description": "Descriptive text about the action.",
@@ -248,7 +248,7 @@
                 "href": {
                     "description": "The URI of the linked resource.",
                     "type": "string",
-                    "format": "uri"
+                    "format": "uri-reference"
                 },
                 "type": {
                     "$ref": "#/definitions/MediaType"
