@@ -15,7 +15,7 @@ function validate(schema: object, data: object) {
     };
 }
 
-export function extendSchemaMatcher(): void {
+function extendSchemaMatcher(): void {
     expect.extend({
         toMatchSchema(data: object, schema: object) {
             const schemaValid = validate(schema, data);
@@ -36,3 +36,5 @@ export function extendSchemaMatcher(): void {
         },
     });
 }
+
+extendSchemaMatcher();

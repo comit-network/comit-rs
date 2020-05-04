@@ -4,9 +4,7 @@ import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
 import { Action, EmbeddedRepresentationSubEntity, Link } from "comit-sdk";
-import { extendSchemaMatcher } from "../src/schema_matcher";
-
-extendSchemaMatcher();
+import "../src/schema_matcher";
 
 // ******************************************** //
 // RFC003 schema tests                          //

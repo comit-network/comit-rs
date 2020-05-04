@@ -1,13 +1,11 @@
 import { oneActorTest, twoActorTest } from "../src/actor_test";
-import { extendSchemaMatcher } from "../src/schema_matcher";
+import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
 import { EmbeddedRepresentationSubEntity, Entity, Link } from "comit-sdk";
 import axios from "axios";
 import { createDefaultSwapRequest } from "../src/utils";
 import { Actor } from "../src/actors/actor";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
-
-extendSchemaMatcher();
 
 // ******************************************** //
 // Siren Schema tests                                 //
