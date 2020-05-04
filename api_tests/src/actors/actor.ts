@@ -782,16 +782,10 @@ export class Actor {
             | "REFUNDED"
             | "INCORRECTLY_FUNDED"
     ) {
+        // This is hackery of the higest order.
         if (
-            ledger === "alpha_ledger" &&
+            this.betaLedger.name === LedgerKind.Lightning ||
             this.alphaLedger.name === LedgerKind.Lightning
-        ) {
-            return;
-        }
-
-        if (
-            ledger === "beta_ledger" &&
-            this.betaLedger.name === LedgerKind.Lightning
         ) {
             return;
         }
@@ -807,6 +801,7 @@ export class Actor {
 
         do {
             swapEntity = await this.swap.fetchDetails();
+            console.log(JSON.stringify(swapEntity, null, 2));
 
             await sleep(200);
         } while (swapEntity.properties.state[ledger].status !== status);
