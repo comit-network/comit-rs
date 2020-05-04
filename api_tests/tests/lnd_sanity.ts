@@ -8,7 +8,6 @@
 import { twoActorTest } from "../src/actor_test";
 import { LedgerKind } from "../src/ledgers/ledger";
 import { AssetKind } from "../src/asset";
-import { expect } from "chai";
 
 describe("E2E: Sanity - LND Alice pays Bob", () => {
     it(
@@ -54,7 +53,7 @@ describe("E2E: Sanity - LND Alice pays Bob", () => {
             await bob.lnSettleInvoice(secret, secretHash);
 
             const pay = await paymentPromise;
-            expect(pay.paymentPreimage.toString("hex")).equals(secret);
+            expect(pay.paymentPreimage.toString("hex")).toEqual(secret);
 
             await bob.lnAssertInvoiceSettled(secretHash);
         })

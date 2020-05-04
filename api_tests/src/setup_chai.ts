@@ -3,7 +3,6 @@
 
 import { tv4, use } from "chai";
 import chaiAsPromised from "chai-as-promised";
-import chaiBigNumber = require("chai-bignumber");
 import chaiEach = require("chai-each");
 import chaiHttp = require("chai-http");
 import chaiJsonSchema = require("chai-json-schema");
@@ -15,6 +14,5 @@ use(chaiHttp);
 use(chaiSubset);
 use(chaiEach);
 use(chaiJsonSchema);
-use(chaiBigNumber());
 
 tv4.addSchema("http://sirenspec.org/schema", sirenJsonSchema);

@@ -1,4 +1,4 @@
-import { BigNumber, EthereumWallet as EthereumWalletSdk } from "comit-sdk";
+import { EthereumWallet as EthereumWalletSdk } from "comit-sdk";
 import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
@@ -143,10 +143,12 @@ export class EthereumWallet implements Wallet {
     }
 
     private async mintEther(asset: Asset): Promise<void> {
-        const minimumExpectedBalance = asset.quantity;
+        const minimumExpectedBalance = BigInt(asset.quantity);
 
         // make sure we have at least twice as much
-        const value = new BigNumberEthers(minimumExpectedBalance).mul(2);
+        const value = new BigNumberEthers(
+            minimumExpectedBalance.toString()
+        ).mul(2);
         await this.sendTransaction({
             to: this.account(),
             value,
@@ -156,7 +158,7 @@ export class EthereumWallet implements Wallet {
 
         const balance = await this.getBalanceByAsset(asset);
 
-        if (balance.lte(minimumExpectedBalance)) {
+        if (balance <= minimumExpectedBalance) {
             throw new Error("Failed to mint Ether");
         }
 
@@ -190,19 +192,18 @@ export class EthereumWallet implements Wallet {
         return transactionReceipt.contractAddress;
     }
 
-    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
-        let balance = new BigNumber(0);
+    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
+        let balance = BigInt(0);
         switch (asset.name) {
             case "ether":
-                balance = new BigNumber(
-                    (await this.inner.getBalance()).toString()
-                );
+                balance = await this.inner
+                    .getBalance()
+                    .then((balance) => BigInt(balance.toString()));
                 break;
             case "erc20":
-                balance = await this.inner.getErc20Balance(
-                    asset.token_contract,
-                    0
-                );
+                balance = await this.inner
+                    .getErc20Balance(asset.token_contract, 0)
+                    .then((balance) => BigInt(balance.toString(10)));
                 break;
             default:
                 throw new Error(

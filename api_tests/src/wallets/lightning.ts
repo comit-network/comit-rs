@@ -1,6 +1,5 @@
 import { pollUntilMinted, Wallet } from "./index";
 import { Asset } from "../asset";
-import BigNumber from "bignumber.js";
 import { BitcoinWallet } from "./bitcoin";
 import { sleep } from "../utils";
 import { LightningWallet as LightningWalletSdk, Outpoint } from "comit-sdk";
@@ -41,12 +40,10 @@ export class LightningWallet implements Wallet {
             );
         }
 
-        const startingBalance = new BigNumber(
-            await this.getBalanceByAsset(asset)
-        );
+        const startingBalance = await this.getBalanceByAsset(asset);
         this.logger.debug("starting: ", startingBalance.toString());
 
-        const minimumExpectedBalance = new BigNumber(asset.quantity);
+        const minimumExpectedBalance = BigInt(asset.quantity);
         this.logger.debug("min expected: ", minimumExpectedBalance.toString());
 
         await this.bitcoinWallet.mintToAddress(
@@ -56,7 +53,7 @@ export class LightningWallet implements Wallet {
 
         await pollUntilMinted(
             this,
-            startingBalance.plus(minimumExpectedBalance),
+            startingBalance + minimumExpectedBalance,
             asset
         );
     }
@@ -65,18 +62,20 @@ export class LightningWallet implements Wallet {
         return this.inner.newAddress(AddressType.NESTED_PUBKEY_HASH);
     }
 
-    public async getBalanceByAsset(asset: Asset): Promise<BigNumber> {
+    public async getBalanceByAsset(asset: Asset): Promise<bigint> {
         if (asset.name !== "bitcoin") {
             throw new Error(
                 `Cannot read balance for asset ${asset.name} with LightningdWallet`
             );
         }
 
-        const walletBalance = await this.inner.confirmedWalletBalance();
-        const channelBalance = await this.inner.confirmedChannelBalance();
-        return new BigNumber(walletBalance ? walletBalance : 0).plus(
-            channelBalance ? channelBalance : 0
-        );
+        const walletBalance = await this.inner
+            .confirmedWalletBalance()
+            .then((balance) => BigInt(balance ? balance : 0));
+        const channelBalance = await this.inner
+            .confirmedChannelBalance()
+            .then((balance) => BigInt(balance ? balance : 0));
+        return walletBalance + channelBalance;
     }
 
     // This function does not have its place on a Wallet
