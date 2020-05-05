@@ -13,11 +13,9 @@ it(
         const bodies = (await SwapFactory.newSwap(alice, bob))
             .hanEthereumEtherHalightLightningBitcoin;
 
-        // Bob needs to know about the swap first because he is not buffering incoming announcements about swaps he doesn't know about
-        await bob.createSwap(bodies.bob);
-        await sleep(500);
-
         await alice.createSwap(bodies.alice);
+        await sleep(500);
+        await bob.createSwap(bodies.bob);
 
         await alice.init();
 
