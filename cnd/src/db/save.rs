@@ -6,7 +6,7 @@ use crate::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
         },
-        CreatedSwap, Sqlite, Swap,
+        CreatedSwap, FinalizedSwap, Sqlite, Swap,
     },
     identity,
     swap_protocols::{
@@ -513,6 +513,13 @@ impl Save<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>> for Sqlite {
         &self,
         _: CreatedSwap<han::CreatedSwap, halight::CreatedSwap>,
     ) -> anyhow::Result<()> {
+        unimplemented!()
+    }
+}
+
+#[async_trait]
+impl Save<FinalizedSwap> for Sqlite {
+    async fn save(&self, _: FinalizedSwap) -> anyhow::Result<()> {
         unimplemented!()
     }
 }
