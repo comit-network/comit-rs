@@ -168,7 +168,7 @@ fn main() -> anyhow::Result<()> {
         swap_communication_states,
         swap_error_states,
         seed,
-        db: database,
+        db: database.clone(),
         swarm: swarm.clone(),
     };
 
@@ -177,6 +177,7 @@ fn main() -> anyhow::Result<()> {
         swarm: swarm.clone(),
         alpha_ledger_states: Arc::clone(&alpha_ledger_states),
         beta_ledger_states: Arc::clone(&halight_states),
+        db: database,
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;

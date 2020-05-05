@@ -129,6 +129,9 @@ impl ComitLN {
         Ok(())
     }
 
+    // TODO: This function needs to get its data from the database _not_ from
+    // the hash maps in ComitLN, once that is done we can move this function out
+    // of the swarm and into the db impl block of `get_live_swap`.
     pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
         let create_swap_params = match self.swaps.get(&swap_id) {
             Some(body) => body,

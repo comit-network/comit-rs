@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    db::CreatedSwap,
+    db::{CreatedSwap, GetLiveSwap, LiveSwap, Sqlite},
     identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
@@ -74,6 +74,7 @@ pub struct Facade {
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
     pub alpha_ledger_states: Arc<LedgerStates>,
     pub beta_ledger_states: Arc<halight::States>,
+    pub db: Sqlite,
 }
 
 impl Facade {
@@ -89,7 +90,18 @@ impl Facade {
         self.swarm.initiate_communication(id, swap_params).await
     }
 
+    // TODO: Remove this, to be replaced by get_live_swap.
     pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.swarm.get_finalized_swap(id).await
+    }
+}
+
+impl GetLiveSwap for Facade
+where
+    Sqlite: GetLiveSwap,
+{
+    fn get_live_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<LiveSwap> {
+        // TODO: Use ambassador for this.
+        self.db.get_live_swap(swap_id)
     }
 }
