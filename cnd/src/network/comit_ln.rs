@@ -4,7 +4,7 @@ use crate::{
         oneshot_behaviour,
         protocols::{
             announce,
-            announce::{behaviour::Announce, SwapDigest},
+            announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
             ethereum_identity, finalize, lightning_identity, secret_hash,
         },
     },
@@ -21,7 +21,8 @@ use digest::Digest;
 use futures::AsyncWriteExt;
 use libp2p::{
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
+        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
+        NetworkBehaviourEventProcess, PollParameters,
     },
     NetworkBehaviour,
 };
@@ -198,6 +199,46 @@ impl ComitLN {
         })
     }
 
+    /// After announcement, exchange information for the swap, once done, go
+    /// finalize
+    fn communicate(
+        &mut self,
+        peer: libp2p::PeerId,
+        io: ReplySubstream<NegotiatedSubstream>,
+        local_swap_id: &LocalSwapId,
+    ) {
+        let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
+        let shared_swap_id = SharedSwapId::default();
+        self.swap_ids
+            .insert(local_swap_id.clone(), shared_swap_id.clone());
+
+        tokio::task::spawn(io.send(shared_swap_id));
+
+        let addresses = self.announce.addresses_of_peer(&peer);
+        self.secret_hash
+            .register_addresses(peer.clone(), addresses.clone());
+        self.ethereum_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.lightning_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.finalize.register_addresses(peer.clone(), addresses);
+
+        self.ethereum_identity.send(
+            peer.clone(),
+            ethereum_identity::Message::new(
+                shared_swap_id,
+                create_swap_params.ethereum_identity.into(),
+            ),
+        );
+        self.lightning_identity.send(
+            peer,
+            lightning_identity::Message::new(shared_swap_id, create_swap_params.lightning_identity),
+        );
+
+        self.communication_state
+            .insert(shared_swap_id, CommunicationState::default());
+    }
+
     fn poll<BIE>(
         &mut self,
         _cx: &mut Context<'_>,
@@ -353,39 +394,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 if let Some(local_swap_id) =
                     self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
-                    let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
-                    let shared_swap_id = SharedSwapId::default();
-                    self.swap_ids
-                        .insert(local_swap_id.clone(), shared_swap_id.clone());
-
-                    tokio::task::spawn(io.send(shared_swap_id));
-
-                    let addresses = self.announce.addresses_of_peer(&peer);
-                    self.secret_hash
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.ethereum_identity
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.lightning_identity
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.finalize.register_addresses(peer.clone(), addresses);
-
-                    self.ethereum_identity.send(
-                        peer.clone(),
-                        ethereum_identity::Message::new(
-                            shared_swap_id,
-                            create_swap_params.ethereum_identity.into(),
-                        ),
-                    );
-                    self.lightning_identity.send(
-                        peer,
-                        lightning_identity::Message::new(
-                            shared_swap_id,
-                            create_swap_params.lightning_identity,
-                        ),
-                    );
-
-                    self.communication_state
-                        .insert(shared_swap_id, CommunicationState::default());
+                    self.communicate(peer, *io, &local_swap_id);
                 }
             }
             announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
