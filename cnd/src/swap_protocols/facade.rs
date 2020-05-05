@@ -16,15 +16,14 @@ use crate::{
         ledger::{bitcoin, Ethereum},
         rfc003::{
             self,
-            create_swap::{HtlcParams, SwapEvent},
+            create_swap::HtlcParams,
             events::{
                 Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
                 Refunded,
             },
-            ActorState,
+            SwapCommunication,
         },
-        state_store::{self, Get, InMemoryStateStore, Insert, Update},
-        SwapId,
+        state, InsertFailedSwap, LedgerStates, SwapCommunicationStates, SwapErrorStates, SwapId,
     },
     transaction,
 };
@@ -51,43 +50,43 @@ use std::{convert::TryInto, fmt::Debug, sync::Arc};
 pub struct Facade {
     pub bitcoin_connector: Arc<btsieve::bitcoin::Cache<BitcoindConnector>>,
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-    pub state_store: Arc<InMemoryStateStore>,
+    pub alpha_ledger_state: Arc<LedgerStates>,
+    pub beta_ledger_state: Arc<LedgerStates>,
+    pub swap_communication_states: Arc<SwapCommunicationStates>,
+    pub swap_error_states: Arc<SwapErrorStates>,
     pub seed: RootSeed,
     pub swarm: Swarm,
     pub db: Sqlite,
 }
 
-impl<S> Insert<S> for Facade
+#[async_trait]
+impl<AL, BL, AA, BA, AI, BI> state::Insert<SwapCommunication<AL, BL, AA, BA, AI, BI>> for Facade
 where
-    S: Send + 'static,
+    SwapCommunication<AL, BL, AA, BA, AI, BI>: Send + 'static,
 {
-    fn insert(&self, key: SwapId, value: S) {
-        self.state_store.insert(key, value)
+    async fn insert(&self, key: SwapId, value: SwapCommunication<AL, BL, AA, BA, AI, BI>) {
+        self.swap_communication_states.insert(key, value).await
     }
 }
 
-impl<S> Get<S> for Facade
+#[async_trait]
+impl<AL, BL, AA, BA, AI, BI> state::Get<SwapCommunication<AL, BL, AA, BA, AI, BI>> for Facade
 where
-    S: Clone + Send + 'static,
-{
-    fn get(&self, key: &SwapId) -> Result<Option<S>, state_store::Error> {
-        self.state_store.get(key)
-    }
-}
-
-impl<S> Update<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>> for Facade
-where
-    S: ActorState + Send,
-    S::AA: Ord,
-    S::BA: Ord,
+    SwapCommunication<AL, BL, AA, BA, AI, BI>: Clone + Send + 'static,
 {
     #[allow(clippy::type_complexity)]
-    fn update(&self, key: &SwapId, update: SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>) {
-        Update::<S, SwapEvent<S::AA, S::BA, S::AH, S::BH, S::AT, S::BT>>::update(
-            self.state_store.as_ref(),
-            key,
-            update,
-        )
+    async fn get(
+        &self,
+        key: &SwapId,
+    ) -> anyhow::Result<Option<SwapCommunication<AL, BL, AA, BA, AI, BI>>> {
+        self.swap_communication_states.get(key).await
+    }
+}
+
+#[async_trait]
+impl InsertFailedSwap for Facade {
+    async fn insert_failed_swap(&self, id: &SwapId) {
+        self.swap_error_states.insert_failed_swap(&id).await
     }
 }
 

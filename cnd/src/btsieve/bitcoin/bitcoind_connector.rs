@@ -1,11 +1,11 @@
-use crate::btsieve::{
-    bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock,
+use crate::{
+    btsieve::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock},
+    config::validation::FetchNetworkId,
 };
 use async_trait::async_trait;
 use bitcoin::{BlockHash, Network};
 use reqwest::{Client, Url};
 use serde::Deserialize;
-use crate::config::validation::FetchNetworkId;
 
 #[derive(Copy, Clone, Debug, Deserialize)]
 pub struct ChainInfo {

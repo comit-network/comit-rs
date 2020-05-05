@@ -8,11 +8,12 @@ use crate::{
     seed::DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
-            self, alice,
+            self,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
-            Accept, Decline, DeriveIdentities, DeriveSecret, Request, SecretHash,
+            Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
+            SwapCommunication,
         },
-        state_store::Insert,
+        state::Insert,
         Facade, HashFunction, Role, SwapId,
     },
     timestamp::Timestamp,
@@ -60,14 +61,23 @@ where
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
     let counterparty = peer.peer_id.clone();
-    let seed = dependencies.derive_swap_seed(id);
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
 
-    let state =
-        alice::State::<_, _, _, _, AH, BH, _, _, AT, BT>::proposed(swap_request.clone(), seed);
-    dependencies.insert(id, state);
+    dependencies
+        .insert(id, SwapCommunication::Proposed {
+            request: swap_request.clone(),
+        })
+        .await;
+    dependencies
+        .alpha_ledger_state
+        .insert(id, LedgerState::<AA, AH, AT>::NotDeployed)
+        .await;
+    dependencies
+        .beta_ledger_state
+        .insert(id, LedgerState::<BA, BH, BT>::NotDeployed)
+        .await;
 
     let future = {
         async move {
@@ -84,20 +94,18 @@ where
                         &id,
                     )
                     .await?;
-                    init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
-                        &dependencies,
-                        accepted,
-                        Role::Alice,
-                    )?;
+
+                    init_accepted_swap::<_, _, _, _, AH, BH, _, _, AT, BT>(&dependencies, accepted)
+                        .await?;
                 }
                 Err(decline) => {
                     tracing::info!("Swap declined: {}", decline.swap_id);
-                    let state = alice::State::<_, _, _, _, AH, BH, _, _, AT, BT>::declined(
-                        swap_request.clone(),
-                        decline,
-                        seed,
-                    );
-                    dependencies.insert(id, state);
+                    let swap_communication_state = SwapCommunication::Declined {
+                        request: swap_request,
+                        response: decline,
+                    };
+
+                    dependencies.insert(id, swap_communication_state).await;
                     Save::save(&dependencies, decline).await?;
                 }
             };
@@ -120,7 +128,7 @@ pub async fn handle_post_swap(
     let seed = dependencies.derive_swap_seed(id);
     let secret_hash = seed.derive_secret().hash();
 
-    let body = serde_json::from_value(body)?;
+    let body = SwapRequestBody::deserialize(&body)?;
 
     match body {
         SwapRequestBody {

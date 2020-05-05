@@ -1,11 +1,11 @@
 use crate::{
     btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{TransactionReceipt, H256},
+    config::validation::FetchNetworkId,
+    ethereum::{Hash, TransactionReceipt},
     jsonrpc,
+    swap_protocols::ledger::ethereum::ChainId,
 };
-use crate::swap_protocols::ledger::ethereum::ChainId;
 use async_trait::async_trait;
-use crate::config::validation::FetchNetworkId;
 
 #[derive(Debug)]
 pub struct Web3Connector {
@@ -33,10 +33,7 @@ impl LatestBlock for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!(
-            "Fetched block from web3: {:x}",
-            block.hash.expect("blocks to have a hash")
-        );
+        tracing::trace!("Fetched block from web3: {:x}", block.hash);
 
         Ok(block)
     }
@@ -45,7 +42,7 @@ impl LatestBlock for Web3Connector {
 #[async_trait]
 impl BlockByHash for Web3Connector {
     type Block = crate::ethereum::Block;
-    type BlockHash = crate::ethereum::H256;
+    type BlockHash = crate::ethereum::Hash;
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let block = self
@@ -64,7 +61,7 @@ impl BlockByHash for Web3Connector {
 
 #[async_trait]
 impl ReceiptByHash for Web3Connector {
-    async fn receipt_by_hash(&self, transaction_hash: H256) -> anyhow::Result<TransactionReceipt> {
+    async fn receipt_by_hash(&self, transaction_hash: Hash) -> anyhow::Result<TransactionReceipt> {
         let receipt = self
             .client
             .send(jsonrpc::Request::new("eth_getTransactionReceipt", vec![
@@ -81,13 +78,13 @@ impl ReceiptByHash for Web3Connector {
 #[async_trait]
 impl FetchNetworkId<ChainId> for Web3Connector {
     async fn network_id(&self) -> anyhow::Result<ChainId> {
-        let chain_id: ChainId = self
+        let chain_id: String = self
             .client
-            .send::<Vec<()>, ChainId>(jsonrpc::Request::new("net_version", vec![]))
+            .send::<Vec<()>, String>(jsonrpc::Request::new("net_version", vec![]))
             .await?;
 
         tracing::debug!("Fetched net_version from web3: {:?}", chain_id);
 
-        Ok(chain_id)
+        Ok(ChainId::from(chain_id.parse::<u32>()?))
     }
 }

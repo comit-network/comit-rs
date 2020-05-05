@@ -15,6 +15,8 @@ INSTALLED_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain 
 INSTALLED_NIGHTLY_COMPONENTS = $(shell $(RUSTUP) component list --installed --toolchain $(NIGHTLY_TOOLCHAIN))
 AVAILABLE_CARGO_COMMANDS = $(shell $(CARGO) --list)
 
+CARGO_TOML_FILES = $(wildcard **/Cargo.toml)
+
 # All our targets go into .PHONY because none of them actually create files
 .PHONY: init_git_hooks default install_rust install_rust_nightly install_clippy install_rustfmt install_tomlfmt install clean all ci build clippy test doc e2e check_format format check_rust_format check_toml_format check_ts_format
 
@@ -52,10 +54,6 @@ endif
 
 ## User install
 
-download_bc_nodes:
-	@./blockchain_nodes/ensure_bitcoind.sh
-	@./blockchain_nodes/ensure_parity.sh
-
 install:
 	$(CARGO) install --force --path cnd
 
@@ -80,47 +78,36 @@ test:
 doc:
 	$(CARGO) doc
 
-e2e: download_bc_nodes build
+e2e: build
 	(cd ./api_tests; yarn install; yarn test)
+
+ci_gha:
+	(cd ./api_tests; yarn install; yarn ci)
 
 check_format: check_rust_format check_toml_format check_ts_format
 
 MODIFIED_FILES = $(shell git status --untracked-files=no --short)
-MODIFIED_RUST_FILES = $(filter %.rs,$(MODIFIED_FILES))
-MODIFIED_TOML_FILES = $(filter %.toml,$(MODIFIED_FILES))
 MODIFIED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(MODIFIED_FILES))
 
 format: install_rustfmt install_tomlfmt
-ifneq (,$(MODIFIED_RUST_FILES))
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
-endif
-ifneq (,$(MODIFIED_TOML_FILES))
-	$(CARGO) tomlfmt -p Cargo.toml && git add Cargo.toml
-	$(CARGO) tomlfmt -p cnd/Cargo.toml && git add cnd/Cargo.toml
-	$(CARGO) tomlfmt -p libp2p-comit/Cargo.toml && git add libp2p-comit/Cargo.toml
-endif
+	@$(foreach file,$(CARGO_TOML_FILES),$(CARGO) tomlfmt -p $(file) && git add $(file);)
 ifneq (,$(MODIFIED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run fix)
 endif
 
 STAGED_FILES = $(shell git diff --staged --name-only)
-STAGED_RUST_FILES = $(filter %.rs,$(STAGED_FILES))
-STAGED_TOML_FILES = $(filter %.toml,$(STAGED_FILES))
 STAGED_TYPESCRIPT_FILES = $(filter %.ts %.json %.yml,$(STAGED_FILES))
 
 check_rust_format: install_rustfmt
-ifneq (,$(STAGED_RUST_FILES))
 	$(CARGO_NIGHTLY) fmt -- --check
-endif
 
 check_toml_format: install_tomlfmt
-ifneq (,$(STAGED_TOML_FILES))
-	$(CARGO) tomlfmt -d -p Cargo.toml
-	$(CARGO) tomlfmt -d -p cnd/Cargo.toml
-	$(CARGO) tomlfmt -d -p libp2p-comit/Cargo.toml
-endif
+	@$(foreach file,$(CARGO_TOML_FILES),$(CARGO) tomlfmt -d -p $(file);)
 
 check_ts_format:
-ifneq (,$(STAGED_TYPESCRIPT_FILES))
+ifeq ($(CI),true)
+	(cd ./api_tests; yarn install; yarn run check)
+else ifneq (,$(STAGED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run check)
 endif

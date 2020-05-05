@@ -1,6 +1,6 @@
-use thiserror::Error;
-use std::fmt::Debug;
 use async_trait::async_trait;
+use std::fmt::Debug;
+use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error<T: Debug> {
@@ -11,9 +11,9 @@ pub enum Error<T: Debug> {
     },
 }
 pub async fn validate_blockchain_config<C, S>(connector: &C, specified: S) -> anyhow::Result<()>
-    where
-        C: FetchNetworkId<S>,
-        S: PartialEq + Debug + Send + Sync + 'static,
+where
+    C: FetchNetworkId<S>,
+    S: PartialEq + Debug + Send + Sync + 'static,
 {
     let actual = connector.network_id().await?;
     if actual == specified {

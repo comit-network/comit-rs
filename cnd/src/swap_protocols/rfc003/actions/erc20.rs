@@ -21,7 +21,7 @@ pub fn deploy_action(
     DeployContract {
         data: htlc.into(),
         amount: asset::Ether::zero(),
-        gas_limit: gas_limit.into(),
+        gas_limit,
         chain_id,
     }
 }
@@ -41,7 +41,7 @@ pub fn fund_action(
     CallContract {
         to: to_erc20_contract,
         data: Some(Bytes(data)),
-        gas_limit: gas_limit.into(),
+        gas_limit,
         chain_id,
         min_block_timestamp: None,
     }
@@ -58,7 +58,7 @@ pub fn refund_action(
     CallContract {
         to: beta_htlc_location,
         data: Some(data),
-        gas_limit: gas_limit.into(),
+        gas_limit,
         chain_id,
         min_block_timestamp: Some(expiry),
     }
@@ -75,7 +75,7 @@ pub fn redeem_action(
     CallContract {
         to: alpha_htlc_location,
         data: Some(data),
-        gas_limit: gas_limit.into(),
+        gas_limit,
         chain_id,
         min_block_timestamp: None,
     }

@@ -26,6 +26,9 @@ impl PublicKey {
     {
         secp256k1::PublicKey::from_secret_key(secp, secret_key).into()
     }
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes()
+    }
 }
 
 impl From<secp256k1::PublicKey> for PublicKey {

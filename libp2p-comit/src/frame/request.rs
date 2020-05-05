@@ -145,7 +145,7 @@ impl Request {
     where
         B: DeserializeOwned,
     {
-        B::deserialize(self.body)
+        B::deserialize(&self.body)
     }
 }
 

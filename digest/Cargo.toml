@@ -1,0 +1,13 @@
+[package]
+name = "digest"
+version = "0.1.0"
+authors = ["CoBloX <hello@coblox.tech>"]
+edition = "2018"
+
+[dependencies]
+digest-macro-derive = { path = "../digest-macro-derive" }
+hex = "0.4"
+
+[dev-dependencies]
+multihash = "0.10"
+serde = { version = "1.0", features = ["derive"] }

@@ -19,24 +19,25 @@ use cnd::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    config::{
-        self,
-        validation::{validate_blockchain_config},
-        Settings,
-    },
+    config::{self, validation::validate_blockchain_config, Settings},
     db::Sqlite,
+    file_lock::TryLockExclusive,
     http_api::route_factory,
     jsonrpc,
+    lnd::LndConnectorParams,
     load_swaps,
     network::Swarm,
     seed::RootSeed,
-    swap_protocols::{state_store::InMemoryStateStore, Facade},
+    swap_protocols::{
+        halight::InvoiceStates, Facade, Facade2, LedgerStates, SwapCommunicationStates,
+        SwapErrorStates,
+    },
 };
+
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
-use tokio::runtime;
-
+use tokio::{net::TcpListener, runtime};
 mod cli;
 mod trace;
 
@@ -57,7 +58,11 @@ fn main() -> anyhow::Result<()> {
 
     crate::trace::init_tracing(settings.logging.level)?;
 
+    let database = Sqlite::new_in_dir(&settings.data.dir)?;
+
     let seed = RootSeed::from_dir_or_generate(&settings.data.dir, OsRng)?;
+
+    let _locked_datadir = &settings.data.dir.try_lock_exclusive()?;
 
     let mut runtime = runtime::Builder::new()
         .enable_all()
@@ -65,48 +70,67 @@ fn main() -> anyhow::Result<()> {
         .thread_stack_size(1024 * 1024 * 8) // the default is 2MB but that causes a segfault for some reason
         .build()?;
 
-    const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
     let bitcoin_connector = {
-        let config::Bitcoin { network, bitcoind } = settings.clone().bitcoin;
-        Arc::new(bitcoin::Cache::new(
-            BitcoindConnector::new(bitcoind.node_url, network)?,
-            BITCOIN_BLOCK_CACHE_CAPACITY,
+        let config::Bitcoin { bitcoind, network } = &settings.bitcoin;
+        let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
+
+        runtime.block_on(async {
+            validate_blockchain_config(&connector, *network)
+                .await
+                .or_else::<anyhow::Error, _>(|e| {
+                    let conn_error = e.downcast::<reqwest::Error>()?;
+                    tracing::warn!("Could not validate Bitcoin node config: {}", conn_error);
+
+                    Ok(())
+                })
+        })?;
+
+        const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
+
+        Arc::new(bitcoin::Cache::new(connector, BITCOIN_BLOCK_CACHE_CAPACITY))
+    };
+
+    let ethereum_connector = {
+        let config::Ethereum { parity, chain_id } = &settings.ethereum;
+        let connector = Web3Connector::new(parity.node_url.clone());
+
+        runtime.block_on(async {
+            validate_blockchain_config(&connector, *chain_id)
+                .await
+                .or_else::<anyhow::Error, _>(|e| {
+                    let conn_error = e.downcast::<jsonrpc::Error>()?;
+                    tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
+
+                    Ok(())
+                })
+        })?;
+
+        const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
+        const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
+
+        Arc::new(ethereum::Cache::new(
+            connector,
+            ETHEREUM_BLOCK_CACHE_CAPACITY,
+            ETHEREUM_RECEIPT_CACHE_CAPACITY,
         ))
     };
 
-    match runtime.block_on(validate_blockchain_config(&bitcoin_connector.connector, settings.bitcoin.network)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<reqwest::Error>() {
-                tracing::warn!("Could not validate Bitcoin node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
+    let lnd_connector_params = LndConnectorParams {
+        lnd_url: settings.lightning.lnd.rest_api_url.clone(),
+        retry_interval_ms: 100,
+        certificate_path: settings.lightning.lnd.cert_path.clone(),
+        macaroon_path: settings.lightning.lnd.readonly_macaroon_path.clone(),
     };
 
-    const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
-    const ETHEREUM_RECEIPT_CACHE_CAPACITY: usize = 720;
-    let ethereum_connector = Arc::new(ethereum::Cache::new(
-        Web3Connector::new(settings.clone().ethereum.parity.node_url),
-        ETHEREUM_BLOCK_CACHE_CAPACITY,
-        ETHEREUM_RECEIPT_CACHE_CAPACITY,
-    ));
+    // Han protocol
+    let alpha_ledger_state = Arc::new(LedgerStates::default());
+    let beta_ledger_state = Arc::new(LedgerStates::default());
+    let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
-    match runtime.block_on(validate_blockchain_config(&ethereum_connector.connector, settings.ethereum.chain_id)) {
-        Ok(_) => (),
-        Err(e) => {
-            if e.is::<jsonrpc::Error>() {
-                tracing::warn!("Could not validate Ethereum node config: {}", e)
-            } else {
-                return Err(e)
-            }
-        }
-    };
+    // HALight
+    let invoice_states = Arc::new(InvoiceStates::default());
 
-    let state_store = Arc::new(InMemoryStateStore::default());
-
-    let database = Sqlite::new_in_dir(&settings.data.dir)?;
+    let swap_error_states = Arc::new(SwapErrorStates::default());
 
     let swarm = Swarm::new(
         &settings,
@@ -114,24 +138,37 @@ fn main() -> anyhow::Result<()> {
         &mut runtime,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        Arc::clone(&state_store),
+        lnd_connector_params,
+        Arc::clone(&swap_communication_states),
+        Arc::clone(&alpha_ledger_state),
+        Arc::clone(&beta_ledger_state),
+        Arc::clone(&invoice_states),
         &database,
     )?;
+
+    let facade2 = Facade2 {
+        swarm: swarm.clone(),
+        alpha_ledger_state: Arc::clone(&alpha_ledger_state),
+        beta_ledger_state: Arc::clone(&invoice_states),
+    };
 
     let deps = Facade {
         bitcoin_connector,
         ethereum_connector,
-        state_store,
+        alpha_ledger_state,
+        beta_ledger_state,
+        swap_communication_states,
+        swap_error_states,
         seed,
-        swarm,
         db: database,
+        swarm,
     };
 
     runtime.block_on(load_swaps::load_swaps_from_database(deps.clone()))?;
-    runtime.spawn(spawn_warp_instance(settings, deps));
 
-    // Block the current thread.
-    ::std::thread::park();
+    let http_server_future = spawn_warp_instance(settings, deps, facade2);
+    runtime.block_on(http_server_future)?;
+
     Ok(())
 }
 
@@ -146,14 +183,24 @@ fn version() {
     println!("{} {} ({})", name, version, short);
 }
 
-async fn spawn_warp_instance(settings: Settings, dependencies: Facade) {
-    let routes = route_factory::create(dependencies, &settings.http_api.cors.allowed_origins);
+async fn spawn_warp_instance(
+    settings: Settings,
+    dependencies: Facade,
+    facade2: Facade2,
+) -> anyhow::Result<()> {
+    let routes = route_factory::create(
+        dependencies,
+        facade2,
+        &settings.http_api.cors.allowed_origins,
+    );
 
     let listen_addr = settings.http_api.socket;
+    let listener = TcpListener::bind(listen_addr).await?;
 
-    tracing::info!("Starting HTTP server on {}", listen_addr);
+    tracing::info!("Starting HTTP server on {} ...", listen_addr);
+    warp::serve(routes).serve_incoming(listener).await;
 
-    warp::serve(routes).bind(listen_addr).await
+    Ok(())
 }
 
 #[allow(clippy::print_stdout)] // We cannot use `log` before we have the config file

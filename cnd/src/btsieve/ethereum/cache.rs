@@ -50,11 +50,9 @@ where
 
     async fn latest_block(&self) -> anyhow::Result<Self::Block> {
         let block = self.connector.latest_block().await?;
-
-        let block_hash = block.hash.expect("no blocks without hash");
         let mut guard = self.block_cache.lock().await;
-        if !guard.contains(&block_hash) {
-            guard.put(block_hash, block.clone());
+        if !guard.contains(&block.hash) {
+            guard.put(block.hash, block.clone());
         }
 
         Ok(block)

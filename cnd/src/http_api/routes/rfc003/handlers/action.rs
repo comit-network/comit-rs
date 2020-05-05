@@ -17,16 +17,16 @@ use crate::{
         rfc003::{
             self,
             actions::{Action, ActionKind},
-            bob::State,
             messages::{Decision, IntoAcceptMessage},
+            LedgerState, SwapCommunication,
         },
-        state_store::{Get, Insert},
+        state::{Get, Insert},
         Facade, SwapId,
     },
 };
 use anyhow::Context;
 use libp2p_comit::frame::Response;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::{
     fmt::{self, Debug, Display},
     string::ToString,
@@ -45,9 +45,28 @@ pub async fn handle_action(
     let types = dependencies.determine_types(&swap_id).await?;
 
     with_swap_types!(types, {
-        let state: ROLE = dependencies.get(&swap_id)?.ok_or_else(|| {
-            anyhow::anyhow!("state store did not contain an entry for {}", swap_id)
-        })?;
+        let swap_communication: SwapCommunication<AL, BL, AA, BA, AI, BI> = dependencies
+            .get(&swap_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("swap communication state not found for {}", swap_id))?;
+        let alpha_ledger_state: LedgerState<AA, AH, AT> = dependencies
+            .alpha_ledger_state
+            .get(&swap_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
+        let beta_ledger_state: LedgerState<BA, BH, BT> = dependencies
+            .beta_ledger_state
+            .get(&swap_id)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
+        let secret_source = dependencies.derive_swap_seed(swap_id);
+
+        let state = RoleState::new(
+            swap_communication,
+            alpha_ledger_state,
+            beta_ledger_state,
+            secret_source,
+        );
 
         let action = state
             .actions()
@@ -56,8 +75,8 @@ pub async fn handle_action(
 
         match action {
             Action::Accept(_) => {
-                let body = serde_json::from_value::<AcceptBody>(body)
-                    .context("failed to deserialize accept body")?;
+                let body =
+                    AcceptBody::deserialize(&body).context("failed to deserialize accept body")?;
 
                 let channel = dependencies
                     .pending_request_for(swap_id)
@@ -86,16 +105,15 @@ pub async fn handle_action(
                     &swap_id,
                 )
                 .await?;
-                init_accepted_swap::<_, _, _, _, _, AH, BH, _, _, AT, BT>(
-                    &dependencies,
-                    accepted,
-                    types.role,
-                )?;
+
+                init_accepted_swap::<_, _, _, _, AH, BH, _, _, AT, BT>(&dependencies, accepted)
+                    .await?;
 
                 Ok(ActionResponseBody::None)
             }
             Action::Decline(_) => {
-                let body = serde_json::from_value::<DeclineBody>(body)?;
+                let body = DeclineBody::deserialize(&body)
+                    .context("failed to deserialize decline body")?;
 
                 let channel = dependencies
                     .pending_request_for(swap_id)
@@ -121,14 +139,12 @@ pub async fn handle_action(
                     )
                 })?;
 
-                let swap_request = state.request();
-                let seed = dependencies.derive_swap_seed(swap_id);
-                let state = State::<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>::declined(
-                    swap_request.clone(),
-                    decline_message,
-                    seed,
-                );
-                dependencies.insert(swap_id, state);
+                dependencies
+                    .insert(swap_id, SwapCommunication::Declined {
+                        request: state.request().clone(),
+                        response: decline_message,
+                    })
+                    .await;
 
                 Ok(ActionResponseBody::None)
             }
