@@ -22,7 +22,6 @@ impl BlockHash for Block {
 
     fn block_hash(&self) -> Hash {
         self.hash
-            .expect("Connector returned latest block with null hash")
     }
 }
 
@@ -145,12 +144,8 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
-                let block_hash = block
-                    .hash
-                    .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
-
                 let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block_hash));
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block.hash));
                 let _enter = span.enter();
 
                 tracing::trace!("checking {} transactions", block.transactions.len());
@@ -201,12 +196,8 @@ where
     loop {
         match block_generator.async_resume().await {
             GeneratorState::Yielded(block) => {
-                let block_hash = block
-                    .hash
-                    .ok_or_else(|| anyhow::anyhow!("block without hash"))?;
-
                 let span =
-                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block_hash));
+                    tracing::trace_span!("new_block", blockhash = format_args!("{:x}", block.hash));
                 let _enter = span.enter();
 
                 let maybe_contains_transaction = topics.iter().all(|topic| {
