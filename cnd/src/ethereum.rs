@@ -194,7 +194,7 @@ pub struct Log {
 #[derive(Debug, Default, Clone, PartialEq, Deserialize)]
 pub struct Block {
     /// Hash of the block
-    pub hash: Option<Hash>,
+    pub hash: Hash,
     /// Hash of the parent
     #[serde(rename = "parentHash")]
     pub parent_hash: Hash,

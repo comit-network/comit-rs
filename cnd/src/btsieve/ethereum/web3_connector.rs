@@ -33,10 +33,7 @@ impl LatestBlock for Web3Connector {
             ]))
             .await?;
 
-        tracing::trace!(
-            "Fetched block from web3: {:x}",
-            block.hash.expect("blocks to have a hash")
-        );
+        tracing::trace!("Fetched block from web3: {:x}", block.hash);
 
         Ok(block)
     }
