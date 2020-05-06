@@ -1,0 +1,13 @@
+name: ZenHub link PR to issue
+
+on:
+  pull_request:
+    types: [opened]
+
+jobs:
+  zenhub-lin-pr-to-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: coblox/zenhub-link-pr-to-issue@v0.1.1
+        with:
+          ZENHUB_TOKEN: ${{ secrets.ZENHUB_TOKEN }}
