@@ -1843,10 +1843,10 @@ combined-stream@^1.0.6, combined-stream@~1.0.6:
   dependencies:
     delayed-stream "~1.0.0"
 
-comit-sdk@^0.15.6:
-  version "0.15.6"
-  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.15.6.tgz#263276aa4a4b4137e1e6112c96611e34d595e06d"
-  integrity sha512-BfpfbExsrC4LpokJICyMMu40H1LXJNe+r+pxDpE/CTEOyC2MDULAMXXwfCD0HrOH+Sg7ALSAWhp0eaBkmdH6Kw==
+comit-sdk@^0.16.0:
+  version "0.16.0"
+  resolved "https://registry.yarnpkg.com/comit-sdk/-/comit-sdk-0.16.0.tgz#850c74db3101de337f66700eb4d545e03addc9bf"
+  integrity sha512-quwlGLenAoWWtmTgj8jhqF5q2Wi6+SffkbGoV43FPC9qXPw6Wo9xcWhiW8MBwy9BESqCpt3kKH8tI55C2C3x0A==
   dependencies:
     "@radar/lnrpc" "^0.9.1-beta"
     axios "^0.19.2"

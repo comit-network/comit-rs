@@ -36,7 +36,7 @@
         "bitcoin-core": "^3.0.0",
         "bitcoinjs-lib": "^5.1.7",
         "chmod": "^0.2.1",
-        "comit-sdk": "^0.15.6",
+        "comit-sdk": "^0.16.0",
         "download": "^8.0.0",
         "ethers": "^4.0.47",
         "find-cache-dir": "^3.3.1",
