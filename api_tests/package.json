@@ -55,7 +55,7 @@
         "tail": "^2.0.3",
         "temp-write": "^4.0.0",
         "tmp": "^0.2.1",
-        "ts-jest": "^25.4.0",
+        "ts-jest": "^25.5.0",
         "ts-node": "^8.10.1",
         "tslint": "^6.1.2",
         "tslint-config-prettier": "^1.18.0",
