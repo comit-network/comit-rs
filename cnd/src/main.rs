@@ -91,8 +91,8 @@ fn main() -> anyhow::Result<()> {
     };
 
     let ethereum_connector = {
-        let config::Ethereum { parity, chain_id } = &settings.ethereum;
-        let connector = Web3Connector::new(parity.node_url.clone());
+        let config::Ethereum { geth, chain_id } = &settings.ethereum;
+        let connector = Web3Connector::new(geth.node_url.clone());
 
         runtime.block_on(async {
             validate_blockchain_config(&connector, *chain_id)
