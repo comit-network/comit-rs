@@ -23,7 +23,7 @@ impl EthereumConnectorMock {
         let all_blocks = all_blocks
             .into_iter()
             .fold(HashMap::new(), |mut hm, block| {
-                hm.insert(block.hash.unwrap(), block);
+                hm.insert(block.hash, block);
                 hm
             });
 
