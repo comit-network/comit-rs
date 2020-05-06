@@ -2,7 +2,7 @@ name: "Draft new release"
 
 on:
   issues:
-    types: [opened, labeled]
+    types: [opened, reopened]
 
 jobs:
   draft-new-release:
