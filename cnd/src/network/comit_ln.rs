@@ -55,13 +55,18 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
 
-    /// Swaps as Alice
+    /// In role of Alice; swaps exist in here once a swap is created by Alice
+    /// (and up until an announce confirmation is received from Bob).
     #[behaviour(ignore)]
     swaps_waiting_for_confirmation: HashMap<SwapDigest, LocalSwapId>,
-
-    /// Swaps as Bob
+    /// In role of Bob; swaps exist in here if Bob creates the swap _before_ an
+    /// announce message is received from Alice (and up until the announce
+    /// message arrives).
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
+    /// In role of Bob; swaps exist in here if Bob creates the swap _after_ an
+    /// announce message is received from Alice (and up until Bob creates the
+    /// swap).
     #[behaviour(ignore)]
     swaps_waiting_for_creation:
         HashMap<SwapDigest, (libp2p::PeerId, ReplySubstream<NegotiatedSubstream>)>,
