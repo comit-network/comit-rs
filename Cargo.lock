@@ -473,6 +473,7 @@ dependencies = [
  "ambassador",
  "anyhow",
  "async-trait",
+ "atty",
  "base64 0.12.0",
  "bigdecimal",
  "bitcoin",

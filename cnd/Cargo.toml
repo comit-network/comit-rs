@@ -9,6 +9,7 @@ description = "Reference implementation of a COMIT network daemon."
 ambassador = "0.2"
 anyhow = "1"
 async-trait = "0.1"
+atty = "0.2"
 base64 = "0.12.0"
 bigdecimal = "0.1.2"
 bitcoin = { version = "0.23", features = ["use-serde"] }
@@ -75,4 +76,3 @@ serde_urlencoded = "0.6"
 spectral = { version = "0.6", default-features = false }
 tempfile = "3.1.0"
 testcontainers = "0.9"
-
