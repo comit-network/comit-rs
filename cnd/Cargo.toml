@@ -39,7 +39,7 @@ lru = "0.4.3"
 num = "0.2"
 paste = "0.1"
 pem = "0.7"
-primitive-types = { version = "0.7.1", features = ["serde"] }
+primitive-types = { version = "0.7.2", features = ["serde"] }
 rand = "0.7"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
 serde = { version = "1", features = ["derive"] }
