@@ -55,11 +55,17 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
 
+    /// Swaps as Alice
+    #[behaviour(ignore)]
+    swaps_waiting_for_confirmation: HashMap<SwapDigest, LocalSwapId>,
+
+    /// Swaps as Bob
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
     #[behaviour(ignore)]
     swaps_waiting_for_creation:
         HashMap<SwapDigest, (libp2p::PeerId, ReplySubstream<NegotiatedSubstream>)>,
+
     #[behaviour(ignore)]
     swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
@@ -95,6 +101,7 @@ impl ComitLN {
             lightning_identity: Default::default(),
             finalize: Default::default(),
             events: VecDeque::new(),
+            swaps_waiting_for_confirmation: Default::default(),
             swaps_waiting_for_announcement: Default::default(),
             swaps_waiting_for_creation: Default::default(),
             swaps: Default::default(),
@@ -114,7 +121,9 @@ impl ComitLN {
     ) -> anyhow::Result<()> {
         let digest = create_swap_params.clone().digest();
 
-        if self.swaps_waiting_for_announcement.contains_key(&digest) {
+        if self.swaps_waiting_for_announcement.contains_key(&digest)
+            || self.swaps_waiting_for_confirmation.contains_key(&digest)
+        {
             anyhow::bail!(SwapExists)
         }
         tracing::info!("Swap created: {}", digest);
@@ -123,12 +132,9 @@ impl ComitLN {
 
         match create_swap_params.role {
             Role::Alice => {
-                // TODO: Is that necessary?
-                self.swaps_waiting_for_announcement
-                    .insert(digest.clone(), id);
-
                 self.announce
-                    .start_announce_protocol(digest, create_swap_params.peer);
+                    .start_announce_protocol(digest.clone(), create_swap_params.peer);
+                self.swaps_waiting_for_confirmation.insert(digest, id);
             }
             Role::Bob => {
                 if let Some((peer, io)) = self.swaps_waiting_for_creation.remove(&digest) {
@@ -415,7 +421,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_id,
             } => {
                 let local_swap_id = self
-                    .swaps_waiting_for_announcement
+                    .swaps_waiting_for_confirmation
                     .remove(&swap_digest)
                     .expect("we must know about this digest");
 
