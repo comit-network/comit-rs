@@ -58,7 +58,8 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
     #[behaviour(ignore)]
-    swaps_waiting_for_creation: Vec<SwapDigest>,
+    swaps_waiting_for_creation:
+        HashMap<SwapDigest, (libp2p::PeerId, ReplySubstream<NegotiatedSubstream>)>,
     #[behaviour(ignore)]
     swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
@@ -116,17 +117,27 @@ impl ComitLN {
         if self.swaps_waiting_for_announcement.contains_key(&digest) {
             anyhow::bail!(SwapExists)
         }
+        tracing::info!("Swap created: {}", digest);
+
         self.swaps.insert(id, create_swap_params.clone());
-        self.swaps_waiting_for_announcement
-            .insert(digest.clone(), id);
 
         match create_swap_params.role {
             Role::Alice => {
+                // TODO: Is that necessary?
+                self.swaps_waiting_for_announcement
+                    .insert(digest.clone(), id);
+
                 self.announce
                     .start_announce_protocol(digest, create_swap_params.peer);
             }
             Role::Bob => {
-                tracing::info!("Swap waiting for announcement: {}", digest);
+                if let Some((peer, io)) = self.swaps_waiting_for_creation.remove(&digest) {
+                    self.communicate(peer, io, &id)
+                } else {
+                    self.swaps_waiting_for_announcement
+                        .insert(digest.clone(), id);
+                    tracing::debug!("Swap {} waiting for announcement", digest);
+                }
             }
         }
 
@@ -385,7 +396,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                         }
                     }
                     None => {
-                        self.swaps_waiting_for_creation.push(io.swap_digest);
+                        self.swaps_waiting_for_creation
+                            .insert((&io.swap_digest).clone(), (peer, *io));
 
                         return;
                     }
