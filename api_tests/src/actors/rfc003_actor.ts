@@ -266,7 +266,7 @@ export class Rfc003Actor {
 
         this.logger.debug("Funded swap %s in %s", this.actor.swap.self, txid);
 
-        const role = await this.whoAmI();
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaFunded();
@@ -355,7 +355,7 @@ export class Rfc003Actor {
             throw new Error("Cannot refund non-existent swap");
         }
 
-        const role = await this.whoAmI();
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.waitForAlphaExpiry();
@@ -392,7 +392,7 @@ export class Rfc003Actor {
         const txid = await this.actor.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.actor.swap.self, txid);
 
-        const role = await this.whoAmI();
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertBetaRedeemed();
@@ -593,10 +593,10 @@ export class Rfc003Actor {
         }
     }
 
-    // TODO: Can't we just use getName()?
-    public async whoAmI() {
-        const entity = await this.actor.swap.fetchDetails();
-        return entity.properties.role;
+    public async cryptoRole(): Promise<"Alice" | "Bob"> {
+        return this.actor.swap
+            .fetchDetails()
+            .then((entity) => entity.properties.role);
     }
 
     // TODO: Make it a getter
