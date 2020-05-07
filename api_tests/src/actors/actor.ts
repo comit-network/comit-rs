@@ -1023,14 +1023,12 @@ export class Actor {
             "; finalCltvDelta: ",
             finalCltvDelta
         );
-        const resp = await this.wallets.lightning.inner.sendPayment(
+        return this.wallets.lightning.inner.sendPayment(
             toPubkey,
             satAmount,
             secretHash,
             finalCltvDelta
         );
-        this.logger.debug("LN: Send Payment Response:", resp);
-        return resp;
     }
 
     /** Settles the invoice once it is `accepted`.
