@@ -6,11 +6,16 @@
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
 import { sleep } from "../src/utils";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
     it(
         "rfc003-eth-btc-alice-redeems-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -31,7 +36,11 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
     it(
         "rfc003-eth-btc-alpha-deploy-fails",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -52,7 +61,11 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
     it(
         "rfc003-eth-btc-bob-refunds-alice-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -73,7 +86,11 @@ describe("E2E: Ethereum/ether - Bitcoin/bitcoin", () => {
 
     it(
         "rfc003-eth-btc-alice-redeems-with-high-fee",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Ether, AssetKind.Bitcoin);
             await bob.accept();
 

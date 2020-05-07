@@ -6,11 +6,16 @@
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
 import { sleep } from "../src/utils";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether (restart cnd nodes)", () => {
     it(
         "rfc003-btc-eth-resume-alice-down-bob-funds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -35,7 +40,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether (restart cnd nodes)", () => {
 
     it(
         "rfc003-btc-eth-resume-alice-down-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -60,7 +69,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether (restart cnd nodes)", () => {
 
     it(
         "rfc003-btc-eth-resume-bob-down-alice-funds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -89,7 +102,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether (restart cnd nodes)", () => {
 
     it(
         "rfc003-btc-eth-resume-bob-down-alice-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
