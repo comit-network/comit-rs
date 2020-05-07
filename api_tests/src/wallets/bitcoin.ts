@@ -2,14 +2,11 @@ import crypto from "crypto";
 import { bip32, networks } from "bitcoinjs-lib";
 import { Logger } from "log4js";
 import BitcoinRpcClient from "bitcoin-core";
-import {
-    Asset,
-    BitcoindWallet as BitcoinWalletSdk,
-    BitcoindWallet,
-} from "comit-sdk";
+import { BitcoindWallet as BitcoinWalletSdk, BitcoindWallet } from "comit-sdk";
 import { toBitcoin, toSatoshi } from "satoshi-bitcoin";
 import { pollUntilMinted, Wallet } from "./index";
 import { BitcoinNodeConfig } from "../ledgers";
+import { Asset } from "../asset";
 
 export class BitcoinWallet implements Wallet {
     public static async newInstance(config: BitcoinNodeConfig, logger: Logger) {

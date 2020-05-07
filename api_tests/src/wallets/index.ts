@@ -1,10 +1,10 @@
-import { Asset } from "comit-sdk";
 import { HarnessGlobal, sleep } from "../utils";
 import { BitcoinWallet } from "./bitcoin";
 import { EthereumWallet } from "./ethereum";
 import { LightningWallet } from "./lightning";
 import { Logger } from "log4js";
 import { ActorName } from "../actors/actor";
+import { Asset } from "../asset";
 
 declare var global: HarnessGlobal;
 

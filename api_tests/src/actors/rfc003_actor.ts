@@ -1,8 +1,7 @@
 import { Actor } from "./actor";
-import { AssetKind, toKey, toKind } from "../asset";
+import { AssetKind, defaultAssetValue, toKey, toKind } from "../asset";
 import { LedgerKind } from "../ledgers/ledger";
 import {
-    defaultAssetDescription,
     defaultExpiryTimes,
     defaultLedgerDescriptionForLedger,
     defaultLedgerKindForAsset,
@@ -78,7 +77,7 @@ export class Rfc003Actor {
         this.actor.alphaLedger = defaultLedgerDescriptionForLedger(
             alphaLedgerKind
         );
-        this.actor.alphaAsset = defaultAssetDescription(
+        this.actor.alphaAsset = defaultAssetValue(
             alphaAssetKind,
             alphaLedgerKind
         );
@@ -112,10 +111,7 @@ export class Rfc003Actor {
         this.actor.betaLedger = defaultLedgerDescriptionForLedger(
             betaLedgerKind
         );
-        this.actor.betaAsset = defaultAssetDescription(
-            betaAssetKind,
-            betaLedgerKind
-        );
+        this.actor.betaAsset = defaultAssetValue(betaAssetKind, betaLedgerKind);
         to.actor.betaLedger = this.actor.betaLedger;
         to.actor.betaAsset = this.actor.betaAsset;
 
@@ -176,8 +172,16 @@ export class Rfc003Actor {
         const payload = {
             alpha_ledger: this.actor.alphaLedger,
             beta_ledger: this.actor.betaLedger,
-            alpha_asset: this.actor.alphaAsset,
-            beta_asset: this.actor.betaAsset,
+            alpha_asset: {
+                name: this.actor.alphaAsset.name,
+                quantity: this.actor.alphaAsset.quantity,
+                token_contract: this.actor.alphaAsset.tokenContract,
+            },
+            beta_asset: {
+                name: this.actor.betaAsset.name,
+                quantity: this.actor.betaAsset.quantity,
+                token_contract: this.actor.betaAsset.tokenContract,
+            },
             peer: {
                 peer_id: await to.actor.cnd.getPeerId(),
                 address_hint: await to.actor.cnd
@@ -467,7 +471,7 @@ export class Rfc003Actor {
             const balanceInclFees = expectedBalance - maximumFee;
 
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
+                defaultAssetValue(asset, ledger)
             );
             expect(currentWalletBalance).toBeGreaterThanOrEqual(
                 // @ts-ignore: Jest supports bigint, types to be fixed updated with
@@ -501,7 +505,7 @@ export class Rfc003Actor {
             );
             const expectedBalance = this.actor.startingBalances.get(assetKey);
             const currentWalletBalance = await wallet.getBalanceByAsset(
-                defaultAssetDescription(asset, ledger)
+                defaultAssetValue(asset, ledger)
             );
             const balanceInclFees = expectedBalance - maximumFee;
             expect(currentWalletBalance).toBeGreaterThanOrEqual(

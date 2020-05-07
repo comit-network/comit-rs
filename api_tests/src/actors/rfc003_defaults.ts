@@ -1,9 +1,5 @@
-import { HarnessGlobal } from "../utils";
-import { Asset, AssetKind } from "../asset";
+import { AssetKind } from "../asset";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
-import { parseEther } from "ethers/utils";
-
-declare var global: HarnessGlobal;
 
 export function defaultLedgerKindForAsset(asset: AssetKind): LedgerKind {
     switch (asset) {
@@ -32,36 +28,6 @@ export function defaultLedgerDescriptionForLedger(ledger: LedgerKind): Ledger {
             return {
                 name: LedgerKind.Ethereum,
                 chain_id: 1337,
-            };
-        }
-    }
-}
-
-export function defaultAssetDescription(
-    asset: AssetKind,
-    ledger: LedgerKind
-): Asset {
-    switch (asset) {
-        case AssetKind.Bitcoin: {
-            return {
-                name: AssetKind.Bitcoin,
-                ledger,
-                quantity: "10000000",
-            };
-        }
-        case AssetKind.Ether: {
-            return {
-                name: AssetKind.Ether,
-                ledger,
-                quantity: parseEther("10").toString(),
-            };
-        }
-        case AssetKind.Erc20: {
-            return {
-                name: AssetKind.Erc20,
-                ledger,
-                quantity: parseEther("100").toString(),
-                token_contract: global.tokenContract,
             };
         }
     }

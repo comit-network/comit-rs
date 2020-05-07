@@ -1,5 +1,4 @@
 import { EthereumWallet as EthereumWalletSdk } from "comit-sdk";
-import { Asset } from "comit-sdk";
 import { ethers } from "ethers";
 import { BigNumber as BigNumberEthers } from "ethers/utils";
 import { Wallet } from "./index";
@@ -7,6 +6,7 @@ import { TransactionRequest } from "ethers/providers";
 import { sleep } from "../utils";
 import { Logger } from "log4js";
 import { lock } from "proper-lockfile";
+import { Asset } from "../asset";
 
 export class EthereumWallet implements Wallet {
     public MaximumFee = 0;
@@ -71,7 +71,7 @@ export class EthereumWallet implements Wallet {
         const data = "0x" + functionIdentifier + toAddress + hexAmount;
 
         const tx: TransactionRequest = {
-            to: asset.token_contract,
+            to: asset.tokenContract,
             gasLimit: "0x100000",
             value: "0x0",
             data,
@@ -83,7 +83,7 @@ export class EthereumWallet implements Wallet {
             "Minted",
             asset.quantity,
             "erc20 tokens (",
-            asset.token_contract,
+            asset.tokenContract,
             ") for",
             toAddress
         );
@@ -202,7 +202,7 @@ export class EthereumWallet implements Wallet {
                 break;
             case "erc20":
                 balance = await this.inner
-                    .getErc20Balance(asset.token_contract, 0)
+                    .getErc20Balance(asset.tokenContract, 0)
                     .then((balance) => BigInt(balance.toString(10)));
                 break;
             default:
