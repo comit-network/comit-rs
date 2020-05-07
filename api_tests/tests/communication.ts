@@ -36,9 +36,9 @@ describe("communication", () => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
                 .hanEthereumEtherHalightLightningBitcoin;
 
-            await bob.createSwap(bodies.alice);
+            await bob.createSwap(bodies.bob);
             await sleep(500);
-            await alice.createSwap(bodies.bob);
+            await alice.createSwap(bodies.alice);
 
             await assertSwapFinalized(alice);
             await assertSwapFinalized(bob);
