@@ -15,7 +15,7 @@ import { LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
-import { SwapResponse } from "../swap_response";
+import { EscrowStatus, LedgerState, SwapResponse } from "../swap_response";
 
 export type ActorNames = "alice" | "bob" | "charlie";
 
@@ -303,20 +303,37 @@ export class Actor {
      * Assertions against cnd API Only
      */
 
-    public async assertAlphaFunded() {
-        // TODO: Actually assert
+    public async assertAlphaFunded(): Promise<void> {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Funded);
     }
 
     public async assertBetaFunded() {
-        // TODO: Actually assert
+        await this.assertLedgerStatus("beta", EscrowStatus.Funded);
     }
 
     public async assertAlphaRedeemed() {
-        // TODO: Actually assert
+        await this.assertLedgerStatus("alpha", EscrowStatus.Redeemed);
     }
 
     public async assertBetaRedeemed() {
-        // TODO: Actually assert
+        await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
+    }
+
+    private async assertLedgerStatus(
+        ledgerRel: "alpha" | "beta",
+        status: EscrowStatus
+    ): Promise<void> {
+        await this.pollCndUntil(this.swap.self, (swapResponse) => {
+            for (const entity of swapResponse.entities) {
+                const ledgerState = entity as LedgerState;
+                if (
+                    ledgerState.class.includes("state") &&
+                    ledgerState.rel.includes(ledgerRel)
+                ) {
+                    return ledgerState.properties.status === status;
+                }
+            }
+        });
     }
 
     /**

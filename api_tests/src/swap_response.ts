@@ -51,7 +51,7 @@ export interface Properties {
 /**
  * The overall status of a swap
  */
-export declare enum SwapStatus {
+export enum SwapStatus {
     /**
      * The swap was created but the communication phase hasn't yet been finalized
      */
@@ -149,13 +149,13 @@ export interface LedgerState extends EmbeddedRepresentationSubEntity {
 /**
  * The blockchain transactions related to a given step.
  */
-export declare type StepTransaction = {
+export type StepTransaction = {
     [k in Step]: string;
 };
 /**
  * The status of the escrow (htlc, lightning invoice, etc) on the ledger.
  */
-export declare enum EscrowStatus {
+export enum EscrowStatus {
     /**
      * The escrow does not exist yet.
      */
@@ -204,7 +204,7 @@ export declare enum EscrowStatus {
  * Not all steps are needed for all protocols and ledgers.
  * E.g. for Han Bitcoin the steps are: fund, redeem (or refund)
  */
-export declare enum Step {
+export enum Step {
     Init = "init",
     Deploy = "deploy",
     Fund = "fund",
