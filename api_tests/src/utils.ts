@@ -1,5 +1,4 @@
 import { ethers } from "ethers";
-import { Actor } from "./actors/actor";
 import { SwapRequest } from "comit-sdk";
 import { promises as asyncFs } from "fs";
 import * as fs from "fs";
@@ -14,6 +13,7 @@ import {
     EthereumNodeConfig,
     LightningNodeConfig,
 } from "./ledgers";
+import { Rfc003Actor } from "./actors/rfc003_actor";
 
 export interface HarnessGlobal extends Global.Global {
     ledgerConfigs: LedgerConfig;
@@ -80,7 +80,7 @@ const DEFAULT_BETA = {
     },
     expiry: new Date("2080-06-11T13:00:00Z").getTime() / 1000,
 };
-export async function createDefaultSwapRequest(counterParty: Actor) {
+export async function createDefaultSwapRequest(counterParty: Rfc003Actor) {
     const swapRequest: SwapRequest = {
         alpha_ledger: {
             name: DEFAULT_ALPHA.ledger.name,
@@ -103,8 +103,8 @@ export async function createDefaultSwapRequest(counterParty: Actor) {
         alpha_expiry: DEFAULT_ALPHA.expiry,
         beta_expiry: DEFAULT_BETA.expiry,
         peer: {
-            peer_id: await counterParty.cnd.getPeerId(),
-            address_hint: await counterParty.cnd
+            peer_id: await counterParty.actor.cnd.getPeerId(),
+            address_hint: await counterParty.actor.cnd
                 .getPeerListenAddresses()
                 .then((addresses) => addresses[0]),
         },

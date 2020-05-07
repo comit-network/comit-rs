@@ -6,6 +6,7 @@ import axios from "axios";
 import { createDefaultSwapRequest } from "../src/utils";
 import { Actor } from "../src/actors/actor";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 // ******************************************** //
 // Siren Schema tests                                 //
@@ -100,9 +101,13 @@ describe("Siren Schema", () => {
 
     it(
         "get-single-swap-is-valid-siren",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             // Alice send swap request to Bob
-            await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
+            await alice.actor.cnd.postSwap(await createDefaultSwapRequest(bob));
 
             const aliceSwapEntity = await alice
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
@@ -111,7 +116,7 @@ describe("Siren Schema", () => {
                         body.entities[0] as EmbeddedRepresentationSubEntity
                 );
 
-            await assertValidSirenDocument(aliceSwapEntity, alice);
+            await assertValidSirenDocument(aliceSwapEntity, alice.actor);
 
             const bobsSwapEntity = await bob
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
@@ -119,7 +124,7 @@ describe("Siren Schema", () => {
                     (body) =>
                         body.entities[0] as EmbeddedRepresentationSubEntity
                 );
-            await assertValidSirenDocument(bobsSwapEntity, bob);
+            await assertValidSirenDocument(bobsSwapEntity, bob.actor);
         })
     );
 });

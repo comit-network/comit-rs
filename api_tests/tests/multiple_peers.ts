@@ -1,6 +1,7 @@
 import { threeActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest } from "../src/utils";
 import { SwapDetails } from "comit-sdk";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 interface MatchInterface {
     id: string;
@@ -22,14 +23,19 @@ function toMatch(swapDetail: SwapDetails): MatchInterface {
 describe("Multiple peers tests", () => {
     it(
         "alice-sends-swap-request-to-bob-and-charlie",
-        threeActorTest(async ({ alice, bob, charlie }) => {
+        threeActorTest(async (actors) => {
+            const [alice, bob, charlie] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+                actors.charlie,
+            ]);
             // Alice send swap request to Bob
-            const aliceToBobSwapUrl = await alice.cnd.postSwap(
+            const aliceToBobSwapUrl = await alice.actor.cnd.postSwap(
                 await createDefaultSwapRequest(bob)
             );
 
             // Alice send swap request to Charlie
-            const aliceToCharlieSwapUrl = await alice.cnd.postSwap(
+            const aliceToCharlieSwapUrl = await alice.actor.cnd.postSwap(
                 await createDefaultSwapRequest(charlie)
             );
 

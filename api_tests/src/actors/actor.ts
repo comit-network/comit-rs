@@ -1,10 +1,8 @@
 import {
     Cnd,
-    Entity,
     HanEthereumEtherHalightLightningBitcoinRequestBody,
     LedgerAction,
     Swap,
-    SwapDetails,
     Transaction,
     Wallets as SdkWallets,
 } from "comit-sdk";
@@ -16,9 +14,8 @@ import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
 import { Wallets } from "../wallets";
-import { sha256 } from "js-sha256";
-import { InvoiceState } from "@radar/lnrpc";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
+import { SwapResponse } from "../swap_response";
 
 export type ActorNames = "alice" | "bob" | "charlie";
 
@@ -83,6 +80,18 @@ export class Actor {
         this.expectedBalanceChanges = new Map();
     }
 
+    public getName() {
+        return this.name;
+    }
+
+    /**
+     * Interactions with cnd REST API
+     */
+
+    /**
+     * Create a Swap
+     * @param createSwapPayload
+     */
     public async createSwap(
         createSwapPayload: HanEthereumEtherHalightLightningBitcoinRequestBody
     ) {
@@ -157,6 +166,51 @@ export class Actor {
         );
     }
 
+    public cndHttpApiUrl() {
+        const socket = this.cndInstance.getConfigFile().http_api.socket;
+        return `http://${socket}`;
+    }
+
+    public async pollCndUntil(
+        location: string,
+        predicate: (body: SwapResponse) => boolean
+    ): Promise<SwapResponse> {
+        const response = await this.cnd.fetch<SwapResponse>(location);
+
+        expect(response.status).toEqual(200);
+
+        if (predicate(response.data)) {
+            return response.data;
+        } else {
+            await sleep(500);
+
+            return this.pollCndUntil(location, predicate);
+        }
+    }
+
+    public async pollSwapResponse(
+        swapUrl: string,
+        iteration: number = 0
+    ): Promise<SwapResponse> {
+        if (iteration > 5) {
+            throw new Error(`Could not retrieve Swap ${swapUrl}`);
+        }
+        iteration++;
+
+        try {
+            return this.cnd
+                .fetch<SwapResponse>(swapUrl)
+                .then((response) => response.data);
+        } catch (error) {
+            await sleep(1000);
+            return this.pollSwapResponse(swapUrl, iteration);
+        }
+    }
+
+    /**
+     * Wait for and execute the init action
+     * @param config Timeout parameters
+     */
     public async init(config?: {
         maxTimeoutSecs: number;
         tryIntervalSecs: number;
@@ -172,6 +226,10 @@ export class Actor {
         await this.swap.doLedgerAction(response.data);
     }
 
+    /**
+     * Wait for and execute the fund action
+     * @param config Timeout parameters
+     */
     public async fund(config?: {
         maxTimeoutSecs: number;
         tryIntervalSecs: number;
@@ -207,6 +265,9 @@ export class Actor {
         }
     }
 
+    /**
+     * Wait for and execute the redeem action
+     */
     public async redeem() {
         if (!this.swap) {
             throw new Error("Cannot redeem non-existent swap");
@@ -232,6 +293,36 @@ export class Actor {
         }
     }
 
+    // TODO: Check if this correct or if we can use getName
+    public async whoAmI(): Promise<string> {
+        const entity = await this.swap.fetchDetails();
+        return entity.properties.role;
+    }
+
+    /**
+     * Assertions against cnd API Only
+     */
+
+    public async assertAlphaFunded() {
+        // TODO: Actually assert
+    }
+
+    public async assertBetaFunded() {
+        // TODO: Actually assert
+    }
+
+    public async assertAlphaRedeemed() {
+        // TODO: Actually assert
+    }
+
+    public async assertBetaRedeemed() {
+        // TODO: Actually assert
+    }
+
+    /**
+     * Assertions against Ledgers
+     */
+
     public async assertSwapped() {
         this.logger.debug("Checking if cnd reports status 'SWAPPED'");
 
@@ -250,21 +341,9 @@ export class Actor {
         // TODO: WTF is this checking for halight?
     }
 
-    public async assertAlphaFunded() {
-        // TODO: Actually assert
-    }
-
-    public async assertBetaFunded() {
-        // TODO: Actually assert
-    }
-
-    public async assertAlphaRedeemed() {
-        // TODO: Actually assert
-    }
-
-    public async assertBetaRedeemed() {
-        // TODO: Actually assert
-    }
+    /**
+     * Manage cnd instance
+     */
 
     public async start() {
         await this.cndInstance.start();
@@ -279,16 +358,14 @@ export class Actor {
         // TODO: Actually dump a split protocol state
     }
 
-    // TODO: Check if this correct or if we can use getName
-    public async whoAmI(): Promise<string> {
-        const entity = await this.swap.fetchDetails();
-        return entity.properties.role;
-    }
+    /**
+     * Wallet Management
+     */
 
-    public getName() {
-        return this.name;
-    }
-
+    /**
+     * Mine and set starting balances
+     * @param assets
+     */
     public async setStartingBalance(assets: Asset[]) {
         for (const asset of assets) {
             if (parseFloat(asset.quantity) === 0) {
@@ -315,150 +392,6 @@ export class Actor {
             this.startingBalances.set(
                 toKey(asset),
                 BigInt(balance.toString(10))
-            );
-        }
-    }
-
-    public cndHttpApiUrl() {
-        const socket = this.cndInstance.getConfigFile().http_api.socket;
-        return `http://${socket}`;
-    }
-
-    public async pollCndUntil(
-        location: string,
-        // TODO: Use the correct type
-        predicate: (body: Entity) => boolean
-    ): Promise<Entity> {
-        const response = await this.cnd.fetch(location);
-
-        expect(response.status).toEqual(200);
-
-        if (predicate(response.data)) {
-            return response.data;
-        } else {
-            await sleep(500);
-
-            return this.pollCndUntil(location, predicate);
-        }
-    }
-
-    // TODO: Use the correct type
-    public async pollSwapDetails(
-        swapUrl: string,
-        iteration: number = 0
-    ): Promise<SwapDetails> {
-        if (iteration > 5) {
-            throw new Error(`Could not retrieve Swap ${swapUrl}`);
-        }
-        iteration++;
-
-        try {
-            return (await this.cnd.fetch<SwapDetails>(swapUrl)).data;
-        } catch (error) {
-            await sleep(1000);
-            return this.pollSwapDetails(swapUrl, iteration);
-        }
-    }
-
-    /// TODO: Remove once all asserts are in place
-    public lnCreateSha256Secret(): { secret: string; secretHash: string } {
-        const secretBuf = Buffer.alloc(32);
-        for (let i = 0; i < secretBuf.length; i++) {
-            secretBuf[i] = Math.floor(Math.random() * 255);
-        }
-
-        const secretHash = sha256(secretBuf);
-        const secret = secretBuf.toString("hex");
-        this.logger.debug(`LN: secret: ${secret}, secretHash: ${secretHash}`);
-        return { secret, secretHash };
-    }
-
-    public async lnCreateHoldInvoice(
-        sats: string,
-        secretHash: string,
-        expiry: number,
-        cltvExpiry: number
-    ): Promise<void> {
-        this.logger.debug("LN: Create Hold Invoice", sats, secretHash, expiry);
-        const resp = await this.wallets.lightning.inner.addHoldInvoice(
-            sats,
-            secretHash,
-            expiry,
-            cltvExpiry
-        );
-        this.logger.debug("LN: Create Hold Response:", resp);
-    }
-
-    public async lnSendPayment(
-        to: Actor,
-        satAmount: string,
-        secretHash: string,
-        finalCltvDelta: number
-    ) {
-        const toPubkey = await to.wallets.lightning.inner.getPubkey();
-        this.logger.debug(
-            "LN: Send Payment -",
-            "to:",
-            toPubkey,
-            "; amt:",
-            satAmount,
-            "; hash:",
-            secretHash,
-            "; finalCltvDelta: ",
-            finalCltvDelta
-        );
-        return this.wallets.lightning.inner.sendPayment(
-            toPubkey,
-            satAmount,
-            secretHash,
-            finalCltvDelta
-        );
-    }
-
-    /** Settles the invoice once it is `accepted`.
-     *
-     * When the other party sends the payment, the invoice status changes
-     * from `open` to `accepted`. Hence, we check first if the invoice is accepted
-     * with `lnAssertInvoiceAccepted`. If it throws, then we sleep 100ms and recursively
-     * call `lnSettleInvoice` (this function).
-     * If `lnAssertInvoiceAccepted` does not throw then it means the payment has been received
-     * and we proceed with the settlement.
-     */
-    public async lnSettleInvoice(secret: string, secretHash: string) {
-        try {
-            await this.lnAssertInvoiceAccepted(secretHash);
-            this.logger.debug("LN: Settle Invoice", secret, secretHash);
-            await this.wallets.lightning.inner.settleInvoice(secret);
-        } catch {
-            await sleep(100);
-            await this.lnSettleInvoice(secret, secretHash);
-        }
-    }
-
-    public async lnCreateInvoice(sats: string) {
-        this.logger.debug(`Creating invoice for ${sats} sats`);
-        return this.wallets.lightning.addInvoice(sats);
-    }
-
-    public async lnPayInvoiceWithRequest(request: string): Promise<void> {
-        this.logger.debug(`Paying invoice with request ${request}`);
-        await this.wallets.lightning.pay(request);
-    }
-
-    public async lnAssertInvoiceSettled(secretHash: string) {
-        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
-        if (resp.state !== InvoiceState.SETTLED) {
-            throw new Error(
-                `Invoice ${secretHash} is not settled, status is ${resp.state}`
-            );
-        }
-    }
-
-    public async lnAssertInvoiceAccepted(secretHash: string) {
-        const resp = await this.wallets.lightning.lookupInvoice(secretHash);
-        if (resp.state !== InvoiceState.ACCEPTED) {
-            throw new Error(
-                `Invoice ${secretHash} is not accepted, status is ${resp.state}`
             );
         }
     }
