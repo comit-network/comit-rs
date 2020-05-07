@@ -353,7 +353,7 @@ impl ComitNode {
         &mut self,
         id: LocalSwapId,
     ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        self.comit_ln.get_created_swap(id)
+        self.comit_ln.get_created_swap(&id)
     }
 
     fn supports_halight(&self) -> anyhow::Result<()> {
