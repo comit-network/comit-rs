@@ -86,7 +86,7 @@ doc:
 e2e: build
 	(cd ./api_tests; yarn install; yarn test)
 
-check_format: check_rust_format check_toml_format check_ts_format check_github_workflows_format
+check_format: check_rust_format check_toml_format check_ts_format
 
 format: install_rustfmt install_tomlfmt
 	$(CARGO_NIGHTLY) fmt -- --files-with-diff | xargs -I{} git add {}
@@ -106,9 +106,4 @@ ifeq ($(CI),true)
 	(cd ./api_tests; yarn install; yarn run check)
 else ifneq (,$(STAGED_TYPESCRIPT_FILES))
 	(cd ./api_tests; yarn install; yarn run check)
-endif
-
-check_github_workflows_format:
-ifneq (,$(STAGED_WORKFLOW_FILES))
-	(npx @stoplight/spectral lint .github/workflows/*.yml --ignore-unknown-format --verbose)
 endif
