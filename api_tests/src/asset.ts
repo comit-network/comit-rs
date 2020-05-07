@@ -17,7 +17,9 @@ export enum AssetKind {
     Erc20 = "erc20",
 }
 
-export function toKey(asset: Asset): string {
+export type assetAsKey = string;
+
+export function toKey(asset: Asset): assetAsKey {
     return `${asset.name}-on-${asset.ledger}`;
 }
 

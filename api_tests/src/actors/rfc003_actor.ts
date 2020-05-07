@@ -584,13 +584,13 @@ export class Rfc003Actor {
 
             this.logger.debug(
                 "alpha ledger wallet balance %d",
-                await this.alphaLedgerWallet().getBalanceByAsset(
+                await this.actor.alphaLedgerWallet.getBalanceByAsset(
                     this.actor.alphaAsset
                 )
             );
             this.logger.debug(
                 "beta ledger wallet balance %d",
-                await this.betaLedgerWallet().getBalanceByAsset(
+                await this.actor.betaLedgerWallet.getBalanceByAsset(
                     this.actor.betaAsset
                 )
             );
@@ -611,7 +611,7 @@ export class Rfc003Actor {
         const swapDetails = await this.actor.swap.fetchDetails();
 
         const expiry = swapDetails.properties.state.communication.alpha_expiry;
-        const wallet = this.alphaLedgerWallet();
+        const wallet = this.actor.alphaLedgerWallet;
 
         await this.waitForExpiry(wallet, expiry);
     }
@@ -620,21 +620,9 @@ export class Rfc003Actor {
         const swapDetails = await this.actor.swap.fetchDetails();
 
         const expiry = swapDetails.properties.state.communication.beta_expiry;
-        const wallet = this.betaLedgerWallet();
+        const wallet = this.actor.betaLedgerWallet;
 
         await this.waitForExpiry(wallet, expiry);
-    }
-
-    private alphaLedgerWallet() {
-        return this.actor.wallets.getWalletForLedger(
-            this.actor.alphaLedger.name
-        );
-    }
-
-    private betaLedgerWallet() {
-        return this.actor.wallets.getWalletForLedger(
-            this.actor.betaLedger.name
-        );
     }
 
     private async waitForExpiry(wallet: Wallet, expiry: number) {

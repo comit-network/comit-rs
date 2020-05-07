@@ -8,7 +8,14 @@ import {
 } from "comit-sdk";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
-import { Asset, AssetKind, toKey } from "../asset";
+import {
+    Asset,
+    assetAsKey,
+    AssetKind,
+    defaultAssetValue,
+    toKey,
+    toKind,
+} from "../asset";
 import { CndInstance } from "../cnd/cnd_instance";
 import { Ledger, LedgerKind } from "../ledgers/ledger";
 import { LedgerConfig, sleep } from "../utils";
@@ -64,8 +71,8 @@ export class Actor {
     public betaLedger: Ledger;
     public betaAsset: Asset;
 
-    public readonly startingBalances: Map<string, bigint>;
-    public readonly expectedBalanceChanges: Map<string, bigint>;
+    public readonly startingBalances: Map<assetAsKey, bigint>;
+    public readonly expectedBalanceChanges: Map<assetAsKey, bigint>;
 
     constructor(
         public readonly logger: Logger,
@@ -357,7 +364,39 @@ export class Actor {
     }
 
     public async assertBalances() {
-        // TODO: WTF is this checking for halight?
+        for (const [
+            assetAsKey,
+            expectedBalanceChange,
+        ] of this.expectedBalanceChanges.entries()) {
+            this.logger.debug(
+                "Checking that %s balance changed by %d",
+                assetAsKey,
+                expectedBalanceChange
+            );
+
+            const { asset, ledger } = toKind(assetAsKey);
+
+            const wallet = this.wallets[ledger];
+            const expectedBalance =
+                this.startingBalances.get(assetAsKey) + expectedBalanceChange;
+            const maximumFee = BigInt(wallet.MaximumFee);
+
+            const balanceInclFees = expectedBalance - maximumFee;
+
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetValue(asset, ledger)
+            );
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                // @ts-ignore: Jest supports bigint, types to be fixed updated with
+                // https://github.com/DefinitelyTyped/DefinitelyTyped/pull/44368
+                balanceInclFees
+            );
+
+            this.logger.debug(
+                "Balance check was positive, current balance is %d",
+                currentWalletBalance
+            );
+        }
     }
 
     /**
@@ -374,7 +413,26 @@ export class Actor {
     }
 
     public async dumpState() {
-        // TODO: Actually dump a split protocol state
+        this.logger.debug("dumping current state");
+
+        if (this.swap) {
+            const swapResponse = await this.getSwapResponse();
+
+            this.logger.debug(
+                "swap status: %s",
+                swapResponse.properties.status
+            );
+            this.logger.debug("swap details: ", JSON.stringify(swapResponse));
+
+            this.logger.debug(
+                "alpha ledger wallet balance %d",
+                await this.alphaLedgerWallet.getBalanceByAsset(this.alphaAsset)
+            );
+            this.logger.debug(
+                "beta ledger wallet balance %d",
+                await this.betaLedgerWallet.getBalanceByAsset(this.betaAsset)
+            );
+        }
     }
 
     /**
@@ -413,5 +471,13 @@ export class Actor {
                 BigInt(balance.toString(10))
             );
         }
+    }
+
+    get alphaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.alphaLedger.name);
+    }
+
+    get betaLedgerWallet() {
+        return this.wallets.getWalletForLedger(this.betaLedger.name);
     }
 }
