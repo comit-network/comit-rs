@@ -17,7 +17,8 @@ use crate::{
         ledger::ethereum::ChainId,
         rfc003::{ledger_state::HtlcState, LedgerState},
         state::Get,
-        Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
+        Facade, FundAction, HanEtherereumHalightBitcoinCreateSwapParams, InitAction, LocalSwapId,
+        RedeemAction, RefundAction, Role,
     },
     transaction,
 };
@@ -53,23 +54,32 @@ pub async fn handle_get_halight_swap(
 
     let beta_ledger_state = facade.beta_ledger_states.get(&swap_id).await?;
 
+    let created_swap = facade.get_created_swap(swap_id).await;
+
     let finalized_swap = facade.get_finalized_swap(swap_id).await;
 
-    let (alpha_ledger_state, beta_ledger_state, finalized_swap) =
-        match (alpha_ledger_state, beta_ledger_state, finalized_swap) {
-            (Some(alpha_ledger_state), Some(beta_ledger_state), Some(finalized_swap)) => {
-                (alpha_ledger_state, beta_ledger_state, finalized_swap)
-            }
-            _ => {
-                let empty_swap = siren::Entity::default().with_class_member("swaps");
+    let (alpha_ledger_state, beta_ledger_state, finalized_swap) = match (
+        alpha_ledger_state,
+        beta_ledger_state,
+        finalized_swap,
+        created_swap,
+    ) {
+        (Some(alpha_ledger_state), Some(beta_ledger_state), Some(finalized_swap), _) => {
+            (alpha_ledger_state, beta_ledger_state, finalized_swap)
+        }
+        (_, _, _, Some(created_swap)) => {
+            return make_created_swap_entity(swap_id, HanEthereumHalightBitcoinCreatedState {
+                created_swap,
+            })
+        }
+        _ => {
+            let empty_swap = siren::Entity::default().with_class_member("swaps");
 
-                tracing::debug!(
-                    "returning empty siren document because states are not yet completed"
-                );
+            tracing::debug!("returning empty siren document because states are not yet completed");
 
-                return Ok(empty_swap);
-            }
-        };
+            return Ok(empty_swap);
+        }
+    };
 
     match finalized_swap.role {
         Role::Alice => {
@@ -85,7 +95,7 @@ pub async fn handle_get_halight_swap(
                 state.redeem_action().map(|_| "redeem"),
                 state.refund_action().map(|_| "refund"),
             ];
-            make_swap_entity(swap_id, state, maybe_action_names)
+            make_finalized_swap_entity(swap_id, state, maybe_action_names)
         }
         Role::Bob => {
             let state = BobHanEthereumHalightBitcoinState {
@@ -99,12 +109,70 @@ pub async fn handle_get_halight_swap(
                 state.fund_action().map(|_| "fund"),
                 state.redeem_action().map(|_| "redeem"),
             ];
-            make_swap_entity(swap_id, state, maybe_action_names)
+            make_finalized_swap_entity(swap_id, state, maybe_action_names)
         }
     }
 }
 
-fn make_swap_entity<S>(
+// TODO: Refactor with make_finalized_swap_entity
+fn make_created_swap_entity<S>(swap_id: LocalSwapId, state: S) -> anyhow::Result<siren::Entity>
+where
+    S: GetSwapStatus + GetRole + QuantityWei + QuantitySatoshi,
+{
+    let role = state.get_role();
+    let swap = SwapResource {
+        status: state.get_swap_status(),
+        role: Http(role),
+    };
+
+    let mut entity = siren::Entity::default()
+        .with_class_member("swaps")
+        .with_properties(swap)
+        .map_err(|e| {
+            tracing::error!("failed to set properties of entity: {:?}", e);
+            HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+        })?
+        .with_link(siren::NavigationalLink::new(
+            &["self"],
+            route_factory::swap_path(swap_id),
+        ));
+
+    let alpha_params = HanEthereum {
+        protocol: "han-ethereum".to_string(),
+        quantity: state.quantity_wei(),
+    };
+    let alpha_params_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("parameters")
+            .with_properties(alpha_params)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["alpha"],
+    );
+    entity.push_sub_entity(alpha_params_sub);
+
+    let beta_params = HalightBitcoin {
+        protocol: "halight-bitcoin".to_string(),
+        quantity: state.quantity_satoshi(),
+    };
+    let beta_params_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("parameters")
+            .with_properties(beta_params)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["beta"],
+    );
+    entity.push_sub_entity(beta_params_sub);
+
+    Ok(entity)
+}
+
+fn make_finalized_swap_entity<S>(
     swap_id: LocalSwapId,
     state: S,
     maybe_action_names: Vec<Option<&str>>,
@@ -260,12 +328,40 @@ fn han_eth_halight_swap_status(
     beta_ledger_state: &halight::State,
 ) -> SwapStatus {
     match (ethereum_status, beta_ledger_state) {
-        (HtlcState::NotDeployed, halight::State::None) => SwapStatus::Created,
         (HtlcState::Redeemed, halight::State::Settled(_)) => SwapStatus::Swapped,
         (HtlcState::IncorrectlyFunded, _) => SwapStatus::NotSwapped,
         (HtlcState::Refunded, _) => SwapStatus::NotSwapped,
         (_, halight::State::Cancelled(_)) => SwapStatus::NotSwapped,
         _ => SwapStatus::InProgress,
+    }
+}
+
+#[derive(Debug)]
+pub struct HanEthereumHalightBitcoinCreatedState {
+    pub created_swap: HanEtherereumHalightBitcoinCreateSwapParams,
+}
+
+impl GetSwapStatus for HanEthereumHalightBitcoinCreatedState {
+    fn get_swap_status(&self) -> SwapStatus {
+        SwapStatus::Created
+    }
+}
+
+impl GetRole for HanEthereumHalightBitcoinCreatedState {
+    fn get_role(&self) -> Role {
+        self.created_swap.role
+    }
+}
+
+impl QuantityWei for HanEthereumHalightBitcoinCreatedState {
+    fn quantity_wei(&self) -> String {
+        self.created_swap.ethereum_amount.to_wei_dec()
+    }
+}
+
+impl QuantitySatoshi for HanEthereumHalightBitcoinCreatedState {
+    fn quantity_satoshi(&self) -> String {
+        self.created_swap.lightning_amount.as_sat().to_string()
     }
 }
 

@@ -480,11 +480,4 @@ export class Actor {
     get betaLedgerWallet() {
         return this.wallets.getWalletForLedger(this.betaLedger.name);
     }
-
-    /*
-     * This is split protocol specific. Check whether the communication has been finalised
-     */
-    public async assertSwapFinalized() {
-        // unimplemented
-    }
 }

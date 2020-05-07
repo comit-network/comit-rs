@@ -11,6 +11,8 @@
 import { twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
 import { sleep } from "../src/utils";
+import { SwapStatus } from "../src/swap_response";
+import { Actor } from "../src/actors/actor";
 
 describe("communication", () => {
     it(
@@ -23,8 +25,8 @@ describe("communication", () => {
             await sleep(500);
             await bob.createSwap(bodies.bob);
 
-            await alice.assertSwapFinalized();
-            await bob.assertSwapFinalized();
+            await assertSwapFinalized(alice);
+            await assertSwapFinalized(bob);
         })
     );
 
@@ -38,8 +40,21 @@ describe("communication", () => {
             await sleep(500);
             await alice.createSwap(bodies.bob);
 
-            await alice.assertSwapFinalized();
-            await bob.assertSwapFinalized();
+            await assertSwapFinalized(alice);
+            await assertSwapFinalized(bob);
         })
     );
 });
+
+/**
+ * Assert that the communication phase has been finalized.
+ *
+ * No point adding it to `Actor` as it is only use in this test.
+ */
+async function assertSwapFinalized(actor: Actor) {
+    await actor.pollCndUntil(
+        actor.swap.self,
+        (swapResponse) =>
+            swapResponse.properties.status === SwapStatus.InProgress
+    );
+}

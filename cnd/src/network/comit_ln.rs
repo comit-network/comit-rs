@@ -156,6 +156,13 @@ impl ComitLN {
         Ok(())
     }
 
+    pub fn get_created_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+        self.swaps.get(&swap_id).cloned()
+    }
+
     pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
         let create_swap_params = match self.swaps.get(&swap_id) {
             Some(body) => body,
@@ -619,6 +626,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
             .expect("this should exist");
 
         if state.sent_finalized && state.received_finalized {
+            tracing::info!("Swap {} is finalized.", swap_id);
             let local_swap_id = self
                 .swap_ids
                 .iter()
