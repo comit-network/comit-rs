@@ -1,6 +1,7 @@
 import { threeActorTest, twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, sleep } from "../src/utils";
 import { Actor } from "../src/actors/actor";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 // ******************************************** //
 // Peers using ips                              //
@@ -38,16 +39,21 @@ describe("Peers using IP tests", () => {
 
     it(
         "alice-send-request-wrong-peer-id",
-        threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertPeersAvailable(alice, []);
+        threeActorTest(async (actors) => {
+            const [alice, bob, charlie] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+                actors.charlie,
+            ]);
+            await assertPeersAvailable(alice.actor, []);
 
             // Alice send swap request to Bob
             const swapRequest = await createDefaultSwapRequest(bob);
-            await alice.cnd.postSwap({
+            await alice.actor.cnd.postSwap({
                 ...swapRequest,
                 peer: {
                     peer_id: "QmXfGiwNESAFWUvDVJ4NLaKYYVopYdV5HbpDSgz5TSypkb", // Random peer id on purpose to see if Bob still appears in GET /swaps using the multiaddress
-                    address_hint: await bob.cnd
+                    address_hint: await bob.actor.cnd
                         .getPeerListenAddresses()
                         .then((addresses) => addresses[0]),
                 },
@@ -55,29 +61,36 @@ describe("Peers using IP tests", () => {
 
             await sleep(1000);
 
-            await assertPeersAvailable(alice, []);
+            await assertPeersAvailable(alice.actor, []);
 
-            await assertPeersAvailable(bob, []);
+            await assertPeersAvailable(bob.actor, []);
 
-            await assertPeersAvailable(charlie, []);
+            await assertPeersAvailable(charlie.actor, []);
         })
     );
 
     it(
         "alice-send-swap-request-to-charlie",
-        threeActorTest(async ({ alice, bob, charlie }) => {
-            await assertPeersAvailable(alice, []);
+        threeActorTest(async (actors) => {
+            const [alice, bob, charlie] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+                actors.charlie,
+            ]);
+            await assertPeersAvailable(alice.actor, []);
 
             // Alice send swap request to Bob
-            await alice.cnd.postSwap(await createDefaultSwapRequest(charlie));
+            await alice.actor.cnd.postSwap(
+                await createDefaultSwapRequest(charlie)
+            );
 
             await sleep(1000);
 
-            await assertPeersAvailable(bob, []);
+            await assertPeersAvailable(bob.actor, []);
 
-            await assertPeersAvailable(alice, [charlie]);
+            await assertPeersAvailable(alice.actor, [charlie.actor]);
 
-            await assertPeersAvailable(charlie, [alice]);
+            await assertPeersAvailable(charlie.actor, [alice.actor]);
         })
     );
 });

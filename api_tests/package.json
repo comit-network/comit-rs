@@ -18,10 +18,6 @@
     "dependencies": {
         "@iarna/toml": "^2.2.5",
         "@radar/lnrpc": "^0.10.0-beta",
-        "@types/chai": "^4.2.11",
-        "@types/chai-as-promised": "^7.1.2",
-        "@types/chai-json-schema": "^1.4.5",
-        "@types/chai-subset": "^1.3.3",
         "@types/download": "^6.2.4",
         "@types/find-cache-dir": "^3.2.0",
         "@types/glob": "^7.1.1",
@@ -44,7 +40,6 @@
         "glob": "^7.1.6",
         "jasmine": "^3.5.0",
         "jest": "^25.5.4",
-        "js-sha256": "^0.9.0",
         "log4js": "^6.2.1",
         "p-timeout": "^3.2.0",
         "prettier": "^2.0.5",

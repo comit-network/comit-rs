@@ -65,7 +65,7 @@ export class LightningWallet implements Wallet {
     public async getBalanceByAsset(asset: Asset): Promise<bigint> {
         if (asset.name !== "bitcoin") {
             throw new Error(
-                `Cannot read balance for asset ${asset.name} with LightningdWallet`
+                `Cannot read balance for asset ${asset.name} with LightningWallet`
             );
         }
 
@@ -138,19 +138,6 @@ export class LightningWallet implements Wallet {
         paymentRequest: string;
     }> {
         return this.inner.addInvoice(sats);
-    }
-
-    /**
-     * Pay a payment-request
-     *
-     * @param request A BOLT11-encoded payment request
-     */
-    public async pay(request: string) {
-        return this.inner.sendPaymentWithRequest(request);
-    }
-
-    public async lookupInvoice(secretHash: string) {
-        return this.inner.lookupInvoice(secretHash);
     }
 
     private async pollUntilChannelIsOpen(outpoint: Outpoint): Promise<void> {

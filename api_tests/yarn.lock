@@ -598,32 +598,6 @@
     "@types/long" "*"
     "@types/node" "*"
 
-"@types/chai-as-promised@^7.1.2":
-  version "7.1.2"
-  resolved "https://registry.yarnpkg.com/@types/chai-as-promised/-/chai-as-promised-7.1.2.tgz#2f564420e81eaf8650169e5a3a6b93e096e5068b"
-  integrity sha512-PO2gcfR3Oxa+u0QvECLe1xKXOqYTzCmWf0FhLhjREoW3fPAVamjihL7v1MOVLJLsnAMdLcjkfrs01yvDMwVK4Q==
-  dependencies:
-    "@types/chai" "*"
-
-"@types/chai-json-schema@^1.4.5":
-  version "1.4.5"
-  resolved "https://registry.yarnpkg.com/@types/chai-json-schema/-/chai-json-schema-1.4.5.tgz#fa1b11e10a87f0a189cfcfb8bd08a7f1e50a6d90"
-  integrity sha512-PqN4sKijtS3lgpbKySkGoft/0aMkyrd+awmi0kSyL4pttqmjm9Gz2s1Rp1sx6wrhWPpOjE/xU/M7KdONAqHw5A==
-  dependencies:
-    "@types/tv4" "*"
-
-"@types/chai-subset@^1.3.3":
-  version "1.3.3"
-  resolved "https://registry.yarnpkg.com/@types/chai-subset/-/chai-subset-1.3.3.tgz#97893814e92abd2c534de422cb377e0e0bdaac94"
-  integrity sha512-frBecisrNGz+F4T6bcc+NLeolfiojh5FxW2klu669+8BARtyQv2C/GkNW6FUodVe4BroGMP/wER/YDGc7rEllw==
-  dependencies:
-    "@types/chai" "*"
-
-"@types/chai@*", "@types/chai@^4.2.11":
-  version "4.2.11"
-  resolved "https://registry.yarnpkg.com/@types/chai/-/chai-4.2.11.tgz#d3614d6c5f500142358e6ed24e1bf16657536c50"
-  integrity sha512-t7uW6eFafjO+qJ3BIV2gGUyZs27egcNRkUdalkud+Qa3+kg//f129iuOFivHDXQ+vnU3fDXuwgv0cqMCbcE8sw==
-
 "@types/color-name@^1.1.1":
   version "1.1.1"
   resolved "https://registry.yarnpkg.com/@types/color-name/-/color-name-1.1.1.tgz#1c1261bbeaa10a8055bbc5d8ab84b7b2afc846a0"
@@ -780,11 +754,6 @@
   version "0.2.0"
   resolved "https://registry.yarnpkg.com/@types/tmp/-/tmp-0.2.0.tgz#e3f52b4d7397eaa9193592ef3fdd44dc0af4298c"
   integrity sha512-flgpHJjntpBAdJD43ShRosQvNC0ME97DCfGvZEDlAThQmnerRXrLbX6YgzRBQCZTthET9eAWFAMaYP0m0Y4HzQ==
-
-"@types/tv4@*":
-  version "1.2.29"
-  resolved "https://registry.yarnpkg.com/@types/tv4/-/tv4-1.2.29.tgz#4c6d2222b03245dd2104f4fd67f54d1658985911"
-  integrity sha512-NtJmi+XbYocrLb5Au4Q64srX4FlCPDvrSF/OnK3H0QJwrw40tIUoQPDoUHnZ5wpAB2KThtVyeS+kOEQyZabORg==
 
 "@types/yargs-parser@*":
   version "15.0.0"
@@ -3735,11 +3704,6 @@ jest@^25.5.4:
     "@jest/core" "^25.5.4"
     import-local "^3.0.2"
     jest-cli "^25.5.4"
-
-js-sha256@^0.9.0:
-  version "0.9.0"
-  resolved "https://registry.yarnpkg.com/js-sha256/-/js-sha256-0.9.0.tgz#0b89ac166583e91ef9123644bd3c5334ce9d0966"
-  integrity sha512-sga3MHh9sgQN2+pJ9VYZ+1LPwXOxuBJBA5nrR5/ofPfuiJBE2hnjsaN8se8JznOmGLN2p49Pe5U/ttafcs/apA==
 
 js-sha3@0.5.7:
   version "0.5.7"

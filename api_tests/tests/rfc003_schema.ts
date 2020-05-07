@@ -5,6 +5,7 @@ import { twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
 import { Action, EmbeddedRepresentationSubEntity, Link } from "comit-sdk";
 import "../src/schema_matcher";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 // ******************************************** //
 // RFC003 schema tests                          //
@@ -22,9 +23,13 @@ describe("Rfc003 schema tests", () => {
 
     it(
         "get-single-swap-contains-link-to-rfc",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             // Alice send swap request to Bob
-            await alice.cnd.postSwap(await createDefaultSwapRequest(bob));
+            await alice.actor.cnd.postSwap(await createDefaultSwapRequest(bob));
 
             const aliceSwapEntity = await alice
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
@@ -66,9 +71,13 @@ async function assertSwapsInProgress(actor: Actor) {
 describe("Rfc003 schema swap reject tests", () => {
     it(
         "alice-can-make-default-swap-request",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             // Alice should be able to send two swap requests to Bob
-            const url1 = await alice.cnd.postSwap({
+            const url1 = await alice.actor.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
                 alpha_asset: {
                     name: DEFAULT_ALPHA.asset.name,
@@ -76,7 +85,7 @@ describe("Rfc003 schema swap reject tests", () => {
                 },
             });
 
-            const url2 = await alice.cnd.postSwap({
+            const url2 = await alice.actor.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
                 alpha_asset: {
                     name: DEFAULT_ALPHA.asset.name,
@@ -84,21 +93,25 @@ describe("Rfc003 schema swap reject tests", () => {
                 },
             });
 
-            await assertSwapsInProgress(alice);
+            await assertSwapsInProgress(alice.actor);
 
             // make sure bob processed the swaps fully
             await bob.pollSwapDetails(url1);
             await bob.pollSwapDetails(url2);
 
-            await assertSwapsInProgress(bob);
+            await assertSwapsInProgress(bob.actor);
         })
     );
 
     it(
         "bob-can-decline-swap",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             // Alice should be able to send two swap requests to Bob
-            const aliceReasonableSwap = await alice.cnd.postSwap({
+            const aliceReasonableSwap = await alice.actor.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
                 alpha_asset: {
                     name: DEFAULT_ALPHA.asset.name,
@@ -106,7 +119,7 @@ describe("Rfc003 schema swap reject tests", () => {
                 },
             });
 
-            const aliceStingySwap = await alice.cnd.postSwap({
+            const aliceStingySwap = await alice.actor.cnd.postSwap({
                 ...(await createDefaultSwapRequest(bob)),
                 alpha_asset: {
                     name: DEFAULT_ALPHA.asset.name,
@@ -127,7 +140,7 @@ describe("Rfc003 schema swap reject tests", () => {
             const decline = bobSwapDetails.actions.find(
                 (action: Action) => action.name === "decline"
             );
-            const declineRes = await bob.cnd.executeSirenAction(decline);
+            const declineRes = await bob.actor.cnd.executeSirenAction(decline);
 
             expect(declineRes.status).toBe(200);
 

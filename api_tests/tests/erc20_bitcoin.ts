@@ -5,11 +5,16 @@
 
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 describe("E2E: Ethereum/erc20 - Bitcoin/bitcoin", () => {
     it(
         "rfc003-eth-erc20_btc-alice-redeems-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Erc20, AssetKind.Bitcoin);
             await bob.accept();
 
@@ -27,7 +32,11 @@ describe("E2E: Ethereum/erc20 - Bitcoin/bitcoin", () => {
 
     it(
         "rfc003-eth-erc20_btc-bob-refunds-alice-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Erc20, AssetKind.Bitcoin);
             await bob.accept();
 

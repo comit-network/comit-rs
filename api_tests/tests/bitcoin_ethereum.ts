@@ -6,11 +6,16 @@
 import { twoActorTest } from "../src/actor_test";
 import { AssetKind } from "../src/asset";
 import { sleep } from "../src/utils";
+import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
 describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
     it(
         "rfc003-btc-eth-alice-redeems-bob-redeems",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -27,7 +32,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-bob-refunds-alice-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -44,7 +53,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-alice-refunds-bob-refunds",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -65,7 +78,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-alice-underfunds-bob-aborts",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -88,7 +105,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-bob-underfunds-both-refund",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
             await alice.fund();
@@ -114,7 +135,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-alice-overfunds-bob-aborts",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
 
@@ -136,7 +161,11 @@ describe("E2E: Bitcoin/bitcoin - Ethereum/ether", () => {
 
     it(
         "rfc003-btc-eth-bob-overfunds-both-refund",
-        twoActorTest(async ({ alice, bob }) => {
+        twoActorTest(async (actors) => {
+            const [alice, bob] = Rfc003Actor.convert([
+                actors.alice,
+                actors.bob,
+            ]);
             await alice.sendRequest(AssetKind.Bitcoin, AssetKind.Ether);
             await bob.accept();
             await alice.fund();
