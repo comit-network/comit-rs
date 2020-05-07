@@ -17,7 +17,7 @@ import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
 import { EscrowStatus, LedgerState, SwapResponse } from "../swap_response";
 
-export type ActorNames = "alice" | "bob" | "charlie";
+export type ActorName = "alice" | "bob" | "charlie";
 
 export class Actor {
     public static defaultActionConfig = {
@@ -26,7 +26,7 @@ export class Actor {
     };
 
     public static async newInstance(
-        name: ActorNames,
+        name: ActorName,
         ledgerConfig: LedgerConfig,
         cargoTargetDirectory: string,
         cndLogFile: string,
@@ -70,7 +70,7 @@ export class Actor {
     constructor(
         public readonly logger: Logger,
         public readonly cndInstance: CndInstance,
-        private readonly name: ActorNames
+        public readonly name: ActorName
     ) {
         this.wallets = new Wallets({});
         const socket = cndInstance.getConfigFile().http_api.socket;
@@ -78,10 +78,6 @@ export class Actor {
 
         this.startingBalances = new Map();
         this.expectedBalanceChanges = new Map();
-    }
-
-    public getName() {
-        return this.name;
     }
 
     /**

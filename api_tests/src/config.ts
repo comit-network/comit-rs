@@ -6,7 +6,7 @@ import {
     BitcoinNodeConfig,
     EthereumNodeConfig,
 } from "./ledgers";
-import { ActorNames } from "./actors/actor";
+import { ActorName } from "./actors/actor";
 import { Logger } from "log4js";
 
 export interface CndConfigFile {
@@ -23,7 +23,7 @@ export interface HttpApi {
 export class E2ETestActorConfig {
     public readonly data: string;
 
-    public static async for(name: ActorNames, logger: Logger) {
+    public static async for(name: ActorName, logger: Logger) {
         return new E2ETestActorConfig(
             await getPort(),
             await getPort(),
@@ -35,7 +35,7 @@ export class E2ETestActorConfig {
     constructor(
         public readonly httpApiPort: number,
         public readonly comitPort: number,
-        public readonly name: ActorNames,
+        public readonly name: ActorName,
         private readonly logger: Logger
     ) {
         this.httpApiPort = httpApiPort;

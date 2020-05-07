@@ -33,7 +33,7 @@ export class Rfc003Actor {
         const rfc003ActorsMap = new Map<string, Rfc003Actor>();
 
         for (const actor of actors) {
-            rfc003ActorsMap.set(actor.getName(), new Rfc003Actor(actor));
+            rfc003ActorsMap.set(actor.name, new Rfc003Actor(actor));
         }
 
         const rfc003Actors = new Rfc003Actors(rfc003ActorsMap);
@@ -41,7 +41,7 @@ export class Rfc003Actor {
         const result: Rfc003Actor[] = [];
 
         for (const actor of actors) {
-            const name = actor.getName();
+            const name = actor.name;
             rfc003ActorsMap.get(name).actors = rfc003Actors;
             result.push(rfc003Actors.getActorByName(name));
         }
@@ -599,9 +599,8 @@ export class Rfc003Actor {
             .then((entity) => entity.properties.role);
     }
 
-    // TODO: Make it a getter
-    public getName() {
-        return this.actor.getName();
+    get name() {
+        return this.actor.name;
     }
 
     private async waitForAlphaExpiry() {
@@ -715,7 +714,7 @@ export class Rfc003Actor {
                 this.actor.wallets.initializeForLedger(
                     ledgerName,
                     this.logger,
-                    this.actor.getName()
+                    this.actor.name
                 )
             );
         }
