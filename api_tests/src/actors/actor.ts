@@ -20,12 +20,12 @@ import { Wallet, Wallets } from "../wallets";
 import { Actors } from "./index";
 import { sha256 } from "js-sha256";
 import { InvoiceState } from "@radar/lnrpc";
+import { defaultLedgerDescriptionForLedger } from "./defaults";
 import {
     defaultAssetDescription,
     defaultExpiryTimes,
-    defaultLedgerDescriptionForLedger,
     defaultLedgerKindForAsset,
-} from "./defaults";
+} from "./rfc003_defaults";
 
 export type ActorNames = "alice" | "bob" | "charlie";
 
