@@ -248,7 +248,7 @@ export class Actor {
 
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
 
-        const role = await this.whoAmI();
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertAlphaFunded();
@@ -276,7 +276,7 @@ export class Actor {
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
 
-        const role = await this.whoAmI();
+        const role = await this.cryptoRole();
         switch (role) {
             case "Alice":
                 await this.actors.alice.assertBetaRedeemed();
@@ -293,10 +293,16 @@ export class Actor {
         }
     }
 
-    // TODO: Check if this correct or if we can use getName
-    public async whoAmI(): Promise<string> {
-        const entity = await this.swap.fetchDetails();
-        return entity.properties.role;
+    public async getSwapResponse(): Promise<SwapResponse> {
+        return this.cnd
+            .fetch<SwapResponse>(this.swap.self)
+            .then((response) => response.data);
+    }
+
+    public async cryptoRole(): Promise<"Alice" | "Bob"> {
+        return this.getSwapResponse().then(
+            (swapResponse) => swapResponse.properties.role
+        );
     }
 
     /**
