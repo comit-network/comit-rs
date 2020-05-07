@@ -334,7 +334,7 @@ impl fmt::Display for SwapExists {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
     pub beta_ledger: lightning::Regtest,

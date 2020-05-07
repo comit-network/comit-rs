@@ -183,57 +183,10 @@ where
         + QuantityWei
         + QuantitySatoshi
         + GetAlphaTransaction
-        + GetBetaTransaction,
+        + GetBetaTransaction
+        + Clone,
 {
-    let role = state.get_role();
-    let swap = SwapResource {
-        status: state.get_swap_status(),
-        role: Http(role),
-    };
-
-    let mut entity = siren::Entity::default()
-        .with_class_member("swaps")
-        .with_properties(swap)
-        .map_err(|e| {
-            tracing::error!("failed to set properties of entity: {:?}", e);
-            HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-        })?
-        .with_link(siren::NavigationalLink::new(
-            &["self"],
-            route_factory::swap_path(swap_id),
-        ));
-
-    let alpha_params = HanEthereum {
-        protocol: "han-ethereum".to_string(),
-        quantity: state.quantity_wei(),
-    };
-    let alpha_params_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("parameters")
-            .with_properties(alpha_params)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
-        &["alpha"],
-    );
-    entity.push_sub_entity(alpha_params_sub);
-
-    let beta_params = HalightBitcoin {
-        protocol: "halight-bitcoin".to_string(),
-        quantity: state.quantity_satoshi(),
-    };
-    let beta_params_sub = siren::SubEntity::from_entity(
-        siren::Entity::default()
-            .with_class_member("parameters")
-            .with_properties(beta_params)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
-        &["beta"],
-    );
-    entity.push_sub_entity(beta_params_sub);
+    let mut entity = make_created_swap_entity(swap_id, state.clone())?;
 
     let alpha_tx = state.get_alpha_transaction();
     let alpha_state_sub = siren::SubEntity::from_entity(
@@ -365,7 +318,7 @@ impl QuantitySatoshi for HanEthereumHalightBitcoinCreatedState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct AliceHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
@@ -410,7 +363,7 @@ impl QuantitySatoshi for AliceHanEthereumHalightBitcoinState {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct BobHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
