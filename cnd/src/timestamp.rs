@@ -18,7 +18,11 @@ impl Timestamp {
     }
 
     pub fn plus(self, seconds: u32) -> Self {
-        Self(self.0.checked_add(seconds).unwrap_or(std::u32::MAX))
+        Self(self.0.saturating_add(seconds))
+    }
+
+    pub fn minus(self, seconds: u32) -> Self {
+        Self(self.0.saturating_sub(seconds))
     }
 
     pub fn to_bytes(self) -> [u8; 4] {

@@ -33,6 +33,9 @@ use std::{
 };
 use swaps::Swaps;
 
+/// Setting it at 5 minutes
+const PENDING_SWAP_EXPIRY_SECS: u32 = 5 * 60;
+
 mod swaps;
 
 /// Event emitted  by the `ComitLn` behaviour.
@@ -283,6 +286,9 @@ impl ComitLN {
         _cx: &mut Context<'_>,
         _params: &mut impl PollParameters,
     ) -> Poll<NetworkBehaviourAction<BIE, BehaviourOutEvent>> {
+        let time_limit = Timestamp::now().minus(PENDING_SWAP_EXPIRY_SECS);
+        self.swaps.clean_up_pending_swaps(time_limit);
+
         if let Some(event) = self.events.pop_front() {
             return Poll::Ready(NetworkBehaviourAction::GenerateEvent(event));
         }

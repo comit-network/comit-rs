@@ -1,6 +1,7 @@
 use crate::{
     network::protocols::announce::{protocol::ReplySubstream, SwapDigest},
     swap_protocols::{HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
+    timestamp::Timestamp,
 };
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
@@ -234,6 +235,11 @@ impl<T> Swaps<T> {
         Ok((*local_swap_id, create_params.clone()))
     }
 
+    /// Remove all pending (not finalized) swap older than `older_than`
+    pub fn clean_up_pending_swaps(&mut self, _older_than: Timestamp) {
+        unimplemented!()
+    }
+
     /// This does not test external behaviour but the aim is to ensure we are
     /// not consuming memory for no reason.
     #[cfg(test)]
@@ -461,5 +467,97 @@ mod tests {
         assert_eq!(create_params, _create_params);
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));
+    }
+
+    #[test]
+    fn old_pending_swaps_are_cleaned_up() {
+        let mut swaps = Swaps::<()>::default();
+
+        let create_params1 = create_params();
+        let digest1 = create_params1.clone().digest();
+        let create_params2 = create_params();
+        let digest2 = create_params2.clone().digest();
+        let create_params3 = create_params();
+        let digest3 = create_params3.digest();
+
+        swaps
+            .create_as_pending_confirmation(digest1.clone(), LocalSwapId::default(), create_params1)
+            .unwrap();
+
+        swaps
+            .create_as_pending_announcement(digest2.clone(), LocalSwapId::default(), create_params2)
+            .unwrap();
+
+        swaps
+            .insert_pending_creation(digest3.clone(), PeerId::random(), ())
+            .unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let time = Timestamp::now();
+
+        swaps.clean_up_pending_swaps(time);
+
+        assert!(!swaps.swap_in_pending_hashmaps(&digest1));
+        assert!(!swaps.swap_in_pending_hashmaps(&digest2));
+        assert!(!swaps.swap_in_pending_hashmaps(&digest3));
+    }
+
+    #[test]
+    fn old_finalized_swaps_are_not_cleaned_up() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
+
+        swaps
+            .create_as_pending_announcement(digest.clone(), local_swap_id, create_params)
+            .unwrap();
+        let (shared_swap_id, _) = swaps
+            .move_pending_announcement_to_communicate(&digest)
+            .unwrap();
+
+        swaps.get_announced_swap(&local_swap_id).unwrap();
+
+        swaps.finalize_swap(&shared_swap_id).unwrap();
+
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        let time = Timestamp::now();
+
+        swaps.clean_up_pending_swaps(time);
+
+        assert!(swaps.get_announced_swap(&local_swap_id).is_some());
+    }
+
+    #[test]
+    fn young_pending_swaps_are_not_cleaned_up() {
+        let mut swaps = Swaps::<()>::default();
+
+        let create_params1 = create_params();
+        let digest1 = create_params1.clone().digest();
+        let create_params2 = create_params();
+        let digest2 = create_params2.clone().digest();
+        let create_params3 = create_params();
+        let digest3 = create_params3.digest();
+
+        let time = Timestamp::now();
+        std::thread::sleep(std::time::Duration::from_secs(1));
+
+        swaps
+            .create_as_pending_confirmation(digest1.clone(), LocalSwapId::default(), create_params1)
+            .unwrap();
+
+        swaps
+            .create_as_pending_announcement(digest2.clone(), LocalSwapId::default(), create_params2)
+            .unwrap();
+
+        swaps
+            .insert_pending_creation(digest3.clone(), PeerId::random(), ())
+            .unwrap();
+
+        swaps.clean_up_pending_swaps(time);
+
+        assert!(swaps.swap_in_pending_hashmaps(&digest1));
+        assert!(swaps.swap_in_pending_hashmaps(&digest2));
+        assert!(swaps.swap_in_pending_hashmaps(&digest3));
     }
 }
