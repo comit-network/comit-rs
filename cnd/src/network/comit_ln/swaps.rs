@@ -351,4 +351,28 @@ mod tests {
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));
     }
+
+    #[test]
+    fn from_creation_then_announcement_to_finalisation_for_bob() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let _ = swaps
+            .create_as_pending_announcement(digest.clone(), local_swap_id, create_params.clone())
+            .unwrap();
+
+        let (shared_swap_id, _create_params) = swaps
+            .move_pending_announcement_to_communicate(&digest)
+            .unwrap();
+
+        assert_eq!(create_params, _create_params);
+
+        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+
+        assert_eq!(create_params, _create_params);
+
+        assert!(!swaps.swap_in_pending_hashmaps(&digest));
+    }
 }
