@@ -203,3 +203,50 @@ impl Swaps {
         Some((*local_swap_id, create_params.clone()))
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        asset,
+        asset::ethereum::FromWei,
+        identity,
+        network::DialInformation,
+        swap_protocols::{EthereumIdentity, Role},
+    };
+    use digest::Digest;
+
+    fn create_params() -> HanEtherereumHalightBitcoinCreateSwapParams {
+        HanEtherereumHalightBitcoinCreateSwapParams {
+            role: Role::Alice,
+            peer: DialInformation {
+                peer_id: PeerId::random(),
+                address_hint: None,
+            },
+            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_absolute_expiry: 12345.into(),
+            ethereum_amount: asset::Ether::from_wei(9_001_000_000_000_000_000_000u128),
+            lightning_identity: identity::Lightning::random(),
+            lightning_cltv_expiry: 12345.into(),
+            lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+        }
+    }
+
+    #[test]
+    fn created_swap_can_be_retrieved() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let creation = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+
+        assert!(creation.is_ok());
+
+        let create_swap = swaps.get_created_swap(&local_swap_id);
+
+        assert!(create_swap.is_some());
+
+        assert_eq!(create_swap.unwrap(), create_params)
+    }
+}
