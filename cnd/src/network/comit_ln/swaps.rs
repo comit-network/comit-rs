@@ -74,9 +74,12 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
-        match self.swaps.insert(local_swap_id, create_swap_params) {
-            Some(_) => return Err(Error::AlreadyExists),
-            None => {}
+        if self
+            .swaps
+            .insert(local_swap_id, create_swap_params)
+            .is_some()
+        {
+            return Err(Error::AlreadyExists);
         }
 
         self.pending_confirmation.insert(digest, local_swap_id);
@@ -113,9 +116,12 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
-        match self.swaps.insert(local_swap_id, create_swap_params) {
-            Some(_) => return Err(Error::AlreadyExists),
-            None => {}
+        if self
+            .swaps
+            .insert(local_swap_id, create_swap_params)
+            .is_some()
+        {
+            return Err(Error::AlreadyExists);
         }
 
         self.pending_announcement.insert(digest, local_swap_id);
@@ -130,9 +136,10 @@ impl<T> Swaps<T> {
         peer: PeerId,
         io: T,
     ) -> Result<(), Error> {
-        match self.pending_creation.insert(digest, (peer, io)) {
-            Some(_) => Err(Error::AlreadyPendingCreation),
-            None => Ok(()),
+        if self.pending_creation.insert(digest, (peer, io)).is_some() {
+            Err(Error::AlreadyPendingCreation)
+        } else {
+            Ok(())
         }
     }
 
@@ -180,9 +187,12 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(SharedSwapId, PeerId, T), Error> {
-        match self.swaps.insert(local_swap_id, create_swap_params) {
-            Some(_) => return Err(Error::AlreadyExists),
-            None => {}
+        if self
+            .swaps
+            .insert(local_swap_id, create_swap_params)
+            .is_some()
+        {
+            return Err(Error::AlreadyExists);
         }
 
         let (peer, io) = match self.pending_creation.remove(&digest) {
@@ -372,7 +382,7 @@ mod tests {
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
-        let _ = swaps
+        swaps
             .create_as_pending_confirmation(digest.clone(), local_swap_id, create_params.clone())
             .unwrap();
 
@@ -403,7 +413,7 @@ mod tests {
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
 
-        let _ = swaps
+        swaps
             .create_as_pending_announcement(digest.clone(), local_swap_id, create_params.clone())
             .unwrap();
 
@@ -432,8 +442,8 @@ mod tests {
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::default();
 
-        let _ = swaps
-            .insert_pending_creation(digest.clone(), (&create_params).peer.peer_id.clone(), ())
+        swaps
+            .insert_pending_creation(digest.clone(), create_params.peer.peer_id.clone(), ())
             .unwrap();
 
         let (shared_swap_id, _peer, _io) = swaps

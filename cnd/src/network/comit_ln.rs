@@ -113,7 +113,8 @@ impl ComitLN {
                 self.announce
                     .start_announce_protocol(digest.clone(), (&create_swap_params.peer).clone());
                 self.swaps
-                    .create_as_pending_confirmation(digest, id, create_swap_params);
+                    .create_as_pending_confirmation(digest, id, create_swap_params)
+                    .map_err(anyhow::Error::from)?;
             }
             Role::Bob => {
                 if let Ok((shared_swap_id, peer, io)) = self
@@ -123,11 +124,9 @@ impl ComitLN {
                     tracing::info!("Confirm & communicate for swap: {}", digest);
                     self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
                 } else {
-                    self.swaps.create_as_pending_announcement(
-                        digest.clone(),
-                        id,
-                        create_swap_params,
-                    );
+                    self.swaps
+                        .create_as_pending_announcement(digest.clone(), id, create_swap_params)
+                        .map_err(anyhow::Error::from)?;
                     tracing::debug!("Swap {} waiting for announcement", digest);
                 }
             }
@@ -429,8 +428,14 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     }
                     None => {
                         tracing::debug!("Swap has not been created yet, parking it.");
-                        self.swaps
-                            .insert_pending_creation((&io.swap_digest).clone(), peer, *io);
+                        let _ = self
+                            .swaps
+                            .insert_pending_creation((&io.swap_digest).clone(), peer, *io)
+                            .map_err(|_| {
+                                tracing::error!(
+                                    "Swap already known, Alice appeared to have sent it twice."
+                                )
+                            });
 
                         return;
                     }
