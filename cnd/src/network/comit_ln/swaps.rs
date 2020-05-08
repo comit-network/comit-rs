@@ -209,6 +209,15 @@ impl Swaps {
 
         Some((*local_swap_id, create_params.clone()))
     }
+
+    /// This does not test external behaviour but the aim is to ensure we are
+    /// not consuming memory for no reason.
+    #[cfg(test)]
+    fn swap_in_pending_hashmaps(&self, digest: &SwapDigest) -> bool {
+        self.pending_confirmation.get(digest).is_some()
+            || self.pending_announcement.get(digest).is_some()
+            || self.pending_creation.get(digest).is_some()
+    }
 }
 
 #[cfg(test)]
@@ -315,5 +324,31 @@ mod tests {
         let creation = swaps.create_as_pending_announcement(digest, local_swap_id, create_params);
 
         assert!(creation.is_err())
+    }
+
+    #[test]
+    fn from_creation_to_finalisation_for_alice() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let _ = swaps
+            .create_as_pending_confirmation(digest.clone(), local_swap_id, create_params.clone())
+            .unwrap();
+
+        let shared_swap_id = SharedSwapId::default();
+        let (_local_swap_id, _create_params) = swaps
+            .move_pending_confirmation_to_communicate(&digest, shared_swap_id)
+            .unwrap();
+
+        assert_eq!(local_swap_id, _local_swap_id);
+        assert_eq!(create_params, _create_params);
+
+        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+
+        assert_eq!(create_params, _create_params);
+
+        assert!(!swaps.swap_in_pending_hashmaps(&digest));
     }
 }
