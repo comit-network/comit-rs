@@ -249,4 +249,18 @@ mod tests {
 
         assert_eq!(create_swap.unwrap(), create_params)
     }
+
+    #[test]
+    fn same_swap_cannot_be_inserted_twice() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let creation1 = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+
+        let creation2 = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+
+        assert!(creation2.is_err())
+    }
 }

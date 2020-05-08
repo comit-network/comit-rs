@@ -67,25 +67,6 @@ describe("communication", () => {
             await assertSwapCreated(bob);
         })
     );
-
-    // This test could be anywhere, it is just here because this endpoint was the first of the spilt protocols implemented.
-    it(
-        "alice-cannot-create-two-identical-swaps",
-        twoActorTest(async ({ alice, bob }) => {
-            // arrange
-            const bodies = (await SwapFactory.newSwap(alice, bob))
-                .hanEthereumEtherHalightLightningBitcoin;
-
-            await alice.createSwap(bodies.alice);
-            await sleep(200);
-
-            // act
-            const response = alice.createSwap(bodies.alice);
-
-            // assert
-            await expect(response).rejects.toThrow("Swap already exists.");
-        })
-    );
 });
 
 /**
