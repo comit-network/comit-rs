@@ -4,7 +4,7 @@ use crate::{
         oneshot_behaviour,
         protocols::{
             announce,
-            announce::{behaviour::Announce, SwapDigest},
+            announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
             ethereum_identity, finalize, lightning_identity, secret_hash,
         },
     },
@@ -21,9 +21,10 @@ use digest::Digest;
 use futures::AsyncWriteExt;
 use libp2p::{
     swarm::{
-        NetworkBehaviour, NetworkBehaviourAction, NetworkBehaviourEventProcess, PollParameters,
+        NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
+        NetworkBehaviourEventProcess, PollParameters,
     },
-    NetworkBehaviour,
+    NetworkBehaviour, PeerId,
 };
 use std::{
     collections::{HashMap, VecDeque},
@@ -54,8 +55,22 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
 
+    /// In role of Alice; swaps exist in here once a swap is created by Alice
+    /// (and up until an announce confirmation is received from Bob).
+    #[behaviour(ignore)]
+    swaps_waiting_for_confirmation: HashMap<SwapDigest, LocalSwapId>,
+    /// In role of Bob; swaps exist in here if Bob creates the swap _before_ an
+    /// announce message is received from Alice (and up until the announce
+    /// message arrives).
     #[behaviour(ignore)]
     swaps_waiting_for_announcement: HashMap<SwapDigest, LocalSwapId>,
+    /// In role of Bob; swaps exist in here if Bob creates the swap _after_ an
+    /// announce message is received from Alice (and up until Bob creates the
+    /// swap).
+    #[behaviour(ignore)]
+    swaps_waiting_for_creation:
+        HashMap<SwapDigest, (libp2p::PeerId, ReplySubstream<NegotiatedSubstream>)>,
+
     #[behaviour(ignore)]
     swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
     #[behaviour(ignore)]
@@ -91,7 +106,9 @@ impl ComitLN {
             lightning_identity: Default::default(),
             finalize: Default::default(),
             events: VecDeque::new(),
+            swaps_waiting_for_confirmation: Default::default(),
             swaps_waiting_for_announcement: Default::default(),
+            swaps_waiting_for_creation: Default::default(),
             swaps: Default::default(),
             swap_ids: Default::default(),
             ethereum_identities: Default::default(),
@@ -108,25 +125,42 @@ impl ComitLN {
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         let digest = create_swap_params.clone().digest();
-
-        if self.swaps_waiting_for_announcement.contains_key(&digest) {
+        tracing::trace!("Swap creation request received: {}", digest);
+        if self.swaps_waiting_for_announcement.contains_key(&digest)
+            || self.swaps_waiting_for_confirmation.contains_key(&digest)
+        {
             anyhow::bail!(SwapExists)
         }
+
         self.swaps.insert(id, create_swap_params.clone());
-        self.swaps_waiting_for_announcement
-            .insert(digest.clone(), id);
 
         match create_swap_params.role {
             Role::Alice => {
+                tracing::info!("Starting announcement for swap: {}", digest);
                 self.announce
-                    .start_announce_protocol(digest, create_swap_params.peer);
+                    .start_announce_protocol(digest.clone(), create_swap_params.peer);
+                self.swaps_waiting_for_confirmation.insert(digest, id);
             }
             Role::Bob => {
-                tracing::info!("Swap waiting for announcement: {}", digest);
+                if let Some((peer, io)) = self.swaps_waiting_for_creation.remove(&digest) {
+                    tracing::info!("Confirm & communicate for swap: {}", digest);
+                    self.bob_communicate(peer, io, &id)
+                } else {
+                    self.swaps_waiting_for_announcement
+                        .insert(digest.clone(), id);
+                    tracing::debug!("Swap {} waiting for announcement", digest);
+                }
             }
         }
 
         Ok(())
+    }
+
+    pub fn get_created_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+        self.swaps.get(&swap_id).cloned()
     }
 
     pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
@@ -195,6 +229,86 @@ impl ComitLN {
         })
     }
 
+    /// Once confirmation is received, exchange the information to then finalize
+    fn alice_communicate(
+        &mut self,
+        peer: PeerId,
+        swap_id: SharedSwapId,
+        local_swap_id: LocalSwapId,
+    ) {
+        let addresses = self.announce.addresses_of_peer(&peer);
+        self.secret_hash
+            .register_addresses(peer.clone(), addresses.clone());
+        self.ethereum_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.lightning_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.finalize.register_addresses(peer.clone(), addresses);
+
+        let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
+
+        self.ethereum_identity.send(
+            peer.clone(),
+            ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity.into()),
+        );
+        self.lightning_identity.send(
+            peer.clone(),
+            lightning_identity::Message::new(swap_id, create_swap_params.lightning_identity),
+        );
+
+        let seed = self.seed.derive_swap_seed(local_swap_id);
+        let secret_hash = seed.derive_secret().hash();
+
+        self.secret_hashes.insert(swap_id, secret_hash);
+        self.secret_hash
+            .send(peer, secret_hash::Message::new(swap_id, secret_hash));
+
+        self.communication_state
+            .insert(swap_id, CommunicationState::default());
+    }
+
+    /// After announcement, confirm and then exchange information for the swap,
+    /// once done, go finalize
+    fn bob_communicate(
+        &mut self,
+        peer: libp2p::PeerId,
+        io: ReplySubstream<NegotiatedSubstream>,
+        local_swap_id: &LocalSwapId,
+    ) {
+        let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
+        let shared_swap_id = SharedSwapId::default();
+        self.swap_ids
+            .insert(local_swap_id.clone(), shared_swap_id.clone());
+
+        // Confirm
+        tokio::task::spawn(io.send(shared_swap_id));
+
+        let addresses = self.announce.addresses_of_peer(&peer);
+        self.secret_hash
+            .register_addresses(peer.clone(), addresses.clone());
+        self.ethereum_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.lightning_identity
+            .register_addresses(peer.clone(), addresses.clone());
+        self.finalize.register_addresses(peer.clone(), addresses);
+
+        // Communicate
+        self.ethereum_identity.send(
+            peer.clone(),
+            ethereum_identity::Message::new(
+                shared_swap_id,
+                create_swap_params.ethereum_identity.into(),
+            ),
+        );
+        self.lightning_identity.send(
+            peer,
+            lightning_identity::Message::new(shared_swap_id, create_swap_params.lightning_identity),
+        );
+
+        self.communication_state
+            .insert(shared_swap_id, CommunicationState::default());
+    }
+
     fn poll<BIE>(
         &mut self,
         _cx: &mut Context<'_>,
@@ -220,7 +334,7 @@ impl fmt::Display for SwapExists {
     }
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
     pub beta_ledger: lightning::Regtest,
@@ -311,10 +425,16 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
     }
 }
 
+// It is already split in smaller functions
+#[allow(clippy::cognitive_complexity)]
 impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for ComitLN {
     fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
         match event {
             announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
+                tracing::info!("Peer {} announced a swap ({})", peer, io.swap_digest);
+                let span =
+                    tracing::trace_span!("swap", digest = format_args!("{}", io.swap_digest));
+                let _enter = span.enter();
                 // Check if there are any errors before modifying the hash-map.
                 match self.swaps_waiting_for_announcement.get(&io.swap_digest) {
                     Some(local_swap_id) => {
@@ -326,10 +446,9 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 
                         let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
                         if peer != create_swap_params.peer.peer_id {
-                            tracing::warn!(
-                                "Peer {} announced a swap ({}), but the peer-id {} of the swap awaiting announcement does not match.",
+                            tracing::error!(
+                                "The peer-id {} of the swap awaiting announcement does not match expected peer-id {}",
                                 peer,
-                                io.swap_digest,
                                 create_swap_params.peer.peer_id
                             );
                             tokio::task::spawn(async move {
@@ -340,15 +459,11 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                         }
                     }
                     None => {
-                        tracing::warn!(
-                            "Peer {} announced a swap ({}) we don't know about",
-                            peer,
-                            io.swap_digest
+                        tracing::debug!(
+                            "Swap has not been created yet, waiting for REST API request."
                         );
-
-                        tokio::task::spawn(async move {
-                            let _ = io.io.close().await;
-                        });
+                        self.swaps_waiting_for_creation
+                            .insert((&io.swap_digest).clone(), (peer, *io));
 
                         return;
                     }
@@ -357,39 +472,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 if let Some(local_swap_id) =
                     self.swaps_waiting_for_announcement.remove(&io.swap_digest)
                 {
-                    let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
-                    let shared_swap_id = SharedSwapId::default();
-                    self.swap_ids
-                        .insert(local_swap_id.clone(), shared_swap_id.clone());
-
-                    tokio::task::spawn(io.send(shared_swap_id));
-
-                    let addresses = self.announce.addresses_of_peer(&peer);
-                    self.secret_hash
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.ethereum_identity
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.lightning_identity
-                        .register_addresses(peer.clone(), addresses.clone());
-                    self.finalize.register_addresses(peer.clone(), addresses);
-
-                    self.ethereum_identity.send(
-                        peer.clone(),
-                        ethereum_identity::Message::new(
-                            shared_swap_id,
-                            create_swap_params.ethereum_identity.into(),
-                        ),
-                    );
-                    self.lightning_identity.send(
-                        peer,
-                        lightning_identity::Message::new(
-                            shared_swap_id,
-                            create_swap_params.lightning_identity,
-                        ),
-                    );
-
-                    self.communication_state
-                        .insert(shared_swap_id, CommunicationState::default());
+                    tracing::debug!("Swap confirmation and communication has started.");
+                    self.bob_communicate(peer, *io, &local_swap_id);
                 }
             }
             announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
@@ -398,47 +482,13 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_id,
             } => {
                 let local_swap_id = self
-                    .swaps_waiting_for_announcement
+                    .swaps_waiting_for_confirmation
                     .remove(&swap_digest)
                     .expect("we must know about this digest");
 
                 self.swap_ids.insert(local_swap_id, swap_id);
 
-                let addresses = self.announce.addresses_of_peer(&peer);
-                self.secret_hash
-                    .register_addresses(peer.clone(), addresses.clone());
-                self.ethereum_identity
-                    .register_addresses(peer.clone(), addresses.clone());
-                self.lightning_identity
-                    .register_addresses(peer.clone(), addresses.clone());
-                self.finalize.register_addresses(peer.clone(), addresses);
-
-                let create_swap_params = self.swaps.get(&local_swap_id).unwrap();
-
-                self.ethereum_identity.send(
-                    peer.clone(),
-                    ethereum_identity::Message::new(
-                        swap_id,
-                        create_swap_params.ethereum_identity.into(),
-                    ),
-                );
-                self.lightning_identity.send(
-                    peer.clone(),
-                    lightning_identity::Message::new(
-                        swap_id,
-                        create_swap_params.lightning_identity,
-                    ),
-                );
-
-                let seed = self.seed.derive_swap_seed(local_swap_id);
-                let secret_hash = seed.derive_secret().hash();
-
-                self.secret_hashes.insert(swap_id, secret_hash);
-                self.secret_hash
-                    .send(peer, secret_hash::Message::new(swap_id, secret_hash));
-
-                self.communication_state
-                    .insert(swap_id, CommunicationState::default());
+                self.alice_communicate(peer, swap_id, local_swap_id);
             }
             announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
                 tracing::warn!(
@@ -576,6 +626,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
             .expect("this should exist");
 
         if state.sent_finalized && state.received_finalized {
+            tracing::info!("Swap {} is finalized.", swap_id);
             let local_swap_id = self
                 .swap_ids
                 .iter()

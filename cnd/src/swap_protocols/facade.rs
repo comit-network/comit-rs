@@ -92,4 +92,11 @@ impl Facade {
     pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.swarm.get_finalized_swap(id).await
     }
+
+    pub async fn get_created_swap(
+        &self,
+        id: LocalSwapId,
+    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+        self.swarm.get_created_swap(id).await
+    }
 }
