@@ -58,7 +58,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    all_swaps: Swaps,
+    swaps: Swaps,
     #[behaviour(ignore)]
     ethereum_identities: HashMap<SharedSwapId, identity::Ethereum>,
     #[behaviour(ignore)]
@@ -90,7 +90,7 @@ impl ComitLN {
             lightning_identity: Default::default(),
             finalize: Default::default(),
             events: VecDeque::new(),
-            all_swaps: Default::default(),
+            swaps: Default::default(),
             ethereum_identities: Default::default(),
             lightning_identities: Default::default(),
             communication_state: Default::default(),
@@ -107,7 +107,7 @@ impl ComitLN {
         let digest = create_swap_params.clone().digest();
         tracing::trace!("Swap creation request received: {}", digest);
 
-        self.all_swaps
+        self.swaps
             .create_swap(&digest, id.clone(), create_swap_params.clone())?;
 
         match create_swap_params.role {
@@ -115,18 +115,16 @@ impl ComitLN {
                 tracing::info!("Starting announcement for swap: {}", digest);
                 self.announce
                     .start_announce_protocol(digest.clone(), create_swap_params.peer);
-                self.all_swaps.move_to_pending_confirmation(digest, id);
+                self.swaps.move_to_pending_confirmation(digest, id);
             }
             Role::Bob => {
-                if let Some((shared_swap_id, peer, io)) = self
-                    .all_swaps
-                    .move_pending_creation_to_communicate(&digest, id)
+                if let Some((shared_swap_id, peer, io)) =
+                    self.swaps.move_pending_creation_to_communicate(&digest, id)
                 {
                     tracing::info!("Confirm & communicate for swap: {}", digest);
                     self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
                 } else {
-                    self.all_swaps
-                        .move_to_pending_announcement(digest.clone(), id);
+                    self.swaps.move_to_pending_announcement(digest.clone(), id);
                     tracing::debug!("Swap {} waiting for announcement", digest);
                 }
             }
@@ -139,11 +137,11 @@ impl ComitLN {
         &self,
         swap_id: &LocalSwapId,
     ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        self.all_swaps.get_created_swap(swap_id)
+        self.swaps.get_created_swap(swap_id)
     }
 
     pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
-        let (id, create_swap_params) = match self.all_swaps.get_announced_swap(&swap_id) {
+        let (id, create_swap_params) = match self.swaps.get_announced_swap(&swap_id) {
             Some(swap) => swap,
             None => return None,
         };
@@ -405,7 +403,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     tracing::trace_span!("swap", digest = format_args!("{}", io.swap_digest));
                 let _enter = span.enter();
                 // Check if there are any errors before modifying the hash-map.
-                match self.all_swaps.get_pending_announcement(&io.swap_digest) {
+                match self.swaps.get_pending_announcement(&io.swap_digest) {
                     Some((_, create_swap_params)) => {
                         // Verify that the peer-id announcing the swap matches the peer-id agreed on
                         // in the swap parameters. In case they don't match
@@ -428,18 +426,15 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     }
                     None => {
                         tracing::debug!("Swap has not been created yet, parking it.");
-                        self.all_swaps.insert_pending_creation(
-                            (&io.swap_digest).clone(),
-                            peer,
-                            *io,
-                        );
+                        self.swaps
+                            .insert_pending_creation((&io.swap_digest).clone(), peer, *io);
 
                         return;
                     }
                 }
 
                 if let Some((shared_swap_id, create_params)) = self
-                    .all_swaps
+                    .swaps
                     .move_pending_announcement_to_communicate(&io.swap_digest)
                 {
                     tracing::debug!("Swap confirmation and communication has started.");
@@ -452,7 +447,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_id: shared_swap_id,
             } => {
                 let (local_swap_id, create_params) = self
-                    .all_swaps
+                    .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                     .expect("we must know about this digest");
 
@@ -596,7 +591,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
         if state.sent_finalized && state.received_finalized {
             tracing::info!("Swap {} is finalized.", swap_id);
             let (local_swap_id, create_swap_params) = self
-                .all_swaps
+                .swaps
                 .finalize_swap(&swap_id)
                 .expect("Swap should be known");
 
