@@ -1,12 +1,14 @@
 use crate::{
-    network::{
-        comit_ln::SwapExists,
-        protocols::announce::{protocol::ReplySubstream, SwapDigest},
-    },
+    network::protocols::announce::{protocol::ReplySubstream, SwapDigest},
     swap_protocols::{HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
 };
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
+
+#[derive(Display, thiserror::Error, Clone, Copy, Debug)]
+pub enum Error {
+    AlreadyExists,
+}
 
 #[derive(Default, Debug)]
 pub struct Swaps {
@@ -33,26 +35,6 @@ pub struct Swaps {
 }
 
 impl Swaps {
-    /// Alice or Bob creates a swap.
-    /// A second function will be used to mark the swap as _pending
-    /// confirmation_ or _pending announcement_ depending on the role.
-    pub fn create_swap(
-        &mut self,
-        digest: &SwapDigest,
-        local_swap_id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
-    ) -> anyhow::Result<()> {
-        if self.pending_announcement.contains_key(&digest)
-            || self.pending_confirmation.contains_key(&digest)
-        {
-            return Err(anyhow::Error::from(SwapExists));
-        }
-
-        self.swaps.insert(local_swap_id, create_swap_params);
-
-        Ok(())
-    }
-
     /// Gets a swap that was created
     pub fn get_created_swap(
         &self,
@@ -79,9 +61,22 @@ impl Swaps {
         Some((*shared_swap_id, create_params.clone()))
     }
 
-    /// Alice announced a swap and is waiting for a confirmation from Bob
-    pub fn move_to_pending_confirmation(&mut self, digest: SwapDigest, local_swap_id: LocalSwapId) {
+    /// Alice created and announced it a swap and is waiting for a confirmation
+    /// from Bob
+    pub fn create_as_pending_confirmation(
+        &mut self,
+        digest: SwapDigest,
+        local_swap_id: LocalSwapId,
+        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+    ) -> Result<(), Error> {
+        match self.swaps.insert(local_swap_id, create_swap_params) {
+            Some(_) => return Err(Error::AlreadyExists),
+            None => {}
+        }
+
         self.pending_confirmation.insert(digest, local_swap_id);
+
+        Ok(())
     }
 
     /// Alice moves a swap announced (pending confirmation) to communicate upon
@@ -106,9 +101,21 @@ impl Swaps {
         Some((local_swap_id, create_params.clone()))
     }
 
-    /// Bob moves a swap to _pending announcement_ after creation.
-    pub fn move_to_pending_announcement(&mut self, digest: SwapDigest, local_swap_id: LocalSwapId) {
+    /// Bob created a swap and it is pending announcement
+    pub fn create_as_pending_announcement(
+        &mut self,
+        digest: SwapDigest,
+        local_swap_id: LocalSwapId,
+        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+    ) -> Result<(), Error> {
+        match self.swaps.insert(local_swap_id, create_swap_params) {
+            Some(_) => return Err(Error::AlreadyExists),
+            None => {}
+        }
+
         self.pending_announcement.insert(digest, local_swap_id);
+
+        Ok(())
     }
 
     /// Bob received an announcement for a swap not yet created.
@@ -233,34 +240,80 @@ mod tests {
     }
 
     #[test]
-    fn created_swap_can_be_retrieved() {
+    fn created_swap_as_pending_confirmation_can_be_retrieved() {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::default();
 
-        let creation = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+        let creation = swaps.create_as_pending_confirmation(
+            digest,
+            local_swap_id.clone(),
+            create_params.clone(),
+        );
 
         assert!(creation.is_ok());
 
-        let create_swap = swaps.get_created_swap(&local_swap_id);
+        let created_swap = swaps.get_created_swap(&local_swap_id);
 
-        assert!(create_swap.is_some());
+        assert!(created_swap.is_some());
 
-        assert_eq!(create_swap.unwrap(), create_params)
+        assert_eq!(created_swap.unwrap(), create_params)
     }
 
     #[test]
-    fn same_swap_cannot_be_inserted_twice() {
+    fn created_swap_as_pending_announcement_can_be_retrieved() {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::default();
 
-        let creation1 = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+        let creation = swaps.create_as_pending_announcement(
+            digest,
+            local_swap_id.clone(),
+            create_params.clone(),
+        );
 
-        let creation2 = swaps.create_swap(&digest, local_swap_id.clone(), create_params.clone());
+        assert!(creation.is_ok());
 
-        assert!(creation2.is_err())
+        let created_swap = swaps.get_created_swap(&local_swap_id);
+
+        assert!(created_swap.is_some());
+
+        assert_eq!(created_swap.unwrap(), create_params)
+    }
+
+    #[test]
+    fn same_swap_cannot_be_created_twice_for_alice() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let _ = swaps.create_as_pending_confirmation(
+            digest.clone(),
+            local_swap_id.clone(),
+            create_params.clone(),
+        );
+        let creation = swaps.create_as_pending_confirmation(digest, local_swap_id, create_params);
+
+        assert!(creation.is_err())
+    }
+
+    #[test]
+    fn same_swap_cannot_be_created_twice_for_bob() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let _ = swaps.create_as_pending_announcement(
+            digest.clone(),
+            local_swap_id.clone(),
+            create_params.clone(),
+        );
+        let creation = swaps.create_as_pending_announcement(digest, local_swap_id, create_params);
+
+        assert!(creation.is_err())
     }
 }

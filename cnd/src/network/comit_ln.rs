@@ -107,15 +107,13 @@ impl ComitLN {
         let digest = create_swap_params.clone().digest();
         tracing::trace!("Swap creation request received: {}", digest);
 
-        self.swaps
-            .create_swap(&digest, id.clone(), create_swap_params.clone())?;
-
         match create_swap_params.role {
             Role::Alice => {
                 tracing::info!("Starting announcement for swap: {}", digest);
                 self.announce
-                    .start_announce_protocol(digest.clone(), create_swap_params.peer);
-                self.swaps.move_to_pending_confirmation(digest, id);
+                    .start_announce_protocol(digest.clone(), (&create_swap_params.peer).clone());
+                self.swaps
+                    .create_as_pending_confirmation(digest, id, create_swap_params);
             }
             Role::Bob => {
                 if let Some((shared_swap_id, peer, io)) =
@@ -124,7 +122,11 @@ impl ComitLN {
                     tracing::info!("Confirm & communicate for swap: {}", digest);
                     self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
                 } else {
-                    self.swaps.move_to_pending_announcement(digest.clone(), id);
+                    self.swaps.create_as_pending_announcement(
+                        digest.clone(),
+                        id,
+                        create_swap_params,
+                    );
                     tracing::debug!("Swap {} waiting for announcement", digest);
                 }
             }
