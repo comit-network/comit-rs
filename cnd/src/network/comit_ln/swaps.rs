@@ -3,6 +3,7 @@ use crate::{
     swap_protocols::{HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
+use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
@@ -38,6 +39,9 @@ pub struct Swaps<T> {
     /// Bob defines the shared swap id when he confirms the swap by replying to
     /// an announce message from Alice.
     swap_ids: HashMap<LocalSwapId, SharedSwapId>,
+
+    /// Stores timestamps from when we are first aware of a swap
+    timestamps: HashMap<SwapDigest, Timestamp>,
 }
 
 impl<T> Swaps<T> {
@@ -83,7 +87,10 @@ impl<T> Swaps<T> {
             return Err(Error::AlreadyExists);
         }
 
-        self.pending_confirmation.insert(digest, local_swap_id);
+        self.pending_confirmation
+            .insert(digest.clone(), local_swap_id);
+
+        self.timestamps.insert(digest, Timestamp::now());
 
         Ok(())
     }
@@ -125,7 +132,10 @@ impl<T> Swaps<T> {
             return Err(Error::AlreadyExists);
         }
 
-        self.pending_announcement.insert(digest, local_swap_id);
+        self.pending_announcement
+            .insert(digest.clone(), local_swap_id);
+
+        self.timestamps.insert(digest, Timestamp::now());
 
         Ok(())
     }
@@ -137,11 +147,17 @@ impl<T> Swaps<T> {
         peer: PeerId,
         io: T,
     ) -> Result<(), Error> {
-        if self.pending_creation.insert(digest, (peer, io)).is_some() {
-            Err(Error::AlreadyPendingCreation)
-        } else {
-            Ok(())
+        if self
+            .pending_creation
+            .insert(digest.clone(), (peer, io))
+            .is_some()
+        {
+            return Err(Error::AlreadyPendingCreation);
         }
+
+        self.timestamps.insert(digest, Timestamp::now());
+
+        Ok(())
     }
 
     /// Bob: get a swap created but not yet announced
@@ -232,12 +248,32 @@ impl<T> Swaps<T> {
         self.pending_announcement
             .retain(|_, id| *id != *local_swap_id);
 
+        let finalized_digest = create_params.clone().digest();
+
+        self.timestamps
+            .retain(|digest, _| *digest != finalized_digest);
+
         Ok((*local_swap_id, create_params.clone()))
     }
 
     /// Remove all pending (not finalized) swap older than `older_than`
-    pub fn clean_up_pending_swaps(&mut self, _older_than: Timestamp) {
-        unimplemented!()
+    pub fn clean_up_pending_swaps(&mut self, older_than: Timestamp) {
+        let digests: Vec<SwapDigest> = self
+            .timestamps
+            .iter()
+            .filter(|(_, timestamp)| **timestamp < older_than)
+            .map(|(digest, _)| digest)
+            .cloned()
+            .collect();
+
+        self.pending_confirmation
+            .retain(|digest, _| !digests.contains(digest));
+        self.pending_announcement
+            .retain(|digest, _| !digests.contains(digest));
+        self.pending_creation
+            .retain(|digest, _| !digests.contains(digest));
+        self.timestamps
+            .retain(|digest, _| !digests.contains(digest));
     }
 
     /// This does not test external behaviour but the aim is to ensure we are
@@ -247,6 +283,7 @@ impl<T> Swaps<T> {
         self.pending_confirmation.get(digest).is_some()
             || self.pending_announcement.get(digest).is_some()
             || self.pending_creation.get(digest).is_some()
+            || self.timestamps.get(digest).is_some()
     }
 }
 
@@ -258,6 +295,7 @@ impl Default for Swaps<ReplySubstream<NegotiatedSubstream>> {
             pending_creation: Default::default(),
             swaps: Default::default(),
             swap_ids: Default::default(),
+            timestamps: Default::default(),
         }
     }
 }
@@ -271,6 +309,7 @@ impl Default for Swaps<()> {
             pending_creation: Default::default(),
             swaps: Default::default(),
             swap_ids: Default::default(),
+            timestamps: Default::default(),
         }
     }
 }
