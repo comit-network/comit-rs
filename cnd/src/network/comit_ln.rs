@@ -459,9 +459,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                         }
                     }
                     None => {
-                        tracing::debug!(
-                            "Swap has not been created yet, waiting for REST API request."
-                        );
+                        tracing::debug!("Swap has not been created yet, parking it.");
                         self.swaps_waiting_for_creation
                             .insert((&io.swap_digest).clone(), (peer, *io));
 
