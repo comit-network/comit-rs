@@ -8,10 +8,15 @@ use std::collections::HashMap;
 #[derive(Display, thiserror::Error, Clone, Copy, Debug)]
 pub enum Error {
     AlreadyExists,
+    AlreadyPendingCreation,
+    NotFound,
+    UnknownId,
+    WasNotPending,
 }
 
-#[derive(Default, Debug)]
-pub struct Swaps {
+/// T is ReplySubstream<NegotiatedSubstream>
+#[derive(Debug)]
+pub struct Swaps<T> {
     /// In role of Alice; swaps exist in here once a swap is created by Alice
     /// (and up until an announce confirmation is received from Bob).
     pending_confirmation: HashMap<SwapDigest, LocalSwapId>,
@@ -23,7 +28,7 @@ pub struct Swaps {
     /// In role of Bob; swaps exist in here if Bob receives an announce message
     /// from Alice _before_ Bob creates the swap (and up until Bob creates the
     /// swap).
-    pending_creation: HashMap<SwapDigest, (PeerId, ReplySubstream<NegotiatedSubstream>)>,
+    pending_creation: HashMap<SwapDigest, (PeerId, T)>,
 
     /// Stores the swap as soon as it is created
     swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
@@ -34,7 +39,7 @@ pub struct Swaps {
     swap_ids: HashMap<LocalSwapId, SharedSwapId>,
 }
 
-impl Swaps {
+impl<T> Swaps<T> {
     /// Gets a swap that was created
     pub fn get_created_swap(
         &self,
@@ -123,9 +128,12 @@ impl Swaps {
         &mut self,
         digest: SwapDigest,
         peer: PeerId,
-        io: ReplySubstream<NegotiatedSubstream>,
-    ) {
-        self.pending_creation.insert(digest, (peer, io));
+        io: T,
+    ) -> Result<(), Error> {
+        match self.pending_creation.insert(digest, (peer, io)) {
+            Some(_) => Err(Error::AlreadyPendingCreation),
+            None => Ok(()),
+        }
     }
 
     /// Bob: get a swap created but not yet announced
@@ -170,16 +178,22 @@ impl Swaps {
         &mut self,
         digest: &SwapDigest,
         local_swap_id: LocalSwapId,
-    ) -> Option<(SharedSwapId, PeerId, ReplySubstream<NegotiatedSubstream>)> {
+        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+    ) -> Result<(SharedSwapId, PeerId, T), Error> {
+        match self.swaps.insert(local_swap_id, create_swap_params) {
+            Some(_) => return Err(Error::AlreadyExists),
+            None => {}
+        }
+
         let (peer, io) = match self.pending_creation.remove(&digest) {
             Some(value) => value,
-            None => return None,
+            None => return Err(Error::WasNotPending),
         };
 
         let shared_swap_id = SharedSwapId::default();
         self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
 
-        Some((shared_swap_id, peer, io))
+        Ok((shared_swap_id, peer, io))
     }
 
     /// Either role finalizes a swap that was in the communication phase
@@ -187,7 +201,7 @@ impl Swaps {
     pub fn finalize_swap(
         &mut self,
         shared_swap_id: &SharedSwapId,
-    ) -> Option<(LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
+    ) -> Result<(LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams), Error> {
         let local_swap_id = match self.swap_ids.iter().find_map(|(key, value)| {
             if *value == *shared_swap_id {
                 Some(key)
@@ -196,18 +210,18 @@ impl Swaps {
             }
         }) {
             Some(local_swap_id) => local_swap_id,
-            None => return None,
+            None => return Err(Error::UnknownId),
         };
 
         let create_params = match self.swaps.get(&local_swap_id) {
             Some(create_params) => create_params,
-            None => return None,
+            None => return Err(Error::NotFound),
         };
 
         self.pending_announcement
             .retain(|_, id| *id != *local_swap_id);
 
-        Some((*local_swap_id, create_params.clone()))
+        Ok((*local_swap_id, create_params.clone()))
     }
 
     /// This does not test external behaviour but the aim is to ensure we are
@@ -217,6 +231,31 @@ impl Swaps {
         self.pending_confirmation.get(digest).is_some()
             || self.pending_announcement.get(digest).is_some()
             || self.pending_creation.get(digest).is_some()
+    }
+}
+
+impl Default for Swaps<ReplySubstream<NegotiatedSubstream>> {
+    fn default() -> Self {
+        Swaps {
+            pending_confirmation: Default::default(),
+            pending_announcement: Default::default(),
+            pending_creation: Default::default(),
+            swaps: Default::default(),
+            swap_ids: Default::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+impl Default for Swaps<()> {
+    fn default() -> Self {
+        Swaps {
+            pending_confirmation: Default::default(),
+            pending_announcement: Default::default(),
+            pending_creation: Default::default(),
+            swaps: Default::default(),
+            swap_ids: Default::default(),
+        }
     }
 }
 
@@ -253,7 +292,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<()>::default();
 
         let creation = swaps.create_as_pending_confirmation(
             digest,
@@ -275,7 +314,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<()>::default();
 
         let creation = swaps.create_as_pending_announcement(
             digest,
@@ -297,7 +336,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<()>::default();
 
         let _ = swaps.create_as_pending_confirmation(
             digest.clone(),
@@ -314,7 +353,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<()>::default();
 
         let _ = swaps.create_as_pending_announcement(
             digest.clone(),
@@ -331,7 +370,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<()>::default();
 
         let _ = swaps
             .create_as_pending_confirmation(digest.clone(), local_swap_id, create_params.clone())
@@ -357,7 +396,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
-        let mut swaps = Swaps::default();
+        let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
 
         let _ = swaps
             .create_as_pending_announcement(digest.clone(), local_swap_id, create_params.clone())
@@ -371,6 +410,29 @@ mod tests {
 
         let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
 
+        assert_eq!(create_params, _create_params);
+
+        assert!(!swaps.swap_in_pending_hashmaps(&digest));
+    }
+
+    #[test]
+    fn from_announcement_then_creation_to_finalisation_for_bob() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        let _ = swaps
+            .insert_pending_creation(digest.clone(), (&create_params).peer.peer_id.clone(), ())
+            .unwrap();
+
+        let (shared_swap_id, _peer, _io) = swaps
+            .move_pending_creation_to_communicate(&digest, local_swap_id, create_params.clone())
+            .unwrap();
+
+        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+
+        assert_eq!(local_swap_id, _local_swap_id);
         assert_eq!(create_params, _create_params);
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));

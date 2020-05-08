@@ -58,7 +58,7 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    swaps: Swaps,
+    swaps: Swaps<ReplySubstream<NegotiatedSubstream>>,
     #[behaviour(ignore)]
     ethereum_identities: HashMap<SharedSwapId, identity::Ethereum>,
     #[behaviour(ignore)]
@@ -116,8 +116,9 @@ impl ComitLN {
                     .create_as_pending_confirmation(digest, id, create_swap_params);
             }
             Role::Bob => {
-                if let Some((shared_swap_id, peer, io)) =
-                    self.swaps.move_pending_creation_to_communicate(&digest, id)
+                if let Ok((shared_swap_id, peer, io)) = self
+                    .swaps
+                    .move_pending_creation_to_communicate(&digest, id, create_swap_params.clone())
                 {
                     tracing::info!("Confirm & communicate for swap: {}", digest);
                     self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
