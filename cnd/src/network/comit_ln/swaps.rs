@@ -79,13 +79,11 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
-        if self
-            .swaps
-            .insert(local_swap_id, create_swap_params)
-            .is_some()
-        {
+        if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
+
+        self.swaps.insert(local_swap_id, create_swap_params);
 
         self.pending_confirmation
             .insert(digest.clone(), local_swap_id);
@@ -124,13 +122,11 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
-        if self
-            .swaps
-            .insert(local_swap_id, create_swap_params)
-            .is_some()
-        {
+        if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
+
+        self.swaps.insert(local_swap_id, create_swap_params);
 
         self.pending_announcement
             .insert(digest.clone(), local_swap_id);
@@ -204,13 +200,11 @@ impl<T> Swaps<T> {
         local_swap_id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> Result<(SharedSwapId, PeerId, T), Error> {
-        if self
-            .swaps
-            .insert(local_swap_id, create_swap_params)
-            .is_some()
-        {
+        if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
+
+        self.swaps.insert(local_swap_id, create_swap_params);
 
         let (peer, io) = match self.pending_creation.remove(&digest) {
             Some(value) => value,
@@ -387,37 +381,82 @@ mod tests {
     }
 
     #[test]
-    fn same_swap_cannot_be_created_twice_for_alice() {
-        let create_params = create_params();
-        let digest = create_params.clone().digest();
+    fn given_alice_creates_dupe_swap_then_stored_params_are_unchanged() {
+        let first_create_params = create_params();
+        let mut second_create_params = first_create_params.clone();
+        // Ethereum identity is not part of the digest so both swaps should be
+        // considered the same
+        second_create_params.ethereum_identity =
+            EthereumIdentity::from(identity::Ethereum::random());
+
+        let digest = first_create_params.clone().digest();
+        let second_digest = second_create_params.clone().digest();
+
+        // The test is based on this assumption so making sure it's true
+        assert_eq!(digest, second_digest);
+
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
         let _ = swaps.create_as_pending_confirmation(
             digest.clone(),
             local_swap_id.clone(),
-            create_params.clone(),
+            first_create_params.clone(),
         );
-        let creation = swaps.create_as_pending_confirmation(digest, local_swap_id, create_params);
 
-        assert!(creation.is_err())
+        let stored_params = swaps.get_created_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_params, first_create_params);
+
+        let creation =
+            swaps.create_as_pending_confirmation(digest, local_swap_id, second_create_params);
+
+        assert!(creation.is_err());
+
+        let stored_params = swaps.get_created_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_params, first_create_params);
     }
 
     #[test]
-    fn same_swap_cannot_be_created_twice_for_bob() {
-        let create_params = create_params();
-        let digest = create_params.clone().digest();
+    fn given_bob_creates_dupe_swap_before_announcement_then_stored_params_are_unchanged() {
+        let first_create_params = create_params();
+        let mut second_create_params = first_create_params.clone();
+
+        // Ethereum identity is not part of the digest so both swaps should be
+        // considered the same
+        second_create_params.ethereum_identity =
+            EthereumIdentity::from(identity::Ethereum::random());
+
+        let digest = first_create_params.clone().digest();
+        let second_digest = second_create_params.clone().digest();
+
+        // The test is based on this assumption so making sure it's true
+        assert_eq!(digest, second_digest);
+
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
-        let _ = swaps.create_as_pending_announcement(
-            digest.clone(),
-            local_swap_id.clone(),
-            create_params.clone(),
-        );
-        let creation = swaps.create_as_pending_announcement(digest, local_swap_id, create_params);
+        swaps
+            .create_as_pending_announcement(
+                digest.clone(),
+                local_swap_id.clone(),
+                first_create_params.clone(),
+            )
+            .unwrap();
 
-        assert!(creation.is_err())
+        let stored_params = swaps.get_created_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_params, first_create_params);
+
+        let second_creation =
+            swaps.create_as_pending_announcement(digest, local_swap_id, second_create_params);
+
+        assert!(second_creation.is_err());
+
+        let stored_params = swaps.get_created_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_params, first_create_params);
     }
 
     #[test]
@@ -598,5 +637,53 @@ mod tests {
         assert!(swaps.swap_in_pending_hashmaps(&digest1));
         assert!(swaps.swap_in_pending_hashmaps(&digest2));
         assert!(swaps.swap_in_pending_hashmaps(&digest3));
+    }
+
+    #[test]
+    fn given_bob_creates_dupe_swap_after_announcement_then_stored_params_are_unchanged() {
+        let first_create_params = create_params();
+        let mut second_create_params = first_create_params.clone();
+        second_create_params.ethereum_identity =
+            EthereumIdentity::from(identity::Ethereum::random());
+
+        let digest = first_create_params.clone().digest();
+        let second_digest = second_create_params.clone().digest();
+
+        assert_eq!(digest, second_digest);
+
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::default();
+
+        swaps
+            .insert_pending_creation(digest.clone(), first_create_params.peer.peer_id.clone(), ())
+            .unwrap();
+
+        let (shared_swap_id, _peer, _io) = swaps
+            .move_pending_creation_to_communicate(
+                &digest,
+                local_swap_id,
+                first_create_params.clone(),
+            )
+            .unwrap();
+
+        let (stored_shared_swap_id, stored_create_params) =
+            swaps.get_announced_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_shared_swap_id, shared_swap_id);
+        assert_eq!(stored_create_params, first_create_params);
+
+        let res = swaps.move_pending_creation_to_communicate(
+            &digest,
+            local_swap_id,
+            second_create_params.clone(),
+        );
+
+        assert!(res.is_err());
+
+        let (stored_shared_swap_id, stored_create_params) =
+            swaps.get_announced_swap(&local_swap_id).unwrap();
+
+        assert_eq!(stored_shared_swap_id, shared_swap_id);
+        assert_eq!(stored_create_params, first_create_params);
     }
 }
