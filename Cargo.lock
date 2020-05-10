@@ -755,7 +755,7 @@ version = "0.1.0"
 dependencies = [
  "digest-macro-derive",
  "hex 0.4.2",
- "multihash",
+ "multihash 0.11.1",
  "serde",
 ]
 
@@ -1580,7 +1580,7 @@ dependencies = [
  "libp2p-swarm",
  "libp2p-tcp",
  "libp2p-yamux",
- "multihash",
+ "multihash 0.10.1",
  "parity-multiaddr",
  "parking_lot 0.10.2",
  "pin-project",
@@ -1621,7 +1621,7 @@ dependencies = [
  "lazy_static",
  "libsecp256k1",
  "log 0.4.8",
- "multihash",
+ "multihash 0.10.1",
  "multistream-select",
  "parity-multiaddr",
  "parking_lot 0.10.2",
@@ -1975,6 +1975,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "multihash"
+version = "0.11.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "ae32179a9904ccc6e063de8beee7f5dd55fae85ecb851ca923d55722bc28cf5d"
+dependencies = [
+ "blake2b_simd",
+ "blake2s_simd",
+ "digest 0.8.1",
+ "sha-1",
+ "sha2",
+ "sha3",
+ "unsigned-varint",
+]
+
+[[package]]
 name = "multimap"
 version = "0.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2236,7 +2251,7 @@ dependencies = [
  "bs58",
  "byteorder",
  "data-encoding",
- "multihash",
+ "multihash 0.10.1",
  "percent-encoding 2.1.0",
  "serde",
  "static_assertions 1.1.0",
