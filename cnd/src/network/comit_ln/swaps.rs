@@ -495,21 +495,22 @@ mod tests {
             .unwrap();
 
         let shared_swap_id = SharedSwapId::default();
-        let (_local_swap_id, _create_params) = swaps
+        let (stored_local_swap_id, stored_create_params) = swaps
             .move_pending_confirmation_to_communicate(&digest, shared_swap_id)
             .unwrap();
 
-        assert_eq!(local_swap_id, _local_swap_id);
-        assert_eq!(create_params, _create_params);
+        assert_eq!(local_swap_id, stored_local_swap_id);
+        assert_eq!(create_params, stored_create_params);
 
-        let (_shared_swap_id, _create_params) = swaps.get_announced_swap(&local_swap_id).unwrap();
+        let (stored_shared_swap_id, stored_create_params) =
+            swaps.get_announced_swap(&local_swap_id).unwrap();
 
-        assert_eq!(shared_swap_id, _shared_swap_id);
-        assert_eq!(create_params, _create_params);
+        assert_eq!(shared_swap_id, stored_shared_swap_id);
+        assert_eq!(create_params, stored_create_params);
 
-        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+        let (_, stored_create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
 
-        assert_eq!(create_params, _create_params);
+        assert_eq!(create_params, stored_create_params);
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));
     }
@@ -526,20 +527,21 @@ mod tests {
             .create_as_pending_announcement(digest.clone(), local_swap_id, create_params.clone())
             .unwrap();
 
-        let (shared_swap_id, _create_params) = swaps
+        let (shared_swap_id, stored_create_params) = swaps
             .move_pending_announcement_to_communicate(&digest, &create_params.peer.peer_id)
             .unwrap();
 
-        assert_eq!(create_params, _create_params);
+        assert_eq!(create_params, stored_create_params);
 
-        let (_shared_swap_id, _create_params) = swaps.get_announced_swap(&local_swap_id).unwrap();
+        let (stored_shared_swap_id, stored_create_params) =
+            swaps.get_announced_swap(&local_swap_id).unwrap();
 
-        assert_eq!(shared_swap_id, _shared_swap_id);
-        assert_eq!(create_params, _create_params);
+        assert_eq!(shared_swap_id, stored_shared_swap_id);
+        assert_eq!(create_params, stored_create_params);
 
-        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+        let (_local_swap_id, stored_create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
 
-        assert_eq!(create_params, _create_params);
+        assert_eq!(create_params, stored_create_params);
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));
     }
@@ -559,15 +561,17 @@ mod tests {
             .move_pending_creation_to_communicate(&digest, local_swap_id, create_params.clone())
             .unwrap();
 
-        let (_shared_swap_id, _create_params) = swaps.get_announced_swap(&local_swap_id).unwrap();
+        let (stored_shared_swap_id, stored_create_params) =
+            swaps.get_announced_swap(&local_swap_id).unwrap();
 
-        assert_eq!(shared_swap_id, _shared_swap_id);
-        assert_eq!(create_params, _create_params);
+        assert_eq!(shared_swap_id, stored_shared_swap_id);
+        assert_eq!(create_params, stored_create_params);
 
-        let (_local_swap_id, _create_params) = swaps.finalize_swap(&shared_swap_id).unwrap();
+        let (stored_local_swap_id, stored_create_params) =
+            swaps.finalize_swap(&shared_swap_id).unwrap();
 
-        assert_eq!(local_swap_id, _local_swap_id);
-        assert_eq!(create_params, _create_params);
+        assert_eq!(local_swap_id, stored_local_swap_id);
+        assert_eq!(create_params, stored_create_params);
 
         assert!(!swaps.swap_in_pending_hashmaps(&digest));
     }
