@@ -46,19 +46,19 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
 
             let gen = quote! {
                     impl ::digest::Digest for #name
-                        where #(#types: ::digest::IntoDigestInput),*
+                        where #(#types: ::digest::ToDigestInput),*
                     {
                         type Hash = #hash_type;
 
-                        fn digest(self) -> Self::Hash {
-                            use ::digest::{Hash, IntoDigestInput};
+                        fn digest(&self) -> Self::Hash {
+                            use ::digest::{Hash, ToDigestInput};
                             let mut digests = vec![];
-                            #(digests.push(::digest::field_digest::<_, Self::Hash>(self.#idents, #bytes.to_vec())););*
+                            #(digests.push(::digest::field_digest::<_, Self::Hash>(&self.#idents, #bytes.to_vec())););*
 
                             digests.sort();
 
                             let bytes = digests.into_iter().fold(vec![], |mut bytes, digest| {
-                                bytes.append(&mut digest.into_digest_input());
+                                bytes.append(&mut digest.to_digest_input());
                                 bytes
                             });
 
@@ -104,14 +104,14 @@ fn impl_digest_macro(ast: &syn::DeriveInput) -> TokenStream {
                     {
                         type Hash = #hash_type;
 
-                        fn digest(self) -> Self::Hash {
-                            use ::digest::{Hash, IntoDigestInput};
+                        fn digest(&self) -> Self::Hash {
+                            use ::digest::{Hash, ToDigestInput};
 
-                            let bytes = match self {
+                            let bytes = match self.clone() {
                                 #(Self::#unit_variant_idents => #unit_variant_bytes.to_vec()),*,
                                 #(Self::#tuple_variant_idents(data) => {
                                         let mut bytes = #tuple_variant_bytes.to_vec();
-                                        bytes.append(&mut data.digest().into_digest_input());
+                                        bytes.append(&mut data.digest().to_digest_input());
                                         bytes
                                 }),*
                             };

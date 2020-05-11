@@ -1,4 +1,4 @@
-/// This crate brings two traits: `Digest` and `IntoDigestInput`
+/// This crate brings two traits: `Digest` and `ToDigestInput`
 ///
 /// `Digest` should be implemented on data structures using the `Digest`
 /// derive macro.
@@ -6,11 +6,11 @@
 /// role of an identifier to ensure that fields with same data but different
 /// meaning do not result to the same digest.
 ///
-/// Data types within the data structure should implement `IntoDigestInput`,
+/// Data types within the data structure should implement `ToDigestInput`,
 /// this allows you to control how the data is transformed to a byte array.
 ///
 /// ```
-/// use digest::{Digest, Hash, IntoDigestInput};
+/// use digest::{Digest, Hash, ToDigestInput};
 /// // multihash from libp2p for example: `use libp2p::multihash`
 /// use multihash;
 ///
@@ -27,19 +27,19 @@
 /// }
 ///
 /// // Define how to get a byte array from the hash type
-/// impl IntoDigestInput for MyHash {
-///     fn into_digest_input(self) -> Vec<u8> {
-///         self.0.into_bytes()
+/// impl ToDigestInput for MyHash {
+///     fn to_digest_input(&self) -> Vec<u8> {
+///         self.0.clone().into_bytes()
 ///     }
 /// }
 ///
 /// // Define types for the field of the struct you want to digest
 /// struct MyType(Vec<u8>);
 ///
-/// // And implement `IntoDigestInput` for them
-/// impl IntoDigestInput for MyType {
-///     fn into_digest_input(self) -> Vec<u8> {
-///         self.0
+/// // And implement `ToDigestInput` for them
+/// impl ToDigestInput for MyType {
+///     fn to_digest_input(&self) -> Vec<u8> {
+///         self.0.clone()
 ///     }
 /// }
 ///
@@ -55,7 +55,7 @@
 ///
 /// The digest algorithm goes as follow:
 /// 1. For each field in the struct:
-///     a. Concatenate `digest_prefix` + `self.into_digest_input`,
+///     a. Concatenate `digest_prefix` + `self.to_digest_input`,
 ///     b. Hash the result.
 /// 2. Lexically order the resulting field digests,
 /// 3. Concatenate the list,
@@ -67,25 +67,25 @@ pub use digest_macro_derive::Digest;
 pub use hex;
 
 pub trait Digest {
-    type Hash: Hash + IntoDigestInput;
-    fn digest(self) -> Self::Hash;
+    type Hash: Hash + ToDigestInput;
+    fn digest(&self) -> Self::Hash;
 }
 
 pub trait Hash {
     fn hash(bytes: &[u8]) -> Self;
 }
 
-pub trait IntoDigestInput {
-    fn into_digest_input(self) -> Vec<u8>;
+pub trait ToDigestInput {
+    fn to_digest_input(&self) -> Vec<u8>;
 }
 
-pub fn field_digest<T, H>(field: T, prefix: Vec<u8>) -> H
+pub fn field_digest<T, H>(field: &T, prefix: Vec<u8>) -> H
 where
-    T: IntoDigestInput,
+    T: ToDigestInput,
     H: Hash,
 {
     let mut bytes = prefix;
-    let mut value = field.into_digest_input();
+    let mut value = field.to_digest_input();
     bytes.append(&mut value);
 
     H::hash(&bytes)

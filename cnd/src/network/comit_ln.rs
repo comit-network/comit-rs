@@ -107,7 +107,7 @@ impl ComitLN {
         id: LocalSwapId,
         create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
-        let digest = create_swap_params.clone().digest();
+        let digest = create_swap_params.digest();
         tracing::trace!("Swap creation request received: {}", digest);
 
         match create_swap_params.role {

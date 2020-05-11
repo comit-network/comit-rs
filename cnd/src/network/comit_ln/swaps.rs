@@ -266,7 +266,7 @@ impl<T> Swaps<T> {
         self.pending_announcement
             .retain(|_, id| *id != *local_swap_id);
 
-        let finalized_digest = create_params.clone().digest();
+        let finalized_digest = create_params.digest();
 
         self.timestamps
             .retain(|digest, _| *digest != finalized_digest);
@@ -363,7 +363,7 @@ mod tests {
     #[test]
     fn created_swap_as_pending_confirmation_can_be_retrieved() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
@@ -382,7 +382,7 @@ mod tests {
     #[test]
     fn created_swap_as_pending_announcement_can_be_retrieved() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
@@ -407,8 +407,8 @@ mod tests {
         second_create_params.ethereum_identity =
             EthereumIdentity::from(identity::Ethereum::random());
 
-        let digest = first_create_params.clone().digest();
-        let second_digest = second_create_params.clone().digest();
+        let digest = first_create_params.digest();
+        let second_digest = second_create_params.digest();
 
         // The test is based on this assumption so making sure it's true
         assert_eq!(digest, second_digest);
@@ -444,8 +444,8 @@ mod tests {
         second_create_params.ethereum_identity =
             EthereumIdentity::from(identity::Ethereum::random());
 
-        let digest = first_create_params.clone().digest();
-        let second_digest = second_create_params.clone().digest();
+        let digest = first_create_params.digest();
+        let second_digest = second_create_params.digest();
 
         // The test is based on this assumption so making sure it's true
         assert_eq!(digest, second_digest);
@@ -476,7 +476,7 @@ mod tests {
     #[test]
     fn from_creation_to_finalisation_for_alice() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
@@ -507,7 +507,7 @@ mod tests {
     #[test]
     fn from_creation_then_announcement_to_finalisation_for_bob() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
 
         let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
@@ -537,7 +537,7 @@ mod tests {
     #[test]
     fn from_announcement_then_creation_to_finalisation_for_bob() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::default();
 
@@ -568,9 +568,9 @@ mod tests {
         let mut swaps = Swaps::<()>::default();
 
         let create_params1 = create_params();
-        let digest1 = create_params1.clone().digest();
+        let digest1 = create_params1.digest();
         let create_params2 = create_params();
-        let digest2 = create_params2.clone().digest();
+        let digest2 = create_params2.digest();
         let create_params3 = create_params();
         let digest3 = create_params3.digest();
 
@@ -599,7 +599,7 @@ mod tests {
     #[test]
     fn old_finalized_swaps_are_not_cleaned_up() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
 
@@ -627,9 +627,9 @@ mod tests {
         let mut swaps = Swaps::<()>::default();
 
         let create_params1 = create_params();
-        let digest1 = create_params1.clone().digest();
+        let digest1 = create_params1.digest();
         let create_params2 = create_params();
-        let digest2 = create_params2.clone().digest();
+        let digest2 = create_params2.digest();
         let create_params3 = create_params();
         let digest3 = create_params3.digest();
 
@@ -662,8 +662,8 @@ mod tests {
         second_create_params.ethereum_identity =
             EthereumIdentity::from(identity::Ethereum::random());
 
-        let digest = first_create_params.clone().digest();
-        let second_digest = second_create_params.clone().digest();
+        let digest = first_create_params.digest();
+        let second_digest = second_create_params.digest();
 
         assert_eq!(digest, second_digest);
 
@@ -704,7 +704,7 @@ mod tests {
     #[test]
     fn given_move_pending_creation_to_communicate_errors_then_no_side_effects() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
@@ -718,7 +718,7 @@ mod tests {
     #[test]
     fn given_bob_receives_announcement_with_wrong_peer_id_then_error() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
 
         let mut swaps = Swaps::<()>::default();
@@ -735,7 +735,7 @@ mod tests {
     #[test]
     fn given_bob_receives_creation_with_different_peer_id_then_error() {
         let create_params = create_params();
-        let digest = create_params.clone().digest();
+        let digest = create_params.digest();
         let local_swap_id = LocalSwapId::default();
 
         let mut swaps = Swaps::<()>::default();
