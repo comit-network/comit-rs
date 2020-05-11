@@ -7,14 +7,17 @@ use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
-#[derive(Display, thiserror::Error, Clone, Copy, Debug, PartialEq)]
+#[derive(thiserror::Error, Clone, Copy, Debug, PartialEq)]
 pub enum Error {
+    #[error("A swap with the same digest already exists")]
     AlreadyExists,
+    #[error("An announced swap with the same digest is already pending creation")]
     AlreadyPendingCreation,
+    #[error("Swap not found")]
     NotFound,
-    UnknownId,
-    WasNotPending,
-    IncorrectPeerId,
+    #[error("Peer id from announcement and creation are not matching")]
+    PeerIdMismatch,
+    #[error("Internal Failure encountered")]
     InternalFailure,
 }
 
@@ -181,7 +184,7 @@ impl<T> Swaps<T> {
     ) -> Result<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams), Error> {
         let local_swap_id = match self.pending_announcement.get(&digest) {
             Some(local_swap_id) => local_swap_id,
-            None => return Err(Error::WasNotPending),
+            None => return Err(Error::NotFound),
         };
 
         let create_params = match self.swaps.get(&local_swap_id) {
@@ -190,7 +193,7 @@ impl<T> Swaps<T> {
         };
 
         if *peer_id != create_params.peer.peer_id {
-            return Err(Error::IncorrectPeerId);
+            return Err(Error::PeerIdMismatch);
         }
 
         let local_swap_id = self
@@ -218,11 +221,11 @@ impl<T> Swaps<T> {
 
         let (peer, _) = match self.pending_creation.get(&digest) {
             Some(value) => value,
-            None => return Err(Error::WasNotPending),
+            None => return Err(Error::NotFound),
         };
 
         if *peer != create_swap_params.peer.peer_id {
-            return Err(Error::IncorrectPeerId);
+            return Err(Error::PeerIdMismatch);
         }
 
         let (peer, io) = self
@@ -252,7 +255,7 @@ impl<T> Swaps<T> {
             }
         }) {
             Some(local_swap_id) => local_swap_id,
-            None => return Err(Error::UnknownId),
+            None => return Err(Error::NotFound),
         };
 
         let create_params = match self.swaps.get(&local_swap_id) {
@@ -739,7 +742,7 @@ mod tests {
 
         let res = swaps.move_pending_announcement_to_communicate(&digest, &PeerId::random());
 
-        assert_eq!(res, Err(Error::IncorrectPeerId));
+        assert_eq!(res, Err(Error::PeerIdMismatch));
     }
 
     #[test]
@@ -754,6 +757,6 @@ mod tests {
 
         let res = swaps.move_pending_creation_to_communicate(&digest, local_swap_id, create_params);
 
-        assert_eq!(res, Err(Error::IncorrectPeerId));
+        assert_eq!(res, Err(Error::PeerIdMismatch));
     }
 }
