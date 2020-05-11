@@ -22,7 +22,12 @@ import { LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
-import { EscrowStatus, LedgerState, SwapResponse } from "../swap_response";
+import {
+    EscrowStatus,
+    LedgerState,
+    SwapResponse,
+    SwapStatus,
+} from "../swap_response";
 
 export type ActorName = "alice" | "bob" | "charlie";
 
@@ -355,7 +360,7 @@ export class Actor {
         while (true) {
             await sleep(200);
             const entity = await this.swap.fetchDetails();
-            if (entity.properties.status === "SWAPPED") {
+            if (entity.properties.status === SwapStatus.Swapped) {
                 break;
             }
         }

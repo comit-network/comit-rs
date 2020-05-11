@@ -53,23 +53,23 @@ export interface Properties {
  */
 export enum SwapStatus {
     /**
-     * The swap was created but the communication phase hasn't yet been finalized
+     * The swap was created via the REST API but the communication phase hasn't yet been finalized.
      */
     Created = "CREATED",
     /**
-     * The communication was finalized and blockchain actions are needed or happening
+     * The communication was finalized and blockchain actions are needed or happening.
      */
     InProgress = "IN_PROGRESS",
     /**
-     * The swap is finished and the assets were swapped
+     * The swap is finished and the assets were swapped.
      */
     Swapped = "SWAPPED",
     /**
-     * The swap is finished and the assets were not swapped
+     * The swap is finished and the assets were not swapped.
      */
     NotSwapped = "NOT_SWAPPED",
     /**
-     * An unexpected internal failure aborted the swap
+     * An unexpected internal failure aborted the swap.
      */
     InternalFailure = "INTERNAL_FAILURE",
 }
