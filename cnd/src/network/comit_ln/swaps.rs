@@ -7,13 +7,15 @@ use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
-#[derive(Display, thiserror::Error, Clone, Copy, Debug)]
+#[derive(Display, thiserror::Error, Clone, Copy, Debug, PartialEq)]
 pub enum Error {
     AlreadyExists,
     AlreadyPendingCreation,
     NotFound,
     UnknownId,
     WasNotPending,
+    IncorrectPeerId,
+    InternalFailure,
 }
 
 /// T is ReplySubstream<NegotiatedSubstream>
@@ -175,21 +177,31 @@ impl<T> Swaps<T> {
     pub fn move_pending_announcement_to_communicate(
         &mut self,
         digest: &SwapDigest,
-    ) -> Option<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
-        let local_swap_id = match self.pending_announcement.remove(digest) {
+        peer_id: &PeerId,
+    ) -> Result<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams), Error> {
+        let local_swap_id = match self.pending_announcement.get(&digest) {
             Some(local_swap_id) => local_swap_id,
-            None => return None,
+            None => return Err(Error::WasNotPending),
         };
 
         let create_params = match self.swaps.get(&local_swap_id) {
             Some(create_params) => create_params,
-            None => return None,
+            None => return Err(Error::InternalFailure),
         };
+
+        if *peer_id != create_params.peer.peer_id {
+            return Err(Error::IncorrectPeerId);
+        }
+
+        let local_swap_id = self
+            .pending_announcement
+            .remove(digest)
+            .expect("We did a `get` on the hashmap already.");
 
         let shared_swap_id = SharedSwapId::default();
         self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
 
-        Some((shared_swap_id, create_params.clone()))
+        Ok((shared_swap_id, create_params.clone()))
     }
 
     /// Bob moves a swap that was announced and pending creation to communicate
@@ -204,10 +216,19 @@ impl<T> Swaps<T> {
             return Err(Error::AlreadyExists);
         }
 
-        let (peer, io) = match self.pending_creation.remove(&digest) {
+        let (peer, _) = match self.pending_creation.get(&digest) {
             Some(value) => value,
             None => return Err(Error::WasNotPending),
         };
+
+        if *peer != create_swap_params.peer.peer_id {
+            return Err(Error::IncorrectPeerId);
+        }
+
+        let (peer, io) = self
+            .pending_creation
+            .remove(&digest)
+            .expect("Get already done");
 
         self.swaps.insert(local_swap_id, create_swap_params);
 
@@ -495,6 +516,7 @@ mod tests {
         let create_params = create_params();
         let digest = create_params.clone().digest();
         let local_swap_id = LocalSwapId::default();
+
         let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
 
         swaps
@@ -502,7 +524,7 @@ mod tests {
             .unwrap();
 
         let (shared_swap_id, _create_params) = swaps
-            .move_pending_announcement_to_communicate(&digest)
+            .move_pending_announcement_to_communicate(&digest, &create_params.peer.peer_id)
             .unwrap();
 
         assert_eq!(create_params, _create_params);
@@ -588,10 +610,10 @@ mod tests {
         let mut swaps = Swaps::<ReplySubstream<NegotiatedSubstream>>::default();
 
         swaps
-            .create_as_pending_announcement(digest.clone(), local_swap_id, create_params)
+            .create_as_pending_announcement(digest.clone(), local_swap_id, create_params.clone())
             .unwrap();
         let (shared_swap_id, _) = swaps
-            .move_pending_announcement_to_communicate(&digest)
+            .move_pending_announcement_to_communicate(&digest, &create_params.peer.peer_id)
             .unwrap();
 
         swaps.get_announced_swap(&local_swap_id).unwrap();
@@ -701,5 +723,37 @@ mod tests {
         let res = swaps.get_announced_swap(&local_swap_id);
 
         assert!(res.is_none());
+    }
+
+    #[test]
+    fn given_bob_receives_announcement_with_wrong_peer_id_then_error() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+
+        let mut swaps = Swaps::<()>::default();
+
+        swaps
+            .create_as_pending_announcement(digest.clone(), local_swap_id, create_params)
+            .unwrap();
+
+        let res = swaps.move_pending_announcement_to_communicate(&digest, &PeerId::random());
+
+        assert_eq!(res, Err(Error::IncorrectPeerId));
+    }
+
+    #[test]
+    fn given_bob_receives_creation_with_different_peer_id_then_error() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+
+        let mut swaps = Swaps::<()>::default();
+
+        let _ = swaps.insert_pending_creation(digest.clone(), PeerId::random(), ());
+
+        let res = swaps.move_pending_creation_to_communicate(&digest, local_swap_id, create_params);
+
+        assert_eq!(res, Err(Error::IncorrectPeerId));
     }
 }

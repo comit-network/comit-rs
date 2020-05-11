@@ -447,9 +447,9 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     }
                 }
 
-                if let Some((shared_swap_id, create_params)) = self
+                if let Ok((shared_swap_id, create_params)) = self
                     .swaps
-                    .move_pending_announcement_to_communicate(&io.swap_digest)
+                    .move_pending_announcement_to_communicate(&io.swap_digest, &peer)
                 {
                     tracing::debug!("Swap confirmation and communication has started.");
                     self.bob_communicate(peer, *io, shared_swap_id, create_params);
