@@ -1,7 +1,7 @@
 use crate::{
     asset,
     db::{
-        schema,
+        rfc003_schema,
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
@@ -22,7 +22,7 @@ use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
 use impl_template::impl_template;
-use schema::{
+use rfc003_schema::{
     rfc003_bitcoin_ethereum_accept_messages,
     rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages,
     rfc003_bitcoin_ethereum_bitcoin_ether_request_messages,
@@ -148,7 +148,7 @@ impl
             identity::Ethereum,
         >,
     > {
-        use schema::{
+        use rfc003_schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_ether_request_messages as request_messages,
         };
@@ -271,7 +271,7 @@ impl
             identity::Bitcoin,
         >,
     > {
-        use schema::{
+        use rfc003_schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_ether_bitcoin_request_messages as request_messages,
         };
@@ -398,7 +398,7 @@ impl
             identity::Ethereum,
         >,
     > {
-        use schema::{
+        use rfc003_schema::{
             rfc003_bitcoin_ethereum_accept_messages as accept_messages,
             rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages as request_messages,
         };
@@ -526,7 +526,7 @@ impl
             identity::Bitcoin,
         >,
     > {
-        use schema::{
+        use rfc003_schema::{
             rfc003_ethereum_bitcoin_accept_messages as accept_messages,
             rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages as request_messages,
         };

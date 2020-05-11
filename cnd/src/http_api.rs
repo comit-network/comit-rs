@@ -10,7 +10,7 @@ pub use self::{
     problem::*,
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
-use crate::swap_protocols::actions::lnd::Chain;
+use crate::swap_protocols::{actions::lnd::Chain, ledger::lightning};
 
 pub const PATH: &str = "swaps";
 
@@ -159,6 +159,34 @@ impl Serialize for Http<PeerId> {
         S: Serializer,
     {
         serializer.serialize_str(&self.0.to_base58()[..])
+    }
+}
+
+impl Serialize for Http<lightning::Regtest> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str("regtest")
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<lightning::Regtest> {
+    fn deserialize<D>(deserializer: D) -> Result<Http<lightning::Regtest>, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let network = match String::deserialize(deserializer)?.as_str() {
+            "regtest" => lightning::Regtest,
+            network => {
+                return Err(<D as Deserializer<'de>>::Error::custom(format!(
+                    "not regtest: {}",
+                    network
+                )))
+            }
+        };
+
+        Ok(Http(network))
     }
 }
 

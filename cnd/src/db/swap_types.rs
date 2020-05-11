@@ -1,7 +1,7 @@
 use crate::{
     asset, comit_api,
     db::{
-        schema,
+        rfc003_schema,
         wrapper_types::{custom_sql_types::Text, BitcoinNetwork},
         Sqlite,
     },
@@ -24,7 +24,7 @@ pub trait DetermineTypes: Send + Sync + 'static {
 #[async_trait]
 impl DetermineTypes for Sqlite {
     async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
-        let role = self.role(key).await?;
+        let role = self.rfc003_role(key).await?;
 
         if let Some(bitcoin_network) = self
             .rfc003_bitcoin_ethereum_bitcoin_ether_request_messages_has_swap(key)
@@ -86,7 +86,7 @@ macro_rules! impl_has_swap {
     ($table:ident) => {
         paste::item! {
             async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<Option<BitcoinNetwork>> {
-                use schema::$table as swaps;
+                use rfc003_schema::$table as swaps;
 
                 let record: Option<QueryableSwap> = self.do_in_transaction(|connection| {
                     let key = Text(key);

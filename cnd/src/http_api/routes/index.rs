@@ -5,8 +5,8 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        halight, han, Facade, HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId,
-        Rfc003Facade, Role,
+        halight, han, ledger::lightning, Facade, HanEtherereumHalightBitcoinCreateSwapParams,
+        LocalSwapId, Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -77,6 +77,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
         alpha: body.alpha.into(),
         beta: body.beta.into(),
         peer: body.peer.peer_id,
+        address_hint: None,
         role: body.role.0,
     };
 
@@ -207,7 +208,7 @@ impl From<HanEthereumEther> for han::CreatedSwap {
 pub struct HalightLightningBitcoin {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
-    pub network: String,
+    pub network: Http<lightning::Regtest>,
     pub cltv_expiry: u32,
 }
 
@@ -216,7 +217,7 @@ impl From<HalightLightningBitcoin> for halight::CreatedSwap {
         halight::CreatedSwap {
             amount: *p.amount,
             identity: p.identity,
-            network: p.network,
+            network: *p.network,
             cltv_expiry: p.cltv_expiry,
         }
     }

@@ -11,8 +11,9 @@ use crate::{
             },
             LedgerState,
         },
-        state, LedgerStates, LocalSwapId, Role,
+        state, Ledger, LedgerStates, LocalSwapId, Role,
     },
+    timestamp::Timestamp,
     transaction,
 };
 use chrono::{NaiveDateTime, Utc};
@@ -33,6 +34,16 @@ pub struct CreatedSwap {
     pub identity: identity::Ethereum,
     pub chain_id: u32,
     pub absolute_expiry: u32,
+}
+
+/// Han specific data for an in progress swap.
+#[derive(Debug, Clone)]
+pub struct InProgressSwap {
+    pub ledger: Ledger,
+    pub asset: asset::Ether,
+    pub refund_identity: identity::Ethereum,
+    pub redeem_identity: identity::Ethereum,
+    pub expiry: Timestamp, // This is the absolute_expiry for now.
 }
 
 pub async fn new_han_ethereum_ether_swap(
