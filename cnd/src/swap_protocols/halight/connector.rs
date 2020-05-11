@@ -5,7 +5,7 @@ use crate::swap_protocols::{
     },
     rfc003::{Secret, SecretHash},
 };
-use anyhow::{Context, Error};
+use anyhow::{bail, Context, Error};
 use reqwest::{
     header::{HeaderMap, HeaderValue},
     StatusCode, Url,
@@ -158,13 +158,16 @@ impl LndConnectorAsSender {
         &self,
         secret_hash: SecretHash,
         status: PaymentStatus,
-    ) -> Result<Option<Payment>, Error> {
+    ) -> anyhow::Result<Option<Payment>> {
+        let url = self.payment_url();
         let response = client(&self.certificate, &self.macaroon)?
-            .get(self.payment_url())
+            .get(url.clone())
             .send()
-            .await?
+            .await
+            .with_context(|| GetRequestFailed(url))?
             .json::<PaymentsResponse>()
-            .await?;
+            .await
+            .context("failed to deserialize response as list of payments")?;
         let payment = response
             .payments
             .unwrap_or_default()
@@ -177,7 +180,7 @@ impl LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsSender {
-    async fn wait_for_opened(&self, _params: Params) -> Result<Opened, Error> {
+    async fn wait_for_opened(&self, _params: Params) -> anyhow::Result<Opened> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
         Ok(Opened)
@@ -186,7 +189,7 @@ impl WaitForOpened for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsSender {
-    async fn wait_for_accepted(&self, params: Params) -> Result<Accepted, Error> {
+    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         while self
@@ -203,7 +206,7 @@ impl WaitForAccepted for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsSender {
-    async fn wait_for_settled(&self, params: Params) -> Result<Settled, Error> {
+    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled> {
         let payment = loop {
             match self
                 .find_payment(params.secret_hash, PaymentStatus::Succeeded)
@@ -229,7 +232,7 @@ impl WaitForSettled for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsSender {
-    async fn wait_for_cancelled(&self, params: Params) -> Result<Cancelled, Error> {
+    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled> {
         while self
             .find_payment(params.secret_hash, PaymentStatus::Failed)
             .await?
@@ -268,7 +271,7 @@ impl From<LndConnectorParams> for LndConnectorAsReceiver {
 }
 
 impl LndConnectorAsReceiver {
-    fn invoice_url(&self, secret_hash: SecretHash) -> Result<Url, Error> {
+    fn invoice_url(&self, secret_hash: SecretHash) -> anyhow::Result<Url> {
         Ok(self
             .lnd_url
             .join("/v1/invoice/")
@@ -281,11 +284,13 @@ impl LndConnectorAsReceiver {
         &self,
         secret_hash: SecretHash,
         expected_state: InvoiceState,
-    ) -> Result<Option<Invoice>, Error> {
+    ) -> anyhow::Result<Option<Invoice>> {
+        let url = self.invoice_url(secret_hash)?;
         let response = client(&self.certificate, &self.macaroon)?
-            .get(self.invoice_url(secret_hash)?)
+            .get(url.clone())
             .send()
-            .await?;
+            .await
+            .with_context(|| GetRequestFailed(url))?;
 
         if response.status() == StatusCode::NOT_FOUND {
             tracing::debug!("invoice not found");
@@ -305,7 +310,7 @@ impl LndConnectorAsReceiver {
                 // yes we can fail while we already encoundered an error ...
                 .with_context(|| format!("encountered {} while fetching invoice but couldn't deserialize error response 🙄", status_code))?;
 
-            return Err(lnd_error.into());
+            bail!(lnd_error)
         }
 
         let invoice = response
@@ -332,7 +337,7 @@ struct LndError {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsReceiver {
-    async fn wait_for_opened(&self, params: Params) -> Result<Opened, Error> {
+    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<Opened> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
@@ -349,7 +354,7 @@ impl WaitForOpened for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsReceiver {
-    async fn wait_for_accepted(&self, params: Params) -> Result<Accepted, Error> {
+    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
@@ -367,7 +372,7 @@ impl WaitForAccepted for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsReceiver {
-    async fn wait_for_settled(&self, params: Params) -> Result<Settled, Error> {
+    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled> {
         let invoice = loop {
             match self
                 .find_invoice(params.secret_hash, InvoiceState::Settled)
@@ -390,7 +395,7 @@ impl WaitForSettled for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsReceiver {
-    async fn wait_for_cancelled(&self, params: Params) -> Result<Cancelled, Error> {
+    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled> {
         while self
             .find_invoice(params.secret_hash, InvoiceState::Cancelled)
             .await?
@@ -402,7 +407,7 @@ impl WaitForCancelled for LndConnectorAsReceiver {
     }
 }
 
-fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Client, Error> {
+fn client(certificate: &Certificate, macaroon: &Macaroon) -> anyhow::Result<reqwest::Client> {
     let cert = certificate.0.clone();
     let mut default_headers = HeaderMap::with_capacity(1);
     default_headers.insert(
@@ -431,6 +436,10 @@ fn client(certificate: &Certificate, macaroon: &Macaroon) -> Result<reqwest::Cli
 
     Ok(client)
 }
+
+#[derive(Debug, thiserror::Error)]
+#[error("GET request to {0} failed")]
+pub struct GetRequestFailed(Url);
 
 pub fn deserialize_r_preimage<'de, D>(deserializer: D) -> Result<Option<[u8; 32]>, D::Error>
 where
