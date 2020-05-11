@@ -276,13 +276,13 @@ impl<T> Swaps<T> {
 
     /// Remove all pending (not finalized) swap older than `older_than`
     pub fn clean_up_pending_swaps(&mut self, older_than: Timestamp) {
-        let digests: Vec<SwapDigest> = self
+        let digests = self
             .timestamps
             .iter()
             .filter(|(_, timestamp)| **timestamp < older_than)
             .map(|(digest, _)| digest)
             .cloned()
-            .collect();
+            .collect::<Vec<_>>();
 
         self.pending_confirmation
             .retain(|digest, _| !digests.contains(digest));
