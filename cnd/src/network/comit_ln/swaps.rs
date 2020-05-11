@@ -675,7 +675,7 @@ mod tests {
         let res = swaps.move_pending_creation_to_communicate(
             &digest,
             local_swap_id,
-            second_create_params.clone(),
+            second_create_params,
         );
 
         assert!(res.is_err());
@@ -694,11 +694,7 @@ mod tests {
         let local_swap_id = LocalSwapId::default();
         let mut swaps = Swaps::<()>::default();
 
-        let res = swaps.move_pending_creation_to_communicate(
-            &digest,
-            local_swap_id,
-            create_params.clone(),
-        );
+        let res = swaps.move_pending_creation_to_communicate(&digest, local_swap_id, create_params);
 
         assert!(res.is_err());
 
