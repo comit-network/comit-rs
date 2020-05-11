@@ -142,23 +142,6 @@ impl Swarm {
 
         guard.initiate_communication(id, swap_params)
     }
-
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        let mut guard = self.inner.lock().await;
-        guard.get_finalized_swap(id)
-    }
-
-    pub async fn get_created_swap(
-        &self,
-        id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        let mut guard = self.inner.lock().await;
-        guard.get_created_swap(id)
-    }
-
-    // On Bob's side, when an announce message is received execute the required
-    // communication protocols and write the finalized swap to the database.  Then
-    // spawn the same as is done for Alice.
 }
 
 struct TokioExecutor {
@@ -343,17 +326,6 @@ impl ComitNode {
     ) -> anyhow::Result<()> {
         self.supports_halight()?;
         self.comit_ln.initiate_communication(id, swap_params)
-    }
-
-    pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        self.comit_ln.get_finalized_swap(id)
-    }
-
-    pub fn get_created_swap(
-        &mut self,
-        id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        self.comit_ln.get_created_swap(&id)
     }
 
     fn supports_halight(&self) -> anyhow::Result<()> {

@@ -4,16 +4,17 @@ pub mod rfc003;
 
 use crate::{
     asset,
+    db::{CreatedSwap, InProgressSwap, Load},
     ethereum::Bytes,
     htlc_location,
     http_api::{action::ActionResponseBody, problem, route_factory, Http},
-    network::comit_ln,
     swap_protocols::{
         actions::{
             ethereum,
             lnd::{self, Chain},
         },
         halight::{self, Settled},
+        han,
         ledger::ethereum::ChainId,
         rfc003::{ledger_state::HtlcState, LedgerState},
         state::Get,
@@ -33,88 +34,105 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_halight_swap(
+pub async fn get_han_halight_swap(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    handle_get_halight_swap(facade, swap_id)
+    handle_get_han_halight_swap(facade, swap_id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
-pub async fn handle_get_halight_swap(
+pub async fn handle_get_han_halight_swap(
     facade: Facade,
     swap_id: LocalSwapId,
-) -> anyhow::Result<siren::Entity> {
-    let alpha_ledger_state: Option<
-        LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
-    > = facade.alpha_ledger_states.get(&swap_id).await?;
+) -> anyhow::Result<siren::Entity>
+where
+    Facade: Load<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>
+        + Load<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>>,
+{
+    let alpha_ledger_state: LedgerState<
+        asset::Ether,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_states
+        .get(&swap_id)
+        .await?
+        .ok_or_else(|| {
+            tracing::error!("failed to find alpha ledger state");
+            HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+        })?;
 
-    let beta_ledger_state = facade.beta_ledger_states.get(&swap_id).await?;
+    let beta_ledger_state = facade
+        .beta_ledger_states
+        .get(&swap_id)
+        .await?
+        .ok_or_else(|| {
+            tracing::error!("failed to find beta ledger state");
+            HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+        })?;
 
-    let created_swap = facade.get_created_swap(swap_id).await;
+    let created_swap =
+        match Load::<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>>::load(&facade, swap_id)
+            .await?
+        {
+            Some(swap) => swap,
+            None => {
+                let empty_swap = siren::Entity::default().with_class_member("swaps");
+                tracing::debug!(
+                    "returning empty siren document because states are not yet completed"
+                );
+                return Ok(empty_swap);
+            }
+        };
 
-    let finalized_swap = facade.get_finalized_swap(swap_id).await;
+    let swap = Load::<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>::load(
+        &facade, swap_id,
+    )
+    .await?;
+    match swap {
+        None => make_created_swap_entity(swap_id, HanEthereumHalightBitcoinCreatedState {
+            created_swap: created_swap.into(),
+        }),
+        Some(swap) => {
+            match swap.role {
+                Role::Alice => {
+                    let state = AliceHanEthereumHalightBitcoinState {
+                        alpha_ledger_state,
+                        beta_ledger_state,
+                        swap,
+                    };
 
-    let (alpha_ledger_state, beta_ledger_state, finalized_swap) = match (
-        alpha_ledger_state,
-        beta_ledger_state,
-        finalized_swap,
-        created_swap,
-    ) {
-        (Some(alpha_ledger_state), Some(beta_ledger_state), Some(finalized_swap), _) => {
-            (alpha_ledger_state, beta_ledger_state, finalized_swap)
-        }
-        (_, _, _, Some(created_swap)) => {
-            return make_created_swap_entity(swap_id, HanEthereumHalightBitcoinCreatedState {
-                created_swap,
-            })
-        }
-        _ => {
-            let empty_swap = siren::Entity::default().with_class_member("swaps");
+                    let maybe_action_names = vec![
+                        state.init_action().map(|_| "init"),
+                        state.fund_action().map(|_| "fund"),
+                        state.redeem_action().map(|_| "redeem"),
+                        state.refund_action().map(|_| "refund"),
+                    ];
+                    make_live_swap_entity(swap_id, state, maybe_action_names)
+                }
+                Role::Bob => {
+                    let state = BobHanEthereumHalightBitcoinState {
+                        alpha_ledger_state,
+                        beta_ledger_state,
+                        swap,
+                    };
 
-            tracing::debug!("returning empty siren document because states are not yet completed");
-
-            return Ok(empty_swap);
-        }
-    };
-
-    match finalized_swap.role {
-        Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
-                alpha_ledger_state,
-                beta_ledger_state,
-                finalized_swap,
-            };
-
-            let maybe_action_names = vec![
-                state.init_action().map(|_| "init"),
-                state.fund_action().map(|_| "fund"),
-                state.redeem_action().map(|_| "redeem"),
-                state.refund_action().map(|_| "refund"),
-            ];
-            make_finalized_swap_entity(swap_id, state, maybe_action_names)
-        }
-        Role::Bob => {
-            let state = BobHanEthereumHalightBitcoinState {
-                alpha_ledger_state,
-                beta_ledger_state,
-                finalized_swap,
-            };
-
-            // Bob cannot init and refund in this swap combination
-            let maybe_action_names = vec![
-                state.fund_action().map(|_| "fund"),
-                state.redeem_action().map(|_| "redeem"),
-            ];
-            make_finalized_swap_entity(swap_id, state, maybe_action_names)
+                    // Bob cannot init and refund in this swap combination
+                    let maybe_action_names = vec![
+                        state.fund_action().map(|_| "fund"),
+                        state.redeem_action().map(|_| "redeem"),
+                    ];
+                    make_live_swap_entity(swap_id, state, maybe_action_names)
+                }
+            }
         }
     }
 }
 
-// TODO: Refactor with make_finalized_swap_entity
 fn make_created_swap_entity<S>(swap_id: LocalSwapId, state: S) -> anyhow::Result<siren::Entity>
 where
     S: GetSwapStatus + GetRole + QuantityWei + QuantitySatoshi,
@@ -172,7 +190,7 @@ where
     Ok(entity)
 }
 
-fn make_finalized_swap_entity<S>(
+fn make_live_swap_entity<S>(
     swap_id: LocalSwapId,
     state: S,
     maybe_action_names: Vec<Option<&str>>,
@@ -323,7 +341,7 @@ pub struct AliceHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
-    pub finalized_swap: comit_ln::FinalizedSwap,
+    pub swap: InProgressSwap<han::InProgressSwap, halight::InProgressSwap>,
 }
 
 impl GetSwapStatus for AliceHanEthereumHalightBitcoinState {
@@ -353,13 +371,13 @@ impl GetRole for AliceHanEthereumHalightBitcoinState {
 
 impl QuantityWei for AliceHanEthereumHalightBitcoinState {
     fn quantity_wei(&self) -> String {
-        self.finalized_swap.alpha_asset.to_wei_dec()
+        self.swap.alpha.asset.to_wei_dec()
     }
 }
 
 impl QuantitySatoshi for AliceHanEthereumHalightBitcoinState {
     fn quantity_satoshi(&self) -> String {
-        self.finalized_swap.beta_asset.as_sat().to_string()
+        self.swap.beta.asset.as_sat().to_string()
     }
 }
 
@@ -368,7 +386,7 @@ pub struct BobHanEthereumHalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
-    pub finalized_swap: comit_ln::FinalizedSwap,
+    pub swap: InProgressSwap<han::InProgressSwap, halight::InProgressSwap>,
 }
 
 impl GetSwapStatus for BobHanEthereumHalightBitcoinState {
@@ -398,13 +416,13 @@ impl GetRole for BobHanEthereumHalightBitcoinState {
 
 impl QuantityWei for BobHanEthereumHalightBitcoinState {
     fn quantity_wei(&self) -> String {
-        self.finalized_swap.alpha_asset.to_wei_dec()
+        self.swap.alpha.asset.to_wei_dec()
     }
 }
 
 impl QuantitySatoshi for BobHanEthereumHalightBitcoinState {
     fn quantity_satoshi(&self) -> String {
-        self.finalized_swap.beta_asset.as_sat().to_string()
+        self.swap.beta.asset.as_sat().to_string()
     }
 }
 
@@ -555,13 +573,13 @@ impl InitAction for AliceHanEthereumHalightBitcoinState {
     fn init_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
             halight::State::None => {
-                let amount = self.finalized_swap.beta_asset;
-                let secret_hash = self.finalized_swap.secret_hash;
+                let amount = self.swap.beta.asset;
+                let secret_hash = self.swap.secret_hash;
                 let expiry = 3600;
-                let cltv_expiry = self.finalized_swap.beta_expiry.into();
+                let cltv_expiry = self.swap.beta.expiry.into();
                 let chain = Chain::Bitcoin;
                 let network = bitcoin::Network::Regtest;
-                let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+                let self_public_key = self.swap.beta.redeem_identity;
 
                 Some(lnd::AddHoldInvoice {
                     amount,
@@ -584,9 +602,9 @@ impl FundAction for AliceHanEthereumHalightBitcoinState {
     fn fund_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
             halight::State::Opened(_) => {
-                let eth_htlc = self.finalized_swap.han_params();
+                let eth_htlc = EtherHtlc::from(&self.swap);
                 let data = eth_htlc.into();
-                let amount = self.finalized_swap.alpha_asset.clone();
+                let amount = self.swap.alpha.asset.clone();
                 let gas_limit = EtherHtlc::deploy_tx_gas_limit();
                 let chain_id = ChainId::regtest();
 
@@ -608,10 +626,10 @@ impl RedeemAction for AliceHanEthereumHalightBitcoinState {
     fn redeem_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
             halight::State::Accepted(_) => {
-                let secret = self.finalized_swap.secret.unwrap(); // unwrap ok since only Alice calls this.
+                let secret = self.swap.secret.unwrap(); // unwrap ok since only Alice calls this.
                 let chain = Chain::Bitcoin;
                 let network = bitcoin::Network::Regtest;
-                let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
+                let self_public_key = self.swap.beta.redeem_identity;
 
                 Some(lnd::SettleInvoice {
                     secret,
@@ -635,7 +653,7 @@ impl RefundAction for AliceHanEthereumHalightBitcoinState {
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
                 let chain_id = ChainId::regtest();
-                let min_block_timestamp = Some(self.finalized_swap.alpha_expiry);
+                let min_block_timestamp = Some(self.swap.alpha.expiry);
 
                 Some(ethereum::CallContract {
                     to,
@@ -656,13 +674,13 @@ impl FundAction for BobHanEthereumHalightBitcoinState {
     fn fund_action(&self) -> Option<Self::Output> {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
             (LedgerState::Funded { .. }, halight::State::Opened(_)) => {
-                let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
-                let amount = self.finalized_swap.beta_asset;
-                let secret_hash = self.finalized_swap.secret_hash;
-                let final_cltv_delta = self.finalized_swap.beta_expiry.into();
+                let to_public_key = self.swap.beta.redeem_identity;
+                let amount = self.swap.beta.asset;
+                let secret_hash = self.swap.secret_hash;
+                let final_cltv_delta = self.swap.beta.expiry.into();
                 let chain = Chain::Bitcoin;
                 let network = bitcoin::Network::Regtest;
-                let self_public_key = self.finalized_swap.beta_ledger_refund_identity;
+                let self_public_key = self.swap.beta.refund_identity;
 
                 Some(lnd::SendPayment {
                     to_public_key,
@@ -720,7 +738,10 @@ pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 async fn handle_action_init(
     swap_id: LocalSwapId,
     facade: Facade,
-) -> anyhow::Result<ActionResponseBody> {
+) -> anyhow::Result<ActionResponseBody>
+where
+    Facade: Load<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>,
+{
     let alpha_ledger_state: LedgerState<
         asset::Ether,
         htlc_location::Ethereum,
@@ -737,17 +758,18 @@ async fn handle_action_init(
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
-    let finalized_swap = facade
-        .get_finalized_swap(swap_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
+    let swap = Load::<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>::load(
+        &facade, swap_id,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
-    let maybe_response = match finalized_swap.role {
+    let maybe_response = match swap.role {
         Role::Alice => {
             let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.init_action().map(ActionResponseBody::from)
@@ -790,17 +812,18 @@ async fn handle_action_fund(
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
-    let finalized_swap = facade
-        .get_finalized_swap(swap_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
+    let swap = Load::<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>::load(
+        &facade, swap_id,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
-    let maybe_response = match finalized_swap.role {
+    let maybe_response = match swap.role {
         Role::Alice => {
             let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.fund_action().map(ActionResponseBody::from)
@@ -809,7 +832,7 @@ async fn handle_action_fund(
             let state = BobHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.fund_action().map(ActionResponseBody::from)
@@ -851,17 +874,18 @@ async fn handle_action_redeem(
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
-    let finalized_swap = facade
-        .get_finalized_swap(swap_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
+    let swap = Load::<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>::load(
+        &facade, swap_id,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
-    let maybe_response = match finalized_swap.role {
+    let maybe_response = match swap.role {
         Role::Alice => {
             let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.redeem_action().map(ActionResponseBody::from)
@@ -870,7 +894,7 @@ async fn handle_action_redeem(
             let state = BobHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.redeem_action().map(ActionResponseBody::from)
@@ -912,17 +936,18 @@ async fn handle_action_refund(
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
 
-    let finalized_swap = facade
-        .get_finalized_swap(swap_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
+    let swap = Load::<InProgressSwap<han::InProgressSwap, halight::InProgressSwap>>::load(
+        &facade, swap_id,
+    )
+    .await?
+    .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
 
-    let maybe_response = match finalized_swap.role {
+    let maybe_response = match swap.role {
         Role::Alice => {
             let state = AliceHanEthereumHalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
-                finalized_swap,
+                swap,
             };
 
             state.refund_action().map(ActionResponseBody::from)

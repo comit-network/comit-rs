@@ -1,9 +1,17 @@
+mod connector_impls;
+
+pub use connector_impls::*;
+
 use crate::{
-    asset, htlc_location, identity,
+    asset,
+    ethereum::Bytes,
+    htlc_location, identity,
     swap_protocols::{
+        ledger::Ethereum,
         rfc003::{Secret, SecretHash},
         state, LocalSwapId,
     },
+    timestamp::Timestamp,
     transaction,
 };
 use chrono::NaiveDateTime;
@@ -15,11 +23,7 @@ use genawaiter::sync::{Co, Gen};
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
-mod connector_impls;
-
-use crate::{ethereum::Bytes, timestamp::Timestamp};
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
-pub use connector_impls::*;
 
 /// Htlc ERC20 Token atomic swap protocol.
 
@@ -29,8 +33,17 @@ pub struct CreatedSwap {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
-    pub contract_address: identity::Ethereum,
+    pub token_contract: identity::Ethereum,
     pub absolute_expiry: u32,
+}
+
+/// Herc20 specific data for an in progress swap.
+#[derive(Debug, Clone, Copy)]
+pub struct InProgressSwap {
+    pub ledger: Ethereum,
+    pub refund_identity: identity::Ethereum,
+    pub redeem_identity: identity::Ethereum,
+    pub expiry: Timestamp, // This is the absolute_expiry for now.
 }
 
 /// Resolves when said event has occurred.

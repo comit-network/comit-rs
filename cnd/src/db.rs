@@ -1,8 +1,12 @@
 #[cfg(test)]
 mod integration_tests;
+#[macro_use]
+mod load;
 mod load_swaps;
+mod rfc003_schema;
 mod save;
 mod schema;
+pub mod tables;
 mod wrapper_types;
 #[macro_use]
 mod swap;
@@ -13,6 +17,7 @@ pub mod with_swap_types;
 embed_migrations!("./migrations");
 
 pub use self::{
+    load::*,
     load_swaps::{AcceptedSwap, LoadAcceptedSwap},
     save::*,
     swap::*,
@@ -21,8 +26,14 @@ pub use self::{
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{rfc003::SwapId, LocalSwapId, Role},
+    swap_protocols::{
+        halight, han,
+        ledger::{ethereum::ChainId, Ethereum},
+        rfc003::{create_swap::HtlcParams, Secret, SecretHash, SwapId},
+        LocalSwapId, Role,
+    },
 };
+use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -87,8 +98,8 @@ impl Sqlite {
         Ok(result)
     }
 
-    async fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
-        use self::schema::rfc003_swaps as swaps;
+    async fn rfc003_role(&self, key: &SwapId) -> anyhow::Result<Role> {
+        use self::rfc003_schema::rfc003_swaps as swaps;
 
         let record: QueryableSwapRole = self
             .do_in_transaction(|connection| {
@@ -131,13 +142,16 @@ struct QueryableSwapRole {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
+    #[error("peer id not found")]
+    PeerIdNotFound,
 }
 
 /// Data required to create a swap.
 ///
 /// 'create' a swap is defined as the process of initiating a swap within `cnd`.
 /// The data required to do so is assumed to have been negotiated between the
-/// two parties prior to each creating the swap.
+/// two parties prior to each creating the swap. This struct can be saved into
+/// the database.
 #[derive(Debug, Clone)]
 pub struct CreatedSwap<A, B> {
     /// Node specific swap identifier.
@@ -148,8 +162,39 @@ pub struct CreatedSwap<A, B> {
     pub beta: B,
     /// Peer ID of the swap counterparty.
     pub peer: PeerId,
+    /// The address hint of the swap counterparty, only relevant to the party
+    /// that starts the communication.
+    pub address_hint: Option<libp2p::Multiaddr>,
     /// Role of the node in this swap, Alice or Bob.
     pub role: Role,
+}
+
+/// An 'in progress' swap is a swap that is currently in progress, i.e., the
+/// swap was 'created' by a POST on the REST API, 'finalized' during the
+/// communication protocols, and is now 'in progress'.  This data structure can
+/// be retrieved from the database.
+#[derive(Debug, Clone, Copy)]
+pub struct InProgressSwap<A, B> {
+    pub swap_id: LocalSwapId,
+    pub secret_hash: SecretHash,
+    pub secret: Option<Secret>,
+    pub role: Role,
+    pub alpha: A,
+    pub beta: B,
+}
+
+impl From<&InProgressSwap<han::InProgressSwap, halight::InProgressSwap>> for EtherHtlc {
+    fn from(swap: &InProgressSwap<han::InProgressSwap, halight::InProgressSwap>) -> Self {
+        HtlcParams {
+            asset: swap.alpha.asset.clone(),
+            ledger: Ethereum::new(ChainId::regtest()),
+            redeem_identity: swap.alpha.redeem_identity,
+            refund_identity: swap.alpha.refund_identity,
+            expiry: swap.alpha.expiry,
+            secret_hash: swap.secret_hash,
+        }
+        .into()
+    }
 }
 
 #[cfg(test)]

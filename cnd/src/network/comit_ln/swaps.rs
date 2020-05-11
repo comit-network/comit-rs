@@ -50,32 +50,6 @@ pub struct Swaps<T> {
 }
 
 impl<T> Swaps<T> {
-    /// Gets a swap that was created
-    pub fn get_created_swap(
-        &self,
-        local_swap_id: &LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        self.swaps.get(local_swap_id).cloned()
-    }
-
-    /// Gets a swap that was announced
-    pub fn get_announced_swap(
-        &self,
-        local_swap_id: &LocalSwapId,
-    ) -> Option<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
-        let create_params = match self.swaps.get(local_swap_id) {
-            Some(create_params) => create_params,
-            None => return None,
-        };
-
-        let shared_swap_id = match self.swap_ids.get(local_swap_id) {
-            Some(shared_swap_id) => shared_swap_id,
-            None => return None,
-        };
-
-        Some((*shared_swap_id, create_params.clone()))
-    }
-
     /// Alice created and announced it a swap and is waiting for a confirmation
     /// from Bob
     pub fn create_as_pending_confirmation(

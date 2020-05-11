@@ -1,7 +1,8 @@
 use crate::{
     asset,
     db::{
-        schema::{self, *},
+        rfc003_schema::{self, *},
+        tables::{IHalight, IHerc20, ISwap},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
@@ -10,7 +11,7 @@ use crate::{
     },
     identity,
     swap_protocols::{
-        halight, han,
+        halight, han, herc20,
         ledger::{self, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash, SwapId},
         HashFunction, Role,
@@ -20,6 +21,7 @@ use async_trait::async_trait;
 use diesel::RunQueryDsl;
 use impl_template::impl_template;
 use libp2p::{self, PeerId};
+use std::str::FromStr;
 
 /// Save swap to database.
 #[async_trait]
@@ -33,7 +35,7 @@ impl Save<Swap> for Sqlite {
         let insertable = InsertableSwap::from(swap);
 
         self.do_in_transaction(|connection| {
-            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
+            diesel::insert_into(rfc003_schema::rfc003_swaps::dsl::rfc003_swaps)
                 .values(&insertable)
                 .execute(&*connection)
         })
@@ -514,5 +516,72 @@ impl Save<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>> for Sqlite {
         _: CreatedSwap<han::CreatedSwap, halight::CreatedSwap>,
     ) -> anyhow::Result<()> {
         unimplemented!()
+    }
+}
+
+#[async_trait]
+impl Save<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>> for Sqlite {
+    async fn save(
+        &self,
+        created: CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        let local_swap_id = created.swap_id;
+        let role = created.role;
+
+        let swap = ISwap::new(created.swap_id, created.peer.clone(), created.role);
+        self.save_swap(&swap).await?;
+
+        if let Some(address_hint) = created.address_hint {
+            self.save_address_hint(created.peer, &address_hint).await?;
+        }
+
+        // Save the herc20 details.
+        let redeem_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(EthereumAddress::from(created.alpha.identity))),
+        };
+        let refund_identity = match role {
+            Role::Alice => Some(Text(EthereumAddress::from(created.alpha.identity))),
+            Role::Bob => None,
+        };
+        let herc = IHerc20 {
+            swap_id: 0, // FK, set during save.
+            amount: Text(created.alpha.amount.into()),
+            chain_id: U32(created.alpha.chain_id),
+            expiry: U32(created.alpha.absolute_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            token_contract: Text(created.alpha.token_contract.into()),
+            redeem_identity,
+            refund_identity,
+            ledger: "alpha".to_string(),
+        };
+
+        self.save_herc20_swap_detail(local_swap_id, &herc).await?;
+
+        // Save the halight details.
+        let redeem_identity = match role {
+            Role::Alice => Some(Text(created.beta.identity)),
+            Role::Bob => None,
+        };
+        let refund_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(created.beta.identity)),
+        };
+        let network = BitcoinNetwork::from_str(&created.beta.network)?;
+        let halight = IHalight {
+            swap_id: 0, // FK, set during save.
+            amount: Text(created.beta.amount.into()),
+            network: Text(network),
+            chain: "bitcoin".to_string(), // FIXME: What should this be?
+            cltv_expiry: U32(created.beta.cltv_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            redeem_identity,
+            refund_identity,
+            ledger: "beta".to_string(),
+        };
+        self.save_halight_swap_detail(local_swap_id, &halight)
+            .await?;
+
+        Ok(())
     }
 }

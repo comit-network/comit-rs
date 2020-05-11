@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    db::CreatedSwap,
+    db::{CreatedSwap, Save},
     http_api::{problem, routes::into_rejection, Http},
     identity,
     network::{DialInformation, ListenAddresses},
@@ -61,7 +61,10 @@ pub async fn get_info_siren(
 pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
     facade: Facade,
-) -> Result<impl Reply, Rejection> {
+) -> Result<impl Reply, Rejection>
+where
+    Facade: Save<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>>,
+{
     let body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
@@ -77,6 +80,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
         alpha: body.alpha.into(),
         beta: body.beta.into(),
         peer: body.peer.peer_id,
+        address_hint: body.peer.address_hint,
         role: body.role.0,
     };
 
@@ -227,6 +231,6 @@ pub struct Herc20EthereumErc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
-    pub contract_address: identity::Ethereum,
+    pub token_contract: identity::Ethereum,
     pub absolute_expiry: u32,
 }

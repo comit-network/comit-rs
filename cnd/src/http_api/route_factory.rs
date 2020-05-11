@@ -133,12 +133,12 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::index::post_halight_bitcoin_herc20);
 
-    let get_halight_swap = swaps
+    let get_han_halight_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::get_halight_swap);
+        .and_then(http_api::routes::get_han_halight_swap);
 
     let lightning_action_init = swaps
         .and(warp::get())
@@ -184,7 +184,7 @@ pub fn create(
         .or(herc20_halight_bitcoin)
         .or(halight_bitcoin_han_ether)
         .or(halight_bitcoin_herc20)
-        .or(get_halight_swap)
+        .or(get_han_halight_swap)
         .or(lightning_action_init)
         .or(lightning_action_fund)
         .or(lightning_action_redeem)

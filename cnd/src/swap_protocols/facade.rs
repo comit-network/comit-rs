@@ -1,11 +1,12 @@
 use crate::{
     asset,
-    db::CreatedSwap,
+    db::{CreatedSwap, Load, Save, Sqlite},
     identity,
-    network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
-    swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
+    network::{protocols::announce::SwapDigest, DialInformation, Swarm},
+    swap_protocols::{halight, han, LedgerStates, LocalSwapId, Role},
     timestamp::Timestamp,
 };
+use async_trait::async_trait;
 use digest::{Digest, IntoDigestInput};
 use std::sync::Arc;
 
@@ -35,6 +36,27 @@ pub struct HanEtherereumHalightBitcoinCreateSwapParams {
 impl IntoDigestInput for asset::Bitcoin {
     fn into_digest_input(self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
+    }
+}
+
+impl From<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>>
+    for HanEtherereumHalightBitcoinCreateSwapParams
+{
+    fn from(swap: CreatedSwap<han::CreatedSwap, halight::CreatedSwap>) -> Self {
+        let peer = DialInformation {
+            peer_id: swap.peer,
+            address_hint: swap.address_hint,
+        };
+        HanEtherereumHalightBitcoinCreateSwapParams {
+            role: swap.role,
+            peer,
+            ethereum_identity: EthereumIdentity(swap.alpha.identity),
+            ethereum_absolute_expiry: swap.alpha.absolute_expiry.into(),
+            ethereum_amount: swap.alpha.amount,
+            lightning_identity: swap.beta.identity,
+            lightning_cltv_expiry: swap.beta.cltv_expiry.into(),
+            lightning_amount: swap.beta.amount,
+        }
     }
 }
 
@@ -74,13 +96,10 @@ pub struct Facade {
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
     pub alpha_ledger_states: Arc<LedgerStates>,
     pub beta_ledger_states: Arc<halight::States>,
+    pub db: Sqlite,
 }
 
 impl Facade {
-    pub async fn save<A, B>(&self, _: CreatedSwap<A, B>) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
@@ -88,15 +107,26 @@ impl Facade {
     ) -> anyhow::Result<()> {
         self.swarm.initiate_communication(id, swap_params).await
     }
+}
 
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        self.swarm.get_finalized_swap(id).await
+#[async_trait]
+impl<T> Save<T> for Facade
+where
+    T: Send + 'static,
+    Sqlite: Save<T>,
+{
+    async fn save(&self, data: T) -> anyhow::Result<()> {
+        self.db.save(data).await
     }
+}
 
-    pub async fn get_created_swap(
-        &self,
-        id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
-        self.swarm.get_created_swap(id).await
+#[async_trait]
+impl<T> Load<T> for Facade
+where
+    T: Send + 'static,
+    Sqlite: Load<T>,
+{
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<Option<T>> {
+        self.db.load(swap_id).await
     }
 }
