@@ -2,7 +2,7 @@ pub mod behaviour;
 pub mod handler;
 pub mod protocol;
 
-use digest::IntoDigestInput;
+use digest::ToDigestInput;
 use libp2p::multihash::{self, Multihash};
 use serde::{de::Error, Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -16,9 +16,9 @@ impl SwapDigest {
     }
 }
 
-impl IntoDigestInput for SwapDigest {
-    fn into_digest_input(self) -> Vec<u8> {
-        self.0.into_bytes()
+impl ToDigestInput for SwapDigest {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.0.clone().into_bytes()
     }
 }
 

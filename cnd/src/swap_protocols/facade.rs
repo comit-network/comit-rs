@@ -6,7 +6,7 @@ use crate::{
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
     timestamp::Timestamp,
 };
-use digest::{Digest, IntoDigestInput};
+use digest::{Digest, ToDigestInput};
 use std::sync::Arc;
 
 /// This represent the information available on a swap
@@ -32,14 +32,14 @@ pub struct HanEtherereumHalightBitcoinCreateSwapParams {
     pub lightning_amount: asset::Bitcoin,
 }
 
-impl IntoDigestInput for asset::Bitcoin {
-    fn into_digest_input(self) -> Vec<u8> {
+impl ToDigestInput for asset::Bitcoin {
+    fn to_digest_input(&self) -> Vec<u8> {
         self.to_le_bytes().to_vec()
     }
 }
 
-impl IntoDigestInput for asset::Ether {
-    fn into_digest_input(self) -> Vec<u8> {
+impl ToDigestInput for asset::Ether {
+    fn to_digest_input(&self) -> Vec<u8> {
         self.to_bytes()
     }
 }
@@ -59,9 +59,9 @@ impl From<EthereumIdentity> for identity::Ethereum {
     }
 }
 
-impl IntoDigestInput for Timestamp {
-    fn into_digest_input(self) -> Vec<u8> {
-        self.to_bytes().to_vec()
+impl ToDigestInput for Timestamp {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().to_bytes().to_vec()
     }
 }
 
