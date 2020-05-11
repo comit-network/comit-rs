@@ -98,7 +98,7 @@ fn main() -> anyhow::Result<()> {
             validate_blockchain_config(&connector, *chain_id)
                 .await
                 .or_else::<anyhow::Error, _>(|e| {
-                    let conn_error = e.downcast::<jsonrpc::Error>()?;
+                    let conn_error = e.downcast::<jsonrpc::ConnectionFailed>()?;
                     tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
 
                     Ok(())

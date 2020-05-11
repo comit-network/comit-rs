@@ -1,18 +1,12 @@
 use anyhow::Context;
+use futures::TryFutureExt;
 use serde::{de::DeserializeOwned, Serialize};
+use std::fmt::Debug;
 
 #[derive(Debug)]
 pub struct Client {
     inner: reqwest::Client,
     url: reqwest::Url,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("json-rpc request failed with code {code}: {message}")]
-    JsonRpc { code: i64, message: String },
-    #[error("connection error: {0}")]
-    Connection(#[from] reqwest::Error),
 }
 
 impl Client {
@@ -23,28 +17,33 @@ impl Client {
         }
     }
 
-    pub async fn send<Req, Res>(&self, request: Request<Req>) -> Result<Res, Error>
+    pub async fn send<Req, Res>(&self, request: Request<Req>) -> anyhow::Result<Res>
     where
-        Req: Serialize,
+        Req: Debug + Serialize,
         Res: DeserializeOwned,
     {
+        let url = self.url.clone();
         let response = self
             .inner
-            .post(self.url.clone())
+            .post(url.clone())
             .json(&request)
             .send()
+            .map_err(ConnectionFailed)
             .await?
             .json::<Response<Res>>()
-            .await?;
+            .await
+            .context("failed to deserialize JSON response as JSON-RPC response")?;
 
         match response {
             Response::Success { result } => Ok(result),
-            Response::Error { code, message } => Err(Error::JsonRpc { code, message }),
+            Response::Error(error) => {
+                Err(error).with_context(|| format!("JSON-RPC request {:?} failed", request))
+            }
         }
     }
 }
 
-#[derive(serde::Serialize, Debug)]
+#[derive(serde::Serialize, Debug, Clone)]
 pub struct Request<T> {
     id: String,
     jsonrpc: String,
@@ -67,8 +66,19 @@ impl<T> Request<T> {
 #[serde(untagged)]
 pub enum Response<T> {
     Success { result: T },
-    Error { code: i64, message: String },
+    Error(JsonRpcError),
 }
+
+#[derive(Debug, serde::Deserialize, thiserror::Error)]
+#[error("JSON-RPC request failed with code {code}: {message}")]
+pub struct JsonRpcError {
+    code: i64,
+    message: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+#[error("connection error: {0}")]
+pub struct ConnectionFailed(#[from] reqwest::Error);
 
 pub fn serialize<T>(t: T) -> anyhow::Result<serde_json::Value>
 where
