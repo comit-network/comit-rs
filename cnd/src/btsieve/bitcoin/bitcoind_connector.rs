@@ -1,9 +1,11 @@
 use crate::{
-    btsieve::{bitcoin::bitcoin_http_request_for_hex_encoded_object, BlockByHash, LatestBlock},
+    btsieve::{BlockByHash, LatestBlock},
     config::validation::FetchNetworkId,
 };
+use anyhow::Context;
 use async_trait::async_trait;
-use bitcoin::{BlockHash, Network};
+use bitcoin::{consensus::deserialize, BlockHash, Network};
+use futures::TryFutureExt;
 use reqwest::{Client, Url};
 use serde::{de, export::fmt, Deserialize, Deserializer};
 
@@ -35,6 +37,23 @@ impl BitcoindConnector {
             .join(&format!("{}.hex", block_hash))
             .expect("building url should work")
     }
+
+    async fn chain_info(&self) -> anyhow::Result<ChainInfo> {
+        let url = &self.chaininfo_url;
+        let chain_info = self
+            .client
+            .get(url.clone())
+            .send()
+            .await
+            .with_context(|| GetRequestFailed(url.clone()))?
+            .json::<ChainInfo>()
+            .await
+            .context("failed to deserialize JSON response as chaininfo")?;
+
+        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
+
+        Ok(chain_info)
+    }
 }
 
 #[async_trait]
@@ -42,16 +61,7 @@ impl LatestBlock for BitcoindConnector {
     type Block = bitcoin::Block;
 
     async fn latest_block(&self) -> anyhow::Result<Self::Block> {
-        let chaininfo_url = self.chaininfo_url.clone();
-
-        let chain_info = self
-            .client
-            .get(chaininfo_url)
-            .send()
-            .await?
-            .json::<ChainInfo>()
-            .await?;
-
+        let chain_info = self.chain_info().await?;
         let block = self.block_by_hash(chain_info.bestblockhash).await?;
 
         Ok(block)
@@ -65,8 +75,15 @@ impl BlockByHash for BitcoindConnector {
 
     async fn block_by_hash(&self, block_hash: Self::BlockHash) -> anyhow::Result<Self::Block> {
         let url = self.raw_block_by_hash_url(&block_hash);
-        let block =
-            bitcoin_http_request_for_hex_encoded_object::<Self::Block>(url, &self.client).await?;
+        let block = self
+            .client
+            .get(url.clone())
+            .send()
+            .await
+            .with_context(|| GetRequestFailed(url))?
+            .text()
+            .map_ok(decode_response)
+            .await??;
 
         tracing::debug!(
             "Fetched block {} with {} transactions from bitcoind",
@@ -81,19 +98,8 @@ impl BlockByHash for BitcoindConnector {
 #[async_trait]
 impl FetchNetworkId<Network> for BitcoindConnector {
     async fn network_id(&self) -> anyhow::Result<Network> {
-        let client = self.client.clone();
-        let chaininfo_url = self.chaininfo_url.clone();
-
-        let chain_info: ChainInfo = client
-            .get(chaininfo_url)
-            .send()
-            .await?
-            .json::<ChainInfo>()
-            .await?;
-
-        tracing::debug!("Fetched chain info: {:?} from bitcoind", chain_info);
-
-        Ok(chain_info.chain)
+        let chain = self.chain_info().await?.chain;
+        Ok(chain)
     }
 }
 
@@ -126,12 +132,24 @@ where
     deserializer.deserialize_str(Visitor)
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("GET request to {0} failed")]
+pub struct GetRequestFailed(Url);
+
+fn decode_response(response_text: String) -> anyhow::Result<bitcoin::Block> {
+    let bytes = hex::decode(response_text.trim()).context("failed to decode hex")?;
+    let block = deserialize(bytes.as_slice()).context("failed to deserialize bytes as block")?;
+
+    Ok(block)
+}
+
 #[cfg(test)]
 mod tests {
 
     use super::*;
     use crate::quickcheck::Quickcheck;
     use bitcoin::hashes::sha256d;
+    use spectral::prelude::*;
 
     fn base_urls() -> Vec<Url> {
         vec![
@@ -211,5 +229,16 @@ mod tests {
   "#;
         let info = serde_json::from_str::<ChainInfo>(chain_info).unwrap();
         assert_eq!(info.chain, Network::Regtest);
+    }
+
+    #[test]
+    fn can_decode_block_from_bitcoind_http_interface() {
+        // the line break here is on purpose, as it is returned like that from bitcoind
+        let block = r#"00000020837603de6069115e22e7fbf063c2a6e3bc3b3206f0b7e08d6ab6c168c2e50d4a9b48676dedc93d05f677778c1d83df28fd38d377548340052823616837666fb8be1b795dffff7f200000000001020000000001010000000000000000000000000000000000000000000000000000000000000000ffffffff0401650101ffffffff0200f2052a0100000023210205980e76eee77386241a3a7a5af65e910fb7be411b98e609f7c0d97c50ab8ebeac0000000000000000266a24aa21a9ede2f61c3f71d1defd3fa999dfa36953755c690689799962b48bebd836974e8cf90120000000000000000000000000000000000000000000000000000000000000000000000000
+"#.to_owned();
+
+        let bytes = decode_response(block);
+
+        assert_that(&bytes).is_ok();
     }
 }
