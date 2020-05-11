@@ -116,8 +116,7 @@ impl ComitLN {
                 self.announce
                     .start_announce_protocol(digest.clone(), (&create_swap_params.peer).clone());
                 self.swaps
-                    .create_as_pending_confirmation(digest, id, create_swap_params)
-                    .map_err(anyhow::Error::from)?;
+                    .create_as_pending_confirmation(digest, id, create_swap_params)?;
             }
             Role::Bob => {
                 if let Ok((shared_swap_id, peer, io)) = self
@@ -127,9 +126,11 @@ impl ComitLN {
                     tracing::info!("Confirm & communicate for swap: {}", digest);
                     self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
                 } else {
-                    self.swaps
-                        .create_as_pending_announcement(digest.clone(), id, create_swap_params)
-                        .map_err(anyhow::Error::from)?;
+                    self.swaps.create_as_pending_announcement(
+                        digest.clone(),
+                        id,
+                        create_swap_params,
+                    )?;
                     tracing::debug!("Swap {} waiting for announcement", digest);
                 }
             }
