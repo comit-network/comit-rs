@@ -204,12 +204,12 @@ impl<T> Swaps<T> {
             return Err(Error::AlreadyExists);
         }
 
-        self.swaps.insert(local_swap_id, create_swap_params);
-
         let (peer, io) = match self.pending_creation.remove(&digest) {
             Some(value) => value,
             None => return Err(Error::WasNotPending),
         };
+
+        self.swaps.insert(local_swap_id, create_swap_params);
 
         let shared_swap_id = SharedSwapId::default();
         self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
@@ -685,5 +685,25 @@ mod tests {
 
         assert_eq!(stored_shared_swap_id, shared_swap_id);
         assert_eq!(stored_create_params, first_create_params);
+    }
+
+    #[test]
+    fn given_move_pending_creation_to_communicate_errors_then_no_side_effects() {
+        let create_params = create_params();
+        let digest = create_params.clone().digest();
+        let local_swap_id = LocalSwapId::default();
+        let mut swaps = Swaps::<()>::default();
+
+        let res = swaps.move_pending_creation_to_communicate(
+            &digest,
+            local_swap_id,
+            create_params.clone(),
+        );
+
+        assert!(res.is_err());
+
+        let res = swaps.get_announced_swap(&local_swap_id);
+
+        assert!(res.is_none());
     }
 }
