@@ -558,8 +558,8 @@ impl InitAction for AliceHerc20HalightBitcoinState {
             halight::State::None => {
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
-                let expiry = 3600;
-                let cltv_expiry = self.finalized_swap.beta_expiry.into();
+                let expiry = 3600.into();
+                let cltv_expiry = self.finalized_swap.beta_expiry;
                 let chain = Chain::Bitcoin;
                 let network = bitcoin::Network::Regtest;
                 let self_public_key = self.finalized_swap.beta_ledger_redeem_identity;
@@ -689,7 +689,7 @@ impl FundAction for BobHerc20HalightBitcoinState {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
-                let final_cltv_delta = self.finalized_swap.beta_expiry.into();
+                let final_cltv_delta = self.finalized_swap.beta_expiry;
                 let chain = Chain::Bitcoin;
                 let network = bitcoin::Network::Regtest;
                 let self_public_key = self.finalized_swap.beta_ledger_refund_identity;

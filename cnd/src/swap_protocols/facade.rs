@@ -4,7 +4,7 @@ use crate::{
     identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
-    timestamp::Timestamp,
+    timestamp::{RelativeTime, Timestamp},
 };
 use digest::{Digest, ToDigestInput};
 use std::sync::Arc;
@@ -29,7 +29,7 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
     #[digest(prefix = "3001")]
-    pub lightning_cltv_expiry: Timestamp,
+    pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "3002")]
     pub lightning_amount: asset::Bitcoin,
 }
@@ -70,6 +70,12 @@ impl From<EthereumIdentity> for identity::Ethereum {
 impl ToDigestInput for Timestamp {
     fn to_digest_input(&self) -> Vec<u8> {
         self.clone().to_bytes().to_vec()
+    }
+}
+
+impl ToDigestInput for RelativeTime {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes().to_vec()
     }
 }
 

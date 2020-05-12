@@ -12,7 +12,7 @@ use crate::{
         rfc003::{Secret, SecretHash},
         LocalSwapId,
     },
-    timestamp::Timestamp,
+    timestamp::{RelativeTime, Timestamp},
     transaction,
 };
 use anyhow::Context;
@@ -81,8 +81,8 @@ pub enum ActionResponseBody {
     LndAddHoldInvoice {
         amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
-        expiry: u32,
-        cltv_expiry: u32,
+        expiry: RelativeTime,
+        cltv_expiry: RelativeTime,
         chain: Http<Chain>,
         network: Http<bitcoin::Network>,
         self_public_key: identity::Lightning,
@@ -91,7 +91,7 @@ pub enum ActionResponseBody {
         to_public_key: identity::Lightning,
         amount: Http<asset::Bitcoin>,
         secret_hash: SecretHash,
-        final_cltv_delta: u32,
+        final_cltv_delta: RelativeTime,
         chain: Http<Chain>,
         network: Http<bitcoin::Network>,
         self_public_key: identity::Lightning,
