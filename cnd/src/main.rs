@@ -176,7 +176,7 @@ fn main() -> anyhow::Result<()> {
     let facade = Facade {
         swarm: swarm.clone(),
         alpha_ledger_states: Arc::clone(&alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&halight_states),
+        halight_states: Arc::clone(&halight_states),
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
