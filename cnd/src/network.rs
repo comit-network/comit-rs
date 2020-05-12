@@ -973,18 +973,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
 
                 // third, we spawn the watcher for herc20
                 let (herc20_redeem_identity, herc20_refund_identity) = match role {
-                    Role::Alice => (
-                        ethereum_identity,
-                        create_swap_params.ethereum_identity.into(),
-                    ),
-                    Role::Bob => (
-                        create_swap_params.ethereum_identity.into(),
-                        ethereum_identity,
-                    ),
+                    Role::Alice => (ethereum_identity, create_swap_params.ethereum_identity),
+                    Role::Bob => (create_swap_params.ethereum_identity, ethereum_identity),
                 };
                 let params = HtlcParams {
                     asset: Erc20::new(
-                        create_swap_params.token_contract.into(),
+                        create_swap_params.token_contract,
                         create_swap_params.ethereum_amount,
                     ),
                     ledger: ledger::Ethereum::default(),

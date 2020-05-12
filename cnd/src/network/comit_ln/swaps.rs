@@ -324,11 +324,7 @@ impl Default for Swaps<()> {
 mod tests {
     use super::*;
     use crate::{
-        asset,
-        asset::ethereum::FromWei,
-        identity,
-        network::DialInformation,
-        swap_protocols::{EthereumIdentity, Role},
+        asset, asset::ethereum::FromWei, identity, network::DialInformation, swap_protocols::Role,
     };
     use digest::Digest;
 
@@ -339,13 +335,13 @@ mod tests {
                 peer_id: PeerId::random(),
                 address_hint: None,
             },
-            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_identity: identity::Ethereum::random(),
             ethereum_absolute_expiry: 12345.into(),
             ethereum_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             lightning_identity: identity::Lightning::random(),
             lightning_cltv_expiry: 12345.into(),
             lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
-            token_contract: EthereumIdentity::from(identity::Ethereum::random()),
+            token_contract: identity::Ethereum::random(),
         }
     }
 
@@ -393,8 +389,7 @@ mod tests {
         let mut second_create_params = first_create_params.clone();
         // Ethereum identity is not part of the digest so both swaps should be
         // considered the same
-        second_create_params.ethereum_identity =
-            EthereumIdentity::from(identity::Ethereum::random());
+        second_create_params.ethereum_identity = identity::Ethereum::random();
 
         let digest = first_create_params.digest();
         let second_digest = second_create_params.digest();
@@ -430,8 +425,7 @@ mod tests {
 
         // Ethereum identity is not part of the digest so both swaps should be
         // considered the same
-        second_create_params.ethereum_identity =
-            EthereumIdentity::from(identity::Ethereum::random());
+        second_create_params.ethereum_identity = identity::Ethereum::random();
 
         let digest = first_create_params.digest();
         let second_digest = second_create_params.digest();
@@ -648,8 +642,7 @@ mod tests {
     fn given_bob_creates_dupe_swap_after_announcement_then_stored_params_are_unchanged() {
         let first_create_params = create_params();
         let mut second_create_params = first_create_params.clone();
-        second_create_params.ethereum_identity =
-            EthereumIdentity::from(identity::Ethereum::random());
+        second_create_params.ethereum_identity = identity::Ethereum::random();
 
         let digest = first_create_params.digest();
         let second_digest = second_create_params.digest();
