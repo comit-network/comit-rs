@@ -5,7 +5,7 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        halight, han, ledger::lightning, Facade, HanEtherereumHalightBitcoinCreateSwapParams,
+        halight, han, herc20, ledger::lightning, Facade, Herc20HalightBitcoinCreateSwapParams,
         LocalSwapId, Rfc003Facade, Role,
     },
 };
@@ -60,19 +60,36 @@ pub async fn get_info_siren(
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
-    facade: Facade,
-) -> Result<impl Reply, Rejection> {
-    let body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
+    _facade: Facade,
+) -> Result<warp::reply::Json, Rejection> {
+    let _body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    let swap_params: HanEtherereumHalightBitcoinCreateSwapParams = body.clone().into();
+    tracing::error!("Lightning routes are not yet supported");
+    Err(warp::reject::custom(
+        HttpApiProblem::new("Route not yet supported.")
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail("This route is not yet supported."),
+    ))
+}
+
+pub async fn post_herc20_halight_bitcoin(
+    body: serde_json::Value,
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
+    let body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
+        .map_err(anyhow::Error::new)
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    let swap_params: Herc20HalightBitcoinCreateSwapParams = body.clone().into();
 
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = CreatedSwap::<han::CreatedSwap, halight::CreatedSwap> {
+    let swap = CreatedSwap::<herc20::CreatedSwap, halight::CreatedSwap> {
         swap_id,
         alpha: body.alpha.into(),
         beta: body.beta.into(),
@@ -98,26 +115,6 @@ pub async fn post_han_ethereum_halight_bitcoin(
         })
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
-}
-
-// `warp::reply::Json` is used as a return type to please the compiler
-// until proper logic is implemented
-#[allow(clippy::needless_pass_by_value)]
-pub async fn post_herc20_halight_bitcoin(
-    body: serde_json::Value,
-    _facade: Facade,
-) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
-    tracing::error!("Lightning routes are not yet supported");
-    Err(warp::reject::custom(
-        HttpApiProblem::new("Route not yet supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This route is not yet supported."),
-    ))
 }
 
 // `warp::reply::Json` is used as a return type to please the compiler
@@ -168,10 +165,10 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<HanEthereumEther, HalightLightningBitcoin>>
-    for HanEtherereumHalightBitcoinCreateSwapParams
+impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>>
+    for Herc20HalightBitcoinCreateSwapParams
 {
-    fn from(body: Body<HanEthereumEther, HalightLightningBitcoin>) -> Self {
+    fn from(body: Body<Herc20EthereumErc20, HalightLightningBitcoin>) -> Self {
         Self {
             role: body.role.0,
             peer: body.peer,
@@ -181,6 +178,7 @@ impl From<Body<HanEthereumEther, HalightLightningBitcoin>>
             lightning_identity: body.beta.identity,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
             lightning_amount: body.beta.amount.0,
+            token_contract: body.alpha.contract_address.into(),
         }
     }
 }
@@ -199,6 +197,18 @@ impl From<HanEthereumEther> for han::CreatedSwap {
             amount: p.amount,
             identity: p.identity,
             chain_id: p.chain_id,
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
+}
+
+impl From<Herc20EthereumErc20> for herc20::CreatedSwap {
+    fn from(p: Herc20EthereumErc20) -> Self {
+        herc20::CreatedSwap {
+            amount: p.amount,
+            identity: p.identity,
+            chain_id: p.chain_id,
+            token_contract: p.contract_address,
             absolute_expiry: p.absolute_expiry,
         }
     }

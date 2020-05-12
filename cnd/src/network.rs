@@ -9,7 +9,7 @@ pub mod transport;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::AssetKind,
+    asset::{AssetKind, Erc20},
     btsieve::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
@@ -25,7 +25,7 @@ use crate::{
     swap_protocols::{
         halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        han, ledger,
+        herc20_quickfix, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -33,7 +33,7 @@ use crate::{
             state::Insert,
             LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HanEtherereumHalightBitcoinCreateSwapParams, HashFunction, LedgerStates, LocalSwapId, Role,
+        HashFunction, Herc20HalightBitcoinCreateSwapParams, LedgerStates, LocalSwapId, Role,
         SwapProtocol,
     },
     transaction,
@@ -136,7 +136,7 @@ impl Swarm {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
 
@@ -151,7 +151,7 @@ impl Swarm {
     pub async fn get_created_swap(
         &self,
         id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         let mut guard = self.inner.lock().await;
         guard.get_created_swap(id)
     }
@@ -339,7 +339,7 @@ impl ComitNode {
     pub fn initiate_communication(
         &mut self,
         id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         self.supports_halight()?;
         self.comit_ln.initiate_communication(id, swap_params)
@@ -352,7 +352,7 @@ impl ComitNode {
     pub fn get_created_swap(
         &mut self,
         id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.comit_ln.get_created_swap(&id)
     }
 
@@ -1209,13 +1209,15 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
+                                    let token_contract = create_swap_params.token_contract.into();
+                                    let erc20 = Erc20::new(token_contract, asset);
 
-                                    han::new_han_ethereum_ether_swap(
+                                    herc20_quickfix::new_herc20_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),
                                         HtlcParams {
-                                            asset,
+                                            asset: erc20,
                                             ledger,
                                             redeem_identity: bob_ethereum_identity,
                                             refund_identity: alice_ethereum_identity.into(),
@@ -1244,13 +1246,15 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
+                                    let token_contract = create_swap_params.token_contract.into();
+                                    let erc20 = Erc20::new(token_contract, asset);
 
-                                    self::han::new_han_ethereum_ether_swap(
+                                    self::herc20_quickfix::new_herc20_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),
                                         HtlcParams {
-                                            asset,
+                                            asset: erc20,
                                             ledger,
                                             redeem_identity: bob_ethereum_identity.into(),
                                             refund_identity: alice_ethereum_identity,

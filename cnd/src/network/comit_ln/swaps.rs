@@ -1,6 +1,6 @@
 use crate::{
     network::protocols::announce::{protocol::ReplySubstream, SwapDigest},
-    swap_protocols::{HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
+    swap_protocols::{Herc20HalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
 use digest::Digest;
@@ -38,14 +38,16 @@ pub struct Swaps<T> {
     pending_creation: HashMap<SwapDigest, (PeerId, T)>,
 
     /// Stores the swap as soon as it is created
-    swaps: HashMap<LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams>,
+    swaps: HashMap<LocalSwapId, Herc20HalightBitcoinCreateSwapParams>,
 
     /// Stores the shared swap id as soon as it is known.
     /// Bob defines the shared swap id when he confirms the swap by replying to
     /// an announce message from Alice.
     swap_ids: HashMap<LocalSwapId, SharedSwapId>,
 
-    /// Stores timestamps from when we are first aware of a swap
+    /// Stores timestamps from when we are first aware of a swap.
+    /// This is used for tracking if a swap that was not actioned on can be
+    /// removed.
     timestamps: HashMap<SwapDigest, Timestamp>,
 }
 
@@ -54,7 +56,7 @@ impl<T> Swaps<T> {
     pub fn get_created_swap(
         &self,
         local_swap_id: &LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.swaps.get(local_swap_id).cloned()
     }
 
@@ -62,7 +64,7 @@ impl<T> Swaps<T> {
     pub fn get_announced_swap(
         &self,
         local_swap_id: &LocalSwapId,
-    ) -> Option<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
+    ) -> Option<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams)> {
         let create_params = match self.swaps.get(local_swap_id) {
             Some(create_params) => create_params,
             None => return None,
@@ -82,7 +84,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
@@ -104,7 +106,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         shared_swap_id: SharedSwapId,
-    ) -> Option<(LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
+    ) -> Option<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams)> {
         let local_swap_id = match self.pending_confirmation.remove(digest) {
             Some(local_swap_id) => local_swap_id,
             None => return None,
@@ -125,7 +127,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> Result<(), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
@@ -165,7 +167,7 @@ impl<T> Swaps<T> {
     pub fn get_pending_announcement(
         &self,
         digest: &SwapDigest,
-    ) -> Option<(LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams)> {
+    ) -> Option<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams)> {
         self.pending_announcement
             .get(digest)
             .and_then(|local_swap_id| {
@@ -181,7 +183,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         peer_id: &PeerId,
-    ) -> Result<(SharedSwapId, HanEtherereumHalightBitcoinCreateSwapParams), Error> {
+    ) -> Result<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams), Error> {
         let local_swap_id = match self.pending_announcement.get(&digest) {
             Some(local_swap_id) => local_swap_id,
             None => return Err(Error::NotFound),
@@ -213,7 +215,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> Result<(SharedSwapId, PeerId, T), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
@@ -246,7 +248,7 @@ impl<T> Swaps<T> {
     pub fn finalize_swap(
         &mut self,
         shared_swap_id: &SharedSwapId,
-    ) -> Result<(LocalSwapId, HanEtherereumHalightBitcoinCreateSwapParams), Error> {
+    ) -> Result<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams), Error> {
         let local_swap_id = match self.swap_ids.iter().find_map(|(key, value)| {
             if *value == *shared_swap_id {
                 Some(key)
@@ -344,8 +346,8 @@ mod tests {
     };
     use digest::Digest;
 
-    fn create_params() -> HanEtherereumHalightBitcoinCreateSwapParams {
-        HanEtherereumHalightBitcoinCreateSwapParams {
+    fn create_params() -> Herc20HalightBitcoinCreateSwapParams {
+        Herc20HalightBitcoinCreateSwapParams {
             role: Role::Alice,
             peer: DialInformation {
                 peer_id: PeerId::random(),
@@ -353,10 +355,11 @@ mod tests {
             },
             ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
             ethereum_absolute_expiry: 12345.into(),
-            ethereum_amount: asset::Ether::from_wei(9_001_000_000_000_000_000_000u128),
+            ethereum_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             lightning_identity: identity::Lightning::random(),
             lightning_cltv_expiry: 12345.into(),
             lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+            token_contract: EthereumIdentity::from(identity::Ethereum::random()),
         }
     }
 

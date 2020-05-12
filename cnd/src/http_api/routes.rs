@@ -17,12 +17,12 @@ use crate::{
         ledger::ethereum::ChainId,
         rfc003::{ledger_state::HtlcState, LedgerState},
         state::Get,
-        Facade, FundAction, HanEtherereumHalightBitcoinCreateSwapParams, InitAction, LocalSwapId,
-        RedeemAction, RefundAction, Role,
+        DeployAction, Facade, FundAction, Herc20HalightBitcoinCreateSwapParams, InitAction,
+        LocalSwapId, RedeemAction, RefundAction, Role,
     },
     transaction,
 };
-use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
+use blockchain_contracts::ethereum::rfc003::{ether_htlc::EtherHtlc, Erc20Htlc};
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -49,7 +49,7 @@ pub async fn handle_get_halight_swap(
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
     let alpha_ledger_state: Option<
-        LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
+        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     > = facade.alpha_ledger_states.get(&swap_id).await?;
 
     let beta_ledger_state = facade.beta_ledger_states.get(&swap_id).await?;
@@ -83,7 +83,7 @@ pub async fn handle_get_halight_swap(
 
     match finalized_swap.role {
         Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
+            let state = AliceHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -91,6 +91,7 @@ pub async fn handle_get_halight_swap(
 
             let maybe_action_names = vec![
                 state.init_action().map(|_| "init"),
+                state.deploy_action().map(|_| "deploy"),
                 state.fund_action().map(|_| "fund"),
                 state.redeem_action().map(|_| "redeem"),
                 state.refund_action().map(|_| "refund"),
@@ -98,7 +99,7 @@ pub async fn handle_get_halight_swap(
             make_finalized_swap_entity(swap_id, state, maybe_action_names)
         }
         Role::Bob => {
-            let state = BobHanEthereumHalightBitcoinState {
+            let state = BobHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -291,7 +292,7 @@ fn han_eth_halight_swap_status(
 
 #[derive(Debug)]
 pub struct HanEthereumHalightBitcoinCreatedState {
-    pub created_swap: HanEtherereumHalightBitcoinCreateSwapParams,
+    pub created_swap: Herc20HalightBitcoinCreateSwapParams,
 }
 
 impl GetSwapStatus for HanEthereumHalightBitcoinCreatedState {
@@ -319,90 +320,90 @@ impl QuantitySatoshi for HanEthereumHalightBitcoinCreatedState {
 }
 
 #[derive(Clone, Debug)]
-pub struct AliceHanEthereumHalightBitcoinState {
+pub struct AliceHerc20HalightBitcoinState {
     pub alpha_ledger_state:
-        LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
+        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
-impl GetSwapStatus for AliceHanEthereumHalightBitcoinState {
+impl GetSwapStatus for AliceHerc20HalightBitcoinState {
     fn get_swap_status(&self) -> SwapStatus {
         let ethereum_status = HtlcState::from(self.alpha_ledger_state.clone());
         han_eth_halight_swap_status(ethereum_status, &self.beta_ledger_state)
     }
 }
 
-impl GetAlphaTransaction for AliceHanEthereumHalightBitcoinState {
+impl GetAlphaTransaction for AliceHerc20HalightBitcoinState {
     fn get_alpha_transaction(&self) -> Transaction {
         Transaction::from(self.alpha_ledger_state.clone())
     }
 }
 
-impl GetBetaTransaction for AliceHanEthereumHalightBitcoinState {
+impl GetBetaTransaction for AliceHerc20HalightBitcoinState {
     fn get_beta_transaction(&self) -> Transaction {
         Transaction::from(self.beta_ledger_state)
     }
 }
 
-impl GetRole for AliceHanEthereumHalightBitcoinState {
+impl GetRole for AliceHerc20HalightBitcoinState {
     fn get_role(&self) -> Role {
         Role::Alice
     }
 }
 
-impl QuantityWei for AliceHanEthereumHalightBitcoinState {
+impl QuantityWei for AliceHerc20HalightBitcoinState {
     fn quantity_wei(&self) -> String {
-        self.finalized_swap.alpha_asset.to_wei_dec()
+        self.finalized_swap.alpha_asset.quantity.to_wei_dec()
     }
 }
 
-impl QuantitySatoshi for AliceHanEthereumHalightBitcoinState {
+impl QuantitySatoshi for AliceHerc20HalightBitcoinState {
     fn quantity_satoshi(&self) -> String {
         self.finalized_swap.beta_asset.as_sat().to_string()
     }
 }
 
 #[derive(Clone, Debug)]
-pub struct BobHanEthereumHalightBitcoinState {
+pub struct BobHerc20HalightBitcoinState {
     pub alpha_ledger_state:
-        LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
+        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
     pub finalized_swap: comit_ln::FinalizedSwap,
 }
 
-impl GetSwapStatus for BobHanEthereumHalightBitcoinState {
+impl GetSwapStatus for BobHerc20HalightBitcoinState {
     fn get_swap_status(&self) -> SwapStatus {
         let ethereum_status = HtlcState::from(self.alpha_ledger_state.clone());
         han_eth_halight_swap_status(ethereum_status, &self.beta_ledger_state)
     }
 }
 
-impl GetAlphaTransaction for BobHanEthereumHalightBitcoinState {
+impl GetAlphaTransaction for BobHerc20HalightBitcoinState {
     fn get_alpha_transaction(&self) -> Transaction {
         Transaction::from(self.alpha_ledger_state.clone())
     }
 }
 
-impl GetBetaTransaction for BobHanEthereumHalightBitcoinState {
+impl GetBetaTransaction for BobHerc20HalightBitcoinState {
     fn get_beta_transaction(&self) -> Transaction {
         Transaction::from(self.beta_ledger_state)
     }
 }
 
-impl GetRole for BobHanEthereumHalightBitcoinState {
+impl GetRole for BobHerc20HalightBitcoinState {
     fn get_role(&self) -> Role {
         Role::Bob
     }
 }
 
-impl QuantityWei for BobHanEthereumHalightBitcoinState {
+impl QuantityWei for BobHerc20HalightBitcoinState {
     fn quantity_wei(&self) -> String {
-        self.finalized_swap.alpha_asset.to_wei_dec()
+        self.finalized_swap.alpha_asset.quantity.to_wei_dec()
     }
 }
 
-impl QuantitySatoshi for BobHanEthereumHalightBitcoinState {
+impl QuantitySatoshi for BobHerc20HalightBitcoinState {
     fn quantity_satoshi(&self) -> String {
         self.finalized_swap.beta_asset.as_sat().to_string()
     }
@@ -440,11 +441,11 @@ enum EscrowStatus {
     IncorrectlyFunded,
 }
 
-impl From<LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>>
+impl From<LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>>
     for Transaction
 {
     fn from(
-        state: LedgerState<asset::Ether, htlc_location::Ethereum, transaction::Ethereum>,
+        state: LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     ) -> Self {
         match state {
             LedgerState::NotDeployed => Transaction {
@@ -549,7 +550,7 @@ impl From<halight::State> for Transaction {
     }
 }
 
-impl InitAction for AliceHanEthereumHalightBitcoinState {
+impl InitAction for AliceHerc20HalightBitcoinState {
     type Output = lnd::AddHoldInvoice;
 
     fn init_action(&self) -> Option<Self::Output> {
@@ -578,21 +579,20 @@ impl InitAction for AliceHanEthereumHalightBitcoinState {
     }
 }
 
-impl FundAction for AliceHanEthereumHalightBitcoinState {
+impl DeployAction for AliceHerc20HalightBitcoinState {
     type Output = ethereum::DeployContract;
 
-    fn fund_action(&self) -> Option<Self::Output> {
+    fn deploy_action(&self) -> Option<Self::Output> {
         match self.beta_ledger_state {
             halight::State::Opened(_) => {
-                let eth_htlc = self.finalized_swap.han_params();
-                let data = eth_htlc.into();
-                let amount = self.finalized_swap.alpha_asset.clone();
-                let gas_limit = EtherHtlc::deploy_tx_gas_limit();
+                let htlc_params = self.finalized_swap.herc20_params();
+                let htlc = Erc20Htlc::from(htlc_params);
+                let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
                 let chain_id = ChainId::regtest();
 
                 Some(ethereum::DeployContract {
-                    data,
-                    amount,
+                    data: htlc.into(),
+                    amount: asset::Ether::zero(),
                     gas_limit,
                     chain_id,
                 })
@@ -602,7 +602,41 @@ impl FundAction for AliceHanEthereumHalightBitcoinState {
     }
 }
 
-impl RedeemAction for AliceHanEthereumHalightBitcoinState {
+impl FundAction for AliceHerc20HalightBitcoinState {
+    type Output = ethereum::CallContract;
+
+    fn fund_action(&self) -> Option<Self::Output> {
+        match self.beta_ledger_state {
+            halight::State::Opened(_) => match self.alpha_ledger_state {
+                LedgerState::Deployed { htlc_location, .. } => {
+                    let htlc_params = self.finalized_swap.herc20_params();
+                    let chain_id = ChainId::regtest();
+                    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
+
+                    let htlc_address =
+                        blockchain_contracts::ethereum::Address(htlc_location.into());
+
+                    let data = Erc20Htlc::transfer_erc20_tx_payload(
+                        htlc_params.asset.quantity.into(),
+                        htlc_address,
+                    );
+
+                    Some(ethereum::CallContract {
+                        to: htlc_params.asset.token_contract,
+                        data: Some(Bytes(data)),
+                        gas_limit,
+                        chain_id,
+                        min_block_timestamp: None,
+                    })
+                }
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+}
+
+impl RedeemAction for AliceHerc20HalightBitcoinState {
     type Output = lnd::SettleInvoice;
 
     fn redeem_action(&self) -> Option<Self::Output> {
@@ -625,7 +659,7 @@ impl RedeemAction for AliceHanEthereumHalightBitcoinState {
     }
 }
 
-impl RefundAction for AliceHanEthereumHalightBitcoinState {
+impl RefundAction for AliceHerc20HalightBitcoinState {
     type Output = ethereum::CallContract;
 
     fn refund_action(&self) -> Option<Self::Output> {
@@ -650,7 +684,7 @@ impl RefundAction for AliceHanEthereumHalightBitcoinState {
     }
 }
 
-impl FundAction for BobHanEthereumHalightBitcoinState {
+impl FundAction for BobHerc20HalightBitcoinState {
     type Output = lnd::SendPayment;
 
     fn fund_action(&self) -> Option<Self::Output> {
@@ -679,7 +713,7 @@ impl FundAction for BobHanEthereumHalightBitcoinState {
     }
 }
 
-impl RedeemAction for BobHanEthereumHalightBitcoinState {
+impl RedeemAction for BobHerc20HalightBitcoinState {
     type Output = ethereum::CallContract;
 
     fn redeem_action(&self) -> Option<Self::Output> {
@@ -722,7 +756,7 @@ async fn handle_action_init(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
-        asset::Ether,
+        asset::Erc20,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
@@ -744,7 +778,7 @@ async fn handle_action_init(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
+            let state = AliceHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -752,6 +786,60 @@ async fn handle_action_init(
 
             state.init_action().map(ActionResponseBody::from)
         }
+        Role::Bob => None,
+    };
+
+    let response = maybe_response.ok_or(LndActionError::NotFound)?;
+
+    Ok(response)
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn action_deploy(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_deploy(swap_id, facade)
+        .await
+        .map(|body| warp::reply::json(&body))
+        .map_err(problem::from_anyhow)
+        .map_err(into_rejection)
+}
+
+#[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
+async fn handle_action_deploy(
+    swap_id: LocalSwapId,
+    facade: Facade,
+) -> anyhow::Result<ActionResponseBody> {
+    let alpha_ledger_state: LedgerState<
+        asset::Erc20,
+        htlc_location::Ethereum,
+        transaction::Ethereum,
+    > = facade
+        .alpha_ledger_states
+        .get(&swap_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
+
+    let beta_ledger_state: halight::State = facade
+        .beta_ledger_states
+        .get(&swap_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
+
+    let finalized_swap = facade
+        .get_finalized_swap(swap_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("swap with id {} not found", swap_id))?;
+
+    let maybe_response = match finalized_swap.role {
+        Role::Alice => {
+            let state = AliceHerc20HalightBitcoinState {
+                alpha_ledger_state,
+                beta_ledger_state,
+                finalized_swap,
+            };
+
+            state.deploy_action().map(ActionResponseBody::from)
+        }
+        // FixMe: Should be implemented for Bob at some point as well...
         Role::Bob => None,
     };
 
@@ -775,7 +863,7 @@ async fn handle_action_fund(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
-        asset::Ether,
+        asset::Erc20,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
@@ -797,7 +885,7 @@ async fn handle_action_fund(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
+            let state = AliceHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -806,7 +894,7 @@ async fn handle_action_fund(
             state.fund_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
-            let state = BobHanEthereumHalightBitcoinState {
+            let state = BobHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -836,7 +924,7 @@ async fn handle_action_redeem(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
-        asset::Ether,
+        asset::Erc20,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
@@ -858,7 +946,7 @@ async fn handle_action_redeem(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
+            let state = AliceHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -867,7 +955,7 @@ async fn handle_action_redeem(
             state.redeem_action().map(ActionResponseBody::from)
         }
         Role::Bob => {
-            let state = BobHanEthereumHalightBitcoinState {
+            let state = BobHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,
@@ -897,7 +985,7 @@ async fn handle_action_refund(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let alpha_ledger_state: LedgerState<
-        asset::Ether,
+        asset::Erc20,
         htlc_location::Ethereum,
         transaction::Ethereum,
     > = facade
@@ -919,7 +1007,7 @@ async fn handle_action_refund(
 
     let maybe_response = match finalized_swap.role {
         Role::Alice => {
-            let state = AliceHanEthereumHalightBitcoinState {
+            let state = AliceHerc20HalightBitcoinState {
                 alpha_ledger_state,
                 beta_ledger_state,
                 finalized_swap,

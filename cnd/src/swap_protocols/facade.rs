@@ -13,7 +13,7 @@ use std::sync::Arc;
 /// before communication with the other node has started
 #[derive(Clone, Digest, Debug, PartialEq)]
 #[digest(hash = "SwapDigest")]
-pub struct HanEtherereumHalightBitcoinCreateSwapParams {
+pub struct Herc20HalightBitcoinCreateSwapParams {
     #[digest(ignore)]
     pub role: Role,
     #[digest(ignore)]
@@ -23,7 +23,9 @@ pub struct HanEtherereumHalightBitcoinCreateSwapParams {
     #[digest(prefix = "2001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "2002")]
-    pub ethereum_amount: asset::Ether,
+    pub ethereum_amount: asset::Erc20Quantity,
+    #[digest(ignore)]
+    pub token_contract: EthereumIdentity,
     #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
     #[digest(prefix = "3001")]
@@ -39,6 +41,12 @@ impl ToDigestInput for asset::Bitcoin {
 }
 
 impl ToDigestInput for asset::Ether {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
+    }
+}
+
+impl ToDigestInput for asset::Erc20Quantity {
     fn to_digest_input(&self) -> Vec<u8> {
         self.to_bytes()
     }
@@ -84,7 +92,7 @@ impl Facade {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         self.swarm.initiate_communication(id, swap_params).await
     }
@@ -96,7 +104,7 @@ impl Facade {
     pub async fn get_created_swap(
         &self,
         id: LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.swarm.get_created_swap(id).await
     }
 }

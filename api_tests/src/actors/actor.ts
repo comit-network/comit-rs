@@ -1,6 +1,6 @@
 import {
     Cnd,
-    HanEthereumEtherHalightLightningBitcoinRequestBody,
+    Herc20EthereumErc20HalightLightningBitcoinRequestBody,
     LedgerAction,
     Swap,
     Transaction,
@@ -101,7 +101,7 @@ export class Actor {
      * @param createSwapPayload
      */
     public async createSwap(
-        createSwapPayload: HanEthereumEtherHalightLightningBitcoinRequestBody
+        createSwapPayload: Herc20EthereumErc20HalightLightningBitcoinRequestBody
     ) {
         this.alphaLedger = {
             name: LedgerKind.Ethereum,
@@ -112,9 +112,10 @@ export class Actor {
             network: createSwapPayload.beta.network,
         };
         this.alphaAsset = {
-            name: AssetKind.Ether,
+            name: AssetKind.Erc20,
             quantity: createSwapPayload.alpha.amount,
             ledger: LedgerKind.Ethereum,
+            tokenContract: createSwapPayload.alpha.contract_address,
         };
         this.betaAsset = {
             name: AssetKind.Bitcoin,
@@ -160,7 +161,7 @@ export class Actor {
             }
         }
 
-        const location = await this.cnd.createHanEthereumEtherHalightLightningBitcoin(
+        const location = await this.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
             createSwapPayload
         );
 
@@ -232,6 +233,45 @@ export class Actor {
             config ? config : Actor.defaultActionConfig
         );
         await this.swap.doLedgerAction(response.data);
+    }
+
+    /**
+     * Wait for and execute the deploy action
+     * @param config Timeout parameters
+     */
+    public async deploy(config?: {
+        maxTimeoutSecs: number;
+        tryIntervalSecs: number;
+    }) {
+        if (!this.swap) {
+            throw new Error("Cannot deploy nonexistent swap");
+        }
+
+        const txid = await this.swap.deploy(
+            config ? config : Actor.defaultActionConfig
+        );
+
+        if (txid instanceof Transaction) {
+            await txid.status(1);
+        }
+
+        this.logger.debug("Deployed swap %s in %s", this.swap.self, txid);
+
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaDeployed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaDeployed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaDeployed();
+                }
+                await this.actors.bob.assertBetaDeployed();
+                break;
+        }
     }
 
     /**
@@ -331,6 +371,14 @@ export class Actor {
 
     public async assertBetaRedeemed() {
         await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
+    }
+
+    public async assertAlphaDeployed() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
+    }
+
+    public async assertBetaDeployed() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
     }
 
     private async assertLedgerStatus(
