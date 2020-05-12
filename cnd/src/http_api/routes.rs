@@ -606,31 +606,27 @@ impl FundAction for AliceHerc20HalightBitcoinState {
     type Output = ethereum::CallContract;
 
     fn fund_action(&self) -> Option<Self::Output> {
-        match self.beta_ledger_state {
-            halight::State::Opened(_) => match self.alpha_ledger_state {
-                LedgerState::Deployed { htlc_location, .. } => {
-                    let htlc_params = self.finalized_swap.herc20_params();
-                    let chain_id = ChainId::regtest();
-                    let gas_limit = Erc20Htlc::fund_tx_gas_limit();
+        match (&self.alpha_ledger_state, &self.beta_ledger_state) {
+            (LedgerState::Deployed { htlc_location, .. }, halight::State::Opened(_)) => {
+                let htlc_params = self.finalized_swap.herc20_params();
+                let chain_id = ChainId::regtest();
+                let gas_limit = Erc20Htlc::fund_tx_gas_limit();
 
-                    let htlc_address =
-                        blockchain_contracts::ethereum::Address(htlc_location.into());
+                let htlc_address = blockchain_contracts::ethereum::Address((*htlc_location).into());
 
-                    let data = Erc20Htlc::transfer_erc20_tx_payload(
-                        htlc_params.asset.quantity.into(),
-                        htlc_address,
-                    );
+                let data = Erc20Htlc::transfer_erc20_tx_payload(
+                    htlc_params.asset.quantity.into(),
+                    htlc_address,
+                );
 
-                    Some(ethereum::CallContract {
-                        to: htlc_params.asset.token_contract,
-                        data: Some(Bytes(data)),
-                        gas_limit,
-                        chain_id,
-                        min_block_timestamp: None,
-                    })
-                }
-                _ => None,
-            },
+                Some(ethereum::CallContract {
+                    to: htlc_params.asset.token_contract,
+                    data: Some(Bytes(data)),
+                    gas_limit,
+                    chain_id,
+                    min_block_timestamp: None,
+                })
+            }
             _ => None,
         }
     }

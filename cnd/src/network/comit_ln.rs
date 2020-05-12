@@ -635,7 +635,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 mod tests {
     use super::*;
     use crate::{
-        asset::{ethereum::FromWei, AssetKind::Erc20, Erc20Quantity},
+        asset::{ethereum::FromWei, Erc20Quantity},
         lightning,
         network::{test_swarm, DialInformation},
         swap_protocols::EthereumIdentity,
