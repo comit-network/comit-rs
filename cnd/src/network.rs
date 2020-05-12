@@ -25,7 +25,7 @@ use crate::{
     swap_protocols::{
         halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        herc20_quickfix, ledger,
+        herc20_rfc003_watcher, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -1212,7 +1212,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let token_contract = create_swap_params.token_contract.into();
                                     let erc20 = Erc20::new(token_contract, asset);
 
-                                    herc20_quickfix::new_herc20_swap(
+                                    herc20_rfc003_watcher::new_herc20_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),
@@ -1249,7 +1249,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let token_contract = create_swap_params.token_contract.into();
                                     let erc20 = Erc20::new(token_contract, asset);
 
-                                    self::herc20_quickfix::new_herc20_swap(
+                                    self::herc20_rfc003_watcher::new_herc20_swap(
                                         local_swap_id,
                                         connector,
                                         self.alpha_ledger_states.clone(),

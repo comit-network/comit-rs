@@ -3,7 +3,7 @@ mod facade;
 pub mod halight;
 pub mod han;
 pub mod herc20;
-pub mod herc20_quickfix;
+pub mod herc20_rfc003_watcher;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;

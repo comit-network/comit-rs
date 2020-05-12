@@ -26,7 +26,7 @@ use genawaiter::GeneratorState;
 use std::sync::Arc;
 use tracing_futures::Instrument;
 
-/// Htlc ERC20 Token atomic swap protocol.
+// Temporary file for spinning up the ledger watcher for Erc20-Halight swaps.
 
 /// Data required to create a swap that involves an ERC20 token.
 #[derive(Clone, Debug, PartialEq)]
