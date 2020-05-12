@@ -3,6 +3,7 @@ mod facade;
 pub mod halight;
 pub mod han;
 pub mod herc20;
+pub mod herc20_rfc003_watcher;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;
@@ -71,6 +72,12 @@ pub trait FundAction {
     type Output;
 
     fn fund_action(&self) -> Option<Self::Output>;
+}
+
+pub trait DeployAction {
+    type Output;
+
+    fn deploy_action(&self) -> Option<Self::Output>;
 }
 
 /// Describes how to get the `redeem` action from the current state.

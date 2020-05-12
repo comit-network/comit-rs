@@ -13,10 +13,10 @@ import {
 
 describe("Lightning routes tests", () => {
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-bad-request",
+        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .hanEthereumEtherHalightLightningBitcoin;
+                .herc20EthereumErc20HalightLightningBitcoin;
 
             const expectedProblem = {
                 status: 400,
@@ -26,12 +26,12 @@ describe("Lightning routes tests", () => {
             };
 
             await expect(
-                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
                     bodies.alice
                 )
             ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
+                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
                     bodies.bob
                 )
             ).rejects.toMatchObject(expectedProblem);
@@ -39,17 +39,17 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-route-not-supported",
+        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .herc20EthereumErc20HalightLightningBitcoin;
+                .hanEthereumEtherHalightLightningBitcoin;
             await expect(
-                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
                     bodies.alice
                 )
             ).rejects.toThrow("Route not yet supported.");
             await expect(
-                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+                bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
                     bodies.bob
                 )
             ).rejects.toThrow("Route not yet supported.");

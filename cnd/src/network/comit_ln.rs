@@ -12,11 +12,10 @@ use crate::{
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
-        HanEtherereumHalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
+        Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
     timestamp::Timestamp,
 };
-use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use digest::Digest;
 use futures::AsyncWriteExt;
 use libp2p::{
@@ -43,7 +42,7 @@ mod swaps;
 pub enum BehaviourOutEvent {
     SwapFinalized {
         local_swap_id: LocalSwapId,
-        swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        swap_params: Herc20HalightBitcoinCreateSwapParams,
         secret_hash: SecretHash,
         ethereum_identity: identity::Ethereum,
     },
@@ -105,7 +104,7 @@ impl ComitLN {
     pub fn initiate_communication(
         &mut self,
         id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         let digest = create_swap_params.digest();
         tracing::trace!("Swap creation request received: {}", digest);
@@ -142,7 +141,7 @@ impl ComitLN {
     pub fn get_created_swap(
         &self,
         swap_id: &LocalSwapId,
-    ) -> Option<HanEtherereumHalightBitcoinCreateSwapParams> {
+    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.swaps.get_created_swap(swap_id)
     }
 
@@ -186,10 +185,15 @@ impl ComitLN {
             Role::Bob => create_swap_params.lightning_identity,
         };
 
+        let erc20 = asset::Erc20 {
+            token_contract: create_swap_params.token_contract.into(),
+            quantity: create_swap_params.ethereum_amount,
+        };
+
         Some(FinalizedSwap {
             alpha_ledger: Ethereum::new(ChainId::regtest()),
             beta_ledger: lightning::Regtest,
-            alpha_asset: create_swap_params.ethereum_amount.clone(),
+            alpha_asset: erc20,
             beta_asset: create_swap_params.lightning_amount,
             alpha_ledger_redeem_identity,
             alpha_ledger_refund_identity,
@@ -213,7 +217,7 @@ impl ComitLN {
         peer: PeerId,
         swap_id: SharedSwapId,
         local_swap_id: LocalSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) {
         let addresses = self.announce.addresses_of_peer(&peer);
         self.secret_hash
@@ -251,7 +255,7 @@ impl ComitLN {
         peer: libp2p::PeerId,
         io: ReplySubstream<NegotiatedSubstream>,
         shared_swap_id: SharedSwapId,
-        create_swap_params: HanEtherereumHalightBitcoinCreateSwapParams,
+        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) {
         // Confirm
         tokio::task::spawn(io.send(shared_swap_id));
@@ -314,7 +318,7 @@ impl fmt::Display for SwapExists {
 pub struct FinalizedSwap {
     pub alpha_ledger: Ethereum,
     pub beta_ledger: lightning::Regtest,
-    pub alpha_asset: asset::Ether,
+    pub alpha_asset: asset::Erc20,
     pub beta_asset: asset::Bitcoin,
     pub alpha_ledger_refund_identity: identity::Ethereum,
     pub alpha_ledger_redeem_identity: identity::Ethereum,
@@ -329,7 +333,7 @@ pub struct FinalizedSwap {
 }
 
 impl FinalizedSwap {
-    pub fn han_params(&self) -> EtherHtlc {
+    pub fn herc20_params(&self) -> HtlcParams<Ethereum, asset::Erc20, identity::Ethereum> {
         HtlcParams {
             asset: self.alpha_asset.clone(),
             ledger: Ethereum::new(ChainId::regtest()),
@@ -338,7 +342,6 @@ impl FinalizedSwap {
             expiry: self.alpha_expiry,
             secret_hash: self.secret_hash,
         }
-        .into()
     }
 }
 
@@ -632,7 +635,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 mod tests {
     use super::*;
     use crate::{
-        asset::{ethereum::FromWei, Ether},
+        asset::{ethereum::FromWei, Erc20Quantity},
         lightning,
         network::{test_swarm, DialInformation},
         swap_protocols::EthereumIdentity,
@@ -645,12 +648,12 @@ mod tests {
     fn make_alice_swap_params(
         bob_peer_id: PeerId,
         bob_addr: Multiaddr,
-        ether: asset::Ether,
+        erc20: asset::Erc20,
         lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
         lightning_cltv_expiry: Timestamp,
-    ) -> HanEtherereumHalightBitcoinCreateSwapParams {
-        HanEtherereumHalightBitcoinCreateSwapParams {
+    ) -> Herc20HalightBitcoinCreateSwapParams {
+        Herc20HalightBitcoinCreateSwapParams {
             role: Role::Alice,
             peer: DialInformation {
                 peer_id: bob_peer_id,
@@ -658,21 +661,22 @@ mod tests {
             },
             ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
             ethereum_absolute_expiry,
-            ethereum_amount: ether,
+            ethereum_amount: erc20.quantity,
             lightning_identity: lightning::PublicKey::random(),
             lightning_cltv_expiry,
             lightning_amount: lnbtc,
+            token_contract: erc20.token_contract.into(),
         }
     }
 
     fn make_bob_swap_params(
         alice_peer_id: PeerId,
-        ether: asset::Ether,
+        erc20: asset::Erc20,
         lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
         lightning_cltv_expiry: Timestamp,
-    ) -> HanEtherereumHalightBitcoinCreateSwapParams {
-        HanEtherereumHalightBitcoinCreateSwapParams {
+    ) -> Herc20HalightBitcoinCreateSwapParams {
+        Herc20HalightBitcoinCreateSwapParams {
             role: Role::Bob,
             peer: DialInformation {
                 peer_id: alice_peer_id,
@@ -680,10 +684,11 @@ mod tests {
             },
             ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
             ethereum_absolute_expiry,
-            ethereum_amount: ether,
+            ethereum_amount: erc20.quantity,
             lightning_identity: lightning::PublicKey::random(),
             lightning_cltv_expiry,
             lightning_amount: lnbtc,
+            token_contract: erc20.token_contract.into(),
         }
     }
 
@@ -695,7 +700,11 @@ mod tests {
         let (mut bob_swarm, bob_addr, bob_peer_id) =
             test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
 
-        let ether = Ether::from_wei(9_001_000_000_000_000_000_000u128);
+        let erc20 = asset::Erc20 {
+            token_contract: Default::default(),
+            quantity: Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
+        };
+
         let lnbtc = asset::Bitcoin::from_sat(42);
         let ethereum_expiry = Timestamp::from(100);
         let lightning_expiry = Timestamp::from(200);
@@ -706,7 +715,7 @@ mod tests {
                 make_alice_swap_params(
                     bob_peer_id,
                     bob_addr,
-                    ether.clone(),
+                    erc20.clone(),
                     lnbtc,
                     ethereum_expiry,
                     lightning_expiry,
@@ -718,7 +727,7 @@ mod tests {
                 LocalSwapId::default(),
                 make_bob_swap_params(
                     alice_peer_id,
-                    ether,
+                    erc20,
                     lnbtc,
                     ethereum_expiry,
                     lightning_expiry,

@@ -8,10 +8,10 @@ import { sleep } from "../src/utils";
 import { twoActorTest } from "../src/actor_test";
 
 it(
-    "han-ethereum-ether-halight-lightning-bitcoin-alice-redeems-bob-redeems",
+    "herc20-ethereum-erc20-halight-lightning-bitcoin-alice-redeems-bob-redeems",
     twoActorTest(async ({ alice, bob }) => {
         const bodies = (await SwapFactory.newSwap(alice, bob))
-            .hanEthereumEtherHalightLightningBitcoin;
+            .herc20EthereumErc20HalightLightningBitcoin;
 
         await alice.createSwap(bodies.alice);
         await sleep(500);
@@ -19,6 +19,7 @@ it(
 
         await alice.init();
 
+        await alice.deploy();
         await alice.fund();
 
         // we must not wait for bob's funding because `sendpayment` on a hold-invoice is a blocking call.

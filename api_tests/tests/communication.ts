@@ -19,7 +19,7 @@ describe("communication", () => {
         "Alice creates and then Bob creates, it finalizes",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
-                .hanEthereumEtherHalightLightningBitcoin;
+                .herc20EthereumErc20HalightLightningBitcoin;
 
             await alice.createSwap(bodies.alice);
             await sleep(500);
@@ -34,7 +34,7 @@ describe("communication", () => {
         "Bob creates and then Alice creates, it finalizes",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
-                .hanEthereumEtherHalightLightningBitcoin;
+                .herc20EthereumErc20HalightLightningBitcoin;
 
             await bob.createSwap(bodies.bob);
             await sleep(500);
@@ -49,7 +49,7 @@ describe("communication", () => {
         "swap-announced-with-wrong-peer-id-does-not-finalize",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
-                .hanEthereumEtherHalightLightningBitcoin;
+                .herc20EthereumErc20HalightLightningBitcoin;
 
             // Simulate that Bob is awaiting a swap from a different peer-id than Alice node's peer-id.
             bodies.bob.peer.peer_id =

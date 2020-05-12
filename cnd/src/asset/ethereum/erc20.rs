@@ -31,6 +31,10 @@ impl Erc20Quantity {
         let buf = self.0.to_bytes_be();
         U256::from_big_endian(&buf)
     }
+
+    pub fn to_bytes(&self) -> Vec<u8> {
+        self.0.to_bytes_le()
+    }
 }
 
 impl FromWei<U256> for Erc20Quantity {

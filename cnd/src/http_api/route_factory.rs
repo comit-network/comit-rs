@@ -156,6 +156,14 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::action_fund);
 
+    let lightning_action_deploy = swaps
+        .and(warp::get())
+        .and(warp::path::param::<LocalSwapId>())
+        .and(warp::path("deploy"))
+        .and(warp::path::end())
+        .and(facade.clone())
+        .and_then(http_api::routes::action_deploy);
+
     let lightning_action_redeem = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
@@ -187,6 +195,7 @@ pub fn create(
         .or(get_halight_swap)
         .or(lightning_action_init)
         .or(lightning_action_fund)
+        .or(lightning_action_deploy)
         .or(lightning_action_redeem)
         .or(lightning_action_refund)
         .recover(http_api::unpack_problem)
