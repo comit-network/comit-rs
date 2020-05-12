@@ -161,10 +161,10 @@ impl ComitLN {
                 Some(identity) => identity,
                 None => return None,
             },
-            Role::Bob => create_swap_params.ethereum_identity.into(),
+            Role::Bob => create_swap_params.ethereum_identity,
         };
         let alpha_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.ethereum_identity.into(),
+            Role::Alice => create_swap_params.ethereum_identity,
             Role::Bob => match self.ethereum_identities.get(&id).copied() {
                 Some(identity) => identity,
                 None => return None,
@@ -186,7 +186,7 @@ impl ComitLN {
         };
 
         let erc20 = asset::Erc20 {
-            token_contract: create_swap_params.token_contract.into(),
+            token_contract: create_swap_params.token_contract,
             quantity: create_swap_params.ethereum_amount,
         };
 
@@ -230,7 +230,7 @@ impl ComitLN {
 
         self.ethereum_identity.send(
             peer.clone(),
-            ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity.into()),
+            ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity),
         );
         self.lightning_identity.send(
             peer.clone(),
@@ -272,10 +272,7 @@ impl ComitLN {
         // Communicate
         self.ethereum_identity.send(
             peer.clone(),
-            ethereum_identity::Message::new(
-                shared_swap_id,
-                create_swap_params.ethereum_identity.into(),
-            ),
+            ethereum_identity::Message::new(shared_swap_id, create_swap_params.ethereum_identity),
         );
         self.lightning_identity.send(
             peer,
@@ -638,7 +635,6 @@ mod tests {
         asset::{ethereum::FromWei, Erc20Quantity},
         lightning,
         network::{test_swarm, DialInformation},
-        swap_protocols::EthereumIdentity,
     };
     use digest::Digest;
     use futures::future;
@@ -659,13 +655,13 @@ mod tests {
                 peer_id: bob_peer_id,
                 address_hint: Some(bob_addr),
             },
-            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_identity: identity::Ethereum::random(),
             ethereum_absolute_expiry,
             ethereum_amount: erc20.quantity,
             lightning_identity: lightning::PublicKey::random(),
             lightning_cltv_expiry,
             lightning_amount: lnbtc,
-            token_contract: erc20.token_contract.into(),
+            token_contract: erc20.token_contract,
         }
     }
 
@@ -682,13 +678,13 @@ mod tests {
                 peer_id: alice_peer_id,
                 address_hint: None,
             },
-            ethereum_identity: EthereumIdentity::from(identity::Ethereum::random()),
+            ethereum_identity: identity::Ethereum::random(),
             ethereum_absolute_expiry,
             ethereum_amount: erc20.quantity,
             lightning_identity: lightning::PublicKey::random(),
             lightning_cltv_expiry,
             lightning_amount: lnbtc,
-            token_contract: erc20.token_contract.into(),
+            token_contract: erc20.token_contract,
         }
     }
 

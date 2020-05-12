@@ -19,13 +19,13 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     #[digest(ignore)]
     pub peer: DialInformation,
     #[digest(ignore)]
-    pub ethereum_identity: EthereumIdentity,
+    pub ethereum_identity: identity::Ethereum,
     #[digest(prefix = "2001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "2002")]
     pub ethereum_amount: asset::Erc20Quantity,
     #[digest(ignore)]
-    pub token_contract: EthereumIdentity,
+    pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
     #[digest(prefix = "3001")]
@@ -49,21 +49,6 @@ impl ToDigestInput for asset::Ether {
 impl ToDigestInput for asset::Erc20Quantity {
     fn to_digest_input(&self) -> Vec<u8> {
         self.to_bytes()
-    }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct EthereumIdentity(identity::Ethereum);
-
-impl From<identity::Ethereum> for EthereumIdentity {
-    fn from(inner: identity::Ethereum) -> Self {
-        EthereumIdentity(inner)
-    }
-}
-
-impl From<EthereumIdentity> for identity::Ethereum {
-    fn from(outer: EthereumIdentity) -> Self {
-        outer.0
     }
 }
 

@@ -172,13 +172,13 @@ impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>>
         Self {
             role: body.role.0,
             peer: body.peer,
-            ethereum_identity: body.alpha.identity.into(),
+            ethereum_identity: body.alpha.identity,
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
             ethereum_amount: body.alpha.amount,
             lightning_identity: body.beta.identity,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
             lightning_amount: body.beta.amount.0,
-            token_contract: body.alpha.contract_address.into(),
+            token_contract: body.alpha.contract_address,
         }
     }
 }

@@ -1209,7 +1209,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
-                                    let token_contract = create_swap_params.token_contract.into();
+                                    let token_contract = create_swap_params.token_contract;
                                     let erc20 = Erc20::new(token_contract, asset);
 
                                     herc20_rfc003_watcher::new_herc20_swap(
@@ -1220,7 +1220,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                             asset: erc20,
                                             ledger,
                                             redeem_identity: bob_ethereum_identity,
-                                            refund_identity: alice_ethereum_identity.into(),
+                                            refund_identity: alice_ethereum_identity,
                                             expiry,
                                             secret_hash,
                                         },
@@ -1246,7 +1246,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                     let asset = create_swap_params.ethereum_amount.clone();
                                     let ledger = ledger::Ethereum::default();
                                     let expiry = create_swap_params.ethereum_absolute_expiry;
-                                    let token_contract = create_swap_params.token_contract.into();
+                                    let token_contract = create_swap_params.token_contract;
                                     let erc20 = Erc20::new(token_contract, asset);
 
                                     self::herc20_rfc003_watcher::new_herc20_swap(
@@ -1256,7 +1256,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> fo
                                         HtlcParams {
                                             asset: erc20,
                                             ledger,
-                                            redeem_identity: bob_ethereum_identity.into(),
+                                            redeem_identity: bob_ethereum_identity,
                                             refund_identity: alice_ethereum_identity,
                                             expiry,
                                             secret_hash,
