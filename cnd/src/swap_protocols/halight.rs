@@ -1,11 +1,13 @@
 use crate::{
     asset, identity,
     swap_protocols::{
+        ledger::lightning,
         rfc003::{Secret, SecretHash},
         state,
         state::Update,
-        LocalSwapId,
+        Ledger, LocalSwapId,
     },
+    timestamp::Timestamp,
 };
 use futures::{
     future::{self, Either},
@@ -26,12 +28,22 @@ pub use connector::*;
 
 /// Data required to create a swap that involves bitcoin on the lightning
 /// network.
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct CreatedSwap {
     pub amount: asset::Bitcoin,
     pub identity: identity::Lightning,
-    pub network: String,
+    pub network: lightning::Regtest,
     pub cltv_expiry: u32,
+}
+
+/// Halight specific data for an in progress swap.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InProgressSwap {
+    pub ledger: Ledger,
+    pub asset: asset::Bitcoin,
+    pub refund_identity: identity::Lightning,
+    pub redeem_identity: identity::Lightning,
+    pub expiry: Timestamp, // This is the cltv_expiry for now.
 }
 
 /// Creates a new instance of the halight protocol.

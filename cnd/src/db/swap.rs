@@ -1,5 +1,5 @@
 use crate::{
-    db::{schema, wrapper_types::custom_sql_types::Text, Error, Sqlite},
+    db::{rfc003_schema, wrapper_types::custom_sql_types::Text, Error, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
     swap_protocols::{rfc003::SwapId, Role},
 };
@@ -35,7 +35,7 @@ impl Swap {
 #[async_trait]
 impl Retrieve for Sqlite {
     async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
-        use self::schema::rfc003_swaps::dsl::*;
+        use self::rfc003_schema::rfc003_swaps::dsl::*;
 
         let record: QueryableSwap = self
             .do_in_transaction(|connection| {
@@ -53,7 +53,7 @@ impl Retrieve for Sqlite {
     }
 
     async fn all(&self) -> anyhow::Result<Vec<Swap>> {
-        use self::schema::rfc003_swaps::dsl::*;
+        use self::rfc003_schema::rfc003_swaps::dsl::*;
 
         let records: Vec<QueryableSwap> = self
             .do_in_transaction(|connection| rfc003_swaps.load(&*connection))

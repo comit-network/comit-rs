@@ -62,6 +62,19 @@ impl FromStr for Address {
     }
 }
 
+impl Display for Address {
+    // This is duplicate code from LowerHex, is there a better way to do this?
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        if f.alternate() {
+            write!(f, "0x")?;
+        }
+        for i in &self.0[..] {
+            write!(f, "{:02x}", i)?;
+        }
+        Ok(())
+    }
+}
+
 impl From<Address> for Hash {
     fn from(address: Address) -> Self {
         let mut h256 = Hash([0u8; 32]);

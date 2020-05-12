@@ -1,4 +1,10 @@
-use crate::{asset, asset::Bitcoin, db::LedgerKind, identity, swap_protocols::ledger};
+use crate::{
+    asset,
+    asset::Bitcoin,
+    db::LedgerKind,
+    identity,
+    swap_protocols::ledger::{self, lightning},
+};
 use std::{fmt, str::FromStr};
 
 pub mod custom_sql_types;
@@ -126,6 +132,52 @@ impl From<EthereumAddress> for identity::Ethereum {
 impl From<identity::Ethereum> for EthereumAddress {
     fn from(address: identity::Ethereum) -> Self {
         EthereumAddress(address)
+    }
+}
+
+/// A wrapper type for Lightning networks.
+///
+/// This is then wrapped in the db::custom_sql_types::Text to be stored in DB
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LightningNetwork {
+    Mainnet,
+    Testnet,
+    Regtest,
+}
+
+impl From<lightning::Regtest> for LightningNetwork {
+    fn from(_: lightning::Regtest) -> Self {
+        LightningNetwork::Regtest
+    }
+}
+
+impl From<LightningNetwork> for lightning::Regtest {
+    fn from(_: LightningNetwork) -> Self {
+        lightning::Regtest
+    }
+}
+
+impl FromStr for LightningNetwork {
+    type Err = UnknownVariant;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mainnet" => Ok(Self::Mainnet),
+            "testnet" => Ok(Self::Testnet),
+            "regtest" => Ok(Self::Regtest),
+            _ => Err(UnknownVariant),
+        }
+    }
+}
+
+impl fmt::Display for LightningNetwork {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            Self::Mainnet => "mainnet",
+            Self::Testnet => "testnet",
+            Self::Regtest => "regtest",
+        };
+        write!(f, "{}", s)
     }
 }
 

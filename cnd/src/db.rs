@@ -1,8 +1,12 @@
+mod created_swap;
+mod in_progress_swap;
 #[cfg(test)]
 mod integration_tests;
 mod load_swaps;
+mod rfc003_schema;
 mod save;
 mod schema;
+pub mod tables;
 mod wrapper_types;
 #[macro_use]
 mod swap;
@@ -21,8 +25,15 @@ pub use self::{
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{rfc003::SwapId, LocalSwapId, Role},
+    swap_protocols::{
+        halight, han,
+        ledger::{ethereum::ChainId, Ethereum},
+        rfc003::{create_swap::HtlcParams, SecretHash, SwapId},
+        LocalSwapId, Role,
+    },
 };
+use async_trait::async_trait;
+use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -33,6 +44,18 @@ use std::{
 use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
+
+/// Save date to the database.
+#[async_trait]
+pub trait Save<T>: Send + Sync + 'static {
+    async fn save(&self, swap: T) -> anyhow::Result<()>;
+}
+
+/// Load data from the database.
+#[async_trait]
+pub trait Load<T>: Send + Sync + 'static {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<Option<T>>;
+}
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
@@ -87,8 +110,8 @@ impl Sqlite {
         Ok(result)
     }
 
-    async fn role(&self, key: &SwapId) -> anyhow::Result<Role> {
-        use self::schema::rfc003_swaps as swaps;
+    async fn rfc003_role(&self, key: &SwapId) -> anyhow::Result<Role> {
+        use self::rfc003_schema::rfc003_swaps as swaps;
 
         let record: QueryableSwapRole = self
             .do_in_transaction(|connection| {
@@ -131,14 +154,19 @@ struct QueryableSwapRole {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
+    #[error("peer id not found")]
+    PeerIdNotFound,
+    #[error("identity is not set")]
+    IdentityNotSet,
 }
 
 /// Data required to create a swap.
 ///
 /// 'create' a swap is defined as the process of initiating a swap within `cnd`.
 /// The data required to do so is assumed to have been negotiated between the
-/// two parties prior to each creating the swap.
-#[derive(Debug, Clone)]
+/// two parties prior to each creating the swap. This struct can be saved into
+/// the database.
+#[derive(Debug, Clone, PartialEq)]
 pub struct CreatedSwap<A, B> {
     /// Node specific swap identifier.
     pub swap_id: LocalSwapId,
@@ -148,8 +176,38 @@ pub struct CreatedSwap<A, B> {
     pub beta: B,
     /// Peer ID of the swap counterparty.
     pub peer: PeerId,
+    /// The address hint of the swap counterparty, only relevant to the party
+    /// that starts the communication.
+    pub address_hint: Option<libp2p::Multiaddr>,
     /// Role of the node in this swap, Alice or Bob.
     pub role: Role,
+}
+
+/// An 'in progress' swap is a swap that is currently in progress, i.e., the
+/// swap was 'created' by a POST on the REST API, 'finalized' during the
+/// communication protocols, and is now 'in progress'.  This data structure can
+/// be retrieved from the database.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct InProgressSwap<A, B> {
+    pub swap_id: LocalSwapId,
+    pub secret_hash: SecretHash,
+    pub role: Role,
+    pub alpha: A,
+    pub beta: B,
+}
+
+impl From<&InProgressSwap<han::InProgressSwap, halight::InProgressSwap>> for EtherHtlc {
+    fn from(swap: &InProgressSwap<han::InProgressSwap, halight::InProgressSwap>) -> Self {
+        HtlcParams {
+            asset: swap.alpha.asset.clone(),
+            ledger: Ethereum::new(ChainId::regtest()),
+            redeem_identity: swap.alpha.redeem_identity,
+            refund_identity: swap.alpha.refund_identity,
+            expiry: swap.alpha.expiry,
+            secret_hash: swap.secret_hash,
+        }
+        .into()
+    }
 }
 
 #[cfg(test)]

@@ -40,6 +40,12 @@ pub enum SwapProtocol {
 }
 
 #[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
+pub enum Ledger {
+    Alpha,
+    Beta,
+}
+
+#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
 pub enum Role {
     Alice,
     Bob,

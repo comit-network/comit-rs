@@ -1,16 +1,15 @@
 use crate::{
     asset,
     db::{
-        schema::{self, *},
+        rfc003_schema::{self, *},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
         },
-        CreatedSwap, Sqlite, Swap,
+        Save, Sqlite, Swap,
     },
     identity,
     swap_protocols::{
-        halight, han,
         ledger::{self, Ethereum},
         rfc003::{Accept, Decline, Request, SecretHash, SwapId},
         HashFunction, Role,
@@ -21,19 +20,13 @@ use diesel::RunQueryDsl;
 use impl_template::impl_template;
 use libp2p::{self, PeerId};
 
-/// Save swap to database.
-#[async_trait]
-pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, swap: T) -> anyhow::Result<()>;
-}
-
 #[async_trait]
 impl Save<Swap> for Sqlite {
     async fn save(&self, swap: Swap) -> anyhow::Result<()> {
-        let insertable = InsertableSwap::from(swap);
+        let insertable = InsertableRfc003Swap::from(swap);
 
         self.do_in_transaction(|connection| {
-            diesel::insert_into(schema::rfc003_swaps::dsl::rfc003_swaps)
+            diesel::insert_into(rfc003_schema::rfc003_swaps::dsl::rfc003_swaps)
                 .values(&insertable)
                 .execute(&*connection)
         })
@@ -45,15 +38,15 @@ impl Save<Swap> for Sqlite {
 
 #[derive(Insertable, Debug, Clone)]
 #[table_name = "rfc003_swaps"]
-struct InsertableSwap {
+struct InsertableRfc003Swap {
     pub swap_id: Text<SwapId>,
     pub role: Text<Role>,
     pub counterparty: Text<PeerId>,
 }
 
-impl From<Swap> for InsertableSwap {
+impl From<Swap> for InsertableRfc003Swap {
     fn from(swap: Swap) -> Self {
-        InsertableSwap {
+        InsertableRfc003Swap {
             swap_id: Text(swap.swap_id),
             role: Text(swap.role),
             counterparty: Text(swap.counterparty),
@@ -504,15 +497,5 @@ impl Save<Decline> for Sqlite {
         .await?;
 
         Ok(())
-    }
-}
-
-#[async_trait]
-impl Save<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>> for Sqlite {
-    async fn save(
-        &self,
-        _: CreatedSwap<han::CreatedSwap, halight::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        unimplemented!()
     }
 }
