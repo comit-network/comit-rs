@@ -1,4 +1,5 @@
 use bitcoin::{util::amount::Denomination, Amount};
+use digest::ToDigestInput;
 use std::fmt;
 
 #[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq, Hash)]
@@ -28,6 +29,12 @@ impl fmt::Display for Bitcoin {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         let bitcoin = self.0.to_string_in(Denomination::Bitcoin);
         write!(f, "{} BTC", bitcoin)
+    }
+}
+
+impl ToDigestInput for Bitcoin {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_le_bytes().to_vec()
     }
 }
 

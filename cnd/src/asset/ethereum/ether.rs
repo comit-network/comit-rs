@@ -3,6 +3,7 @@ use crate::{
     ethereum::U256,
 };
 use bigdecimal::BigDecimal;
+use digest::ToDigestInput;
 use lazy_static::lazy_static;
 use num::{bigint::Sign, pow::Pow, BigInt, BigUint, Num, Zero};
 use serde::{
@@ -135,6 +136,12 @@ impl Serialize for Ether {
         S: Serializer,
     {
         serializer.serialize_str(self.0.to_string().as_str())
+    }
+}
+
+impl ToDigestInput for Ether {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes()
     }
 }
 

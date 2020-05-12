@@ -6,7 +6,7 @@ use crate::{
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
-use digest::{Digest, ToDigestInput};
+use digest::Digest;
 use std::sync::Arc;
 
 /// This represent the information available on a swap
@@ -32,36 +32,6 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "3002")]
     pub lightning_amount: asset::Bitcoin,
-}
-
-impl ToDigestInput for asset::Bitcoin {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_le_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Ether {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for asset::Erc20Quantity {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for Timestamp {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for RelativeTime {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes().to_vec()
-    }
 }
 
 /// This is a facade that implements all the required traits and forwards them

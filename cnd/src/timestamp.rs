@@ -1,3 +1,4 @@
+use digest::ToDigestInput;
 use serde::{Deserialize, Serialize};
 use std::time::SystemTime;
 
@@ -52,6 +53,12 @@ impl From<Timestamp> for i64 {
     }
 }
 
+impl ToDigestInput for Timestamp {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().to_bytes().to_vec()
+    }
+}
+
 /// A duration used to represent a relative timelock
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 #[serde(transparent)]
@@ -78,5 +85,11 @@ impl From<RelativeTime> for u32 {
 impl From<u32> for RelativeTime {
     fn from(item: u32) -> Self {
         Self(item)
+    }
+}
+
+impl ToDigestInput for RelativeTime {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.to_bytes().to_vec()
     }
 }

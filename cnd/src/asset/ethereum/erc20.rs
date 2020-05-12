@@ -2,6 +2,7 @@ use crate::{
     asset::ethereum::{Error, FromWei, TryFromWei},
     ethereum::{Address, U256},
 };
+use digest::ToDigestInput;
 use num::{pow::Pow, BigUint, Num, Zero};
 use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
 use std::{fmt, str::FromStr};
@@ -77,6 +78,12 @@ impl From<Erc20Quantity> for blockchain_contracts::ethereum::TokenQuantity {
 impl fmt::Display for Erc20Quantity {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+impl ToDigestInput for Erc20Quantity {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.0.to_bytes_le()
     }
 }
 
