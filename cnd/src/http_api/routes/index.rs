@@ -62,7 +62,7 @@ pub async fn post_han_ethereum_halight_bitcoin(
     body: serde_json::Value,
     _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
+    let _body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
