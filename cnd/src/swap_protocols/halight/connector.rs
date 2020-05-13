@@ -46,16 +46,18 @@ pub enum PaymentStatus {
     Failed,
 }
 
-trait ValidateParams {
-    fn validate(self, params: &halight::Params) -> Result<(), ValidationError>;
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("amounts don't match: expected {expected} but received {received}")]
+pub struct AmountMismatch {
+    expected: asset::Bitcoin,
+    received: asset::Bitcoin,
 }
 
-#[derive(Clone, Copy, Debug, thiserror::Error)]
-pub enum ValidationError {
-    #[error("Params do not match lnd invoice: (expected {0:?}, got {1:?})")]
-    Invoice(halight::Params, Invoice),
-    #[error("Params do not match lnd payment: (expected {0:?}, got {1:?})")]
-    Payment(halight::Params, Payment),
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("cltv expiry times don't match: expected {expected} but received {received}")]
+pub struct ExpiryMismatch {
+    expected: RelativeTime,
+    received: RelativeTime,
 }
 
 #[derive(Clone, Copy, Debug, Deserialize)]
@@ -71,13 +73,23 @@ pub struct Invoice {
     pub r_preimage: Option<[u8; 32]>,
 }
 
-impl ValidateParams for Invoice {
-    fn validate(self, params: &halight::Params) -> Result<(), ValidationError> {
-        if params.cltv_expiry == self.cltv_expiry && params.amount == self.value {
-            Ok(())
-        } else {
-            Err(ValidationError::Invoice(*params, self))
+impl Invoice {
+    fn validate(self, params: &halight::Params) -> anyhow::Result<()> {
+        if params.cltv_expiry != self.cltv_expiry {
+            anyhow::bail!(ExpiryMismatch {
+                expected: params.cltv_expiry,
+                received: self.cltv_expiry
+            })
         }
+
+        if params.amount != self.value {
+            anyhow::bail!(AmountMismatch {
+                expected: params.amount,
+                received: self.value
+            })
+        }
+
+        Ok(())
     }
 }
 
@@ -95,13 +107,16 @@ pub struct Payment {
     pub payment_hash: SecretHash,
 }
 
-impl ValidateParams for Payment {
-    fn validate(self, params: &halight::Params) -> Result<(), ValidationError> {
-        if params.amount == self.value_sat {
-            Ok(())
-        } else {
-            Err(ValidationError::Payment(*params, self))
+impl Payment {
+    fn validate(self, params: &halight::Params) -> anyhow::Result<()> {
+        if params.amount != self.value_sat {
+            anyhow::bail!(AmountMismatch {
+                expected: params.amount,
+                received: self.value_sat
+            })
         }
+
+        Ok(())
     }
 }
 
@@ -214,8 +229,11 @@ impl LndConnectorAsSender {
             .find(|payment| payment.payment_hash == params.secret_hash && payment.status == status);
 
         if let Some(payment) = payment {
-            payment.validate(params)?;
+            payment
+                .validate(params)
+                .with_context(|| format!("validation for payment {} failed", params.secret_hash))?;
         }
+
         Ok(payment)
     }
 }
@@ -356,7 +374,9 @@ impl LndConnectorAsReceiver {
             .await
             .context("failed to deserialize response as invoice")?;
 
-        invoice.validate(params)?;
+        invoice
+            .validate(params)
+            .with_context(|| format!("validation for invoice {} failed", params.secret_hash))?;
 
         if invoice.state == expected_state {
             Ok(Some(invoice))
