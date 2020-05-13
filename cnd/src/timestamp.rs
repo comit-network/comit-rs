@@ -1,5 +1,6 @@
+use bitcoin::hashes::core::fmt::Formatter;
 use serde::{Deserialize, Serialize};
-use std::time::SystemTime;
+use std::{fmt, time::SystemTime};
 
 /// An exact time and date used to represent absolute timelocks
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
@@ -78,5 +79,11 @@ impl From<RelativeTime> for u32 {
 impl From<u32> for RelativeTime {
     fn from(item: u32) -> Self {
         Self(item)
+    }
+}
+
+impl fmt::Display for RelativeTime {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        self.0.fmt(f)
     }
 }

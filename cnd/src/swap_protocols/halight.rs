@@ -22,6 +22,7 @@ use tokio::sync::Mutex;
 
 mod connector;
 
+use crate::timestamp::RelativeTime;
 pub use connector::*;
 
 /// Htlc Lightning Bitcoin atomic swap protocol.
@@ -53,13 +54,13 @@ pub struct InProgressSwap {
 /// logging information and store the events yielded by the protocol.
 pub async fn new_halight_swap<C>(
     id: LocalSwapId,
-    secret_hash: SecretHash,
+    params: Params,
     state_store: Arc<States>,
     connector: C,
 ) where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
-    let mut events = new(&connector, Params { secret_hash })
+    let mut events = new(&connector, params)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
@@ -73,22 +74,22 @@ pub async fn new_halight_swap<C>(
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForOpened {
-    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<Opened>;
+    async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForAccepted {
-    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted>;
+    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForSettled {
-    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled>;
+    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForCancelled {
-    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled>;
+    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
@@ -239,19 +240,19 @@ where
             co.yield_(Ok(Event::Started)).await;
 
             let opened_or_error = connector
-                .wait_for_opened(params.clone())
+                .wait_for_opened(&params)
                 .map_ok(Event::Opened)
                 .await;
             co.yield_(opened_or_error).await;
 
             let accepted_or_error = connector
-                .wait_for_accepted(params.clone())
+                .wait_for_accepted(&params)
                 .map_ok(Event::Accepted)
                 .await;
             co.yield_(accepted_or_error).await;
 
-            let settled = connector.wait_for_settled(params.clone());
-            let cancelled = connector.wait_for_cancelled(params);
+            let settled = connector.wait_for_settled(&params);
+            let cancelled = connector.wait_for_cancelled(&params);
 
             match future::try_select(settled, cancelled).await {
                 Ok(Either::Left((settled, _))) => {
@@ -270,7 +271,10 @@ where
     })
 }
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Copy, Clone, Debug)]
 pub struct Params {
+    pub identity: identity::Lightning,
+    pub cltv_expiry: RelativeTime,
+    pub amount: asset::Bitcoin,
     pub secret_hash: SecretHash,
 }

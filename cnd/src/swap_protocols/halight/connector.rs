@@ -1,9 +1,14 @@
-use crate::swap_protocols::{
-    halight::{
-        Accepted, Cancelled, Opened, Params, Settled, WaitForAccepted, WaitForCancelled,
-        WaitForOpened, WaitForSettled,
+use crate::{
+    asset,
+    swap_protocols::{
+        halight,
+        halight::{
+            Accepted, Cancelled, Opened, Params, Settled, WaitForAccepted, WaitForCancelled,
+            WaitForOpened, WaitForSettled,
+        },
+        rfc003::{Secret, SecretHash},
     },
-    rfc003::{Secret, SecretHash},
+    timestamp::RelativeTime,
 };
 use anyhow::{bail, Context, Error};
 use reqwest::{
@@ -13,6 +18,7 @@ use reqwest::{
 use serde::{de, export::fmt, Deserialize, Deserializer};
 use std::{
     convert::{TryFrom, TryInto},
+    fmt::Debug,
     io::Read,
     path::PathBuf,
     time::Duration,
@@ -22,7 +28,7 @@ use std::{
 // ref: https://api.lightning.community/#invoicestate
 #[derive(Clone, Copy, Debug, Deserialize, PartialEq, strum_macros::Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum InvoiceState {
+pub enum InvoiceState {
     Open,
     Settled,
     Cancelled,
@@ -33,24 +39,58 @@ enum InvoiceState {
 // ref: https://api.lightning.community/#paymentstatus
 #[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
-enum PaymentStatus {
+pub enum PaymentStatus {
     Unknown,
     InFlight,
     Succeeded,
     Failed,
 }
 
-#[derive(Debug, Deserialize)]
-struct Invoice {
-    pub value: String,
-    pub value_msat: String,
-    pub amt_paid_sat: String,
-    pub amt_paid_msat: String,
-    pub expiry: String,
-    pub cltv_expiry: String,
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("amounts don't match: expected {expected} but received {received}")]
+pub struct AmountMismatch {
+    expected: asset::Bitcoin,
+    received: asset::Bitcoin,
+}
+
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("cltv expiry times don't match: expected {expected} but received {received}")]
+pub struct ExpiryMismatch {
+    expected: RelativeTime,
+    received: RelativeTime,
+}
+
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct Invoice {
+    #[serde(deserialize_with = "deserialize_amount")]
+    pub value: asset::Bitcoin,
+    #[serde(deserialize_with = "deserialize_relative_time")]
+    pub expiry: RelativeTime,
+    #[serde(deserialize_with = "deserialize_relative_time")]
+    pub cltv_expiry: RelativeTime,
     pub state: InvoiceState,
     #[serde(deserialize_with = "deserialize_r_preimage")]
     pub r_preimage: Option<[u8; 32]>,
+}
+
+impl Invoice {
+    fn validate(self, params: &halight::Params) -> anyhow::Result<()> {
+        if params.cltv_expiry != self.cltv_expiry {
+            anyhow::bail!(ExpiryMismatch {
+                expected: params.cltv_expiry,
+                received: self.cltv_expiry
+            })
+        }
+
+        if params.amount != self.value {
+            anyhow::bail!(AmountMismatch {
+                expected: params.amount,
+                received: self.value
+            })
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug, Deserialize)]
@@ -58,12 +98,26 @@ struct PaymentsResponse {
     payments: Option<Vec<Payment>>,
 }
 
-#[derive(Clone, Debug, Deserialize)]
-struct Payment {
-    pub value_msat: Option<String>,
+#[derive(Clone, Copy, Debug, Deserialize)]
+pub struct Payment {
+    #[serde(deserialize_with = "deserialize_amount")]
+    pub value_sat: asset::Bitcoin,
     pub payment_preimage: Option<Secret>,
     pub status: PaymentStatus,
     pub payment_hash: SecretHash,
+}
+
+impl Payment {
+    fn validate(self, params: &halight::Params) -> anyhow::Result<()> {
+        if params.amount != self.value_sat {
+            anyhow::bail!(AmountMismatch {
+                expected: params.amount,
+                received: self.value_sat
+            })
+        }
+
+        Ok(())
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -156,7 +210,7 @@ impl LndConnectorAsSender {
 
     async fn find_payment(
         &self,
-        secret_hash: SecretHash,
+        params: &Params,
         status: PaymentStatus,
     ) -> anyhow::Result<Option<Payment>> {
         let url = self.payment_url();
@@ -172,7 +226,13 @@ impl LndConnectorAsSender {
             .payments
             .unwrap_or_default()
             .into_iter()
-            .find(|payment| payment.payment_hash == secret_hash && payment.status == status);
+            .find(|payment| payment.payment_hash == params.secret_hash && payment.status == status);
+
+        if let Some(payment) = payment {
+            payment
+                .validate(params)
+                .with_context(|| format!("validation for payment {} failed", params.secret_hash))?;
+        }
 
         Ok(payment)
     }
@@ -180,7 +240,7 @@ impl LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsSender {
-    async fn wait_for_opened(&self, _params: Params) -> anyhow::Result<Opened> {
+    async fn wait_for_opened(&self, _: &halight::Params) -> anyhow::Result<Opened> {
         // At this stage there is no way for the sender to know when the invoice is
         // added on receiver's side.
         Ok(Opened)
@@ -189,11 +249,11 @@ impl WaitForOpened for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsSender {
-    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted> {
+    async fn wait_for_accepted(&self, params: &halight::Params) -> anyhow::Result<Accepted> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
         while self
-            .find_payment(params.secret_hash, PaymentStatus::InFlight)
+            .find_payment(params, PaymentStatus::InFlight)
             .await?
             .is_none()
         {
@@ -206,19 +266,15 @@ impl WaitForAccepted for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsSender {
-    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled> {
+    async fn wait_for_settled(&self, params: &halight::Params) -> anyhow::Result<Settled> {
         let payment = loop {
-            match self
-                .find_payment(params.secret_hash, PaymentStatus::Succeeded)
-                .await?
-            {
+            match self.find_payment(params, PaymentStatus::Succeeded).await? {
                 Some(payment) => break payment,
                 None => {
                     tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
                 }
             }
         };
-
         let secret = match payment.payment_preimage {
             Some(secret) => Ok(secret),
             None => Err(anyhow::anyhow!(
@@ -232,9 +288,9 @@ impl WaitForSettled for LndConnectorAsSender {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsSender {
-    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled> {
+    async fn wait_for_cancelled(&self, params: &halight::Params) -> anyhow::Result<Cancelled> {
         while self
-            .find_payment(params.secret_hash, PaymentStatus::Failed)
+            .find_payment(params, PaymentStatus::Failed)
             .await?
             .is_none()
         {
@@ -282,10 +338,10 @@ impl LndConnectorAsReceiver {
     #[tracing::instrument(level = "debug", skip(self))]
     async fn find_invoice(
         &self,
-        secret_hash: SecretHash,
+        params: &halight::Params,
         expected_state: InvoiceState,
     ) -> anyhow::Result<Option<Invoice>> {
-        let url = self.invoice_url(secret_hash)?;
+        let url = self.invoice_url(params.secret_hash)?;
         let response = client(&self.certificate, &self.macaroon)?
             .get(url.clone())
             .send()
@@ -318,6 +374,10 @@ impl LndConnectorAsReceiver {
             .await
             .context("failed to deserialize response as invoice")?;
 
+        invoice
+            .validate(params)
+            .with_context(|| format!("validation for invoice {} failed", params.secret_hash))?;
+
         if invoice.state == expected_state {
             Ok(Some(invoice))
         } else {
@@ -337,11 +397,11 @@ struct LndError {
 
 #[async_trait::async_trait]
 impl WaitForOpened for LndConnectorAsReceiver {
-    async fn wait_for_opened(&self, params: Params) -> anyhow::Result<Opened> {
+    async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
         while self
-            .find_invoice(params.secret_hash, InvoiceState::Open)
+            .find_invoice(params, InvoiceState::Open)
             .await?
             .is_none()
         {
@@ -354,13 +414,13 @@ impl WaitForOpened for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForAccepted for LndConnectorAsReceiver {
-    async fn wait_for_accepted(&self, params: Params) -> anyhow::Result<Accepted> {
+    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted> {
         // Validation that sender payed the correct invoice is provided by LND.
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
         // updating the invoice status.
         while self
-            .find_invoice(params.secret_hash, InvoiceState::Accepted)
+            .find_invoice(params, InvoiceState::Accepted)
             .await?
             .is_none()
         {
@@ -372,12 +432,9 @@ impl WaitForAccepted for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForSettled for LndConnectorAsReceiver {
-    async fn wait_for_settled(&self, params: Params) -> anyhow::Result<Settled> {
+    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled> {
         let invoice = loop {
-            match self
-                .find_invoice(params.secret_hash, InvoiceState::Settled)
-                .await?
-            {
+            match self.find_invoice(params, InvoiceState::Settled).await? {
                 Some(invoice) => break invoice,
                 None => tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await,
             }
@@ -395,9 +452,9 @@ impl WaitForSettled for LndConnectorAsReceiver {
 
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsReceiver {
-    async fn wait_for_cancelled(&self, params: Params) -> anyhow::Result<Cancelled> {
+    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled> {
         while self
-            .find_invoice(params.secret_hash, InvoiceState::Cancelled)
+            .find_invoice(params, InvoiceState::Cancelled)
             .await?
             .is_none()
         {
@@ -441,6 +498,56 @@ fn client(certificate: &Certificate, macaroon: &Macaroon) -> anyhow::Result<reqw
 #[error("GET request to {0} failed")]
 pub struct GetRequestFailed(Url);
 
+pub fn deserialize_amount<'de, D>(deserializer: D) -> Result<asset::Bitcoin, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = asset::Bitcoin;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a bitcoin asset quantity as a string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            let sat: u64 = v.parse().map_err(E::custom)?;
+            Ok(asset::Bitcoin::from_sat(sat))
+        }
+    }
+
+    deserializer.deserialize_any(Visitor)
+}
+
+pub fn deserialize_relative_time<'de, D>(deserializer: D) -> Result<RelativeTime, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    struct Visitor;
+
+    impl<'de> de::Visitor<'de> for Visitor {
+        type Value = RelativeTime;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a blocknumber as a string")
+        }
+
+        fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+        where
+            E: de::Error,
+        {
+            let value: u32 = v.parse().map_err(E::custom)?;
+            Ok(RelativeTime::from(value))
+        }
+    }
+
+    deserializer.deserialize_any(Visitor)
+}
+
 pub fn deserialize_r_preimage<'de, D>(deserializer: D) -> Result<Option<[u8; 32]>, D::Error>
 where
     D: Deserializer<'de>,
@@ -483,12 +590,10 @@ where
 
     deserializer.deserialize_any(Visitor)
 }
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use spectral::prelude::*;
-
     #[test]
     fn deserialize_ln_invoice_preimage_present() {
         let r_preimage = [
@@ -507,6 +612,7 @@ mod tests {
       "amt_paid_msat": "0",
       "state": "SETTLED"
     }"#;
+
         let invoice = serde_json::from_str::<Invoice>(invoice_json).unwrap();
         assert_that(&invoice.r_preimage)
             .is_some()
