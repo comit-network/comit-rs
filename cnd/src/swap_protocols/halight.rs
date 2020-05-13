@@ -5,11 +5,10 @@ use crate::{
         rfc003::{Secret, SecretHash},
         state,
         state::Update,
-        HanEtherereumHalightBitcoinCreateSwapParams, Ledger, LocalSwapId,
+        Ledger, LocalSwapId,
     },
     timestamp::Timestamp,
 };
-
 use futures::{
     future::{self, Either},
     Stream, TryFutureExt, TryStreamExt,
@@ -23,6 +22,7 @@ use tokio::sync::Mutex;
 
 mod connector;
 
+use crate::timestamp::RelativeTime;
 pub use connector::*;
 
 /// Htlc Lightning Bitcoin atomic swap protocol.
@@ -54,14 +54,13 @@ pub struct InProgressSwap {
 /// logging information and store the events yielded by the protocol.
 pub async fn new_halight_swap<C>(
     id: LocalSwapId,
-    secret_hash: SecretHash,
-    swap_params: Params,
+    params: Params,
     state_store: Arc<States>,
     connector: C,
 ) where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
-    let mut events = new(&connector, secret_hash, swap_params)
+    let mut events = new(&connector, params)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
@@ -75,38 +74,22 @@ pub async fn new_halight_swap<C>(
 /// Resolves when said event has occured.
 #[async_trait::async_trait]
 pub trait WaitForOpened {
-    async fn wait_for_opened(
-        &self,
-        secret_hash: SecretHash,
-        params: Params,
-    ) -> anyhow::Result<Opened>;
+    async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForAccepted {
-    async fn wait_for_accepted(
-        &self,
-        secret_hash: SecretHash,
-        params: Params,
-    ) -> anyhow::Result<Accepted>;
+    async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForSettled {
-    async fn wait_for_settled(
-        &self,
-        secret_hash: SecretHash,
-        params: Params,
-    ) -> anyhow::Result<Settled>;
+    async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForCancelled {
-    async fn wait_for_cancelled(
-        &self,
-        secret_hash: SecretHash,
-        params: Params,
-    ) -> anyhow::Result<Cancelled>;
+    async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled>;
 }
 
 /// Represents states that an invoice can be in.
@@ -248,11 +231,7 @@ impl state::Update<Event> for States {
 /// Creates a new instance of the halight protocol.
 ///
 /// Returns a stream of events happening during the execution.
-fn new<'a, C>(
-    connector: &'a C,
-    secret_hash: SecretHash,
-    params: Params,
-) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+fn new<'a, C>(connector: &'a C, params: Params) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
@@ -261,19 +240,19 @@ where
             co.yield_(Ok(Event::Started)).await;
 
             let opened_or_error = connector
-                .wait_for_opened(secret_hash, params)
+                .wait_for_opened(&params)
                 .map_ok(Event::Opened)
                 .await;
             co.yield_(opened_or_error).await;
 
             let accepted_or_error = connector
-                .wait_for_accepted(secret_hash, params)
+                .wait_for_accepted(&params)
                 .map_ok(Event::Accepted)
                 .await;
             co.yield_(accepted_or_error).await;
 
-            let settled = connector.wait_for_settled(secret_hash, params.clone());
-            let cancelled = connector.wait_for_cancelled(secret_hash, params);
+            let settled = connector.wait_for_settled(&params);
+            let cancelled = connector.wait_for_cancelled(&params);
 
             match future::try_select(settled, cancelled).await {
                 Ok(Either::Left((settled, _))) => {
@@ -295,16 +274,7 @@ where
 #[derive(Copy, Clone, Debug)]
 pub struct Params {
     pub identity: identity::Lightning,
-    pub cltv_expiry: Timestamp,
+    pub cltv_expiry: RelativeTime,
     pub amount: asset::Bitcoin,
-}
-
-impl From<HanEtherereumHalightBitcoinCreateSwapParams> for Params {
-    fn from(params: HanEtherereumHalightBitcoinCreateSwapParams) -> Self {
-        Params {
-            identity: params.lightning_identity,
-            cltv_expiry: params.lightning_cltv_expiry,
-            amount: params.lightning_amount,
-        }
-    }
+    pub secret_hash: SecretHash,
 }
