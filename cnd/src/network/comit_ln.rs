@@ -14,7 +14,7 @@ use crate::{
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
-    timestamp::Timestamp,
+    timestamp::{RelativeTime, Timestamp},
 };
 use digest::Digest;
 use futures::AsyncWriteExt;
@@ -325,7 +325,7 @@ pub struct FinalizedSwap {
     pub beta_ledger_refund_identity: identity::Lightning,
     pub beta_ledger_redeem_identity: identity::Lightning,
     pub alpha_expiry: Timestamp,
-    pub beta_expiry: Timestamp,
+    pub beta_expiry: RelativeTime,
     pub swap_id: LocalSwapId,
     pub secret_hash: SecretHash,
     pub secret: Option<Secret>,
@@ -651,7 +651,7 @@ mod tests {
         erc20: asset::Erc20,
         lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
-        lightning_cltv_expiry: Timestamp,
+        lightning_cltv_expiry: RelativeTime,
     ) -> Herc20HalightBitcoinCreateSwapParams {
         Herc20HalightBitcoinCreateSwapParams {
             role: Role::Alice,
@@ -674,7 +674,7 @@ mod tests {
         erc20: asset::Erc20,
         lnbtc: asset::Bitcoin,
         ethereum_absolute_expiry: Timestamp,
-        lightning_cltv_expiry: Timestamp,
+        lightning_cltv_expiry: RelativeTime,
     ) -> Herc20HalightBitcoinCreateSwapParams {
         Herc20HalightBitcoinCreateSwapParams {
             role: Role::Bob,
@@ -707,7 +707,7 @@ mod tests {
 
         let lnbtc = asset::Bitcoin::from_sat(42);
         let ethereum_expiry = Timestamp::from(100);
-        let lightning_expiry = Timestamp::from(200);
+        let lightning_expiry = RelativeTime::from(200);
 
         alice_swarm
             .initiate_communication(

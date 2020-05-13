@@ -67,14 +67,15 @@ pub mod lnd {
     use crate::{
         asset, identity,
         swap_protocols::rfc003::{Secret, SecretHash},
+        timestamp::RelativeTime,
     };
 
     #[derive(Debug, Clone, Copy, PartialEq)]
     pub struct AddHoldInvoice {
-        pub amount: asset::Bitcoin,  // The number of satoshis to send.
-        pub secret_hash: SecretHash, // The hash to use within the payment's HTLC.
-        pub expiry: u32,
-        pub cltv_expiry: u32,
+        pub amount: asset::Bitcoin,
+        pub secret_hash: SecretHash,
+        pub expiry: RelativeTime, // The invoice's expiry
+        pub cltv_expiry: RelativeTime,
         pub chain: Chain,
         pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
@@ -101,7 +102,7 @@ pub mod lnd {
         pub to_public_key: identity::Lightning,
         pub amount: asset::Bitcoin,  // The number of satoshis to send.
         pub secret_hash: SecretHash, // The hash to use within the payment's HTLC.
-        pub final_cltv_delta: u32,
+        pub final_cltv_delta: RelativeTime,
         pub chain: Chain,
         pub network: bitcoin::Network,
         pub self_public_key: identity::Lightning,
