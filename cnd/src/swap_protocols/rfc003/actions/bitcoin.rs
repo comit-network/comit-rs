@@ -13,11 +13,8 @@ use crate::{
 use ::bitcoin::{Amount, OutPoint, Transaction};
 use blockchain_contracts::bitcoin::{rfc003::bitcoin_htlc::BitcoinHtlc, witness::PrimedInput};
 
-impl<B> MakeFundAction for (B, asset::Bitcoin)
-where
-    B: ledger::Bitcoin + ledger::bitcoin::Network,
-{
-    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+impl MakeFundAction for (ledger::Bitcoin, asset::Bitcoin) {
+    type HtlcParams = HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>;
     type Output = SendToAddress;
 
     fn make_fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
@@ -26,16 +23,13 @@ where
         SendToAddress {
             to,
             amount: htlc_params.asset,
-            network: B::network(),
+            network: htlc_params.ledger.into(),
         }
     }
 }
 
-impl<B> MakeRefundAction for (B, asset::Bitcoin)
-where
-    B: ledger::Bitcoin + ledger::bitcoin::Network,
-{
-    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+impl MakeRefundAction for (ledger::Bitcoin, asset::Bitcoin) {
+    type HtlcParams = HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>;
     type HtlcLocation = OutPoint;
     type FundTransaction = Transaction;
     type Output = SpendOutput;
@@ -54,16 +48,13 @@ where
                 Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
                 htlc.unlock_after_timeout(&*crate::SECP, secret_source.derive_refund_identity()),
             ),
-            network: B::network(),
+            network: htlc_params.ledger.into(),
         }
     }
 }
 
-impl<B> MakeRedeemAction for (B, asset::Bitcoin)
-where
-    B: ledger::Bitcoin + ledger::bitcoin::Network,
-{
-    type HtlcParams = HtlcParams<B, asset::Bitcoin, identity::Bitcoin>;
+impl MakeRedeemAction for (ledger::Bitcoin, asset::Bitcoin) {
+    type HtlcParams = HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>;
     type HtlcLocation = OutPoint;
     type Output = SpendOutput;
 
@@ -85,7 +76,7 @@ where
                     secret.into_raw_secret(),
                 ),
             ),
-            network: B::network(),
+            network: htlc_params.ledger.into(),
         }
     }
 }

@@ -3,18 +3,17 @@ use crate::{
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, BitcoinLedgerKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
+        AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
     },
     identity,
     quickcheck::Quickcheck,
     swap_protocols::{
-        ledger::Ethereum,
+        ledger::{self, Ethereum},
         rfc003::{Accept, Request},
     },
 };
 use std::path::Path;
 
-use crate::swap_protocols::ledger::bitcoin::{Mainnet, Regtest, Testnet};
 macro_rules! db_roundtrip_test {
     ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $alpha_identity:ident, $beta_identity:ident, $expected_swap_types_fn:expr) => {
         paste::item! {
@@ -82,9 +81,12 @@ macro_rules! db_roundtrip_test {
 
 // do_roundtrip_test! does not seem to like being called with `::` in an ident.
 use identity::{Bitcoin as BitcoinIdentity, Ethereum as EthereumIdentity};
+use ledger::Bitcoin as BitcoinLedger;
+
+// TODO: Should work with full enum `ledger::Bitcoin`
 
 db_roundtrip_test!(
-    Mainnet,
+    BitcoinLedger,
     Ethereum,
     BitcoinAsset,
     Ether,
@@ -92,7 +94,7 @@ db_roundtrip_test!(
     EthereumIdentity,
     |role| {
         SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_ledger: LedgerKind::Bitcoin,
             beta_ledger: LedgerKind::Ethereum,
             alpha_asset: AssetKind::Bitcoin,
             beta_asset: AssetKind::Ether,
@@ -102,43 +104,7 @@ db_roundtrip_test!(
 );
 
 db_roundtrip_test!(
-    Testnet,
-    Ethereum,
-    BitcoinAsset,
-    Ether,
-    BitcoinIdentity,
-    EthereumIdentity,
-    |role| {
-        SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role,
-        }
-    }
-);
-
-db_roundtrip_test!(
-    Regtest,
-    Ethereum,
-    BitcoinAsset,
-    Ether,
-    BitcoinIdentity,
-    EthereumIdentity,
-    |role| {
-        SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
-            beta_ledger: LedgerKind::Ethereum,
-            alpha_asset: AssetKind::Bitcoin,
-            beta_asset: AssetKind::Ether,
-            role,
-        }
-    }
-);
-
-db_roundtrip_test!(
-    Mainnet,
+    BitcoinLedger,
     Ethereum,
     BitcoinAsset,
     Erc20,
@@ -146,7 +112,7 @@ db_roundtrip_test!(
     EthereumIdentity,
     |role| {
         SwapTypes {
-            alpha_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            alpha_ledger: LedgerKind::Bitcoin,
             beta_ledger: LedgerKind::Ethereum,
             alpha_asset: AssetKind::Bitcoin,
             beta_asset: AssetKind::Erc20,
@@ -157,7 +123,7 @@ db_roundtrip_test!(
 
 db_roundtrip_test!(
     Ethereum,
-    Mainnet,
+    BitcoinLedger,
     Ether,
     BitcoinAsset,
     EthereumIdentity,
@@ -165,16 +131,17 @@ db_roundtrip_test!(
     |role| {
         SwapTypes {
             alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Bitcoin,
             alpha_asset: AssetKind::Ether,
             beta_asset: AssetKind::Bitcoin,
             role,
         }
     }
 );
+
 db_roundtrip_test!(
     Ethereum,
-    Mainnet,
+    BitcoinLedger,
     Erc20,
     BitcoinAsset,
     EthereumIdentity,
@@ -182,7 +149,7 @@ db_roundtrip_test!(
     |role| {
         SwapTypes {
             alpha_ledger: LedgerKind::Ethereum,
-            beta_ledger: LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
+            beta_ledger: LedgerKind::Bitcoin,
             alpha_asset: AssetKind::Erc20,
             beta_asset: AssetKind::Bitcoin,
             role,

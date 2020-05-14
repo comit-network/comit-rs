@@ -2,7 +2,7 @@ use crate::{
     http_api::action::ListRequiredFields,
     identity,
     swap_protocols::{
-        ledger::{bitcoin, Ethereum},
+        ledger,
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
@@ -17,19 +17,7 @@ pub struct OnlyRedeem<I> {
     pub alpha_ledger_redeem_identity: I,
 }
 
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Mainnet> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        ethereum_bitcoin_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Testnet> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        ethereum_bitcoin_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<Ethereum, bitcoin::Regtest> {
+impl ListRequiredFields for Accept<ledger::Ethereum, ledger::Bitcoin> {
     fn list_required_fields() -> Vec<siren::Field> {
         ethereum_bitcoin_accept_required_fields()
     }
@@ -68,19 +56,7 @@ pub struct OnlyRefund<I> {
     pub beta_ledger_refund_identity: I,
 }
 
-impl ListRequiredFields for Accept<bitcoin::Mainnet, Ethereum> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        bitcoin_ethereum_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<bitcoin::Testnet, Ethereum> {
-    fn list_required_fields() -> Vec<siren::Field> {
-        bitcoin_ethereum_accept_required_fields()
-    }
-}
-
-impl ListRequiredFields for Accept<bitcoin::Regtest, Ethereum> {
+impl ListRequiredFields for Accept<ledger::Bitcoin, ledger::Ethereum> {
     fn list_required_fields() -> Vec<siren::Field> {
         bitcoin_ethereum_accept_required_fields()
     }

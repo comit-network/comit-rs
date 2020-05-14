@@ -10,7 +10,7 @@ use crate::{
     },
     identity,
     swap_protocols::{
-        ledger::{bitcoin, Ethereum},
+        ledger,
         rfc003::{
             messages::{Accept, Request},
             SecretHash, SwapId,
@@ -21,7 +21,6 @@ use crate::{
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, RunQueryDsl};
-use impl_template::impl_template;
 use rfc003_schema::{
     rfc003_bitcoin_ethereum_accept_messages,
     rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages,
@@ -85,11 +84,10 @@ struct BitcoinEthereumBitcoinEtherAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[impl_template]
 impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
     for AcceptedSwap<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        Ethereum,
+        ledger::Bitcoin,
+        ledger::Ethereum,
         asset::Bitcoin,
         asset::Ether,
         identity::Bitcoin,
@@ -100,8 +98,8 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: __TYPE0__,
-                beta_ledger: Ethereum {
+                alpha_ledger: record.bitcoin_network.0.into(),
+                beta_ledger: ledger::Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
                 alpha_asset: record.bitcoin_amount.0.into(),
@@ -123,12 +121,11 @@ impl From<BitcoinEthereumBitcoinEtherAcceptedSwap>
     }
 }
 
-#[impl_template]
 #[async_trait]
 impl
     LoadAcceptedSwap<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        Ethereum,
+        ledger::Bitcoin,
+        ledger::Ethereum,
         asset::Bitcoin,
         asset::Ether,
         identity::Bitcoin,
@@ -140,8 +137,8 @@ impl
         key: &SwapId,
     ) -> anyhow::Result<
         AcceptedSwap<
-            __TYPE0__,
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Ether,
             identity::Bitcoin,
@@ -208,11 +205,10 @@ struct EthereumBitcoinEtherBitcoinAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[impl_template]
 impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
     for AcceptedSwap<
-        Ethereum,
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Ethereum,
+        ledger::Bitcoin,
         asset::Ether,
         asset::Bitcoin,
         identity::Ethereum,
@@ -223,10 +219,10 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: Ethereum {
+                alpha_ledger: ledger::Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: __TYPE0__,
+                beta_ledger: record.bitcoin_network.0.into(),
                 alpha_asset: record.ether_amount.0.into(),
                 beta_asset: record.bitcoin_amount.0.into(),
                 hash_function: *record.hash_function,
@@ -246,12 +242,11 @@ impl From<EthereumBitcoinEtherBitcoinAcceptedSwap>
     }
 }
 
-#[impl_template]
 #[async_trait]
 impl
     LoadAcceptedSwap<
-        Ethereum,
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Ethereum,
+        ledger::Bitcoin,
         asset::Ether,
         asset::Bitcoin,
         identity::Ethereum,
@@ -263,8 +258,8 @@ impl
         key: &SwapId,
     ) -> anyhow::Result<
         AcceptedSwap<
-            Ethereum,
-            __TYPE0__,
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Ether,
             asset::Bitcoin,
             identity::Ethereum,
@@ -332,11 +327,10 @@ struct BitcoinEthereumBitcoinErc20AcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[impl_template]
 impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
     for AcceptedSwap<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        Ethereum,
+        ledger::Bitcoin,
+        ledger::Ethereum,
         asset::Bitcoin,
         asset::Erc20,
         identity::Bitcoin,
@@ -347,8 +341,8 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: __TYPE0__,
-                beta_ledger: Ethereum {
+                alpha_ledger: record.bitcoin_network.0.into(),
+                beta_ledger: ledger::Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
                 alpha_asset: record.bitcoin_amount.0.into(),
@@ -373,12 +367,11 @@ impl From<BitcoinEthereumBitcoinErc20AcceptedSwap>
     }
 }
 
-#[impl_template]
 #[async_trait]
 impl
     LoadAcceptedSwap<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
-        Ethereum,
+        ledger::Bitcoin,
+        ledger::Ethereum,
         asset::Bitcoin,
         asset::Erc20,
         identity::Bitcoin,
@@ -390,8 +383,8 @@ impl
         key: &SwapId,
     ) -> anyhow::Result<
         AcceptedSwap<
-            __TYPE0__,
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Erc20,
             identity::Bitcoin,
@@ -460,11 +453,10 @@ struct EthereumBitcoinErc20BitcoinAcceptedSwap {
     at: NaiveDateTime,
 }
 
-#[impl_template]
 impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
     for AcceptedSwap<
-        Ethereum,
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Ethereum,
+        ledger::Bitcoin,
         asset::Erc20,
         asset::Bitcoin,
         identity::Ethereum,
@@ -475,10 +467,10 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
         (
             Request {
                 swap_id: *record.swap_id,
-                alpha_ledger: Ethereum {
+                alpha_ledger: ledger::Ethereum {
                     chain_id: record.ethereum_chain_id.0.into(),
                 },
-                beta_ledger: __TYPE0__,
+                beta_ledger: record.bitcoin_network.0.into(),
                 alpha_asset: asset::Erc20::new(
                     record.erc20_token_contract.0.into(),
                     record.erc20_amount.0.into(),
@@ -501,12 +493,11 @@ impl From<EthereumBitcoinErc20BitcoinAcceptedSwap>
     }
 }
 
-#[impl_template]
 #[async_trait]
 impl
     LoadAcceptedSwap<
-        Ethereum,
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Ethereum,
+        ledger::Bitcoin,
         asset::Erc20,
         asset::Bitcoin,
         identity::Ethereum,
@@ -518,8 +509,8 @@ impl
         key: &SwapId,
     ) -> anyhow::Result<
         AcceptedSwap<
-            Ethereum,
-            __TYPE0__,
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Erc20,
             asset::Bitcoin,
             identity::Ethereum,

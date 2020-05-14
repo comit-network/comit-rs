@@ -13,7 +13,7 @@ use crate::{
     },
     seed::{Rfc003DeriveSwapSeed, RootSeed, SwapSeed},
     swap_protocols::{
-        ledger::{bitcoin, Ethereum},
+        ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -132,11 +132,10 @@ where
     }
 }
 
-#[impl_template]
 #[async_trait::async_trait]
 impl
     HtlcFunded<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Bitcoin,
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
@@ -145,7 +144,7 @@ impl
 {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
+        htlc_params: &HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<asset::Bitcoin, transaction::Bitcoin>> {
@@ -155,11 +154,10 @@ impl
     }
 }
 
-#[impl_template]
 #[async_trait::async_trait]
 impl
     HtlcDeployed<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Bitcoin,
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
@@ -168,7 +166,7 @@ impl
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
+        htlc_params: &HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Bitcoin, transaction::Bitcoin>> {
         self.bitcoin_connector
@@ -177,11 +175,10 @@ impl
     }
 }
 
-#[impl_template]
 #[async_trait::async_trait]
 impl
     HtlcRedeemed<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Bitcoin,
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
@@ -190,7 +187,7 @@ impl
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
+        htlc_params: &HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Bitcoin>> {
@@ -200,11 +197,10 @@ impl
     }
 }
 
-#[impl_template]
 #[async_trait::async_trait]
 impl
     HtlcRefunded<
-        ((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest)),
+        ledger::Bitcoin,
         asset::Bitcoin,
         htlc_location::Bitcoin,
         identity::Bitcoin,
@@ -213,7 +209,7 @@ impl
 {
     async fn htlc_refunded(
         &self,
-        htlc_params: &HtlcParams<__TYPE0__, asset::Bitcoin, identity::Bitcoin>,
+        htlc_params: &HtlcParams<ledger::Bitcoin, asset::Bitcoin, identity::Bitcoin>,
         htlc_deployment: &Deployed<htlc_location::Bitcoin, transaction::Bitcoin>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Bitcoin>> {
@@ -227,7 +223,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcFunded<
-        Ethereum,
+        ledger::Ethereum,
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -236,7 +232,7 @@ impl
 {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, __TYPE0__, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<__TYPE0__, transaction::Ethereum>> {
@@ -250,7 +246,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcDeployed<
-        Ethereum,
+        ledger::Ethereum,
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -259,7 +255,7 @@ impl
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, __TYPE0__, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
         self.ethereum_connector
@@ -272,7 +268,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRedeemed<
-        Ethereum,
+        ledger::Ethereum,
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -281,7 +277,7 @@ impl
 {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, __TYPE0__, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
@@ -295,7 +291,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRefunded<
-        Ethereum,
+        ledger::Ethereum,
         ((asset::Ether, asset::Erc20)),
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -304,7 +300,7 @@ impl
 {
     async fn htlc_refunded(
         &self,
-        htlc_params: &HtlcParams<Ethereum, __TYPE0__, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, __TYPE0__, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Ethereum>> {
