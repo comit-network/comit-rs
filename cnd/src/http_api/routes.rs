@@ -155,7 +155,7 @@ pub async fn handle_get_halight_swap(
             (alpha_ledger_state, beta_ledger_state, finalized_swap)
         }
         (_, _, _, Some(created_swap)) => {
-            return make_created_swap_entity(swap_id, HanEthereumHalightBitcoinCreatedState {
+            return make_created_swap_entity(swap_id, Herc20HalightBitcoinCreatedState {
                 created_swap,
             })
         }
@@ -378,29 +378,29 @@ fn han_eth_halight_swap_status(
 }
 
 #[derive(Debug)]
-pub struct HanEthereumHalightBitcoinCreatedState {
+pub struct Herc20HalightBitcoinCreatedState {
     pub created_swap: Herc20HalightBitcoinCreateSwapParams,
 }
 
-impl GetSwapStatus for HanEthereumHalightBitcoinCreatedState {
+impl GetSwapStatus for Herc20HalightBitcoinCreatedState {
     fn get_swap_status(&self) -> SwapStatus {
         SwapStatus::Created
     }
 }
 
-impl GetRole for HanEthereumHalightBitcoinCreatedState {
+impl GetRole for Herc20HalightBitcoinCreatedState {
     fn get_role(&self) -> Role {
         self.created_swap.role
     }
 }
 
-impl QuantityWei for HanEthereumHalightBitcoinCreatedState {
+impl QuantityWei for Herc20HalightBitcoinCreatedState {
     fn quantity_wei(&self) -> String {
         self.created_swap.ethereum_amount.to_wei_dec()
     }
 }
 
-impl QuantitySatoshi for HanEthereumHalightBitcoinCreatedState {
+impl QuantitySatoshi for Herc20HalightBitcoinCreatedState {
     fn quantity_satoshi(&self) -> String {
         self.created_swap.lightning_amount.as_sat().to_string()
     }
