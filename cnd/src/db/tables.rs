@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        schema::{address_hints, halights, herc20s, secret_hashes, shared_swap_ids, swaps},
+        schema::{address_hints, halights, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
@@ -80,22 +80,6 @@ pub struct AddressHint {
 pub struct InsertableAddressHint {
     peer_id: Text<PeerId>,
     address_hint: Text<Multiaddr>,
-}
-
-#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
-#[belongs_to(Swap)]
-#[table_name = "shared_swap_ids"]
-pub struct SharedSwapId {
-    id: i32,
-    swap_id: i32,
-    pub shared_swap_id: Text<swap_protocols::SharedSwapId>,
-}
-
-#[derive(Insertable, Debug, Clone, Copy)]
-#[table_name = "shared_swap_ids"]
-pub struct InsertableSharedSwapId {
-    swap_id: i32,
-    shared_swap_id: Text<swap_protocols::SharedSwapId>,
 }
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -341,54 +325,6 @@ impl Sqlite {
             .ok_or(Error::SwapNotFound)?;
 
         Ok(record.secret_hash.0)
-    }
-
-    pub async fn save_shared_swap_id(
-        &self,
-        swap_id: LocalSwapId,
-        shared_swap_id: swap_protocols::SharedSwapId,
-    ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = InsertableSharedSwapId {
-                swap_id: swap.id,
-                shared_swap_id: Text(shared_swap_id),
-            };
-
-            diesel::insert_into(shared_swap_ids::dsl::shared_swap_ids)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn load_shared_swap_id(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<swap_protocols::SharedSwapId> {
-        let record: SharedSwapId = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                SharedSwapId::belonging_to(&swap)
-                    .first(connection)
-                    .optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record.shared_swap_id.0)
     }
 
     pub fn update_halight_refund_identity(
@@ -651,34 +587,6 @@ mod tests {
             .expect("to be able to load a previously saved secret hash");
 
         assert_eq!(loaded, secret_hash)
-    }
-
-    #[tokio::test]
-    async fn roundtrip_shared_swap_id() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
-
-        let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
-
-        db.save_swap(&swap)
-            .await
-            .expect("to be able to save a swap");
-
-        let shared_swap_id =
-            swap_protocols::SharedSwapId::from_str("ad9999ca-ecf2-4cc6-b35c-b4351ac28a34")
-                .expect("valid swap id");
-
-        db.save_shared_swap_id(swap_id, shared_swap_id)
-            .await
-            .expect("to be able to save swap id");
-
-        let loaded = db
-            .load_shared_swap_id(swap_id)
-            .await
-            .expect("to be able to load a previously saved swap id");
-
-        assert_eq!(loaded, shared_swap_id)
     }
 
     #[tokio::test]

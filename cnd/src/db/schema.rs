@@ -19,14 +19,6 @@ table! {
 }
 
 table! {
-   shared_swap_ids {
-       id -> Integer,
-       swap_id -> Integer,
-       shared_swap_id -> Text,
-   }
-}
-
-table! {
     address_hints {
         id -> Integer,
         peer_id -> Text,

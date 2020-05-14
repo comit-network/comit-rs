@@ -5,7 +5,7 @@ use crate::{
     },
     identity,
     network::WhatAliceLearnedFromBob,
-    swap_protocols::{halight, herc20, ledger, Ledger, LocalSwapId, SharedSwapId},
+    swap_protocols::{halight, herc20, ledger, Ledger, LocalSwapId},
     timestamp::Timestamp,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -67,13 +67,6 @@ async fn roundtrip_create_finalize_load() {
     db.save(created)
         .await
         .expect("to be able to save created swap");
-
-    // Simulate announce message.
-    let shared_swap_id =
-        SharedSwapId::from_str("222252ca-ecf2-4cc6-b35c-b4351ac28a34").expect("valid swap id");
-    db.save_shared_swap_id(local_swap_id, shared_swap_id)
-        .await
-        .expect("to be able to save shared swap id");
 
     let beta_refund_identity = identity::Lightning::random();
     let alpha_redeem_identity = identity::Ethereum::random();
