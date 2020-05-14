@@ -16,7 +16,7 @@ import { Actor } from "../src/actors/actor";
 
 describe("communication", () => {
     it(
-        "Alice creates and then Bob creates, it finalizes",
+        "alice-create-bob-create-finalizes",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
                 .herc20EthereumErc20HalightLightningBitcoin;
@@ -31,7 +31,7 @@ describe("communication", () => {
     );
 
     it(
-        "Bob creates and then Alice creates, it finalizes",
+        "bob-create-alice-create-finalizes",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob))
                 .herc20EthereumErc20HalightLightningBitcoin;
