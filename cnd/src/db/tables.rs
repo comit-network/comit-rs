@@ -8,7 +8,7 @@ use crate::{
         Error, Sqlite,
     },
     identity, lightning,
-    swap_protocols::{self, rfc003, HashFunction, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, herc20, rfc003, HashFunction, Ledger, LocalSwapId, Role},
 };
 use diesel::{self, prelude::*, RunQueryDsl};
 use libp2p::{Multiaddr, PeerId};
@@ -141,6 +141,36 @@ impl InsertableHerc20 {
             ledger: self.ledger,
         }
     }
+
+    pub fn from_created_swap(
+        swap_id: i32,
+        role: Role,
+        ledger: Ledger,
+        created_swap: herc20::CreatedSwap,
+    ) -> Self {
+        // Save the herc20 details.
+        let redeem_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(EthereumAddress::from(created_swap.identity))),
+        };
+        let refund_identity = match role {
+            Role::Alice => Some(Text(EthereumAddress::from(created_swap.identity))),
+            Role::Bob => None,
+        };
+        assert!(redeem_identity.is_some() || refund_identity.is_some());
+
+        Self {
+            swap_id,
+            amount: Text(created_swap.amount.into()),
+            chain_id: U32(created_swap.chain_id),
+            expiry: U32(created_swap.absolute_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            token_contract: Text(created_swap.token_contract.into()),
+            redeem_identity,
+            refund_identity,
+            ledger: Text(ledger),
+        }
+    }
 }
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -187,6 +217,35 @@ impl InsertableHalight {
             ledger: self.ledger,
         }
     }
+
+    pub fn from_created_swap(
+        swap_id: i32,
+        role: Role,
+        ledger: Ledger,
+        created: halight::CreatedSwap,
+    ) -> Self {
+        let redeem_identity = match role {
+            Role::Alice => Some(Text(created.identity)),
+            Role::Bob => None,
+        };
+        let refund_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(created.identity)),
+        };
+        assert!(redeem_identity.is_some() || refund_identity.is_some());
+
+        Self {
+            swap_id,
+            amount: Text(created.amount.into()),
+            network: Text(created.network.into()),
+            chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
+            cltv_expiry: U32(created.cltv_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            redeem_identity,
+            refund_identity,
+            ledger: Text(ledger),
+        }
+    }
 }
 
 impl Sqlite {
@@ -195,15 +254,18 @@ impl Sqlite {
         Ok(swap.role.0)
     }
 
-    pub async fn save_swap(&self, insertable: &InsertableSwap) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(swaps::dsl::swaps)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+    pub fn save_swap(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableSwap,
+    ) -> anyhow::Result<i32> {
+        diesel::insert_into(swaps::dsl::swaps)
+            .values(insertable)
+            .execute(connection)?;
 
-        Ok(())
+        let swap_id = swap_id_fk!(insertable.local_swap_id.0).first(connection)?;
+
+        Ok(swap_id)
     }
 
     pub async fn load_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<Swap> {
@@ -460,25 +522,14 @@ impl Sqlite {
         Ok(record.address_hint.0)
     }
 
-    pub(crate) async fn save_herc20(
+    pub(crate) fn save_herc20(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
         data: &InsertableHerc20,
     ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = data.with_swap_id(swap.id);
-
-            diesel::insert_into(herc20s::dsl::herc20s)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::insert_into(herc20s::dsl::herc20s)
+            .values(data)
+            .execute(connection)?;
 
         Ok(())
     }
@@ -500,25 +551,14 @@ impl Sqlite {
         Ok(record)
     }
 
-    pub async fn save_halight(
+    pub fn save_halight(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
         data: &InsertableHalight,
     ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = data.with_swap_id(swap.id);
-
-            diesel::insert_into(halights::dsl::halights)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::insert_into(halights::dsl::halights)
+            .values(data)
+            .execute(connection)?;
 
         Ok(())
     }
@@ -612,7 +652,7 @@ mod tests {
         let given = insertable_swap();
         let swap_id = given.local_swap_id.0;
 
-        db.save_swap(&given)
+        db.do_in_transaction(|conn| db.save_swap(conn, &given))
             .await
             .expect("to be able to save a swap");
 
@@ -632,7 +672,7 @@ mod tests {
         let swap = insertable_swap();
         let swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -689,7 +729,7 @@ mod tests {
 
         let swap = insertable_swap();
 
-        db.save_swap(&swap)
+        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -716,9 +756,10 @@ mod tests {
         let db = Sqlite::new(&path).expect("a new db");
 
         let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
+        let local_swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        let swap_id = db
+            .do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -732,7 +773,7 @@ mod tests {
             .expect("valid refund identity");
 
         let given = InsertableHerc20 {
-            swap_id: 0, // This is set when saving.
+            swap_id,
             amount: Text(amount),
             chain_id: U32(1337),
             expiry: U32(123),
@@ -743,12 +784,12 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.save_herc20(swap_id, &given)
+        db.do_in_transaction(|conn| db.save_herc20(conn, &given))
             .await
             .expect("to be able to save swap details");
 
         let loaded = db
-            .load_herc20(swap_id)
+            .load_herc20(local_swap_id)
             .await
             .expect("to be able to load a previously saved swap details");
 
@@ -761,9 +802,10 @@ mod tests {
         let db = Sqlite::new(&path).expect("a new db");
 
         let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
+        let local_swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        let swap_id = db
+            .do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -773,7 +815,7 @@ mod tests {
         let refund_identity = lightning::PublicKey::random();
 
         let given = InsertableHalight {
-            swap_id: 0, // This is set when saving.
+            swap_id,
             amount: Text(amount),
             network: Text(LightningNetwork::Testnet),
             chain: "bitcoin".to_string(),
@@ -784,12 +826,12 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.save_halight(swap_id, &given)
+        db.do_in_transaction(|conn| db.save_halight(conn, &given))
             .await
             .expect("to be able to save swap details");
 
         let loaded = db
-            .load_halight(swap_id)
+            .load_halight(local_swap_id)
             .await
             .expect("to be able to load a previously saved swap details");
 

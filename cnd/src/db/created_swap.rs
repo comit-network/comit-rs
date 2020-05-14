@@ -1,13 +1,9 @@
 use crate::{
     db::{
         tables::{InsertableHalight, InsertableHerc20, InsertableSwap},
-        wrapper_types::{
-            custom_sql_types::{Text, U32},
-            EthereumAddress,
-        },
         CreatedSwap, Error, Load, Save, Sqlite,
     },
-    swap_protocols::{halight, han, herc20, HashFunction, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, han, herc20, Ledger, LocalSwapId, Role},
 };
 use async_trait::async_trait;
 
@@ -30,61 +26,28 @@ impl Save<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>> for Sqlite {
         let local_swap_id = created.swap_id;
         let role = created.role;
 
-        let swap = InsertableSwap::new(created.swap_id, created.peer.clone(), created.role);
-        self.save_swap(&swap).await?;
+        self.do_in_transaction::<_, _, anyhow::Error>(|conn| {
+            let swap_id = self.save_swap(
+                conn,
+                &InsertableSwap::new(local_swap_id, created.peer.clone(), created.role),
+            )?;
+            self.save_herc20(
+                conn,
+                &InsertableHerc20::from_created_swap(
+                    swap_id,
+                    role,
+                    Ledger::Alpha,
+                    created.alpha.clone(),
+                ),
+            )?;
+            self.save_halight(
+                conn,
+                &InsertableHalight::from_created_swap(swap_id, role, Ledger::Beta, created.beta),
+            )?;
 
-        if let Some(address_hint) = created.address_hint {
-            self.save_address_hint(created.peer, &address_hint).await?;
-        }
-
-        // Save the herc20 details.
-        let redeem_identity = match role {
-            Role::Alice => None,
-            Role::Bob => Some(Text(EthereumAddress::from(created.alpha.identity))),
-        };
-        let refund_identity = match role {
-            Role::Alice => Some(Text(EthereumAddress::from(created.alpha.identity))),
-            Role::Bob => None,
-        };
-        assert!(redeem_identity.is_some() || refund_identity.is_some());
-
-        let herc = InsertableHerc20 {
-            swap_id: 0, // FK, set during save.
-            amount: Text(created.alpha.amount.into()),
-            chain_id: U32(created.alpha.chain_id),
-            expiry: U32(created.alpha.absolute_expiry),
-            hash_function: Text(HashFunction::Sha256),
-            token_contract: Text(created.alpha.token_contract.into()),
-            redeem_identity,
-            refund_identity,
-            ledger: Text(Ledger::Alpha),
-        };
-
-        self.save_herc20(local_swap_id, &herc).await?;
-
-        // Save the halight details.
-        let redeem_identity = match role {
-            Role::Alice => Some(Text(created.beta.identity)),
-            Role::Bob => None,
-        };
-        let refund_identity = match role {
-            Role::Alice => None,
-            Role::Bob => Some(Text(created.beta.identity)),
-        };
-        assert!(redeem_identity.is_some() || refund_identity.is_some());
-
-        let halight = InsertableHalight {
-            swap_id: 0, // FK, set during save.
-            amount: Text(created.beta.amount.into()),
-            network: Text(created.beta.network.into()),
-            chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
-            cltv_expiry: U32(created.beta.cltv_expiry),
-            hash_function: Text(HashFunction::Sha256),
-            redeem_identity,
-            refund_identity,
-            ledger: Text(Ledger::Beta),
-        };
-        self.save_halight(local_swap_id, &halight).await?;
+            Ok(())
+        })
+        .await?;
 
         Ok(())
     }
