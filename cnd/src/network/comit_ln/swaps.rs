@@ -163,20 +163,6 @@ impl<T> Swaps<T> {
         Ok(())
     }
 
-    /// Bob: get a swap created but not yet announced
-    pub fn get_pending_announcement(
-        &self,
-        digest: &SwapDigest,
-    ) -> Option<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams)> {
-        self.pending_announcement
-            .get(digest)
-            .and_then(|local_swap_id| {
-                self.swaps
-                    .get(local_swap_id)
-                    .map(|create_params| (*local_swap_id, create_params.clone()))
-            })
-    }
-
     /// Bob: Move a swap from pending announcement (created) to communicate upon
     /// receiving an announcement and replying to it
     pub fn move_pending_announcement_to_communicate(
