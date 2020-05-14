@@ -44,6 +44,7 @@ pub enum BehaviourOutEvent {
         swap_params: Herc20HalightBitcoinCreateSwapParams,
         secret_hash: SecretHash,
         ethereum_identity: identity::Ethereum,
+        lightning_identity: identity::Lightning,
     },
 }
 
@@ -600,12 +601,14 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .expect("must exist");
 
             let ethereum_identity = self.ethereum_identities.get(&swap_id).copied().unwrap();
+            let lightning_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
 
             self.events.push_back(BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
                 swap_params: create_swap_params,
                 secret_hash,
                 ethereum_identity,
+                lightning_identity,
             });
         }
     }
@@ -722,16 +725,12 @@ mod tests {
         match (alice_event, bob_event) {
             (
                 BehaviourOutEvent::SwapFinalized {
-                    local_swap_id: _alice_local_swap_id,
                     swap_params: alice_swap_params,
-                    secret_hash: _alice_secret_hash,
-                    ethereum_identity: _alice_eth_id,
+                    ..
                 },
                 BehaviourOutEvent::SwapFinalized {
-                    local_swap_id: _bob_local_swap_id,
                     swap_params: bob_swap_params,
-                    secret_hash: _bob_secret_hash,
-                    ethereum_identity: _bob_eth_id,
+                    ..
                 },
             ) => {
                 assert_eq!(bob_swap_params.digest(), alice_swap_params.digest());

@@ -1,10 +1,8 @@
-mod created_swap;
-mod in_progress_swap;
 #[cfg(test)]
 mod integration_tests;
 mod load_swaps;
 mod rfc003_schema;
-mod save;
+mod save_load_impls;
 mod schema;
 pub mod tables;
 mod wrapper_types;
@@ -18,22 +16,16 @@ embed_migrations!("./migrations");
 
 pub use self::{
     load_swaps::{AcceptedSwap, LoadAcceptedSwap},
-    save::*,
+    save_load_impls::*,
     swap::*,
     swap_types::*,
 };
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{
-        halight, han,
-        ledger::{ethereum::ChainId, Ethereum},
-        rfc003::{create_swap::HtlcParams, SecretHash, SwapId},
-        LocalSwapId, Role,
-    },
+    swap_protocols::{rfc003::SwapId, LocalSwapId, Role},
 };
 use async_trait::async_trait;
-use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -49,6 +41,14 @@ use tokio::sync::Mutex;
 #[async_trait]
 pub trait Save<T>: Send + Sync + 'static {
     async fn save(&self, swap: T) -> anyhow::Result<()>;
+}
+
+/// Convenience struct to use with `Save` for saving some data T that relates to
+/// a LocalSwapId.
+#[derive(Debug)]
+pub struct ForSwap<T> {
+    pub local_swap_id: LocalSwapId,
+    pub data: T,
 }
 
 /// Load data from the database.
@@ -99,7 +99,7 @@ impl Sqlite {
 
     async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
     where
-        F: Fn(&SqliteConnection) -> Result<T, E>,
+        F: FnOnce(&SqliteConnection) -> Result<T, E>,
         E: From<diesel::result::Error>,
     {
         let guard = self.connection.lock().await;
@@ -190,24 +190,9 @@ pub struct CreatedSwap<A, B> {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InProgressSwap<A, B> {
     pub swap_id: LocalSwapId,
-    pub secret_hash: SecretHash,
     pub role: Role,
     pub alpha: A,
     pub beta: B,
-}
-
-impl From<&InProgressSwap<han::InProgressSwap, halight::InProgressSwap>> for EtherHtlc {
-    fn from(swap: &InProgressSwap<han::InProgressSwap, halight::InProgressSwap>) -> Self {
-        HtlcParams {
-            asset: swap.alpha.asset.clone(),
-            ledger: Ethereum::new(ChainId::regtest()),
-            redeem_identity: swap.alpha.redeem_identity,
-            refund_identity: swap.alpha.refund_identity,
-            expiry: swap.alpha.expiry,
-            secret_hash: swap.secret_hash,
-        }
-        .into()
-    }
 }
 
 #[cfg(test)]

@@ -15,7 +15,6 @@ impl Load<InProgressSwap<herc20::InProgressSwap, halight::InProgressSwap>> for S
         let swap = self.load_swap(swap_id).await?;
         let herc20 = self.load_herc20(swap_id).await?;
         let halight = self.load_halight(swap_id).await?;
-        let secret_hash = self.load_secret_hash(swap_id).await?;
 
         let role = swap.role.0;
 
@@ -23,7 +22,6 @@ impl Load<InProgressSwap<herc20::InProgressSwap, halight::InProgressSwap>> for S
             Some(id) => id.0,
             None => return Ok(None),
         };
-
         let alpha_redeem_identity = match herc20.redeem_identity {
             Some(id) => id.0,
             None => return Ok(None),
@@ -39,7 +37,6 @@ impl Load<InProgressSwap<herc20::InProgressSwap, halight::InProgressSwap>> for S
 
         let live = InProgressSwap {
             swap_id,
-            secret_hash,
             role,
             alpha: herc20::InProgressSwap {
                 ledger: Ledger::Alpha,

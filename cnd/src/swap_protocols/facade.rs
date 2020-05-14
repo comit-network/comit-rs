@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    db::CreatedSwap,
+    db::{Save, Sqlite},
     identity,
     network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
     swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
@@ -88,13 +88,10 @@ pub struct Facade {
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
     pub alpha_ledger_states: Arc<LedgerStates>,
     pub beta_ledger_states: Arc<halight::States>,
+    pub db: Sqlite,
 }
 
 impl Facade {
-    pub async fn save<A, B>(&self, _: CreatedSwap<A, B>) -> anyhow::Result<()> {
-        Ok(())
-    }
-
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
@@ -112,5 +109,16 @@ impl Facade {
         id: LocalSwapId,
     ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.swarm.get_created_swap(id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T> Save<T> for Facade
+where
+    Sqlite: Save<T>,
+    T: Send + 'static,
+{
+    async fn save(&self, data: T) -> anyhow::Result<()> {
+        self.db.save(data).await
     }
 }

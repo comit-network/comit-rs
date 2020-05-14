@@ -1,15 +1,11 @@
 use crate::{
     asset,
     db::{
-        wrapper_types::{Erc20Amount, EthereumAddress},
-        CreatedSwap, InProgressSwap, Load, Role, Save, Sqlite,
+        wrapper_types::Erc20Amount, CreatedSwap, ForSwap, InProgressSwap, Load, Role, Save, Sqlite,
     },
     identity,
-    swap_protocols::{
-        halight, herc20, ledger,
-        rfc003::{Secret, SecretHash},
-        Ledger, LocalSwapId, SharedSwapId,
-    },
+    network::WhatAliceLearnedFromBob,
+    swap_protocols::{halight, herc20, ledger, Ledger, LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -40,18 +36,11 @@ async fn roundtrip_create_finalize_load() {
     let address_hint: Multiaddr = multi_addr.parse().expect("valid multiaddress");
 
     let alpha_amount = Erc20Amount::from_str("12345").expect("valid ERC20 amount");
-    let token_contract = EthereumAddress::from_str("1111e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-        .expect("valid etherum identity");
-    let alpha_redeem_identity =
-        EthereumAddress::from_str("2222e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-            .expect("valid redeem identity");
-    let alpha_refund_identity =
-        EthereumAddress::from_str("3333e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-            .expect("valid refund identity");
+    let token_contract = identity::Ethereum::random();
+    let alpha_refund_identity = identity::Ethereum::random();
     let alpha_expiry = Timestamp::from(123u32);
 
     let beta_amount = asset::Bitcoin::from_sat(999);
-    let beta_refund_identity = identity::Lightning::random();
     let beta_redeem_identity = identity::Lightning::random();
     let beta_expiry = Timestamp::from(456u32);
 
@@ -60,9 +49,9 @@ async fn roundtrip_create_finalize_load() {
         swap_id: local_swap_id,
         alpha: herc20::CreatedSwap {
             amount: alpha_amount.into(),
-            identity: alpha_refund_identity.into(),
+            identity: alpha_refund_identity,
             chain_id: 1337,
-            token_contract: token_contract.into(),
+            token_contract,
             absolute_expiry: alpha_expiry.into(),
         },
         beta: halight::CreatedSwap {
@@ -75,7 +64,7 @@ async fn roundtrip_create_finalize_load() {
         address_hint: Some(address_hint),
         role,
     };
-    Save::<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>>::save(&db, created)
+    db.save(created)
         .await
         .expect("to be able to save created swap");
 
@@ -86,30 +75,25 @@ async fn roundtrip_create_finalize_load() {
         .await
         .expect("to be able to save shared swap id");
 
-    // Simulate secret_hash message.
-    let secret = Secret::from(*b"This is our favourite passphrase");
-    let secret_hash = SecretHash::from(secret);
-
-    db.save_secret_hash(local_swap_id, secret_hash)
-        .await
-        .expect("to be able to save secret hash");
-
-    // Simulate identity messages.
-    db.save_counterparty_halight_refund_identity(local_swap_id, beta_refund_identity)
-        .await
-        .expect("to be able to save Lightning refund identity");
-    db.save_counterparty_herc20_redeem_identity(local_swap_id, alpha_redeem_identity.into())
-        .await
-        .expect("to be able to save Ethereum redeem identity");
+    let beta_refund_identity = identity::Lightning::random();
+    let alpha_redeem_identity = identity::Ethereum::random();
+    db.save(ForSwap {
+        local_swap_id,
+        data: WhatAliceLearnedFromBob {
+            refund_lightning_identity: beta_refund_identity,
+            redeem_ethereum_identity: alpha_redeem_identity,
+        },
+    })
+    .await
+    .expect("to be able to save to the database");
 
     let want: InProgressSwap<herc20::InProgressSwap, halight::InProgressSwap> = InProgressSwap {
         swap_id: local_swap_id,
-        secret_hash,
         role,
         alpha: herc20::InProgressSwap {
             ledger: Ledger::Alpha,
-            refund_identity: alpha_refund_identity.into(),
-            redeem_identity: alpha_redeem_identity.into(),
+            refund_identity: alpha_refund_identity,
+            redeem_identity: alpha_redeem_identity,
             expiry: alpha_expiry,
         },
         beta: halight::InProgressSwap {

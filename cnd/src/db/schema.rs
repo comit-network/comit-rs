@@ -63,3 +63,6 @@ table! {
         ledger -> Text,
     }
 }
+
+allow_tables_to_appear_in_same_query!(swaps, halights);
+allow_tables_to_appear_in_same_query!(swaps, herc20s);
