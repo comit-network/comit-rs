@@ -76,7 +76,7 @@ async fn roundtrip_create_finalize_load() {
         address_hint: Some(address_hint),
         role,
     };
-    Save::<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>>::save(&db, created)
+    db.save(created)
         .await
         .expect("to be able to save created swap");
 

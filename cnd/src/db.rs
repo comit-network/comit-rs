@@ -99,7 +99,7 @@ impl Sqlite {
 
     async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
     where
-        F: Fn(&SqliteConnection) -> Result<T, E>,
+        F: FnOnce(&SqliteConnection) -> Result<T, E>,
         E: From<diesel::result::Error>,
     {
         let guard = self.connection.lock().await;

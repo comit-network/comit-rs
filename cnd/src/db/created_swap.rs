@@ -1,49 +1,41 @@
 use crate::{
     db::{
-        tables::{InsertableHalight, InsertableHerc20, InsertableSwap},
+        tables::{Insert, InsertableSwap, IntoInsertable},
         CreatedSwap, Error, Load, Save, Sqlite,
     },
-    swap_protocols::{halight, han, herc20, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, herc20, Ledger, LocalSwapId, Role},
 };
 use async_trait::async_trait;
 
-#[async_trait]
-impl Save<CreatedSwap<han::CreatedSwap, halight::CreatedSwap>> for Sqlite {
+#[async_trait::async_trait]
+impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<CreatedSwap<TCreatedA, TCreatedB>>
+    for Sqlite
+where
+    TCreatedA: IntoInsertable<Insertable = TInsertableA> + Clone + Send + 'static,
+    TCreatedB: IntoInsertable<Insertable = TInsertableB> + Send + 'static,
+    TInsertableA: 'static,
+    TInsertableB: 'static,
+    Sqlite: Insert<TInsertableA> + Insert<TInsertableB>,
+{
     async fn save(
         &self,
-        _: CreatedSwap<han::CreatedSwap, halight::CreatedSwap>,
+        CreatedSwap {
+            swap_id,
+            role,
+            peer,
+            alpha,
+            beta,
+            ..
+        }: CreatedSwap<TCreatedA, TCreatedB>,
     ) -> anyhow::Result<()> {
-        unimplemented!()
-    }
-}
+        self.do_in_transaction::<_, _, anyhow::Error>(move |conn| {
+            let swap_id = self.save_swap(conn, &InsertableSwap::new(swap_id, peer, role))?;
 
-#[async_trait]
-impl Save<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>> for Sqlite {
-    async fn save(
-        &self,
-        created: CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        let local_swap_id = created.swap_id;
-        let role = created.role;
+            let insertable_alpha = alpha.into_insertable(swap_id, role, Ledger::Alpha);
+            let insertable_beta = beta.into_insertable(swap_id, role, Ledger::Beta);
 
-        self.do_in_transaction::<_, _, anyhow::Error>(|conn| {
-            let swap_id = self.save_swap(
-                conn,
-                &InsertableSwap::new(local_swap_id, created.peer.clone(), created.role),
-            )?;
-            self.save_herc20(
-                conn,
-                &InsertableHerc20::from_created_swap(
-                    swap_id,
-                    role,
-                    Ledger::Alpha,
-                    created.alpha.clone(),
-                ),
-            )?;
-            self.save_halight(
-                conn,
-                &InsertableHalight::from_created_swap(swap_id, role, Ledger::Beta, created.beta),
-            )?;
+            self.insert(conn, &insertable_alpha)?;
+            self.insert(conn, &insertable_beta)?;
 
             Ok(())
         })
@@ -126,7 +118,7 @@ mod tests {
         swap_protocols::ledger::lightning,
         timestamp::Timestamp,
     };
-    use libp2p::{Multiaddr, PeerId};
+    use libp2p::PeerId;
     use std::{path::PathBuf, str::FromStr};
 
     fn temp_db() -> PathBuf {
@@ -148,9 +140,6 @@ mod tests {
         let role = Role::Alice;
         let peer = PeerId::from_str("QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY")
             .expect("valid peer id");
-
-        let multi_addr = "/ip4/80.123.90.4/tcp/5432";
-        let address_hint: Multiaddr = multi_addr.parse().expect("valid multiaddress");
 
         let alpha_amount = Erc20Amount::from_str("12345").expect("valid ERC20 amount");
         let token_contract = EthereumAddress::from_str("1111e8be41b21f651a71aaB1A85c6813b8bBcCf8")
@@ -179,11 +168,11 @@ mod tests {
                 cltv_expiry: beta_expiry.into(),
             },
             peer,
-            address_hint: Some(address_hint),
+            address_hint: None,
             role,
         };
 
-        Save::<CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>>::save(&db, created.clone())
+        db.save(created.clone())
             .await
             .expect("to be able to save created swap");
 

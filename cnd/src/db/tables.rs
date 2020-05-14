@@ -127,45 +127,37 @@ pub struct InsertableHerc20 {
     pub ledger: Text<Ledger>,
 }
 
-impl InsertableHerc20 {
-    pub fn with_swap_id(&self, swap_id: i32) -> Self {
-        InsertableHerc20 {
-            swap_id,
-            amount: self.amount.clone(),
-            chain_id: self.chain_id,
-            expiry: self.expiry,
-            hash_function: self.hash_function,
-            token_contract: self.token_contract,
-            redeem_identity: self.redeem_identity,
-            refund_identity: self.refund_identity,
-            ledger: self.ledger,
-        }
-    }
+pub trait IntoInsertable {
+    type Insertable;
 
-    pub fn from_created_swap(
-        swap_id: i32,
-        role: Role,
-        ledger: Ledger,
-        created_swap: herc20::CreatedSwap,
-    ) -> Self {
-        // Save the herc20 details.
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable;
+}
+
+pub trait Insert<I> {
+    fn insert(&self, connection: &SqliteConnection, insertable: &I) -> anyhow::Result<()>;
+}
+
+impl IntoInsertable for herc20::CreatedSwap {
+    type Insertable = InsertableHerc20;
+
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
         let redeem_identity = match role {
             Role::Alice => None,
-            Role::Bob => Some(Text(EthereumAddress::from(created_swap.identity))),
+            Role::Bob => Some(Text(EthereumAddress::from(self.identity))),
         };
         let refund_identity = match role {
-            Role::Alice => Some(Text(EthereumAddress::from(created_swap.identity))),
+            Role::Alice => Some(Text(EthereumAddress::from(self.identity))),
             Role::Bob => None,
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
 
-        Self {
+        InsertableHerc20 {
             swap_id,
-            amount: Text(created_swap.amount.into()),
-            chain_id: U32(created_swap.chain_id),
-            expiry: U32(created_swap.absolute_expiry),
+            amount: Text(self.amount.into()),
+            chain_id: U32(self.chain_id),
+            expiry: U32(self.absolute_expiry),
             hash_function: Text(HashFunction::Sha256),
-            token_contract: Text(created_swap.token_contract.into()),
+            token_contract: Text(self.token_contract.into()),
             redeem_identity,
             refund_identity,
             ledger: Text(ledger),
@@ -203,48 +195,59 @@ pub struct InsertableHalight {
     pub ledger: Text<Ledger>,
 }
 
-impl InsertableHalight {
-    pub fn with_swap_id(&self, swap_id: i32) -> Self {
-        InsertableHalight {
-            swap_id,
-            amount: self.amount,
-            network: self.network,
-            chain: self.chain.clone(),
-            cltv_expiry: self.cltv_expiry,
-            hash_function: self.hash_function,
-            redeem_identity: self.redeem_identity,
-            refund_identity: self.refund_identity,
-            ledger: self.ledger,
-        }
-    }
+impl IntoInsertable for halight::CreatedSwap {
+    type Insertable = InsertableHalight;
 
-    pub fn from_created_swap(
-        swap_id: i32,
-        role: Role,
-        ledger: Ledger,
-        created: halight::CreatedSwap,
-    ) -> Self {
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
         let redeem_identity = match role {
-            Role::Alice => Some(Text(created.identity)),
+            Role::Alice => Some(Text(self.identity)),
             Role::Bob => None,
         };
         let refund_identity = match role {
             Role::Alice => None,
-            Role::Bob => Some(Text(created.identity)),
+            Role::Bob => Some(Text(self.identity)),
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
 
-        Self {
+        InsertableHalight {
             swap_id,
-            amount: Text(created.amount.into()),
-            network: Text(created.network.into()),
+            amount: Text(self.amount.into()),
+            network: Text(self.network.into()),
             chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
-            cltv_expiry: U32(created.cltv_expiry),
+            cltv_expiry: U32(self.cltv_expiry),
             hash_function: Text(HashFunction::Sha256),
             redeem_identity,
             refund_identity,
             ledger: Text(ledger),
         }
+    }
+}
+
+impl Insert<InsertableHerc20> for Sqlite {
+    fn insert(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableHerc20,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(herc20s::dsl::herc20s)
+            .values(insertable)
+            .execute(connection)?;
+
+        Ok(())
+    }
+}
+
+impl Insert<InsertableHalight> for Sqlite {
+    fn insert(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableHalight,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(halights::dsl::halights)
+            .values(insertable)
+            .execute(connection)?;
+
+        Ok(())
     }
 }
 
@@ -522,18 +525,6 @@ impl Sqlite {
         Ok(record.address_hint.0)
     }
 
-    pub(crate) fn save_herc20(
-        &self,
-        connection: &SqliteConnection,
-        data: &InsertableHerc20,
-    ) -> anyhow::Result<()> {
-        diesel::insert_into(herc20s::dsl::herc20s)
-            .values(data)
-            .execute(connection)?;
-
-        Ok(())
-    }
-
     pub async fn load_herc20(&self, swap_id: LocalSwapId) -> anyhow::Result<Herc20> {
         let record: Herc20 = self
             .do_in_transaction(|connection| {
@@ -549,18 +540,6 @@ impl Sqlite {
             .ok_or(Error::SwapNotFound)?;
 
         Ok(record)
-    }
-
-    pub fn save_halight(
-        &self,
-        connection: &SqliteConnection,
-        data: &InsertableHalight,
-    ) -> anyhow::Result<()> {
-        diesel::insert_into(halights::dsl::halights)
-            .values(data)
-            .execute(connection)?;
-
-        Ok(())
     }
 
     pub async fn load_halight(&self, swap_id: LocalSwapId) -> anyhow::Result<Halight> {
@@ -784,7 +763,7 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.do_in_transaction(|conn| db.save_herc20(conn, &given))
+        db.do_in_transaction(|conn| db.insert(conn, &given))
             .await
             .expect("to be able to save swap details");
 
@@ -826,7 +805,7 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.do_in_transaction(|conn| db.save_halight(conn, &given))
+        db.do_in_transaction(|conn| db.insert(conn, &given))
             .await
             .expect("to be able to save swap details");
 
