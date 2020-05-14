@@ -1,5 +1,8 @@
 use crate::{
-    network::protocols::announce::{protocol::ReplySubstream, SwapDigest},
+    network::{
+        comit_ln::Data,
+        protocols::announce::{protocol::ReplySubstream, SwapDigest},
+    },
     swap_protocols::{Herc20HalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
@@ -38,7 +41,7 @@ pub struct Swaps<T> {
     pending_creation: HashMap<SwapDigest, (PeerId, T)>,
 
     /// Stores the swap as soon as it is created
-    swaps: HashMap<LocalSwapId, Herc20HalightBitcoinCreateSwapParams>,
+    swaps: HashMap<LocalSwapId, Data>,
 
     /// Stores the shared swap id as soon as it is known.
     /// Bob defines the shared swap id when he confirms the swap by replying to
@@ -84,13 +87,13 @@ impl<T> Swaps<T> {
         &mut self,
         digest: SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
+        data: Data,
     ) -> Result<(), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
 
-        self.swaps.insert(local_swap_id, create_swap_params);
+        self.swaps.insert(local_swap_id, data);
 
         self.pending_confirmation
             .insert(digest.clone(), local_swap_id);
@@ -99,6 +102,11 @@ impl<T> Swaps<T> {
 
         Ok(())
     }
+
+    // Confirmation create a layer of complexity. Is it necessary? What if alice
+    // just send The shared swap id? Is the shared swap id even needed?
+    // What if announce was just a one shot behaviour to declared the shared swap
+    // id?
 
     /// Alice moves a swap announced (pending confirmation) to communicate upon
     /// receiving a confirmation from Bob
@@ -127,13 +135,13 @@ impl<T> Swaps<T> {
         &mut self,
         digest: SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
+        data: Data,
     ) -> Result<(), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
 
-        self.swaps.insert(local_swap_id, create_swap_params);
+        self.swaps.insert(local_swap_id, data);
 
         self.pending_announcement
             .insert(digest.clone(), local_swap_id);
@@ -201,33 +209,39 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         local_swap_id: LocalSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
+        peer_id: PeerId,
+        data: Data,
     ) -> Result<(SharedSwapId, PeerId, T), Error> {
         if self.swaps.get(&local_swap_id).is_some() {
             return Err(Error::AlreadyExists);
         }
 
-        let (peer, _) = match self.pending_creation.get(&digest) {
+        let (stored_peer_id, _) = match self.pending_creation.get(&digest) {
             Some(value) => value,
             None => return Err(Error::NotFound),
         };
 
-        if *peer != create_swap_params.peer.peer_id {
+        if *stored_peer_id != peer_id {
             return Err(Error::PeerIdMismatch);
         }
 
-        let (peer, io) = self
+        let (stored_peer_id, io) = self
             .pending_creation
             .remove(&digest)
-            .expect("Get already done");
+            .expect("should not fail because we just did a get on this hashmap");
 
-        self.swaps.insert(local_swap_id, create_swap_params);
+        self.swaps.insert(local_swap_id, data);
 
         let shared_swap_id = SharedSwapId::default();
         self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
 
-        Ok((shared_swap_id, peer, io))
+        Ok((shared_swap_id, stored_peer_id, io))
     }
+
+    // What is the point of finalize? The swap information is clear and spec'd
+    // Libp2p tells us if every message was received
+    // Instead of the other party telling us "you have everything to start",
+    // shouldn't we have a logic to say "I have everything to start" and just start.
 
     /// Either role finalizes a swap that was in the communication phase
     /// This also proceeds with clean up from the various _pending_ stores.
