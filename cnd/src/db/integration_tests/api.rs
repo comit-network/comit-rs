@@ -6,8 +6,7 @@ use crate::{
     },
     identity,
     swap_protocols::{
-        halight, herc20,
-        ledger::lightning,
+        halight, herc20, ledger,
         rfc003::{Secret, SecretHash},
         Ledger, LocalSwapId, SharedSwapId,
     },
@@ -69,7 +68,7 @@ async fn roundtrip_create_finalize_load() {
         beta: halight::CreatedSwap {
             amount: beta_amount,
             identity: beta_redeem_identity,
-            network: lightning::Regtest,
+            network: ledger::Lightning::Regtest,
             cltv_expiry: beta_expiry.into(),
         },
         peer,

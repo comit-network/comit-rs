@@ -10,14 +10,13 @@ use crate::{
     },
     identity,
     swap_protocols::{
-        ledger::{self, Ethereum},
+        ledger,
         rfc003::{Accept, Decline, Request, SecretHash, SwapId},
         HashFunction, Role,
     },
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;
-use impl_template::impl_template;
 use libp2p::{self, PeerId};
 
 #[async_trait]
@@ -70,17 +69,12 @@ struct InsertableBitcoinEthereumBitcoinEtherRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-#[impl_template]
 #[async_trait]
 impl
     Save<
         Request<
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Ether,
             identity::Bitcoin,
@@ -91,8 +85,8 @@ impl
     async fn save(
         &self,
         message: Request<
-            __TYPE0__,
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Ether,
             identity::Bitcoin,
@@ -101,8 +95,9 @@ impl
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_asset,
+            alpha_ledger,
             beta_ledger,
+            alpha_asset,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -115,7 +110,7 @@ impl
 
         let insertable = InsertableBitcoinEthereumBitcoinEtherRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
+            bitcoin_network: Text(alpha_ledger.into()),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             ether_amount: Text(beta_asset.into()),
@@ -155,17 +150,12 @@ struct InsertableBitcoinEthereumBitcoinErc20RequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-#[impl_template]
 #[async_trait]
 impl
     Save<
         Request<
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Erc20,
             identity::Bitcoin,
@@ -176,8 +166,8 @@ impl
     async fn save(
         &self,
         message: Request<
-            __TYPE0__,
-            Ethereum,
+            ledger::Bitcoin,
+            ledger::Ethereum,
             asset::Bitcoin,
             asset::Erc20,
             identity::Bitcoin,
@@ -186,8 +176,9 @@ impl
     ) -> anyhow::Result<()> {
         let Request {
             swap_id,
-            alpha_asset,
+            alpha_ledger,
             beta_ledger,
+            alpha_asset,
             beta_asset,
             hash_function,
             alpha_ledger_refund_identity,
@@ -200,7 +191,7 @@ impl
 
         let insertable = InsertableBitcoinEthereumBitcoinErc20RequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
+            bitcoin_network: Text(alpha_ledger.into()),
             ethereum_chain_id: U32(beta_ledger.chain_id.into()),
             bitcoin_amount: Text(alpha_asset.into()),
             erc20_amount: Text(beta_asset.quantity.into()),
@@ -240,17 +231,12 @@ struct InsertableEthereumBitcoinEtherBitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-#[impl_template]
 #[async_trait]
 impl
     Save<
         Request<
-            Ethereum,
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Ether,
             asset::Bitcoin,
             identity::Ethereum,
@@ -261,8 +247,8 @@ impl
     async fn save(
         &self,
         message: Request<
-            Ethereum,
-            __TYPE0__,
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Ether,
             asset::Bitcoin,
             identity::Ethereum,
@@ -272,6 +258,7 @@ impl
         let Request {
             swap_id,
             alpha_ledger,
+            beta_ledger,
             alpha_asset,
             beta_asset,
             hash_function,
@@ -285,7 +272,7 @@ impl
 
         let insertable = InsertableEthereumBitcoinEtherBitcoinRequestMessage {
             swap_id: Text(swap_id),
-            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
+            bitcoin_network: Text(beta_ledger.into()),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
             ether_amount: Text(alpha_asset.into()),
             bitcoin_amount: Text(beta_asset.into()),
@@ -325,17 +312,12 @@ struct InsertableEthereumBitcoinErc20BitcoinRequestMessage {
     secret_hash: Text<SecretHash>,
 }
 
-#[impl_template]
 #[async_trait]
 impl
     Save<
         Request<
-            Ethereum,
-            ((
-                ledger::bitcoin::Mainnet,
-                ledger::bitcoin::Testnet,
-                ledger::bitcoin::Regtest,
-            )),
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Erc20,
             asset::Bitcoin,
             identity::Ethereum,
@@ -346,8 +328,8 @@ impl
     async fn save(
         &self,
         message: Request<
-            Ethereum,
-            __TYPE0__,
+            ledger::Ethereum,
+            ledger::Bitcoin,
             asset::Erc20,
             asset::Bitcoin,
             identity::Ethereum,
@@ -357,6 +339,7 @@ impl
         let Request {
             swap_id,
             alpha_ledger,
+            beta_ledger,
             alpha_asset,
             beta_asset,
             hash_function,
@@ -371,7 +354,7 @@ impl
         let insertable = InsertableEthereumBitcoinErc20BitcoinRequestMessage {
             swap_id: Text(swap_id),
             ethereum_chain_id: U32(alpha_ledger.chain_id.into()),
-            bitcoin_network: Text(BitcoinNetwork::from(__TYPE0__)),
+            bitcoin_network: Text(beta_ledger.into()),
             erc20_amount: Text(alpha_asset.quantity.into()),
             erc20_token_contract: Text(alpha_asset.token_contract.into()),
             bitcoin_amount: Text(beta_asset.into()),

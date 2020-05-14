@@ -1,56 +1,41 @@
 use crate::comit_api::LedgerKind;
+use serde::Deserialize;
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Mainnet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Testnet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub struct Regtest;
-
-pub trait Bitcoin:
-    Sized + std::fmt::Debug + std::hash::Hash + Eq + Sync + Copy + Send + 'static
-{
+#[derive(Clone, Copy, Debug, Deserialize, PartialEq, Eq, Hash)]
+pub enum Bitcoin {
+    Mainnet,
+    Testnet,
+    Regtest,
 }
 
-pub trait Network {
-    fn network() -> ::bitcoin::Network;
-}
-
-impl Bitcoin for Mainnet {}
-
-impl From<Mainnet> for LedgerKind {
-    fn from(_: Mainnet) -> Self {
-        LedgerKind::BitcoinMainnet
-    }
-}
-impl Network for Mainnet {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Bitcoin
-    }
-}
-impl Bitcoin for Testnet {}
-
-impl From<Testnet> for LedgerKind {
-    fn from(_: Testnet) -> Self {
-        LedgerKind::BitcoinTestnet
-    }
-}
-impl Network for Testnet {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Testnet
+impl Default for Bitcoin {
+    fn default() -> Self {
+        Self::Regtest
     }
 }
 
-impl Bitcoin for Regtest {}
-impl From<Regtest> for LedgerKind {
-    fn from(_: Regtest) -> Self {
-        LedgerKind::BitcoinRegtest
+impl From<Bitcoin> for ::bitcoin::Network {
+    fn from(bitcoin: Bitcoin) -> ::bitcoin::Network {
+        match bitcoin {
+            Bitcoin::Mainnet => ::bitcoin::Network::Bitcoin,
+            Bitcoin::Testnet => ::bitcoin::Network::Testnet,
+            Bitcoin::Regtest => ::bitcoin::Network::Regtest,
+        }
     }
 }
-impl Network for Regtest {
-    fn network() -> ::bitcoin::Network {
-        ::bitcoin::Network::Regtest
+
+impl From<::bitcoin::Network> for Bitcoin {
+    fn from(network: ::bitcoin::Network) -> Self {
+        match network {
+            bitcoin::Network::Bitcoin => Bitcoin::Mainnet,
+            bitcoin::Network::Testnet => Bitcoin::Testnet,
+            bitcoin::Network::Regtest => Bitcoin::Regtest,
+        }
+    }
+}
+
+impl From<Bitcoin> for LedgerKind {
+    fn from(bitcoin: Bitcoin) -> Self {
+        LedgerKind::Bitcoin(bitcoin)
     }
 }

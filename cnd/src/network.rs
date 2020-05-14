@@ -366,9 +366,6 @@ impl ComitNode {
     }
 }
 
-// This is due to the introduction of a struct per Bitcoin network and can be
-// iteratively improved
-#[allow(clippy::cognitive_complexity)]
 async fn handle_request(
     db: Sqlite,
     swap_communication_states: Arc<SwapCommunicationStates>,
@@ -400,92 +397,14 @@ async fn handle_request(
 
                     match (alpha_ledger, beta_ledger, alpha_asset, beta_asset) {
                         (
-                            LedgerKind::BitcoinRegtest,
+                            LedgerKind::Bitcoin(alpha_ledger),
                             LedgerKind::Ethereum(beta_ledger),
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Ether(beta_asset),
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Regtest,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Bitcoin,
-                                htlc_location::Ethereum,
-                                _,
-                                _,
-                                transaction::Bitcoin,
-                                transaction::Ethereum,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::BitcoinTestnet,
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Ether(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                ledger::bitcoin::Testnet,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Bitcoin,
-                                htlc_location::Ethereum,
-                                _,
-                                _,
-                                transaction::Bitcoin,
-                                transaction::Ethereum,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::BitcoinMainnet,
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Ether(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                ledger::bitcoin::Mainnet,
+                                alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -518,14 +437,14 @@ async fn handle_request(
                         }
                         (
                             LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinRegtest,
+                            LedgerKind::Bitcoin(beta_ledger),
                             AssetKind::Ether(alpha_asset),
                             AssetKind::Bitcoin(beta_asset),
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
                                 alpha_ledger,
-                                ledger::bitcoin::Regtest,
+                                beta_ledger,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,
@@ -556,92 +475,14 @@ async fn handle_request(
                             Ok(swap_id)
                         }
                         (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinTestnet,
-                            AssetKind::Ether(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                ledger::bitcoin::Testnet,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Ethereum,
-                                htlc_location::Bitcoin,
-                                _,
-                                _,
-                                transaction::Ethereum,
-                                transaction::Bitcoin,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinMainnet,
-                            AssetKind::Ether(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                ledger::bitcoin::Mainnet,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Ethereum,
-                                htlc_location::Bitcoin,
-                                _,
-                                _,
-                                transaction::Ethereum,
-                                transaction::Bitcoin,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::BitcoinRegtest,
+                            LedgerKind::Bitcoin(alpha_ledger),
                             LedgerKind::Ethereum(beta_ledger),
                             AssetKind::Bitcoin(alpha_asset),
                             AssetKind::Erc20(beta_asset),
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Regtest,
+                                alpha_ledger,
                                 beta_ledger,
                                 alpha_asset,
                                 beta_asset,
@@ -674,173 +515,15 @@ async fn handle_request(
                             Ok(swap_id)
                         }
                         (
-                            LedgerKind::BitcoinTestnet,
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Erc20(beta_asset),
+                            LedgerKind::Ethereum(alpha_ledger),
+                            LedgerKind::Bitcoin(beta_ledger),
+                            AssetKind::Erc20(alpha_asset),
+                            AssetKind::Bitcoin(beta_asset),
                         ) => {
                             let request = rfc003_swap_request(
                                 swap_id,
-                                ledger::bitcoin::Testnet,
+                                alpha_ledger,
                                 beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Bitcoin,
-                                htlc_location::Ethereum,
-                                _,
-                                _,
-                                transaction::Bitcoin,
-                                transaction::Ethereum,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::BitcoinMainnet,
-                            LedgerKind::Ethereum(beta_ledger),
-                            AssetKind::Bitcoin(alpha_asset),
-                            AssetKind::Erc20(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                ledger::bitcoin::Mainnet,
-                                beta_ledger,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Ethereum,
-                                htlc_location::Bitcoin,
-                                _,
-                                _,
-                                transaction::Ethereum,
-                                transaction::Bitcoin,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinRegtest,
-                            AssetKind::Erc20(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                ledger::bitcoin::Regtest,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Ethereum,
-                                htlc_location::Bitcoin,
-                                _,
-                                _,
-                                transaction::Ethereum,
-                                transaction::Bitcoin,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinTestnet,
-                            AssetKind::Erc20(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                ledger::bitcoin::Testnet,
-                                alpha_asset,
-                                beta_asset,
-                                hash_function,
-                                body!(request.take_body_as()),
-                            );
-                            insert_state_for_bob::<
-                                _,
-                                _,
-                                _,
-                                _,
-                                htlc_location::Ethereum,
-                                htlc_location::Bitcoin,
-                                _,
-                                _,
-                                transaction::Ethereum,
-                                transaction::Bitcoin,
-                                _,
-                            >(
-                                db.clone(),
-                                swap_communication_states.clone(),
-                                alpha_ledger_states.clone(),
-                                beta_ledger_states.clone(),
-                                counterparty,
-                                request,
-                            )
-                            .await
-                            .expect("Could not save state to db");
-                            Ok(swap_id)
-                        }
-                        (
-                            LedgerKind::Ethereum(alpha_ledger),
-                            LedgerKind::BitcoinMainnet,
-                            AssetKind::Erc20(alpha_asset),
-                            AssetKind::Bitcoin(beta_asset),
-                        ) => {
-                            let request = rfc003_swap_request(
-                                swap_id,
-                                alpha_ledger,
-                                ledger::bitcoin::Mainnet,
                                 alpha_asset,
                                 beta_asset,
                                 hash_function,

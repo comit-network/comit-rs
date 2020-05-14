@@ -5,8 +5,7 @@ use crate::{
     ethereum::{Address, Bytes},
     identity,
     swap_protocols::{
-        ledger,
-        ledger::{bitcoin, ethereum::ChainId},
+        ledger::{self, ethereum::ChainId},
         rfc003::{Accept, Request, SecretHash, SwapId},
         HashFunction, Role,
     },
@@ -17,7 +16,6 @@ use ::bitcoin::{
     hashes::{sha256d, Hash},
     secp256k1,
 };
-use impl_template::impl_template;
 use libp2p::PeerId;
 use quickcheck::{Arbitrary, Gen};
 use std::ops::Deref;
@@ -206,10 +204,16 @@ impl Arbitrary for Quickcheck<SecretHash> {
     }
 }
 
-#[impl_template]
-impl Arbitrary for Quickcheck<((bitcoin::Mainnet, bitcoin::Testnet, bitcoin::Regtest))> {
-    fn arbitrary<G: Gen>(_g: &mut G) -> Self {
-        Quickcheck(__TYPE0__)
+impl Arbitrary for Quickcheck<ledger::Bitcoin> {
+    fn arbitrary<G: Gen>(g: &mut G) -> Self {
+        let ledger = match g.next_u32() % 3 {
+            0 => ledger::Bitcoin::Mainnet,
+            1 => ledger::Bitcoin::Testnet,
+            2 => ledger::Bitcoin::Regtest,
+            _ => unreachable!(),
+        };
+
+        Quickcheck(ledger)
     }
 }
 

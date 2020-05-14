@@ -26,9 +26,9 @@ macro_rules! with_swap_types {
     ($swap_types:expr, $fn:expr) => {{
         use crate::{
             asset,
-            db::{AssetKind, BitcoinLedgerKind, LedgerKind, SwapTypes},
+            db::{AssetKind, LedgerKind, SwapTypes},
             htlc_location, identity,
-            swap_protocols::ledger::{bitcoin, Ethereum},
+            swap_protocols::ledger,
             transaction,
         };
         let swap_types: SwapTypes = $swap_types;
@@ -36,362 +36,137 @@ macro_rules! with_swap_types {
 
         match swap_types {
             SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin(bitcoin_ledger_kind),
+                alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Ether,
                 ..
-            } => match bitcoin_ledger_kind {
-                BitcoinLedgerKind::Mainnet => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Mainnet;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Ether;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
+            } => {
+                #[allow(dead_code)]
+                type AL = ledger::Bitcoin;
+                #[allow(dead_code)]
+                type BL = ledger::Ethereum;
+                #[allow(dead_code)]
+                type AA = asset::Bitcoin;
+                #[allow(dead_code)]
+                type BA = asset::Ether;
+                #[allow(dead_code)]
+                type AH = htlc_location::Bitcoin;
+                #[allow(dead_code)]
+                type BH = htlc_location::Ethereum;
+                #[allow(dead_code)]
+                type AI = identity::Bitcoin;
+                #[allow(dead_code)]
+                type BI = identity::Ethereum;
+                #[allow(dead_code)]
+                type AT = transaction::Bitcoin;
+                #[allow(dead_code)]
+                type BT = transaction::Ethereum;
+                #[allow(dead_code)]
+                type AcceptBody =
+                    crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Testnet => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Testnet;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Ether;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Regtest => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Regtest;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Ether;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-            },
+                _match_role!(role, $fn)
+            }
             SwapTypes {
-                alpha_ledger: LedgerKind::Bitcoin(bitcoin_ledger_kind),
+                alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Erc20,
                 ..
-            } => match bitcoin_ledger_kind {
-                BitcoinLedgerKind::Testnet => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Testnet;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
+            } => {
+                #[allow(dead_code)]
+                type AL = ledger::Bitcoin;
+                #[allow(dead_code)]
+                type BL = ledger::Ethereum;
+                #[allow(dead_code)]
+                type AA = asset::Bitcoin;
+                #[allow(dead_code)]
+                type BA = asset::Erc20;
+                #[allow(dead_code)]
+                type AH = htlc_location::Bitcoin;
+                #[allow(dead_code)]
+                type BH = htlc_location::Ethereum;
+                #[allow(dead_code)]
+                type AI = identity::Bitcoin;
+                #[allow(dead_code)]
+                type BI = identity::Ethereum;
+                #[allow(dead_code)]
+                type AT = transaction::Bitcoin;
+                #[allow(dead_code)]
+                type BT = transaction::Ethereum;
+                #[allow(dead_code)]
+                type AcceptBody =
+                    crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
 
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Regtest => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Regtest;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Mainnet => {
-                    #[allow(dead_code)]
-                    type AL = bitcoin::Mainnet;
-                    #[allow(dead_code)]
-                    type BL = Ethereum;
-                    #[allow(dead_code)]
-                    type AA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type BA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type AI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type BI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type AT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type BT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRefund<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-            },
-
+                _match_role!(role, $fn)
+            }
             SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: LedgerKind::Bitcoin(bitcoin_ledger_kind),
+                beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Ether,
                 beta_asset: AssetKind::Bitcoin,
                 ..
-            } => match bitcoin_ledger_kind {
-                BitcoinLedgerKind::Mainnet => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Mainnet;
-                    #[allow(dead_code)]
-                    type AA = asset::Ether;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
+            } => {
+                #[allow(dead_code)]
+                type AL = ledger::Ethereum;
+                #[allow(dead_code)]
+                type BL = ledger::Bitcoin;
+                #[allow(dead_code)]
+                type AA = asset::Ether;
+                #[allow(dead_code)]
+                type BA = asset::Bitcoin;
+                #[allow(dead_code)]
+                type AH = htlc_location::Ethereum;
+                #[allow(dead_code)]
+                type BH = htlc_location::Bitcoin;
+                #[allow(dead_code)]
+                type AI = identity::Ethereum;
+                #[allow(dead_code)]
+                type BI = identity::Bitcoin;
+                #[allow(dead_code)]
+                type AT = transaction::Ethereum;
+                #[allow(dead_code)]
+                type BT = transaction::Bitcoin;
+                #[allow(dead_code)]
+                type AcceptBody =
+                    crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Testnet => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Testnet;
-                    #[allow(dead_code)]
-                    type AA = asset::Ether;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Regtest => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Regtest;
-                    #[allow(dead_code)]
-                    type AA = asset::Ether;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-            },
+                _match_role!(role, $fn)
+            }
             SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: LedgerKind::Bitcoin(bitcoin_ledger_kind),
+                beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Erc20,
                 beta_asset: AssetKind::Bitcoin,
                 ..
-            } => match bitcoin_ledger_kind {
-                BitcoinLedgerKind::Mainnet => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Mainnet;
-                    #[allow(dead_code)]
-                    type AA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
+            } => {
+                #[allow(dead_code)]
+                type AL = ledger::Ethereum;
+                #[allow(dead_code)]
+                type BL = ledger::Bitcoin;
+                #[allow(dead_code)]
+                type AA = asset::Erc20;
+                #[allow(dead_code)]
+                type BA = asset::Bitcoin;
+                #[allow(dead_code)]
+                type AI = identity::Ethereum;
+                #[allow(dead_code)]
+                type BI = identity::Bitcoin;
+                #[allow(dead_code)]
+                type AH = htlc_location::Ethereum;
+                #[allow(dead_code)]
+                type BH = htlc_location::Bitcoin;
+                #[allow(dead_code)]
+                type AT = transaction::Ethereum;
+                #[allow(dead_code)]
+                type BT = transaction::Bitcoin;
+                #[allow(dead_code)]
+                type AcceptBody =
+                    crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
 
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Testnet => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Testnet;
-                    #[allow(dead_code)]
-                    type AA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-                BitcoinLedgerKind::Regtest => {
-                    #[allow(dead_code)]
-                    type AL = Ethereum;
-                    #[allow(dead_code)]
-                    type BL = bitcoin::Regtest;
-                    #[allow(dead_code)]
-                    type AA = asset::Erc20;
-                    #[allow(dead_code)]
-                    type BA = asset::Bitcoin;
-                    #[allow(dead_code)]
-                    type AH = htlc_location::Ethereum;
-                    #[allow(dead_code)]
-                    type BH = htlc_location::Bitcoin;
-                    #[allow(dead_code)]
-                    type AI = identity::Ethereum;
-                    #[allow(dead_code)]
-                    type BI = identity::Bitcoin;
-                    #[allow(dead_code)]
-                    type AT = transaction::Ethereum;
-                    #[allow(dead_code)]
-                    type BT = transaction::Bitcoin;
-                    #[allow(dead_code)]
-                    type AcceptBody =
-                        crate::http_api::routes::rfc003::accept::OnlyRedeem<identity::Ethereum>;
-
-                    _match_role!(role, $fn)
-                }
-            },
+                _match_role!(role, $fn)
+            }
             _ => unimplemented!(),
         }
     }};

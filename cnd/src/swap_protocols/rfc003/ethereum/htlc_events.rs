@@ -1,13 +1,13 @@
 use crate::{
     asset,
-    asset::{ethereum::FromWei, Erc20, Erc20Quantity, Ether},
+    asset::{ethereum::FromWei, Erc20Quantity},
     btsieve::ethereum::{
         watch_for_contract_creation, watch_for_event, Cache, Event, Topic, Web3Connector,
     },
     ethereum::{Hash, U256},
     htlc_location, identity,
     swap_protocols::{
-        ledger::Ethereum,
+        ledger,
         rfc003::{
             create_swap::HtlcParams,
             events::{
@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 #[async_trait::async_trait]
 impl
     HtlcFunded<
-        Ethereum,
+        ledger::Ethereum,
         asset::Ether,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -42,13 +42,13 @@ impl
 {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
         deploy_transaction: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<asset::Ether, transaction::Ethereum>> {
         let expected_asset = &htlc_params.asset;
 
-        let asset = Ether::from_wei(deploy_transaction.transaction.value);
+        let asset = asset::Ether::from_wei(deploy_transaction.transaction.value);
 
         let event = match expected_asset.cmp(&asset) {
             Ordering::Equal => Funded::Correctly {
@@ -68,7 +68,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcDeployed<
-        Ethereum,
+        ledger::Ethereum,
         asset::Ether,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -77,7 +77,7 @@ impl
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
         let expected_bytecode = htlc_params.bytecode();
@@ -100,7 +100,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRedeemed<
-        Ethereum,
+        ledger::Ethereum,
         asset::Ether,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -109,7 +109,7 @@ impl
 {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+        _htlc_params: &HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
@@ -140,7 +140,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRefunded<
-        Ethereum,
+        ledger::Ethereum,
         asset::Ether,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -149,7 +149,7 @@ impl
 {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<Ethereum, asset::Ether, identity::Ethereum>,
+        _htlc_params: &HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Ethereum>> {
@@ -173,7 +173,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcFunded<
-        Ethereum,
+        ledger::Ethereum,
         asset::Erc20,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -182,7 +182,7 @@ impl
 {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded<asset::Erc20, transaction::Ethereum>> {
@@ -202,7 +202,7 @@ impl
         let expected_asset = &htlc_params.asset;
 
         let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
-        let asset = Erc20::new(log.address, quantity);
+        let asset = asset::Erc20::new(log.address, quantity);
 
         let event = match expected_asset.cmp(&asset) {
             Ordering::Equal => Funded::Correctly { transaction, asset },
@@ -216,7 +216,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcDeployed<
-        Ethereum,
+        ledger::Ethereum,
         asset::Erc20,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -225,7 +225,7 @@ impl
 {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams<Ethereum, asset::Erc20, identity::Ethereum>,
+        htlc_params: &HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed<htlc_location::Ethereum, transaction::Ethereum>> {
         let expected_bytecode = htlc_params.clone().bytecode();
@@ -248,7 +248,7 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRedeemed<
-        Ethereum,
+        ledger::Ethereum,
         asset::Erc20,
         htlc_location::Ethereum,
         identity::Ethereum,
@@ -257,7 +257,7 @@ impl
 {
     async fn htlc_redeemed(
         &self,
-        _htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
+        _htlc_params: &HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed<transaction::Ethereum>> {
@@ -284,8 +284,8 @@ impl
 #[async_trait::async_trait]
 impl
     HtlcRefunded<
-        Ethereum,
-        Erc20,
+        ledger::Ethereum,
+        asset::Erc20,
         htlc_location::Ethereum,
         identity::Ethereum,
         transaction::Ethereum,
@@ -293,7 +293,7 @@ impl
 {
     async fn htlc_refunded(
         &self,
-        _htlc_params: &HtlcParams<Ethereum, Erc20, identity::Ethereum>,
+        _htlc_params: &HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum>,
         htlc_deployment: &Deployed<htlc_location::Ethereum, transaction::Ethereum>,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded<transaction::Ethereum>> {

@@ -1,8 +1,5 @@
 use crate::{
-    asset,
-    asset::Bitcoin,
-    db::LedgerKind,
-    identity,
+    asset, identity,
     swap_protocols::ledger::{self, lightning},
 };
 use std::{fmt, str::FromStr};
@@ -31,7 +28,7 @@ impl fmt::Display for Satoshis {
 }
 
 impl From<asset::Bitcoin> for Satoshis {
-    fn from(btc: Bitcoin) -> Self {
+    fn from(btc: asset::Bitcoin) -> Self {
         Satoshis(btc.as_sat())
     }
 }
@@ -145,15 +142,23 @@ pub enum LightningNetwork {
     Regtest,
 }
 
-impl From<lightning::Regtest> for LightningNetwork {
-    fn from(_: lightning::Regtest) -> Self {
-        LightningNetwork::Regtest
+impl From<ledger::Lightning> for LightningNetwork {
+    fn from(lightning: lightning::Lightning) -> Self {
+        match lightning {
+            ledger::Lightning::Mainnet => LightningNetwork::Mainnet,
+            ledger::Lightning::Testnet => LightningNetwork::Testnet,
+            ledger::Lightning::Regtest => LightningNetwork::Regtest,
+        }
     }
 }
 
-impl From<LightningNetwork> for lightning::Regtest {
-    fn from(_: LightningNetwork) -> Self {
-        lightning::Regtest
+impl From<LightningNetwork> for ledger::Lightning {
+    fn from(network: LightningNetwork) -> Self {
+        match network {
+            LightningNetwork::Mainnet => ledger::Lightning::Mainnet,
+            LightningNetwork::Testnet => ledger::Lightning::Testnet,
+            LightningNetwork::Regtest => ledger::Lightning::Regtest,
+        }
     }
 }
 
@@ -219,28 +224,22 @@ impl fmt::Display for BitcoinNetwork {
     }
 }
 
-macro_rules! impl_from_for_bitcoinnetwork {
-    ($ledger:ident) => {
-        impl From<$ledger> for BitcoinNetwork {
-            fn from(_: $ledger) -> Self {
-                BitcoinNetwork::$ledger
-            }
+impl From<ledger::Bitcoin> for BitcoinNetwork {
+    fn from(bitcoin: ledger::Bitcoin) -> Self {
+        match bitcoin {
+            ledger::Bitcoin::Mainnet => BitcoinNetwork::Mainnet,
+            ledger::Bitcoin::Testnet => BitcoinNetwork::Testnet,
+            ledger::Bitcoin::Regtest => BitcoinNetwork::Regtest,
         }
-    };
+    }
 }
 
-use crate::db::BitcoinLedgerKind;
-use ledger::bitcoin::{Mainnet, Regtest, Testnet};
-impl_from_for_bitcoinnetwork!(Mainnet);
-impl_from_for_bitcoinnetwork!(Testnet);
-impl_from_for_bitcoinnetwork!(Regtest);
-
-impl From<BitcoinNetwork> for LedgerKind {
+impl From<BitcoinNetwork> for ledger::Bitcoin {
     fn from(network: BitcoinNetwork) -> Self {
         match network {
-            BitcoinNetwork::Mainnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet),
-            BitcoinNetwork::Testnet => LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet),
-            BitcoinNetwork::Regtest => LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest),
+            BitcoinNetwork::Mainnet => ledger::Bitcoin::Mainnet,
+            BitcoinNetwork::Testnet => ledger::Bitcoin::Testnet,
+            BitcoinNetwork::Regtest => ledger::Bitcoin::Regtest,
         }
     }
 }

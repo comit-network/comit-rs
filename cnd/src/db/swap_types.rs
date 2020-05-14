@@ -26,12 +26,12 @@ impl DetermineTypes for Sqlite {
     async fn determine_types(&self, key: &SwapId) -> anyhow::Result<SwapTypes> {
         let role = self.rfc003_role(key).await?;
 
-        if let Some(bitcoin_network) = self
+        if self
             .rfc003_bitcoin_ethereum_bitcoin_ether_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
-                alpha_ledger: bitcoin_network.into(),
+                alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Ether,
@@ -39,25 +39,25 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if let Some(bitcoin_network) = self
+        if self
             .rfc003_ethereum_bitcoin_ether_bitcoin_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: bitcoin_network.into(),
+                beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Ether,
                 beta_asset: AssetKind::Bitcoin,
                 role,
             });
         }
 
-        if let Some(bitcoin_network) = self
+        if self
             .rfc003_bitcoin_ethereum_bitcoin_erc20_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
-                alpha_ledger: bitcoin_network.into(),
+                alpha_ledger: LedgerKind::Bitcoin,
                 beta_ledger: LedgerKind::Ethereum,
                 alpha_asset: AssetKind::Bitcoin,
                 beta_asset: AssetKind::Erc20,
@@ -65,13 +65,13 @@ impl DetermineTypes for Sqlite {
             });
         }
 
-        if let Some(bitcoin_network) = self
+        if self
             .rfc003_ethereum_bitcoin_erc20_bitcoin_request_messages_has_swap(key)
             .await?
         {
             return Ok(SwapTypes {
                 alpha_ledger: LedgerKind::Ethereum,
-                beta_ledger: bitcoin_network.into(),
+                beta_ledger: LedgerKind::Bitcoin,
                 alpha_asset: AssetKind::Erc20,
                 beta_asset: AssetKind::Bitcoin,
                 role,
@@ -85,7 +85,7 @@ impl DetermineTypes for Sqlite {
 macro_rules! impl_has_swap {
     ($table:ident) => {
         paste::item! {
-            async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<Option<BitcoinNetwork>> {
+            async fn [<$table _has_swap>](&self, key: &SwapId) -> anyhow::Result<bool> {
                 use rfc003_schema::$table as swaps;
 
                 let record: Option<QueryableSwap> = self.do_in_transaction(|connection| {
@@ -99,11 +99,8 @@ macro_rules! impl_has_swap {
                 .await?;
 
                 match record {
-                    None => Ok(None),
-                    Some(swap) => {
-                        let network: BitcoinNetwork = *swap.bitcoin_network;
-                        Ok(Some(network))
-                    }
+                    Some(_) => Ok(true),
+                    None => Ok(false),
                 }
             }
         }
@@ -133,30 +130,15 @@ pub struct SwapTypes {
 }
 
 #[derive(Debug, Clone, Copy, Display, PartialEq)]
-pub enum BitcoinLedgerKind {
-    Mainnet,
-    Testnet,
-    Regtest,
-}
-
-#[derive(Debug, Clone, Copy, Display, PartialEq)]
 pub enum LedgerKind {
-    Bitcoin(BitcoinLedgerKind),
+    Bitcoin,
     Ethereum,
 }
 
 impl From<comit_api::LedgerKind> for LedgerKind {
     fn from(ledger: comit_api::LedgerKind) -> LedgerKind {
         match ledger {
-            comit_api::LedgerKind::BitcoinMainnet => {
-                LedgerKind::Bitcoin(BitcoinLedgerKind::Mainnet)
-            }
-            comit_api::LedgerKind::BitcoinTestnet => {
-                LedgerKind::Bitcoin(BitcoinLedgerKind::Testnet)
-            }
-            comit_api::LedgerKind::BitcoinRegtest => {
-                LedgerKind::Bitcoin(BitcoinLedgerKind::Regtest)
-            }
+            comit_api::LedgerKind::Bitcoin(_) => LedgerKind::Bitcoin,
             comit_api::LedgerKind::Ethereum(_) => LedgerKind::Ethereum,
         }
     }

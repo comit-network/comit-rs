@@ -4,7 +4,7 @@ use crate::{
     htlc_location, identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
-        ledger::Ethereum,
+        ledger,
         rfc003::{
             actions::{MakeFundAction, MakeRedeemAction, MakeRefundAction},
             create_swap::HtlcParams,
@@ -14,8 +14,8 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::ether_htlc::EtherHtlc;
 
-impl MakeFundAction for (Ethereum, asset::Ether) {
-    type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
+impl MakeFundAction for (ledger::Ethereum, asset::Ether) {
+    type HtlcParams = HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>;
     type Output = DeployContract;
 
     fn make_fund_action(htlc_params: Self::HtlcParams) -> Self::Output {
@@ -31,8 +31,8 @@ impl MakeFundAction for (Ethereum, asset::Ether) {
     }
 }
 
-impl MakeRefundAction for (Ethereum, asset::Ether) {
-    type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
+impl MakeRefundAction for (ledger::Ethereum, asset::Ether) {
+    type HtlcParams = HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>;
     type HtlcLocation = htlc_location::Ethereum;
     type FundTransaction = Transaction;
     type Output = CallContract;
@@ -55,8 +55,8 @@ impl MakeRefundAction for (Ethereum, asset::Ether) {
     }
 }
 
-impl MakeRedeemAction for (Ethereum, asset::Ether) {
-    type HtlcParams = HtlcParams<Ethereum, asset::Ether, identity::Ethereum>;
+impl MakeRedeemAction for (ledger::Ethereum, asset::Ether) {
+    type HtlcParams = HtlcParams<ledger::Ethereum, asset::Ether, identity::Ethereum>;
     type HtlcLocation = htlc_location::Ethereum;
     type Output = CallContract;
 

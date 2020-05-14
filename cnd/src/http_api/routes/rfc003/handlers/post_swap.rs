@@ -132,79 +132,7 @@ pub async fn handle_post_swap(
 
     match body {
         SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinMainnet(alpha_ledger),
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Ether(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Bitcoin,
-                htlc_location::Ethereum,
-                _,
-                _,
-                transaction::Bitcoin,
-                transaction::Ethereum,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinTestnet(alpha_ledger),
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Ether(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Bitcoin,
-                htlc_location::Ethereum,
-                _,
-                _,
-                transaction::Bitcoin,
-                transaction::Ethereum,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinRegtest(alpha_ledger),
+            alpha_ledger: HttpLedger::Bitcoin(alpha_ledger),
             beta_ledger: HttpLedger::Ethereum(beta_ledger),
             alpha_asset: HttpAsset::Bitcoin(alpha_asset),
             beta_asset: HttpAsset::Ether(beta_asset),
@@ -241,296 +169,8 @@ pub async fn handle_post_swap(
         }
         SwapRequestBody {
             alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinMainnet(beta_ledger),
+            beta_ledger: HttpLedger::Bitcoin(beta_ledger),
             alpha_asset: HttpAsset::Ether(alpha_asset),
-            beta_asset: HttpAsset::Bitcoin(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Ethereum,
-                htlc_location::Bitcoin,
-                _,
-                _,
-                transaction::Ethereum,
-                transaction::Bitcoin,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinTestnet(beta_ledger),
-            alpha_asset: HttpAsset::Ether(alpha_asset),
-            beta_asset: HttpAsset::Bitcoin(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Ethereum,
-                htlc_location::Bitcoin,
-                _,
-                _,
-                transaction::Ethereum,
-                transaction::Bitcoin,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinRegtest(beta_ledger),
-            alpha_asset: HttpAsset::Ether(alpha_asset),
-            beta_asset: HttpAsset::Bitcoin(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Ethereum,
-                htlc_location::Bitcoin,
-                _,
-                _,
-                transaction::Ethereum,
-                transaction::Bitcoin,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinMainnet(alpha_ledger),
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Erc20(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Bitcoin,
-                htlc_location::Ethereum,
-                _,
-                _,
-                transaction::Bitcoin,
-                transaction::Ethereum,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinTestnet(alpha_ledger),
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Erc20(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Bitcoin,
-                htlc_location::Ethereum,
-                _,
-                _,
-                transaction::Bitcoin,
-                transaction::Ethereum,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::BitcoinRegtest(alpha_ledger),
-            beta_ledger: HttpLedger::Ethereum(beta_ledger),
-            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
-            beta_asset: HttpAsset::Erc20(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Bitcoin,
-                htlc_location::Ethereum,
-                _,
-                _,
-                transaction::Bitcoin,
-                transaction::Ethereum,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinMainnet(beta_ledger),
-            alpha_asset: HttpAsset::Erc20(alpha_asset),
-            beta_asset: HttpAsset::Bitcoin(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Ethereum,
-                htlc_location::Bitcoin,
-                _,
-                _,
-                transaction::Ethereum,
-                transaction::Bitcoin,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinTestnet(beta_ledger),
-            alpha_asset: HttpAsset::Erc20(alpha_asset),
-            beta_asset: HttpAsset::Bitcoin(beta_asset),
-            alpha_expiry,
-            beta_expiry,
-            identities,
-            peer,
-        } => {
-            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
-            let request = new_request(
-                id,
-                alpha_ledger,
-                beta_ledger,
-                alpha_asset,
-                beta_asset,
-                alpha_expiry,
-                beta_expiry,
-                identities,
-                secret_hash,
-            );
-            initiate_request::<
-                _,
-                _,
-                _,
-                _,
-                htlc_location::Ethereum,
-                htlc_location::Bitcoin,
-                _,
-                _,
-                transaction::Ethereum,
-                transaction::Bitcoin,
-            >(dependencies, id, peer, request)
-            .await?;
-        }
-        SwapRequestBody {
-            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
-            beta_ledger: HttpLedger::BitcoinRegtest(beta_ledger),
-            alpha_asset: HttpAsset::Erc20(alpha_asset),
             beta_asset: HttpAsset::Bitcoin(beta_asset),
             alpha_expiry,
             beta_expiry,
@@ -564,6 +204,79 @@ pub async fn handle_post_swap(
             .await?;
         }
 
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Bitcoin(alpha_ledger),
+            beta_ledger: HttpLedger::Ethereum(beta_ledger),
+            alpha_asset: HttpAsset::Bitcoin(alpha_asset),
+            beta_asset: HttpAsset::Erc20(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_bitcoin_ethereum_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Bitcoin,
+                htlc_location::Ethereum,
+                _,
+                _,
+                transaction::Bitcoin,
+                transaction::Ethereum,
+            >(dependencies, id, peer, request)
+            .await?;
+        }
+
+        SwapRequestBody {
+            alpha_ledger: HttpLedger::Ethereum(alpha_ledger),
+            beta_ledger: HttpLedger::Bitcoin(beta_ledger),
+            alpha_asset: HttpAsset::Erc20(alpha_asset),
+            beta_asset: HttpAsset::Bitcoin(beta_asset),
+            alpha_expiry,
+            beta_expiry,
+            identities,
+            peer,
+        } => {
+            let identities = identities.into_ethereum_bitcoin_identities(&seed)?;
+            let request = new_request(
+                id,
+                alpha_ledger,
+                beta_ledger,
+                alpha_asset,
+                beta_asset,
+                alpha_expiry,
+                beta_expiry,
+                identities,
+                secret_hash,
+            );
+            initiate_request::<
+                _,
+                _,
+                _,
+                _,
+                htlc_location::Ethereum,
+                htlc_location::Bitcoin,
+                _,
+                _,
+                transaction::Ethereum,
+                transaction::Bitcoin,
+            >(dependencies, id, peer, request)
+            .await?;
+        }
         _ => {
             return Err(anyhow::Error::from(UnsupportedSwap {
                 alpha_ledger: body.alpha_ledger,

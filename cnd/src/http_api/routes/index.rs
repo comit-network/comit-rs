@@ -5,8 +5,8 @@ use crate::{
     identity,
     network::{DialInformation, ListenAddresses},
     swap_protocols::{
-        halight, han, herc20, ledger::lightning, Facade, Herc20HalightBitcoinCreateSwapParams,
-        LocalSwapId, Rfc003Facade, Role,
+        halight, han, herc20, ledger, Facade, Herc20HalightBitcoinCreateSwapParams, LocalSwapId,
+        Rfc003Facade, Role,
     },
 };
 use http_api_problem::HttpApiProblem;
@@ -218,7 +218,7 @@ impl From<Herc20EthereumErc20> for herc20::CreatedSwap {
 pub struct HalightLightningBitcoin {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
-    pub network: Http<lightning::Regtest>,
+    pub network: Http<ledger::Lightning>,
     pub cltv_expiry: u32,
 }
 
