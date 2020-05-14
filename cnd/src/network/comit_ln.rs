@@ -17,7 +17,6 @@ use crate::{
     timestamp::{RelativeTime, Timestamp},
 };
 use digest::Digest;
-use futures::AsyncWriteExt;
 use libp2p::{
     swarm::{
         NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
@@ -409,34 +408,20 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
 impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for ComitLN {
     fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
         match event {
-            announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, mut io } => {
+            announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, io } => {
                 tracing::info!("Peer {} announced a swap ({})", peer, io.swap_digest);
                 let span =
                     tracing::trace_span!("swap", digest = format_args!("{}", io.swap_digest));
                 let _enter = span.enter();
-                // Check if there are any errors before modifying the hash-map.
-                match self.swaps.get_pending_announcement(&io.swap_digest) {
-                    Some((_, create_swap_params)) => {
-                        // Verify that the peer-id announcing the swap matches the peer-id agreed on
-                        // in the swap parameters. In case they don't match
-                        // the swap has to stay available in swaps awaiting announcement
-                        // but the current announcement will be rejected by closing the response
-                        // channel.
-
-                        if peer != create_swap_params.peer.peer_id {
-                            tracing::error!(
-                                "The peer-id {} of the swap awaiting announcement does not match expected peer-id {}",
-                                peer,
-                                create_swap_params.peer.peer_id
-                            );
-                            tokio::task::spawn(async move {
-                                let _ = io.io.close().await;
-                            });
-
-                            return;
-                        }
+                match self
+                    .swaps
+                    .move_pending_announcement_to_communicate(&io.swap_digest, &peer)
+                {
+                    Ok((shared_swap_id, create_params)) => {
+                        tracing::debug!("Swap confirmation and communication has started.");
+                        self.bob_communicate(peer, *io, shared_swap_id, create_params);
                     }
-                    None => {
+                    Err(swaps::Error::NotFound) => {
                         tracing::debug!("Swap has not been created yet, parking it.");
                         let _ = self
                             .swaps
@@ -446,17 +431,12 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                                     "Swap already known, Alice appeared to have sent it twice."
                                 )
                             });
-
-                        return;
                     }
-                }
-
-                if let Ok((shared_swap_id, create_params)) = self
-                    .swaps
-                    .move_pending_announcement_to_communicate(&io.swap_digest, &peer)
-                {
-                    tracing::debug!("Swap confirmation and communication has started.");
-                    self.bob_communicate(peer, *io, shared_swap_id, create_params);
+                    Err(err) => tracing::warn!(
+                        "Announcement for {} was not processed due to {}",
+                        io.swap_digest,
+                        err
+                    ),
                 }
             }
             announce::behaviour::BehaviourOutEvent::ReceivedConfirmation {
