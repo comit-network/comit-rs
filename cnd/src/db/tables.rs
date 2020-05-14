@@ -424,22 +424,20 @@ impl Sqlite {
         Ok(())
     }
 
-    pub async fn save_address_hint(
+    pub fn save_address_hint(
         &self,
+        connection: &SqliteConnection,
         peer_id: PeerId,
-        address_hint: &libp2p::Multiaddr,
+        address_hint: libp2p::Multiaddr,
     ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let insertable = InsertableAddressHint {
-                peer_id: Text(peer_id.clone()),
-                address_hint: Text(address_hint.clone()),
-            };
+        let insertable = InsertableAddressHint {
+            peer_id: Text(peer_id),
+            address_hint: Text(address_hint),
+        };
 
-            diesel::insert_into(address_hints::dsl::address_hints)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::insert_into(address_hints::dsl::address_hints)
+            .values(insertable)
+            .execute(connection)?;
 
         Ok(())
     }
@@ -698,9 +696,11 @@ mod tests {
         let multi_addr = "/ip4/80.123.90.4/tcp/5432";
         let address_hint: Multiaddr = multi_addr.parse().expect("valid multiaddress");
 
-        db.save_address_hint(peer_id.clone(), &address_hint)
-            .await
-            .expect("to be able to save address hint");
+        db.do_in_transaction(|conn| {
+            db.save_address_hint(conn, peer_id.clone(), address_hint.clone())
+        })
+        .await
+        .expect("to be able to save address hint");
 
         let loaded = db
             .load_address_hint(&peer_id)
