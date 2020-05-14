@@ -160,7 +160,7 @@ mod tests {
             Sqlite,
         },
         identity,
-        swap_protocols::ledger::lightning,
+        swap_protocols::ledger,
         timestamp::Timestamp,
     };
     use libp2p::{Multiaddr, PeerId};
@@ -212,7 +212,7 @@ mod tests {
             beta: halight::CreatedSwap {
                 amount: beta_amount,
                 identity: beta_identity,
-                network: lightning::Regtest,
+                network: ledger::Lightning::Regtest,
                 cltv_expiry: beta_expiry.into(),
             },
             peer,

@@ -142,15 +142,23 @@ pub enum LightningNetwork {
     Regtest,
 }
 
-impl From<lightning::Regtest> for LightningNetwork {
-    fn from(_: lightning::Regtest) -> Self {
-        LightningNetwork::Regtest
+impl From<ledger::Lightning> for LightningNetwork {
+    fn from(lightning: lightning::Lightning) -> Self {
+        match lightning {
+            ledger::Lightning::Mainnet => LightningNetwork::Mainnet,
+            ledger::Lightning::Testnet => LightningNetwork::Testnet,
+            ledger::Lightning::Regtest => LightningNetwork::Regtest,
+        }
     }
 }
 
-impl From<LightningNetwork> for lightning::Regtest {
-    fn from(_: LightningNetwork) -> Self {
-        lightning::Regtest
+impl From<LightningNetwork> for ledger::Lightning {
+    fn from(network: LightningNetwork) -> Self {
+        match network {
+            LightningNetwork::Mainnet => ledger::Lightning::Mainnet,
+            LightningNetwork::Testnet => ledger::Lightning::Testnet,
+            LightningNetwork::Regtest => ledger::Lightning::Regtest,
+        }
     }
 }
 

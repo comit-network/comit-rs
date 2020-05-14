@@ -10,7 +10,7 @@ use crate::{
     },
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
-        ledger::{ethereum::ChainId, lightning, Ethereum},
+        ledger::{self, ethereum::ChainId},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
@@ -190,8 +190,8 @@ impl ComitLN {
         };
 
         Some(FinalizedSwap {
-            alpha_ledger: Ethereum::new(ChainId::regtest()),
-            beta_ledger: lightning::Regtest,
+            alpha_ledger: ledger::Ethereum::new(ChainId::regtest()),
+            beta_ledger: ledger::Lightning::Regtest,
             alpha_asset: erc20,
             beta_asset: create_swap_params.lightning_amount,
             alpha_ledger_redeem_identity,
@@ -315,8 +315,8 @@ impl fmt::Display for SwapExists {
 
 #[derive(Clone, Debug)]
 pub struct FinalizedSwap {
-    pub alpha_ledger: Ethereum,
-    pub beta_ledger: lightning::Regtest,
+    pub alpha_ledger: ledger::Ethereum,
+    pub beta_ledger: ledger::Lightning,
     pub alpha_asset: asset::Erc20,
     pub beta_asset: asset::Bitcoin,
     pub alpha_ledger_refund_identity: identity::Ethereum,
@@ -332,10 +332,10 @@ pub struct FinalizedSwap {
 }
 
 impl FinalizedSwap {
-    pub fn herc20_params(&self) -> HtlcParams<Ethereum, asset::Erc20, identity::Ethereum> {
+    pub fn herc20_params(&self) -> HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum> {
         HtlcParams {
             asset: self.alpha_asset.clone(),
-            ledger: Ethereum::new(ChainId::regtest()),
+            ledger: ledger::Ethereum::new(ChainId::regtest()),
             redeem_identity: self.alpha_ledger_redeem_identity,
             refund_identity: self.alpha_ledger_refund_identity,
             expiry: self.alpha_expiry,

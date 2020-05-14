@@ -1,7 +1,7 @@
 use crate::{
     asset, identity,
     swap_protocols::{
-        ledger::lightning,
+        ledger,
         rfc003::{Secret, SecretHash},
         state,
         state::Update,
@@ -33,7 +33,7 @@ pub use connector::*;
 pub struct CreatedSwap {
     pub amount: asset::Bitcoin,
     pub identity: identity::Lightning,
-    pub network: lightning::Regtest,
+    pub network: ledger::Lightning,
     pub cltv_expiry: u32,
 }
 

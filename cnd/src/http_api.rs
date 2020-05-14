@@ -10,7 +10,7 @@ pub use self::{
     problem::*,
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
-use crate::swap_protocols::{actions::lnd::Chain, ledger::lightning};
+use crate::swap_protocols::actions::lnd::Chain;
 
 pub const PATH: &str = "swaps";
 
@@ -162,22 +162,31 @@ impl Serialize for Http<PeerId> {
     }
 }
 
-impl Serialize for Http<lightning::Regtest> {
+impl Serialize for Http<ledger::Lightning> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
-        serializer.serialize_str("regtest")
+        let str = match self {
+            Http(ledger::Lightning::Mainnet) => "mainnet",
+            Http(ledger::Lightning::Testnet) => "testnet",
+            Http(ledger::Lightning::Regtest) => "regtest",
+        };
+
+        serializer.serialize_str(str)
     }
 }
 
-impl<'de> Deserialize<'de> for Http<lightning::Regtest> {
-    fn deserialize<D>(deserializer: D) -> Result<Http<lightning::Regtest>, D::Error>
+impl<'de> Deserialize<'de> for Http<ledger::Lightning> {
+    fn deserialize<D>(deserializer: D) -> Result<Http<ledger::Lightning>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let network = match String::deserialize(deserializer)?.as_str() {
-            "regtest" => lightning::Regtest,
+            "mainnet" => ledger::Lightning::Mainnet,
+            "testnet" => ledger::Lightning::Testnet,
+            "regtest" => ledger::Lightning::Regtest,
+
             network => {
                 return Err(<D as Deserializer<'de>>::Error::custom(format!(
                     "not regtest: {}",
