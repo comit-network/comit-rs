@@ -154,10 +154,9 @@ struct Herc20 {
 impl From<Herc20> for herc20::CreatedSwap {
     fn from(p: Herc20) -> Self {
         herc20::CreatedSwap {
-            amount: p.amount,
+            asset: asset::Erc20::new(p.token_contract, p.amount),
             identity: p.identity,
             chain_id: p.chain_id,
-            token_contract: p.token_contract,
             absolute_expiry: p.absolute_expiry,
         }
     }

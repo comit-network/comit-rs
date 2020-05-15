@@ -82,8 +82,6 @@ macro_rules! db_roundtrip_test {
 use identity::{Bitcoin as BitcoinIdentity, Ethereum as EthereumIdentity};
 use ledger::Bitcoin as BitcoinLedger;
 
-// TODO: Should work with full enum `ledger::Bitcoin`
-
 db_roundtrip_test!(
     BitcoinLedger,
     Ethereum,

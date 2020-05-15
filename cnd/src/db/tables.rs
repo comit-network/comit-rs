@@ -122,10 +122,10 @@ impl IntoInsertable for herc20::CreatedSwap {
 
         InsertableHerc20 {
             swap_id,
-            amount: Text(self.amount.into()),
+            amount: Text(self.asset.quantity.into()),
             chain_id: U32(self.chain_id),
             expiry: U32(self.absolute_expiry),
-            token_contract: Text(self.token_contract.into()),
+            token_contract: Text(self.asset.token_contract.into()),
             redeem_identity,
             refund_identity,
             ledger: Text(ledger),
@@ -177,7 +177,7 @@ impl IntoInsertable for halight::CreatedSwap {
 
         InsertableHalight {
             swap_id,
-            amount: Text(self.amount.into()),
+            amount: Text(self.asset.into()),
             network: Text(self.network.into()),
             chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
             cltv_expiry: U32(self.cltv_expiry),

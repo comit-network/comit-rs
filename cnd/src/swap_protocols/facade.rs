@@ -1,9 +1,11 @@
+use super::{herc20, rfc003::DeriveSecret, state::Get};
 use crate::{
     asset,
-    db::{CreatedSwap, Save, Sqlite},
-    identity,
-    network::{comit, DialInformation, InitCommunication, Swarm},
-    swap_protocols::{halight, hbit, herc20, LocalSwapId, Role},
+    db::{CreatedSwap, Load, Save, Sqlite},
+    http_api, identity,
+    network::{DialInformation, InitCommunication, Swarm},
+    seed::{DeriveSwapSeed, RootSeed},
+    swap_protocols::{halight, hbit, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
 use ::comit::network::protocols::announce::SwapDigest;
@@ -75,8 +77,8 @@ impl From<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for HbitHerc20Swa
             bitcoin_amount: swap.alpha.amount,
             ethereum_identity: swap.beta.identity,
             ethereum_expiry: swap.beta.absolute_expiry.into(),
-            erc20_amount: swap.beta.amount,
-            token_contract: swap.beta.token_contract,
+            erc20_amount: swap.beta.asset.quantity,
+            token_contract: swap.beta.asset.token_contract,
         }
     }
 }
@@ -116,8 +118,8 @@ impl From<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Herc20HbitSwa
             peer,
             ethereum_identity: swap.alpha.identity,
             ethereum_expiry: swap.alpha.absolute_expiry.into(),
-            erc20_amount: swap.alpha.amount,
-            token_contract: swap.alpha.token_contract,
+            erc20_amount: swap.alpha.asset.quantity,
+            token_contract: swap.alpha.asset.token_contract,
             bitcoin_identity: swap.beta.identity,
             bitcoin_expiry: swap.beta.absolute_expiry.into(),
             bitcoin_amount: swap.beta.amount,
@@ -135,6 +137,7 @@ pub struct Facade {
     pub herc20_states: Arc<herc20::States>,
     pub halight_states: Arc<halight::States>,
     pub db: Sqlite,
+    pub seed: RootSeed,
 }
 
 impl Facade {
@@ -146,15 +149,69 @@ impl Facade {
         self.swarm.initiate_communication(id, swap_params).await
     }
 
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
-        self.swarm.get_finalized_swap(id).await
-    }
-
     pub async fn get_created_swap(
         &self,
         id: LocalSwapId,
     ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
         self.swarm.get_created_swap(id).await
+    }
+
+    pub async fn get_alice_herc20_halight_swap(
+        &self,
+        id: LocalSwapId,
+    ) -> anyhow::Result<Option<http_api::AliceHerc20HalightBitcoinSwap>> {
+        let alpha_ledger_state = self.herc20_states.get(&id).await?;
+        let beta_ledger_state = self.halight_states.get(&id).await?;
+
+        let (alpha_ledger_state, beta_ledger_state) = match (alpha_ledger_state, beta_ledger_state)
+        {
+            (Some(alpha_ledger_state), Some(beta_ledger_state)) => {
+                (alpha_ledger_state, beta_ledger_state)
+            }
+            _ => return Ok(None),
+        };
+
+        let herc20_params = Load::<herc20::InProgressSwap>::load(self, id).await?;
+        let halight_params = Load::<halight::InProgressSwap>::load(self, id).await?;
+
+        let secret = self.seed.derive_swap_seed(id).derive_secret();
+
+        Ok(Some(http_api::AliceHerc20HalightBitcoinSwap {
+            alpha_ledger_state,
+            beta_ledger_state,
+            herc20_params,
+            halight_params,
+            secret,
+        }))
+    }
+
+    pub async fn get_bob_herc20_halight_swap(
+        &self,
+        id: LocalSwapId,
+    ) -> anyhow::Result<Option<http_api::BobHerc20HalightBitcoinSwap>> {
+        let alpha_ledger_state = self.herc20_states.get(&id).await?;
+        let beta_ledger_state = self.halight_states.get(&id).await?;
+
+        let (alpha_ledger_state, beta_ledger_state) = match (alpha_ledger_state, beta_ledger_state)
+        {
+            (Some(alpha_ledger_state), Some(beta_ledger_state)) => {
+                (alpha_ledger_state, beta_ledger_state)
+            }
+            _ => return Ok(None),
+        };
+
+        let herc20_params = Load::<herc20::InProgressSwap>::load(self, id).await?;
+        let halight_params = Load::<halight::InProgressSwap>::load(self, id).await?;
+
+        let secret_hash = self.db.load_secret_hash(id).await?;
+
+        Ok(Some(http_api::BobHerc20HalightBitcoinSwap {
+            alpha_ledger_state,
+            beta_ledger_state,
+            herc20_params,
+            halight_params,
+            secret_hash,
+        }))
     }
 }
 
@@ -181,5 +238,16 @@ where
         created_swap: T,
     ) -> anyhow::Result<()> {
         self.swarm.init_communication(swap_id, created_swap).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T> Load<T> for Facade
+where
+    Sqlite: Load<T>,
+    T: Send + 'static,
+{
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T> {
+        self.db.load(swap_id).await
     }
 }

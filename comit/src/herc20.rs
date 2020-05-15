@@ -15,10 +15,9 @@ use genawaiter::sync::{Co, Gen};
 /// Data required to create a swap that involves an ERC20 token.
 #[derive(Clone, Debug, PartialEq)]
 pub struct CreatedSwap {
-    pub amount: asset::Erc20Quantity,
+    pub asset: asset::Erc20,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
-    pub token_contract: identity::Ethereum,
     pub absolute_expiry: u32,
 }
 

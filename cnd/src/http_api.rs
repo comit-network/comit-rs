@@ -8,6 +8,7 @@ mod swap_resource;
 
 pub use self::{
     problem::*,
+    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap},
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
@@ -34,6 +35,15 @@ use std::{
     ops::Deref,
     str::FromStr,
 };
+
+#[derive(Debug, Clone)]
+pub struct DisplaySwap<A, B> {
+    pub role: Role,
+    pub alpha_asset: A,
+    pub beta_asset: B,
+    /* pub status: SwapStatus (if you want to have this, you need to save ledger state to the
+     * database) */
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Http<I>(pub I);

@@ -148,10 +148,9 @@ impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>>
 impl From<Herc20EthereumErc20> for herc20::CreatedSwap {
     fn from(p: Herc20EthereumErc20) -> Self {
         herc20::CreatedSwap {
-            amount: p.amount,
+            asset: asset::Erc20::new(p.contract_address, p.amount),
             identity: p.identity,
             chain_id: p.chain_id,
-            token_contract: p.contract_address,
             absolute_expiry: p.absolute_expiry,
         }
     }
@@ -168,7 +167,7 @@ pub struct HalightLightningBitcoin {
 impl From<HalightLightningBitcoin> for halight::CreatedSwap {
     fn from(p: HalightLightningBitcoin) -> Self {
         halight::CreatedSwap {
-            amount: *p.amount,
+            asset: *p.amount,
             identity: p.identity,
             network: *p.network,
             cltv_expiry: p.cltv_expiry,

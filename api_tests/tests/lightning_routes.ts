@@ -1,4 +1,4 @@
-import { twoActorTest } from "../src/actor_test";
+import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
 import {
     HalightLightningBitcoinHerc20EthereumErc20RequestBody,
@@ -74,6 +74,24 @@ describe("Lightning routes tests", () => {
                     {} as HalightLightningBitcoinHerc20EthereumErc20RequestBody
                 )
             ).rejects.toThrow("Invalid body.");
+        })
+    );
+
+    it(
+        "get-swap-with-non-existent-id-yields-swap-not-found",
+        oneActorTest(async ({ alice }) => {
+            try {
+                await alice.cnd.fetch(
+                    "/swaps/deadbeef-dead-beef-dead-deadbeefdead"
+                );
+            } catch (error) {
+                const expectedProblem = {
+                    status: 404,
+                    title: "Swap not found.",
+                };
+
+                expect(error).toMatchObject(expectedProblem);
+            }
         })
     );
 });
