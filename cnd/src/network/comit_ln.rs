@@ -1,5 +1,7 @@
 use crate::{
-    asset, identity,
+    asset,
+    http_api::routes::HanEthereumHalightBitcoinCreatedState,
+    identity,
     network::{
         oneshot_behaviour,
         protocols::{
@@ -13,7 +15,7 @@ use crate::{
     swap_protocols::{
         ledger::{ethereum::ChainId, lightning, Ethereum},
         rfc003::{create_swap::HtlcParams, Secret, SecretHash},
-        LocalSwapId, Role, SharedSwapId,
+        Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
     timestamp::{RelativeTime, Timestamp},
 };
@@ -30,6 +32,7 @@ use std::{
     task::{Context, Poll},
 };
 use swaps::Swaps;
+use warp::filters::addr::remote;
 
 /// Setting it at 5 minutes
 const PENDING_SWAP_EXPIRY_SECS: u32 = 5 * 60;
@@ -39,11 +42,54 @@ mod swaps;
 /// Event emitted  by the `ComitLn` behaviour.
 #[derive(Debug)]
 pub enum BehaviourOutEvent {
-    SwapFinalized {
+    Herc20HalightBitcoinFinalized {
         local_swap_id: LocalSwapId,
-        data: Data,
-        remote_data: RemoteData,
+        role: Role,
+        local_ethereum_identity: ethereum::Identity,
+        remote_ethereum_identity: ethereum::Identity,
+        ethereum_absolute_expiry: Timestamp,
+        ethereum_amount: asset::Erc20Quantity,
+        token_contract: ethereumIdentity,
+        local_lightning_identity: identity::Lightning,
+        remote_lightning_identity: identity::Lightning,
+        lightning_cltv_expiry: RelativeTime,
+        lightning_amount: asset::Bitcoin,
     },
+}
+
+// TODO: Oh my ... what am I writing here
+trait IntoBehaviourOutEvent {
+    fn into_behaviour_out_event(
+        self,
+        local_swap_id: LocalSwapId,
+        remote_data: RemoteData,
+    ) -> BehaviourOutEvent;
+}
+
+impl IntoBehaviourOutEvent for Herc20HalightBitcoinCreateSwapParams {
+    fn into_behaviour_out_event(
+        self,
+        local_swap_id: LocalSwapId,
+        remote_data: RemoteData,
+    ) -> BehaviourOutEvent {
+        BehaviourOutEvent::Herc20HalightBitcoinFinalized {
+            local_swap_id,
+            role: create_swap_params.role,
+            local_ethereum_identity: create_swap_params.ethereum_identity,
+            remote_ethereum_identity: remote_data
+                .ethereum_identity
+                .expect("The swap should not be finalized without this."),
+            ethereum_absolute_expiry: create_swap_params.ethereum_absolute_expiry,
+            ethereum_amount: create_swap_params.ethereum_amount,
+            token_contract: create_swap_params.token_contract,
+            local_lightning_identity: create_swap_params.lightning_identity,
+            remote_lightning_identity: remote_data
+                .lightning_identity
+                .expect("The swap should not be finalized without this."),
+            lightning_cltv_expiry: create_swap_params.lightning_cltv_expiry,
+            lightning_amount: create_swap_params.lightning_amount,
+        }
+    }
 }
 
 #[derive(NetworkBehaviour, Debug)]
@@ -63,6 +109,8 @@ pub struct ComitLN {
     remote_data: HashMap<SharedSwapId, RemoteData>,
     #[behaviour(ignore)]
     communication_state: HashMap<SharedSwapId, CommunicationState>,
+    #[behaviour(ignore)]
+    swap_params: HashMap<LocalSwapId, Box<dyn IntoBehaviourOutEvent>>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -579,11 +627,12 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 
             let remote_data = self.remote_data.get(&swap_id).cloned().unwrap();
 
-            self.events.push_back(BehaviourOutEvent::SwapFinalized {
-                local_swap_id,
-                data,
-                remote_data,
-            });
+            self.events
+                .push_back(BehaviourOutEvent::Herc20HalightBitcoinFinalized {
+                    local_swap_id,
+                    data,
+                    remote_data,
+                });
         }
     }
 }
@@ -767,13 +816,13 @@ mod tests {
         // assert
         match (alice_event, bob_event) {
             (
-                BehaviourOutEvent::SwapFinalized {
+                BehaviourOutEvent::Herc20HalightBitcoinFinalized {
                     local_swap_id: _alice_local_swap_id,
                     swap_params: alice_swap_params,
                     secret_hash: _alice_secret_hash,
                     ethereum_identity: _alice_eth_id,
                 },
-                BehaviourOutEvent::SwapFinalized {
+                BehaviourOutEvent::Herc20HalightBitcoinFinalized {
                     local_swap_id: _bob_local_swap_id,
                     swap_params: bob_swap_params,
                     secret_hash: _bob_secret_hash,
