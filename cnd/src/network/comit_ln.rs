@@ -288,6 +288,31 @@ impl ComitLN {
         remote_data.set(value);
         self.remote_data.insert(shared_swap_id, remote_data);
     }
+
+    fn finalize(&mut self, peer: PeerId, shared_swap_id: SharedSwapId) {
+        let state = self.communication_state.get(&shared_swap_id);
+        let data = self.swaps.get_from_shared_id(&shared_swap_id);
+        let remote_data = self.remote_data.get(&shared_swap_id);
+
+        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
+            let ethereum_sorted = if data.local_ethereum_identity.is_some() {
+                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
+            } else {
+                true
+            };
+
+            let lightning_sorted = if data.local_lightning_identity.is_some() {
+                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
+            } else {
+                true
+            };
+
+            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
+                self.finalize
+                    .send(peer, finalize::Message::new(shared_swap_id));
+            }
+        }
+    }
 }
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
@@ -373,28 +398,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
             }
         };
 
-        // TODO: This block can go in own function finalize(&self
-        let state = self.communication_state.get(&swap_id);
-        let data = self.swaps.get_from_shared_id(&swap_id);
-        let remote_data = self.remote_data.get(&swap_id);
-
-        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
-            let ethereum_sorted = if data.local_ethereum_identity.is_some() {
-                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
-            } else {
-                true
-            };
-
-            let lightning_sorted = if data.local_lightning_identity.is_some() {
-                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
-            } else {
-                true
-            };
-
-            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
-                self.finalize.send(peer, finalize::Message::new(swap_id));
-            }
-        }
+        self.finalize(peer, swap_id)
     }
 }
 
@@ -488,28 +492,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
             }
         };
 
-        // TODO: This block can go in own function finalize(&self)
-        let state = self.communication_state.get(&swap_id);
-        let data = self.swaps.get_from_shared_id(&swap_id);
-        let remote_data = self.remote_data.get(&swap_id);
-
-        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
-            let ethereum_sorted = if data.local_ethereum_identity.is_some() {
-                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
-            } else {
-                true
-            };
-
-            let lightning_sorted = if data.local_lightning_identity.is_some() {
-                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
-            } else {
-                true
-            };
-
-            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
-                self.finalize.send(peer, finalize::Message::new(swap_id));
-            }
-        }
+        self.finalize(peer, swap_id)
     }
 }
 
@@ -547,17 +530,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
-
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
-        }
+        self.finalize(peer, swap_id)
     }
 }
 

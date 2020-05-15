@@ -63,7 +63,8 @@ impl<T> Swaps<T> {
     }
 
     pub fn get_from_shared_id(&self, shared_swap_id: &SharedSwapId) -> Option<Data> {
-        self.swap_ids(shared_swap_id)
+        self.swap_ids
+            .get(shared_swap_id)
             .map(|local_swap_id| self.swaps.get(local_swap_id))
     }
 
