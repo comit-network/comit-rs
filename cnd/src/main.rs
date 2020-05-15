@@ -176,7 +176,7 @@ fn main() -> anyhow::Result<()> {
     let facade = Facade {
         swarm: swarm.clone(),
         alpha_ledger_states: Arc::clone(&alpha_ledger_states),
-        beta_ledger_states: Arc::clone(&halight_states),
+        halight_states: Arc::clone(&halight_states),
         db: database,
     };
 

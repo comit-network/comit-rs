@@ -139,7 +139,7 @@ pub async fn handle_get_halight_swap(
         LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     > = facade.alpha_ledger_states.get(&swap_id).await?;
 
-    let beta_ledger_state = facade.beta_ledger_states.get(&swap_id).await?;
+    let beta_ledger_state = facade.halight_states.get(&swap_id).await?;
 
     let created_swap = facade.get_created_swap(swap_id).await;
 
@@ -849,7 +849,7 @@ async fn handle_action_init(
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
-        .beta_ledger_states
+        .halight_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
@@ -902,7 +902,7 @@ async fn handle_action_deploy(
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
-        .beta_ledger_states
+        .halight_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
@@ -956,7 +956,7 @@ async fn handle_action_fund(
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
-        .beta_ledger_states
+        .halight_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
@@ -1017,7 +1017,7 @@ async fn handle_action_redeem(
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
-        .beta_ledger_states
+        .halight_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;
@@ -1078,7 +1078,7 @@ async fn handle_action_refund(
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
     let beta_ledger_state: halight::State = facade
-        .beta_ledger_states
+        .halight_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("beta ledger state not found for {}", swap_id))?;

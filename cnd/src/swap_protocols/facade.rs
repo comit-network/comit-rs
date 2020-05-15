@@ -72,7 +72,7 @@ pub struct Facade {
     pub swarm: Swarm,
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
     pub alpha_ledger_states: Arc<LedgerStates>,
-    pub beta_ledger_states: Arc<halight::States>,
+    pub halight_states: Arc<halight::States>,
     pub db: Sqlite,
 }
 
