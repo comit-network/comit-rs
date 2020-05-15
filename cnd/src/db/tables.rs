@@ -1,6 +1,6 @@
 use crate::{
     db::{
-        schema::{address_hints, halights, herc20s, secret_hashes, shared_swap_ids, swaps},
+        schema::{address_hints, halights, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
@@ -8,9 +8,10 @@ use crate::{
         Error, Sqlite,
     },
     identity, lightning,
-    swap_protocols::{self, rfc003, HashFunction, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, herc20, rfc003, HashFunction, Ledger, LocalSwapId, Role},
 };
-use diesel::{self, prelude::*, RunQueryDsl};
+use anyhow::Context;
+use diesel::{prelude::*, RunQueryDsl};
 use libp2p::{Multiaddr, PeerId};
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
@@ -81,22 +82,6 @@ pub struct InsertableAddressHint {
     address_hint: Text<Multiaddr>,
 }
 
-#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
-#[belongs_to(Swap)]
-#[table_name = "shared_swap_ids"]
-pub struct SharedSwapId {
-    id: i32,
-    swap_id: i32,
-    pub shared_swap_id: Text<swap_protocols::SharedSwapId>,
-}
-
-#[derive(Insertable, Debug, Clone, Copy)]
-#[table_name = "shared_swap_ids"]
-pub struct InsertableSharedSwapId {
-    swap_id: i32,
-    shared_swap_id: Text<swap_protocols::SharedSwapId>,
-}
-
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
 #[belongs_to(Swap)]
 #[table_name = "herc20s"]
@@ -127,18 +112,40 @@ pub struct InsertableHerc20 {
     pub ledger: Text<Ledger>,
 }
 
-impl InsertableHerc20 {
-    pub fn with_swap_id(&self, swap_id: i32) -> Self {
+pub trait IntoInsertable {
+    type Insertable;
+
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable;
+}
+
+pub trait Insert<I> {
+    fn insert(&self, connection: &SqliteConnection, insertable: &I) -> anyhow::Result<()>;
+}
+
+impl IntoInsertable for herc20::CreatedSwap {
+    type Insertable = InsertableHerc20;
+
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+        let redeem_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(EthereumAddress::from(self.identity))),
+        };
+        let refund_identity = match role {
+            Role::Alice => Some(Text(EthereumAddress::from(self.identity))),
+            Role::Bob => None,
+        };
+        assert!(redeem_identity.is_some() || refund_identity.is_some());
+
         InsertableHerc20 {
             swap_id,
-            amount: self.amount.clone(),
-            chain_id: self.chain_id,
-            expiry: self.expiry,
-            hash_function: self.hash_function,
-            token_contract: self.token_contract,
-            redeem_identity: self.redeem_identity,
-            refund_identity: self.refund_identity,
-            ledger: self.ledger,
+            amount: Text(self.amount.into()),
+            chain_id: U32(self.chain_id),
+            expiry: U32(self.absolute_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            token_contract: Text(self.token_contract.into()),
+            redeem_identity,
+            refund_identity,
+            ledger: Text(ledger),
         }
     }
 }
@@ -173,20 +180,68 @@ pub struct InsertableHalight {
     pub ledger: Text<Ledger>,
 }
 
-impl InsertableHalight {
-    pub fn with_swap_id(&self, swap_id: i32) -> Self {
+impl IntoInsertable for halight::CreatedSwap {
+    type Insertable = InsertableHalight;
+
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+        let redeem_identity = match role {
+            Role::Alice => Some(Text(self.identity)),
+            Role::Bob => None,
+        };
+        let refund_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(self.identity)),
+        };
+        assert!(redeem_identity.is_some() || refund_identity.is_some());
+
         InsertableHalight {
             swap_id,
-            amount: self.amount,
-            network: self.network,
-            chain: self.chain.clone(),
-            cltv_expiry: self.cltv_expiry,
-            hash_function: self.hash_function,
-            redeem_identity: self.redeem_identity,
-            refund_identity: self.refund_identity,
-            ledger: self.ledger,
+            amount: Text(self.amount.into()),
+            network: Text(self.network.into()),
+            chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
+            cltv_expiry: U32(self.cltv_expiry),
+            hash_function: Text(HashFunction::Sha256),
+            redeem_identity,
+            refund_identity,
+            ledger: Text(ledger),
         }
     }
+}
+
+impl Insert<InsertableHerc20> for Sqlite {
+    fn insert(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableHerc20,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(herc20s::dsl::herc20s)
+            .values(insertable)
+            .execute(connection)?;
+
+        Ok(())
+    }
+}
+
+impl Insert<InsertableHalight> for Sqlite {
+    fn insert(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableHalight,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(halights::dsl::halights)
+            .values(insertable)
+            .execute(connection)?;
+
+        Ok(())
+    }
+}
+
+macro_rules! swap_id_fk {
+    ($local_swap_id:expr) => {
+        swaps::table
+            .filter(swaps::local_swap_id.eq(Text($local_swap_id)))
+            .select(swaps::id)
+    };
 }
 
 impl Sqlite {
@@ -195,15 +250,18 @@ impl Sqlite {
         Ok(swap.role.0)
     }
 
-    pub async fn save_swap(&self, insertable: &InsertableSwap) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            diesel::insert_into(swaps::dsl::swaps)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+    pub fn save_swap(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableSwap,
+    ) -> anyhow::Result<i32> {
+        diesel::insert_into(swaps::dsl::swaps)
+            .values(insertable)
+            .execute(connection)?;
 
-        Ok(())
+        let swap_id = swap_id_fk!(insertable.local_swap_id.0).first(connection)?;
+
+        Ok(swap_id)
     }
 
     pub async fn load_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<Swap> {
@@ -222,28 +280,29 @@ impl Sqlite {
         Ok(record)
     }
 
-    pub async fn save_secret_hash(
+    pub fn insert_secret_hash(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
         secret_hash: rfc003::SecretHash,
     ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
+        let swap_id = swap_id_fk!(local_swap_id)
+            .first(connection)
+            .with_context(|| {
+                format!(
+                    "failed to find swap_id foreign key for swap {}",
+                    local_swap_id
+                )
+            })?;
+        let insertable = InsertableSecretHash {
+            swap_id,
+            secret_hash: Text(secret_hash),
+        };
 
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = InsertableSecretHash {
-                swap_id: swap.id,
-                secret_hash: Text(secret_hash),
-            };
-
-            diesel::insert_into(secret_hashes::dsl::secret_hashes)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::insert_into(secret_hashes::table)
+            .values(insertable)
+            .execute(&*connection)
+            .with_context(|| format!("failed to insert secret hash for swap {}", local_swap_id))?;
 
         Ok(())
     }
@@ -268,178 +327,100 @@ impl Sqlite {
         Ok(record.secret_hash.0)
     }
 
-    pub async fn save_shared_swap_id(
+    pub fn update_halight_refund_identity(
         &self,
-        swap_id: LocalSwapId,
-        shared_swap_id: swap_protocols::SharedSwapId,
-    ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = InsertableSharedSwapId {
-                swap_id: swap.id,
-                shared_swap_id: Text(shared_swap_id),
-            };
-
-            diesel::insert_into(shared_swap_ids::dsl::shared_swap_ids)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn load_shared_swap_id(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<swap_protocols::SharedSwapId> {
-        let record: SharedSwapId = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                SharedSwapId::belonging_to(&swap)
-                    .first(connection)
-                    .optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record.shared_swap_id.0)
-    }
-
-    /// This function is called depending on ones role and which side of the
-    /// swap halight is on.
-    /// - Called by Alice when halight is the alpha protocol.
-    /// - Called by Bob when when halight is the beta protocol.
-    pub async fn save_counterparty_halight_redeem_identity(
-        &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
         identity: identity::Lightning,
     ) -> anyhow::Result<()> {
-        use crate::db::schema::halights::columns::redeem_identity;
-
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            diesel::update(halights::dsl::halights.filter(halights::swap_id.eq(swap.id)))
-                .set(redeem_identity.eq(Text(identity)))
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::update(halights::table)
+            .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(halights::refund_identity.eq(Text(identity)))
+            .execute(connection)
+            .with_context(|| {
+                format!(
+                    "failed to update halight refund identity for swap {}",
+                    local_swap_id
+                )
+            })?;
 
         Ok(())
     }
 
-    /// This function is called depending on ones role and which side of the
-    /// swap halight is on.
-    /// - Called by Alice when halight is the beta protocol.
-    /// - Called by Bob when when halight is the alpha protocol.
-    pub async fn save_counterparty_halight_refund_identity(
+    pub fn update_halight_redeem_identity(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
         identity: identity::Lightning,
     ) -> anyhow::Result<()> {
-        use crate::db::schema::halights::columns::refund_identity;
-
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            diesel::update(halights::dsl::halights.filter(halights::swap_id.eq(swap.id)))
-                .set(refund_identity.eq(Text(identity)))
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::update(halights::table)
+            .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(halights::redeem_identity.eq(Text(identity)))
+            .execute(connection)
+            .with_context(|| {
+                format!(
+                    "failed to update halight redeem identity for swap {}",
+                    local_swap_id
+                )
+            })?;
 
         Ok(())
     }
 
-    /// This function is called depending on ones role and which side of the
-    /// swap herc20 is on.
-    /// - Called by Alice when herc20 is the alpha protocol.
-    /// - Called by Bob when when herc20 is the beta protocol.
-    pub async fn save_counterparty_herc20_redeem_identity(
+    pub fn update_herc20_refund_identity(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
         identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
-        use crate::db::schema::herc20s::columns::redeem_identity;
-
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            diesel::update(herc20s::dsl::herc20s.filter(herc20s::swap_id.eq(swap.id)))
-                .set(redeem_identity.eq(Text(identity)))
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::update(herc20s::table)
+            .filter(herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(herc20s::refund_identity.eq(Text(identity)))
+            .execute(connection)
+            .with_context(|| {
+                format!(
+                    "failed to update herc20 refund identity for swap {}",
+                    local_swap_id
+                )
+            })?;
 
         Ok(())
     }
 
-    /// This function is called depending on ones role and which side of the
-    /// swap herc20 is on.
-    /// - Called by Alice when herc20 is the beta protocol.
-    /// - Called by Bob when when herc20 is the alpha protocol.
-    pub async fn save_counterparty_herc20_refund_identity(
+    pub fn update_herc20_redeem_identity(
         &self,
-        swap_id: LocalSwapId,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
         identity: identity::Ethereum,
     ) -> anyhow::Result<()> {
-        use crate::db::schema::herc20s::columns::refund_identity;
-
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            diesel::update(herc20s::dsl::herc20s.filter(herc20s::swap_id.eq(swap.id)))
-                .set(refund_identity.eq(Text(identity)))
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::update(herc20s::table)
+            .filter(herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(herc20s::redeem_identity.eq(Text(identity)))
+            .execute(connection)
+            .with_context(|| {
+                format!(
+                    "failed to update herc20 redeem identity for swap {}",
+                    local_swap_id
+                )
+            })?;
 
         Ok(())
     }
 
-    pub async fn save_address_hint(
+    pub fn save_address_hint(
         &self,
+        connection: &SqliteConnection,
         peer_id: PeerId,
-        address_hint: &libp2p::Multiaddr,
+        address_hint: libp2p::Multiaddr,
     ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let insertable = InsertableAddressHint {
-                peer_id: Text(peer_id.clone()),
-                address_hint: Text(address_hint.clone()),
-            };
+        let insertable = InsertableAddressHint {
+            peer_id: Text(peer_id),
+            address_hint: Text(address_hint),
+        };
 
-            diesel::insert_into(address_hints::dsl::address_hints)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
+        diesel::insert_into(address_hints::dsl::address_hints)
+            .values(insertable)
+            .execute(connection)?;
 
         Ok(())
     }
@@ -460,29 +441,6 @@ impl Sqlite {
         Ok(record.address_hint.0)
     }
 
-    pub(crate) async fn save_herc20(
-        &self,
-        swap_id: LocalSwapId,
-        data: &InsertableHerc20,
-    ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = data.with_swap_id(swap.id);
-
-            diesel::insert_into(herc20s::dsl::herc20s)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-
     pub async fn load_herc20(&self, swap_id: LocalSwapId) -> anyhow::Result<Herc20> {
         let record: Herc20 = self
             .do_in_transaction(|connection| {
@@ -498,29 +456,6 @@ impl Sqlite {
             .ok_or(Error::SwapNotFound)?;
 
         Ok(record)
-    }
-
-    pub async fn save_halight(
-        &self,
-        swap_id: LocalSwapId,
-        data: &InsertableHalight,
-    ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = data.with_swap_id(swap.id);
-
-            diesel::insert_into(halights::dsl::halights)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
     }
 
     pub async fn load_halight(&self, swap_id: LocalSwapId) -> anyhow::Result<Halight> {
@@ -612,7 +547,7 @@ mod tests {
         let given = insertable_swap();
         let swap_id = given.local_swap_id.0;
 
-        db.save_swap(&given)
+        db.do_in_transaction(|conn| db.save_swap(conn, &given))
             .await
             .expect("to be able to save a swap");
 
@@ -632,7 +567,7 @@ mod tests {
         let swap = insertable_swap();
         let swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -642,7 +577,7 @@ mod tests {
         )
         .expect("valid secret hash");
 
-        db.save_secret_hash(swap_id, secret_hash)
+        db.do_in_transaction(|conn| db.insert_secret_hash(conn, swap_id, secret_hash))
             .await
             .expect("to be able to save secret hash");
 
@@ -655,41 +590,13 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn roundtrip_shared_swap_id() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
-
-        let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
-
-        db.save_swap(&swap)
-            .await
-            .expect("to be able to save a swap");
-
-        let shared_swap_id =
-            swap_protocols::SharedSwapId::from_str("ad9999ca-ecf2-4cc6-b35c-b4351ac28a34")
-                .expect("valid swap id");
-
-        db.save_shared_swap_id(swap_id, shared_swap_id)
-            .await
-            .expect("to be able to save swap id");
-
-        let loaded = db
-            .load_shared_swap_id(swap_id)
-            .await
-            .expect("to be able to load a previously saved swap id");
-
-        assert_eq!(loaded, shared_swap_id)
-    }
-
-    #[tokio::test]
     async fn roundtrip_address_hint() {
         let path = temp_db();
         let db = Sqlite::new(&path).expect("a new db");
 
         let swap = insertable_swap();
 
-        db.save_swap(&swap)
+        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -698,9 +605,11 @@ mod tests {
         let multi_addr = "/ip4/80.123.90.4/tcp/5432";
         let address_hint: Multiaddr = multi_addr.parse().expect("valid multiaddress");
 
-        db.save_address_hint(peer_id.clone(), &address_hint)
-            .await
-            .expect("to be able to save address hint");
+        db.do_in_transaction(|conn| {
+            db.save_address_hint(conn, peer_id.clone(), address_hint.clone())
+        })
+        .await
+        .expect("to be able to save address hint");
 
         let loaded = db
             .load_address_hint(&peer_id)
@@ -716,9 +625,10 @@ mod tests {
         let db = Sqlite::new(&path).expect("a new db");
 
         let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
+        let local_swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        let swap_id = db
+            .do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -732,7 +642,7 @@ mod tests {
             .expect("valid refund identity");
 
         let given = InsertableHerc20 {
-            swap_id: 0, // This is set when saving.
+            swap_id,
             amount: Text(amount),
             chain_id: U32(1337),
             expiry: U32(123),
@@ -743,12 +653,12 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.save_herc20(swap_id, &given)
+        db.do_in_transaction(|conn| db.insert(conn, &given))
             .await
             .expect("to be able to save swap details");
 
         let loaded = db
-            .load_herc20(swap_id)
+            .load_herc20(local_swap_id)
             .await
             .expect("to be able to load a previously saved swap details");
 
@@ -761,9 +671,10 @@ mod tests {
         let db = Sqlite::new(&path).expect("a new db");
 
         let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
+        let local_swap_id = swap.local_swap_id.0;
 
-        db.save_swap(&swap)
+        let swap_id = db
+            .do_in_transaction(|conn| db.save_swap(conn, &swap))
             .await
             .expect("to be able to save a swap");
 
@@ -773,7 +684,7 @@ mod tests {
         let refund_identity = lightning::PublicKey::random();
 
         let given = InsertableHalight {
-            swap_id: 0, // This is set when saving.
+            swap_id,
             amount: Text(amount),
             network: Text(LightningNetwork::Testnet),
             chain: "bitcoin".to_string(),
@@ -784,12 +695,12 @@ mod tests {
             ledger: Text(Ledger::Alpha),
         };
 
-        db.save_halight(swap_id, &given)
+        db.do_in_transaction(|conn| db.insert(conn, &given))
             .await
             .expect("to be able to save swap details");
 
         let loaded = db
-            .load_halight(swap_id)
+            .load_halight(local_swap_id)
             .await
             .expect("to be able to load a previously saved swap details");
 

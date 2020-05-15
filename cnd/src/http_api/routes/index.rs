@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    db::CreatedSwap,
+    db::{CreatedSwap, Save},
     http_api::{problem, routes::into_rejection, Http},
     identity,
     network::{DialInformation, ListenAddresses},

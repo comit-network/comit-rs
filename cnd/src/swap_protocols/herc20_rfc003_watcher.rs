@@ -19,12 +19,11 @@ use crate::{
             },
             LedgerState,
         },
-        LedgerStates, Role,
+        LedgerStates,
     },
 };
 use genawaiter::GeneratorState;
 use std::sync::Arc;
-use tracing_futures::Instrument;
 
 // Temporary file for spinning up the ledger watcher for Erc20-Halight swaps.
 
@@ -52,7 +51,6 @@ pub async fn new_herc20_swap(
     connector: Arc<Cache<Web3Connector>>,
     ethereum_ledger_state: Arc<LedgerStates>,
     htlc_params: HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum>,
-    role: Role,
 ) {
     create_watcher::<_, _, _, _, htlc_location::Ethereum, _, transaction::Ethereum>(
         connector.as_ref(),
@@ -61,7 +59,6 @@ pub async fn new_herc20_swap(
         htlc_params,
         Utc::now().naive_local(),
     )
-    .instrument(tracing::error_span!("alpha_ledger", swap_id = %swap_id, role = %role))
     .await
 }
 

@@ -19,14 +19,6 @@ table! {
 }
 
 table! {
-   shared_swap_ids {
-       id -> Integer,
-       swap_id -> Integer,
-       shared_swap_id -> Text,
-   }
-}
-
-table! {
     address_hints {
         id -> Integer,
         peer_id -> Text,
@@ -63,3 +55,6 @@ table! {
         ledger -> Text,
     }
 }
+
+allow_tables_to_appear_in_same_query!(swaps, halights);
+allow_tables_to_appear_in_same_query!(swaps, herc20s);
