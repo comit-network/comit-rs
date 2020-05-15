@@ -505,10 +505,10 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 peer,
                 message: lightning_identity::Message { swap_id, pubkey },
             } => {
-                // TODO: Remove this expect
-                self.remote_data_insert(
+                self.remote_data_insert::<identity::Lightning>(
                     swap_id.clone(),
                     bitcoin::PublicKey::from_slice(&pubkey)
+                        // TODO: Remove this expect
                         .expect("We hope that secp likes the key the other party sent us")
                         .into(),
                 );

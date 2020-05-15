@@ -6,6 +6,7 @@ use crate::{
     swap_protocols::{LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
+use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
@@ -63,9 +64,8 @@ impl<T> Swaps<T> {
     }
 
     pub fn get_from_shared_id(&self, shared_swap_id: &SharedSwapId) -> Option<Data> {
-        self.swap_ids
-            .get(shared_swap_id)
-            .map(|local_swap_id| self.swaps.get(local_swap_id))
+        // TODO: Somehow implement this (bimap anyone?)
+        unimplemented!()
     }
 
     /// Gets a swap that was announced
@@ -190,7 +190,7 @@ impl<T> Swaps<T> {
             None => return Err(Error::InternalFailure),
         };
 
-        if *peer_id != data.peer.peer_id {
+        if *peer_id != data.peer_id {
             return Err(Error::PeerIdMismatch);
         }
 
