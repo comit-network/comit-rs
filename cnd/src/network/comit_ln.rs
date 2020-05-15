@@ -275,6 +275,19 @@ impl ComitLN {
         // We trust in libp2p to poll us.
         Poll::Pending
     }
+
+    fn remote_data_insert<T>(&mut self, shared_swap_id: SharedSwapId, value: T)
+    where
+        RemoteData: Set<T>,
+    {
+        let mut remote_data = self
+            .remote_data
+            .get(&shared_swap_id)
+            .cloned()
+            .unwrap_or_default();
+        remote_data.set(value);
+        self.remote_data.insert(shared_swap_id, remote_data);
+    }
 }
 
 #[derive(thiserror::Error, Clone, Copy, Debug)]
@@ -330,9 +343,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                         secret_hash,
                     },
             } => {
-                let mut remote_data = self.remote_data.get(&swap_id).cloned().unwrap_or_default();
-                remote_data.secret_hash = Some(SecretHash::from(secret_hash));
-                self.remote_data.insert(swap_id, remote_data);
+                self.remote_data_insert(swap_id.clone(), SecretHash::from(secret_hash));
 
                 let state = self
                     .communication_state
@@ -458,8 +469,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
                 peer,
                 message: ethereum_identity::Message { swap_id, address },
             } => {
-                self.ethereum_identities
-                    .insert(swap_id, identity::Ethereum::from(address));
+                self.remote_data_insert(swap_id, identity::Ethereum::from(address));
 
                 (peer, swap_id)
             }
@@ -512,9 +522,12 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 peer,
                 message: lightning_identity::Message { swap_id, pubkey },
             } => {
-                self.lightning_identities.insert(
-                    swap_id,
-                    bitcoin::PublicKey::from_slice(&pubkey).unwrap().into(),
+                // TODO: Remove this expect
+                self.remote_data_insert(
+                    swap_id.clone(),
+                    bitcoin::PublicKey::from_slice(&pubkey)
+                        .expect("We hope that secp likes the key the other party sent us")
+                        .into(),
                 );
 
                 (peer, swap_id)
@@ -646,6 +659,28 @@ impl Default for RemoteData {
             lightning_identity: None,
             secret_hash: None,
         }
+    }
+}
+
+trait Set<T> {
+    fn set(&mut self, value: T);
+}
+
+impl Set<identity::Ethereum> for RemoteData {
+    fn set(&mut self, value: identity::Ethereum) {
+        self.ethereum_identity = Some(value);
+    }
+}
+
+impl Set<identity::Lightning> for RemoteData {
+    fn set(&mut self, value: identity::Lightning) {
+        self.lightning_identity = Some(value);
+    }
+}
+
+impl Set<SecretHash> for RemoteData {
+    fn set(&mut self, value: SecretHash) {
+        self.secret_hash = Some(value);
     }
 }
 
