@@ -23,6 +23,8 @@ pub enum Error {
     InternalFailure,
 }
 
+/// TODO: This tracks the state of a swap in the communication phase,
+/// A better name than `Swaps` can be found.
 /// T is ReplySubstream<NegotiatedSubstream>
 #[derive(Debug)]
 pub struct Swaps<T> {
@@ -55,8 +57,14 @@ pub struct Swaps<T> {
 
 impl<T> Swaps<T> {
     /// Gets a swap that was created
+    // TODO: Rename to `get_data`
     pub fn get_created_swap(&self, local_swap_id: &LocalSwapId) -> Option<Data> {
         self.swaps.get(local_swap_id).cloned()
+    }
+
+    pub fn get_from_shared_id(&self, shared_swap_id: &SharedSwapId) -> Option<Data> {
+        self.swap_ids(shared_swap_id)
+            .map(|local_swap_id| self.swaps.get(local_swap_id))
     }
 
     /// Gets a swap that was announced

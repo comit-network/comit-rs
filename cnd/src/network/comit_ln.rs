@@ -42,8 +42,7 @@ pub enum BehaviourOutEvent {
     SwapFinalized {
         local_swap_id: LocalSwapId,
         data: Data,
-        secret_hash: SecretHash,
-        ethereum_identity: identity::Ethereum,
+        remote_data: RemoteData,
     },
 }
 
@@ -61,18 +60,15 @@ pub struct ComitLN {
     #[behaviour(ignore)]
     swaps: Swaps<ReplySubstream<NegotiatedSubstream>>,
     #[behaviour(ignore)]
-    ethereum_identities: HashMap<SharedSwapId, identity::Ethereum>,
-    #[behaviour(ignore)]
-    lightning_identities: HashMap<SharedSwapId, identity::Lightning>,
+    remote_data: HashMap<SharedSwapId, RemoteData>,
     #[behaviour(ignore)]
     communication_state: HashMap<SharedSwapId, CommunicationState>,
-    #[behaviour(ignore)]
-    secret_hashes: HashMap<SharedSwapId, SecretHash>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
 }
 
+// TODO: This could be replaced with a function on remote_data/data
 #[derive(Debug, Default)]
 struct CommunicationState {
     ethereum_identity_sent: bool,
@@ -93,10 +89,8 @@ impl ComitLN {
             finalize: Default::default(),
             events: VecDeque::new(),
             swaps: Default::default(),
-            ethereum_identities: Default::default(),
-            lightning_identities: Default::default(),
+            remote_data: Default::default(),
             communication_state: Default::default(),
-            secret_hashes: Default::default(),
             seed,
         }
     }
@@ -247,7 +241,14 @@ impl ComitLN {
 
         if let Some(secret) = data.secret {
             let secret_hash = secret.hash();
-            self.secret_hashes.insert(shared_swap_id, secret_hash);
+            // TODO: Create helper function or prettier way to do this
+            let mut remote_data = self
+                .remote_data
+                .get(&shared_swap_id)
+                .cloned()
+                .unwrap_or_default();
+            remote_data.secret_hash = Some(secret_hash);
+            self.remote_data.insert(shared_swap_id, remote_data);
 
             self.secret_hash.send(
                 peer_id,
@@ -329,8 +330,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                         secret_hash,
                     },
             } => {
-                self.secret_hashes
-                    .insert(swap_id, SecretHash::from(secret_hash));
+                let mut remote_data = self.remote_data.get(&swap_id).cloned().unwrap_or_default();
+                remote_data.secret_hash = Some(SecretHash::from(secret_hash));
+                self.remote_data.insert(swap_id, remote_data);
 
                 let state = self
                     .communication_state
@@ -349,9 +351,6 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                         secret_hash,
                     },
             } => {
-                self.secret_hashes
-                    .insert(swap_id, SecretHash::from(secret_hash));
-
                 let state = self
                     .communication_state
                     .get_mut(&swap_id)
@@ -363,16 +362,27 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
+        // TODO: This block can go in own function finalize(&self
+        let state = self.communication_state.get(&swap_id);
+        let data = self.swaps.get_from_shared_id(&swap_id);
+        let remote_data = self.remote_data.get(&swap_id);
 
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
+        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
+            let ethereum_sorted = if data.local_ethereum_identity.is_some() {
+                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
+            } else {
+                true
+            };
+
+            let lightning_sorted = if data.local_lightning_identity.is_some() {
+                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
+            } else {
+                true
+            };
+
+            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
+                self.finalize.send(peer, finalize::Message::new(swap_id));
+            }
         }
     }
 }
@@ -437,6 +447,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
     }
 }
 
+// TODO: This kind of implementations could go in their own sub module to make
+// it clearer
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity::Message>>
     for ComitLN
 {
@@ -466,16 +478,27 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
+        // TODO: This block can go in own function finalize(&self)
+        let state = self.communication_state.get(&swap_id);
+        let data = self.swaps.get_from_shared_id(&swap_id);
+        let remote_data = self.remote_data.get(&swap_id);
 
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
+        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
+            let ethereum_sorted = if data.local_ethereum_identity.is_some() {
+                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
+            } else {
+                true
+            };
+
+            let lightning_sorted = if data.local_lightning_identity.is_some() {
+                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
+            } else {
+                true
+            };
+
+            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
+                self.finalize.send(peer, finalize::Message::new(swap_id));
+            }
         }
     }
 }
@@ -568,20 +591,60 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 .finalize_swap(&swap_id)
                 .expect("Swap should be known");
 
-            let secret_hash = self
-                .secret_hashes
-                .get(&swap_id)
-                .copied()
-                .expect("must exist");
-
-            let ethereum_identity = self.ethereum_identities.get(&swap_id).copied().unwrap();
+            let remote_data = self.remote_data.get(&swap_id).cloned().unwrap();
 
             self.events.push_back(BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
                 data,
-                secret_hash,
-                ethereum_identity,
+                remote_data,
             });
+        }
+    }
+}
+
+/// All possible data to be sent to the remote node
+#[derive(Clone, Debug, PartialEq)]
+pub struct Data {
+    pub peer_id: PeerId,
+    pub secret: Option<Secret>,
+    pub shared_swap_id: Option<SharedSwapId>,
+    pub local_ethereum_identity: Option<identity::Ethereum>,
+    pub local_lightning_identity: Option<identity::Lightning>,
+}
+
+// TODO: Rename to LocalData
+impl Data {
+    pub fn new(
+        peer_id: PeerId,
+        secret: Option<Secret>,
+        shared_swap_id: Option<SharedSwapId>,
+        local_ethereum_identity: Option<identity::Ethereum>,
+        local_lightning_identity: Option<identity::Lightning>,
+    ) -> Self {
+        Data {
+            peer_id,
+            secret,
+            shared_swap_id,
+            local_ethereum_identity,
+            local_lightning_identity,
+        }
+    }
+}
+
+/// All possible data to be received from the remote node
+#[derive(Clone, Debug, PartialEq)]
+pub struct RemoteData {
+    ethereum_identity: Option<identity::Ethereum>,
+    lightning_identity: Option<identity::Lightning>,
+    secret_hash: Option<SecretHash>,
+}
+
+impl Default for RemoteData {
+    fn default() -> Self {
+        RemoteData {
+            ethereum_identity: None,
+            lightning_identity: None,
+            secret_hash: None,
         }
     }
 }
@@ -711,44 +774,6 @@ mod tests {
             ) => {
                 assert_eq!(bob_swap_params.digest(), alice_swap_params.digest());
             }
-        }
-    }
-}
-
-/// All possible data to be exchanged between two nodes
-/// to execute a swap
-#[derive(Clone, Debug, PartialEq)]
-pub struct Data {
-    /// TODO: I was hoping to get rid of the `role` here because the
-    /// communication can actually be agnostic to the role. The current
-    /// barrier here is that once the swap is finalized, the start of the
-    /// swap is done in `NetworkBehaviourEventProcess` based on an event
-    /// emitted by `ComitLn` which thus need to be aware of
-    /// alpha/beta/alice/bob. I wonder if there should be a _callback_
-    /// function that can be passed when the swap is created and used at the
-    /// end to start the swap with the information learned during communication
-    /// phase. This callback function can be aware of alice/bob/alpha/beta
-    /// but would be a black box for `ComitLn`.   
-    pub role: Role,
-    pub peer_id: PeerId,
-    pub secret: Option<Secret>,
-    pub shared_swap_id: Option<SharedSwapId>,
-    pub local_ethereum_identity: Option<identity::Ethereum>,
-    pub remote_ethereum_identity: Option<identity::Ethereum>,
-    pub local_lightning_identity: Option<identity::Lightning>,
-    pub remote_lightning_identity: Option<identity::Lightning>,
-}
-
-impl Data {
-    fn new(peer_id: PeerId) -> Self {
-        Data {
-            peer_id,
-            secret: None,
-            shared_swap_id: None,
-            local_ethereum_identity: None,
-            remote_ethereum_identity: None,
-            local_lightning_identity: None,
-            remote_lightning_identity: None,
         }
     }
 }
