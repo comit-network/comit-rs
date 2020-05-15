@@ -267,14 +267,6 @@ impl<T> Swaps<T> {
             None => return Err(Error::NotFound),
         };
 
-        self.pending_announcement
-            .retain(|_, id| *id != *local_swap_id);
-
-        let finalized_digest = data.digest();
-
-        self.timestamps
-            .retain(|digest, _| *digest != finalized_digest);
-
         Ok((*local_swap_id, data.clone()))
     }
 
