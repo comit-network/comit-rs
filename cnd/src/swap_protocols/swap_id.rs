@@ -9,6 +9,13 @@ use uuid::Uuid;
 pub struct LocalSwapId(Uuid);
 
 impl LocalSwapId {
+    /// Creates a new random swap id.
+    pub fn random() -> Self {
+        LocalSwapId(Uuid::new_v4())
+    }
+}
+
+impl LocalSwapId {
     pub fn as_bytes(&self) -> &[u8] {
         self.0.as_bytes()
     }
@@ -16,7 +23,7 @@ impl LocalSwapId {
 
 impl Default for LocalSwapId {
     fn default() -> Self {
-        LocalSwapId(Uuid::new_v4())
+        LocalSwapId::random()
     }
 }
 

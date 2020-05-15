@@ -56,5 +56,18 @@ table! {
     }
 }
 
+table! {
+    hbits {
+        id -> Integer,
+        swap_id -> Integer,
+        amount -> Text,
+        network -> Text,
+        hash_function -> Text,
+        redeem_identity -> Nullable<Text>,
+        refund_identity -> Nullable<Text>,
+        ledger -> Text,
+    }
+}
+
 allow_tables_to_appear_in_same_query!(swaps, halights);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
