@@ -177,8 +177,22 @@ pub fn create(
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade)
+        .and(facade.clone())
         .and_then(http_api::routes::action_refund);
+
+    let hbit_herc20 = warp::post()
+        .and(warp::path!("swaps" / "hbit" / "herc20"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(http_api::routes::post::post_hbit_herc20);
+
+    let herc20_hbit = warp::post()
+        .and(warp::path!("swaps" / "herc20" / "hbit"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade)
+        .and_then(http_api::routes::post::post_herc20_hbit);
 
     preflight_cors_route
         .or(rfc003_get_swap)
@@ -198,6 +212,8 @@ pub fn create(
         .or(lightning_action_deploy)
         .or(lightning_action_redeem)
         .or(lightning_action_refund)
+        .or(hbit_herc20)
+        .or(herc20_hbit)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

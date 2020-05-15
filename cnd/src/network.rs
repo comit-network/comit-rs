@@ -16,7 +16,7 @@ use crate::{
     },
     comit_api::LedgerKind,
     config::Settings,
-    db::{ForSwap, Save, Sqlite, Swap},
+    db::{CreatedSwap, ForSwap, Save, Sqlite, Swap},
     htlc_location,
     http_api::LedgerNotConfigured,
     identity,
@@ -26,7 +26,7 @@ use crate::{
     swap_protocols::{
         halight,
         halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        herc20_rfc003_watcher, ledger,
+        hbit, herc20, herc20_rfc003_watcher, ledger,
         rfc003::{
             self,
             create_swap::HtlcParams,
@@ -156,10 +156,6 @@ impl Swarm {
         let mut guard = self.inner.lock().await;
         guard.get_created_swap(id)
     }
-
-    // On Bob's side, when an announce message is received execute the required
-    // communication protocols and write the finalized swap to the database.  Then
-    // spawn the same as is done for Alice.
 }
 
 struct TokioExecutor {
@@ -346,6 +342,22 @@ impl ComitNode {
         self.comit_ln.initiate_communication(id, swap_params)
     }
 
+    fn init_hbit_herc20(
+        &mut self,
+        id: LocalSwapId,
+        swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        self.comit_ln.init_hbit_herc20(id, swap)
+    }
+
+    fn init_herc20_hbit(
+        &mut self,
+        id: LocalSwapId,
+        swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        self.comit_ln.init_herc20_hbit(id, swap)
+    }
+
     pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
         self.comit_ln.get_finalized_swap(id)
     }
@@ -382,6 +394,37 @@ pub struct WhatBobLearnedFromAlice {
     pub secret_hash: SecretHash,
     pub refund_ethereum_identity: identity::Ethereum,
     pub redeem_lightning_identity: identity::Lightning,
+}
+
+/// Init the communication protocols.
+#[async_trait]
+pub trait InitCommunication<T> {
+    async fn init_communication(&self, swap_id: LocalSwapId, created_swap: T)
+        -> anyhow::Result<()>;
+}
+
+#[async_trait]
+impl InitCommunication<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for Swarm {
+    async fn init_communication(
+        &self,
+        swap_id: LocalSwapId,
+        created_swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.init_hbit_herc20(swap_id, created_swap)
+    }
+}
+
+#[async_trait]
+impl InitCommunication<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Swarm {
+    async fn init_communication(
+        &self,
+        swap_id: LocalSwapId,
+        created_swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.init_herc20_hbit(swap_id, created_swap)
+    }
 }
 
 async fn handle_request(

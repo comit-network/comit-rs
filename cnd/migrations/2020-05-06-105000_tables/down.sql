@@ -6,4 +6,4 @@ DROP TABLE shared_swap_ids;
 DROP TABLE address_hints;
 DROP TABLE herc20s;
 DROP TABLE halights;
-
+DROP TABLE hbits;

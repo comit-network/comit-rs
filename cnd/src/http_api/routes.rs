@@ -1,5 +1,6 @@
 pub mod index;
 pub mod peers;
+pub mod post;
 pub mod rfc003;
 
 use crate::{

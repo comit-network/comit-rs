@@ -31,6 +31,12 @@ impl PublicKey {
     }
 }
 
+impl fmt::Display for PublicKey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 impl From<secp256k1::PublicKey> for PublicKey {
     fn from(key: secp256k1::PublicKey) -> Self {
         Self(bitcoin::PublicKey {

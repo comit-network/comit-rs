@@ -1,5 +1,7 @@
 use crate::{
-    asset, identity,
+    asset,
+    db::CreatedSwap,
+    identity,
     network::{
         oneshot_behaviour,
         protocols::{
@@ -10,6 +12,7 @@ use crate::{
     },
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
+        hbit, herc20,
         ledger::{self, ethereum::ChainId},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
@@ -136,6 +139,24 @@ impl ComitLN {
         }
 
         Ok(())
+    }
+
+    pub fn init_hbit_herc20(
+        &mut self,
+        _: LocalSwapId,
+        _: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        // As for initiate_communication()
+        unimplemented!()
+    }
+
+    pub fn init_herc20_hbit(
+        &mut self,
+        _: LocalSwapId,
+        _: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
+    ) -> anyhow::Result<()> {
+        // As for initiate_communication()
+        unimplemented!()
     }
 
     pub fn get_created_swap(

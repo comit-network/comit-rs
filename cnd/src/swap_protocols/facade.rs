@@ -1,15 +1,17 @@
 use crate::{
     asset,
-    db::{Save, Sqlite},
+    db::{CreatedSwap, Save, Sqlite},
     identity,
-    network::{comit_ln, protocols::announce::SwapDigest, DialInformation, Swarm},
-    swap_protocols::{halight, LedgerStates, LocalSwapId, Role},
+    network::{
+        comit_ln, protocols::announce::SwapDigest, DialInformation, InitCommunication, Swarm,
+    },
+    swap_protocols::{halight, hbit, herc20, LedgerStates, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
 use digest::{Digest, ToDigestInput};
 use std::sync::Arc;
 
-/// This represent the information available on a swap
+/// This represents the information available on a swap
 /// before communication with the other node has started
 #[derive(Clone, Digest, Debug, PartialEq)]
 #[digest(hash = "SwapDigest")]
@@ -32,6 +34,96 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "3002")]
     pub lightning_amount: asset::Bitcoin,
+}
+
+/// This represents the information available on a swap
+/// before communication with the other node has started
+#[derive(Clone, Digest, Debug, PartialEq)]
+#[digest(hash = "SwapDigest")]
+pub struct HbitHerc20SwapParams {
+    #[digest(ignore)]
+    pub role: Role,
+    #[digest(ignore)]
+    pub peer: DialInformation,
+    #[digest(ignore)]
+    pub bitcoin_identity: identity::Bitcoin,
+    #[digest(prefix = "2001")]
+    pub bitcoin_expiry: Timestamp,
+    #[digest(prefix = "2002")]
+    pub bitcoin_amount: asset::Bitcoin,
+    #[digest(ignore)]
+    pub ethereum_identity: identity::Ethereum,
+    #[digest(prefix = "3001")]
+    pub ethereum_expiry: Timestamp,
+    #[digest(prefix = "3002")]
+    pub erc20_amount: asset::Erc20Quantity,
+    #[digest(ignore)]
+    pub token_contract: identity::Ethereum,
+}
+
+impl From<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for HbitHerc20SwapParams {
+    fn from(swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>) -> Self {
+        let peer = DialInformation {
+            peer_id: swap.peer,
+            address_hint: None,
+        };
+
+        Self {
+            role: swap.role,
+            peer,
+            bitcoin_identity: swap.alpha.identity,
+            bitcoin_expiry: swap.alpha.absolute_expiry.into(),
+            bitcoin_amount: swap.alpha.amount,
+            ethereum_identity: swap.beta.identity,
+            ethereum_expiry: swap.beta.absolute_expiry.into(),
+            erc20_amount: swap.beta.amount,
+            token_contract: swap.beta.token_contract,
+        }
+    }
+}
+
+#[derive(Clone, Digest, Debug, PartialEq)]
+#[digest(hash = "SwapDigest")]
+pub struct Herc20HbitSwapParams {
+    #[digest(ignore)]
+    pub role: Role,
+    #[digest(ignore)]
+    pub peer: DialInformation,
+    #[digest(ignore)]
+    pub ethereum_identity: identity::Ethereum,
+    #[digest(prefix = "2001")]
+    pub ethereum_expiry: Timestamp,
+    #[digest(prefix = "2002")]
+    pub erc20_amount: asset::Erc20Quantity,
+    #[digest(ignore)]
+    pub token_contract: identity::Ethereum,
+    #[digest(ignore)]
+    pub bitcoin_identity: identity::Bitcoin,
+    #[digest(prefix = "3001")]
+    pub bitcoin_expiry: Timestamp,
+    #[digest(prefix = "3002")]
+    pub bitcoin_amount: asset::Bitcoin,
+}
+
+impl From<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Herc20HbitSwapParams {
+    fn from(swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>) -> Self {
+        let peer = DialInformation {
+            peer_id: swap.peer,
+            address_hint: None,
+        };
+
+        Self {
+            role: swap.role,
+            peer,
+            ethereum_identity: swap.alpha.identity,
+            ethereum_expiry: swap.alpha.absolute_expiry.into(),
+            erc20_amount: swap.alpha.amount,
+            token_contract: swap.alpha.token_contract,
+            bitcoin_identity: swap.beta.identity,
+            bitcoin_expiry: swap.beta.absolute_expiry.into(),
+            bitcoin_amount: swap.beta.amount,
+        }
+    }
 }
 
 impl ToDigestInput for asset::Bitcoin {
@@ -105,5 +197,20 @@ where
 {
     async fn save(&self, data: T) -> anyhow::Result<()> {
         self.db.save(data).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T> InitCommunication<T> for Facade
+where
+    T: Send + 'static,
+    Swarm: InitCommunication<T>,
+{
+    async fn init_communication(
+        &self,
+        swap_id: LocalSwapId,
+        created_swap: T,
+    ) -> anyhow::Result<()> {
+        self.swarm.init_communication(swap_id, created_swap).await
     }
 }

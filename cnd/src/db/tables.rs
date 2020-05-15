@@ -1,14 +1,15 @@
 use crate::{
+    bitcoin,
     db::{
-        schema::{address_hints, halights, herc20s, secret_hashes, swaps},
+        schema::{address_hints, halights, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
-            Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
+            BitcoinNetwork, Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
         },
         Error, Sqlite,
     },
     identity, lightning,
-    swap_protocols::{halight, herc20, rfc003, HashFunction, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, hbit, herc20, rfc003, HashFunction, Ledger, LocalSwapId, Role},
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};
@@ -208,6 +209,72 @@ impl IntoInsertable for halight::CreatedSwap {
     }
 }
 
+#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
+#[belongs_to(Swap)]
+#[table_name = "hbits"]
+pub struct Hbit {
+    id: i32,
+    swap_id: i32,
+    pub amount: Text<Satoshis>,
+    pub network: Text<BitcoinNetwork>,
+    pub hash_function: Text<HashFunction>,
+    pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
+    pub refund_identity: Option<Text<bitcoin::PublicKey>>,
+    pub ledger: Text<Ledger>,
+}
+
+#[derive(Insertable, Clone, Copy, Debug)]
+#[table_name = "hbits"]
+pub struct InsertableHbit {
+    pub swap_id: i32,
+    pub amount: Text<Satoshis>,
+    pub network: Text<BitcoinNetwork>,
+    pub hash_function: Text<HashFunction>,
+    pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
+    pub refund_identity: Option<Text<bitcoin::PublicKey>>,
+    pub ledger: Text<Ledger>,
+}
+
+impl InsertableHbit {
+    pub fn with_swap_id(&self, swap_id: i32) -> Self {
+        InsertableHbit {
+            swap_id,
+            amount: self.amount,
+            network: self.network,
+            hash_function: self.hash_function,
+            redeem_identity: self.redeem_identity,
+            refund_identity: self.refund_identity,
+            ledger: self.ledger,
+        }
+    }
+}
+
+impl IntoInsertable for hbit::CreatedSwap {
+    type Insertable = InsertableHbit;
+
+    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+        let redeem_identity = match role {
+            Role::Alice => Some(Text(self.identity)),
+            Role::Bob => None,
+        };
+        let refund_identity = match role {
+            Role::Alice => None,
+            Role::Bob => Some(Text(self.identity)),
+        };
+        assert!(redeem_identity.is_some() || refund_identity.is_some());
+
+        InsertableHbit {
+            swap_id,
+            amount: Text(self.amount.into()),
+            network: Text(self.network.into()),
+            hash_function: Text(HashFunction::Sha256),
+            redeem_identity,
+            refund_identity,
+            ledger: Text(ledger),
+        }
+    }
+}
+
 impl Insert<InsertableHerc20> for Sqlite {
     fn insert(
         &self,
@@ -229,6 +296,20 @@ impl Insert<InsertableHalight> for Sqlite {
         insertable: &InsertableHalight,
     ) -> anyhow::Result<()> {
         diesel::insert_into(halights::dsl::halights)
+            .values(insertable)
+            .execute(connection)?;
+
+        Ok(())
+    }
+}
+
+impl Insert<InsertableHbit> for Sqlite {
+    fn insert(
+        &self,
+        connection: &SqliteConnection,
+        insertable: &InsertableHbit,
+    ) -> anyhow::Result<()> {
+        diesel::insert_into(hbits::dsl::hbits)
             .values(insertable)
             .execute(connection)?;
 
@@ -468,6 +549,46 @@ impl Sqlite {
                     .first(connection)?;
 
                 Halight::belonging_to(&swap).first(connection).optional()
+            })
+            .await?
+            .ok_or(Error::SwapNotFound)?;
+
+        Ok(record)
+    }
+
+    pub async fn save_hbit(
+        &self,
+        swap_id: LocalSwapId,
+        data: &InsertableHbit,
+    ) -> anyhow::Result<()> {
+        self.do_in_transaction(|connection| {
+            let key = Text(swap_id);
+
+            let swap: Swap = swaps::table
+                .filter(swaps::local_swap_id.eq(key))
+                .first(connection)?;
+
+            let insertable = data.with_swap_id(swap.id);
+
+            diesel::insert_into(hbits::dsl::hbits)
+                .values(insertable)
+                .execute(&*connection)
+        })
+        .await?;
+
+        Ok(())
+    }
+
+    pub async fn load_hbit(&self, swap_id: LocalSwapId) -> anyhow::Result<Hbit> {
+        let record: Hbit = self
+            .do_in_transaction(|connection| {
+                let key = Text(swap_id);
+
+                let swap: Swap = swaps::table
+                    .filter(swaps::local_swap_id.eq(key))
+                    .first(connection)?;
+
+                Hbit::belonging_to(&swap).first(connection).optional()
             })
             .await?
             .ok_or(Error::SwapNotFound)?;

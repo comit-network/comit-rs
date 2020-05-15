@@ -2,17 +2,26 @@ pub mod actions;
 mod facade;
 pub mod halight;
 pub mod han;
+pub mod hbit;
 pub mod herc20;
 pub mod herc20_rfc003_watcher;
 pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;
 mod rfc003_facade;
+mod secret;
 pub mod state;
 mod swap_error_states;
 mod swap_id;
 
-pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*, swap_id::*};
+pub use self::{
+    facade::*,
+    ledger_states::*,
+    rfc003_facade::*,
+    secret::{FromErr, Secret, SecretHash},
+    swap_error_states::*,
+    swap_id::*,
+};
 
 use serde::{Deserialize, Serialize};
 
