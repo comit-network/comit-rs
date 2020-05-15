@@ -3,10 +3,9 @@ use crate::{
         comit_ln::Data,
         protocols::announce::{protocol::ReplySubstream, SwapDigest},
     },
-    swap_protocols::{Herc20HalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
+    swap_protocols::{LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
-use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
@@ -56,19 +55,13 @@ pub struct Swaps<T> {
 
 impl<T> Swaps<T> {
     /// Gets a swap that was created
-    pub fn get_created_swap(
-        &self,
-        local_swap_id: &LocalSwapId,
-    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
+    pub fn get_created_swap(&self, local_swap_id: &LocalSwapId) -> Option<Data> {
         self.swaps.get(local_swap_id).cloned()
     }
 
     /// Gets a swap that was announced
-    pub fn get_announced_swap(
-        &self,
-        local_swap_id: &LocalSwapId,
-    ) -> Option<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams)> {
-        let create_params = match self.swaps.get(local_swap_id) {
+    pub fn get_announced_swap(&self, local_swap_id: &LocalSwapId) -> Option<(SharedSwapId, Data)> {
+        let data = match self.swaps.get(local_swap_id) {
             Some(create_params) => create_params,
             None => return None,
         };
@@ -78,7 +71,7 @@ impl<T> Swaps<T> {
             None => return None,
         };
 
-        Some((*shared_swap_id, create_params.clone()))
+        Some((*shared_swap_id, data.clone()))
     }
 
     /// Alice created and announced it a swap and is waiting for a confirmation
@@ -114,20 +107,20 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         shared_swap_id: SharedSwapId,
-    ) -> Option<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams)> {
+    ) -> Option<(LocalSwapId, Data)> {
         let local_swap_id = match self.pending_confirmation.remove(digest) {
             Some(local_swap_id) => local_swap_id,
             None => return None,
         };
 
-        let create_params = match self.swaps.get(&local_swap_id) {
+        let data = match self.swaps.get(&local_swap_id) {
             Some(create_params) => create_params,
             None => return None,
         };
 
         self.swap_ids.insert(local_swap_id, shared_swap_id);
 
-        Some((local_swap_id, create_params.clone()))
+        Some((local_swap_id, data.clone()))
     }
 
     /// Bob created a swap and it is pending announcement
@@ -177,18 +170,18 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         peer_id: &PeerId,
-    ) -> Result<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams), Error> {
+    ) -> Result<(SharedSwapId, Data), Error> {
         let local_swap_id = match self.pending_announcement.get(&digest) {
             Some(local_swap_id) => local_swap_id,
             None => return Err(Error::NotFound),
         };
 
-        let create_params = match self.swaps.get(&local_swap_id) {
-            Some(create_params) => create_params,
+        let data = match self.swaps.get(&local_swap_id) {
+            Some(data) => data,
             None => return Err(Error::InternalFailure),
         };
 
-        if *peer_id != create_params.peer.peer_id {
+        if *peer_id != data.peer.peer_id {
             return Err(Error::PeerIdMismatch);
         }
 
@@ -200,7 +193,7 @@ impl<T> Swaps<T> {
         let shared_swap_id = SharedSwapId::default();
         self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
 
-        Ok((shared_swap_id, create_params.clone()))
+        Ok((shared_swap_id, data.clone()))
     }
 
     /// Bob moves a swap that was announced and pending creation to communicate
@@ -248,7 +241,7 @@ impl<T> Swaps<T> {
     pub fn finalize_swap(
         &mut self,
         shared_swap_id: &SharedSwapId,
-    ) -> Result<(LocalSwapId, Herc20HalightBitcoinCreateSwapParams), Error> {
+    ) -> Result<(LocalSwapId, Data), Error> {
         let local_swap_id = match self.swap_ids.iter().find_map(|(key, value)| {
             if *value == *shared_swap_id {
                 Some(key)
@@ -260,7 +253,7 @@ impl<T> Swaps<T> {
             None => return Err(Error::NotFound),
         };
 
-        let create_params = match self.swaps.get(&local_swap_id) {
+        let data = match self.swaps.get(&local_swap_id) {
             Some(create_params) => create_params,
             None => return Err(Error::NotFound),
         };
@@ -268,12 +261,12 @@ impl<T> Swaps<T> {
         self.pending_announcement
             .retain(|_, id| *id != *local_swap_id);
 
-        let finalized_digest = create_params.digest();
+        let finalized_digest = data.digest();
 
         self.timestamps
             .retain(|digest, _| *digest != finalized_digest);
 
-        Ok((*local_swap_id, create_params.clone()))
+        Ok((*local_swap_id, data.clone()))
     }
 
     /// Remove all pending (not finalized) swap older than `older_than`
