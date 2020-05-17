@@ -13,7 +13,7 @@ use std::{
 };
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Deserialize)]
-pub struct H64(#[serde(with = "SerHex::<StrictPfx>")] [u8; 8]);
+struct H64(#[serde(with = "SerHex::<StrictPfx>")] [u8; 8]);
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
