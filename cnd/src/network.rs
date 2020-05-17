@@ -1,4 +1,4 @@
-pub mod comit_ln;
+pub mod comit;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
@@ -21,7 +21,7 @@ use crate::{
     http_api::LedgerNotConfigured,
     identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    network::comit_ln::ComitLN,
+    network::comit::Comit,
     seed::RootSeed,
     swap_protocols::{
         halight,
@@ -144,7 +144,7 @@ impl Swarm {
         guard.initiate_communication(id, swap_params)
     }
 
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
         let mut guard = self.inner.lock().await;
         guard.get_finalized_swap(id)
     }
@@ -205,7 +205,7 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
 #[allow(missing_debug_implementations)]
 pub struct ComitNode {
     rfc003_comit: Rfc003Comit,
-    comit_ln: ComitLN,
+    comit: Comit,
     /// Multicast DNS discovery network behaviour.
     mdns: Mdns,
 
@@ -306,7 +306,7 @@ impl ComitNode {
         Ok(Self {
             rfc003_comit: Rfc003Comit::new(known_headers),
             mdns: Mdns::new()?,
-            comit_ln: ComitLN::new(seed),
+            comit: Comit::new(seed),
             bitcoin_connector,
             ethereum_connector,
             rfc003_alpha_ledger_states,
@@ -339,7 +339,7 @@ impl ComitNode {
         swap_params: Herc20HalightBitcoinCreateSwapParams,
     ) -> anyhow::Result<()> {
         self.supports_halight()?;
-        self.comit_ln.initiate_communication(id, swap_params)
+        self.comit.initiate_communication(id, swap_params)
     }
 
     fn init_hbit_herc20(
@@ -347,7 +347,7 @@ impl ComitNode {
         id: LocalSwapId,
         swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
     ) -> anyhow::Result<()> {
-        self.comit_ln.init_hbit_herc20(id, swap)
+        self.comit.init_hbit_herc20(id, swap)
     }
 
     fn init_herc20_hbit(
@@ -355,18 +355,18 @@ impl ComitNode {
         id: LocalSwapId,
         swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
     ) -> anyhow::Result<()> {
-        self.comit_ln.init_herc20_hbit(id, swap)
+        self.comit.init_herc20_hbit(id, swap)
     }
 
-    pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
-        self.comit_ln.get_finalized_swap(id)
+    pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
+        self.comit.get_finalized_swap(id)
     }
 
     pub fn get_created_swap(
         &mut self,
         id: LocalSwapId,
     ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
-        self.comit_ln.get_created_swap(&id)
+        self.comit.get_created_swap(&id)
     }
 
     fn supports_halight(&self) -> anyhow::Result<()> {
@@ -921,10 +921,10 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<comit_ln::BehaviourOutEvent> for ComitNode {
-    fn inject_event(&mut self, event: comit_ln::BehaviourOutEvent) {
+impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for ComitNode {
+    fn inject_event(&mut self, event: comit::BehaviourOutEvent) {
         match event {
-            comit_ln::BehaviourOutEvent::SwapFinalized {
+            comit::BehaviourOutEvent::SwapFinalized {
                 local_swap_id,
                 swap_params: create_swap_params,
                 secret_hash,

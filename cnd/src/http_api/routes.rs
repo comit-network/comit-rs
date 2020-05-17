@@ -8,7 +8,7 @@ use crate::{
     ethereum::Bytes,
     htlc_location,
     http_api::{action::ActionResponseBody, problem, route_factory, Http},
-    network::comit_ln,
+    network::comit,
     swap_protocols::{
         actions::{
             ethereum,
@@ -412,7 +412,7 @@ pub struct AliceHerc20HalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
-    pub finalized_swap: comit_ln::FinalizedSwap,
+    pub finalized_swap: comit::FinalizedSwap,
 }
 
 impl GetSwapStatus for AliceHerc20HalightBitcoinState {
@@ -457,7 +457,7 @@ pub struct BobHerc20HalightBitcoinState {
     pub alpha_ledger_state:
         LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
     pub beta_ledger_state: halight::State,
-    pub finalized_swap: comit_ln::FinalizedSwap,
+    pub finalized_swap: comit::FinalizedSwap,
 }
 
 impl GetSwapStatus for BobHerc20HalightBitcoinState {
