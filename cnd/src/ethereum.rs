@@ -13,7 +13,7 @@ use std::{
 };
 
 #[derive(Debug, Default, Copy, Clone, PartialEq, Deserialize)]
-pub struct H64(#[serde(with = "SerHex::<StrictPfx>")] [u8; 8]);
+struct H64(#[serde(with = "SerHex::<StrictPfx>")] [u8; 8]);
 
 #[derive(
     Debug, Default, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize,
@@ -25,6 +25,10 @@ impl Address {
         let mut address = Address([0u8; 20]);
         address.0.copy_from_slice(src);
         address
+    }
+
+    pub fn as_bytes(&self) -> &[u8; 20] {
+        &self.0
     }
 }
 

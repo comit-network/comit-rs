@@ -24,7 +24,7 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "2002")]
     pub ethereum_amount: asset::Erc20Quantity,
-    #[digest(ignore)]
+    #[digest(prefix = "2003")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
@@ -55,7 +55,7 @@ pub struct HbitHerc20SwapParams {
     pub ethereum_expiry: Timestamp,
     #[digest(prefix = "3002")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(ignore)]
+    #[digest(prefix = "3003")]
     pub token_contract: identity::Ethereum,
 }
 
@@ -93,7 +93,7 @@ pub struct Herc20HbitSwapParams {
     pub ethereum_expiry: Timestamp,
     #[digest(prefix = "2002")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(ignore)]
+    #[digest(prefix = "2003")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub bitcoin_identity: identity::Bitcoin,
@@ -139,6 +139,12 @@ impl ToDigestInput for asset::Ether {
 impl ToDigestInput for asset::Erc20Quantity {
     fn to_digest_input(&self) -> Vec<u8> {
         self.to_bytes()
+    }
+}
+
+impl ToDigestInput for identity::Ethereum {
+    fn to_digest_input(&self) -> Vec<u8> {
+        self.clone().as_bytes().to_vec()
     }
 }
 
