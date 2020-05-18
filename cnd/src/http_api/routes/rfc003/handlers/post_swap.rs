@@ -1,10 +1,10 @@
 use crate::{
     db::{LoadAcceptedSwap, Save, Sqlite, Swap},
     htlc_location,
-    http_api::{HttpAsset, HttpLedger},
+    http_api::{DialInformation, HttpAsset, HttpLedger},
     identity,
     init_swap::init_accepted_swap,
-    network::{DialInformation, SendRequest},
+    network::SendRequest,
     seed::Rfc003DeriveSwapSeed,
     swap_protocols::{
         rfc003::{
@@ -21,6 +21,7 @@ use crate::{
 };
 use anyhow::Context;
 use futures::future::TryFutureExt;
+use libp2p::PeerId;
 use libp2p_comit::frame::OutboundRequest;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{convert::TryInto, fmt::Debug, str::FromStr};
@@ -60,7 +61,7 @@ where
 {
     tracing::trace!("initiating new request: {}", swap_request.swap_id);
 
-    let counterparty = peer.peer_id.clone();
+    let counterparty = PeerId::from(peer.clone());
 
     Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
     Save::save(&dependencies, swap_request.clone()).await?;
@@ -81,10 +82,11 @@ where
 
     let future = {
         async move {
+            let peer = comit::network::DialInformation::from(peer);
             let response = dependencies
                 .send_request(peer.clone(), swap_request.clone())
                 .await
-                .with_context(|| format!("Failed to send swap request to {}", peer.clone()))?;
+                .with_context(|| format!("Failed to send swap request to {}", peer))?;
 
             match response {
                 Ok(accept) => {
@@ -126,7 +128,7 @@ pub async fn handle_post_swap(
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
     let seed = dependencies.rfc003_derive_swap_seed(id);
-    let secret_hash = seed.derive_secret().hash();
+    let secret_hash = SecretHash::new(seed.derive_secret());
 
     let body = SwapRequestBody::deserialize(&body)?;
 
@@ -478,8 +480,9 @@ fn default_beta_expiry() -> Timestamp {
 mod tests {
     use super::*;
     use crate::{
-        network::DialInformation,
-        swap_protocols::ledger::{self, ethereum::ChainId},
+        ethereum::ChainId,
+        http_api::{DialInformation, Http},
+        swap_protocols::ledger::{self},
     };
     use spectral::prelude::*;
 
@@ -540,15 +543,16 @@ mod tests {
 
         let body = serde_json::from_str::<SwapRequestBody>(body);
 
-        assert_that(&body)
-            .is_ok()
-            .map(|b| &b.peer)
-            .is_equal_to(&DialInformation {
-                peer_id: "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
-                    .parse()
-                    .unwrap(),
-                address_hint: Some("/ip4/8.9.0.1/tcp/9999".parse().unwrap()),
-            });
+        assert_that(&body).is_ok().map(|b| &b.peer).is_equal_to(
+            &DialInformation::WithAddressHint {
+                peer_id: Http(
+                    "Qma9T5YraSnpRDZqRR4krcSJabThc8nwZuJV3LercPHufi"
+                        .parse()
+                        .unwrap(),
+                ),
+                address_hint: "/ip4/8.9.0.1/tcp/9999".parse().unwrap(),
+            },
+        );
 
         assert_that(&body)
             .is_ok()

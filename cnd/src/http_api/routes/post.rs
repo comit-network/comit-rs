@@ -1,10 +1,10 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
-    http_api::{problem, routes::into_rejection, Http},
+    http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
-    network::{DialInformation, InitCommunication},
-    swap_protocols::{hbit, herc20, ledger, Facade, LocalSwapId, Role},
+    network::InitCommunication,
+    swap_protocols::{hbit, herc20, Facade, LocalSwapId, Role},
 };
 use serde::Deserialize;
 use warp::{http::StatusCode, Rejection, Reply};
@@ -95,7 +95,7 @@ fn hbit_herc20_created_swap_from_body(
         swap_id,
         alpha: body.alpha.into(),
         beta: body.beta.into(),
-        peer: body.peer.peer_id,
+        peer: body.peer.into(),
         address_hint: None,
         role: body.role.0,
     }
@@ -109,7 +109,7 @@ fn herc20_hbit_created_swap_from_body(
         swap_id,
         alpha: body.alpha.into(),
         beta: body.beta.into(),
-        peer: body.peer.peer_id,
+        peer: body.peer.into(),
         address_hint: None,
         role: body.role.0,
     }
@@ -127,7 +127,7 @@ pub struct Body<A, B> {
 struct Hbit {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Bitcoin,
-    pub network: ledger::Bitcoin,
+    pub network: Http<bitcoin::Network>,
     pub absolute_expiry: u32,
 }
 
@@ -136,7 +136,7 @@ impl From<Hbit> for hbit::CreatedSwap {
         hbit::CreatedSwap {
             amount: *p.amount,
             identity: p.identity,
-            network: p.network,
+            network: p.network.0.into(),
             absolute_expiry: p.absolute_expiry,
         }
     }

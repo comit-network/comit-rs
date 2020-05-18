@@ -1,5 +1,5 @@
 use crate::swap_protocols::{
-    hbit::{LedgerState, SwapEvent},
+    hbit::{Event, LedgerState},
     LocalSwapId,
 };
 use std::collections::HashMap;
@@ -21,7 +21,7 @@ impl LedgerStates {
         states.get(key).cloned()
     }
 
-    pub async fn update(&self, key: &LocalSwapId, event: SwapEvent) {
+    pub async fn update(&self, key: &LocalSwapId, event: Event) {
         let mut states = self.states.lock().await;
         let ledger_state = match states.get_mut(key) {
             Some(state) => state,
@@ -32,13 +32,13 @@ impl LedgerStates {
         };
 
         match event {
-            SwapEvent::Deployed(deployed) => ledger_state.transition_to_deployed(deployed),
-            SwapEvent::Funded(funded) => ledger_state.transition_to_funded(funded),
-            SwapEvent::Redeemed(redeemed) => {
+            Event::Deployed(deployed) => ledger_state.transition_to_deployed(deployed),
+            Event::Funded(funded) => ledger_state.transition_to_funded(funded),
+            Event::Redeemed(redeemed) => {
                 // what if redeemed.secret.hash() != secret_hash in request ??
                 ledger_state.transition_to_redeemed(redeemed);
             }
-            SwapEvent::Refunded(refunded) => ledger_state.transition_to_refunded(refunded),
+            Event::Refunded(refunded) => ledger_state.transition_to_refunded(refunded),
         }
     }
 }

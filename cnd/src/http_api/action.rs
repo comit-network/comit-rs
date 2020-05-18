@@ -1,5 +1,6 @@
 use crate::{
     asset,
+    ethereum::ChainId,
     http_api::{problem, Http, MissingQueryParameters, UnexpectedQueryParameters},
     identity,
     swap_protocols::{
@@ -8,7 +9,6 @@ use crate::{
             ethereum, lnd,
             lnd::Chain,
         },
-        ledger,
         rfc003::{Secret, SecretHash},
         LocalSwapId,
     },
@@ -67,14 +67,14 @@ pub enum ActionResponseBody {
         data: crate::ethereum::Bytes,
         amount: asset::Ether,
         gas_limit: crate::ethereum::U256,
-        chain_id: ledger::ethereum::ChainId,
+        chain_id: ChainId,
     },
     EthereumCallContract {
         contract_address: identity::Ethereum,
         #[serde(skip_serializing_if = "Option::is_none")]
         data: Option<crate::ethereum::Bytes>,
         gas_limit: crate::ethereum::U256,
-        chain_id: ledger::ethereum::ChainId,
+        chain_id: ChainId,
         #[serde(skip_serializing_if = "Option::is_none")]
         min_block_timestamp: Option<Timestamp>,
     },
@@ -426,7 +426,7 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ethereum::U256, identity, swap_protocols::ledger::ethereum::ChainId};
+    use crate::{ethereum::U256, identity};
     use bitcoin::Address as BitcoinAddress;
     use std::str::FromStr;
 

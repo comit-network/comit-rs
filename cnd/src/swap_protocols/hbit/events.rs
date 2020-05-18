@@ -1,6 +1,6 @@
 use crate::{
     asset, htlc_location,
-    swap_protocols::{hbit::HtlcParams, Secret},
+    swap_protocols::{hbit::Params, Secret},
     transaction,
 };
 use chrono::NaiveDateTime;
@@ -39,7 +39,7 @@ pub struct Refunded {
 pub trait HtlcFunded: Send + Sync + Sized + 'static {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded>;
@@ -49,7 +49,7 @@ pub trait HtlcFunded: Send + Sync + Sized + 'static {
 pub trait HtlcDeployed {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed>;
 }
@@ -58,7 +58,7 @@ pub trait HtlcDeployed {
 pub trait HtlcRedeemed: Send + Sync + Sized + 'static {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed>;
@@ -68,7 +68,7 @@ pub trait HtlcRedeemed: Send + Sync + Sized + 'static {
 pub trait HtlcRefunded: Send + Sync + Sized + 'static {
     async fn htlc_refunded(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded>;

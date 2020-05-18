@@ -2,11 +2,12 @@ use crate::{
     asset,
     db::{CreatedSwap, Save, Sqlite},
     identity,
-    network::{comit, protocols::announce::SwapDigest, DialInformation, InitCommunication, Swarm},
-    swap_protocols::{halight, hbit, herc20, LedgerStates, LocalSwapId, Role},
+    network::{comit, DialInformation, InitCommunication, Swarm},
+    swap_protocols::{halight, hbit, herc20, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
-use digest::{Digest, ToDigestInput};
+use ::comit::network::protocols::announce::SwapDigest;
+use digest::Digest;
 use std::sync::Arc;
 
 /// This represents the information available on a swap
@@ -124,42 +125,6 @@ impl From<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Herc20HbitSwa
     }
 }
 
-impl ToDigestInput for asset::Bitcoin {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_le_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for asset::Ether {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for asset::Erc20Quantity {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes()
-    }
-}
-
-impl ToDigestInput for identity::Ethereum {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().as_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for Timestamp {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.clone().to_bytes().to_vec()
-    }
-}
-
-impl ToDigestInput for RelativeTime {
-    fn to_digest_input(&self) -> Vec<u8> {
-        self.to_bytes().to_vec()
-    }
-}
-
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
 /// HTTP API controllers small and still access all the functionality we need.
@@ -167,7 +132,7 @@ impl ToDigestInput for RelativeTime {
 pub struct Facade {
     pub swarm: Swarm,
     // We currently only support Han-HALight, therefor 'alpha' is Ethereum and 'beta' is Lightning.
-    pub alpha_ledger_states: Arc<LedgerStates>,
+    pub herc20_states: Arc<herc20::States>,
     pub halight_states: Arc<halight::States>,
     pub db: Sqlite,
 }

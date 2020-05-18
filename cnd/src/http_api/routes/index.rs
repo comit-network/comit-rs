@@ -1,11 +1,11 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
-    http_api::{problem, routes::into_rejection, Http},
+    http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
-    network::{DialInformation, ListenAddresses},
+    network::ListenAddresses,
     swap_protocols::{
-        halight, han, herc20, ledger, Facade, Herc20HalightBitcoinCreateSwapParams, LocalSwapId,
+        halight, herc20, ledger, Facade, Herc20HalightBitcoinCreateSwapParams, LocalSwapId,
         Rfc003Facade, Role,
     },
 };
@@ -57,24 +57,6 @@ pub async fn get_info_siren(
     ))
 }
 
-#[allow(clippy::needless_pass_by_value)]
-pub async fn post_han_ethereum_halight_bitcoin(
-    body: serde_json::Value,
-    _facade: Facade,
-) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<HanEthereumEther, HalightLightningBitcoin>::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
-    tracing::error!("Lightning routes are not yet supported");
-    Err(warp::reject::custom(
-        HttpApiProblem::new("Route not yet supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This route is not yet supported."),
-    ))
-}
-
 pub async fn post_herc20_halight_bitcoin(
     body: serde_json::Value,
     facade: Facade,
@@ -93,7 +75,7 @@ pub async fn post_herc20_halight_bitcoin(
         swap_id,
         alpha: body.alpha.into(),
         beta: body.beta.into(),
-        peer: body.peer.peer_id,
+        peer: body.peer.into(),
         address_hint: None,
         role: body.role.0,
     };
@@ -115,26 +97,6 @@ pub async fn post_herc20_halight_bitcoin(
         })
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
-}
-
-// `warp::reply::Json` is used as a return type to please the compiler
-// until proper logic is implemented
-#[allow(clippy::needless_pass_by_value)]
-pub async fn post_halight_bitcoin_han_ether(
-    body: serde_json::Value,
-    _facade: Facade,
-) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<HalightLightningBitcoin, HanEthereumEther>::deserialize(&body)
-        .map_err(anyhow::Error::new)
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
-
-    tracing::error!("Lightning routes are not yet supported");
-    Err(warp::reject::custom(
-        HttpApiProblem::new("Route not yet supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This route is not yet supported."),
-    ))
 }
 
 // `warp::reply::Json` is used as a return type to please the compiler
@@ -171,7 +133,7 @@ impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>>
     fn from(body: Body<Herc20EthereumErc20, HalightLightningBitcoin>) -> Self {
         Self {
             role: body.role.0,
-            peer: body.peer,
+            peer: body.peer.into(),
             ethereum_identity: body.alpha.identity,
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
             ethereum_amount: body.alpha.amount,
@@ -179,25 +141,6 @@ impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>>
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
             lightning_amount: body.beta.amount.0,
             token_contract: body.alpha.contract_address,
-        }
-    }
-}
-
-#[derive(serde::Deserialize, Clone, Debug)]
-pub struct HanEthereumEther {
-    pub amount: asset::Ether,
-    pub identity: identity::Ethereum,
-    pub chain_id: u32,
-    pub absolute_expiry: u32,
-}
-
-impl From<HanEthereumEther> for han::CreatedSwap {
-    fn from(p: HanEthereumEther) -> Self {
-        han::CreatedSwap {
-            amount: p.amount,
-            identity: p.identity,
-            chain_id: p.chain_id,
-            absolute_expiry: p.absolute_expiry,
         }
     }
 }

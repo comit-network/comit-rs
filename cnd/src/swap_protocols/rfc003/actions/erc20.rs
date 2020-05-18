@@ -1,10 +1,10 @@
 use crate::{
     asset,
-    ethereum::Bytes,
+    ethereum::{Bytes, ChainId},
     htlc_location, identity,
     swap_protocols::{
         actions::ethereum::{CallContract, DeployContract},
-        ledger::{ethereum::ChainId, Ethereum},
+        ledger::Ethereum,
         rfc003::{create_swap::HtlcParams, Secret},
     },
     timestamp::Timestamp,

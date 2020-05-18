@@ -1,6 +1,8 @@
 use crate::{
     asset, identity,
-    swap_protocols::ledger::{self, lightning},
+    swap_protocols::ledger::{
+        Lightning, {self},
+    },
 };
 use std::{fmt, str::FromStr};
 
@@ -142,22 +144,22 @@ pub enum LightningNetwork {
     Regtest,
 }
 
-impl From<ledger::Lightning> for LightningNetwork {
-    fn from(lightning: lightning::Lightning) -> Self {
+impl From<Lightning> for LightningNetwork {
+    fn from(lightning: Lightning) -> Self {
         match lightning {
-            ledger::Lightning::Mainnet => LightningNetwork::Mainnet,
-            ledger::Lightning::Testnet => LightningNetwork::Testnet,
-            ledger::Lightning::Regtest => LightningNetwork::Regtest,
+            Lightning::Mainnet => LightningNetwork::Mainnet,
+            Lightning::Testnet => LightningNetwork::Testnet,
+            Lightning::Regtest => LightningNetwork::Regtest,
         }
     }
 }
 
-impl From<LightningNetwork> for ledger::Lightning {
+impl From<LightningNetwork> for Lightning {
     fn from(network: LightningNetwork) -> Self {
         match network {
-            LightningNetwork::Mainnet => ledger::Lightning::Mainnet,
-            LightningNetwork::Testnet => ledger::Lightning::Testnet,
-            LightningNetwork::Regtest => ledger::Lightning::Regtest,
+            LightningNetwork::Mainnet => Lightning::Mainnet,
+            LightningNetwork::Testnet => Lightning::Testnet,
+            LightningNetwork::Regtest => Lightning::Regtest,
         }
     }
 }

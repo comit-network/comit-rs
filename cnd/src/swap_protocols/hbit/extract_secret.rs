@@ -6,7 +6,7 @@ pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Op
         txin.witness
             .iter()
             .find_map(|script_item| match Secret::from_vec(&script_item) {
-                Ok(secret) if secret.hash() == *secret_hash => Some(secret),
+                Ok(secret) if SecretHash::new(secret) == *secret_hash => Some(secret),
                 Ok(_) => None,
                 Err(_) => None,
             })
@@ -45,7 +45,7 @@ mod test {
         let secret = Secret::from(*b"This is our favourite passphrase");
         let transaction = setup(&secret);
 
-        assert_that!(extract_secret(&transaction, &secret.hash()))
+        assert_that!(extract_secret(&transaction, &SecretHash::new(secret)))
             .is_some()
             .is_equal_to(&secret);
     }
@@ -72,7 +72,7 @@ mod test {
                 .unwrap();
         let secret = Secret::from_vec(&hex_secret).unwrap();
 
-        assert_that!(extract_secret(&transaction, &secret.hash()))
+        assert_that!(extract_secret(&transaction, &SecretHash::new(secret)))
             .is_some()
             .is_equal_to(&secret);
     }

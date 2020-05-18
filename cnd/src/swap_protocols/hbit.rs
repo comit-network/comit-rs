@@ -18,7 +18,7 @@ use crate::{
             },
             LedgerStates,
         },
-        ledger, Ledger, LocalSwapId, Role, SecretHash,
+        ledger, LocalSwapId, Role, SecretHash,
     },
     timestamp::Timestamp,
 };
@@ -47,21 +47,11 @@ pub struct CreatedSwap {
     pub absolute_expiry: u32,
 }
 
-/// Han specific data for an in progress swap.
-#[derive(Clone, Copy, Debug)]
-pub struct InProgressSwap {
-    pub ledger: Ledger,
-    pub asset: asset::Bitcoin,
-    pub refund_identity: identity::Bitcoin,
-    pub redeem_identity: identity::Bitcoin,
-    pub expiry: Timestamp, // This is the absolute_expiry for now.
-}
-
 pub async fn new_hbit_swap(
     swap_id: LocalSwapId,
     connector: Arc<Cache<BitcoindConnector>>,
     ledger_states: Arc<LedgerStates>,
-    htlc_params: HtlcParams,
+    htlc_params: Params,
     role: Role,
 ) {
     create_watcher(
@@ -90,7 +80,7 @@ async fn create_watcher(
     connector: Arc<Cache<BitcoindConnector>>,
     ledger_states: Arc<LedgerStates>,
     swap_id: LocalSwapId,
-    htlc_params: HtlcParams,
+    htlc_params: Params,
     accepted_at: NaiveDateTime,
 ) {
     ledger_states
@@ -128,17 +118,17 @@ async fn create_watcher(
 /// Each event is yielded through the controller handle (co) of the coroutine.
 async fn watch_ledger(
     connector: Arc<Cache<BitcoindConnector>>,
-    co: Co<SwapEvent>,
-    htlc_params: HtlcParams,
+    co: Co<Event>,
+    htlc_params: Params,
     start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()> {
     let deployed = connector.htlc_deployed(&htlc_params, start_of_swap).await?;
-    co.yield_(SwapEvent::Deployed(deployed.clone())).await;
+    co.yield_(Event::Deployed(deployed.clone())).await;
 
     let funded = connector
         .htlc_funded(&htlc_params, &deployed, start_of_swap)
         .await?;
-    co.yield_(SwapEvent::Funded(funded)).await;
+    co.yield_(Event::Funded(funded)).await;
 
     let redeemed = connector.htlc_redeemed(&htlc_params, &deployed, start_of_swap);
 
@@ -146,10 +136,10 @@ async fn watch_ledger(
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
-            co.yield_(SwapEvent::Redeemed(redeemed.clone())).await;
+            co.yield_(Event::Redeemed(redeemed.clone())).await;
         }
         Ok(Either::Right((refunded, _))) => {
-            co.yield_(SwapEvent::Refunded(refunded.clone())).await;
+            co.yield_(Event::Refunded(refunded.clone())).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
@@ -162,7 +152,7 @@ async fn watch_ledger(
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct HtlcParams {
+pub struct Params {
     pub network: bitcoin::Network,
     pub asset: asset::Bitcoin,
     pub redeem_identity: identity::Bitcoin,
@@ -171,16 +161,8 @@ pub struct HtlcParams {
     pub secret_hash: SecretHash,
 }
 
-#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
-pub enum SwapEvent {
-    Deployed(Deployed),
-    Funded(Funded),
-    Redeemed(Redeemed),
-    Refunded(Refunded),
-}
-
-impl From<HtlcParams> for BitcoinHtlc {
-    fn from(htlc_params: HtlcParams) -> Self {
+impl From<Params> for BitcoinHtlc {
+    fn from(htlc_params: Params) -> Self {
         let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
         let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
 
@@ -196,8 +178,16 @@ impl From<HtlcParams> for BitcoinHtlc {
     }
 }
 
-impl HtlcParams {
+impl Params {
     pub fn compute_address(&self) -> Address {
         BitcoinHtlc::from(*self).compute_address(self.network)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, strum_macros::Display)]
+pub enum Event {
+    Deployed(Deployed),
+    Funded(Funded),
+    Redeemed(Redeemed),
+    Refunded(Refunded),
 }

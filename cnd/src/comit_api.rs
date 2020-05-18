@@ -165,8 +165,8 @@ mod tests {
     use super::*;
     use crate::{
         asset::ethereum::FromWei,
-        ethereum::{Address, U256},
-        swap_protocols::{ledger::ethereum, HashFunction},
+        ethereum::{Address, ChainId, U256},
+        swap_protocols::HashFunction,
     };
 
     #[test]
@@ -233,7 +233,7 @@ mod tests {
 
     #[test]
     fn ethereum_ledger_to_header() {
-        let ledger = LedgerKind::Ethereum(ledger::Ethereum::new(ethereum::ChainId::ropsten()));
+        let ledger = LedgerKind::Ethereum(ledger::Ethereum::new(ChainId::ropsten()));
         let header = ledger.to_header().unwrap();
 
         assert_eq!(

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::{fmt, str::FromStr};
 use uuid::Uuid;
 
+pub use comit::SharedSwapId;
+
 /// This is an identifier created, and used locally, by a node to identify a
 /// swap created by this node i.e., when a swap is created via the REST API we
 /// create one of these to identify the swap.
@@ -47,37 +49,6 @@ impl From<LocalSwapId> for Uuid {
 }
 
 impl fmt::Display for LocalSwapId {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        self.0.fmt(f)
-    }
-}
-
-/// This is a swap identifier created by Bob and shared with Alice via the
-/// network communication protocols.
-#[derive(Serialize, Deserialize, Clone, Copy, Debug, Eq, Hash, PartialEq)]
-pub struct SharedSwapId(Uuid);
-
-#[cfg(test)]
-impl SharedSwapId {
-    pub fn nil() -> Self {
-        SharedSwapId(Uuid::nil())
-    }
-}
-
-impl Default for SharedSwapId {
-    fn default() -> Self {
-        SharedSwapId(Uuid::new_v4())
-    }
-}
-
-impl FromStr for SharedSwapId {
-    type Err = uuid::Error;
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Uuid::from_str(s).map(SharedSwapId)
-    }
-}
-
-impl fmt::Display for SharedSwapId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         self.0.fmt(f)
     }

@@ -17,7 +17,7 @@ pub use self::{
     create_swap::create_watcher,
     ledger_state::{HtlcState, LedgerState},
     ledger_states::LedgerStates,
-    secret::{FromErr, Secret, SecretHash},
+    secret::{Secret, SecretHash},
     swap_communication_states::SwapCommunicationStates,
     swap_id::SwapId,
 };

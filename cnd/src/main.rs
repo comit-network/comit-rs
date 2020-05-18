@@ -19,20 +19,19 @@ use cnd::{
         bitcoin::{self, BitcoindConnector},
         ethereum::{self, Web3Connector},
     },
-    config::{self, validation::validate_blockchain_config, Settings},
+    config::{self, validation::validate_connection_to_network, Settings},
     db::Sqlite,
     file_lock::TryLockExclusive,
     http_api::route_factory,
-    jsonrpc, load_swaps,
+    load_swaps,
     network::{Swarm, SwarmWorker},
     seed::RootSeed,
     swap_protocols::{
-        halight::States, rfc003, rfc003::SwapCommunicationStates, Facade, LedgerStates,
-        Rfc003Facade, SwapErrorStates,
+        halight, herc20, rfc003, rfc003::SwapCommunicationStates, Facade, Rfc003Facade,
+        SwapErrorStates,
     },
 };
-
-use cnd::swap_protocols::halight::LndConnectorParams;
+use comit::lnd::LndConnectorParams;
 use rand::rngs::OsRng;
 use std::{process, sync::Arc};
 use structopt::StructOpt;
@@ -75,14 +74,14 @@ fn main() -> anyhow::Result<()> {
         let connector = BitcoindConnector::new(bitcoind.node_url.clone(), *network)?;
 
         runtime.block_on(async {
-            validate_blockchain_config(&connector, *network)
-                .await
-                .or_else::<anyhow::Error, _>(|e| {
-                    let conn_error = e.downcast::<reqwest::Error>()?;
-                    tracing::warn!("Could not validate Bitcoin node config: {}", conn_error);
-
+            match validate_connection_to_network(&connector, *network).await {
+                Ok(Err(network_mismatch)) => Err(network_mismatch),
+                Ok(Ok(())) => Ok(()),
+                Err(e) => {
+                    tracing::warn!("Could not validate Bitcoin node config: {}", e);
                     Ok(())
-                })
+                }
+            }
         })?;
 
         const BITCOIN_BLOCK_CACHE_CAPACITY: usize = 144;
@@ -95,14 +94,14 @@ fn main() -> anyhow::Result<()> {
         let connector = Web3Connector::new(geth.node_url.clone());
 
         runtime.block_on(async {
-            validate_blockchain_config(&connector, *chain_id)
-                .await
-                .or_else::<anyhow::Error, _>(|e| {
-                    let conn_error = e.downcast::<jsonrpc::ConnectionFailed>()?;
-                    tracing::warn!("Could not validate Ethereum node config: {}", conn_error);
-
+            match validate_connection_to_network(&connector, *chain_id).await {
+                Ok(Err(network_mismatch)) => Err(network_mismatch),
+                Ok(Ok(())) => Ok(()),
+                Err(e) => {
+                    tracing::warn!("Could not validate Ethereum node config: {}", e);
                     Ok(())
-                })
+                }
+            }
         })?;
 
         const ETHEREUM_BLOCK_CACHE_CAPACITY: usize = 720;
@@ -135,11 +134,8 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     // Han/HErc20 protocols (A.K.A split protocols)
-    let alpha_ledger_states = Arc::new(LedgerStates::default());
-    let beta_ledger_states = Arc::new(LedgerStates::default());
-
-    // HALight
-    let halight_states = Arc::new(States::default());
+    let herc20_states = Arc::new(herc20::States::default());
+    let halight_states = Arc::new(halight::States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -152,8 +148,7 @@ fn main() -> anyhow::Result<()> {
         Arc::clone(&swap_communication_states),
         Arc::clone(&rfc003_alpha_ledger_states),
         Arc::clone(&rfc003_beta_ledger_states),
-        Arc::clone(&alpha_ledger_states),
-        Arc::clone(&beta_ledger_states),
+        Arc::clone(&herc20_states),
         Arc::clone(&halight_states),
         &database,
         runtime.handle().clone(),
@@ -175,7 +170,7 @@ fn main() -> anyhow::Result<()> {
     // split protocols
     let facade = Facade {
         swarm: swarm.clone(),
-        alpha_ledger_states: Arc::clone(&alpha_ledger_states),
+        herc20_states: Arc::clone(&herc20_states),
         halight_states: Arc::clone(&halight_states),
         db: database,
     };

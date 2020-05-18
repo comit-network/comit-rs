@@ -5,8 +5,7 @@ pub mod rfc003;
 
 use crate::{
     asset,
-    ethereum::Bytes,
-    htlc_location,
+    ethereum::{Bytes, ChainId},
     http_api::{action::ActionResponseBody, problem, route_factory, Http},
     network::comit,
     swap_protocols::{
@@ -15,14 +14,12 @@ use crate::{
             lnd::{self, Chain},
         },
         halight::{self, Settled},
-        ledger::ethereum::ChainId,
-        rfc003::{ledger_state::HtlcState, LedgerState},
+        herc20,
         state::Get,
         DeployAction, Facade, FundAction, Herc20HalightBitcoinCreateSwapParams, InitAction,
         LocalSwapId, RedeemAction, RefundAction, Role,
     },
     timestamp::RelativeTime,
-    transaction,
 };
 use blockchain_contracts::ethereum::rfc003::{ether_htlc::EtherHtlc, Erc20Htlc};
 use http_api_problem::HttpApiProblem;
@@ -136,10 +133,7 @@ pub async fn handle_get_halight_swap(
     facade: Facade,
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let alpha_ledger_state: Option<
-        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
-    > = facade.alpha_ledger_states.get(&swap_id).await?;
-
+    let alpha_ledger_state = facade.herc20_states.get(&swap_id).await?;
     let beta_ledger_state = facade.halight_states.get(&swap_id).await?;
 
     let created_swap = facade.get_created_swap(swap_id).await;
@@ -365,14 +359,14 @@ trait QuantitySatoshi {
     fn quantity_satoshi(&self) -> String;
 }
 
-fn han_eth_halight_swap_status(
-    ethereum_status: HtlcState,
-    beta_ledger_state: &halight::State,
+fn herc20_halight_swap_status(
+    herc20_state: &herc20::State,
+    halight_state: &halight::State,
 ) -> SwapStatus {
-    match (ethereum_status, beta_ledger_state) {
-        (HtlcState::Redeemed, halight::State::Settled(_)) => SwapStatus::Swapped,
-        (HtlcState::IncorrectlyFunded, _) => SwapStatus::NotSwapped,
-        (HtlcState::Refunded, _) => SwapStatus::NotSwapped,
+    match (herc20_state, halight_state) {
+        (herc20::State::Redeemed { .. }, halight::State::Settled(_)) => SwapStatus::Swapped,
+        (herc20::State::IncorrectlyFunded { .. }, _) => SwapStatus::NotSwapped,
+        (herc20::State::Refunded { .. }, _) => SwapStatus::NotSwapped,
         (_, halight::State::Cancelled(_)) => SwapStatus::NotSwapped,
         _ => SwapStatus::InProgress,
     }
@@ -409,16 +403,14 @@ impl QuantitySatoshi for Herc20HalightBitcoinCreatedState {
 
 #[derive(Clone, Debug)]
 pub struct AliceHerc20HalightBitcoinState {
-    pub alpha_ledger_state:
-        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
+    pub alpha_ledger_state: herc20::State,
     pub beta_ledger_state: halight::State,
     pub finalized_swap: comit::FinalizedSwap,
 }
 
 impl GetSwapStatus for AliceHerc20HalightBitcoinState {
     fn get_swap_status(&self) -> SwapStatus {
-        let ethereum_status = HtlcState::from(self.alpha_ledger_state.clone());
-        han_eth_halight_swap_status(ethereum_status, &self.beta_ledger_state)
+        herc20_halight_swap_status(&self.alpha_ledger_state, &self.beta_ledger_state)
     }
 }
 
@@ -454,16 +446,14 @@ impl QuantitySatoshi for AliceHerc20HalightBitcoinState {
 
 #[derive(Clone, Debug)]
 pub struct BobHerc20HalightBitcoinState {
-    pub alpha_ledger_state:
-        LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
+    pub alpha_ledger_state: herc20::State,
     pub beta_ledger_state: halight::State,
     pub finalized_swap: comit::FinalizedSwap,
 }
 
 impl GetSwapStatus for BobHerc20HalightBitcoinState {
     fn get_swap_status(&self) -> SwapStatus {
-        let ethereum_status = HtlcState::from(self.alpha_ledger_state.clone());
-        han_eth_halight_swap_status(ethereum_status, &self.beta_ledger_state)
+        herc20_halight_swap_status(&self.alpha_ledger_state, &self.beta_ledger_state)
     }
 }
 
@@ -517,6 +507,16 @@ struct Transaction {
     status: EscrowStatus,
 }
 
+impl Transaction {
+    fn new(status: EscrowStatus) -> Self {
+        Self {
+            transactions: HashMap::new(), /* if we want transaction here, we should save the
+                                           * events to the DB */
+            status,
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy, Serialize, PartialEq)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 enum EscrowStatus {
@@ -529,84 +529,17 @@ enum EscrowStatus {
     IncorrectlyFunded,
 }
 
-impl From<LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>>
-    for Transaction
-{
-    fn from(
-        state: LedgerState<asset::Erc20, htlc_location::Ethereum, transaction::Ethereum>,
-    ) -> Self {
+impl From<herc20::State> for Transaction {
+    fn from(state: herc20::State) -> Self {
         match state {
-            LedgerState::NotDeployed => Transaction {
-                transactions: HashMap::new(),
-                status: EscrowStatus::None,
-            },
-            LedgerState::Deployed {
-                deploy_transaction, ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert("deploy".to_string(), deploy_transaction.hash.to_string());
-
-                Transaction {
-                    transactions,
-                    status: EscrowStatus::Deployed,
-                }
+            herc20::State::None => Transaction::new(EscrowStatus::None),
+            herc20::State::Deployed { .. } => Transaction::new(EscrowStatus::Deployed),
+            herc20::State::Funded { .. } => Transaction::new(EscrowStatus::Funded),
+            herc20::State::IncorrectlyFunded { .. } => {
+                Transaction::new(EscrowStatus::IncorrectlyFunded)
             }
-            LedgerState::Funded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert("deploy".to_string(), deploy_transaction.hash.to_string());
-                transactions.insert("fund".to_string(), fund_transaction.hash.to_string());
-                Transaction {
-                    transactions,
-                    status: EscrowStatus::Funded,
-                }
-            }
-            LedgerState::IncorrectlyFunded {
-                deploy_transaction,
-                fund_transaction,
-                ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert("deploy".to_string(), deploy_transaction.hash.to_string());
-                transactions.insert("fund".to_string(), fund_transaction.hash.to_string());
-                Transaction {
-                    transactions,
-                    status: EscrowStatus::IncorrectlyFunded,
-                }
-            }
-            LedgerState::Redeemed {
-                deploy_transaction,
-                fund_transaction,
-                redeem_transaction,
-                ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert("deploy".to_string(), deploy_transaction.hash.to_string());
-                transactions.insert("fund".to_string(), fund_transaction.hash.to_string());
-                transactions.insert("redeem".to_string(), redeem_transaction.hash.to_string());
-                Transaction {
-                    transactions,
-                    status: EscrowStatus::Redeemed,
-                }
-            }
-            LedgerState::Refunded {
-                deploy_transaction,
-                fund_transaction,
-                refund_transaction,
-                ..
-            } => {
-                let mut transactions = HashMap::new();
-                transactions.insert("deploy".to_string(), deploy_transaction.hash.to_string());
-                transactions.insert("fund".to_string(), fund_transaction.hash.to_string());
-                transactions.insert("refund".to_string(), refund_transaction.hash.to_string());
-                Transaction {
-                    transactions,
-                    status: EscrowStatus::Refunded,
-                }
-            }
+            herc20::State::Redeemed { .. } => Transaction::new(EscrowStatus::Redeemed),
+            herc20::State::Refunded { .. } => Transaction::new(EscrowStatus::Refunded),
         }
     }
 }
@@ -695,7 +628,7 @@ impl FundAction for AliceHerc20HalightBitcoinState {
 
     fn fund_action(&self) -> Option<Self::Output> {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
-            (LedgerState::Deployed { htlc_location, .. }, halight::State::Opened(_)) => {
+            (herc20::State::Deployed { htlc_location, .. }, halight::State::Opened(_)) => {
                 let htlc_params = self.finalized_swap.herc20_params();
                 let chain_id = ChainId::regtest();
                 let gas_limit = Erc20Htlc::fund_tx_gas_limit();
@@ -748,7 +681,7 @@ impl RefundAction for AliceHerc20HalightBitcoinState {
 
     fn refund_action(&self) -> Option<Self::Output> {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
-            (LedgerState::Funded { htlc_location, .. }, halight::State::Accepted(_)) => {
+            (herc20::State::Funded { htlc_location, .. }, halight::State::Accepted(_)) => {
                 let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
@@ -773,7 +706,7 @@ impl FundAction for BobHerc20HalightBitcoinState {
 
     fn fund_action(&self) -> Option<Self::Output> {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
-            (LedgerState::Funded { .. }, halight::State::Opened(_)) => {
+            (herc20::State::Funded { .. }, halight::State::Opened(_)) => {
                 let to_public_key = self.finalized_swap.beta_ledger_redeem_identity;
                 let amount = self.finalized_swap.beta_asset;
                 let secret_hash = self.finalized_swap.secret_hash;
@@ -803,13 +736,13 @@ impl RedeemAction for BobHerc20HalightBitcoinState {
     fn redeem_action(&self) -> Option<Self::Output> {
         match (&self.alpha_ledger_state, &self.beta_ledger_state) {
             (
-                LedgerState::Funded { htlc_location, .. },
+                herc20::State::Funded { htlc_location, .. },
                 halight::State::Settled(Settled { secret }),
             ) => {
                 let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let chain_id: ChainId = ChainId::regtest();
+                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Some(ethereum::CallContract {
@@ -839,17 +772,13 @@ async fn handle_action_init(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let alpha_ledger_state: LedgerState<
-        asset::Erc20,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_states
+    let alpha_ledger_state = facade
+        .herc20_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let beta_ledger_state = facade
         .halight_states
         .get(&swap_id)
         .await?
@@ -892,17 +821,13 @@ async fn handle_action_deploy(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let alpha_ledger_state: LedgerState<
-        asset::Erc20,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_states
+    let alpha_ledger_state = facade
+        .herc20_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let beta_ledger_state = facade
         .halight_states
         .get(&swap_id)
         .await?
@@ -946,17 +871,13 @@ async fn handle_action_fund(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let alpha_ledger_state: LedgerState<
-        asset::Erc20,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_states
+    let alpha_ledger_state = facade
+        .herc20_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let beta_ledger_state = facade
         .halight_states
         .get(&swap_id)
         .await?
@@ -1007,17 +928,13 @@ async fn handle_action_redeem(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let alpha_ledger_state: LedgerState<
-        asset::Erc20,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_states
+    let alpha_ledger_state = facade
+        .herc20_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let beta_ledger_state = facade
         .halight_states
         .get(&swap_id)
         .await?
@@ -1068,17 +985,13 @@ async fn handle_action_refund(
     swap_id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let alpha_ledger_state: LedgerState<
-        asset::Erc20,
-        htlc_location::Ethereum,
-        transaction::Ethereum,
-    > = facade
-        .alpha_ledger_states
+    let alpha_ledger_state = facade
+        .herc20_states
         .get(&swap_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("alpha ledger state not found for {}", swap_id))?;
 
-    let beta_ledger_state: halight::State = facade
+    let beta_ledger_state = facade
         .halight_states
         .get(&swap_id)
         .await?

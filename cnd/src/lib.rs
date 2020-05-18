@@ -29,15 +29,10 @@ pub mod libp2p_comit_ext;
 #[macro_use]
 pub mod db;
 
-pub mod asset;
-pub mod bitcoin;
-pub mod btsieve;
 pub mod comit_api;
 pub mod config;
-pub mod ethereum;
 pub mod http_api;
 pub mod init_swap;
-pub mod lightning;
 pub mod load_swaps;
 #[macro_use]
 pub mod network;
@@ -46,40 +41,15 @@ pub mod quickcheck;
 #[macro_use]
 pub mod seed;
 pub mod file_lock;
-pub mod jsonrpc;
 #[cfg(test)]
 pub mod spectral_ext;
 pub mod swap_protocols;
-pub mod timestamp;
 
 use anyhow::Context;
 use std::{
     env,
     path::{Path, PathBuf},
 };
-
-/// Define domain specific terms using identity module so that we can refer to
-/// things in an ergonomic fashion e.g., `identity::Bitcoin`.
-pub mod identity {
-    pub use crate::{
-        bitcoin::PublicKey as Bitcoin, ethereum::Address as Ethereum,
-        lightning::PublicKey as Lightning,
-    };
-}
-
-/// Define domain specific terms using transaction module so that we can refer
-/// to things in an ergonomic fashion e.g., `transaction::Ethereum`.
-pub mod transaction {
-    pub use crate::ethereum::Transaction as Ethereum;
-    pub use bitcoin::Transaction as Bitcoin;
-}
-
-/// Define domain specific terms using htlc_location module so that we can refer
-/// to things in an ergonomic fashion e.g., `htlc_location::Bitcoin`.
-pub mod htlc_location {
-    pub use crate::ethereum::Address as Ethereum;
-    pub use bitcoin::OutPoint as Bitcoin;
-}
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -130,4 +100,65 @@ pub fn lnd_dir() -> Option<PathBuf> {
     lnd_default_dir()
 }
 
-pub type Never = std::convert::Infallible;
+pub mod htlc_location {
+    pub use comit::htlc_location::*;
+}
+
+pub mod identity {
+    pub use comit::identity::*;
+}
+
+pub mod transaction {
+    pub use comit::transaction::*;
+}
+
+pub mod asset {
+    pub use comit::asset::*;
+    use derivative::Derivative;
+
+    #[derive(Clone, Derivative, PartialEq)]
+    #[derivative(Debug = "transparent")]
+    pub enum AssetKind {
+        Bitcoin(Bitcoin),
+        Ether(Ether),
+        Erc20(Erc20),
+    }
+
+    impl From<Bitcoin> for AssetKind {
+        fn from(amount: Bitcoin) -> Self {
+            AssetKind::Bitcoin(amount)
+        }
+    }
+
+    impl From<Ether> for AssetKind {
+        fn from(quantity: Ether) -> Self {
+            AssetKind::Ether(quantity)
+        }
+    }
+
+    impl From<Erc20> for AssetKind {
+        fn from(quantity: Erc20) -> Self {
+            AssetKind::Erc20(quantity)
+        }
+    }
+}
+
+pub mod ethereum {
+    pub use comit::ethereum::*;
+}
+
+pub mod bitcoin {
+    pub use comit::bitcoin::PublicKey;
+}
+
+pub mod lightning {
+    pub use comit::lightning::PublicKey;
+}
+
+pub mod timestamp {
+    pub use comit::{RelativeTime, Timestamp};
+}
+
+pub mod btsieve {
+    pub use comit::btsieve::*;
+}

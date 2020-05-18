@@ -1,27 +1,47 @@
-pub mod actions;
 mod facade;
 pub mod halight;
-pub mod han;
 pub mod hbit;
 pub mod herc20;
-pub mod herc20_rfc003_watcher;
-pub mod ledger;
 pub mod ledger_states;
 pub mod rfc003;
 mod rfc003_facade;
-mod secret;
 pub mod state;
 mod swap_error_states;
 mod swap_id;
+pub mod ledger {
+    use crate::comit_api::LedgerKind;
+    pub use comit::ledger::*;
 
-pub use self::{
-    facade::*,
-    ledger_states::*,
-    rfc003_facade::*,
-    secret::{FromErr, Secret, SecretHash},
-    swap_error_states::*,
-    swap_id::*,
-};
+    impl From<Bitcoin> for LedgerKind {
+        fn from(bitcoin: Bitcoin) -> Self {
+            LedgerKind::Bitcoin(bitcoin)
+        }
+    }
+
+    impl From<Ethereum> for LedgerKind {
+        fn from(ethereum: Ethereum) -> Self {
+            LedgerKind::Ethereum(ethereum)
+        }
+    }
+}
+pub mod actions {
+    /// Common interface across all protocols supported by COMIT
+    ///
+    /// This trait is intended to be implemented on an Actor's state and return
+    /// the actions which are currently available in a given state.
+    pub trait Actions {
+        /// Different protocols have different kinds of requirements for
+        /// actions. Hence they get to choose the type here.
+        type ActionKind;
+
+        fn actions(&self) -> Vec<Self::ActionKind>;
+    }
+
+    pub use comit::actions::*;
+}
+
+pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*, swap_id::*};
+pub use comit::{Secret, SecretHash};
 
 use serde::{Deserialize, Serialize};
 

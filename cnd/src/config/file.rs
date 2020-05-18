@@ -1,6 +1,6 @@
 use crate::{
     config::{Bitcoind, Data, Geth, Network},
-    swap_protocols::ledger::ethereum,
+    ethereum::ChainId,
 };
 use config as config_rs;
 use log::LevelFilter;
@@ -36,7 +36,7 @@ pub struct Bitcoin {
 
 #[derive(Clone, Debug, Deserialize, PartialEq, Serialize)]
 pub struct Ethereum {
-    pub chain_id: ethereum::ChainId,
+    pub chain_id: ChainId,
     pub geth: Option<Geth>,
 }
 
@@ -150,10 +150,7 @@ pub enum None {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        config::{Bitcoind, Geth, Settings},
-        swap_protocols::ledger::ethereum,
-    };
+    use crate::config::{Bitcoind, Geth, Settings};
     use reqwest::Url;
     use spectral::prelude::*;
     use std::{
@@ -264,7 +261,7 @@ dir = "/foo/bar"
                 }),
             }),
             ethereum: Some(Ethereum {
-                chain_id: ethereum::ChainId::regtest(),
+                chain_id: ChainId::regtest(),
                 geth: Some(Geth {
                     node_url: "http://localhost:8545".parse().unwrap(),
                 }),
@@ -371,19 +368,19 @@ dir = "/foo/bar"
 
         let expected = vec![
             Ethereum {
-                chain_id: ethereum::ChainId::regtest(),
+                chain_id: ChainId::regtest(),
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ethereum::ChainId::ropsten(),
+                chain_id: ChainId::ropsten(),
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
             },
             Ethereum {
-                chain_id: ethereum::ChainId::mainnet(),
+                chain_id: ChainId::mainnet(),
                 geth: Some(Geth {
                     node_url: Url::parse("http://example.com:8545").unwrap(),
                 }),
