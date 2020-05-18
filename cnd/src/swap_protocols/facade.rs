@@ -2,9 +2,7 @@ use crate::{
     asset,
     db::{CreatedSwap, Save, Sqlite},
     identity,
-    network::{
-        comit_ln, protocols::announce::SwapDigest, DialInformation, InitCommunication, Swarm,
-    },
+    network::{comit, protocols::announce::SwapDigest, DialInformation, InitCommunication, Swarm},
     swap_protocols::{halight, hbit, herc20, LedgerStates, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
@@ -177,7 +175,7 @@ impl Facade {
         self.swarm.initiate_communication(id, swap_params).await
     }
 
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit_ln::FinalizedSwap> {
+    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
         self.swarm.get_finalized_swap(id).await
     }
 

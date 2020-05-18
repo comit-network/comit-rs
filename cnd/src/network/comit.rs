@@ -53,7 +53,7 @@ pub enum BehaviourOutEvent {
 
 #[derive(NetworkBehaviour, Debug)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
-pub struct ComitLN {
+pub struct Comit {
     announce: Announce,
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
@@ -86,9 +86,9 @@ struct CommunicationState {
     secret_hash_sent_or_received: bool,
 }
 
-impl ComitLN {
+impl Comit {
     pub fn new(seed: RootSeed) -> Self {
-        ComitLN {
+        Comit {
             announce: Default::default(),
             secret_hash: Default::default(),
             ethereum_identity: Default::default(),
@@ -363,7 +363,7 @@ impl FinalizedSwap {
     }
 }
 
-impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for ComitLN {
+impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for Comit {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<secret_hash::Message>) {
         let (peer, swap_id) = match event {
             oneshot_behaviour::OutEvent::Received {
@@ -424,7 +424,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
 
 // It is already split in smaller functions
 #[allow(clippy::cognitive_complexity)]
-impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for ComitLN {
+impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Comit {
     fn inject_event(&mut self, event: announce::behaviour::BehaviourOutEvent) {
         match event {
             announce::behaviour::BehaviourOutEvent::ReceivedAnnouncement { peer, io } => {
@@ -482,7 +482,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
 }
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity::Message>>
-    for ComitLN
+    for Comit
 {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<ethereum_identity::Message>) {
         let (peer, swap_id) = match event {
@@ -525,7 +525,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
 }
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity::Message>>
-    for ComitLN
+    for Comit
 {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<lightning_identity::Message>) {
         let (peer, swap_id) = match event {
@@ -569,7 +569,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
     }
 }
 
-impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>> for ComitLN {
+impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>> for Comit {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<finalize::Message>) {
         let (_, swap_id) = match event {
             oneshot_behaviour::OutEvent::Received {
@@ -696,9 +696,9 @@ mod tests {
     async fn finalize_lightning_ethereum_swap_success() {
         // arrange
         let (mut alice_swarm, _, alice_peer_id) =
-            test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
+            test_swarm::new(Comit::new(RootSeed::new_random(thread_rng()).unwrap()));
         let (mut bob_swarm, bob_addr, bob_peer_id) =
-            test_swarm::new(ComitLN::new(RootSeed::new_random(thread_rng()).unwrap()));
+            test_swarm::new(Comit::new(RootSeed::new_random(thread_rng()).unwrap()));
 
         let erc20 = asset::Erc20 {
             token_contract: Default::default(),

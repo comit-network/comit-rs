@@ -4,7 +4,7 @@ use crate::{
         rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
         LndActionError,
     },
-    network::comit_ln::SwapExists,
+    network::comit::SwapExists,
 };
 use http_api_problem::HttpApiProblem;
 use warp::{
