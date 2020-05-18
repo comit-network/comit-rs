@@ -26,6 +26,10 @@ impl Address {
         address.0.copy_from_slice(src);
         address
     }
+
+    pub fn as_bytes(&self) -> &[u8; 20] {
+        &self.0
+    }
 }
 
 #[cfg(test)]
