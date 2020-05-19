@@ -1,9 +1,7 @@
 import { twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
 import {
-    HalightLightningBitcoinHanEthereumEtherRequestBody,
     HalightLightningBitcoinHerc20EthereumErc20RequestBody,
-    HanEthereumEtherHalightLightningBitcoinRequestBody,
     Herc20EthereumErc20HalightLightningBitcoinRequestBody,
 } from "comit-sdk";
 
@@ -39,42 +37,6 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-route-not-supported",
-        twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .hanEthereumEtherHalightLightningBitcoin;
-            await expect(
-                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                    bodies.alice
-                )
-            ).rejects.toThrow("Route not yet supported.");
-            await expect(
-                bob.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                    bodies.bob
-                )
-            ).rejects.toThrow("Route not yet supported.");
-        })
-    );
-
-    it(
-        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-route-not-supported",
-        twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .halightLightningBitcoinHanEthereumEther;
-            await expect(
-                alice.cnd.createHalightLightningBitcoinHanEthereumEther(
-                    bodies.alice
-                )
-            ).rejects.toThrow("Route not yet supported.");
-            await expect(
-                bob.cnd.createHalightLightningBitcoinHanEthereumEther(
-                    bodies.bob
-                )
-            ).rejects.toThrow("Route not yet supported.");
-        })
-    );
-
-    it(
         "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-route-not-supported",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
@@ -90,28 +52,6 @@ describe("Lightning routes tests", () => {
                     bodies.bob
                 )
             ).rejects.toThrow("Route not yet supported.");
-        })
-    );
-
-    it(
-        "create-han-ethereum-ether-halight-lightning-bitcoin-returns-invalid-body",
-        twoActorTest(async ({ alice }) => {
-            await expect(
-                alice.cnd.createHanEthereumEtherHalightLightningBitcoin(
-                    {} as HanEthereumEtherHalightLightningBitcoinRequestBody
-                )
-            ).rejects.toThrow("Invalid body.");
-        })
-    );
-
-    it(
-        "create-halight-lightning-bitcoin-han-ethereum-ether-returns-invalid-body",
-        twoActorTest(async ({ alice }) => {
-            await expect(
-                alice.cnd.createHalightLightningBitcoinHanEthereumEther(
-                    {} as HalightLightningBitcoinHanEthereumEtherRequestBody
-                )
-            ).rejects.toThrow("Invalid body.");
         })
     );
 

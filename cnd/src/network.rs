@@ -1,11 +1,9 @@
 pub mod comit;
-pub mod oneshot_behaviour;
-pub mod oneshot_protocol;
-pub mod protocols;
 #[cfg(test)]
 pub mod test_swarm;
 pub mod transport;
 
+pub use ::comit::*;
 pub use transport::ComitTransport;
 
 use crate::{
@@ -19,32 +17,30 @@ use crate::{
     db::{CreatedSwap, ForSwap, Save, Sqlite, Swap},
     htlc_location,
     http_api::LedgerNotConfigured,
-    identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::Comit,
     seed::RootSeed,
     swap_protocols::{
-        halight,
-        halight::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams, States},
-        hbit, herc20, herc20_rfc003_watcher, ledger,
+        halight, hbit, herc20,
         rfc003::{
             self,
-            create_swap::HtlcParams,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
             state::Insert,
-            LedgerState, SecretHash, SwapCommunication, SwapCommunicationStates, SwapId,
+            LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HashFunction, Herc20HalightBitcoinCreateSwapParams, LedgerStates, LocalSwapId, Role,
-        SwapProtocol,
+        state::Update,
+        HashFunction, Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SwapProtocol,
     },
     transaction,
 };
+use ::comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
 use anyhow::Context;
 use async_trait::async_trait;
+use chrono::Utc;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future, FutureExt,
+    Future, FutureExt, TryStreamExt,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -60,7 +56,7 @@ use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     convert::{TryFrom, TryInto},
-    fmt::{Debug, Display},
+    fmt::Debug,
     io,
     pin::Pin,
     sync::Arc,
@@ -89,9 +85,8 @@ impl Swarm {
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
-        alpha_ledger_states: Arc<LedgerStates>,
-        beta_ledger_states: Arc<LedgerStates>,
-        halight_states: Arc<States>,
+        herc20_states: Arc<herc20::States>,
+        halight_states: Arc<halight::States>,
         database: &Sqlite,
         task_executor: tokio::runtime::Handle,
     ) -> anyhow::Result<Self> {
@@ -107,8 +102,7 @@ impl Swarm {
             swap_communication_states,
             rfc003_alpha_ledger_states,
             rfc003_beta_ledger_states,
-            alpha_ledger_states,
-            beta_ledger_states,
+            herc20_states,
             halight_states,
             seed,
             database.clone(),
@@ -234,29 +228,10 @@ pub struct ComitNode {
     #[behaviour(ignore)]
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<libp2p_comit::frame::Response>>>>,
 
-    // These likely go away once han and herc20 is done.
     #[behaviour(ignore)]
-    pub alpha_ledger_states: Arc<LedgerStates>,
+    pub herc20_states: Arc<herc20::States>,
     #[behaviour(ignore)]
-    pub beta_ledger_states: Arc<LedgerStates>,
-
-    #[behaviour(ignore)]
-    halight_states: Arc<States>,
-}
-
-#[derive(Clone, Debug, PartialEq)]
-pub struct DialInformation {
-    pub peer_id: PeerId,
-    pub address_hint: Option<Multiaddr>,
-}
-
-impl Display for DialInformation {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        match &self.address_hint {
-            None => write!(f, "{}", self.peer_id),
-            Some(address_hint) => write!(f, "{}@{}", self.peer_id, address_hint),
-        }
-    }
+    pub halight_states: Arc<halight::States>,
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
@@ -285,9 +260,8 @@ impl ComitNode {
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
-        alpha_ledger_states: Arc<LedgerStates>,
-        beta_ledger_states: Arc<LedgerStates>,
-        halight_states: Arc<States>,
+        herc20_states: Arc<herc20::States>,
+        halight_states: Arc<halight::States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
@@ -311,15 +285,14 @@ impl ComitNode {
             ethereum_connector,
             rfc003_alpha_ledger_states,
             rfc003_beta_ledger_states,
-            alpha_ledger_states,
-            beta_ledger_states,
+            herc20_states,
+            halight_states,
             swap_communication_states,
             seed,
             db,
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             task_executor,
             lnd_connector_params,
-            halight_states,
         })
     }
 
@@ -377,23 +350,6 @@ impl ComitNode {
             })),
         }
     }
-}
-
-/// All the data Alice learned from Bob during the communication phase of a
-/// herc20 <-> halight swap.
-#[derive(Clone, Copy, Debug)]
-pub struct WhatAliceLearnedFromBob {
-    pub redeem_ethereum_identity: identity::Ethereum,
-    pub refund_lightning_identity: identity::Lightning,
-}
-
-/// All the data Bob learned from Alice during the communication phase of a
-/// herc20 <-> halight swap.
-#[derive(Clone, Copy, Debug)]
-pub struct WhatBobLearnedFromAlice {
-    pub secret_hash: SecretHash,
-    pub refund_ethereum_identity: identity::Ethereum,
-    pub redeem_lightning_identity: identity::Lightning,
 }
 
 /// Init the communication protocols.
@@ -939,7 +895,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                     Role::Alice => async move {
                         db.save(ForSwap {
                             local_swap_id,
-                            data: WhatAliceLearnedFromBob {
+                            data: network::WhatAliceLearnedFromBob {
                                 redeem_ethereum_identity: ethereum_identity,
                                 refund_lightning_identity: lightning_identity,
                             },
@@ -951,7 +907,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                     Role::Bob => async move {
                         db.save(ForSwap {
                             local_swap_id,
-                            data: WhatBobLearnedFromAlice {
+                            data: network::WhatBobLearnedFromAlice {
                                 secret_hash,
                                 refund_ethereum_identity: ethereum_identity,
                                 redeem_lightning_identity: lightning_identity,
@@ -1019,28 +975,34 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                     Role::Alice => (ethereum_identity, create_swap_params.ethereum_identity),
                     Role::Bob => (create_swap_params.ethereum_identity, ethereum_identity),
                 };
-                let params = HtlcParams {
+                let params = herc20::Params {
                     asset: Erc20::new(
                         create_swap_params.token_contract,
                         create_swap_params.ethereum_amount,
                     ),
-                    ledger: ledger::Ethereum::default(),
                     redeem_identity: herc20_redeem_identity,
                     refund_identity: herc20_refund_identity,
                     expiry: create_swap_params.ethereum_absolute_expiry,
+                    start_of_swap: Utc::now().naive_local(),
                     secret_hash,
                 };
-                self.task_executor.spawn(
-                    herc20_rfc003_watcher::new_herc20_swap(
-                        local_swap_id,
-                        self.ethereum_connector.clone(),
-                        self.alpha_ledger_states.clone(),
-                        params,
-                    )
-                    .instrument(
-                        tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role),
-                    ),
-                );
+                let connector = self.ethereum_connector.clone();
+                let states = self.herc20_states.clone();
+
+                self.task_executor.spawn(async move {
+                    let mut events = herc20::new(connector.as_ref(), params)
+                        .instrument(
+                            tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role),
+                        )
+                        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+                        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+                    while let Ok(Some(event)) = events.try_next().await {
+                        states.update(&local_swap_id, event).await;
+                    }
+
+                    tracing::info!("swap finished");
+                });
             }
         }
     }

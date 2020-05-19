@@ -15,10 +15,11 @@ use crate::swap_protocols::actions::lnd::Chain;
 pub const PATH: &str = "swaps";
 
 use crate::{
-    asset, htlc_location, identity,
-    network::DialInformation,
+    asset,
+    ethereum::ChainId,
+    htlc_location, identity,
     swap_protocols::{
-        ledger::{self, ethereum::ChainId},
+        ledger::{self},
         rfc003::SwapId,
         Role, SwapProtocol,
     },
@@ -26,9 +27,7 @@ use crate::{
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
-    de::{self, Error as _, MapAccess},
-    ser::SerializeStruct,
-    Deserialize, Deserializer, Serialize, Serializer,
+    de::Error as _, ser::SerializeStruct, Deserialize, Deserializer, Serialize, Serializer,
 };
 use std::{
     convert::{TryFrom, TryInto},
@@ -245,68 +244,40 @@ impl<'de> Deserialize<'de> for Http<PeerId> {
     }
 }
 
-impl<'de> Deserialize<'de> for DialInformation {
-    fn deserialize<D>(deserializer: D) -> Result<DialInformation, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        struct Visitor;
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum DialInformation {
+    JustPeerId(Http<PeerId>),
+    WithAddressHint {
+        peer_id: Http<PeerId>,
+        address_hint: Multiaddr,
+    },
+}
 
-        impl<'de> de::Visitor<'de> for Visitor {
-            type Value = DialInformation;
-
-            fn expecting(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                formatter.write_str("a peer id or a dial information struct")
-            }
-
-            fn visit_str<E>(self, value: &str) -> Result<DialInformation, E>
-            where
-                E: de::Error,
-            {
-                let peer_id = value.parse().map_err(E::custom)?;
-                Ok(DialInformation {
-                    peer_id,
-                    address_hint: None,
-                })
-            }
-
-            fn visit_map<M>(self, mut map: M) -> Result<DialInformation, M::Error>
-            where
-                M: MapAccess<'de>,
-            {
-                let mut peer_id = None;
-                let mut address_hint = None;
-                while let Some(key) = map.next_key::<String>()? {
-                    match key.as_str() {
-                        "peer_id" => {
-                            if peer_id.is_some() {
-                                return Err(de::Error::duplicate_field("peer_id"));
-                            }
-                            peer_id = Some(map.next_value::<Http<PeerId>>()?)
-                        }
-                        "address_hint" => {
-                            if address_hint.is_some() {
-                                return Err(de::Error::duplicate_field("address_hint"));
-                            }
-                            address_hint = Some(map.next_value::<Multiaddr>()?)
-                        }
-                        _ => {
-                            return Err(de::Error::unknown_field(key.as_str(), &[
-                                "peer_id",
-                                "address_hint",
-                            ]));
-                        }
-                    }
-                }
-                let peer_id = peer_id.ok_or_else(|| de::Error::missing_field("peer_id"))?;
-                Ok(DialInformation {
-                    peer_id: peer_id.0,
-                    address_hint,
-                })
-            }
+impl From<DialInformation> for PeerId {
+    fn from(dial_information: DialInformation) -> Self {
+        match dial_information {
+            DialInformation::JustPeerId(inner) => inner.0,
+            DialInformation::WithAddressHint { peer_id, .. } => peer_id.0,
         }
+    }
+}
 
-        deserializer.deserialize_any(Visitor)
+impl From<DialInformation> for comit::network::DialInformation {
+    fn from(dial_information: DialInformation) -> Self {
+        match dial_information {
+            DialInformation::JustPeerId(inner) => Self {
+                peer_id: inner.0,
+                address_hint: None,
+            },
+            DialInformation::WithAddressHint {
+                peer_id,
+                address_hint,
+            } => Self {
+                peer_id: peer_id.0,
+                address_hint: Some(address_hint),
+            },
+        }
     }
 }
 
@@ -553,10 +524,10 @@ mod tests {
         asset,
         asset::ethereum::FromWei,
         bitcoin::PublicKey,
-        ethereum::{Address, Hash, U256},
+        ethereum::{Address, ChainId, Hash, U256},
         http_api::{Http, HttpAsset, HttpLedger},
         swap_protocols::{
-            ledger::{self, ethereum},
+            ledger::{self},
             rfc003::SwapId,
             HashFunction, SwapProtocol,
         },
@@ -622,9 +593,9 @@ mod tests {
     #[test]
     fn ethereum_http_ledger_regtest_serializes_correctly_to_json() {
         let input = &[
-            HttpLedger::from(ledger::Ethereum::new(ethereum::ChainId::from(1))),
-            HttpLedger::from(ledger::Ethereum::new(ethereum::ChainId::from(3))),
-            HttpLedger::from(ledger::Ethereum::new(ethereum::ChainId::from(1337))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(1))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(3))),
+            HttpLedger::from(ledger::Ethereum::new(ChainId::from(1337))),
         ];
 
         let expected = &[

@@ -1,10 +1,7 @@
-use crate::{
-    db::{ForSwap, Save, Sqlite},
-    network,
-};
+use crate::db::{ForSwap, Save, Sqlite};
+use comit::network;
 
 mod created_swaps;
-mod in_progress_swap;
 mod rfc003;
 
 #[async_trait::async_trait]

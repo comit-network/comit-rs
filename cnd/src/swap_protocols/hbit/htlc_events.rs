@@ -8,7 +8,7 @@ use crate::{
             Deployed, Funded, HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded, Redeemed,
             Refunded,
         },
-        extract_secret, HtlcParams,
+        extract_secret, Params,
     },
 };
 use chrono::NaiveDateTime;
@@ -19,7 +19,7 @@ use tracing_futures::Instrument;
 impl HtlcFunded for Cache<BitcoindConnector> {
     async fn htlc_funded(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         _start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded> {
@@ -48,7 +48,7 @@ impl HtlcFunded for Cache<BitcoindConnector> {
 impl HtlcDeployed for Cache<BitcoindConnector> {
     async fn htlc_deployed(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Deployed> {
         let (transaction, location) =
@@ -67,7 +67,7 @@ impl HtlcDeployed for Cache<BitcoindConnector> {
 impl HtlcRedeemed for Cache<BitcoindConnector> {
     async fn htlc_redeemed(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed> {
@@ -94,7 +94,7 @@ impl HtlcRedeemed for Cache<BitcoindConnector> {
 impl HtlcRefunded for Cache<BitcoindConnector> {
     async fn htlc_refunded(
         &self,
-        htlc_params: &HtlcParams,
+        htlc_params: &Params,
         htlc_deployment: &Deployed,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded> {

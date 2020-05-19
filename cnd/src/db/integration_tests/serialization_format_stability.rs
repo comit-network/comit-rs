@@ -1,10 +1,14 @@
-/// A suite of tests that ensures the serialization format of the types we use
-/// to interact with the database. Changing the format needs to be a conscious
-/// activity that involves migration scripts to migrate old data. These tests
-/// make sure we don't change the format accidentally!
+//! A suite of tests that ensures the serialization format of the types we use
+//! to interact with the database. Changing the format needs to be a conscious
+//! activity that involves migration scripts to migrate old data. These tests
+//! make sure we don't change the format accidentally!
+
 use crate::{
     db::wrapper_types::{Erc20Amount, Ether, EthereumAddress, Satoshis},
-    swap_protocols::{rfc003::SecretHash, rfc003::SwapId, HashFunction},
+    swap_protocols::{
+        rfc003::{SecretHash, SwapId},
+        HashFunction,
+    },
 };
 use std::{fmt, str::FromStr};
 

@@ -1,8 +1,8 @@
 use crate::{
-    network::protocols::announce::{protocol::ReplySubstream, SwapDigest},
     swap_protocols::{Herc20HalightBitcoinCreateSwapParams, LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
+use ::comit::network::protocols::announce::{protocol::ReplySubstream, SwapDigest};
 use digest::Digest;
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;

@@ -1,23 +1,24 @@
 use crate::{
     asset,
     db::CreatedSwap,
+    ethereum::ChainId,
     identity,
-    network::{
-        oneshot_behaviour,
-        protocols::{
-            announce,
-            announce::{behaviour::Announce, protocol::ReplySubstream},
-            ethereum_identity, finalize, lightning_identity, secret_hash,
-        },
-    },
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         hbit, herc20,
-        ledger::{self, ethereum::ChainId},
+        ledger::{self},
         rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
         Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
     timestamp::{RelativeTime, Timestamp},
+};
+use ::comit::network::{
+    oneshot_behaviour,
+    protocols::{
+        announce,
+        announce::{behaviour::Announce, protocol::ReplySubstream},
+        ethereum_identity, finalize, lightning_identity, secret_hash,
+    },
 };
 use digest::Digest;
 use libp2p::{
@@ -259,7 +260,7 @@ impl Comit {
         );
 
         let seed = self.seed.derive_swap_seed(local_swap_id);
-        let secret_hash = seed.derive_secret().hash();
+        let secret_hash = SecretHash::new(seed.derive_secret());
 
         self.secret_hashes.insert(swap_id, secret_hash);
         self.secret_hash

@@ -2,10 +2,10 @@ use crate::{
     asset,
     asset::ethereum::FromWei,
     db::Swap,
-    ethereum::{Address, Bytes},
+    ethereum::{Address, Bytes, ChainId},
     identity,
     swap_protocols::{
-        ledger::{self, ethereum::ChainId},
+        ledger::{self},
         rfc003::{Accept, Request, SecretHash, SwapId},
         HashFunction, Role,
     },

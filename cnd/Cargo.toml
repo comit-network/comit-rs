@@ -15,6 +15,7 @@ bigdecimal = "0.1.2"
 bitcoin = { version = "0.23", features = ["use-serde"] }
 blockchain_contracts = "0.3.2"
 chrono = { version = "0.4", features = ["serde"] }
+comit = { path = "../comit" }
 config = { version = "0.10", features = ["toml"], default-features = false }
 derivative = "2"
 diesel = { version = "1.4", features = ["sqlite", "chrono"] }
@@ -22,7 +23,6 @@ diesel_migrations = "1.4.0"
 digest = { path = "../digest" }
 digest-macro-derive = { path = "../digest-macro-derive" }
 directories = "2.0"
-ethbloom = "0.9.2"
 fern = { version = "0.6", features = ["colored"] }
 fs2 = "0.4.3"
 futures = { version = "0.3", features = ["async-await"], default-features = false }
@@ -31,16 +31,13 @@ hex = "0.4"
 http-api-problem = { version = "0.15", features = ["with_warp"] }
 impl-template = "1.0.0-alpha"
 lazy_static = "1"
-levenshtein = "1"
 libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio", "yamux", "mplex", "mdns", "dns"] }
 libp2p-comit = { path = "../libp2p-comit" }
 libsqlite3-sys = { version = ">=0.8.0, <0.13.0", features = ["bundled"] }
 log = { version = "0.4", features = ["serde"] }
-lru = "0.4.3"
 num = "0.2"
 paste = "0.1"
 pem = "0.7"
-primitive-types = { version = "0.7.2", features = ["serde"] }
 rand = "0.7"
 reqwest = { version = "0.10", default-features = false, features = ["json", "native-tls"] }
 serde = { version = "1", features = ["derive"] }
@@ -67,7 +64,6 @@ void = "1.0.2"
 warp = { version = "0.2", default-features = false }
 
 [dev-dependencies]
-base64 = "0.12"
 bitcoin = { version = "0.23", features = ["rand"] }
 bitcoincore-rpc = "0.10.0"
 quickcheck = "0.9.2"
