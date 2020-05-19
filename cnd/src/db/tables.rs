@@ -9,7 +9,7 @@ use crate::{
         Error, Sqlite,
     },
     identity, lightning,
-    swap_protocols::{halight, hbit, herc20, rfc003, HashFunction, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, hbit, herc20, rfc003, Ledger, LocalSwapId, Role},
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};
@@ -92,7 +92,6 @@ pub struct Herc20 {
     pub amount: Text<Erc20Amount>,
     pub chain_id: U32,
     pub expiry: U32,
-    pub hash_function: Text<HashFunction>,
     pub token_contract: Text<EthereumAddress>,
     pub redeem_identity: Option<Text<EthereumAddress>>,
     pub refund_identity: Option<Text<EthereumAddress>>,
@@ -106,7 +105,6 @@ pub struct InsertableHerc20 {
     pub amount: Text<Erc20Amount>,
     pub chain_id: U32,
     pub expiry: U32,
-    pub hash_function: Text<HashFunction>,
     pub token_contract: Text<EthereumAddress>,
     pub redeem_identity: Option<Text<EthereumAddress>>,
     pub refund_identity: Option<Text<EthereumAddress>>,
@@ -142,7 +140,6 @@ impl IntoInsertable for herc20::CreatedSwap {
             amount: Text(self.amount.into()),
             chain_id: U32(self.chain_id),
             expiry: U32(self.absolute_expiry),
-            hash_function: Text(HashFunction::Sha256),
             token_contract: Text(self.token_contract.into()),
             redeem_identity,
             refund_identity,
@@ -161,7 +158,6 @@ pub struct Halight {
     pub network: Text<LightningNetwork>,
     pub chain: String,
     pub cltv_expiry: U32,
-    pub hash_function: Text<HashFunction>,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
     pub refund_identity: Option<Text<lightning::PublicKey>>,
     pub ledger: Text<Ledger>,
@@ -175,7 +171,6 @@ pub struct InsertableHalight {
     pub network: Text<LightningNetwork>,
     pub chain: String,
     pub cltv_expiry: U32,
-    pub hash_function: Text<HashFunction>,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
     pub refund_identity: Option<Text<lightning::PublicKey>>,
     pub ledger: Text<Ledger>,
@@ -201,7 +196,6 @@ impl IntoInsertable for halight::CreatedSwap {
             network: Text(self.network.into()),
             chain: "bitcoin".to_string(), // We currently only support Lightning on top of Bitcoin.
             cltv_expiry: U32(self.cltv_expiry),
-            hash_function: Text(HashFunction::Sha256),
             redeem_identity,
             refund_identity,
             ledger: Text(ledger),
@@ -217,7 +211,6 @@ pub struct Hbit {
     swap_id: i32,
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
-    pub hash_function: Text<HashFunction>,
     pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
     pub refund_identity: Option<Text<bitcoin::PublicKey>>,
     pub ledger: Text<Ledger>,
@@ -229,7 +222,6 @@ pub struct InsertableHbit {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
-    pub hash_function: Text<HashFunction>,
     pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
     pub refund_identity: Option<Text<bitcoin::PublicKey>>,
     pub ledger: Text<Ledger>,
@@ -241,7 +233,6 @@ impl InsertableHbit {
             swap_id,
             amount: self.amount,
             network: self.network,
-            hash_function: self.hash_function,
             redeem_identity: self.redeem_identity,
             refund_identity: self.refund_identity,
             ledger: self.ledger,
@@ -267,7 +258,6 @@ impl IntoInsertable for hbit::CreatedSwap {
             swap_id,
             amount: Text(self.amount.into()),
             network: Text(self.network.into()),
-            hash_function: Text(HashFunction::Sha256),
             redeem_identity,
             refund_identity,
             ledger: Text(ledger),
@@ -639,7 +629,6 @@ mod tests {
             self.amount == other.amount
                 && self.chain_id == other.chain_id
                 && self.expiry == other.expiry
-                && self.hash_function == other.hash_function
                 && self.token_contract == other.token_contract
                 && self.redeem_identity == other.redeem_identity
                 && self.refund_identity == other.refund_identity
@@ -653,7 +642,6 @@ mod tests {
                 && self.network == other.network
                 && self.chain == other.chain
                 && self.cltv_expiry == other.cltv_expiry
-                && self.hash_function == other.hash_function
                 && self.redeem_identity == other.redeem_identity
                 && self.refund_identity == other.refund_identity
                 && self.ledger == other.ledger
@@ -767,7 +755,6 @@ mod tests {
             amount: Text(amount),
             chain_id: U32(1337),
             expiry: U32(123),
-            hash_function: Text(HashFunction::Sha256),
             token_contract: Text(ethereum_identity),
             redeem_identity: Some(Text(redeem_identity)),
             refund_identity: Some(Text(refund_identity)),
@@ -810,7 +797,6 @@ mod tests {
             network: Text(LightningNetwork::Testnet),
             chain: "bitcoin".to_string(),
             cltv_expiry: U32(456),
-            hash_function: Text(HashFunction::Sha256),
             redeem_identity: Some(Text(redeem_identity)),
             refund_identity: Some(Text(refund_identity)),
             ledger: Text(Ledger::Alpha),
