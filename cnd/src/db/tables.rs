@@ -1,7 +1,7 @@
 use crate::{
     bitcoin,
     db::{
-        schema::{address_hints, halights, hbits, herc20s, secret_hashes, swaps},
+        schema::{address_book, halights, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
@@ -13,7 +13,7 @@ use crate::{
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};
-use libp2p::{Multiaddr, PeerId};
+use libp2p::PeerId;
 
 #[derive(Identifiable, Queryable, PartialEq, Debug)]
 #[table_name = "swaps"]
@@ -66,21 +66,6 @@ pub struct SecretHash {
 pub struct InsertableSecretHash {
     swap_id: i32,
     secret_hash: Text<rfc003::SecretHash>,
-}
-
-#[derive(Clone, Debug, Identifiable, Queryable, PartialEq)]
-#[table_name = "address_hints"]
-pub struct AddressHint {
-    id: i32,
-    pub peer_id: Text<PeerId>,
-    pub address_hint: Text<Multiaddr>,
-}
-
-#[derive(Insertable, Debug, Clone)]
-#[table_name = "address_hints"]
-pub struct InsertableAddressHint {
-    peer_id: Text<PeerId>,
-    address_hint: Text<Multiaddr>,
 }
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -478,38 +463,38 @@ impl Sqlite {
         Ok(())
     }
 
-    pub fn save_address_hint(
+    pub fn insert_address_for_peer(
         &self,
         connection: &SqliteConnection,
         peer_id: PeerId,
-        address_hint: libp2p::Multiaddr,
+        address: libp2p::Multiaddr,
     ) -> anyhow::Result<()> {
-        let insertable = InsertableAddressHint {
-            peer_id: Text(peer_id),
-            address_hint: Text(address_hint),
-        };
-
-        diesel::insert_into(address_hints::dsl::address_hints)
-            .values(insertable)
+        diesel::insert_into(address_book::table)
+            .values((
+                address_book::peer_id.eq(Text(peer_id)),
+                address_book::multi_address.eq(Text(address)),
+            ))
             .execute(connection)?;
 
         Ok(())
     }
 
-    pub async fn load_address_hint(&self, peer_id: &PeerId) -> anyhow::Result<libp2p::Multiaddr> {
-        let record: AddressHint = self
+    pub async fn load_address_for_peer(
+        &self,
+        peer_id: &PeerId,
+    ) -> anyhow::Result<Vec<libp2p::Multiaddr>> {
+        let addresses = self
             .do_in_transaction(|connection| {
                 let key = Text(peer_id);
 
-                address_hints::table
-                    .filter(address_hints::peer_id.eq(key))
-                    .first(connection)
-                    .optional()
+                address_book::table
+                    .select(address_book::multi_address)
+                    .filter(address_book::peer_id.eq(key))
+                    .load::<Text<libp2p::Multiaddr>>(connection)
             })
-            .await?
-            .ok_or(Error::PeerIdNotFound)?;
+            .await?;
 
-        Ok(record.address_hint.0)
+        Ok(addresses.into_iter().map(|text| text.0).collect())
     }
 
     pub async fn load_herc20(&self, swap_id: LocalSwapId) -> anyhow::Result<Herc20> {
@@ -591,16 +576,7 @@ impl Sqlite {
 mod tests {
     use super::*;
     use crate::lightning;
-    use std::{path::PathBuf, str::FromStr};
-
-    fn temp_db() -> PathBuf {
-        let temp_file = tempfile::Builder::new()
-            .suffix(".sqlite")
-            .tempfile()
-            .unwrap();
-
-        temp_file.into_temp_path().to_path_buf()
-    }
+    use std::str::FromStr;
 
     fn insertable_swap() -> InsertableSwap {
         let swap_id =
@@ -650,8 +626,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_swap() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let given = insertable_swap();
         let swap_id = given.local_swap_id.0;
@@ -670,8 +645,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_secret_hash() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let swap_id = swap.local_swap_id.0;
@@ -699,39 +673,78 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn roundtrip_address_hint() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+    async fn save_addresses_for_peer() {
+        let db = Sqlite::test();
 
-        let swap = insertable_swap();
-
-        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
-            .await
-            .expect("to be able to save a swap");
-
-        let peer_id = PeerId::from_str("QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY")
+        let peer_id = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY"
+            .parse::<PeerId>()
             .expect("valid peer id");
-        let multi_addr = "/ip4/80.123.90.4/tcp/5432";
-        let address_hint: Multiaddr = multi_addr.parse().expect("valid multiaddress");
+        let address1 = "/ip4/80.123.90.4/tcp/5432"
+            .parse::<libp2p::Multiaddr>()
+            .expect("valid multiaddress");
+        let address2 = "/ip4/127.0.0.1/udp/1234"
+            .parse::<libp2p::Multiaddr>()
+            .expect("valid multiaddress");
 
-        db.do_in_transaction(|conn| {
-            db.save_address_hint(conn, peer_id.clone(), address_hint.clone())
+        db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
+            db.insert_address_for_peer(conn, peer_id.clone(), address1.clone())?;
+            db.insert_address_for_peer(conn, peer_id.clone(), address2.clone())?;
+
+            Ok(())
         })
         .await
-        .expect("to be able to save address hint");
+        .expect("to be able to save addresses");
 
         let loaded = db
-            .load_address_hint(&peer_id)
+            .load_address_for_peer(&peer_id)
             .await
-            .expect("to be able to load a previously saved address hint");
+            .expect("to be able to load a previously saved addresses");
 
-        assert_eq!(loaded, address_hint)
+        assert_eq!(loaded, vec![address1, address2])
+    }
+
+    #[tokio::test]
+    async fn addresses_are_separated_by_peer() {
+        let db = Sqlite::test();
+
+        let peer1 = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY"
+            .parse::<PeerId>()
+            .expect("valid peer id");
+        let address1 = "/ip4/80.123.90.4/tcp/5432"
+            .parse::<libp2p::Multiaddr>()
+            .expect("valid multiaddress");
+        let peer2 = "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N"
+            .parse::<PeerId>()
+            .expect("valid peer id");
+        let address2 = "/ip4/127.0.0.1/udp/1234"
+            .parse::<libp2p::Multiaddr>()
+            .expect("valid multiaddress");
+
+        db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
+            db.insert_address_for_peer(conn, peer1.clone(), address1.clone())?;
+            db.insert_address_for_peer(conn, peer2.clone(), address2.clone())?;
+
+            Ok(())
+        })
+        .await
+        .expect("to be able to save addresses");
+
+        let loaded_peer1 = db
+            .load_address_for_peer(&peer1)
+            .await
+            .expect("to be able to load a previously saved addresses");
+        let loaded_peer2 = db
+            .load_address_for_peer(&peer2)
+            .await
+            .expect("to be able to load a previously saved addresses");
+
+        assert_eq!(loaded_peer1, vec![address1]);
+        assert_eq!(loaded_peer2, vec![address2])
     }
 
     #[tokio::test]
     async fn roundtrip_herc20s() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;
@@ -775,8 +788,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_halights() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;
