@@ -19,10 +19,10 @@ table! {
 }
 
 table! {
-    address_hints {
+    address_book {
         id -> Integer,
         peer_id -> Text,
-        address_hint -> Text,
+        multi_address -> Text,
     }
 }
 

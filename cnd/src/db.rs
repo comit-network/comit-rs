@@ -165,8 +165,6 @@ struct QueryableSwapRole {
 pub enum Error {
     #[error("swap not found")]
     SwapNotFound,
-    #[error("peer id not found")]
-    PeerIdNotFound,
     #[error("identity is not set")]
     IdentityNotSet,
 }
