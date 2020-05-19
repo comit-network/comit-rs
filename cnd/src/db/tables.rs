@@ -601,16 +601,7 @@ impl Sqlite {
 mod tests {
     use super::*;
     use crate::lightning;
-    use std::{path::PathBuf, str::FromStr};
-
-    fn temp_db() -> PathBuf {
-        let temp_file = tempfile::Builder::new()
-            .suffix(".sqlite")
-            .tempfile()
-            .unwrap();
-
-        temp_file.into_temp_path().to_path_buf()
-    }
+    use std::str::FromStr;
 
     fn insertable_swap() -> InsertableSwap {
         let swap_id =
@@ -662,8 +653,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_swap() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let given = insertable_swap();
         let swap_id = given.local_swap_id.0;
@@ -682,8 +672,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_secret_hash() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let swap_id = swap.local_swap_id.0;
@@ -712,8 +701,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_address_hint() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
 
@@ -742,8 +730,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_herc20s() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;
@@ -788,8 +775,7 @@ mod tests {
 
     #[tokio::test]
     async fn roundtrip_halights() {
-        let path = temp_db();
-        let db = Sqlite::new(&path).expect("a new db");
+        let db = Sqlite::test();
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;

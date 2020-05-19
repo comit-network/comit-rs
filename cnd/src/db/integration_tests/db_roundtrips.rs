@@ -12,7 +12,6 @@ use crate::{
         rfc003::{Accept, Request},
     },
 };
-use std::path::Path;
 
 macro_rules! db_roundtrip_test {
     ($alpha_ledger:ident, $beta_ledger:ident, $alpha_asset:ident, $beta_asset:ident, $alpha_identity:ident, $beta_identity:ident, $expected_swap_types_fn:expr) => {
@@ -31,7 +30,7 @@ macro_rules! db_roundtrip_test {
                     // construct the expected swap types from the function we get passed in order to enrich it with the role
                     let expected_swap_types = ($expected_swap_types_fn)(role);
 
-                    let db = Sqlite::new(&Path::new(":memory:"))?;
+                    let db = Sqlite::test();
 
                     let saved_swap = Swap {
                         swap_id,

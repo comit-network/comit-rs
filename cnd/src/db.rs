@@ -130,6 +130,17 @@ impl Sqlite {
     }
 }
 
+#[cfg(test)]
+impl Sqlite {
+    /// Returns a new in-memory database that can be used in tests.
+    ///
+    /// The database is gone once the connection it is dropped. This is tied to
+    /// the lifetime of the `Sqlite` instance.
+    pub fn test() -> Self {
+        Sqlite::new(&Path::new(":memory:")).expect("to create an in-memory database")
+    }
+}
+
 // Construct an absolute path to the database file using 'dir' as the base.
 fn db_path_from_dir(dir: &Path) -> PathBuf {
     let path = dir.to_path_buf();
