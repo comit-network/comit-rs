@@ -160,14 +160,11 @@ impl Facade {
         &self,
         id: LocalSwapId,
     ) -> anyhow::Result<Option<http_api::AliceHerc20HalightBitcoinSwap>> {
-        let alpha_ledger_state = self.herc20_states.get(&id).await?;
-        let beta_ledger_state = self.halight_states.get(&id).await?;
+        let alpha_state = self.herc20_states.get(&id).await?;
+        let beta_state = self.halight_states.get(&id).await?;
 
-        let (alpha_ledger_state, beta_ledger_state) = match (alpha_ledger_state, beta_ledger_state)
-        {
-            (Some(alpha_ledger_state), Some(beta_ledger_state)) => {
-                (alpha_ledger_state, beta_ledger_state)
-            }
+        let (alpha_state, beta_state) = match (alpha_state, beta_state) {
+            (Some(alpha_state), Some(beta_state)) => (alpha_state, beta_state),
             _ => return Ok(None),
         };
 
@@ -177,8 +174,8 @@ impl Facade {
         let secret = self.seed.derive_swap_seed(id).derive_secret();
 
         Ok(Some(http_api::AliceHerc20HalightBitcoinSwap {
-            alpha_ledger_state,
-            beta_ledger_state,
+            alpha_ledger_state: alpha_state,
+            beta_ledger_state: beta_state,
             herc20_params,
             halight_params,
             secret,
@@ -189,14 +186,11 @@ impl Facade {
         &self,
         id: LocalSwapId,
     ) -> anyhow::Result<Option<http_api::BobHerc20HalightBitcoinSwap>> {
-        let alpha_ledger_state = self.herc20_states.get(&id).await?;
-        let beta_ledger_state = self.halight_states.get(&id).await?;
+        let alpha_state = self.herc20_states.get(&id).await?;
+        let beta_state = self.halight_states.get(&id).await?;
 
-        let (alpha_ledger_state, beta_ledger_state) = match (alpha_ledger_state, beta_ledger_state)
-        {
-            (Some(alpha_ledger_state), Some(beta_ledger_state)) => {
-                (alpha_ledger_state, beta_ledger_state)
-            }
+        let (alpha_state, beta_state) = match (alpha_state, beta_state) {
+            (Some(alpha_state), Some(beta_state)) => (alpha_state, beta_state),
             _ => return Ok(None),
         };
 
@@ -206,8 +200,8 @@ impl Facade {
         let secret_hash = self.db.load_secret_hash(id).await?;
 
         Ok(Some(http_api::BobHerc20HalightBitcoinSwap {
-            alpha_ledger_state,
-            beta_ledger_state,
+            alpha_ledger_state: alpha_state,
+            beta_ledger_state: beta_state,
             herc20_params,
             halight_params,
             secret_hash,
