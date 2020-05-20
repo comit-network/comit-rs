@@ -576,6 +576,7 @@ impl Sqlite {
 mod tests {
     use super::*;
     use crate::lightning;
+    use spectral::{prelude::ResultAssertions, *};
     use std::str::FromStr;
 
     fn insertable_swap() -> InsertableSwap {
@@ -824,5 +825,37 @@ mod tests {
             .expect("to be able to load a previously saved swap details");
 
         assert_eq!(loaded, given)
+    }
+
+    #[tokio::test]
+    async fn verify_fk_relation() {
+        let db = Sqlite::test();
+
+        let swap = insertable_swap();
+        let local_swap_id = swap.local_swap_id.0;
+
+        let swap_id = db
+            .do_in_transaction(|conn| db.save_swap(conn, &swap))
+            .await
+            .expect("to be able to save a swap");
+
+        let non_existing_swap_id = swap_id + 1337;
+        let halight = InsertableHalight {
+            swap_id: non_existing_swap_id,
+            amount: Text(Satoshis::from_str("12345").expect("valid ERC20 amount")),
+            network: Text(LightningNetwork::Testnet),
+            chain: "bitcoin".to_string(),
+            cltv_expiry: U32(456),
+            redeem_identity: Some(Text(lightning::PublicKey::random())),
+            refund_identity: Some(Text(lightning::PublicKey::random())),
+            ledger: Text(Ledger::Alpha),
+        };
+
+        let result = db.do_in_transaction(|conn| db.insert(conn, &halight)).await;
+        assert_that(&result).is_err();
+
+        let result = db.load_halight(local_swap_id).await;
+        // halight should not exist
+        assert_that(&result).is_err();
     }
 }
