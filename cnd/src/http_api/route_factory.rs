@@ -120,7 +120,7 @@ pub fn create(
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade.clone())
-        .and_then(http_api::routes::get_halight_swap);
+        .and_then(http_api::routes::get_swap);
 
     let lightning_action_init = swaps
         .and(warp::get())

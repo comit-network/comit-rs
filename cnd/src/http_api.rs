@@ -8,7 +8,7 @@ mod swap_resource;
 
 pub use self::{
     problem::*,
-    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap},
+    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap, Protocol, SwapKind},
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
@@ -19,11 +19,7 @@ use crate::{
     asset,
     ethereum::ChainId,
     htlc_location, identity,
-    swap_protocols::{
-        ledger::{self},
-        rfc003::SwapId,
-        Role, SwapProtocol,
-    },
+    swap_protocols::{ledger, rfc003::SwapId, Role, SwapProtocol},
     transaction,
 };
 use libp2p::{Multiaddr, PeerId};
