@@ -1,9 +1,16 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
-    asset, htlc_location, identity, timestamp::Timestamp, transaction, Secret, SecretHash,
+    asset,
+    btsieve::bitcoin::{BitcoindConnector, Cache},
+    htlc_location, identity, ledger,
+    timestamp::Timestamp,
+    transaction, Secret, SecretHash,
 };
-use bitcoin::Transaction;
+use bitcoin::{
+    hashes::{hash160, Hash},
+    Address, Transaction,
+};
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 use chrono::NaiveDateTime;
 use futures::{
@@ -11,6 +18,7 @@ use futures::{
     Stream,
 };
 use genawaiter::sync::{Co, Gen};
+use std::sync::Arc;
 
 /// Data required to create a swap that involves Bitcoin.
 #[derive(Clone, Copy, Debug)]
@@ -27,7 +35,7 @@ pub struct CreatedSwap {
 pub trait WaitForFunded {
     async fn wait_for_funded(
         &self,
-        params: Params,
+        params: &Params,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Funded>;
 }
@@ -36,8 +44,8 @@ pub trait WaitForFunded {
 pub trait WaitForRedeemed {
     async fn wait_for_redeemed(
         &self,
-        params: Params,
-        funded: Funded,
+        params: &Params,
+        location: htlc_location::Bitcoin,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Redeemed>;
 }
@@ -46,8 +54,8 @@ pub trait WaitForRedeemed {
 pub trait WaitForRefunded {
     async fn wait_for_refunded(
         &self,
-        params: Params,
-        funded: Funded,
+        params: &Params,
+        location: htlc_location::Bitcoin,
         start_of_swap: NaiveDateTime,
     ) -> anyhow::Result<Refunded>;
 }
@@ -81,13 +89,13 @@ pub enum Funded {
     },
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Redeemed {
     pub transaction: transaction::Bitcoin,
     pub secret: Secret,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Refunded {
     pub transaction: transaction::Bitcoin,
 }
@@ -107,10 +115,11 @@ pub struct Refunded {
 pub fn new(
     connector: Arc<Cache<BitcoindConnector>>,
     params: Params,
+    start_of_swap: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> {
     Gen::new({
         |co| async move {
-            if let Err(error) = watch_ledger(connector, params, &co).await {
+            if let Err(error) = watch_ledger(connector, params, &co, start_of_swap).await {
                 co.yield_(Err(error)).await;
             }
         }
@@ -124,19 +133,25 @@ async fn watch_ledger(
     connector: Arc<Cache<BitcoindConnector>>,
     params: Params,
     co: &Co<anyhow::Result<Event>>,
+    start_of_swap: NaiveDateTime,
 ) -> anyhow::Result<()> {
-    let funded = connector.htlc_funded(&params, start_of_swap).await?;
-    co.yield_(Event::Funded(funded)).await;
+    let funded = connector.wait_for_funded(&params, start_of_swap).await?;
+    co.yield_(Ok(Event::Funded(funded.clone()))).await;
 
-    let redeemed = connector.htlc_redeemed(&params, &funded, start_of_swap);
-    let refunded = connector.htlc_refunded(&params, &funded, start_of_swap);
+    let location = match funded {
+        Funded::Correctly { location, .. } => location,
+        Funded::Incorrectly { location, .. } => location,
+    };
+
+    let redeemed = connector.wait_for_redeemed(&params, location, start_of_swap);
+    let refunded = connector.wait_for_refunded(&params, location, start_of_swap);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
-            co.yield_(Event::Redeemed(redeemed.clone())).await;
+            co.yield_(Ok(Event::Redeemed(redeemed.clone()))).await;
         }
         Ok(Either::Right((refunded, _))) => {
-            co.yield_(Event::Refunded(refunded.clone())).await;
+            co.yield_(Ok(Event::Refunded(refunded.clone()))).await;
         }
         Err(either) => {
             let (error, _other_future) = either.factor_first();
@@ -158,18 +173,18 @@ pub struct Params {
 }
 
 impl From<Params> for BitcoinHtlc {
-    fn from(htlc_params: Params) -> Self {
-        let refund_public_key = ::bitcoin::PublicKey::from(htlc_params.refund_identity);
-        let redeem_public_key = ::bitcoin::PublicKey::from(htlc_params.redeem_identity);
+    fn from(params: Params) -> Self {
+        let refund_public_key = ::bitcoin::PublicKey::from(params.refund_identity);
+        let redeem_public_key = ::bitcoin::PublicKey::from(params.redeem_identity);
 
         let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
         let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
 
         BitcoinHtlc::new(
-            htlc_params.expiry.into(),
+            params.expiry.into(),
             refund_identity,
             redeem_identity,
-            htlc_params.secret_hash.into_raw(),
+            params.secret_hash.into_raw(),
         )
     }
 }
@@ -179,6 +194,7 @@ impl Params {
         BitcoinHtlc::from(*self).compute_address(self.network)
     }
 }
+
 pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
     transaction.input.iter().find_map(|txin| {
         txin.witness

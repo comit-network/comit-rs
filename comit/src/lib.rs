@@ -4,6 +4,7 @@ pub mod bitcoin;
 pub mod btsieve;
 pub mod ethereum;
 pub mod halight;
+pub mod hbit;
 pub mod herc20;
 pub mod htlc_location;
 pub mod identity;
