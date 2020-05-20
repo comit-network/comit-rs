@@ -58,7 +58,7 @@ impl Load<http_api::DisplaySwap<herc20::Asset, halight::Asset>> for Sqlite {
     ) -> anyhow::Result<http_api::DisplaySwap<herc20::Asset, halight::Asset>> {
         use crate::db::schema::{halights, herc20s, swaps};
 
-        let (role, satoshis, erc20_amount, token_contract) = self
+        let (role, erc20_amount, token_contract, satoshis) = self
             .do_in_transaction(move |conn| {
                 let key = Text(swap_id);
 
@@ -68,15 +68,15 @@ impl Load<http_api::DisplaySwap<herc20::Asset, halight::Asset>> for Sqlite {
                     .filter(swaps::local_swap_id.eq(key))
                     .select((
                         swaps::role,
-                        halights::amount,
                         herc20s::amount,
                         herc20s::token_contract,
+                        halights::amount,
                     ))
                     .first::<(
                         Text<Role>,
-                        Text<Satoshis>,
                         Text<Erc20Amount>,
                         Text<EthereumAddress>,
+                        Text<Satoshis>,
                     )>(conn)
             })
             .await
