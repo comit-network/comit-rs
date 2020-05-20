@@ -167,72 +167,6 @@ impl Comit {
         self.swaps.get_created_swap(swap_id)
     }
 
-    pub fn get_finalized_swap(&self, swap_id: LocalSwapId) -> Option<FinalizedSwap> {
-        let (id, create_swap_params) = match self.swaps.get_announced_swap(&swap_id) {
-            Some(swap) => swap,
-            None => return None,
-        };
-
-        let secret = match create_swap_params.role {
-            Role::Alice => Some(self.seed.derive_swap_seed(swap_id).derive_secret()),
-            Role::Bob => None,
-        };
-
-        let alpha_ledger_redeem_identity = match create_swap_params.role {
-            Role::Alice => match self.ethereum_identities.get(&id).copied() {
-                Some(identity) => identity,
-                None => return None,
-            },
-            Role::Bob => create_swap_params.ethereum_identity,
-        };
-        let alpha_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.ethereum_identity,
-            Role::Bob => match self.ethereum_identities.get(&id).copied() {
-                Some(identity) => identity,
-                None => return None,
-            },
-        };
-        let beta_ledger_redeem_identity = match create_swap_params.role {
-            Role::Alice => create_swap_params.lightning_identity,
-            Role::Bob => match self.lightning_identities.get(&id).copied() {
-                Some(identity) => identity,
-                None => return None,
-            },
-        };
-        let beta_ledger_refund_identity = match create_swap_params.role {
-            Role::Alice => match self.lightning_identities.get(&id).copied() {
-                Some(identity) => identity,
-                None => return None,
-            },
-            Role::Bob => create_swap_params.lightning_identity,
-        };
-
-        let erc20 = asset::Erc20 {
-            token_contract: create_swap_params.token_contract,
-            quantity: create_swap_params.ethereum_amount,
-        };
-
-        Some(FinalizedSwap {
-            alpha_ledger: ledger::Ethereum::new(ChainId::regtest()),
-            beta_ledger: ledger::Lightning::Regtest,
-            alpha_asset: erc20,
-            beta_asset: create_swap_params.lightning_amount,
-            alpha_ledger_redeem_identity,
-            alpha_ledger_refund_identity,
-            beta_ledger_redeem_identity,
-            beta_ledger_refund_identity,
-            alpha_expiry: create_swap_params.ethereum_absolute_expiry,
-            beta_expiry: create_swap_params.lightning_cltv_expiry,
-            swap_id,
-            secret,
-            secret_hash: match self.secret_hashes.get(&id).copied() {
-                Some(secret_hash) => secret_hash,
-                None => return None,
-            },
-            role: create_swap_params.role,
-        })
-    }
-
     /// Once confirmation is received, exchange the information to then finalize
     fn alice_communicate(
         &mut self,
@@ -335,8 +269,6 @@ impl fmt::Display for SwapExists {
 
 #[derive(Clone, Debug)]
 pub struct FinalizedSwap {
-    pub alpha_ledger: ledger::Ethereum,
-    pub beta_ledger: ledger::Lightning,
     pub alpha_asset: asset::Erc20,
     pub beta_asset: asset::Bitcoin,
     pub alpha_ledger_refund_identity: identity::Ethereum,

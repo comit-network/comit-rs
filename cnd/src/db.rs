@@ -54,7 +54,7 @@ pub struct ForSwap<T> {
 /// Load data from the database.
 #[async_trait]
 pub trait Load<T>: Send + Sync + 'static {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<Option<T>>;
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T>;
 }
 
 #[derive(Clone, derivative::Derivative)]
@@ -190,18 +190,6 @@ pub struct CreatedSwap<A, B> {
     pub address_hint: Option<libp2p::Multiaddr>,
     /// Role of the node in this swap, Alice or Bob.
     pub role: Role,
-}
-
-/// An 'in progress' swap is a swap that is currently in progress, i.e., the
-/// swap was 'created' by a POST on the REST API, 'finalized' during the
-/// communication protocols, and is now 'in progress'.  This data structure can
-/// be retrieved from the database.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct InProgressSwap<A, B> {
-    pub swap_id: LocalSwapId,
-    pub role: Role,
-    pub alpha: A,
-    pub beta: B,
 }
 
 #[cfg(test)]

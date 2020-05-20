@@ -138,11 +138,6 @@ impl Swarm {
         guard.initiate_communication(id, swap_params)
     }
 
-    pub async fn get_finalized_swap(&self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
-        let mut guard = self.inner.lock().await;
-        guard.get_finalized_swap(id)
-    }
-
     pub async fn get_created_swap(
         &self,
         id: LocalSwapId,
@@ -329,10 +324,6 @@ impl ComitNode {
         swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
     ) -> anyhow::Result<()> {
         self.comit.init_herc20_hbit(id, swap)
-    }
-
-    pub fn get_finalized_swap(&mut self, id: LocalSwapId) -> Option<comit::FinalizedSwap> {
-        self.comit.get_finalized_swap(id)
     }
 
     pub fn get_created_swap(

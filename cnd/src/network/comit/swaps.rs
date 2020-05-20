@@ -60,24 +60,6 @@ impl<T> Swaps<T> {
         self.swaps.get(local_swap_id).cloned()
     }
 
-    /// Gets a swap that was announced
-    pub fn get_announced_swap(
-        &self,
-        local_swap_id: &LocalSwapId,
-    ) -> Option<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams)> {
-        let create_params = match self.swaps.get(local_swap_id) {
-            Some(create_params) => create_params,
-            None => return None,
-        };
-
-        let shared_swap_id = match self.swap_ids.get(local_swap_id) {
-            Some(shared_swap_id) => shared_swap_id,
-            None => return None,
-        };
-
-        Some((*shared_swap_id, create_params.clone()))
-    }
-
     /// Alice created and announced it a swap and is waiting for a confirmation
     /// from Bob
     pub fn create_as_pending_confirmation(
@@ -327,6 +309,26 @@ mod tests {
         asset, asset::ethereum::FromWei, identity, network::DialInformation, swap_protocols::Role,
     };
     use digest::Digest;
+
+    impl<T> Swaps<T> {
+        /// Gets a swap that was announced
+        pub fn get_announced_swap(
+            &self,
+            local_swap_id: &LocalSwapId,
+        ) -> Option<(SharedSwapId, Herc20HalightBitcoinCreateSwapParams)> {
+            let create_params = match self.swaps.get(local_swap_id) {
+                Some(create_params) => create_params,
+                None => return None,
+            };
+
+            let shared_swap_id = match self.swap_ids.get(local_swap_id) {
+                Some(shared_swap_id) => shared_swap_id,
+                None => return None,
+            };
+
+            Some((*shared_swap_id, create_params.clone()))
+        }
+    }
 
     fn create_params() -> Herc20HalightBitcoinCreateSwapParams {
         Herc20HalightBitcoinCreateSwapParams {

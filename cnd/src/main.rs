@@ -173,6 +173,7 @@ fn main() -> anyhow::Result<()> {
         herc20_states: Arc::clone(&herc20_states),
         halight_states: Arc::clone(&halight_states),
         db: database,
+        seed,
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;

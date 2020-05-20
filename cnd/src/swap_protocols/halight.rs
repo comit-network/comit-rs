@@ -1,7 +1,7 @@
 use crate::{
     asset, identity,
-    swap_protocols::{ledger, state, state::Update, Ledger, LocalSwapId},
-    timestamp::Timestamp,
+    swap_protocols::{state, state::Update, Ledger, LocalSwapId},
+    timestamp::RelativeTime,
 };
 use futures::TryStreamExt;
 use std::{
@@ -14,15 +14,11 @@ pub use comit::halight::*;
 
 /// Htlc Lightning Bitcoin atomic swap protocol.
 
-/// Data required to create a swap that involves bitcoin on the lightning
-/// network.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct CreatedSwap {
-    pub amount: asset::Bitcoin,
-    pub identity: identity::Lightning,
-    pub network: ledger::Lightning,
-    pub cltv_expiry: u32,
-}
+/// Asset of the Halight protocol.
+///
+/// To be used when transferring bitcoin on Lightning with the Halight protocol.
+#[derive(Debug, Clone, Copy)]
+pub struct Asset(pub asset::Bitcoin);
 
 /// Halight specific data for an in progress swap.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,7 +27,7 @@ pub struct InProgressSwap {
     pub asset: asset::Bitcoin,
     pub refund_identity: identity::Lightning,
     pub redeem_identity: identity::Lightning,
-    pub expiry: Timestamp, // This is the cltv_expiry for now.
+    pub expiry: RelativeTime, // This is the cltv_expiry for now.
 }
 
 /// Creates a new instance of the halight protocol.
