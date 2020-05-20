@@ -1,6 +1,7 @@
 use crate::{
     db,
     db::{wrapper_types::custom_sql_types::Text, ForSwap, Load, Save, Sqlite},
+    http_api,
     swap_protocols::{halight, herc20, LocalSwapId, Role},
 };
 use comit::{asset::Erc20, network};
@@ -98,6 +99,19 @@ impl Load<halight::InProgressSwap> for Sqlite {
             refund_identity: refund_identity.0,
             redeem_identity: redeem_identity.0,
             expiry: halight.cltv_expiry.into(),
+        })
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<http_api::SwapKind> for Sqlite {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapKind> {
+        let role = Load::<Role>::load(self, swap_id).await?;
+
+        Ok(http_api::SwapKind {
+            alpha_protocol: http_api::Protocol::Herc20,
+            beta_protocol: http_api::Protocol::Halight,
+            role,
         })
     }
 }

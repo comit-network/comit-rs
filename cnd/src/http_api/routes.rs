@@ -117,25 +117,40 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_halight_swap(
-    swap_id: LocalSwapId,
-    facade: Facade,
-) -> Result<impl Reply, Rejection> {
-    handle_get_halight_swap(facade, swap_id)
+pub async fn get_swap(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_get_swap(facade, swap_id)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
-pub async fn handle_get_halight_swap(
+#[derive(Clone, Copy, Debug)]
+pub enum Protocol {
+    Herc20,
+    Halight,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SwapKind {
+    pub alpha_protocol: Protocol,
+    pub beta_protocol: Protocol,
+    pub role: Role,
+}
+
+pub async fn handle_get_swap(
     facade: Facade,
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let swap: DisplaySwap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
+    let swap_kind = Load::<SwapKind>::load(&facade, swap_id).await?;
 
-    match swap.role {
-        Role::Alice => {
+    match swap_kind {
+        SwapKind {
+            alpha_protocol: Protocol::Herc20,
+            beta_protocol: Protocol::Halight,
+            role: Role::Alice,
+        } => {
+            let swap: DisplaySwap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
             let state = facade.get_alice_herc20_halight_swap(swap_id).await?;
 
             match state {
@@ -158,7 +173,12 @@ pub async fn handle_get_halight_swap(
                 None => make_swap_herc20_halight_entity(swap_id, &swap),
             }
         }
-        Role::Bob => {
+        SwapKind {
+            alpha_protocol: Protocol::Herc20,
+            beta_protocol: Protocol::Halight,
+            role: Role::Bob,
+        } => {
+            let swap: DisplaySwap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
             let state = facade.get_bob_herc20_halight_swap(swap_id).await?;
 
             match state {
@@ -177,6 +197,7 @@ pub async fn handle_get_halight_swap(
                 None => make_swap_herc20_halight_entity(swap_id, &swap),
             }
         }
+        _ => todo!("actually handle other SwapKinds"),
     }
 }
 
