@@ -300,6 +300,22 @@ macro_rules! swap_id_fk {
     };
 }
 
+trait EnsureSingleRowAffected {
+    fn ensure_single_row_affected(self) -> anyhow::Result<usize>;
+}
+
+impl EnsureSingleRowAffected for usize {
+    fn ensure_single_row_affected(self) -> anyhow::Result<usize> {
+        if self != 1 {
+            return Err(anyhow::anyhow!(
+                "Expected rows to be updated should have been 1 but was {}",
+                self
+            ));
+        }
+        Ok(self)
+    }
+}
+
 impl Sqlite {
     pub async fn role(&self, swap_id: LocalSwapId) -> anyhow::Result<Role> {
         let swap = self.load_swap(swap_id).await?;
@@ -392,14 +408,14 @@ impl Sqlite {
         diesel::update(halights::table)
             .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
             .set(halights::refund_identity.eq(Text(identity)))
-            .execute(connection)
+            .execute(connection)?
+            .ensure_single_row_affected()
             .with_context(|| {
                 format!(
                     "failed to update halight refund identity for swap {}",
                     local_swap_id
                 )
             })?;
-
         Ok(())
     }
 
@@ -412,14 +428,14 @@ impl Sqlite {
         diesel::update(halights::table)
             .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
             .set(halights::redeem_identity.eq(Text(identity)))
-            .execute(connection)
+            .execute(connection)?
+            .ensure_single_row_affected()
             .with_context(|| {
                 format!(
                     "failed to update halight redeem identity for swap {}",
                     local_swap_id
                 )
             })?;
-
         Ok(())
     }
 
@@ -432,14 +448,14 @@ impl Sqlite {
         diesel::update(herc20s::table)
             .filter(herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
             .set(herc20s::refund_identity.eq(Text(identity)))
-            .execute(connection)
+            .execute(connection)?
+            .ensure_single_row_affected()
             .with_context(|| {
                 format!(
                     "failed to update herc20 refund identity for swap {}",
                     local_swap_id
                 )
             })?;
-
         Ok(())
     }
 
@@ -452,14 +468,14 @@ impl Sqlite {
         diesel::update(herc20s::table)
             .filter(herc20s::swap_id.eq_any(swap_id_fk!(local_swap_id)))
             .set(herc20s::redeem_identity.eq(Text(identity)))
-            .execute(connection)
+            .execute(connection)?
+            .ensure_single_row_affected()
             .with_context(|| {
                 format!(
                     "failed to update herc20 redeem identity for swap {}",
                     local_swap_id
                 )
             })?;
-
         Ok(())
     }
 
@@ -749,6 +765,7 @@ mod tests {
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;
+        let non_existing_local_swap_id = LocalSwapId::random();
 
         let swap_id = db
             .do_in_transaction(|conn| db.save_swap(conn, &swap))
@@ -770,8 +787,8 @@ mod tests {
             chain_id: U32(1337),
             expiry: U32(123),
             token_contract: Text(ethereum_identity),
-            redeem_identity: Some(Text(redeem_identity)),
-            refund_identity: Some(Text(refund_identity)),
+            redeem_identity: None,
+            refund_identity: None,
             ledger: Text(Ledger::Alpha),
         };
 
@@ -784,7 +801,47 @@ mod tests {
             .await
             .expect("to be able to load a previously saved swap details");
 
-        assert_eq!(loaded, given)
+        assert_eq!(loaded, given);
+
+        // update redeem_identity for non-existing swap
+        let result = db
+            .do_in_transaction(|conn| {
+                db.update_herc20_redeem_identity(
+                    conn,
+                    non_existing_local_swap_id,
+                    redeem_identity.into(),
+                )
+            })
+            .await;
+        assert_that(&result).is_err();
+
+        // update refund_identity for non-existing swap
+        let result = db
+            .do_in_transaction(|conn| {
+                db.update_herc20_refund_identity(
+                    conn,
+                    non_existing_local_swap_id,
+                    refund_identity.into(),
+                )
+            })
+            .await;
+        assert_that(&result).is_err();
+
+        // update existing swap
+        db.do_in_transaction(|conn| {
+            db.update_herc20_redeem_identity(conn, local_swap_id, redeem_identity.into())?;
+            db.update_herc20_refund_identity(conn, local_swap_id, refund_identity.into())
+        })
+        .await
+        .expect("table to be updated");
+
+        let loaded = db
+            .load_herc20(local_swap_id)
+            .await
+            .expect("to be able to load a previously saved swap details");
+
+        assert_eq!(loaded.redeem_identity, Some(Text(redeem_identity)));
+        assert_eq!(loaded.refund_identity, Some(Text(refund_identity)));
     }
 
     #[tokio::test]
@@ -793,6 +850,7 @@ mod tests {
 
         let swap = insertable_swap();
         let local_swap_id = swap.local_swap_id.0;
+        let non_existing_local_swap_id = LocalSwapId::random();
 
         let swap_id = db
             .do_in_transaction(|conn| db.save_swap(conn, &swap))
@@ -810,8 +868,8 @@ mod tests {
             network: Text(LightningNetwork::Testnet),
             chain: "bitcoin".to_string(),
             cltv_expiry: U32(456),
-            redeem_identity: Some(Text(redeem_identity)),
-            refund_identity: Some(Text(refund_identity)),
+            redeem_identity: None,
+            refund_identity: None,
             ledger: Text(Ledger::Alpha),
         };
 
@@ -824,7 +882,39 @@ mod tests {
             .await
             .expect("to be able to load a previously saved swap details");
 
-        assert_eq!(loaded, given)
+        assert_eq!(loaded, given);
+
+        // update redeem_identity for non-existing swap
+        let result = db
+            .do_in_transaction(|conn| {
+                db.update_halight_redeem_identity(conn, non_existing_local_swap_id, redeem_identity)
+            })
+            .await;
+        assert_that(&result).is_err();
+
+        // update refund_identity for non-existing swap
+        let result = db
+            .do_in_transaction(|conn| {
+                db.update_halight_refund_identity(conn, non_existing_local_swap_id, refund_identity)
+            })
+            .await;
+        assert_that(&result).is_err();
+
+        // update existing swap
+        db.do_in_transaction(|conn| {
+            db.update_halight_redeem_identity(conn, local_swap_id, redeem_identity)?;
+            db.update_halight_refund_identity(conn, local_swap_id, refund_identity)
+        })
+        .await
+        .expect("table to be updated");
+
+        let loaded = db
+            .load_halight(local_swap_id)
+            .await
+            .expect("to be able to load a previously saved swap details");
+
+        assert_eq!(loaded.redeem_identity, Some(Text(redeem_identity)));
+        assert_eq!(loaded.refund_identity, Some(Text(refund_identity)));
     }
 
     #[tokio::test]
