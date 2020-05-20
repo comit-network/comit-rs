@@ -1,27 +1,9 @@
-use crate::swap_protocols::{state, LocalSwapId, Side};
-use comit::{asset, htlc_location, transaction, Secret, SecretHash, Timestamp};
+use crate::swap_protocols::{state, LocalSwapId};
+use comit::{asset, htlc_location, transaction, Secret};
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
-use crate::identity;
-use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
-pub use comit::herc20::*;
-
-/// Asset of the HErc20 protocol.
-///
-/// To be used when transferring ERC20 on Ethereum with the HErc20 protocol.
-#[derive(Debug, Clone)]
-pub struct Asset(pub asset::Erc20);
-
-/// Herc20 specific data for an in progress swap.
-#[derive(Debug, Clone, PartialEq)]
-pub struct InProgressSwap {
-    pub asset: asset::Erc20,
-    pub side: Side,
-    pub refund_identity: identity::Ethereum,
-    pub redeem_identity: identity::Ethereum,
-    pub expiry: Timestamp, // This is the absolute_expiry for now.
-}
+pub use comit::{herc20::*, identity};
 
 #[derive(Default, Debug)]
 pub struct States(Mutex<HashMap<LocalSwapId, State>>);
@@ -209,20 +191,8 @@ pub enum State {
     },
 }
 
-impl InProgressSwap {
-    pub fn build_erc20_htlc(&self, secret_hash: SecretHash) -> Erc20Htlc {
-        let refund_address = blockchain_contracts::ethereum::Address(self.refund_identity.into());
-        let redeem_address = blockchain_contracts::ethereum::Address(self.redeem_identity.into());
-        let token_contract_address =
-            blockchain_contracts::ethereum::Address(self.asset.token_contract.into());
-
-        Erc20Htlc::new(
-            self.expiry.into(),
-            refund_address,
-            redeem_address,
-            secret_hash.into(),
-            token_contract_address,
-            self.asset.quantity.clone().into(),
-        )
-    }
+#[derive(Clone, Copy, Debug)]
+pub struct Identities {
+    pub redeem_identity: identity::Ethereum,
+    pub refund_identity: identity::Ethereum,
 }

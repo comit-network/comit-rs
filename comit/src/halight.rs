@@ -62,9 +62,10 @@ pub struct CreatedSwap {
 
 #[derive(Copy, Clone, Debug)]
 pub struct Params {
-    pub identity: identity::Lightning,
+    pub redeem_identity: identity::Lightning,
+    pub refund_identity: identity::Lightning,
     pub cltv_expiry: RelativeTime,
-    pub amount: asset::Bitcoin,
+    pub asset: asset::Bitcoin,
     pub secret_hash: SecretHash,
 }
 

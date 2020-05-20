@@ -9,7 +9,7 @@ use crate::{
     swap_protocols::{halight, herc20, LocalSwapId, Role, Side},
 };
 use anyhow::Context;
-use comit::{asset, asset::Erc20, network, Protocol};
+use comit::{asset, network, Protocol, RelativeTime, Timestamp};
 use diesel::{sql_types, ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl};
 
 mod rfc003;
@@ -53,11 +53,11 @@ where
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::Swap<herc20::Asset, halight::Asset>> for Sqlite {
+impl Load<http_api::Swap<asset::Erc20, asset::Bitcoin>> for Sqlite {
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<herc20::Asset, halight::Asset>> {
+    ) -> anyhow::Result<http_api::Swap<asset::Erc20, asset::Bitcoin>> {
         use crate::db::schema::{halights, herc20s, swaps};
 
         let (role, erc20_amount, token_contract, satoshis) = self
@@ -86,11 +86,11 @@ impl Load<http_api::Swap<herc20::Asset, halight::Asset>> for Sqlite {
 
         let swap = http_api::Swap {
             role: role.0,
-            alpha: herc20::Asset(asset::Erc20 {
+            alpha: asset::Erc20 {
                 token_contract: token_contract.0.into(),
                 quantity: erc20_amount.0.into(),
-            }),
-            beta: halight::Asset(satoshis.0.into()),
+            },
+            beta: satoshis.0.into(),
         };
 
         Ok(swap)
@@ -155,38 +155,62 @@ impl Load<Role> for Sqlite {
 }
 
 #[async_trait::async_trait]
-impl Load<herc20::InProgressSwap> for Sqlite {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<herc20::InProgressSwap> {
-        let herc20 = self.load_herc20(swap_id).await?;
+impl Load<(asset::Erc20, herc20::Identities, Timestamp)> for Sqlite {
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<(asset::Erc20, herc20::Identities, Timestamp)> {
+        let herc20: db::tables::Herc20 = self.load_herc20(swap_id).await?;
 
-        let refund_identity = herc20.refund_identity.ok_or(db::Error::IdentityNotSet)?;
-        let redeem_identity = herc20.redeem_identity.ok_or(db::Error::IdentityNotSet)?;
+        let token_contract = herc20.token_contract.0.into();
+        let quantity = herc20.amount.0.into();
+        let redeem_identity = herc20
+            .redeem_identity
+            .ok_or(db::Error::IdentityNotSet)?
+            .0
+            .into();
+        let refund_identity = herc20
+            .refund_identity
+            .ok_or(db::Error::IdentityNotSet)?
+            .0
+            .into();
+        let expiry = herc20.expiry.0.into();
 
-        Ok(herc20::InProgressSwap {
-            asset: Erc20::new(herc20.token_contract.0.into(), herc20.amount.0.into()),
-            side: herc20.side.0,
-            refund_identity: refund_identity.0.into(),
-            redeem_identity: redeem_identity.0.into(),
-            expiry: herc20.expiry.into(),
-        })
+        Ok((
+            asset::Erc20 {
+                token_contract,
+                quantity,
+            },
+            herc20::Identities {
+                redeem_identity,
+                refund_identity,
+            },
+            expiry,
+        ))
     }
 }
 
 #[async_trait::async_trait]
-impl Load<halight::InProgressSwap> for Sqlite {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<halight::InProgressSwap> {
+impl Load<(asset::Bitcoin, halight::Identities, RelativeTime)> for Sqlite {
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<(asset::Bitcoin, halight::Identities, RelativeTime)> {
         let halight = self.load_halight(swap_id).await?;
 
-        let refund_identity = halight.refund_identity.ok_or(db::Error::IdentityNotSet)?;
-        let redeem_identity = halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?;
+        let redeem_identity = halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0;
+        let refund_identity = halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0;
+        let cltv_expiry = halight.cltv_expiry.0.into();
+        let asset = halight.amount.0.into();
 
-        Ok(halight::InProgressSwap {
-            side: halight.side.0,
-            asset: halight.amount.0.into(),
-            refund_identity: refund_identity.0,
-            redeem_identity: redeem_identity.0,
-            expiry: halight.cltv_expiry.into(),
-        })
+        Ok((
+            asset,
+            halight::Identities {
+                redeem_identity,
+                refund_identity,
+            },
+            cltv_expiry,
+        ))
     }
 }
 
@@ -211,7 +235,7 @@ impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Sqlite {
             // - COALESCE selects the first non-null value from a list of values
             // - We use 3 sub-selects to select a static value (i.e. 'halight', etc) if that particular child table has a row with a foreign key to the parent table
             // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
-            // 
+            //
             // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halight`, `herc20` or `hbit`
             diesel::sql_query(
                 r#"

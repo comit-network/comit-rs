@@ -924,12 +924,20 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                         return;
                     }
                 };
+
+                let (halight_redeem_identity, halight_refund_identity) = match role {
+                    Role::Alice => (create_swap_params.lightning_identity, lightning_identity),
+                    Role::Bob => (lightning_identity, create_swap_params.lightning_identity),
+                };
+
                 let halight_params = halight::Params {
-                    identity: create_swap_params.lightning_identity,
+                    redeem_identity: halight_redeem_identity,
+                    refund_identity: halight_refund_identity,
                     cltv_expiry: create_swap_params.lightning_cltv_expiry,
-                    amount: create_swap_params.lightning_amount,
+                    asset: create_swap_params.lightning_amount,
                     secret_hash,
                 };
+
                 let halight_states = self.halight_states.clone();
                 let halight_watcher_task = match role {
                     Role::Alice => async move {
@@ -974,14 +982,14 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                     redeem_identity: herc20_redeem_identity,
                     refund_identity: herc20_refund_identity,
                     expiry: create_swap_params.ethereum_absolute_expiry,
-                    start_of_swap: Utc::now().naive_local(),
                     secret_hash,
                 };
+                let start_of_swap = Utc::now().naive_local();
                 let connector = self.ethereum_connector.clone();
                 let states = self.herc20_states.clone();
 
                 self.task_executor.spawn(async move {
-                    let mut events = herc20::new(connector.as_ref(), params)
+                    let mut events = herc20::new(connector.as_ref(), params, start_of_swap)
                         .instrument(
                             tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role),
                         )

@@ -79,7 +79,7 @@ pub enum SwapProtocol {
 pub trait InitAction {
     type Output;
 
-    fn init_action(&self) -> Option<Self::Output>;
+    fn init_action(&self) -> anyhow::Result<Self::Output>;
 }
 
 /// Describes how to get the `fund` action from the current state.
@@ -88,13 +88,13 @@ pub trait InitAction {
 pub trait FundAction {
     type Output;
 
-    fn fund_action(&self) -> Option<Self::Output>;
+    fn fund_action(&self) -> anyhow::Result<Self::Output>;
 }
 
 pub trait DeployAction {
     type Output;
 
-    fn deploy_action(&self) -> Option<Self::Output>;
+    fn deploy_action(&self) -> anyhow::Result<Self::Output>;
 }
 
 /// Describes how to get the `redeem` action from the current state.
@@ -103,7 +103,7 @@ pub trait DeployAction {
 pub trait RedeemAction {
     type Output;
 
-    fn redeem_action(&self) -> Option<Self::Output>;
+    fn redeem_action(&self) -> anyhow::Result<Self::Output>;
 }
 
 /// Describes how to get the `refund` action from the current state.
@@ -112,5 +112,5 @@ pub trait RedeemAction {
 pub trait RefundAction {
     type Output;
 
-    fn refund_action(&self) -> Option<Self::Output>;
+    fn refund_action(&self) -> anyhow::Result<Self::Output>;
 }
