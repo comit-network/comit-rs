@@ -7,7 +7,7 @@ use crate::{
     asset,
     db::Load,
     ethereum::{Bytes, ChainId},
-    http_api::{action::ActionResponseBody, problem, route_factory, DisplaySwap, Http},
+    http_api::{action::ActionResponseBody, problem, route_factory, Http, Swap},
     swap_protocols::{
         actions::{
             ethereum,
@@ -19,7 +19,7 @@ use crate::{
     },
     timestamp::RelativeTime,
 };
-use ::comit::{Secret, SecretHash};
+use ::comit::{Protocol, Secret, SecretHash};
 use blockchain_contracts::ethereum::rfc003::{ether_htlc::EtherHtlc, Erc20Htlc};
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
@@ -125,32 +125,17 @@ pub async fn get_swap(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply
         .map_err(into_rejection)
 }
 
-#[derive(Clone, Copy, Debug)]
-pub enum Protocol {
-    Herc20,
-    Halight,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct SwapKind {
-    pub alpha_protocol: Protocol,
-    pub beta_protocol: Protocol,
-    pub role: Role,
-}
-
 pub async fn handle_get_swap(
     facade: Facade,
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
-    let swap_kind = Load::<SwapKind>::load(&facade, swap_id).await?;
-
-    match swap_kind {
-        SwapKind {
-            alpha_protocol: Protocol::Herc20,
-            beta_protocol: Protocol::Halight,
+    match facade.load(swap_id).await? {
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: DisplaySwap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
+            let swap: Swap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
             let state = facade.get_alice_herc20_halight_swap(swap_id).await?;
 
             match state {
@@ -173,12 +158,12 @@ pub async fn handle_get_swap(
                 None => make_swap_herc20_halight_entity(swap_id, &swap),
             }
         }
-        SwapKind {
-            alpha_protocol: Protocol::Herc20,
-            beta_protocol: Protocol::Halight,
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
             role: Role::Bob,
         } => {
-            let swap: DisplaySwap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
+            let swap: Swap<herc20::Asset, halight::Asset> = facade.load(swap_id).await?;
             let state = facade.get_bob_herc20_halight_swap(swap_id).await?;
 
             match state {
@@ -203,7 +188,7 @@ pub async fn handle_get_swap(
 
 fn make_swap_herc20_halight_entity(
     swap_id: LocalSwapId,
-    swap: &DisplaySwap<herc20::Asset, halight::Asset>,
+    swap: &Swap<herc20::Asset, halight::Asset>,
 ) -> anyhow::Result<siren::Entity> {
     let role = swap.role;
     let swap_resource = SwapResource { role: Http(role) };
@@ -222,8 +207,8 @@ fn make_swap_herc20_halight_entity(
 
     let alpha_params = HErc20 {
         protocol: "herc20".to_string(),
-        quantity: swap.alpha_asset.0.quantity.to_wei_dec(),
-        token_contract: swap.alpha_asset.0.token_contract.to_string(),
+        quantity: swap.alpha.0.quantity.to_wei_dec(),
+        token_contract: swap.alpha.0.token_contract.to_string(),
     };
     let alpha_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
@@ -239,7 +224,7 @@ fn make_swap_herc20_halight_entity(
 
     let beta_params = HalightBitcoin {
         protocol: "halight-bitcoin".to_string(),
-        quantity: swap.beta_asset.0.as_sat().to_string(),
+        quantity: swap.beta.0.as_sat().to_string(),
     };
     let beta_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
@@ -258,7 +243,7 @@ fn make_swap_herc20_halight_entity(
 
 fn make_finalized_swap_herc20_halight_entity<S>(
     swap_id: LocalSwapId,
-    swap: &DisplaySwap<herc20::Asset, halight::Asset>,
+    swap: &Swap<herc20::Asset, halight::Asset>,
     state: S,
     maybe_action_names: Vec<Option<&str>>,
 ) -> anyhow::Result<siren::Entity>

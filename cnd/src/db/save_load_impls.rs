@@ -1,14 +1,100 @@
 use crate::{
     db,
-    db::{wrapper_types::custom_sql_types::Text, ForSwap, Load, Save, Sqlite},
+    db::{
+        tables::{Insert, InsertableSwap, IntoInsertable},
+        wrapper_types::{custom_sql_types::Text, Erc20Amount, EthereumAddress, Satoshis},
+        CreatedSwap, ForSwap, Load, Save, Sqlite,
+    },
     http_api,
-    swap_protocols::{halight, herc20, LocalSwapId, Role},
+    swap_protocols::{halight, herc20, Ledger, LocalSwapId, Role},
 };
-use comit::{asset::Erc20, network};
-use diesel::{ExpressionMethods, QueryDsl, RunQueryDsl};
+use comit::{asset, asset::Erc20, network, Protocol};
+use diesel::{sql_types, ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl};
 
-mod created_swaps;
 mod rfc003;
+
+#[async_trait::async_trait]
+impl<TCreatedA, TCreatedB, TInsertableA, TInsertableB> Save<CreatedSwap<TCreatedA, TCreatedB>>
+    for Sqlite
+where
+    TCreatedA: IntoInsertable<Insertable = TInsertableA> + Clone + Send + 'static,
+    TCreatedB: IntoInsertable<Insertable = TInsertableB> + Send + 'static,
+    TInsertableA: 'static,
+    TInsertableB: 'static,
+    Sqlite: Insert<TInsertableA> + Insert<TInsertableB>,
+{
+    async fn save(
+        &self,
+        CreatedSwap {
+            swap_id,
+            role,
+            peer,
+            alpha,
+            beta,
+            ..
+        }: CreatedSwap<TCreatedA, TCreatedB>,
+    ) -> anyhow::Result<()> {
+        self.do_in_transaction::<_, _, anyhow::Error>(move |conn| {
+            let swap_id = self.save_swap(conn, &InsertableSwap::new(swap_id, peer, role))?;
+
+            let insertable_alpha = alpha.into_insertable(swap_id, role, Ledger::Alpha);
+            let insertable_beta = beta.into_insertable(swap_id, role, Ledger::Beta);
+
+            self.insert(conn, &insertable_alpha)?;
+            self.insert(conn, &insertable_beta)?;
+
+            Ok(())
+        })
+        .await?;
+
+        Ok(())
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<http_api::Swap<herc20::Asset, halight::Asset>> for Sqlite {
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<http_api::Swap<herc20::Asset, halight::Asset>> {
+        use crate::db::schema::{halights, herc20s, swaps};
+
+        let (role, erc20_amount, token_contract, satoshis) = self
+            .do_in_transaction(move |conn| {
+                let key = Text(swap_id);
+
+                swaps::table
+                    .inner_join(halights::table.on(swaps::id.eq(halights::swap_id)))
+                    .inner_join(herc20s::table.on(swaps::id.eq(herc20s::swap_id)))
+                    .filter(swaps::local_swap_id.eq(key))
+                    .select((
+                        swaps::role,
+                        herc20s::amount,
+                        herc20s::token_contract,
+                        halights::amount,
+                    ))
+                    .first::<(
+                        Text<Role>,
+                        Text<Erc20Amount>,
+                        Text<EthereumAddress>,
+                        Text<Satoshis>,
+                    )>(conn)
+            })
+            .await
+            .map_err(|_| db::Error::SwapNotFound)?;
+
+        let swap = http_api::Swap {
+            role: role.0,
+            alpha: herc20::Asset(asset::Erc20 {
+                token_contract: token_contract.0.into(),
+                quantity: erc20_amount.0.into(),
+            }),
+            beta: halight::Asset(satoshis.0.into()),
+        };
+
+        Ok(swap)
+    }
+}
 
 #[async_trait::async_trait]
 impl Save<ForSwap<network::WhatAliceLearnedFromBob>> for Sqlite {
@@ -104,14 +190,54 @@ impl Load<halight::InProgressSwap> for Sqlite {
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::SwapKind> for Sqlite {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapKind> {
-        let role = Load::<Role>::load(self, swap_id).await?;
+impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Sqlite {
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<http_api::Swap<comit::Protocol, comit::Protocol>> {
+        #[derive(QueryableByName)]
+        struct Result {
+            #[sql_type = "sql_types::Text"]
+            role: Text<Role>,
+            #[sql_type = "sql_types::Text"]
+            alpha_protocol: Text<Protocol>,
+            #[sql_type = "sql_types::Text"]
+            beta_protocol: Text<Protocol>,
+        }
 
-        Ok(http_api::SwapKind {
-            alpha_protocol: http_api::Protocol::Herc20,
-            beta_protocol: http_api::Protocol::Halight,
-            role,
+        let Result { role, alpha_protocol, beta_protocol } = self.do_in_transaction(|connection| {
+            // Here is how this works:
+            // - COALESCE selects the first non-null value from a list of values
+            // - We use 3 sub-selects to select a static value (i.e. 'halight', etc) if that particular child table has a row with a foreign key to the parent table
+            // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
+            // 
+            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halight`, `herc20` or `hbit`
+            diesel::sql_query(
+                r#"
+                SELECT
+                    role,
+                    COALESCE(
+                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.ledger = 'Alpha'),
+                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.ledger = 'Alpha'),
+                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.ledger = 'Alpha')
+                    ) as alpha_protocol,
+                    COALESCE(
+                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.ledger = 'Beta'),
+                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.ledger = 'Beta'),
+                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.ledger = 'Beta')
+                    ) as beta_protocol
+                from swaps
+                    where local_swap_id = ?
+            "#,
+            )
+                .bind::<sql_types::Text, _>(Text(swap_id))
+                .get_result(connection)
+        }).await.map_err(|_| db::Error::SwapNotFound)?;
+
+        Ok(http_api::Swap {
+            role: role.0,
+            alpha: alpha_protocol.0,
+            beta: beta_protocol.0,
         })
     }
 }

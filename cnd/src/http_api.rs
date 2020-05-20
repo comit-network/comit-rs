@@ -8,7 +8,7 @@ mod swap_resource;
 
 pub use self::{
     problem::*,
-    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap, Protocol, SwapKind},
+    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap},
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
@@ -32,11 +32,11 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone)]
-pub struct DisplaySwap<A, B> {
+#[derive(Debug, Clone, PartialEq)]
+pub struct Swap<A, B> {
     pub role: Role,
-    pub alpha_asset: A,
-    pub beta_asset: B,
+    pub alpha: A,
+    pub beta: B,
     /* pub status: SwapStatus (if you want to have this, you need to save ledger state to the
      * database) */
 }
