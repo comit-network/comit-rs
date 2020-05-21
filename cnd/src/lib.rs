@@ -37,6 +37,8 @@ pub mod load_swaps;
 #[macro_use]
 pub mod network;
 #[cfg(test)]
+pub mod proptest;
+#[cfg(test)]
 pub mod quickcheck;
 #[macro_use]
 pub mod seed;

@@ -10,6 +10,7 @@ use crate::{
         HashFunction,
     },
 };
+use comit::Protocol;
 use std::{fmt, str::FromStr};
 
 #[test]
@@ -62,6 +63,14 @@ fn secrethash() {
     roundtrip_test::<SecretHash>(
         "68917b35bacf71dbadf37628b3b7f290f6d88877d7b2269008d893ae7bd4f9ee",
     );
+}
+
+#[test]
+fn protocol() {
+    roundtrip_test::<Protocol>("halight");
+    roundtrip_test::<Protocol>("hbit");
+    roundtrip_test::<Protocol>("herc20");
+    assert_num_variants::<Protocol>(3)
 }
 
 /// Given a string representation of a value T, this function will assert

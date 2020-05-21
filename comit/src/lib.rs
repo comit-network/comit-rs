@@ -27,6 +27,24 @@ pub use self::{
 };
 use digest::ToDigestInput;
 
+#[derive(
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    Hash,
+    Copy,
+    strum_macros::EnumString,
+    strum_macros::Display,
+    strum_macros::EnumIter,
+)]
+#[strum(serialize_all = "lowercase")]
+pub enum Protocol {
+    Hbit,
+    Halight,
+    Herc20,
+}
+
 pub type Never = std::convert::Infallible;
 
 impl ToDigestInput for Timestamp {
