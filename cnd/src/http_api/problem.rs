@@ -2,7 +2,7 @@ use crate::{
     db,
     http_api::routes::{
         rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
-        LndActionError,
+        ActionNotFound,
     },
     network::comit::SwapExists,
 };
@@ -116,7 +116,7 @@ pub fn from_anyhow(e: anyhow::Error) -> HttpApiProblem {
             .set_detail("The requested combination of ledgers and assets is not supported.");
     }
 
-    if e.is::<LndActionError>() {
+    if e.is::<ActionNotFound>() {
         return HttpApiProblem::new("Action not found.").set_status(StatusCode::NOT_FOUND);
     }
 

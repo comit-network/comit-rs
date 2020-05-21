@@ -78,9 +78,9 @@ impl Invoice {
             })
         }
 
-        if params.amount != self.value {
+        if params.asset != self.value {
             anyhow::bail!(AmountMismatch {
-                expected: params.amount,
+                expected: params.asset,
                 received: self.value
             })
         }
@@ -105,9 +105,9 @@ pub struct Payment {
 
 impl Payment {
     fn validate(self, params: &Params) -> anyhow::Result<()> {
-        if params.amount != self.value_sat {
+        if params.asset != self.value_sat {
             anyhow::bail!(AmountMismatch {
-                expected: params.amount,
+                expected: params.asset,
                 received: self.value_sat
             })
         }

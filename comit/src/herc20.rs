@@ -24,19 +24,28 @@ pub struct CreatedSwap {
 /// Resolves when said event has occurred.
 #[async_trait::async_trait]
 pub trait WaitForDeployed {
-    async fn wait_for_deployed(&self, params: Params) -> anyhow::Result<Deployed>;
+    async fn wait_for_deployed(
+        &self,
+        params: Params,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Deployed>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForFunded {
-    async fn wait_for_funded(&self, params: Params, deployed: Deployed) -> anyhow::Result<Funded>;
+    async fn wait_for_funded(
+        &self,
+        params: Params,
+        start_of_swap: NaiveDateTime,
+        deployed: Deployed,
+    ) -> anyhow::Result<Funded>;
 }
 
 #[async_trait::async_trait]
 pub trait WaitForRedeemed {
     async fn wait_for_redeemed(
         &self,
-        params: Params,
+        start_of_swap: NaiveDateTime,
         deployed: Deployed,
     ) -> anyhow::Result<Redeemed>;
 }
@@ -45,7 +54,7 @@ pub trait WaitForRedeemed {
 pub trait WaitForRefunded {
     async fn wait_for_refunded(
         &self,
-        params: Params,
+        start_of_swap: NaiveDateTime,
         deployed: Deployed,
     ) -> anyhow::Result<Refunded>;
 }
@@ -107,13 +116,14 @@ pub struct Refunded {
 pub fn new<'a, C>(
     connector: &'a C,
     params: Params,
+    start_of_swap: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
     C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
 {
     Gen::new({
         |co| async move {
-            if let Err(error) = watch_ledger(connector, params, &co).await {
+            if let Err(error) = watch_ledger(connector, params, start_of_swap, &co).await {
                 co.yield_(Err(error)).await;
             }
         }
@@ -123,6 +133,7 @@ where
 async fn watch_ledger<C, R>(
     connector: &C,
     params: Params,
+    start_of_swap: NaiveDateTime,
     co: &Co<anyhow::Result<Event>, R>,
 ) -> anyhow::Result<()>
 where
@@ -130,17 +141,19 @@ where
 {
     co.yield_(Ok(Event::Started)).await;
 
-    let deployed = connector.wait_for_deployed(params.clone()).await?;
+    let deployed = connector
+        .wait_for_deployed(params.clone(), start_of_swap)
+        .await?;
 
     co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
 
     let funded = connector
-        .wait_for_funded(params.clone(), deployed.clone())
+        .wait_for_funded(params.clone(), start_of_swap, deployed.clone())
         .await?;
     co.yield_(Ok(Event::Funded(funded))).await;
 
-    let redeemed = connector.wait_for_redeemed(params.clone(), deployed.clone());
-    let refunded = connector.wait_for_refunded(params, deployed);
+    let redeemed = connector.wait_for_redeemed(start_of_swap, deployed.clone());
+    let refunded = connector.wait_for_refunded(start_of_swap, deployed);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -164,7 +177,6 @@ pub struct Params {
     pub redeem_identity: identity::Ethereum,
     pub refund_identity: identity::Ethereum,
     pub expiry: Timestamp,
-    pub start_of_swap: NaiveDateTime,
     pub secret_hash: SecretHash,
 }
 
@@ -190,4 +202,26 @@ impl From<Params> for Erc20Htlc {
             params.asset.quantity.into(),
         )
     }
+}
+
+pub fn build_erc20_htlc(
+    asset: asset::Erc20,
+    redeem_identity: identity::Ethereum,
+    refund_identity: identity::Ethereum,
+    expiry: Timestamp,
+    secret_hash: SecretHash,
+) -> Erc20Htlc {
+    let refund_address = blockchain_contracts::ethereum::Address(refund_identity.into());
+    let redeem_address = blockchain_contracts::ethereum::Address(redeem_identity.into());
+    let token_contract_address =
+        blockchain_contracts::ethereum::Address(asset.token_contract.into());
+
+    Erc20Htlc::new(
+        expiry.into(),
+        refund_address,
+        redeem_address,
+        secret_hash.into(),
+        token_contract_address,
+        asset.quantity.into(),
+    )
 }

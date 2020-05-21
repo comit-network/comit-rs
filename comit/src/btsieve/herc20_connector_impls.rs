@@ -10,6 +10,7 @@ use crate::{
     },
     Secret,
 };
+use chrono::NaiveDateTime;
 use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
@@ -21,11 +22,15 @@ lazy_static::lazy_static! {
 
 #[async_trait::async_trait]
 impl WaitForDeployed for Cache<Web3Connector> {
-    async fn wait_for_deployed(&self, params: Params) -> anyhow::Result<Deployed> {
+    async fn wait_for_deployed(
+        &self,
+        params: Params,
+        start_of_swap: NaiveDateTime,
+    ) -> anyhow::Result<Deployed> {
         let expected_bytecode = params.clone().bytecode();
 
         let (transaction, location) =
-            watch_for_contract_creation(self, params.start_of_swap, &expected_bytecode)
+            watch_for_contract_creation(self, start_of_swap, &expected_bytecode)
                 .instrument(tracing::trace_span!(
                     "deployed",
                     expected_bytecode = %hex::encode(&expected_bytecode.0)
@@ -41,7 +46,12 @@ impl WaitForDeployed for Cache<Web3Connector> {
 
 #[async_trait::async_trait]
 impl WaitForFunded for Cache<Web3Connector> {
-    async fn wait_for_funded(&self, params: Params, deployed: Deployed) -> anyhow::Result<Funded> {
+    async fn wait_for_funded(
+        &self,
+        params: Params,
+        start_of_swap: NaiveDateTime,
+        deployed: Deployed,
+    ) -> anyhow::Result<Funded> {
         let event = Event {
             address: params.asset.token_contract,
             topics: vec![
@@ -51,7 +61,7 @@ impl WaitForFunded for Cache<Web3Connector> {
             ],
         };
 
-        let (transaction, log) = watch_for_event(self, params.start_of_swap, event)
+        let (transaction, log) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::trace_span!("funded"))
             .await?;
 
@@ -73,7 +83,7 @@ impl WaitForFunded for Cache<Web3Connector> {
 impl WaitForRedeemed for Cache<Web3Connector> {
     async fn wait_for_redeemed(
         &self,
-        params: Params,
+        start_of_swap: NaiveDateTime,
         deployed: Deployed,
     ) -> anyhow::Result<Redeemed> {
         let event = Event {
@@ -81,7 +91,7 @@ impl WaitForRedeemed for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
-        let (transaction, log) = watch_for_event(self, params.start_of_swap, event)
+        let (transaction, log) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("redeemed"))
             .await?;
 
@@ -100,7 +110,7 @@ impl WaitForRedeemed for Cache<Web3Connector> {
 impl WaitForRefunded for Cache<Web3Connector> {
     async fn wait_for_refunded(
         &self,
-        params: Params,
+        start_of_swap: NaiveDateTime,
         deployed: Deployed,
     ) -> anyhow::Result<Refunded> {
         let event = Event {
@@ -108,7 +118,7 @@ impl WaitForRefunded for Cache<Web3Connector> {
             topics: vec![Some(Topic(*REFUND_LOG_MSG))],
         };
 
-        let (transaction, _) = watch_for_event(self, params.start_of_swap, event)
+        let (transaction, _) = watch_for_event(self, start_of_swap, event)
             .instrument(tracing::info_span!("refunded"))
             .await?;
 
