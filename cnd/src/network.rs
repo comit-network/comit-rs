@@ -28,7 +28,6 @@ use crate::{
             state::Insert,
             LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        state::Update,
         HashFunction, Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SwapProtocol,
     },
     transaction,
@@ -40,7 +39,7 @@ use chrono::Utc;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future, FutureExt, TryStreamExt,
+    Future, FutureExt,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -63,7 +62,6 @@ use std::{
     task::{self, Poll},
 };
 use tokio::{runtime::Handle, sync::Mutex};
-use tracing_futures::Instrument;
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
@@ -941,33 +939,31 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                 let halight_states = self.halight_states.clone();
                 let halight_watcher_task = match role {
                     Role::Alice => async move {
-                        let lnd_connector = LndConnectorAsReceiver::from(lnd_connector_params);
-
-                        halight::new_halight_swap(
+                        halight::new(
                             local_swap_id,
                             halight_params,
+                            Role::Alice,
+                            Side::Beta,
                             halight_states,
-                            lnd_connector,
+                            LndConnectorAsReceiver::from(lnd_connector_params),
                         )
                         .await;
                     }
                     .boxed(),
                     Role::Bob => async move {
-                        let lnd_connector = LndConnectorAsSender::from(lnd_connector_params);
-
-                        halight::new_halight_swap(
+                        halight::new(
                             local_swap_id,
                             halight_params,
+                            Role::Bob,
+                            Side::Beta,
                             halight_states,
-                            lnd_connector,
+                            LndConnectorAsSender::from(lnd_connector_params),
                         )
                         .await;
                     }
                     .boxed(),
                 };
-                self.task_executor.spawn(halight_watcher_task.instrument(
-                    tracing::error_span!("beta_ledger", swap_id = %local_swap_id, role = %role),
-                ));
+                self.task_executor.spawn(halight_watcher_task);
 
                 // third, we spawn the watcher for herc20
                 let (herc20_redeem_identity, herc20_refund_identity) = match role {
@@ -984,24 +980,16 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                     expiry: create_swap_params.ethereum_absolute_expiry,
                     secret_hash,
                 };
-                let start_of_swap = Utc::now().naive_local();
-                let connector = self.ethereum_connector.clone();
-                let states = self.herc20_states.clone();
 
-                self.task_executor.spawn(async move {
-                    let mut events = herc20::new(connector.as_ref(), params, start_of_swap)
-                        .instrument(
-                            tracing::error_span!("alpha_ledger", swap_id = %local_swap_id, role = %role),
-                        )
-                        .inspect_ok(|event| tracing::info!("yielded event {}", event))
-                        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
-
-                    while let Ok(Some(event)) = events.try_next().await {
-                        states.update(&local_swap_id, event).await;
-                    }
-
-                    tracing::info!("swap finished");
-                });
+                self.task_executor.spawn(herc20::new(
+                    local_swap_id,
+                    params,
+                    Utc::now().naive_local(),
+                    role,
+                    Side::Alpha,
+                    self.herc20_states.clone(),
+                    self.ethereum_connector.clone(),
+                ));
             }
         }
     }
