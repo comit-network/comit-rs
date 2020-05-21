@@ -11,20 +11,20 @@ use libp2p::{self, PeerId};
 #[async_trait]
 #[ambassador::delegatable_trait]
 pub trait Retrieve: Send + Sync + 'static {
-    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap>;
-    async fn all(&self) -> anyhow::Result<Vec<Swap>>;
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Rfc003Swap>;
+    async fn all(&self) -> anyhow::Result<Vec<Rfc003Swap>>;
 }
 
 #[derive(Clone, Debug, PartialEq)]
-pub struct Swap {
+pub struct Rfc003Swap {
     pub swap_id: SwapId,
     pub role: Role,
     pub counterparty: PeerId,
 }
 
-impl Swap {
-    pub fn new(swap_id: SwapId, role: Role, counterparty: PeerId) -> Swap {
-        Swap {
+impl Rfc003Swap {
+    pub fn new(swap_id: SwapId, role: Role, counterparty: PeerId) -> Rfc003Swap {
+        Rfc003Swap {
             swap_id,
             role,
             counterparty,
@@ -34,7 +34,7 @@ impl Swap {
 
 #[async_trait]
 impl Retrieve for Sqlite {
-    async fn get(&self, key: &SwapId) -> anyhow::Result<Swap> {
+    async fn get(&self, key: &SwapId) -> anyhow::Result<Rfc003Swap> {
         use self::rfc003_schema::rfc003_swaps::dsl::*;
 
         let record: QueryableSwap = self
@@ -49,10 +49,10 @@ impl Retrieve for Sqlite {
             .await?
             .ok_or(Error::SwapNotFound)?;
 
-        Ok(Swap::from(record))
+        Ok(Rfc003Swap::from(record))
     }
 
-    async fn all(&self) -> anyhow::Result<Vec<Swap>> {
+    async fn all(&self) -> anyhow::Result<Vec<Rfc003Swap>> {
         use self::rfc003_schema::rfc003_swaps::dsl::*;
 
         let records: Vec<QueryableSwap> = self
@@ -71,9 +71,9 @@ struct QueryableSwap {
     pub counterparty: Text<PeerId>,
 }
 
-impl From<QueryableSwap> for Swap {
-    fn from(swap: QueryableSwap) -> Swap {
-        Swap {
+impl From<QueryableSwap> for Rfc003Swap {
+    fn from(swap: QueryableSwap) -> Rfc003Swap {
+        Rfc003Swap {
             swap_id: *swap.swap_id,
             role: *swap.role,
             counterparty: (*swap.counterparty).clone(),

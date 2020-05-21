@@ -1,7 +1,7 @@
 #![allow(clippy::type_repetition_in_bounds)]
 
 use crate::{
-    db::{Swap, SwapTypes},
+    db::{Rfc003Swap, SwapTypes},
     http_api::{
         action::rfc003::ToSirenAction,
         route_factory,
@@ -83,7 +83,7 @@ pub enum OnFail {
 #[allow(clippy::cognitive_complexity)]
 pub async fn build_rfc003_siren_entity(
     dependencies: &Rfc003Facade,
-    swap: Swap,
+    swap: Rfc003Swap,
     types: SwapTypes,
     include_state: IncludeState,
     on_fail: OnFail,

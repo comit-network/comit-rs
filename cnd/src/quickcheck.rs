@@ -1,7 +1,7 @@
 use crate::{
     asset,
     asset::ethereum::FromWei,
-    db::Swap,
+    db::Rfc003Swap,
     ethereum::{Address, Bytes, ChainId},
     identity,
     swap_protocols::{
@@ -295,9 +295,9 @@ impl Arbitrary for Quickcheck<PeerId> {
     }
 }
 
-impl Arbitrary for Quickcheck<Swap> {
+impl Arbitrary for Quickcheck<Rfc003Swap> {
     fn arbitrary<G: Gen>(g: &mut G) -> Self {
-        Quickcheck(Swap {
+        Quickcheck(Rfc003Swap {
             swap_id: *Quickcheck::<SwapId>::arbitrary(g),
             role: *Quickcheck::<Role>::arbitrary(g),
             counterparty: Quickcheck::<PeerId>::arbitrary(g).0,

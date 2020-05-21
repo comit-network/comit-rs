@@ -1,5 +1,5 @@
 use crate::{
-    db::{LoadAcceptedSwap, Save, Sqlite, Swap},
+    db::{LoadAcceptedSwap, Rfc003Swap, Save, Sqlite},
     htlc_location,
     http_api::{DialInformation, HttpAsset, HttpLedger},
     identity,
@@ -33,8 +33,10 @@ async fn initiate_request<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT>(
     swap_request: rfc003::Request<AL, BL, AA, BA, AI, BI>,
 ) -> anyhow::Result<()>
 where
-    Sqlite:
-        Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Accept<AI, BI>> + Save<Swap> + Save<Decline>,
+    Sqlite: Save<Request<AL, BL, AA, BA, AI, BI>>
+        + Save<Accept<AI, BI>>
+        + Save<Rfc003Swap>
+        + Save<Decline>,
     AL: Clone + Send + Sync + 'static,
     BL: Clone + Send + Sync + 'static,
     AA: Clone + Ord + Send + Sync + 'static,
@@ -63,7 +65,11 @@ where
 
     let counterparty = PeerId::from(peer.clone());
 
-    Save::save(&dependencies, Swap::new(id, Role::Alice, counterparty)).await?;
+    Save::save(
+        &dependencies,
+        Rfc003Swap::new(id, Role::Alice, counterparty),
+    )
+    .await?;
     Save::save(&dependencies, swap_request.clone()).await?;
 
     dependencies

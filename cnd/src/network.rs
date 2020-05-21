@@ -14,7 +14,7 @@ use crate::{
     },
     comit_api::LedgerKind,
     config::Settings,
-    db::{CreatedSwap, ForSwap, Save, Sqlite, Swap},
+    db::{CreatedSwap, ForSwap, Rfc003Swap, Save, Sqlite},
     htlc_location,
     http_api::LedgerNotConfigured,
     libp2p_comit_ext::{FromHeader, ToHeader},
@@ -623,12 +623,12 @@ where
     BI: Send + 'static,
     AT: Send + 'static,
     BT: Send + 'static,
-    DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Swap>,
+    DB: Save<Request<AL, BL, AA, BA, AI, BI>> + Save<Rfc003Swap>,
     Request<AL, BL, AA, BA, AI, BI>: Clone,
 {
     let id = swap_request.swap_id;
 
-    Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
+    Save::save(&db, Rfc003Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
     swap_communication_states

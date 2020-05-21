@@ -6,7 +6,7 @@ use crate::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, Ether, EthereumAddress, Satoshis,
         },
-        Save, Sqlite, Swap,
+        Rfc003Swap, Save, Sqlite,
     },
     identity,
     swap_protocols::{
@@ -20,8 +20,8 @@ use diesel::RunQueryDsl;
 use libp2p::{self, PeerId};
 
 #[async_trait]
-impl Save<Swap> for Sqlite {
-    async fn save(&self, swap: Swap) -> anyhow::Result<()> {
+impl Save<Rfc003Swap> for Sqlite {
+    async fn save(&self, swap: Rfc003Swap) -> anyhow::Result<()> {
         let insertable = InsertableRfc003Swap::from(swap);
 
         self.do_in_transaction(|connection| {
@@ -43,8 +43,8 @@ struct InsertableRfc003Swap {
     pub counterparty: Text<PeerId>,
 }
 
-impl From<Swap> for InsertableRfc003Swap {
-    fn from(swap: Swap) -> Self {
+impl From<Rfc003Swap> for InsertableRfc003Swap {
+    fn from(swap: Rfc003Swap) -> Self {
         InsertableRfc003Swap {
             swap_id: Text(swap.swap_id),
             role: Text(swap.role),

@@ -5,7 +5,10 @@ use crate::{
         bitcoin::BitcoindConnector,
         ethereum::{self, Web3Connector},
     },
-    db::{AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Save, Sqlite, Swap, SwapTypes},
+    db::{
+        AcceptedSwap, DetermineTypes, LoadAcceptedSwap, Retrieve, Rfc003Swap, Save, Sqlite,
+        SwapTypes,
+    },
     htlc_location, identity,
     network::{
         ComitPeers, DialInformation, ListenAddresses, LocalPeerId, PendingRequestFor, RequestError,
