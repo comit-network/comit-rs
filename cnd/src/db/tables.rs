@@ -9,7 +9,7 @@ use crate::{
         Error, Sqlite,
     },
     identity, lightning,
-    swap_protocols::{halight, hbit, herc20, rfc003, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, hbit, herc20, rfc003, LocalSwapId, Role, Side},
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};
@@ -80,7 +80,7 @@ pub struct Herc20 {
     pub token_contract: Text<EthereumAddress>,
     pub redeem_identity: Option<Text<EthereumAddress>>,
     pub refund_identity: Option<Text<EthereumAddress>>,
-    pub ledger: Text<Ledger>,
+    pub side: Text<Side>,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -93,13 +93,13 @@ pub struct InsertableHerc20 {
     pub token_contract: Text<EthereumAddress>,
     pub redeem_identity: Option<Text<EthereumAddress>>,
     pub refund_identity: Option<Text<EthereumAddress>>,
-    pub ledger: Text<Ledger>,
+    pub side: Text<Side>,
 }
 
 pub trait IntoInsertable {
     type Insertable;
 
-    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable;
+    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable;
 }
 
 pub trait Insert<I> {
@@ -109,7 +109,7 @@ pub trait Insert<I> {
 impl IntoInsertable for herc20::CreatedSwap {
     type Insertable = InsertableHerc20;
 
-    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
         let redeem_identity = match role {
             Role::Alice => None,
             Role::Bob => Some(Text(EthereumAddress::from(self.identity))),
@@ -128,7 +128,7 @@ impl IntoInsertable for herc20::CreatedSwap {
             token_contract: Text(self.asset.token_contract.into()),
             redeem_identity,
             refund_identity,
-            ledger: Text(ledger),
+            side: Text(side),
         }
     }
 }
@@ -145,7 +145,7 @@ pub struct Halight {
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
     pub refund_identity: Option<Text<lightning::PublicKey>>,
-    pub ledger: Text<Ledger>,
+    pub side: Text<Side>,
 }
 
 #[derive(Insertable, Debug, Clone)]
@@ -158,13 +158,13 @@ pub struct InsertableHalight {
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
     pub refund_identity: Option<Text<lightning::PublicKey>>,
-    pub ledger: Text<Ledger>,
+    pub side: Text<Side>,
 }
 
 impl IntoInsertable for halight::CreatedSwap {
     type Insertable = InsertableHalight;
 
-    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
         let redeem_identity = match role {
             Role::Alice => Some(Text(self.identity)),
             Role::Bob => None,
@@ -183,7 +183,7 @@ impl IntoInsertable for halight::CreatedSwap {
             cltv_expiry: U32(self.cltv_expiry),
             redeem_identity,
             refund_identity,
-            ledger: Text(ledger),
+            side: Text(side),
         }
     }
 }
@@ -198,7 +198,7 @@ pub struct Hbit {
     pub network: Text<BitcoinNetwork>,
     pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
     pub refund_identity: Option<Text<bitcoin::PublicKey>>,
-    pub ledger: Text<Ledger>,
+    pub side: Text<Side>,
 }
 
 #[derive(Insertable, Clone, Copy, Debug)]
@@ -209,26 +209,13 @@ pub struct InsertableHbit {
     pub network: Text<BitcoinNetwork>,
     pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
     pub refund_identity: Option<Text<bitcoin::PublicKey>>,
-    pub ledger: Text<Ledger>,
-}
-
-impl InsertableHbit {
-    pub fn with_swap_id(&self, swap_id: i32) -> Self {
-        InsertableHbit {
-            swap_id,
-            amount: self.amount,
-            network: self.network,
-            redeem_identity: self.redeem_identity,
-            refund_identity: self.refund_identity,
-            ledger: self.ledger,
-        }
-    }
+    pub side: Text<Side>,
 }
 
 impl IntoInsertable for hbit::CreatedSwap {
     type Insertable = InsertableHbit;
 
-    fn into_insertable(self, swap_id: i32, role: Role, ledger: Ledger) -> Self::Insertable {
+    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
         let redeem_identity = match role {
             Role::Alice => Some(Text(self.identity)),
             Role::Bob => None,
@@ -245,7 +232,7 @@ impl IntoInsertable for hbit::CreatedSwap {
             network: Text(self.network.into()),
             redeem_identity,
             refund_identity,
-            ledger: Text(ledger),
+            side: Text(side),
         }
     }
 }
@@ -547,29 +534,6 @@ impl Sqlite {
         Ok(record)
     }
 
-    pub async fn save_hbit(
-        &self,
-        swap_id: LocalSwapId,
-        data: &InsertableHbit,
-    ) -> anyhow::Result<()> {
-        self.do_in_transaction(|connection| {
-            let key = Text(swap_id);
-
-            let swap: Swap = swaps::table
-                .filter(swaps::local_swap_id.eq(key))
-                .first(connection)?;
-
-            let insertable = data.with_swap_id(swap.id);
-
-            diesel::insert_into(hbits::dsl::hbits)
-                .values(insertable)
-                .execute(&*connection)
-        })
-        .await?;
-
-        Ok(())
-    }
-
     pub async fn load_hbit(&self, swap_id: LocalSwapId) -> anyhow::Result<Hbit> {
         let record: Hbit = self
             .do_in_transaction(|connection| {
@@ -625,7 +589,7 @@ mod tests {
                 && self.token_contract == other.token_contract
                 && self.redeem_identity == other.redeem_identity
                 && self.refund_identity == other.refund_identity
-                && self.ledger == other.ledger
+                && self.side == other.side
         }
     }
 
@@ -637,7 +601,7 @@ mod tests {
                 && self.cltv_expiry == other.cltv_expiry
                 && self.redeem_identity == other.redeem_identity
                 && self.refund_identity == other.refund_identity
-                && self.ledger == other.ledger
+                && self.side == other.side
         }
     }
 
@@ -789,7 +753,7 @@ mod tests {
             token_contract: Text(ethereum_identity),
             redeem_identity: None,
             refund_identity: None,
-            ledger: Text(Ledger::Alpha),
+            side: Text(Side::Alpha),
         };
 
         db.do_in_transaction(|conn| db.insert(conn, &given))
@@ -870,7 +834,7 @@ mod tests {
             cltv_expiry: U32(456),
             redeem_identity: None,
             refund_identity: None,
-            ledger: Text(Ledger::Alpha),
+            side: Text(Side::Alpha),
         };
 
         db.do_in_transaction(|conn| db.insert(conn, &given))
@@ -938,7 +902,7 @@ mod tests {
             cltv_expiry: U32(456),
             redeem_identity: Some(Text(lightning::PublicKey::random())),
             refund_identity: Some(Text(lightning::PublicKey::random())),
-            ledger: Text(Ledger::Alpha),
+            side: Text(Side::Alpha),
         };
 
         let result = db.do_in_transaction(|conn| db.insert(conn, &halight)).await;

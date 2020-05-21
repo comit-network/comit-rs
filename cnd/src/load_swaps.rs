@@ -1,11 +1,9 @@
-#![allow(clippy::type_repetition_in_bounds)]
 use crate::{
     db::{DetermineTypes, LoadAcceptedSwap, Retrieve},
     init_swap::init_accepted_swap,
     swap_protocols::Rfc003Facade,
 };
 
-#[allow(clippy::cognitive_complexity)]
 pub async fn load_swaps_from_database(facade: Rfc003Facade) -> anyhow::Result<()> {
     tracing::debug!("loading swaps from database ...");
 

@@ -1,4 +1,4 @@
-use crate::swap_protocols::{state, Ledger, LocalSwapId};
+use crate::swap_protocols::{state, LocalSwapId, Side};
 use comit::{asset, htlc_location, transaction, Secret, SecretHash, Timestamp};
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
@@ -17,7 +17,7 @@ pub struct Asset(pub asset::Erc20);
 #[derive(Debug, Clone, PartialEq)]
 pub struct InProgressSwap {
     pub asset: asset::Erc20,
-    pub ledger: Ledger,
+    pub side: Side,
     pub refund_identity: identity::Ethereum,
     pub redeem_identity: identity::Ethereum,
     pub expiry: Timestamp, // This is the absolute_expiry for now.
