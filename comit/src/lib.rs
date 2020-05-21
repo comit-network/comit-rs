@@ -45,6 +45,12 @@ pub enum Protocol {
     Herc20,
 }
 
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+pub enum Role {
+    Alice,
+    Bob,
+}
+
 pub type Never = std::convert::Infallible;
 
 impl ToDigestInput for Timestamp {

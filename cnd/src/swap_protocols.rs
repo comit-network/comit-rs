@@ -41,7 +41,7 @@ pub mod actions {
 }
 
 pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*, swap_id::*};
-pub use comit::{Secret, SecretHash};
+pub use comit::{Role, Secret, SecretHash};
 
 use serde::{Deserialize, Serialize};
 
@@ -73,12 +73,6 @@ pub enum SwapProtocol {
 pub enum Ledger {
     Alpha,
     Beta,
-}
-
-#[derive(Clone, Copy, Debug, Display, EnumString, PartialEq)]
-pub enum Role {
-    Alice,
-    Bob,
 }
 
 /// These are the traits that represent the steps involved in a COMIT atomic
