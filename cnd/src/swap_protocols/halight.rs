@@ -1,4 +1,9 @@
-use crate::swap_protocols::{state, state::Update, LocalSwapId};
+use crate::{
+    swap_protocols::{state, state::Update, LocalSwapId},
+    tracing_ext::InstrumentProtocol,
+};
+pub use comit::{halight::*, identity};
+use comit::{Protocol, Role, Side};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -6,29 +11,28 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-pub use comit::{halight::*, identity};
-
-/// HTLC Lightning Bitcoin atomic swap protocol.
-
-/// Creates a new instance of the halight protocol.
+/// Creates a new instance of the halight protocol, annotated with tracing spans
+/// and saves all events in the `States` hashmap.
 ///
-/// This function delegates to the `new` function for the actual protocol
-/// implementation. Its main purpose is to annotate the protocol instance with
-/// logging information and store the events yielded by the protocol.
-pub async fn new_halight_swap<C>(
+/// This wrapper functions allows us to reuse code within `cnd` without having
+/// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+pub async fn new<C>(
     id: LocalSwapId,
     params: Params,
-    state_store: Arc<States>,
+    role: Role,
+    side: Side,
+    states: Arc<States>,
     connector: C,
 ) where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
-    let mut events = new(&connector, params)
+    let mut events = comit::halight::new(&connector, params)
+        .instrument_protocol(id, role, side, Protocol::Halight)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
     while let Ok(Some(event)) = events.try_next().await {
-        state_store.update(&id, event).await;
+        states.update(&id, event).await;
     }
 
     tracing::info!("swap finished");

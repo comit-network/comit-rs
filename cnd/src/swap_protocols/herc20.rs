@@ -1,9 +1,41 @@
 use crate::swap_protocols::{state, LocalSwapId};
-use comit::{asset, htlc_location, transaction, Secret};
+use comit::{asset, htlc_location, transaction, Protocol, Role, Secret, Side};
 use std::collections::{hash_map::Entry, HashMap};
 use tokio::sync::Mutex;
 
+use crate::{swap_protocols::state::Update, tracing_ext::InstrumentProtocol};
+use chrono::NaiveDateTime;
 pub use comit::{herc20::*, identity};
+use futures::TryStreamExt;
+use std::sync::Arc;
+
+/// Creates a new instance of the herc20 protocol, annotated with tracing spans
+/// and saves all events in the `States` hashmap.
+///
+/// This wrapper functions allows us to reuse code within `cnd` without having
+/// to give knowledge about tracing or the state hashmaps to the `comit` crate.
+pub async fn new<C>(
+    id: LocalSwapId,
+    params: Params,
+    start_of_swap: NaiveDateTime,
+    role: Role,
+    side: Side,
+    states: Arc<States>,
+    connector: Arc<C>,
+) where
+    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+{
+    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
+        .instrument_protocol(id, role, side, Protocol::Herc20)
+        .inspect_ok(|event| tracing::info!("yielded event {}", event))
+        .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
+
+    while let Ok(Some(event)) = events.try_next().await {
+        states.update(&id, event).await;
+    }
+
+    tracing::info!("swap finished");
+}
 
 #[derive(Default, Debug)]
 pub struct States(Mutex<HashMap<LocalSwapId, State>>);

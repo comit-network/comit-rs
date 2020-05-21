@@ -18,7 +18,6 @@
 // an enum created by `strum_discriminants`.
 #[macro_use]
 extern crate strum_macros;
-
 #[macro_use]
 extern crate diesel;
 #[macro_use]
@@ -28,12 +27,6 @@ extern crate diesel_migrations;
 pub mod libp2p_comit_ext;
 #[macro_use]
 pub mod db;
-
-pub mod comit_api;
-pub mod config;
-pub mod http_api;
-pub mod init_swap;
-pub mod load_swaps;
 #[macro_use]
 pub mod network;
 #[cfg(test)]
@@ -42,10 +35,17 @@ pub mod proptest;
 pub mod quickcheck;
 #[macro_use]
 pub mod seed;
-pub mod file_lock;
 #[cfg(test)]
 pub mod spectral_ext;
+
+pub mod comit_api;
+pub mod config;
+pub mod file_lock;
+pub mod http_api;
+pub mod init_swap;
+pub mod load_swaps;
 pub mod swap_protocols;
+mod tracing_ext;
 
 use anyhow::Context;
 use std::{
