@@ -25,6 +25,8 @@ use cnd::{
     http_api::route_factory,
     load_swaps,
     network::{Swarm, SwarmWorker},
+    protocol_spawner::ProtocolSpawner,
+    respawn::respawn,
     seed::RootSeed,
     storage::Storage,
     swap_protocols::{
@@ -144,7 +146,7 @@ fn main() -> anyhow::Result<()> {
         seed,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        lnd_connector_params,
+        lnd_connector_params.clone(),
         Arc::clone(&swap_communication_states),
         Arc::clone(&rfc003_alpha_ledger_states),
         Arc::clone(&rfc003_beta_ledger_states),
@@ -157,7 +159,7 @@ fn main() -> anyhow::Result<()> {
     // RCF003 protocol
     let rfc003_facade = Rfc003Facade {
         bitcoin_connector,
-        ethereum_connector,
+        ethereum_connector: Arc::clone(&ethereum_connector),
         alpha_ledger_states: Arc::clone(&rfc003_alpha_ledger_states),
         beta_ledger_states: Arc::clone(&&rfc003_beta_ledger_states),
         swap_communication_states,
@@ -167,7 +169,12 @@ fn main() -> anyhow::Result<()> {
         swarm: swarm.clone(),
     };
 
-    let storage = Storage::new(database.clone(), seed, herc20_states, halight_states);
+    let storage = Storage::new(
+        database.clone(),
+        seed,
+        Arc::clone(&herc20_states),
+        Arc::clone(&halight_states),
+    );
 
     // split protocols
     let facade = Facade {
@@ -176,8 +183,20 @@ fn main() -> anyhow::Result<()> {
         storage,
     };
 
+    let protocol_spawner = ProtocolSpawner::new(
+        ethereum_connector,
+        lnd_connector_params,
+        runtime.handle().clone(),
+        Arc::clone(&herc20_states),
+        Arc::clone(&halight_states),
+    );
+
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
+    match runtime.block_on(respawn(facade.clone(), protocol_spawner)) {
+        Ok(()) => {}
+        Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
+    };
 
     runtime.spawn(make_http_api_worker(
         settings,

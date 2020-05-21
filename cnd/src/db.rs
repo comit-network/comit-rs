@@ -1,3 +1,4 @@
+mod errors;
 #[cfg(test)]
 mod integration_tests;
 mod load_swaps;
@@ -15,6 +16,7 @@ pub mod with_swap_types;
 embed_migrations!("./migrations");
 
 pub use self::{
+    errors::*,
     load_swaps::{AcceptedSwap, LoadAcceptedSwap},
     save_load_impls::*,
     swap::*,
