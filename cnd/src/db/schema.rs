@@ -36,7 +36,7 @@ table! {
         token_contract -> Text,
         redeem_identity -> Nullable<Text>,
         refund_identity -> Nullable<Text>,
-        ledger -> Text,
+        side -> Text,
     }
 }
 
@@ -50,7 +50,7 @@ table! {
         cltv_expiry -> BigInt,
         redeem_identity -> Nullable<Text>,
         refund_identity -> Nullable<Text>,
-        ledger -> Text,
+        side -> Text,
     }
 }
 
@@ -62,7 +62,7 @@ table! {
         network -> Text,
         redeem_identity -> Nullable<Text>,
         refund_identity -> Nullable<Text>,
-        ledger -> Text,
+        side -> Text,
     }
 }
 

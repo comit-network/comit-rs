@@ -1,6 +1,6 @@
 use crate::{
     asset, identity,
-    swap_protocols::{state, state::Update, Ledger, LocalSwapId},
+    swap_protocols::{state, state::Update, LocalSwapId, Side},
     timestamp::RelativeTime,
 };
 use futures::TryStreamExt;
@@ -23,7 +23,7 @@ pub struct Asset(pub asset::Bitcoin);
 /// Halight specific data for an in progress swap.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct InProgressSwap {
-    pub ledger: Ledger,
+    pub side: Side,
     pub asset: asset::Bitcoin,
     pub refund_identity: identity::Lightning,
     pub redeem_identity: identity::Lightning,

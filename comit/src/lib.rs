@@ -51,6 +51,33 @@ pub enum Role {
     Bob,
 }
 
+/// A swap in COMIT is a composition of two protocols, one on each _side_.
+///
+/// We call those two sides `Alpha` and `Beta` as those are neutral descriptions
+/// of the two sides involved. This allows us to talk about the ledgers involved
+/// in a swap from a global perspective, i.e. both parties of a swap, Alice and
+/// Bob, refer to the same ledger as the `Alpha` ledger. Given knowledge about a
+/// party's role and alpha/beta ledger, it is possible to unambiguously describe
+/// and observe the actions being taken by either party.
+///
+/// Taking into account that, by convention, Alice always generated the secret
+/// value in COMIT swaps, the following is true:
+///
+/// In a swap with alpha-ledger = Bitcoin, it is Alice's responsibility to fund
+/// a Bitcoin HTLC. In the same swap, it is Bob's responsibility to watch for
+/// the funding of this Bitcoin HTLC.
+///
+/// The terminology of Alpha & Beta is superior to naming schemes like "first -
+/// second", "source - target", "buy - sell" etc because it is _global_ and true
+/// for both parties. Only the _combination_ of a party's role and the side of a
+/// ledger makes it possible to unambiguously reason about the protocol in
+/// action.
+#[derive(Clone, Copy, Debug, strum_macros::Display, strum_macros::EnumString, PartialEq)]
+pub enum Side {
+    Alpha,
+    Beta,
+}
+
 pub type Never = std::convert::Infallible;
 
 impl ToDigestInput for Timestamp {

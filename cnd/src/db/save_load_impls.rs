@@ -6,8 +6,9 @@ use crate::{
         CreatedSwap, ForSwap, Load, Save, Sqlite,
     },
     http_api,
-    swap_protocols::{halight, herc20, Ledger, LocalSwapId, Role},
+    swap_protocols::{halight, herc20, LocalSwapId, Role, Side},
 };
+use anyhow::Context;
 use comit::{asset, asset::Erc20, network, Protocol};
 use diesel::{sql_types, ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl};
 
@@ -37,8 +38,8 @@ where
         self.do_in_transaction::<_, _, anyhow::Error>(move |conn| {
             let swap_id = self.save_swap(conn, &InsertableSwap::new(swap_id, peer, role))?;
 
-            let insertable_alpha = alpha.into_insertable(swap_id, role, Ledger::Alpha);
-            let insertable_beta = beta.into_insertable(swap_id, role, Ledger::Beta);
+            let insertable_alpha = alpha.into_insertable(swap_id, role, Side::Alpha);
+            let insertable_beta = beta.into_insertable(swap_id, role, Side::Beta);
 
             self.insert(conn, &insertable_alpha)?;
             self.insert(conn, &insertable_beta)?;
@@ -163,7 +164,7 @@ impl Load<herc20::InProgressSwap> for Sqlite {
 
         Ok(herc20::InProgressSwap {
             asset: Erc20::new(herc20.token_contract.0.into(), herc20.amount.0.into()),
-            ledger: herc20.ledger.0,
+            side: herc20.side.0,
             refund_identity: refund_identity.0.into(),
             redeem_identity: redeem_identity.0.into(),
             expiry: herc20.expiry.into(),
@@ -180,7 +181,7 @@ impl Load<halight::InProgressSwap> for Sqlite {
         let redeem_identity = halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?;
 
         Ok(halight::InProgressSwap {
-            ledger: halight.ledger.0,
+            side: halight.side.0,
             asset: halight.amount.0.into(),
             refund_identity: refund_identity.0,
             redeem_identity: redeem_identity.0,
@@ -217,14 +218,14 @@ impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Sqlite {
                 SELECT
                     role,
                     COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.ledger = 'Alpha'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.ledger = 'Alpha'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.ledger = 'Alpha')
+                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
+                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
+                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
                     ) as alpha_protocol,
                     COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.ledger = 'Beta'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.ledger = 'Beta'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.ledger = 'Beta')
+                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
+                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
+                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
                     ) as beta_protocol
                 from swaps
                     where local_swap_id = ?
@@ -232,7 +233,7 @@ impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Sqlite {
             )
                 .bind::<sql_types::Text, _>(Text(swap_id))
                 .get_result(connection)
-        }).await.map_err(|_| db::Error::SwapNotFound)?;
+        }).await.context(db::Error::SwapNotFound)?;
 
         Ok(http_api::Swap {
             role: role.0,
