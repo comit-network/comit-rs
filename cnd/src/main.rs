@@ -141,19 +141,33 @@ fn main() -> anyhow::Result<()> {
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
+    let storage = Storage::new(
+        database.clone(),
+        seed,
+        herc20_states.clone(),
+        halight_states.clone(),
+    );
+
+    let protocol_spawner = ProtocolSpawner::new(
+        Arc::clone(&ethereum_connector),
+        lnd_connector_params,
+        runtime.handle().clone(),
+        Arc::clone(&herc20_states),
+        Arc::clone(&halight_states),
+    );
+
     let swarm = Swarm::new(
         &settings,
         seed,
         Arc::clone(&bitcoin_connector),
         Arc::clone(&ethereum_connector),
-        lnd_connector_params.clone(),
         Arc::clone(&swap_communication_states),
         Arc::clone(&rfc003_alpha_ledger_states),
         Arc::clone(&rfc003_beta_ledger_states),
-        Arc::clone(&herc20_states),
-        Arc::clone(&halight_states),
         &database,
         runtime.handle().clone(),
+        storage.clone(),
+        protocol_spawner.clone(),
     )?;
 
     // RCF003 protocol
@@ -169,27 +183,12 @@ fn main() -> anyhow::Result<()> {
         swarm: swarm.clone(),
     };
 
-    let storage = Storage::new(
-        database.clone(),
-        seed,
-        Arc::clone(&herc20_states),
-        Arc::clone(&halight_states),
-    );
-
     // split protocols
     let facade = Facade {
         swarm: swarm.clone(),
         db: database,
         storage: storage.clone(),
     };
-
-    let protocol_spawner = ProtocolSpawner::new(
-        ethereum_connector,
-        lnd_connector_params,
-        runtime.handle().clone(),
-        Arc::clone(&herc20_states),
-        Arc::clone(&halight_states),
-    );
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;

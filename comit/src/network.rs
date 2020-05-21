@@ -1,6 +1,7 @@
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
+pub mod swap_digest;
 
 use crate::{identity, SecretHash};
 use libp2p::{Multiaddr, PeerId};

@@ -1,4 +1,7 @@
-use crate::swap_protocols::{halight, herc20, LocalSwapId};
+use crate::{
+    http_api::LedgerNotConfigured,
+    swap_protocols::{halight, herc20, LocalSwapId},
+};
 use chrono::NaiveDateTime;
 use comit::{
     btsieve,
@@ -10,7 +13,7 @@ use tokio::runtime::Handle;
 
 /// ProtocolSpawner acts as a bundle for all dependencies needed to spawn
 /// instances of a protocol.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ProtocolSpawner {
     ethereum_connector: Arc<btsieve::ethereum::Cache<btsieve::ethereum::Web3Connector>>,
     lnd_connector_params: Option<LndConnectorParams>,
@@ -47,6 +50,15 @@ impl ProtocolSpawner {
             runtime_handle,
             herc20_states,
             halight_states,
+        }
+    }
+
+    pub fn supports_halight(&self) -> anyhow::Result<()> {
+        match self.lnd_connector_params {
+            Some(_) => Ok(()),
+            None => Err(anyhow::Error::from(LedgerNotConfigured {
+                ledger: "lightning",
+            })),
         }
     }
 }
