@@ -11,9 +11,8 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-/// HTLC Lightning Bitcoin atomic swap protocol.
-
-/// Creates a new instance of the halight protocol.
+/// Creates a new instance of the halight protocol, annotated with tracing spans
+/// and saves all events in the `States` hashmap.
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
