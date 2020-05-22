@@ -6,7 +6,7 @@ use crate::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
         },
-        Error, Sqlite,
+        Sqlite,
     },
     identity, lightning,
     swap_protocols::{halight, hbit, herc20, rfc003, LocalSwapId, Role, Side},
@@ -304,11 +304,6 @@ impl EnsureSingleRowAffected for usize {
 }
 
 impl Sqlite {
-    pub async fn role(&self, swap_id: LocalSwapId) -> anyhow::Result<Role> {
-        let swap = self.load_swap(swap_id).await?;
-        Ok(swap.role.0)
-    }
-
     pub fn save_swap(
         &self,
         connection: &SqliteConnection,
@@ -321,22 +316,6 @@ impl Sqlite {
         let swap_id = swap_id_fk!(insertable.local_swap_id.0).first(connection)?;
 
         Ok(swap_id)
-    }
-
-    pub async fn load_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<Swap> {
-        let record: Swap = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)
-                    .optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record)
     }
 
     pub fn insert_secret_hash(
@@ -364,26 +343,6 @@ impl Sqlite {
             .with_context(|| format!("failed to insert secret hash for swap {}", local_swap_id))?;
 
         Ok(())
-    }
-
-    pub async fn load_secret_hash(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<rfc003::SecretHash> {
-        let record: SecretHash = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                SecretHash::belonging_to(&swap).first(connection).optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record.secret_hash.0)
     }
 
     pub fn update_halight_refund_identity(
@@ -499,417 +458,100 @@ impl Sqlite {
 
         Ok(addresses.into_iter().map(|text| text.0).collect())
     }
-
-    pub async fn load_herc20(&self, swap_id: LocalSwapId) -> anyhow::Result<Herc20> {
-        let record: Herc20 = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                Herc20::belonging_to(&swap).first(connection).optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record)
-    }
-
-    pub async fn load_halight(&self, swap_id: LocalSwapId) -> anyhow::Result<Halight> {
-        let record: Halight = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                Halight::belonging_to(&swap).first(connection).optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record)
-    }
-
-    pub async fn load_hbit(&self, swap_id: LocalSwapId) -> anyhow::Result<Hbit> {
-        let record: Hbit = self
-            .do_in_transaction(|connection| {
-                let key = Text(swap_id);
-
-                let swap: Swap = swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .first(connection)?;
-
-                Hbit::belonging_to(&swap).first(connection).optional()
-            })
-            .await?
-            .ok_or(Error::SwapNotFound)?;
-
-        Ok(record)
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::lightning;
-    use spectral::{prelude::ResultAssertions, *};
-    use std::str::FromStr;
+    use crate::proptest::*;
+    use proptest::prelude::*;
+    use tokio::runtime::Runtime;
 
-    fn insertable_swap() -> InsertableSwap {
-        let swap_id =
-            LocalSwapId::from_str("ad2652ca-ecf2-4cc6-b35c-b4351ac28a34").expect("valid swap id");
-        let role = Role::Alice;
-        let peer_id = PeerId::from_str("QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY")
-            .expect("valid peer id");
+    proptest! {
+        #[test]
+        fn save_addresses_for_single_peer(
+            peer_id in libp2p::peer_id(),
+            address1 in libp2p::multiaddr(),
+            address2 in libp2p::multiaddr(),
+        ) {
+            let db = Sqlite::test();
+            let mut runtime = Runtime::new().unwrap();
 
-        InsertableSwap {
-            local_swap_id: Text(swap_id),
-            role: Text(role),
-            counterparty_peer_id: Text(peer_id),
+            let loaded = runtime.block_on(async {
+                db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
+                    db.insert_address_for_peer(conn, peer_id.clone(), address1.clone())?;
+                    db.insert_address_for_peer(conn, peer_id.clone(), address2.clone())?;
+
+                    Ok(())
+                })
+                .await
+                .expect("to be able to save addresses");
+
+                db
+                    .load_address_for_peer(&peer_id)
+                    .await
+                    .expect("to be able to load a previously saved addresses")
+            });
+
+            assert_eq!(loaded, vec![address1, address2])
         }
     }
 
-    impl PartialEq<InsertableSwap> for Swap {
-        fn eq(&self, other: &InsertableSwap) -> bool {
-            self.local_swap_id == other.local_swap_id
-                && self.role == other.role
-                && self.counterparty_peer_id == other.counterparty_peer_id
+    proptest! {
+        #[test]
+        fn addresses_are_separated_by_peer(
+            peer1 in libp2p::peer_id(),
+            peer2 in libp2p::peer_id(),
+            address1 in libp2p::multiaddr(),
+            address2 in libp2p::multiaddr(),
+        ) {
+            let db = Sqlite::test();
+            let mut runtime = Runtime::new().unwrap();
+
+            let (loaded_peer1, loaded_peer2) = runtime.block_on(async {
+                db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
+                    db.insert_address_for_peer(conn, peer1.clone(), address1.clone())?;
+                    db.insert_address_for_peer(conn, peer2.clone(), address2.clone())?;
+
+                    Ok(())
+                })
+                .await
+                .expect("to be able to save addresses");
+
+                let loaded_peer1 = db
+                    .load_address_for_peer(&peer1)
+                    .await
+                    .expect("to be able to load a previously saved addresses");
+                let loaded_peer2 = db
+                    .load_address_for_peer(&peer2)
+                    .await
+                    .expect("to be able to load a previously saved addresses");
+
+                (loaded_peer1, loaded_peer2)
+            });
+
+            assert_eq!(loaded_peer1, vec![address1]);
+            assert_eq!(loaded_peer2, vec![address2])
         }
     }
 
-    impl PartialEq<InsertableHerc20> for Herc20 {
-        fn eq(&self, other: &InsertableHerc20) -> bool {
-            self.amount == other.amount
-                && self.chain_id == other.chain_id
-                && self.expiry == other.expiry
-                && self.token_contract == other.token_contract
-                && self.redeem_identity == other.redeem_identity
-                && self.refund_identity == other.refund_identity
-                && self.side == other.side
+    proptest! {
+        /// Verify that our database enforces foreign key relations
+        ///
+        /// We generate a random InsertableHalight. This comes with a
+        /// random swap_id already.
+        /// We start with an empty database, so there is no swap that
+        /// exists with this swap_id.
+        #[test]
+        fn fk_relations_are_enforced(
+            insertable_halight in db::tables::insertable_halight(),
+        ) {
+            let db = Sqlite::test();
+            let mut runtime = Runtime::new().unwrap();
+
+            let result = runtime.block_on(db.do_in_transaction(|conn| db.insert(conn, &insertable_halight)));
+
+            result.unwrap_err();
         }
-    }
-
-    impl PartialEq<InsertableHalight> for Halight {
-        fn eq(&self, other: &InsertableHalight) -> bool {
-            self.amount == other.amount
-                && self.network == other.network
-                && self.chain == other.chain
-                && self.cltv_expiry == other.cltv_expiry
-                && self.redeem_identity == other.redeem_identity
-                && self.refund_identity == other.refund_identity
-                && self.side == other.side
-        }
-    }
-
-    #[tokio::test]
-    async fn roundtrip_swap() {
-        let db = Sqlite::test();
-
-        let given = insertable_swap();
-        let swap_id = given.local_swap_id.0;
-
-        db.do_in_transaction(|conn| db.save_swap(conn, &given))
-            .await
-            .expect("to be able to save a swap");
-
-        let loaded = db
-            .load_swap(swap_id)
-            .await
-            .expect("to be able to load a previously saved swap");
-
-        assert_eq!(loaded, given)
-    }
-
-    #[tokio::test]
-    async fn roundtrip_secret_hash() {
-        let db = Sqlite::test();
-
-        let swap = insertable_swap();
-        let swap_id = swap.local_swap_id.0;
-
-        db.do_in_transaction(|conn| db.save_swap(conn, &swap))
-            .await
-            .expect("to be able to save a swap");
-
-        let secret_hash = rfc003::SecretHash::from_str(
-            "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
-             bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
-        )
-        .expect("valid secret hash");
-
-        db.do_in_transaction(|conn| db.insert_secret_hash(conn, swap_id, secret_hash))
-            .await
-            .expect("to be able to save secret hash");
-
-        let loaded = db
-            .load_secret_hash(swap_id)
-            .await
-            .expect("to be able to load a previously saved secret hash");
-
-        assert_eq!(loaded, secret_hash)
-    }
-
-    #[tokio::test]
-    async fn save_addresses_for_peer() {
-        let db = Sqlite::test();
-
-        let peer_id = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY"
-            .parse::<PeerId>()
-            .expect("valid peer id");
-        let address1 = "/ip4/80.123.90.4/tcp/5432"
-            .parse::<libp2p::Multiaddr>()
-            .expect("valid multiaddress");
-        let address2 = "/ip4/127.0.0.1/udp/1234"
-            .parse::<libp2p::Multiaddr>()
-            .expect("valid multiaddress");
-
-        db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
-            db.insert_address_for_peer(conn, peer_id.clone(), address1.clone())?;
-            db.insert_address_for_peer(conn, peer_id.clone(), address2.clone())?;
-
-            Ok(())
-        })
-        .await
-        .expect("to be able to save addresses");
-
-        let loaded = db
-            .load_address_for_peer(&peer_id)
-            .await
-            .expect("to be able to load a previously saved addresses");
-
-        assert_eq!(loaded, vec![address1, address2])
-    }
-
-    #[tokio::test]
-    async fn addresses_are_separated_by_peer() {
-        let db = Sqlite::test();
-
-        let peer1 = "QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY"
-            .parse::<PeerId>()
-            .expect("valid peer id");
-        let address1 = "/ip4/80.123.90.4/tcp/5432"
-            .parse::<libp2p::Multiaddr>()
-            .expect("valid multiaddress");
-        let peer2 = "QmYyQSo1c1Ym7orWxLYvCrM2EmxFTANf8wXmmE7DWjhx5N"
-            .parse::<PeerId>()
-            .expect("valid peer id");
-        let address2 = "/ip4/127.0.0.1/udp/1234"
-            .parse::<libp2p::Multiaddr>()
-            .expect("valid multiaddress");
-
-        db.do_in_transaction::<_, _, anyhow::Error>(|conn| {
-            db.insert_address_for_peer(conn, peer1.clone(), address1.clone())?;
-            db.insert_address_for_peer(conn, peer2.clone(), address2.clone())?;
-
-            Ok(())
-        })
-        .await
-        .expect("to be able to save addresses");
-
-        let loaded_peer1 = db
-            .load_address_for_peer(&peer1)
-            .await
-            .expect("to be able to load a previously saved addresses");
-        let loaded_peer2 = db
-            .load_address_for_peer(&peer2)
-            .await
-            .expect("to be able to load a previously saved addresses");
-
-        assert_eq!(loaded_peer1, vec![address1]);
-        assert_eq!(loaded_peer2, vec![address2])
-    }
-
-    #[tokio::test]
-    async fn roundtrip_herc20s() {
-        let db = Sqlite::test();
-
-        let swap = insertable_swap();
-        let local_swap_id = swap.local_swap_id.0;
-        let non_existing_local_swap_id = LocalSwapId::random();
-
-        let swap_id = db
-            .do_in_transaction(|conn| db.save_swap(conn, &swap))
-            .await
-            .expect("to be able to save a swap");
-
-        let amount = Erc20Amount::from_str("12345").expect("valid ERC20 amount");
-        let ethereum_identity =
-            EthereumAddress::from_str("1111e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-                .expect("valid etherum identity");
-        let redeem_identity = EthereumAddress::from_str("2222e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-            .expect("valid redeem identity");
-        let refund_identity = EthereumAddress::from_str("3333e8be41b21f651a71aaB1A85c6813b8bBcCf8")
-            .expect("valid refund identity");
-
-        let given = InsertableHerc20 {
-            swap_id,
-            amount: Text(amount),
-            chain_id: U32(1337),
-            expiry: U32(123),
-            token_contract: Text(ethereum_identity),
-            redeem_identity: None,
-            refund_identity: None,
-            side: Text(Side::Alpha),
-        };
-
-        db.do_in_transaction(|conn| db.insert(conn, &given))
-            .await
-            .expect("to be able to save swap details");
-
-        let loaded = db
-            .load_herc20(local_swap_id)
-            .await
-            .expect("to be able to load a previously saved swap details");
-
-        assert_eq!(loaded, given);
-
-        // update redeem_identity for non-existing swap
-        let result = db
-            .do_in_transaction(|conn| {
-                db.update_herc20_redeem_identity(
-                    conn,
-                    non_existing_local_swap_id,
-                    redeem_identity.into(),
-                )
-            })
-            .await;
-        assert_that(&result).is_err();
-
-        // update refund_identity for non-existing swap
-        let result = db
-            .do_in_transaction(|conn| {
-                db.update_herc20_refund_identity(
-                    conn,
-                    non_existing_local_swap_id,
-                    refund_identity.into(),
-                )
-            })
-            .await;
-        assert_that(&result).is_err();
-
-        // update existing swap
-        db.do_in_transaction(|conn| {
-            db.update_herc20_redeem_identity(conn, local_swap_id, redeem_identity.into())?;
-            db.update_herc20_refund_identity(conn, local_swap_id, refund_identity.into())
-        })
-        .await
-        .expect("table to be updated");
-
-        let loaded = db
-            .load_herc20(local_swap_id)
-            .await
-            .expect("to be able to load a previously saved swap details");
-
-        assert_eq!(loaded.redeem_identity, Some(Text(redeem_identity)));
-        assert_eq!(loaded.refund_identity, Some(Text(refund_identity)));
-    }
-
-    #[tokio::test]
-    async fn roundtrip_halights() {
-        let db = Sqlite::test();
-
-        let swap = insertable_swap();
-        let local_swap_id = swap.local_swap_id.0;
-        let non_existing_local_swap_id = LocalSwapId::random();
-
-        let swap_id = db
-            .do_in_transaction(|conn| db.save_swap(conn, &swap))
-            .await
-            .expect("to be able to save a swap");
-
-        let amount = Satoshis::from_str("12345").expect("valid ERC20 amount");
-
-        let redeem_identity = lightning::PublicKey::random();
-        let refund_identity = lightning::PublicKey::random();
-
-        let given = InsertableHalight {
-            swap_id,
-            amount: Text(amount),
-            network: Text(LightningNetwork::Testnet),
-            chain: "bitcoin".to_string(),
-            cltv_expiry: U32(456),
-            redeem_identity: None,
-            refund_identity: None,
-            side: Text(Side::Alpha),
-        };
-
-        db.do_in_transaction(|conn| db.insert(conn, &given))
-            .await
-            .expect("to be able to save swap details");
-
-        let loaded = db
-            .load_halight(local_swap_id)
-            .await
-            .expect("to be able to load a previously saved swap details");
-
-        assert_eq!(loaded, given);
-
-        // update redeem_identity for non-existing swap
-        let result = db
-            .do_in_transaction(|conn| {
-                db.update_halight_redeem_identity(conn, non_existing_local_swap_id, redeem_identity)
-            })
-            .await;
-        assert_that(&result).is_err();
-
-        // update refund_identity for non-existing swap
-        let result = db
-            .do_in_transaction(|conn| {
-                db.update_halight_refund_identity(conn, non_existing_local_swap_id, refund_identity)
-            })
-            .await;
-        assert_that(&result).is_err();
-
-        // update existing swap
-        db.do_in_transaction(|conn| {
-            db.update_halight_redeem_identity(conn, local_swap_id, redeem_identity)?;
-            db.update_halight_refund_identity(conn, local_swap_id, refund_identity)
-        })
-        .await
-        .expect("table to be updated");
-
-        let loaded = db
-            .load_halight(local_swap_id)
-            .await
-            .expect("to be able to load a previously saved swap details");
-
-        assert_eq!(loaded.redeem_identity, Some(Text(redeem_identity)));
-        assert_eq!(loaded.refund_identity, Some(Text(refund_identity)));
-    }
-
-    #[tokio::test]
-    async fn verify_fk_relation() {
-        let db = Sqlite::test();
-
-        let swap = insertable_swap();
-        let local_swap_id = swap.local_swap_id.0;
-
-        let swap_id = db
-            .do_in_transaction(|conn| db.save_swap(conn, &swap))
-            .await
-            .expect("to be able to save a swap");
-
-        let non_existing_swap_id = swap_id + 1337;
-        let halight = InsertableHalight {
-            swap_id: non_existing_swap_id,
-            amount: Text(Satoshis::from_str("12345").expect("valid ERC20 amount")),
-            network: Text(LightningNetwork::Testnet),
-            chain: "bitcoin".to_string(),
-            cltv_expiry: U32(456),
-            redeem_identity: Some(Text(lightning::PublicKey::random())),
-            refund_identity: Some(Text(lightning::PublicKey::random())),
-            side: Text(Side::Alpha),
-        };
-
-        let result = db.do_in_transaction(|conn| db.insert(conn, &halight)).await;
-        assert_that(&result).is_err();
-
-        let result = db.load_halight(local_swap_id).await;
-        // halight should not exist
-        assert_that(&result).is_err();
     }
 }
