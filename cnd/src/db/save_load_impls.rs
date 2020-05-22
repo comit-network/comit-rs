@@ -3,9 +3,10 @@ use crate::{
     db::{
         tables::{Insert, InsertableSwap, IntoInsertable},
         wrapper_types::{custom_sql_types::Text, Erc20Amount, EthereumAddress, Satoshis},
-        CreatedSwap, ForSwap, Load, Save, Sqlite,
+        CreatedSwap, ForSwap, Save, Sqlite,
     },
     http_api,
+    storage::Load,
     swap_protocols::{halight, herc20, LocalSwapId, Role, Side},
 };
 use anyhow::Context;
@@ -214,9 +215,8 @@ impl Load<(asset::Bitcoin, halight::Identities, RelativeTime)> for Sqlite {
     }
 }
 
-#[async_trait::async_trait]
-impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Sqlite {
-    async fn load(
+impl Sqlite {
+    pub async fn load_meta_swap(
         &self,
         swap_id: LocalSwapId,
     ) -> anyhow::Result<http_api::Swap<comit::Protocol, comit::Protocol>> {

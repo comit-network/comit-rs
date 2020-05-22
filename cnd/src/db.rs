@@ -3,9 +3,9 @@ mod integration_tests;
 mod load_swaps;
 mod rfc003_schema;
 mod save_load_impls;
-mod schema;
+pub mod schema;
 pub mod tables;
-mod wrapper_types;
+pub mod wrapper_types;
 #[macro_use]
 mod swap;
 #[macro_use]
@@ -51,12 +51,6 @@ pub struct ForSwap<T> {
     pub data: T,
 }
 
-/// Load data from the database.
-#[async_trait]
-pub trait Load<T>: Send + Sync + 'static {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T>;
-}
-
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 pub struct Sqlite {
@@ -97,7 +91,7 @@ impl Sqlite {
         })
     }
 
-    async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
+    pub async fn do_in_transaction<F, T, E>(&self, f: F) -> Result<T, E>
     where
         F: FnOnce(&SqliteConnection) -> Result<T, E>,
         E: From<diesel::result::Error>,
