@@ -3,7 +3,7 @@ use crate::{
     db::{
         load_swaps::LoadAcceptedSwap,
         swap_types::{DetermineTypes, SwapTypes},
-        AssetKind, LedgerKind, Retrieve, Save, Sqlite, Swap,
+        AssetKind, LedgerKind, Retrieve, Rfc003Swap, Save, Sqlite,
     },
     identity,
     quickcheck::Quickcheck,
@@ -19,20 +19,20 @@ macro_rules! db_roundtrip_test {
             #[test]
             #[allow(non_snake_case, clippy::redundant_closure_call)]
             fn [<roundtrip_test_ $alpha_ledger _ $beta_ledger _ $alpha_asset _ $beta_asset>]() {
-                fn prop(swap: Quickcheck<Swap>,
+                fn prop(swap: Quickcheck<Rfc003Swap>,
                         request: Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
                         accept: Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool> {
 
                     // unpack the swap from the generic newtype
-                    let Swap { swap_id, role, counterparty } = swap.0;
+                    let Rfc003Swap { swap_id, role, counterparty } = swap.0;
 
                     // construct the expected swap types from the function we get passed in order to enrich it with the role
                     let expected_swap_types = ($expected_swap_types_fn)(role);
 
                     let db = Sqlite::test();
 
-                    let saved_swap = Swap {
+                    let saved_swap = Rfc003Swap {
                         swap_id,
                         role,
                         counterparty
@@ -69,7 +69,7 @@ macro_rules! db_roundtrip_test {
                 }
 
                 quickcheck::quickcheck(prop as fn(
-                    Quickcheck<Swap>,
+                    Quickcheck<Rfc003Swap>,
                     Quickcheck<Request<$alpha_ledger, $beta_ledger, $alpha_asset, $beta_asset, $alpha_identity, $beta_identity>>,
                     Quickcheck<Accept<$alpha_identity, $beta_identity>>,
                 ) -> anyhow::Result<bool>);
