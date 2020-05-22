@@ -7,7 +7,6 @@
 //! `crate::proptest::identity::bitcoin()`.
 
 use crate::swap_protocols::{LocalSwapId, Role};
-use libp2p::PeerId;
 use proptest::prelude::*;
 use uuid::Uuid;
 
@@ -19,18 +18,22 @@ pub fn local_swap_id() -> impl Strategy<Value = LocalSwapId> {
     prop::num::u128::ANY.prop_map(|v| LocalSwapId::from(Uuid::from_u128(v)))
 }
 
-pub fn peer_id() -> impl Strategy<Value = PeerId> {
-    use libp2p::{
+pub mod libp2p {
+    use super::*;
+    use ::libp2p::{
         core::PublicKey,
         identity::secp256k1::{Keypair, SecretKey},
+        PeerId,
     };
 
-    prop::array::uniform32(1u8..)
-        .prop_map(|bytes| {
-            SecretKey::from_bytes(bytes).expect("any 32 bytes are a valid secret key")
-        })
-        .prop_map(|sk| PublicKey::Secp256k1(Keypair::from(sk).public().clone()))
-        .prop_map(PeerId::from_public_key)
+    pub fn peer_id() -> impl Strategy<Value = PeerId> {
+        prop::array::uniform32(1u8..)
+            .prop_map(|bytes| {
+                SecretKey::from_bytes(bytes).expect("any 32 bytes are a valid secret key")
+            })
+            .prop_map(|sk| PublicKey::Secp256k1(Keypair::from(sk).public().clone()))
+            .prop_map(PeerId::from_public_key)
+    }
 }
 
 pub mod identity {
@@ -184,7 +187,7 @@ pub mod db {
         A: Debug,
         B: Debug,
     {
-        (local_swap_id(), alpha, beta, peer_id(), role()).prop_map(
+        (local_swap_id(), alpha, beta, libp2p::peer_id(), role()).prop_map(
             |(swap_id, alpha, beta, peer, role)| db::CreatedSwap {
                 swap_id,
                 alpha,
