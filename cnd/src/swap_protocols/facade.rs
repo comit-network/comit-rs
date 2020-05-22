@@ -4,7 +4,7 @@ use crate::{
     db::{CreatedSwap, Save, Sqlite},
     identity,
     network::{DialInformation, InitCommunication, Swarm},
-    storage::{Load, Storage},
+    storage::{Load, LoadAll, Storage},
     swap_protocols::{hbit, LocalSwapId, Role},
     timestamp::{RelativeTime, Timestamp},
 };
@@ -180,5 +180,16 @@ where
 {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<T> {
         self.storage.load(swap_id).await
+    }
+}
+
+#[async_trait::async_trait]
+impl<T> LoadAll<T> for Facade
+where
+    Storage: LoadAll<T>,
+    T: Send + 'static,
+{
+    async fn load_all(&self) -> anyhow::Result<Vec<T>> {
+        self.storage.load_all().await
     }
 }

@@ -44,6 +44,8 @@ pub mod file_lock;
 pub mod http_api;
 pub mod init_swap;
 pub mod load_swaps;
+pub mod protocol_spawner;
+pub mod respawn;
 pub mod storage;
 pub mod swap_protocols;
 mod tracing_ext;

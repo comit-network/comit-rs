@@ -5,7 +5,7 @@ use crate::{
         wrapper_types::{custom_sql_types::Text, Erc20Amount, EthereumAddress, Satoshis},
         CreatedSwap, ForSwap, Save, Sqlite,
     },
-    http_api,
+    http_api, respawn,
     storage::Load,
     swap_protocols::{halight, herc20, LocalSwapId, Role, Side},
 };
@@ -251,7 +251,7 @@ impl Sqlite {
                        (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
                        (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
                     ) as beta_protocol
-                from swaps
+                FROM swaps
                     where local_swap_id = ?
             "#,
             )
@@ -264,5 +264,53 @@ impl Sqlite {
             alpha: alpha_protocol.0,
             beta: beta_protocol.0,
         })
+    }
+
+    pub async fn load_all_respawn_meta_swaps(
+        &self,
+    ) -> anyhow::Result<Vec<respawn::Swap<comit::Protocol, comit::Protocol>>> {
+        #[derive(QueryableByName)]
+        struct Result {
+            #[sql_type = "sql_types::Text"]
+            local_swap_id: Text<LocalSwapId>,
+            #[sql_type = "sql_types::Text"]
+            role: Text<Role>,
+            #[sql_type = "sql_types::Text"]
+            alpha_protocol: Text<Protocol>,
+            #[sql_type = "sql_types::Text"]
+            beta_protocol: Text<Protocol>,
+        }
+
+        let swaps = self.do_in_transaction(|connection| {
+            diesel::sql_query(
+                r#"
+                    SELECT
+                        local_swap_id,
+                        role,
+                        COALESCE(
+                           (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
+                           (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
+                           (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
+                        ) as alpha_protocol,
+                        COALESCE(
+                           (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
+                           (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
+                           (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
+                        ) as beta_protocol
+                    FROM swaps
+                "#,
+            ).get_results::<Result>(connection)
+        })
+            .await?
+            .into_iter()
+            .map(|row| respawn::Swap {
+                id: row.local_swap_id.0,
+                role: row.role.0,
+                alpha: row.alpha_protocol.0,
+                beta: row.beta_protocol.0,
+            })
+            .collect();
+
+        Ok(swaps)
     }
 }
