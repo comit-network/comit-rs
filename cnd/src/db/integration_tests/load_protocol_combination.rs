@@ -1,7 +1,7 @@
 use crate::{
     db::{
         tables::{Insert, IntoInsertable},
-        CreatedSwap, Load, Save, Sqlite,
+        CreatedSwap, Save, Sqlite,
     },
     http_api,
     proptest::*,
@@ -53,5 +53,5 @@ where
     Sqlite: Insert<<A as IntoInsertable>::Insertable> + Insert<<B as IntoInsertable>::Insertable>,
 {
     db.save(swap.clone()).await.unwrap();
-    db.load(swap.swap_id).await.unwrap()
+    db.load_meta_swap(swap.swap_id).await.unwrap()
 }

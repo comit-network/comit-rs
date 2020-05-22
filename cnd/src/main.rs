@@ -26,6 +26,7 @@ use cnd::{
     load_swaps,
     network::{Swarm, SwarmWorker},
     seed::RootSeed,
+    storage::Storage,
     swap_protocols::{
         halight, herc20, rfc003, rfc003::SwapCommunicationStates, Facade, Rfc003Facade,
         SwapErrorStates,
@@ -133,7 +134,6 @@ fn main() -> anyhow::Result<()> {
     let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
-    // Han/HErc20 protocols (A.K.A split protocols)
     let herc20_states = Arc::new(herc20::States::default());
     let halight_states = Arc::new(halight::States::default());
 
@@ -167,13 +167,13 @@ fn main() -> anyhow::Result<()> {
         swarm: swarm.clone(),
     };
 
+    let storage = Storage::new(database.clone(), seed, herc20_states, halight_states);
+
     // split protocols
     let facade = Facade {
         swarm: swarm.clone(),
-        herc20_states: Arc::clone(&herc20_states),
-        halight_states: Arc::clone(&halight_states),
         db: database,
-        seed,
+        storage,
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;

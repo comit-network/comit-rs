@@ -5,9 +5,9 @@ pub mod rfc003;
 
 use crate::{
     asset,
-    db::Load,
     ethereum::{Bytes, ChainId},
     http_api::{action::ActionResponseBody, problem, route_factory, Http, Swap},
+    storage::Load,
     swap_protocols::{
         actions::{
             ethereum,
@@ -137,7 +137,7 @@ pub async fn handle_get_swap(
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap = facade.get_alice_herc20_halight_swap(swap_id).await?;
+            let swap: AliceHerc20HalightBitcoinSwap = facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
         Swap {
@@ -145,7 +145,7 @@ pub async fn handle_get_swap(
             beta: Protocol::Halight,
             role: Role::Bob,
         } => {
-            let swap = facade.get_bob_herc20_halight_swap(swap_id).await?;
+            let swap: BobHerc20HalightBitcoinSwap = facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
         _ => unimplemented!("only Herc20-Halight is supported"),
@@ -835,11 +835,11 @@ pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    let action = facade
-        .get_alice_herc20_halight_swap(id)
-        .await?
-        .init_action()?;
-    Ok(ActionResponseBody::from(action))
+    let swap: AliceHerc20HalightBitcoinSwap = facade.load(id).await?;
+    let action = swap.init_action()?;
+    let response = ActionResponseBody::from(action);
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -856,11 +856,11 @@ async fn handle_action_deploy(
     id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let action = facade
-        .get_alice_herc20_halight_swap(id)
-        .await?
-        .deploy_action()?;
-    Ok(ActionResponseBody::from(action))
+    let swap: AliceHerc20HalightBitcoinSwap = facade.load(id).await?;
+    let action = swap.deploy_action()?;
+    let response = ActionResponseBody::from(action);
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -874,22 +874,31 @@ pub async fn action_fund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    match facade.load(id).await? {
-        Role::Alice => {
-            let action = facade
-                .get_alice_herc20_halight_swap(id)
-                .await?
-                .fund_action()?;
-            Ok(ActionResponseBody::from(action))
+    let response = match facade.load(id).await? {
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            role: Role::Alice,
+        } => {
+            let swap: AliceHerc20HalightBitcoinSwap = facade.load(id).await?;
+            let action = swap.fund_action()?;
+
+            ActionResponseBody::from(action)
         }
-        Role::Bob => {
-            let action = facade
-                .get_bob_herc20_halight_swap(id)
-                .await?
-                .fund_action()?;
-            Ok(ActionResponseBody::from(action))
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            role: Role::Bob,
+        } => {
+            let swap: BobHerc20HalightBitcoinSwap = facade.load(id).await?;
+            let action = swap.fund_action()?;
+
+            ActionResponseBody::from(action)
         }
-    }
+        _ => anyhow::bail!(ActionNotFound),
+    };
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -906,22 +915,31 @@ async fn handle_action_redeem(
     id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    match facade.load(id).await? {
-        Role::Alice => {
-            let action = facade
-                .get_alice_herc20_halight_swap(id)
-                .await?
-                .redeem_action()?;
-            Ok(ActionResponseBody::from(action))
+    let response = match facade.load(id).await? {
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            role: Role::Alice,
+        } => {
+            let swap: AliceHerc20HalightBitcoinSwap = facade.load(id).await?;
+            let action = swap.redeem_action()?;
+
+            ActionResponseBody::from(action)
         }
-        Role::Bob => {
-            let action = facade
-                .get_bob_herc20_halight_swap(id)
-                .await?
-                .redeem_action()?;
-            Ok(ActionResponseBody::from(action))
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            role: Role::Bob,
+        } => {
+            let swap: BobHerc20HalightBitcoinSwap = facade.load(id).await?;
+            let action = swap.redeem_action()?;
+
+            ActionResponseBody::from(action)
         }
-    }
+        _ => return Err(ActionNotFound.into()),
+    };
+
+    Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
@@ -939,14 +957,18 @@ async fn handle_action_refund(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     match facade.load(id).await? {
-        Role::Alice => {
-            let action = facade
-                .get_alice_herc20_halight_swap(id)
-                .await?
-                .refund_action()?;
-            Ok(ActionResponseBody::from(action))
+        Swap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            role: Role::Alice,
+        } => {
+            let swap: AliceHerc20HalightBitcoinSwap = facade.load(id).await?;
+            let action = swap.refund_action()?;
+            let response = ActionResponseBody::from(action);
+
+            Ok(response)
         }
-        Role::Bob => Err(ActionNotFound.into()),
+        _ => Err(ActionNotFound.into()),
     }
 }
 
