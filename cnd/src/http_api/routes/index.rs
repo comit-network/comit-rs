@@ -258,6 +258,17 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
     }
 }
 
+/// Data for the herc20 protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Debug)]
+pub struct Herc20 {
+    pub amount: asset::Erc20Quantity,
+    pub identity: identity::Ethereum,
+    pub chain_id: u32,
+    pub contract_address: identity::Ethereum,
+    pub absolute_expiry: u32,
+}
+
 impl From<Herc20> for herc20::CreatedSwap {
     fn from(p: Herc20) -> Self {
         herc20::CreatedSwap {
@@ -288,17 +299,6 @@ impl From<Halight> for halight::CreatedSwap {
             cltv_expiry: p.cltv_expiry,
         }
     }
-}
-
-/// Data for the herc20 protocol, wrapped where needed to control
-/// serialization/deserialization.
-#[derive(serde::Deserialize, Clone, Debug)]
-pub struct Herc20 {
-    pub amount: asset::Erc20Quantity,
-    pub identity: identity::Ethereum,
-    pub chain_id: u32,
-    pub contract_address: identity::Ethereum,
-    pub absolute_expiry: u32,
 }
 
 /// Data for the hbit protocol, wrapped where needed to control
