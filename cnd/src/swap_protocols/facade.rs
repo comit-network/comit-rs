@@ -26,9 +26,9 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
     #[digest(prefix = "2001")]
-    pub ethereum_absolute_expiry: Timestamp,
+    pub ethereum_expiry: Timestamp,
     #[digest(prefix = "2002")]
-    pub ethereum_amount: asset::Erc20Quantity,
+    pub erc20_amount: asset::Erc20Quantity,
     #[digest(prefix = "2003")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]

@@ -973,11 +973,11 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
                 let params = herc20::Params {
                     asset: Erc20::new(
                         create_swap_params.token_contract,
-                        create_swap_params.ethereum_amount,
+                        create_swap_params.erc20_amount,
                     ),
                     redeem_identity: herc20_redeem_identity,
                     refund_identity: herc20_refund_identity,
-                    expiry: create_swap_params.ethereum_absolute_expiry,
+                    expiry: create_swap_params.ethereum_expiry,
                     secret_hash,
                 };
 
