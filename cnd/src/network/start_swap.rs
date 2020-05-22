@@ -33,6 +33,7 @@ where
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
                 lightning_identity: Some(lightning_identity),
+                bitcoin_identity: None,
                 // Do not make this None, secret_hash is in the behaviour event for Alice.
                 secret_hash: _,
             },
@@ -62,6 +63,7 @@ where
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
                 lightning_identity: Some(lightning_identity),
+                bitcoin_identity: None,
                 secret_hash: Some(secret_hash),
             },
         ) => {

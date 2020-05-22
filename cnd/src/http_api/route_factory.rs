@@ -115,6 +115,20 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::index::post_halight_bitcoin_herc20);
 
+    let herc20_hbit = warp::post()
+        .and(warp::path!("swaps" / "herc20" / "hbit"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(http_api::routes::index::post_herc20_hbit);
+
+    let hbit_herc20 = warp::post()
+        .and(warp::path!("swaps" / "hbit" / "herc20"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(http_api::routes::index::post_hbit_herc20);
+
     let get_halight_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
@@ -159,22 +173,8 @@ pub fn create(
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade.clone())
-        .and_then(http_api::routes::action_refund);
-
-    let hbit_herc20 = warp::post()
-        .and(warp::path!("swaps" / "hbit" / "herc20"))
-        .and(warp::path::end())
-        .and(warp::body::json())
-        .and(facade.clone())
-        .and_then(http_api::routes::index::post_hbit_herc20);
-
-    let herc20_hbit = warp::post()
-        .and(warp::path!("swaps" / "herc20" / "hbit"))
-        .and(warp::path::end())
-        .and(warp::body::json())
         .and(facade)
-        .and_then(http_api::routes::index::post_herc20_hbit);
+        .and_then(http_api::routes::action_refund);
 
     preflight_cors_route
         .or(rfc003_get_swap)

@@ -337,10 +337,9 @@ impl ComitNode {
 /// combination.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Identities {
-    // Currently we only support herc20/halight swap, as we add protocol
-    // combinations the identities will be added here.
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 async fn handle_request(

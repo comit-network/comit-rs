@@ -78,6 +78,7 @@ pub async fn post_herc20_halight_bitcoin(
     let identities = Identities {
         ethereum_identity: Some(body.alpha.identity),
         lightning_identity: Some(body.beta.identity),
+        bitcoin_identity: None,
     };
     let digest = swap_digest::Herc20Halight::from(body.clone()).digest();
     let peer = body.peer.into();
@@ -119,35 +120,85 @@ pub async fn post_halight_bitcoin_herc20(
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_herc20_hbit(
     body: serde_json::Value,
-    _facade: Facade,
-) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<Herc20, Hbit>::deserialize(&body)
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
+    let body = Body::<Herc20, Hbit>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    Err(warp::reject::custom(
-        HttpApiProblem::new("Route not yet supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This route is not yet supported."),
-    ))
+    let swap_id = LocalSwapId::default();
+    let reply = warp::reply::reply();
+
+    let swap = body.to_created_swap(swap_id);
+    facade
+        .save(swap)
+        .await
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    let identities = Identities {
+        ethereum_identity: Some(body.alpha.identity),
+        bitcoin_identity: Some(body.beta.identity),
+        lightning_identity: None,
+    };
+    let digest = swap_digest::Herc20Hbit::from(body.clone()).digest();
+    let peer = body.peer.into();
+    let role = body.role.0;
+
+    facade
+        .initiate_communication(swap_id, peer, role, digest, identities)
+        .await
+        .map(|_| {
+            warp::reply::with_status(
+                warp::reply::with_header(reply, "Location", format!("/swaps/{}", swap_id)),
+                StatusCode::CREATED,
+            )
+        })
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)
 }
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_hbit_herc20(
     body: serde_json::Value,
-    _facade: Facade,
-) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<Hbit, Halight>::deserialize(&body)
+    facade: Facade,
+) -> Result<impl Reply, Rejection> {
+    let body = Body::<Hbit, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    Err(warp::reject::custom(
-        HttpApiProblem::new("Route not yet supported.")
-            .set_status(StatusCode::BAD_REQUEST)
-            .set_detail("This route is not yet supported."),
-    ))
+    let swap_id = LocalSwapId::default();
+    let reply = warp::reply::reply();
+
+    let swap = body.to_created_swap(swap_id);
+    facade
+        .save(swap)
+        .await
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    let identities = Identities {
+        bitcoin_identity: Some(body.alpha.identity),
+        ethereum_identity: Some(body.beta.identity),
+        lightning_identity: None,
+    };
+    let digest = swap_digest::HbitHerc20::from(body.clone()).digest();
+    let peer = body.peer.into();
+    let role = body.role.0;
+
+    facade
+        .initiate_communication(swap_id, peer, role, digest, identities)
+        .await
+        .map(|_| {
+            warp::reply::with_status(
+                warp::reply::with_header(reply, "Location", format!("/swaps/{}", swap_id)),
+                StatusCode::CREATED,
+            )
+        })
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)
 }
 
 #[derive(serde::Deserialize, Clone, Debug)]
@@ -166,6 +217,30 @@ impl From<Body<Herc20, Halight>> for swap_digest::Herc20Halight {
             token_contract: body.alpha.contract_address,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
             lightning_amount: body.beta.amount.0,
+        }
+    }
+}
+
+impl From<Body<Hbit, Herc20>> for swap_digest::HbitHerc20 {
+    fn from(body: Body<Hbit, Herc20>) -> Self {
+        Self {
+            bitcoin_expiry: body.alpha.absolute_expiry.into(),
+            bitcoin_amount: *body.alpha.amount,
+            ethereum_expiry: body.beta.absolute_expiry.into(),
+            erc20_amount: body.beta.amount,
+            token_contract: body.beta.contract_address,
+        }
+    }
+}
+
+impl From<Body<Herc20, Hbit>> for swap_digest::Herc20Hbit {
+    fn from(body: Body<Herc20, Hbit>) -> Self {
+        Self {
+            ethereum_expiry: body.alpha.absolute_expiry.into(),
+            erc20_amount: body.alpha.amount,
+            token_contract: body.alpha.contract_address,
+            bitcoin_expiry: body.beta.absolute_expiry.into(),
+            bitcoin_amount: *body.beta.amount,
         }
     }
 }
@@ -265,6 +340,7 @@ pub struct Herc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
+    // This should re-named to token_contract but doing so is a breaking API change.
     pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,
 }

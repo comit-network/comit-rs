@@ -511,12 +511,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 /// combination.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LocalData {
-    // Currently we only support herc20/halight swap, as we add protocol
-    // combinations the identities will be added here.
-    pub secret_hash: Option<SecretHash>,
-    pub shared_swap_id: Option<SharedSwapId>,
+    pub secret_hash: Option<SecretHash>,      // Known by Alice.
+    pub shared_swap_id: Option<SharedSwapId>, // Known by Bob.
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 impl LocalData {
@@ -526,6 +525,7 @@ impl LocalData {
             shared_swap_id: None,
             ethereum_identity: identities.ethereum_identity,
             lightning_identity: identities.lightning_identity,
+            bitcoin_identity: identities.bitcoin_identity,
         }
     }
 
@@ -535,6 +535,7 @@ impl LocalData {
             shared_swap_id: Some(shared_swap_id),
             ethereum_identity: identities.ethereum_identity,
             lightning_identity: identities.lightning_identity,
+            bitcoin_identity: identities.bitcoin_identity,
         }
     }
 }
@@ -542,11 +543,10 @@ impl LocalData {
 /// All possible data that can be received from the remote node.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RemoteData {
-    // Currently we only support herc20/halight swap, as we add protocol
-    // combinations the identities will be added here.
+    pub secret_hash: Option<SecretHash>, // Received by Bob from Alice.
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
-    pub secret_hash: Option<SecretHash>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 impl Default for RemoteData {
@@ -554,6 +554,7 @@ impl Default for RemoteData {
         RemoteData {
             ethereum_identity: None,
             lightning_identity: None,
+            bitcoin_identity: None,
             secret_hash: None,
         }
     }
@@ -572,6 +573,12 @@ impl Set<identity::Ethereum> for RemoteData {
 impl Set<identity::Lightning> for RemoteData {
     fn set(&mut self, value: identity::Lightning) {
         self.lightning_identity = Some(value);
+    }
+}
+
+impl Set<identity::Bitcoin> for RemoteData {
+    fn set(&mut self, value: identity::Bitcoin) {
+        self.bitcoin_identity = Some(value);
     }
 }
 
@@ -613,6 +620,7 @@ mod tests {
             shared_swap_id: None,
             ethereum_identity: Some(identity::Ethereum::random()),
             lightning_identity: Some(identity::Lightning::random()),
+            bitcoin_identity: None,
         };
 
         let bob_local_data = LocalData {
@@ -620,6 +628,7 @@ mod tests {
             shared_swap_id: None, // We don't test this here.
             ethereum_identity: Some(identity::Ethereum::random()),
             lightning_identity: Some(identity::Lightning::random()),
+            bitcoin_identity: None,
         };
 
         let digest = Herc20Halight {
@@ -632,16 +641,18 @@ mod tests {
         .digest();
 
         let want_alice_to_learn_from_bob = RemoteData {
+            secret_hash: alice_local_data.secret_hash,
             ethereum_identity: bob_local_data.ethereum_identity,
             lightning_identity: bob_local_data.lightning_identity,
             // This is not exactly 'learned' but it is in the behaviour out event for both roles.
-            secret_hash: alice_local_data.secret_hash,
+            bitcoin_identity: None,
         };
 
         let want_bob_to_learn_from_alice = RemoteData {
+            secret_hash: alice_local_data.secret_hash,
             ethereum_identity: alice_local_data.ethereum_identity,
             lightning_identity: alice_local_data.lightning_identity,
-            secret_hash: alice_local_data.secret_hash,
+            bitcoin_identity: None,
         };
 
         alice_swarm
