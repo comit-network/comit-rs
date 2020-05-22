@@ -127,7 +127,7 @@ pub struct Body<A, B> {
 impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>> for swap_digest::Herc20Halight {
     fn from(body: Body<Herc20EthereumErc20, HalightLightningBitcoin>) -> Self {
         Self {
-            ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
+            ethereum_expiry: body.alpha.absolute_expiry.into(),
             erc20_amount: body.alpha.amount,
             token_contract: body.alpha.contract_address,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),

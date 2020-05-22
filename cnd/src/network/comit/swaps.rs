@@ -319,7 +319,7 @@ mod tests {
     // random. We should use property based testing.
     fn digest() -> SwapDigest {
         Herc20Halight {
-            ethereum_absolute_expiry: 12345.into(),
+            ethereum_expiry: 12345.into(),
             erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             token_contract: identity::Ethereum::random(),
             lightning_cltv_expiry: 12345.into(),
