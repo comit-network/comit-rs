@@ -2,7 +2,7 @@
 ///
 /// `Digest` should be implemented on data structures using the `Digest`
 /// derive macro.
-/// The attribute `digest_prefix` must be applied on each field. It plays the
+/// The attribute `prefix` must be applied on each field. It plays the
 /// role of an identifier to ensure that fields with same data but different
 /// meaning do not result to the same digest.
 ///
@@ -55,7 +55,7 @@
 ///
 /// The digest algorithm goes as follow:
 /// 1. For each field in the struct:
-///     a. Concatenate `digest_prefix` + `self.to_digest_input`,
+///     a. Concatenate `prefix` + `self.to_digest_input`,
 ///     b. Hash the result.
 /// 2. Lexically order the resulting field digests,
 /// 3. Concatenate the list,

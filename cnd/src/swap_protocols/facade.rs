@@ -25,17 +25,17 @@ pub struct Herc20HalightBitcoinCreateSwapParams {
     pub peer: DialInformation,
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub lightning_identity: identity::Lightning,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "d07f")]
     pub lightning_cltv_expiry: RelativeTime,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "1475")]
     pub lightning_amount: asset::Bitcoin,
 }
 
@@ -50,17 +50,17 @@ pub struct HbitHerc20SwapParams {
     pub peer: DialInformation,
     #[digest(ignore)]
     pub bitcoin_identity: identity::Bitcoin,
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "e6ca")]
     pub bitcoin_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "052d")]
     pub bitcoin_amount: asset::Bitcoin,
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "3003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
 }
 
@@ -94,17 +94,17 @@ pub struct Herc20HbitSwapParams {
     pub peer: DialInformation,
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub bitcoin_identity: identity::Bitcoin,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "e6ca")]
     pub bitcoin_expiry: Timestamp,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "052d")]
     pub bitcoin_amount: asset::Bitcoin,
 }
 
