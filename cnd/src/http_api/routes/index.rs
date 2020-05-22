@@ -161,6 +161,27 @@ impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, H
     }
 }
 
+impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, Herc20> {
+    fn to_created_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> CreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> {
+        let body = self.clone();
+
+        let alpha = halight::CreatedSwap::from(body.alpha);
+        let beta = herc20::CreatedSwap::from(body.beta);
+
+        CreatedSwap {
+            swap_id,
+            alpha,
+            beta,
+            peer: body.peer.into(),
+            address_hint: None,
+            role: body.role.0,
+        }
+    }
+}
+
 impl From<Herc20> for herc20::CreatedSwap {
     fn from(p: Herc20) -> Self {
         herc20::CreatedSwap {
