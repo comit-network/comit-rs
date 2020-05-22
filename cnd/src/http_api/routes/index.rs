@@ -60,7 +60,7 @@ pub async fn post_herc20_halight_bitcoin(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = Body::<Herc20EthereumErc20, HalightLightningBitcoin>::deserialize(&body)
+    let body = Body::<Herc20, Halight>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -103,7 +103,7 @@ pub async fn post_halight_bitcoin_herc20(
     body: serde_json::Value,
     _facade: Facade,
 ) -> Result<warp::reply::Json, Rejection> {
-    let _body = Body::<HalightLightningBitcoin, Herc20EthereumErc20>::deserialize(&body)
+    let _body = Body::<Halight, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -124,8 +124,8 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>> for swap_digest::Herc20Halight {
-    fn from(body: Body<Herc20EthereumErc20, HalightLightningBitcoin>) -> Self {
+impl From<Body<Herc20, Halight>> for swap_digest::Herc20Halight {
+    fn from(body: Body<Herc20, Halight>) -> Self {
         Self {
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
             erc20_amount: body.alpha.amount,
@@ -140,9 +140,7 @@ trait ToCreatedSwap<A, B> {
     fn to_created_swap(&self, id: LocalSwapId) -> CreatedSwap<A, B>;
 }
 
-impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>
-    for Body<Herc20EthereumErc20, HalightLightningBitcoin>
-{
+impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, Halight> {
     fn to_created_swap(
         &self,
         swap_id: LocalSwapId,
@@ -163,8 +161,8 @@ impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap>
     }
 }
 
-impl From<Herc20EthereumErc20> for herc20::CreatedSwap {
-    fn from(p: Herc20EthereumErc20) -> Self {
+impl From<Herc20> for herc20::CreatedSwap {
+    fn from(p: Herc20) -> Self {
         herc20::CreatedSwap {
             asset: asset::Erc20::new(p.contract_address, p.amount),
             identity: p.identity,
@@ -174,16 +172,18 @@ impl From<Herc20EthereumErc20> for herc20::CreatedSwap {
     }
 }
 
+/// Data for the halight protocol, wrapped where needed to control
+/// serialization/deserialization.
 #[derive(serde::Deserialize, Clone, Debug)]
-pub struct HalightLightningBitcoin {
+pub struct Halight {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
     pub network: Http<ledger::Lightning>,
     pub cltv_expiry: u32,
 }
 
-impl From<HalightLightningBitcoin> for halight::CreatedSwap {
-    fn from(p: HalightLightningBitcoin) -> Self {
+impl From<Halight> for halight::CreatedSwap {
+    fn from(p: Halight) -> Self {
         halight::CreatedSwap {
             asset: *p.amount,
             identity: p.identity,
@@ -193,8 +193,10 @@ impl From<HalightLightningBitcoin> for halight::CreatedSwap {
     }
 }
 
+/// Data for the herc20 protocol, wrapped where needed to control
+/// serialization/deserialization.
 #[derive(serde::Deserialize, Clone, Debug)]
-pub struct Herc20EthereumErc20 {
+pub struct Herc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: u32,
