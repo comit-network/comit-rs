@@ -4,7 +4,7 @@ use crate::{
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
     network::{Identities, ListenAddresses},
-    swap_protocols::{halight, herc20, ledger, Facade, LocalSwapId, Rfc003Facade, Role},
+    swap_protocols::{halight, hbit, herc20, ledger, Facade, LocalSwapId, Rfc003Facade, Role},
 };
 use comit::network::swap_digest;
 use digest::Digest;
@@ -116,6 +116,40 @@ pub async fn post_halight_bitcoin_herc20(
     ))
 }
 
+#[allow(clippy::needless_pass_by_value)]
+pub async fn post_herc20_hbit(
+    body: serde_json::Value,
+    _facade: Facade,
+) -> Result<warp::reply::Json, Rejection> {
+    let _body = Body::<Herc20, Hbit>::deserialize(&body)
+        .map_err(anyhow::Error::new)
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    Err(warp::reject::custom(
+        HttpApiProblem::new("Route not yet supported.")
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail("This route is not yet supported."),
+    ))
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub async fn post_hbit_herc20(
+    body: serde_json::Value,
+    _facade: Facade,
+) -> Result<warp::reply::Json, Rejection> {
+    let _body = Body::<Hbit, Halight>::deserialize(&body)
+        .map_err(anyhow::Error::new)
+        .map_err(problem::from_anyhow)
+        .map_err(warp::reject::custom)?;
+
+    Err(warp::reject::custom(
+        HttpApiProblem::new("Route not yet supported.")
+            .set_status(StatusCode::BAD_REQUEST)
+            .set_detail("This route is not yet supported."),
+    ))
+}
+
 #[derive(serde::Deserialize, Clone, Debug)]
 pub struct Body<A, B> {
     pub alpha: A,
@@ -182,6 +216,48 @@ impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, 
     }
 }
 
+impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit> {
+    fn to_created_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> {
+        let body = self.clone();
+
+        let alpha = herc20::CreatedSwap::from(body.alpha);
+        let beta = hbit::CreatedSwap::from(body.beta);
+
+        CreatedSwap::<herc20::CreatedSwap, hbit::CreatedSwap> {
+            swap_id,
+            alpha,
+            beta,
+            peer: body.peer.into(),
+            address_hint: None,
+            role: body.role.0,
+        }
+    }
+}
+
+impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20> {
+    fn to_created_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> {
+        let body = self.clone();
+
+        let alpha = hbit::CreatedSwap::from(body.alpha);
+        let beta = herc20::CreatedSwap::from(body.beta);
+
+        CreatedSwap {
+            swap_id,
+            alpha,
+            beta,
+            peer: body.peer.into(),
+            address_hint: None,
+            role: body.role.0,
+        }
+    }
+}
+
 impl From<Herc20> for herc20::CreatedSwap {
     fn from(p: Herc20) -> Self {
         herc20::CreatedSwap {
@@ -223,4 +299,25 @@ pub struct Herc20 {
     pub chain_id: u32,
     pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,
+}
+
+/// Data for the hbit protocol, wrapped where needed to control
+/// serialization/deserialization.
+#[derive(serde::Deserialize, Clone, Debug)]
+struct Hbit {
+    pub amount: Http<asset::Bitcoin>,
+    pub identity: identity::Bitcoin,
+    pub network: Http<bitcoin::Network>,
+    pub absolute_expiry: u32,
+}
+
+impl From<Hbit> for hbit::CreatedSwap {
+    fn from(p: Hbit) -> Self {
+        hbit::CreatedSwap {
+            amount: *p.amount,
+            identity: p.identity,
+            network: p.network.0.into(),
+            absolute_expiry: p.absolute_expiry,
+        }
+    }
 }

@@ -167,14 +167,14 @@ pub fn create(
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::post::post_hbit_herc20);
+        .and_then(http_api::routes::index::post_hbit_herc20);
 
     let herc20_hbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "hbit"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade)
-        .and_then(http_api::routes::post::post_herc20_hbit);
+        .and_then(http_api::routes::index::post_herc20_hbit);
 
     preflight_cors_route
         .or(rfc003_get_swap)
