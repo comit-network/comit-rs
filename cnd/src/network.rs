@@ -626,7 +626,7 @@ where
 {
     let id = swap_request.swap_id;
 
-    Save::save(&db, Swap::new(id, Role::Bob, counterparty)).await?;
+    Save::save(&db, Rfc003Swap::new(id, Role::Bob, counterparty)).await?;
     Save::save(&db, swap_request.clone()).await?;
 
     swap_communication_states
