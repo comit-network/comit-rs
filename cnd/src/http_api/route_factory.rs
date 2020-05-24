@@ -2,9 +2,10 @@ use crate::{
     config::settings::AllowedOrigins,
     http_api,
     http_api::{
-        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit,
+        halbit_herc20, hbit_herc20, herc20_halbit, herc20_hbit, orderbook,
         routes::{self, peers, swaps},
     },
+    network::OrderId,
     Facade, LocalSwapId,
 };
 use warp::{self, filters::BoxedFilter, Filter, Reply};
@@ -119,8 +120,66 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade)
+        .and(facade.clone())
         .and_then(swaps::action_refund);
+
+    let get_order = warp::get()
+        .and(warp::path("orders"))
+        .and(warp::path::param::<OrderId>())
+        .and(warp::path::end())
+        .and(facade.clone())
+        .and_then(orderbook::get_order);
+
+    let get_orders = warp::get()
+        .and(warp::path("orders"))
+        .and(warp::path::end())
+        .and(facade.clone())
+        .and_then(orderbook::get_orders);
+
+    let take_hbit_herc20_order = warp::post()
+        .and(warp::path("orders"))
+        .and(warp::path::param::<OrderId>())
+        .and(warp::path("take"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(orderbook::post_take_hbit_herc20_order);
+
+    let make_hbit_herc20_order = warp::post()
+        .and(warp::path!("orders"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(orderbook::post_make_hbit_herc20_order);
+
+    let post_dial_addr = warp::post()
+        .and(warp::path!("dial"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(orderbook::post_dial_peer);
+
+    let post_announce_trading_pair = warp::post()
+        .and(warp::path!("announce"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade)
+        .and_then(orderbook::post_announce_trading_pair);
+
+    // let get_makers = warp::get()
+    //     .and(warp::path!("makers"))
+    //     .and(warp::path::end())
+    //     .and(facade.clone())
+    //     .and_then(http_api::routes::index::get_makers);
+    //
+    // let subscribe = warp::post()
+    //     .and(warp::path!("makers"))
+    //     .and(warp::path::param::<PeerId>)
+    //     .and(warp::path!("subscribe"))
+    //     .and(warp::path::end())
+    //     .and(warp::body::json())
+    //     .and(facade.clone())
+    //     .and_then(http_api::routes::index::subscribe);
 
     preflight_cors_route
         .or(get_peers)
@@ -136,6 +195,14 @@ pub fn create(facade: Facade, allowed_origins: &AllowedOrigins) -> BoxedFilter<(
         .or(action_refund)
         .or(hbit_herc20)
         .or(herc20_hbit)
+        .or(take_hbit_herc20_order)
+        .or(get_orders)
+        .or(get_order)
+        .or(make_hbit_herc20_order)
+        .or(post_dial_addr)
+        .or(post_announce_trading_pair)
+        //.or(get_makers)
+        //.or(subscribe)
         .recover(http_api::unpack_problem)
         .with(warp::log("http"))
         .with(cors)

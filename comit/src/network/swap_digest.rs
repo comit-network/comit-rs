@@ -122,7 +122,7 @@ impl<'de> Deserialize<'de> for SwapDigest {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Clone, Debug, Eq, Ord, PartialEq, PartialOrd)]
 pub struct Sha3_256(Multihash);
 
 impl digest::Hash for Sha3_256 {

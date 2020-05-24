@@ -10,16 +10,18 @@ use crate::{
     network::{Comit, LocalData},
     spawn,
     storage::{ForSwap, Save},
-    Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash, SharedSwapId,
-    Storage, SwapContext,
+    CreatedSwap, Load, LocalSwapId, Protocol, ProtocolSpawner, Role, RootSeed, SecretHash,
+    SharedSwapId, Storage, SwapContext,
 };
+use ::comit::asset;
 use anyhow::Context;
 use async_trait::async_trait;
+use chrono::Utc;
 use futures::{stream::StreamExt, Future, TryFutureExt};
 use libp2p::{
     identity::{ed25519, Keypair},
     mdns::Mdns,
-    swarm::SwarmBuilder,
+    swarm::{NetworkBehaviour, SwarmBuilder},
     Multiaddr, NetworkBehaviour, PeerId,
 };
 use std::{
@@ -54,7 +56,14 @@ impl Swarm {
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
         let transport = transport::build_comit_transport(local_key_pair)?;
-        let behaviour = ComitNode::new(seed, task_executor.clone(), storage, protocol_spawner)?;
+
+        let behaviour = ComitNode::new(
+            seed,
+            task_executor.clone(),
+            storage,
+            protocol_spawner,
+            local_peer_id.clone(),
+        )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
             .executor(Box::new(TokioExecutor {
@@ -85,6 +94,80 @@ impl Swarm {
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
         guard.initiate_communication(id, peer, role, digest, identities)
+    }
+
+    pub async fn take_hbit_herc20_order(
+        &self,
+        id: OrderId,
+        swap_id: LocalSwapId,
+        refund_address: crate::bitcoin::Address,
+        refund_identity: identity::Bitcoin,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.take_hbit_herc20_order(
+            id,
+            swap_id,
+            refund_address,
+            refund_identity,
+            redeem_identity,
+        )
+    }
+
+    pub async fn make_hbit_herc20_order(
+        &self,
+        order: NewOrder,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<OrderId> {
+        let mut guard = self.inner.lock().await;
+        guard.make_hbit_herc20_order(order, refund_identity, redeem_identity)
+    }
+
+    pub async fn get_orders(&self) -> Vec<Order> {
+        let guard = self.inner.lock().await;
+        guard.get_orders()
+    }
+
+    pub async fn get_order(&self, order_id: OrderId) -> Option<Order> {
+        let guard = self.inner.lock().await;
+        guard.get_order(order_id)
+    }
+
+    pub async fn get_makers(&self) -> Vec<PeerId> {
+        let guard = self.inner.lock().await;
+        guard.get_makers()
+    }
+
+    pub async fn subscribe(
+        &self,
+        peer_id: PeerId,
+        trading_pair: TradingPair,
+    ) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.subscribe(peer_id, trading_pair)
+    }
+
+    pub async fn unsubscribe(
+        &self,
+        peer_id: PeerId,
+        trading_pair: TradingPair,
+    ) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        guard.unsubscribe(peer_id, trading_pair)
+    }
+
+    pub async fn dial_addr(&mut self, addr: Multiaddr) -> anyhow::Result<()> {
+        let mut guard = self.inner.lock().await;
+        // todo: log error
+        libp2p::Swarm::dial_addr(&mut *guard, addr).unwrap();
+        // guard.dial_addr(addr);
+        Ok(())
+    }
+
+    pub async fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+        let mut guard = self.inner.lock().await;
+        guard.announce_trading_pair(trading_pair)
     }
 }
 
@@ -129,7 +212,6 @@ fn derive_key_pair(seed: &RootSeed) -> Keypair {
     let key = ed25519::SecretKey::from_bytes(bytes).expect("we always pass 32 bytes");
     Keypair::Ed25519(key.into())
 }
-
 /// A `NetworkBehaviour` that delegates to the `Comit` and `Mdns` behaviours.
 #[derive(NetworkBehaviour)]
 #[allow(missing_debug_implementations)]
@@ -168,10 +250,11 @@ impl ComitNode {
         task_executor: Handle,
         storage: Storage,
         protocol_spawner: ProtocolSpawner,
+        peer_id: PeerId,
     ) -> Result<Self, io::Error> {
         Ok(Self {
             mdns: Mdns::new()?,
-            comit: Comit::default(),
+            comit: Comit::new(peer_id),
             seed,
             task_executor,
             storage,
@@ -222,6 +305,67 @@ impl ComitNode {
             return self.protocol_spawner.supports_halbit();
         }
         Ok(())
+    }
+
+    pub fn take_hbit_herc20_order(
+        &mut self,
+        order_id: OrderId,
+        swap_id: LocalSwapId,
+        refund_address: crate::bitcoin::Address,
+        refund_identity: identity::Bitcoin,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<()> {
+        let local_data = LocalData {
+            secret_hash: Some(SecretHash::new(
+                self.seed.derive_swap_seed(swap_id).derive_secret(),
+            )),
+            shared_swap_id: None,
+            ethereum_identity: Some(redeem_identity),
+            lightning_identity: None,
+            bitcoin_identity: Some(refund_identity),
+        };
+
+        self.comit.take_order(
+            order_id,
+            swap_id,
+            local_data,
+            refund_address,
+            redeem_identity,
+        )
+    }
+
+    pub fn make_hbit_herc20_order(
+        &mut self,
+        order: NewOrder,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<OrderId> {
+        self.comit
+            .make_order(order, refund_identity, redeem_identity)
+    }
+
+    pub fn get_makers(&self) -> Vec<PeerId> {
+        self.comit.get_makers()
+    }
+
+    pub fn get_order(&self, order_id: OrderId) -> Option<Order> {
+        self.comit.get_order(&order_id)
+    }
+
+    pub fn get_orders(&self) -> Vec<Order> {
+        self.comit.get_orders()
+    }
+
+    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        self.comit.subscribe(peer, trading_pair)
+    }
+
+    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        self.comit.unsubscribe(peer, trading_pair)
+    }
+
+    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+        self.comit.announce_trading_pair(trading_pair)
     }
 }
 
@@ -284,34 +428,103 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
     fn inject_event(&mut self, _event: ()) {}
 }
 
-impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for ComitNode {
-    fn inject_event(&mut self, event: comit::BehaviourOutEvent) {
-        let comit::BehaviourOutEvent {
-            local_swap_id,
-            remote_data,
-        } = event;
+impl libp2p::swarm::NetworkBehaviourEventProcess<::comit::network::comit::BehaviourOutEvent>
+    for ComitNode
+{
+    fn inject_event(&mut self, event: ::comit::network::comit::BehaviourOutEvent) {
+        match event {
+            ::comit::network::comit::BehaviourOutEvent::SwapFinalized {
+                local_swap_id,
+                remote_data,
+            } => {
+                let storage = self.storage.clone();
+                let spawner = self.protocol_spawner.clone();
 
-        let storage = self.storage.clone();
-        let spawner = self.protocol_spawner.clone();
+                let save_and_start_swap = async move {
+                    let swap = storage.load(local_swap_id).await?;
+                    save_swap_remote_data(&storage, swap, remote_data).await?;
+                    spawn::spawn(&spawner, &storage, swap).await?;
 
-        let save_and_start_swap = async move {
-            let swap = storage.load(local_swap_id).await?;
-            save_swap_remote_data(&storage, swap, remote_data).await?;
-            spawn::spawn(&spawner, &storage, swap).await?;
+                    Ok::<(), anyhow::Error>(())
+                };
 
-            Ok::<(), anyhow::Error>(())
-        };
+                self.task_executor
+                    .spawn(save_and_start_swap.map_err(|e: anyhow::Error| {
+                        tracing::error!("{}", e);
+                    }));
+            }
+            ::comit::network::comit::BehaviourOutEvent::OrderTaken {
+                order,
+                peer,
+                refund_identity,
+                redeem_identity,
+                io,
+            } => {
+                tracing::info!("order taken: {:?}", order.id);
+                let local_swap_id = LocalSwapId::default();
+                let shared_swap_id = self.comit.new_shared_swap_id(local_swap_id);
 
-        self.task_executor
-            .spawn(save_and_start_swap.map_err(|e: anyhow::Error| {
-                tracing::error!("{}", e);
-            }));
+                let role = Role::Bob;
+
+                let swap = CreatedSwap {
+                    swap_id: local_swap_id,
+                    alpha: crate::hbit::CreatedSwap {
+                        amount: asset::Bitcoin::from_sat(order.buy),
+                        final_identity: refund_identity.into(),
+                        network: crate::ledger::Bitcoin::Regtest,
+                        absolute_expiry: 0,
+                    },
+                    beta: crate::herc20::CreatedSwap {
+                        asset: order.sell,
+                        identity: redeem_identity,
+                        chain_id: crate::ethereum::ChainId::regtest(),
+                        absolute_expiry: 0,
+                    },
+                    peer: peer.clone(),
+                    address_hint: None,
+                    role,
+                    start_of_swap: Utc::now().naive_local(),
+                };
+
+                let storage = self.storage.clone();
+                let order_id = order.id;
+
+                // todo: saving can fail but subsequent communication steps will continue
+                self.task_executor.spawn(async move {
+                    storage
+                        .associate_swap_with_order(order_id, local_swap_id)
+                        .await;
+                    match storage.save(swap).await {
+                        Ok(()) => (),
+                        Err(e) => tracing::error!("{}", e),
+                    }
+                });
+
+                let transient_identity = self.storage.derive_transient_identity(
+                    local_swap_id,
+                    role,
+                    ::comit::Side::Alpha,
+                );
+
+                let identities = Identities {
+                    bitcoin_identity: Some(transient_identity),
+                    ethereum_identity: Some(redeem_identity),
+                    lightning_identity: None,
+                };
+
+                let local_data = LocalData::for_bob(shared_swap_id, identities);
+                Comit::confirm(shared_swap_id, io);
+                let addresses = self.comit.take_order.addresses_of_peer(&peer);
+                self.comit
+                    .communicate(shared_swap_id, peer, addresses, local_data);
+            }
+        }
     }
 }
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
 #[error(
-    "unable to save swap with id {local_swap_id} in database because the protocol combination is not supported"
+"unable to save swap with id {local_swap_id} in database because the protocol combination is not supported"
 )]
 struct SaveUnsupportedSwap {
     local_swap_id: LocalSwapId,

@@ -301,11 +301,11 @@ export class Actor {
         return `http://${socket}`;
     }
 
-    public async pollCndUntil(
+    public async pollCndUntil<T = SwapResponse>(
         location: string,
-        predicate: (body: SwapResponse) => boolean
-    ): Promise<SwapResponse> {
-        const response = await this.cnd.fetch<SwapResponse>(location);
+        predicate: (body: T) => boolean
+    ): Promise<T> {
+        const response = await this.cnd.fetch<T>(location);
 
         expect(response.status).toEqual(200);
 

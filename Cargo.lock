@@ -225,6 +225,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cdcf67bb7ba7797a081cd19009948ab533af7c355d5caf1d08c777582d351e9c"
 
 [[package]]
+name = "bincode"
+version = "1.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f30d3a39baa26f9651f17b375061f3233dde33424a8b72b0dbe93a68a0bc896d"
+dependencies = [
+ "byteorder",
+ "serde",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -550,6 +560,7 @@ dependencies = [
  "anyhow",
  "async-trait",
  "base64 0.12.3",
+ "bincode",
  "bitcoin",
  "bitcoincore-rpc",
  "blockchain_contracts",
@@ -563,7 +574,7 @@ dependencies = [
  "lazy_static",
  "levenshtein",
  "libp2p",
- "lru",
+ "lru 0.5.2",
  "num",
  "primitive-types",
  "rand 0.7.3",
@@ -1594,6 +1605,7 @@ dependencies = [
  "libp2p-core",
  "libp2p-core-derive",
  "libp2p-dns",
+ "libp2p-gossipsub",
  "libp2p-mdns",
  "libp2p-mplex",
  "libp2p-secio",
@@ -1661,6 +1673,31 @@ dependencies = [
  "futures",
  "libp2p-core",
  "log 0.4.8",
+]
+
+[[package]]
+name = "libp2p-gossipsub"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3f7f3f79f060864db0317cc47641b7d35276dee52a0ffa91553fbd0c153863a3"
+dependencies = [
+ "base64 0.11.0",
+ "byteorder",
+ "bytes",
+ "fnv",
+ "futures",
+ "futures_codec",
+ "libp2p-core",
+ "libp2p-swarm",
+ "log 0.4.8",
+ "lru 0.4.3",
+ "prost",
+ "prost-build",
+ "rand 0.7.3",
+ "sha2 0.8.2",
+ "smallvec 1.3.0",
+ "unsigned-varint",
+ "wasm-timer",
 ]
 
 [[package]]
@@ -1827,6 +1864,15 @@ checksum = "14b6052be84e6b71ab17edffc2eeabf5c2c3ae1fdb464aae35ac50c67a44e1f7"
 dependencies = [
  "cfg-if",
  "serde",
+]
+
+[[package]]
+name = "lru"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0609345ddee5badacf857d4f547e0e5a2e987db77085c24cd887f73573a04237"
+dependencies = [
+ "hashbrown",
 ]
 
 [[package]]

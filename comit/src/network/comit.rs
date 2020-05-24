@@ -1,4 +1,4 @@
-use crate::{identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
+use crate::{asset, identity, network::*, LocalSwapId, SecretHash, SharedSwapId, Timestamp};
 use libp2p::{
     swarm::{
         NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
@@ -10,6 +10,8 @@ use std::{
     collections::{HashMap, VecDeque},
     task::{Context, Poll},
 };
+
+use crate::network::swap_digest::HbitHerc20;
 use swaps::Swaps;
 
 /// Setting it at 5 minutes
@@ -18,16 +20,27 @@ const PENDING_SWAP_EXPIRY_SECS: u32 = 5 * 60;
 mod swaps;
 
 /// Event emitted by the `Comit` behaviour.
-#[derive(Clone, Copy, Debug)]
-pub struct BehaviourOutEvent {
-    pub local_swap_id: LocalSwapId,
-    pub remote_data: RemoteData,
+#[derive(Debug)]
+pub enum BehaviourOutEvent {
+    OrderTaken {
+        order: Order,
+        peer: PeerId,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: crate::identity::Ethereum,
+        io: crate::network::protocols::ReplySubstream<NegotiatedSubstream>,
+    },
+    SwapFinalized {
+        local_swap_id: LocalSwapId,
+        remote_data: RemoteData,
+    },
 }
 
-#[derive(NetworkBehaviour, Debug, Default)]
+#[derive(NetworkBehaviour, Debug)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Comit {
     announce: Announce,
+    orderbook: Orderbook,
+    pub take_order: TakeOrder,
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
     lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
@@ -55,6 +68,23 @@ struct CommunicationState {
 }
 
 impl Comit {
+    pub fn new(peer_id: PeerId) -> Self {
+        Self {
+            announce: Default::default(),
+            orderbook: Orderbook::new(peer_id),
+            take_order: Default::default(),
+            secret_hash: Default::default(),
+            ethereum_identity: Default::default(),
+            lightning_identity: Default::default(),
+            bitcoin_identity: Default::default(),
+            finalize: Default::default(),
+            events: Default::default(),
+            swaps: Default::default(),
+            remote_data: Default::default(),
+            communication_states: Default::default(),
+        }
+    }
+
     pub fn connected_peers(&mut self) -> impl Iterator<Item = (PeerId, Vec<Multiaddr>)> {
         self.announce.connected_peers()
     }
@@ -90,7 +120,8 @@ impl Comit {
         ) {
             tracing::info!("Confirm & communicate for swap: {}", digest);
             Self::confirm(shared_swap_id, io);
-            self.communicate(shared_swap_id, peer_id, data)
+            let addresses = self.announce.addresses_of_peer(&peer_id);
+            self.communicate(shared_swap_id, peer_id, addresses, data)
         } else {
             self.swaps.create_as_pending_announcement(
                 digest.clone(),
@@ -108,17 +139,17 @@ impl Comit {
         self.swaps.get_local_data(swap_id)
     }
 
-    fn confirm(shared_swap_id: SharedSwapId, io: ReplySubstream<NegotiatedSubstream>) {
+    pub fn confirm(shared_swap_id: SharedSwapId, io: ReplySubstream<NegotiatedSubstream>) {
         tokio::task::spawn(io.send(shared_swap_id));
     }
 
-    fn communicate(
+    pub fn communicate(
         &mut self,
         shared_swap_id: SharedSwapId,
         peer_id: libp2p::PeerId,
+        addresses: Vec<Multiaddr>,
         data: LocalData,
     ) {
-        let addresses = self.announce.addresses_of_peer(&peer_id);
         self.secret_hash
             .register_addresses(peer_id.clone(), addresses.clone());
         self.ethereum_identity
@@ -240,6 +271,151 @@ impl Comit {
                 .send(peer, finalize::Message::new(shared_swap_id));
         }
     }
+
+    pub fn take_order(
+        &mut self,
+        order_id: OrderId,
+        swap_id: LocalSwapId,
+        local_data: LocalData,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<()> {
+        let order =
+            self.orderbook
+                .take_with_identities(order_id, refund_identity, redeem_identity)?;
+
+        let dial_info = DialInformation {
+            // todo: remove unwrap
+            peer_id: PeerId::from_bytes(order.maker.clone()).unwrap(),
+            address_hint: Some(order.maker_addr),
+        };
+
+        // hint: alice expiry has to be longer than bobs
+        // todo: add two distinct expiries
+        let swap = HbitHerc20 {
+            bitcoin_expiry: Timestamp::from(order.absolute_expiry),
+            bitcoin_amount: asset::Bitcoin::from_sat(order.buy),
+            ethereum_expiry: Timestamp::from(500),
+            erc20_amount: order.sell.quantity,
+            token_contract: order.sell.token_contract,
+        };
+
+        let digest = swap_digest::hbit_herc20(swap);
+
+        // this step is not required for the orderbook e2e test to pass
+        self.swaps
+            .create_as_pending_confirmation(digest.clone(), swap_id, local_data)?;
+        self.take_order.take(order_id, digest, dial_info);
+        Ok(())
+    }
+
+    pub fn make_order(
+        &mut self,
+        new_order: NewOrder,
+        refund_identity: crate::bitcoin::Address,
+        redeem_identity: identity::Ethereum,
+    ) -> anyhow::Result<OrderId> {
+        tracing::info!("Making order in orderbook");
+        let peer_id = self.orderbook.peer_id.clone().into_bytes();
+        let order = Order::new(peer_id, new_order);
+
+        self.orderbook.make(order, refund_identity, redeem_identity)
+    }
+
+    pub fn get_makers(&self) -> Vec<PeerId> {
+        unimplemented!()
+    }
+
+    pub fn get_order(&self, order_id: &OrderId) -> Option<Order> {
+        self.orderbook.get_order(order_id)
+    }
+
+    pub fn get_orders(&self) -> Vec<Order> {
+        self.orderbook.get_orders()
+    }
+
+    pub fn get_trading_pairs(&mut self) -> Vec<TradingPairTopic> {
+        self.orderbook.get_trading_pairs()
+    }
+
+    pub fn subscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        self.orderbook.subscribe(peer, trading_pair)
+    }
+
+    pub fn unsubscribe(&mut self, peer: PeerId, trading_pair: TradingPair) -> anyhow::Result<()> {
+        self.orderbook.unsubscribe(peer, trading_pair)
+    }
+
+    pub fn new_shared_swap_id(&mut self, local_swap_id: LocalSwapId) -> SharedSwapId {
+        self.swaps.new_shared_swap_id(local_swap_id)
+    }
+
+    pub fn announce_trading_pair(&mut self, trading_pair: TradingPair) {
+        self.orderbook.announce_trading_pair(trading_pair)
+    }
+}
+
+impl NetworkBehaviourEventProcess<orderbook::BehaviourOutEvent> for Comit {
+    fn inject_event(&mut self, _event: orderbook::BehaviourOutEvent) {}
+}
+
+// When a maker receives a TakeOrderRequest, the maker checks if the order is
+// valid and converts the order into a swap. The swap has to be saved to the
+// database using the the db which can be accessed from the ComitNode nb. An
+// CreatedSwapEvent pushed up to the ComitNode to let ComitNode know to save the
+// swap to the database. When a taker receives a TakeOrderResponse, the taker
+// converts the order into a swap.
+#[allow(clippy::cognitive_complexity)]
+impl NetworkBehaviourEventProcess<take_order::behaviour::BehaviourOutEvent> for Comit {
+    fn inject_event(&mut self, event: take_order::behaviour::BehaviourOutEvent) {
+        match event {
+            take_order::behaviour::BehaviourOutEvent::TakeOrderRequest { peer, order_id, io } => {
+                tracing::info!(
+                    "take order request for order: {:?} received from {:?}",
+                    order_id,
+                    peer
+                );
+                let (order, refund_identity, redeem_identity) = match self.orderbook.take(order_id)
+                {
+                    Ok(order) => order,
+                    Err(_) => {
+                        tracing::warn!("Order {:?} does not exist", order_id);
+                        return;
+                    }
+                };
+
+                self.events.push_back(BehaviourOutEvent::OrderTaken {
+                    order,
+                    peer,
+                    refund_identity,
+                    redeem_identity,
+                    io,
+                });
+            }
+            take_order::behaviour::BehaviourOutEvent::TakeOrderResponse {
+                peer,
+                swap_digest,
+                shared_swap_id,
+            } => {
+                if let Some(data) = self
+                    .swaps
+                    .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
+                {
+                    let addresses = self.take_order.addresses_of_peer(&peer);
+                    self.communicate(shared_swap_id, peer, addresses, data);
+                } else {
+                    unimplemented!("inconsistent state inside swaps")
+                }
+            }
+            take_order::behaviour::BehaviourOutEvent::Error { peer, error } => {
+                tracing::warn!(
+                    "failed to complete announce protocol with {} because {:?}",
+                    peer,
+                    error
+                );
+            }
+        }
+    }
 }
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for Comit {
@@ -312,7 +488,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     Ok((shared_swap_id, create_params)) => {
                         tracing::debug!("Swap confirmation and communication has started.");
                         Self::confirm(shared_swap_id, *io);
-                        self.communicate(shared_swap_id, peer, create_params);
+                        let addresses = self.announce.addresses_of_peer(&peer);
+                        self.communicate(shared_swap_id, peer, addresses, create_params);
                     }
                     Err(swaps::Error::NotFound) => {
                         tracing::debug!("Swap has not been created yet, parking it.");
@@ -341,7 +518,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                 {
-                    self.communicate(shared_swap_id, peer, data);
+                    let addresses = self.announce.addresses_of_peer(&peer);
+                    self.communicate(shared_swap_id, peer, addresses, data);
                 } else {
                     tracing::warn!(
                         "Confirmation received for unknown swap {} from {}",
@@ -514,7 +692,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                     tracing::info!("Swap {} is finalized.", swap_id);
                     if let Ok(local_swap_id) = self.swaps.finalize_swap(&swap_id) {
                         if let Some(remote_data) = self.remote_data.get(&swap_id).cloned() {
-                            self.events.push_back(BehaviourOutEvent {
+                            self.events.push_back(BehaviourOutEvent::SwapFinalized {
                                 local_swap_id,
                                 remote_data,
                             });
@@ -619,9 +797,22 @@ mod tests {
 
     #[tokio::test]
     async fn finalize_lightning_ethereum_swap_success() {
+        let alice_keypair = libp2p::identity::Keypair::generate_ed25519();
+        let bob_keypair = libp2p::identity::Keypair::generate_ed25519();
+        let alice_peer_id = PeerId::from(alice_keypair.public());
+        let bob_peer_id = PeerId::from(bob_keypair.public());
+
         // arrange
-        let (mut alice_swarm, _, alice_peer_id) = test_swarm::new(Comit::default());
-        let (mut bob_swarm, bob_addr, bob_peer_id) = test_swarm::new(Comit::default());
+        let (mut alice_swarm, _) = test_swarm::new(
+            Comit::new(alice_peer_id.clone()),
+            alice_peer_id.clone(),
+            alice_keypair,
+        );
+        let (mut bob_swarm, bob_addr) = test_swarm::new(
+            Comit::new(bob_peer_id.clone()),
+            bob_peer_id.clone(),
+            bob_keypair,
+        );
 
         let secret_hash = SecretHash::from_str(
             "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
@@ -689,11 +880,24 @@ mod tests {
         // act
         let (alice_event, bob_event) = future::join(alice_swarm.next(), bob_swarm.next()).await;
 
+        let learned = match (alice_event, bob_event) {
+            (
+                BehaviourOutEvent::SwapFinalized {
+                    local_swap_id: _alice_local_swap_id,
+                    remote_data: alice_remote_data,
+                },
+                BehaviourOutEvent::SwapFinalized {
+                    local_swap_id: _bob_local_swap_id,
+                    remote_data: bob_remote_data,
+                },
+            ) => Some((alice_remote_data, bob_remote_data)),
+            (..) => None,
+        };
+
         // assert
-        let alice_learned = alice_event.remote_data;
-        let bob_learned = bob_event.remote_data;
-        assert_eq!(bob_learned, want_bob_to_learn_from_alice);
-        assert_eq!(alice_learned, want_alice_to_learn_from_bob);
+        assert!(learned.is_some());
+        assert_eq!(learned.unwrap().1, want_bob_to_learn_from_alice);
+        assert_eq!(learned.unwrap().0, want_alice_to_learn_from_bob);
     }
 
     struct DummySwap;
