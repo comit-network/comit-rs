@@ -99,7 +99,7 @@ impl<T> Swaps<T> {
         &mut self,
         digest: &SwapDigest,
         shared_swap_id: SharedSwapId,
-    ) -> Option<(LocalSwapId, LocalData)> {
+    ) -> Option<LocalData> {
         let local_swap_id = match self.pending_confirmation.remove(digest) {
             Some(local_swap_id) => local_swap_id,
             None => return None,
@@ -112,7 +112,7 @@ impl<T> Swaps<T> {
 
         self.swap_ids.insert(local_swap_id, shared_swap_id);
 
-        Some((local_swap_id, *data))
+        Some(*data)
     }
 
     /// Bob created a swap and it is pending announcement.

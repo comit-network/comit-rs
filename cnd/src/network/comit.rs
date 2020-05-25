@@ -357,7 +357,7 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_digest,
                 swap_id: shared_swap_id,
             } => {
-                if let Some((_local_swap_id, data)) = self
+                if let Some(data) = self
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                 {
