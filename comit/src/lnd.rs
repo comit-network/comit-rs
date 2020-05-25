@@ -351,6 +351,7 @@ impl LndConnectorAsReceiver {
 
         // Need to shortcut here until https://github.com/hyperium/hyper/issues/2171 or https://github.com/lightningnetwork/lnd/issues/4135 is resolved
         if response.status() == StatusCode::INTERNAL_SERVER_ERROR {
+            tracing::debug!("invoice not found");
             return Ok(None);
         }
 

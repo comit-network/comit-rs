@@ -110,13 +110,17 @@ impl IntoInsertable for herc20::CreatedSwap {
     type Insertable = InsertableHerc20;
 
     fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
-        let redeem_identity = match role {
-            Role::Alice => None,
-            Role::Bob => Some(Text(EthereumAddress::from(self.identity))),
+        let redeem_identity = match (role, side) {
+            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => {
+                Some(Text(EthereumAddress::from(self.identity)))
+            }
+            _ => None,
         };
-        let refund_identity = match role {
-            Role::Alice => Some(Text(EthereumAddress::from(self.identity))),
-            Role::Bob => None,
+        let refund_identity = match (role, side) {
+            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
+                Some(Text(EthereumAddress::from(self.identity)))
+            }
+            _ => None,
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
 
@@ -165,13 +169,13 @@ impl IntoInsertable for halight::CreatedSwap {
     type Insertable = InsertableHalight;
 
     fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
-        let redeem_identity = match role {
-            Role::Alice => Some(Text(self.identity)),
-            Role::Bob => None,
+        let redeem_identity = match (role, side) {
+            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => Some(Text(self.identity)),
+            _ => None,
         };
-        let refund_identity = match role {
-            Role::Alice => None,
-            Role::Bob => Some(Text(self.identity)),
+        let refund_identity = match (role, side) {
+            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => Some(Text(self.identity)),
+            _ => None,
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
 
