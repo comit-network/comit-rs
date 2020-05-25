@@ -41,8 +41,8 @@ where
                 .save(ForSwap {
                     local_swap_id: id,
                     data: WhatAliceLearnedFromBob {
-                        redeem_ethereum_identity: ethereum_identity,
-                        refund_lightning_identity: lightning_identity,
+                        redeem_identity: ethereum_identity,
+                        refund_identity: lightning_identity,
                     },
                 })
                 .await?;
@@ -70,8 +70,8 @@ where
                     local_swap_id: id,
                     data: WhatBobLearnedFromAlice {
                         secret_hash,
-                        refund_ethereum_identity: ethereum_identity,
-                        redeem_lightning_identity: lightning_identity,
+                        refund_identity: ethereum_identity,
+                        redeem_identity: lightning_identity,
                     },
                 })
                 .await?;

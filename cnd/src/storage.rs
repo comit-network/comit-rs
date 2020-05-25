@@ -15,7 +15,7 @@ use crate::{
 use anyhow::Context;
 use async_trait::async_trait;
 use comit::{
-    asset,
+    asset, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     Protocol, Role,
 };
@@ -664,11 +664,14 @@ impl Load<herc20::Params> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Save<ForSwap<WhatAliceLearnedFromBob>> for Storage {
-    async fn save(&self, swap: ForSwap<WhatAliceLearnedFromBob>) -> anyhow::Result<()> {
+impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightning>>> for Storage {
+    async fn save(
+        &self,
+        swap: ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightning>>,
+    ) -> anyhow::Result<()> {
         let local_swap_id = swap.local_swap_id;
-        let refund_lightning_identity = swap.data.refund_lightning_identity;
-        let redeem_ethereum_identity = swap.data.redeem_ethereum_identity;
+        let refund_lightning_identity = swap.data.refund_identity;
+        let redeem_ethereum_identity = swap.data.redeem_identity;
 
         self.db
             .do_in_transaction(|conn| {
@@ -690,11 +693,14 @@ impl Save<ForSwap<WhatAliceLearnedFromBob>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Save<ForSwap<WhatBobLearnedFromAlice>> for Storage {
-    async fn save(&self, swap: ForSwap<WhatBobLearnedFromAlice>) -> anyhow::Result<()> {
+impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Lightning>>> for Storage {
+    async fn save(
+        &self,
+        swap: ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Lightning>>,
+    ) -> anyhow::Result<()> {
         let local_swap_id = swap.local_swap_id;
-        let redeem_lightning_identity = swap.data.redeem_lightning_identity;
-        let refund_ethereum_identity = swap.data.refund_ethereum_identity;
+        let redeem_lightning_identity = swap.data.redeem_identity;
+        let refund_ethereum_identity = swap.data.refund_identity;
         let secret_hash = swap.data.secret_hash;
 
         self.db
