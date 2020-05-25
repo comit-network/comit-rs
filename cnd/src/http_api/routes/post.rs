@@ -1,13 +1,12 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
-    http_api::{problem, routes::into_rejection, DialInformation, Http},
+    http_api::{problem, DialInformation, Http},
     identity,
-    network::InitCommunication,
     swap_protocols::{hbit, herc20, Facade, LocalSwapId, Role},
 };
 use serde::Deserialize;
-use warp::{http::StatusCode, Rejection, Reply};
+use warp::Rejection;
 
 /// POST endpoints for the hbit/herc20 protocol pair.
 
@@ -15,10 +14,9 @@ use warp::{http::StatusCode, Rejection, Reply};
 pub async fn post_hbit_herc20(
     body: serde_json::Value,
     facade: Facade,
-) -> Result<impl Reply, Rejection>
+) -> Result<warp::reply::Json, Rejection>
 where
-    Facade: Save<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>>
-        + InitCommunication<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>>,
+    Facade: Save<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>>,
 {
     let body = Body::<Hbit, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
@@ -26,7 +24,7 @@ where
         .map_err(warp::reject::custom)?;
 
     let swap_id = LocalSwapId::random();
-    let reply = warp::reply::reply();
+    let _reply = warp::reply::reply();
 
     let swap = hbit_herc20_created_swap_from_body(swap_id, body.clone());
 
@@ -36,27 +34,16 @@ where
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    facade
-        .init_communication(swap_id, swap)
-        .await
-        .map(|_| {
-            warp::reply::with_status(
-                warp::reply::with_header(reply, "Location", format!("/swaps/{}", swap_id)),
-                StatusCode::CREATED,
-            )
-        })
-        .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+    unimplemented!()
 }
 
 #[allow(clippy::needless_pass_by_value)]
 pub async fn post_herc20_hbit(
     body: serde_json::Value,
     facade: Facade,
-) -> Result<impl Reply, Rejection>
+) -> Result<warp::reply::Json, Rejection>
 where
-    Facade: Save<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>>
-        + InitCommunication<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>>,
+    Facade: Save<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>>,
 {
     let body = Body::<Herc20, Hbit>::deserialize(&body)
         .map_err(anyhow::Error::new)
@@ -64,7 +51,7 @@ where
         .map_err(warp::reject::custom)?;
 
     let swap_id = LocalSwapId::random();
-    let reply = warp::reply::reply();
+    let _reply = warp::reply::reply();
 
     let swap = herc20_hbit_created_swap_from_body(swap_id, body.clone());
 
@@ -74,17 +61,7 @@ where
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
-    facade
-        .init_communication(swap_id, swap)
-        .await
-        .map(|_| {
-            warp::reply::with_status(
-                warp::reply::with_header(reply, "Location", format!("/swaps/{}", swap_id)),
-                StatusCode::CREATED,
-            )
-        })
-        .map_err(problem::from_anyhow)
-        .map_err(into_rejection)
+    unimplemented!()
 }
 
 fn hbit_herc20_created_swap_from_body(

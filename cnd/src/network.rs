@@ -1,4 +1,5 @@
 pub mod comit;
+pub mod start_swap;
 #[cfg(test)]
 pub mod test_swarm;
 pub mod transport;
@@ -7,39 +8,38 @@ pub use ::comit::*;
 pub use transport::ComitTransport;
 
 use crate::{
-    asset::{AssetKind, Erc20},
-    btsieve::{
-        bitcoin::{self, BitcoindConnector},
-        ethereum::{self, Web3Connector},
-    },
+    asset::AssetKind,
+    btsieve::bitcoin::{self, BitcoindConnector},
     comit_api::LedgerKind,
     config::Settings,
-    db::{CreatedSwap, ForSwap, Rfc003Swap, Save, Sqlite},
+    db::{Rfc003Swap, Save, Sqlite},
     htlc_location,
-    http_api::LedgerNotConfigured,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    network::comit::Comit,
-    seed::RootSeed,
+    network::comit::{Comit, LocalData},
+    protocol_spawner::ProtocolSpawner,
+    seed::{DeriveSwapSeed, RootSeed},
+    storage::Storage,
     swap_protocols::{
-        halight, hbit, herc20,
         rfc003::{
             self,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
             state::Insert,
-            LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
+            DeriveSecret, LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HashFunction, Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SwapProtocol,
+        HashFunction, LocalSwapId, Role, SharedSwapId, SwapProtocol,
     },
     transaction,
 };
-use ::comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
+use ::comit::{
+    btsieve::ethereum::{self, Web3Connector},
+    network::protocols::announce::SwapDigest,
+};
 use anyhow::Context;
 use async_trait::async_trait;
-use chrono::Utc;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future, FutureExt,
+    Future,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -79,14 +79,13 @@ impl Swarm {
         seed: RootSeed,
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        lnd_connector_params: Option<LndConnectorParams>,
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
-        herc20_states: Arc<herc20::States>,
-        halight_states: Arc<halight::States>,
         database: &Sqlite,
         task_executor: tokio::runtime::Handle,
+        storage: Storage,
+        protocol_spawner: ProtocolSpawner,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
         let local_peer_id = PeerId::from(local_key_pair.clone().public());
@@ -96,15 +95,14 @@ impl Swarm {
         let behaviour = ComitNode::new(
             bitcoin_connector,
             ethereum_connector,
-            lnd_connector_params,
             swap_communication_states,
             rfc003_alpha_ledger_states,
             rfc003_beta_ledger_states,
-            herc20_states,
-            halight_states,
             seed,
             database.clone(),
             task_executor.clone(),
+            storage,
+            protocol_spawner,
         )?;
 
         let mut swarm = SwarmBuilder::new(transport, behaviour, local_peer_id.clone())
@@ -129,19 +127,13 @@ impl Swarm {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        swap_params: Herc20HalightBitcoinCreateSwapParams,
+        peer: DialInformation,
+        role: Role,
+        digest: SwapDigest,
+        identities: Identities,
     ) -> anyhow::Result<()> {
         let mut guard = self.inner.lock().await;
-
-        guard.initiate_communication(id, swap_params)
-    }
-
-    pub async fn get_created_swap(
-        &self,
-        id: LocalSwapId,
-    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
-        let mut guard = self.inner.lock().await;
-        guard.get_created_swap(id)
+        guard.initiate_communication(id, peer, role, digest, identities)
     }
 }
 
@@ -201,8 +193,6 @@ pub struct ComitNode {
     pub bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
     #[behaviour(ignore)]
     pub ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-    #[behaviour(ignore)]
-    lnd_connector_params: Option<LndConnectorParams>,
 
     #[behaviour(ignore)]
     pub seed: RootSeed,
@@ -210,6 +200,11 @@ pub struct ComitNode {
     pub db: Sqlite,
     #[behaviour(ignore)]
     task_executor: Handle,
+
+    #[behaviour(ignore)]
+    pub storage: Storage,
+    #[behaviour(ignore)]
+    pub protocol_spawner: ProtocolSpawner,
 
     // rfc003
     #[behaviour(ignore)]
@@ -220,11 +215,6 @@ pub struct ComitNode {
     pub rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
     #[behaviour(ignore)]
     response_channels: Arc<Mutex<HashMap<SwapId, oneshot::Sender<libp2p_comit::frame::Response>>>>,
-
-    #[behaviour(ignore)]
-    pub herc20_states: Arc<herc20::States>,
-    #[behaviour(ignore)]
-    pub halight_states: Arc<halight::States>,
 }
 
 #[derive(Debug, Clone, Copy, thiserror::Error)]
@@ -249,15 +239,14 @@ impl ComitNode {
     pub fn new(
         bitcoin_connector: Arc<bitcoin::Cache<BitcoindConnector>>,
         ethereum_connector: Arc<ethereum::Cache<Web3Connector>>,
-        lnd_connector_params: Option<LndConnectorParams>,
         swap_communication_states: Arc<SwapCommunicationStates>,
         rfc003_alpha_ledger_states: Arc<rfc003::LedgerStates>,
         rfc003_beta_ledger_states: Arc<rfc003::LedgerStates>,
-        herc20_states: Arc<herc20::States>,
-        halight_states: Arc<halight::States>,
         seed: RootSeed,
         db: Sqlite,
         task_executor: Handle,
+        storage: Storage,
+        protocol_spawner: ProtocolSpawner,
     ) -> Result<Self, io::Error> {
         let mut swap_headers = HashSet::new();
         swap_headers.insert("id".into());
@@ -278,14 +267,13 @@ impl ComitNode {
             ethereum_connector,
             rfc003_alpha_ledger_states,
             rfc003_beta_ledger_states,
-            herc20_states,
-            halight_states,
             swap_communication_states,
             seed,
             db,
             response_channels: Arc::new(Mutex::new(HashMap::new())),
             task_executor,
-            lnd_connector_params,
+            storage,
+            protocol_spawner,
         })
     }
 
@@ -301,75 +289,58 @@ impl ComitNode {
 
     pub fn initiate_communication(
         &mut self,
-        id: LocalSwapId,
-        swap_params: Herc20HalightBitcoinCreateSwapParams,
+        local_swap_id: LocalSwapId,
+        peer: DialInformation,
+        role: Role,
+        digest: SwapDigest,
+        identities: Identities,
     ) -> anyhow::Result<()> {
-        self.supports_halight()?;
-        self.comit.initiate_communication(id, swap_params)
-    }
+        // At this stage we do not know if the arguments passed to us make up a
+        // valid swap, we just trust the controller to pass in something
+        // valid. Do _some_ form of validation here so that we can early return
+        // errors and they do not get lost in the asynchronous call chain that
+        // kicks off here.
+        self.assert_have_lnd_if_needed(identities.lightning_identity)?;
 
-    fn init_hbit_herc20(
-        &mut self,
-        id: LocalSwapId,
-        swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        self.comit.init_hbit_herc20(id, swap)
-    }
+        match role {
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(local_swap_id);
+                let secret = swap_seed.derive_secret();
+                let secret_hash = SecretHash::new(secret);
+                let data = LocalData::for_alice(secret_hash, identities);
 
-    fn init_herc20_hbit(
-        &mut self,
-        id: LocalSwapId,
-        swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        self.comit.init_herc20_hbit(id, swap)
-    }
+                self.comit
+                    .initiate_communication_for_alice(local_swap_id, peer, digest, data)
+            }
+            Role::Bob => {
+                let shared_swap_id = SharedSwapId::default();
+                let data = LocalData::for_bob(shared_swap_id, identities);
 
-    pub fn get_created_swap(
-        &mut self,
-        id: LocalSwapId,
-    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
-        self.comit.get_created_swap(&id)
-    }
-
-    fn supports_halight(&self) -> anyhow::Result<()> {
-        match self.lnd_connector_params {
-            Some(_) => Ok(()),
-            None => Err(anyhow::Error::from(LedgerNotConfigured {
-                ledger: "lightning",
-            })),
+                self.comit
+                    .initiate_communication_for_bob(local_swap_id, peer, digest, data)
+            }
         }
     }
-}
 
-/// Init the communication protocols.
-#[async_trait]
-pub trait InitCommunication<T> {
-    async fn init_communication(&self, swap_id: LocalSwapId, created_swap: T)
-        -> anyhow::Result<()>;
-}
-
-#[async_trait]
-impl InitCommunication<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for Swarm {
-    async fn init_communication(
+    fn assert_have_lnd_if_needed(
         &self,
-        swap_id: LocalSwapId,
-        created_swap: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
+        identity: Option<identity::Lightning>,
     ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.init_hbit_herc20(swap_id, created_swap)
+        if identity.is_some() {
+            return self.protocol_spawner.supports_halight();
+        }
+        Ok(())
     }
 }
 
-#[async_trait]
-impl InitCommunication<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Swarm {
-    async fn init_communication(
-        &self,
-        swap_id: LocalSwapId,
-        created_swap: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        let mut guard = self.inner.lock().await;
-        guard.init_herc20_hbit(swap_id, created_swap)
-    }
+/// All possible identities to be sent to the remote node for any protocol
+/// combination.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Identities {
+    // Currently we only support herc20/halight swap, as we add protocol
+    // combinations the identities will be added here.
+    pub ethereum_identity: Option<identity::Ethereum>,
+    pub lightning_identity: Option<identity::Lightning>,
 }
 
 async fn handle_request(
@@ -868,130 +839,20 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<()> for ComitNode {
 
 impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for ComitNode {
     fn inject_event(&mut self, event: comit::BehaviourOutEvent) {
-        match event {
-            comit::BehaviourOutEvent::SwapFinalized {
-                local_swap_id,
-                swap_params: create_swap_params,
-                secret_hash,
-                ethereum_identity,
-                lightning_identity,
-            } => {
-                let role = create_swap_params.role;
+        let comit::BehaviourOutEvent {
+            local_swap_id,
+            remote_data,
+        } = event;
 
-                // first, we save what we learned to the db
-                let db = self.db.clone();
-                let save_to_db_task = match role {
-                    Role::Alice => async move {
-                        db.save(ForSwap {
-                            local_swap_id,
-                            data: network::WhatAliceLearnedFromBob {
-                                redeem_ethereum_identity: ethereum_identity,
-                                refund_lightning_identity: lightning_identity,
-                            },
-                        })
-                        .await
-                        .context("failed to save what alice learned from bob")
-                    }
-                    .boxed(),
-                    Role::Bob => async move {
-                        db.save(ForSwap {
-                            local_swap_id,
-                            data: network::WhatBobLearnedFromAlice {
-                                secret_hash,
-                                refund_ethereum_identity: ethereum_identity,
-                                redeem_lightning_identity: lightning_identity,
-                            },
-                        })
-                        .await
-                        .context("failed to save what alice learned from bob")
-                    }
-                    .boxed(),
-                };
-                self.task_executor.spawn(async move {
-                    let result = save_to_db_task.await;
-                    if let Err(e) = result {
-                        tracing::error!("{:?}", e);
-                    }
-                });
+        let storage = self.storage.clone();
+        let spawner = self.protocol_spawner.clone();
 
-                // second, we spawn the watcher for halight
-                let lnd_connector_params = match self.lnd_connector_params.clone() {
-                    Some(lnd_connector_params) => lnd_connector_params,
-                    None => {
-                        tracing::error!("Internal Failure: lnd connectors are not initialised, no action has been taken. This should be unreachable.");
-                        return;
-                    }
-                };
-
-                let (halight_redeem_identity, halight_refund_identity) = match role {
-                    Role::Alice => (create_swap_params.lightning_identity, lightning_identity),
-                    Role::Bob => (lightning_identity, create_swap_params.lightning_identity),
-                };
-
-                let halight_params = halight::Params {
-                    redeem_identity: halight_redeem_identity,
-                    refund_identity: halight_refund_identity,
-                    cltv_expiry: create_swap_params.lightning_cltv_expiry,
-                    asset: create_swap_params.lightning_amount,
-                    secret_hash,
-                };
-
-                let halight_states = self.halight_states.clone();
-                let halight_watcher_task = match role {
-                    Role::Alice => async move {
-                        halight::new(
-                            local_swap_id,
-                            halight_params,
-                            Role::Alice,
-                            Side::Beta,
-                            halight_states,
-                            LndConnectorAsReceiver::from(lnd_connector_params),
-                        )
-                        .await;
-                    }
-                    .boxed(),
-                    Role::Bob => async move {
-                        halight::new(
-                            local_swap_id,
-                            halight_params,
-                            Role::Bob,
-                            Side::Beta,
-                            halight_states,
-                            LndConnectorAsSender::from(lnd_connector_params),
-                        )
-                        .await;
-                    }
-                    .boxed(),
-                };
-                self.task_executor.spawn(halight_watcher_task);
-
-                // third, we spawn the watcher for herc20
-                let (herc20_redeem_identity, herc20_refund_identity) = match role {
-                    Role::Alice => (ethereum_identity, create_swap_params.ethereum_identity),
-                    Role::Bob => (create_swap_params.ethereum_identity, ethereum_identity),
-                };
-                let params = herc20::Params {
-                    asset: Erc20::new(
-                        create_swap_params.token_contract,
-                        create_swap_params.ethereum_amount,
-                    ),
-                    redeem_identity: herc20_redeem_identity,
-                    refund_identity: herc20_refund_identity,
-                    expiry: create_swap_params.ethereum_absolute_expiry,
-                    secret_hash,
-                };
-
-                self.task_executor.spawn(herc20::new(
-                    local_swap_id,
-                    params,
-                    Utc::now().naive_local(),
-                    role,
-                    Side::Alpha,
-                    self.herc20_states.clone(),
-                    self.ethereum_connector.clone(),
-                ));
-            }
-        }
+        self.task_executor.spawn(start_swap::start_swap(
+            storage,
+            spawner,
+            local_swap_id,
+            remote_data,
+        ));
     }
 }
 

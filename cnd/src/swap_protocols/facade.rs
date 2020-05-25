@@ -1,40 +1,14 @@
-use super::herc20;
 use crate::{
     asset,
     db::{CreatedSwap, Save, Sqlite},
     identity,
-    network::{DialInformation, InitCommunication, Swarm},
+    network::{DialInformation, Identities, Swarm},
     storage::{Load, LoadAll, Storage},
-    swap_protocols::{hbit, LocalSwapId, Role},
-    timestamp::{RelativeTime, Timestamp},
+    swap_protocols::{hbit, herc20, LocalSwapId, Role},
+    timestamp::Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
 use digest::Digest;
-
-/// This represents the information available on a swap
-/// before communication with the other node has started
-#[derive(Clone, Digest, Debug, PartialEq)]
-#[digest(hash = "SwapDigest")]
-pub struct Herc20HalightBitcoinCreateSwapParams {
-    #[digest(ignore)]
-    pub role: Role,
-    #[digest(ignore)]
-    pub peer: DialInformation,
-    #[digest(ignore)]
-    pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "2001")]
-    pub ethereum_absolute_expiry: Timestamp,
-    #[digest(prefix = "2002")]
-    pub ethereum_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
-    pub token_contract: identity::Ethereum,
-    #[digest(ignore)]
-    pub lightning_identity: identity::Lightning,
-    #[digest(prefix = "3001")]
-    pub lightning_cltv_expiry: RelativeTime,
-    #[digest(prefix = "3002")]
-    pub lightning_amount: asset::Bitcoin,
-}
 
 /// This represents the information available on a swap
 /// before communication with the other node has started
@@ -140,9 +114,14 @@ impl Facade {
     pub async fn initiate_communication(
         &self,
         id: LocalSwapId,
-        swap_params: Herc20HalightBitcoinCreateSwapParams,
+        peer: DialInformation,
+        role: Role,
+        digest: SwapDigest,
+        identities: Identities,
     ) -> anyhow::Result<()> {
-        self.swarm.initiate_communication(id, swap_params).await
+        self.swarm
+            .initiate_communication(id, peer, role, digest, identities)
+            .await
     }
 }
 
@@ -154,21 +133,6 @@ where
 {
     async fn save(&self, data: T) -> anyhow::Result<()> {
         self.db.save(data).await
-    }
-}
-
-#[async_trait::async_trait]
-impl<T> InitCommunication<T> for Facade
-where
-    T: Send + 'static,
-    Swarm: InitCommunication<T>,
-{
-    async fn init_communication(
-        &self,
-        swap_id: LocalSwapId,
-        created_swap: T,
-    ) -> anyhow::Result<()> {
-        self.swarm.init_communication(swap_id, created_swap).await
     }
 }
 

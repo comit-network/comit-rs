@@ -1,23 +1,22 @@
 use crate::{
-    db::CreatedSwap,
     identity,
-    seed::{DeriveSwapSeed, RootSeed},
-    swap_protocols::{
-        hbit, herc20,
-        rfc003::{DeriveSecret, SecretHash},
-        Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
-    },
+    network::Identities,
+    seed::RootSeed,
+    swap_protocols::{LocalSwapId, SharedSwapId},
     timestamp::Timestamp,
 };
-use ::comit::network::{
-    oneshot_behaviour,
-    protocols::{
-        announce,
-        announce::{behaviour::Announce, protocol::ReplySubstream},
-        ethereum_identity, finalize, lightning_identity, secret_hash,
+use comit::{
+    network::{
+        oneshot_behaviour,
+        protocols::{
+            announce,
+            announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
+            ethereum_identity, finalize, lightning_identity, secret_hash,
+        },
+        DialInformation,
     },
+    SecretHash,
 };
-use digest::Digest;
 use libp2p::{
     swarm::{
         NegotiatedSubstream, NetworkBehaviour, NetworkBehaviourAction,
@@ -37,16 +36,11 @@ const PENDING_SWAP_EXPIRY_SECS: u32 = 5 * 60;
 
 mod swaps;
 
-/// Event emitted  by the `ComitLn` behaviour.
-#[derive(Debug)]
-pub enum BehaviourOutEvent {
-    SwapFinalized {
-        local_swap_id: LocalSwapId,
-        swap_params: Herc20HalightBitcoinCreateSwapParams,
-        secret_hash: SecretHash,
-        ethereum_identity: identity::Ethereum,
-        lightning_identity: identity::Lightning,
-    },
+/// Event emitted by the `Comit` behaviour.
+#[derive(Clone, Copy, Debug)]
+pub struct BehaviourOutEvent {
+    pub local_swap_id: LocalSwapId,
+    pub remote_data: RemoteData,
 }
 
 #[derive(NetworkBehaviour, Debug)]
@@ -63,14 +57,9 @@ pub struct Comit {
     #[behaviour(ignore)]
     swaps: Swaps<ReplySubstream<NegotiatedSubstream>>,
     #[behaviour(ignore)]
-    ethereum_identities: HashMap<SharedSwapId, identity::Ethereum>,
+    remote_data: HashMap<SharedSwapId, RemoteData>,
     #[behaviour(ignore)]
-    lightning_identities: HashMap<SharedSwapId, identity::Lightning>,
-    #[behaviour(ignore)]
-    communication_state: HashMap<SharedSwapId, CommunicationState>,
-    #[behaviour(ignore)]
-    secret_hashes: HashMap<SharedSwapId, SecretHash>,
-
+    communication_states: HashMap<SharedSwapId, CommunicationState>,
     #[behaviour(ignore)]
     pub seed: RootSeed,
 }
@@ -94,145 +83,111 @@ impl Comit {
             finalize: Default::default(),
             events: VecDeque::new(),
             swaps: Default::default(),
-            ethereum_identities: Default::default(),
-            lightning_identities: Default::default(),
-            communication_state: Default::default(),
-            secret_hashes: Default::default(),
+            remote_data: Default::default(),
+            communication_states: Default::default(),
             seed,
         }
     }
 
-    pub fn initiate_communication(
+    pub fn initiate_communication_for_alice(
         &mut self,
-        id: LocalSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
+        local_swap_id: LocalSwapId,
+        dial_info: DialInformation,
+        digest: SwapDigest,
+        data: LocalData,
     ) -> anyhow::Result<()> {
-        let digest = create_swap_params.digest();
-        tracing::trace!("Swap creation request received: {}", digest);
+        tracing::info!("Starting announcement for swap: {}", digest);
+        self.announce
+            .start_announce_protocol(digest.clone(), dial_info);
+        self.swaps
+            .create_as_pending_confirmation(digest, local_swap_id, data)?;
 
-        match create_swap_params.role {
-            Role::Alice => {
-                tracing::info!("Starting announcement for swap: {}", digest);
-                self.announce
-                    .start_announce_protocol(digest.clone(), (&create_swap_params.peer).clone());
-                self.swaps
-                    .create_as_pending_confirmation(digest, id, create_swap_params)?;
-            }
-            Role::Bob => {
-                if let Ok((shared_swap_id, peer, io)) = self
-                    .swaps
-                    .move_pending_creation_to_communicate(&digest, id, create_swap_params.clone())
-                {
-                    tracing::info!("Confirm & communicate for swap: {}", digest);
-                    self.bob_communicate(peer, io, shared_swap_id, create_swap_params)
-                } else {
-                    self.swaps.create_as_pending_announcement(
-                        digest.clone(),
-                        id,
-                        create_swap_params,
-                    )?;
-                    tracing::debug!("Swap {} waiting for announcement", digest);
-                }
-            }
+        Ok(())
+    }
+
+    pub fn initiate_communication_for_bob(
+        &mut self,
+        local_swap_id: LocalSwapId,
+        dial_info: DialInformation,
+        digest: SwapDigest,
+        data: LocalData,
+    ) -> anyhow::Result<()> {
+        if let Ok((shared_swap_id, peer_id, io)) = self.swaps.move_pending_creation_to_communicate(
+            &digest,
+            local_swap_id,
+            dial_info.peer_id.clone(),
+            data.clone(),
+        ) {
+            tracing::info!("Confirm & communicate for swap: {}", digest);
+            Self::confirm(shared_swap_id, io);
+            self.communicate(shared_swap_id, peer_id, data)
+        } else {
+            self.swaps.create_as_pending_announcement(
+                digest.clone(),
+                local_swap_id,
+                dial_info.peer_id,
+                data,
+            )?;
+            tracing::debug!("Swap {} waiting for announcement", digest);
         }
 
         Ok(())
     }
 
-    pub fn init_hbit_herc20(
-        &mut self,
-        _: LocalSwapId,
-        _: CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        // As for initiate_communication()
-        unimplemented!()
+    pub fn get_local_data(&self, swap_id: &LocalSwapId) -> Option<LocalData> {
+        self.swaps.get_local_data(swap_id)
     }
 
-    pub fn init_herc20_hbit(
-        &mut self,
-        _: LocalSwapId,
-        _: CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>,
-    ) -> anyhow::Result<()> {
-        // As for initiate_communication()
-        unimplemented!()
-    }
-
-    pub fn get_created_swap(
-        &self,
-        swap_id: &LocalSwapId,
-    ) -> Option<Herc20HalightBitcoinCreateSwapParams> {
-        self.swaps.get_created_swap(swap_id)
-    }
-
-    /// Once confirmation is received, exchange the information to then finalize
-    fn alice_communicate(
-        &mut self,
-        peer: PeerId,
-        swap_id: SharedSwapId,
-        local_swap_id: LocalSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
-    ) {
-        let addresses = self.announce.addresses_of_peer(&peer);
-        self.secret_hash
-            .register_addresses(peer.clone(), addresses.clone());
-        self.ethereum_identity
-            .register_addresses(peer.clone(), addresses.clone());
-        self.lightning_identity
-            .register_addresses(peer.clone(), addresses.clone());
-        self.finalize.register_addresses(peer.clone(), addresses);
-
-        self.ethereum_identity.send(
-            peer.clone(),
-            ethereum_identity::Message::new(swap_id, create_swap_params.ethereum_identity),
-        );
-        self.lightning_identity.send(
-            peer.clone(),
-            lightning_identity::Message::new(swap_id, create_swap_params.lightning_identity),
-        );
-
-        let seed = self.seed.derive_swap_seed(local_swap_id);
-        let secret_hash = SecretHash::new(seed.derive_secret());
-
-        self.secret_hashes.insert(swap_id, secret_hash);
-        self.secret_hash
-            .send(peer, secret_hash::Message::new(swap_id, secret_hash));
-
-        self.communication_state
-            .insert(swap_id, CommunicationState::default());
-    }
-
-    /// After announcement, confirm and then exchange information for the swap,
-    /// once done, go finalize
-    fn bob_communicate(
-        &mut self,
-        peer: libp2p::PeerId,
-        io: ReplySubstream<NegotiatedSubstream>,
-        shared_swap_id: SharedSwapId,
-        create_swap_params: Herc20HalightBitcoinCreateSwapParams,
-    ) {
-        // Confirm
+    fn confirm(shared_swap_id: SharedSwapId, io: ReplySubstream<NegotiatedSubstream>) {
         tokio::task::spawn(io.send(shared_swap_id));
+    }
 
-        let addresses = self.announce.addresses_of_peer(&peer);
+    fn communicate(
+        &mut self,
+        shared_swap_id: SharedSwapId,
+        peer_id: libp2p::PeerId,
+        data: LocalData,
+    ) {
+        let addresses = self.announce.addresses_of_peer(&peer_id);
         self.secret_hash
-            .register_addresses(peer.clone(), addresses.clone());
+            .register_addresses(peer_id.clone(), addresses.clone());
         self.ethereum_identity
-            .register_addresses(peer.clone(), addresses.clone());
+            .register_addresses(peer_id.clone(), addresses.clone());
         self.lightning_identity
-            .register_addresses(peer.clone(), addresses.clone());
-        self.finalize.register_addresses(peer.clone(), addresses);
+            .register_addresses(peer_id.clone(), addresses.clone());
+        self.finalize.register_addresses(peer_id.clone(), addresses);
 
         // Communicate
-        self.ethereum_identity.send(
-            peer.clone(),
-            ethereum_identity::Message::new(shared_swap_id, create_swap_params.ethereum_identity),
-        );
-        self.lightning_identity.send(
-            peer,
-            lightning_identity::Message::new(shared_swap_id, create_swap_params.lightning_identity),
-        );
+        if let Some(ethereum_identity) = data.ethereum_identity {
+            self.ethereum_identity.send(
+                peer_id.clone(),
+                ethereum_identity::Message::new(shared_swap_id, ethereum_identity),
+            );
+        }
 
-        self.communication_state
+        if let Some(lightning_identity) = data.lightning_identity {
+            self.lightning_identity.send(
+                peer_id.clone(),
+                lightning_identity::Message::new(shared_swap_id, lightning_identity),
+            );
+        }
+
+        if let Some(secret_hash) = data.secret_hash {
+            let mut remote_data = self
+                .remote_data
+                .get(&shared_swap_id)
+                .cloned()
+                .unwrap_or_default();
+            remote_data.secret_hash = Some(secret_hash);
+            self.remote_data.insert(shared_swap_id, remote_data);
+
+            self.secret_hash.send(
+                peer_id,
+                secret_hash::Message::new(shared_swap_id, secret_hash),
+            );
+        }
+
+        self.communication_states
             .insert(shared_swap_id, CommunicationState::default());
     }
 
@@ -250,6 +205,49 @@ impl Comit {
 
         // We trust in libp2p to poll us.
         Poll::Pending
+    }
+
+    fn remote_data_insert<T>(&mut self, shared_swap_id: SharedSwapId, value: T)
+    where
+        RemoteData: Set<T>,
+    {
+        let mut remote_data = self
+            .remote_data
+            .get(&shared_swap_id)
+            .cloned()
+            .unwrap_or_default();
+        remote_data.set(value);
+        self.remote_data.insert(shared_swap_id, remote_data);
+    }
+
+    fn finalize(&mut self, peer: PeerId, shared_swap_id: SharedSwapId) {
+        let local_swap_id = match self.swaps.get_local_swap_id(shared_swap_id) {
+            Some(id) => id,
+            None => return,
+        };
+
+        let state = self.communication_states.get(&shared_swap_id);
+        let data = self.swaps.get_local_data(&local_swap_id);
+        let remote_data = self.remote_data.get(&shared_swap_id);
+
+        if let (Some(state), Some(data), Some(remote_data)) = (state, data, remote_data) {
+            let ethereum_sorted = if data.ethereum_identity.is_some() {
+                remote_data.ethereum_identity.is_some() && state.ethereum_identity_sent
+            } else {
+                true
+            };
+
+            let lightning_sorted = if data.lightning_identity.is_some() {
+                remote_data.lightning_identity.is_some() && state.lightning_identity_sent
+            } else {
+                true
+            };
+
+            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
+                self.finalize
+                    .send(peer, finalize::Message::new(shared_swap_id));
+            }
+        }
     }
 }
 
@@ -275,11 +273,10 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                         secret_hash,
                     },
             } => {
-                self.secret_hashes
-                    .insert(swap_id, SecretHash::from(secret_hash));
+                self.remote_data_insert(swap_id.clone(), SecretHash::from(secret_hash));
 
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("must exist");
 
@@ -292,14 +289,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                 message:
                     secret_hash::Message {
                         swap_id,
-                        secret_hash,
+                        secret_hash: _,
                     },
             } => {
-                self.secret_hashes
-                    .insert(swap_id, SecretHash::from(secret_hash));
-
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("should exist");
 
@@ -309,17 +303,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
-
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
-        }
+        self.finalize(peer, swap_id)
     }
 }
 
@@ -339,7 +323,8 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 {
                     Ok((shared_swap_id, create_params)) => {
                         tracing::debug!("Swap confirmation and communication has started.");
-                        self.bob_communicate(peer, *io, shared_swap_id, create_params);
+                        Self::confirm(shared_swap_id, *io);
+                        self.communicate(shared_swap_id, peer, create_params);
                     }
                     Err(swaps::Error::NotFound) => {
                         tracing::debug!("Swap has not been created yet, parking it.");
@@ -364,12 +349,12 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_digest,
                 swap_id: shared_swap_id,
             } => {
-                let (local_swap_id, create_params) = self
+                let (_local_swap_id, data) = self
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
                     .expect("we must know about this digest");
 
-                self.alice_communicate(peer, shared_swap_id, local_swap_id, create_params);
+                self.communicate(shared_swap_id, peer, data);
             }
             announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
                 tracing::warn!(
@@ -391,8 +376,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
                 peer,
                 message: ethereum_identity::Message { swap_id, address },
             } => {
-                self.ethereum_identities
-                    .insert(swap_id, identity::Ethereum::from(address));
+                self.remote_data_insert(swap_id, identity::Ethereum::from(address));
 
                 (peer, swap_id)
             }
@@ -401,7 +385,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
                 message: ethereum_identity::Message { swap_id, .. },
             } => {
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("this should exist");
 
@@ -411,17 +395,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
-
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
-        }
+        self.finalize(peer, swap_id)
     }
 }
 
@@ -434,10 +408,16 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 peer,
                 message: lightning_identity::Message { swap_id, pubkey },
             } => {
-                self.lightning_identities.insert(
-                    swap_id,
-                    bitcoin::PublicKey::from_slice(&pubkey).unwrap().into(),
-                );
+                match bitcoin::PublicKey::from_slice(&pubkey) {
+                    Ok(identity) => self.remote_data_insert::<identity::Lightning>(
+                        swap_id.clone(),
+                        identity.into(),
+                    ),
+                    Err(_) => {
+                        tracing::warn!("received an invalid lightning identity from counterparty");
+                        return;
+                    }
+                };
 
                 (peer, swap_id)
             }
@@ -446,7 +426,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 message: lightning_identity::Message { swap_id, .. },
             } => {
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("this should exist");
 
@@ -456,17 +436,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
             }
         };
 
-        let state = self.communication_state.get(&swap_id).unwrap();
-
-        // check if we are done
-        if self.ethereum_identities.contains_key(&swap_id)
-            && self.lightning_identities.contains_key(&swap_id)
-            && state.lightning_identity_sent
-            && state.ethereum_identity_sent
-            && state.secret_hash_sent_or_received
-        {
-            self.finalize.send(peer, finalize::Message::new(swap_id));
-        }
+        self.finalize(peer, swap_id)
     }
 }
 
@@ -478,7 +448,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 message: finalize::Message { swap_id },
             } => {
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("this should exist");
 
@@ -491,7 +461,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
                 message: finalize::Message { swap_id },
             } => {
                 let state = self
-                    .communication_state
+                    .communication_states
                     .get_mut(&swap_id)
                     .expect("this should exist");
 
@@ -502,34 +472,102 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
         };
 
         let state = self
-            .communication_state
+            .communication_states
             .get_mut(&swap_id)
             .expect("this should exist");
 
         if state.sent_finalized && state.received_finalized {
             tracing::info!("Swap {} is finalized.", swap_id);
-            let (local_swap_id, create_swap_params) = self
+            let (local_swap_id, _local_data) = self
                 .swaps
                 .finalize_swap(&swap_id)
-                .expect("Swap should be known");
+                .expect("swap should be known");
 
-            let secret_hash = self
-                .secret_hashes
+            let remote_data = self
+                .remote_data
                 .get(&swap_id)
-                .copied()
-                .expect("must exist");
+                .cloned()
+                .expect("valid remote data");
 
-            let ethereum_identity = self.ethereum_identities.get(&swap_id).copied().unwrap();
-            let lightning_identity = self.lightning_identities.get(&swap_id).copied().unwrap();
-
-            self.events.push_back(BehaviourOutEvent::SwapFinalized {
+            self.events.push_back(BehaviourOutEvent {
                 local_swap_id,
-                swap_params: create_swap_params,
-                secret_hash,
-                ethereum_identity,
-                lightning_identity,
+                remote_data,
             });
         }
+    }
+}
+
+/// All possible data to be sent to the remote node for any protocol
+/// combination.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct LocalData {
+    // Currently we only support herc20/halight swap, as we add protocol
+    // combinations the identities will be added here.
+    pub secret_hash: Option<SecretHash>,
+    pub shared_swap_id: Option<SharedSwapId>,
+    pub ethereum_identity: Option<identity::Ethereum>,
+    pub lightning_identity: Option<identity::Lightning>,
+}
+
+impl LocalData {
+    pub fn for_alice(secret_hash: SecretHash, identities: Identities) -> Self {
+        LocalData {
+            secret_hash: Some(secret_hash),
+            shared_swap_id: None,
+            ethereum_identity: identities.ethereum_identity,
+            lightning_identity: identities.lightning_identity,
+        }
+    }
+
+    pub fn for_bob(shared_swap_id: SharedSwapId, identities: Identities) -> Self {
+        LocalData {
+            secret_hash: None,
+            shared_swap_id: Some(shared_swap_id),
+            ethereum_identity: identities.ethereum_identity,
+            lightning_identity: identities.lightning_identity,
+        }
+    }
+}
+
+/// All possible data that can be received from the remote node.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct RemoteData {
+    // Currently we only support herc20/halight swap, as we add protocol
+    // combinations the identities will be added here.
+    pub ethereum_identity: Option<identity::Ethereum>,
+    pub lightning_identity: Option<identity::Lightning>,
+    pub secret_hash: Option<SecretHash>,
+}
+
+impl Default for RemoteData {
+    fn default() -> Self {
+        RemoteData {
+            ethereum_identity: None,
+            lightning_identity: None,
+            secret_hash: None,
+        }
+    }
+}
+
+trait Set<T> {
+    fn set(&mut self, value: T);
+}
+
+impl Set<identity::Ethereum> for RemoteData {
+    fn set(&mut self, value: identity::Ethereum) {
+        self.ethereum_identity = Some(value);
+    }
+}
+
+impl Set<identity::Lightning> for RemoteData {
+    fn set(&mut self, value: identity::Lightning) {
+        self.lightning_identity = Some(value);
+    }
+}
+
+impl Set<SecretHash> for RemoteData {
+    fn set(&mut self, value: SecretHash) {
+        self.secret_hash = Some(value);
     }
 }
 
@@ -537,62 +575,14 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 mod tests {
     use super::*;
     use crate::{
-        asset::{ethereum::FromWei, Erc20Quantity},
-        lightning,
+        asset::ethereum::FromWei,
         network::{test_swarm, DialInformation},
     };
-    use comit::{asset, RelativeTime};
+    use comit::{asset, network::swap_digest::Herc20Halight};
     use digest::Digest;
     use futures::future;
-    use libp2p::{multiaddr::Multiaddr, PeerId};
     use rand::thread_rng;
-
-    fn make_alice_swap_params(
-        bob_peer_id: PeerId,
-        bob_addr: Multiaddr,
-        erc20: asset::Erc20,
-        lnbtc: asset::Bitcoin,
-        ethereum_absolute_expiry: Timestamp,
-        lightning_cltv_expiry: RelativeTime,
-    ) -> Herc20HalightBitcoinCreateSwapParams {
-        Herc20HalightBitcoinCreateSwapParams {
-            role: Role::Alice,
-            peer: DialInformation {
-                peer_id: bob_peer_id,
-                address_hint: Some(bob_addr),
-            },
-            ethereum_identity: identity::Ethereum::random(),
-            ethereum_absolute_expiry,
-            ethereum_amount: erc20.quantity,
-            lightning_identity: lightning::PublicKey::random(),
-            lightning_cltv_expiry,
-            lightning_amount: lnbtc,
-            token_contract: erc20.token_contract,
-        }
-    }
-
-    fn make_bob_swap_params(
-        alice_peer_id: PeerId,
-        erc20: asset::Erc20,
-        lnbtc: asset::Bitcoin,
-        ethereum_absolute_expiry: Timestamp,
-        lightning_cltv_expiry: RelativeTime,
-    ) -> Herc20HalightBitcoinCreateSwapParams {
-        Herc20HalightBitcoinCreateSwapParams {
-            role: Role::Bob,
-            peer: DialInformation {
-                peer_id: alice_peer_id,
-                address_hint: None,
-            },
-            ethereum_identity: identity::Ethereum::random(),
-            ethereum_absolute_expiry,
-            ethereum_amount: erc20.quantity,
-            lightning_identity: lightning::PublicKey::random(),
-            lightning_cltv_expiry,
-            lightning_amount: lnbtc,
-            token_contract: erc20.token_contract,
-        }
-    }
+    use std::str::FromStr;
 
     #[tokio::test]
     async fn finalize_lightning_ethereum_swap_success() {
@@ -602,38 +592,69 @@ mod tests {
         let (mut bob_swarm, bob_addr, bob_peer_id) =
             test_swarm::new(Comit::new(RootSeed::new_random(thread_rng()).unwrap()));
 
-        let erc20 = asset::Erc20 {
-            token_contract: Default::default(),
-            quantity: Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
+        let secret_hash = SecretHash::from_str(
+            "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\
+             bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf",
+        )
+        .unwrap();
+
+        let alice_local_data = LocalData {
+            secret_hash: Some(secret_hash),
+            shared_swap_id: None,
+            ethereum_identity: Some(identity::Ethereum::random()),
+            lightning_identity: Some(identity::Lightning::random()),
         };
 
-        let lnbtc = asset::Bitcoin::from_sat(42);
-        let ethereum_expiry = Timestamp::from(100);
-        let lightning_expiry = RelativeTime::from(200);
+        let bob_local_data = LocalData {
+            secret_hash: None,
+            shared_swap_id: None, // We don't test this here.
+            ethereum_identity: Some(identity::Ethereum::random()),
+            lightning_identity: Some(identity::Lightning::random()),
+        };
+
+        let digest = Herc20Halight {
+            ethereum_absolute_expiry: 12345.into(),
+            erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
+            token_contract: identity::Ethereum::random(),
+            lightning_cltv_expiry: 12345.into(),
+            lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+        }
+        .digest();
+
+        let want_alice_to_learn_from_bob = RemoteData {
+            ethereum_identity: bob_local_data.ethereum_identity,
+            lightning_identity: bob_local_data.lightning_identity,
+            // This is not exactly 'learned' but it is in the behaviour out event for both roles.
+            secret_hash: alice_local_data.secret_hash,
+        };
+
+        let want_bob_to_learn_from_alice = RemoteData {
+            ethereum_identity: alice_local_data.ethereum_identity,
+            lightning_identity: alice_local_data.lightning_identity,
+            secret_hash: alice_local_data.secret_hash,
+        };
 
         alice_swarm
-            .initiate_communication(
+            .initiate_communication_for_alice(
                 LocalSwapId::default(),
-                make_alice_swap_params(
-                    bob_peer_id,
-                    bob_addr,
-                    erc20.clone(),
-                    lnbtc,
-                    ethereum_expiry,
-                    lightning_expiry,
-                ),
+                DialInformation {
+                    peer_id: bob_peer_id,
+                    address_hint: Some(bob_addr),
+                },
+                digest.clone(),
+                alice_local_data,
             )
             .expect("initiate communication for alice");
+
         bob_swarm
-            .initiate_communication(
+            .initiate_communication_for_bob(
                 LocalSwapId::default(),
-                make_bob_swap_params(
-                    alice_peer_id,
-                    erc20,
-                    lnbtc,
-                    ethereum_expiry,
-                    lightning_expiry,
-                ),
+                DialInformation {
+                    peer_id: alice_peer_id,
+                    address_hint: None,
+                },
+                digest,
+                bob_local_data,
             )
             .expect("initiate communication for bob");
 
@@ -641,19 +662,9 @@ mod tests {
         let (alice_event, bob_event) = future::join(alice_swarm.next(), bob_swarm.next()).await;
 
         // assert
-        match (alice_event, bob_event) {
-            (
-                BehaviourOutEvent::SwapFinalized {
-                    swap_params: alice_swap_params,
-                    ..
-                },
-                BehaviourOutEvent::SwapFinalized {
-                    swap_params: bob_swap_params,
-                    ..
-                },
-            ) => {
-                assert_eq!(bob_swap_params.digest(), alice_swap_params.digest());
-            }
-        }
+        let alice_learned = alice_event.remote_data;
+        let bob_learned = bob_event.remote_data;
+        assert_eq!(bob_learned, want_bob_to_learn_from_alice);
+        assert_eq!(alice_learned, want_alice_to_learn_from_bob);
     }
 }
