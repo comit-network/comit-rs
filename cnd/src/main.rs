@@ -180,7 +180,7 @@ fn main() -> anyhow::Result<()> {
     let facade = Facade {
         swarm: swarm.clone(),
         db: database,
-        storage,
+        storage: storage.clone(),
     };
 
     let protocol_spawner = ProtocolSpawner::new(
@@ -193,7 +193,7 @@ fn main() -> anyhow::Result<()> {
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
     runtime.block_on(load_swaps::load_swaps_from_database(rfc003_facade.clone()))?;
-    match runtime.block_on(respawn(facade.clone(), protocol_spawner)) {
+    match runtime.block_on(respawn(storage, protocol_spawner)) {
         Ok(()) => {}
         Err(e) => tracing::warn!("failed to respawn swaps: {:?}", e),
     };

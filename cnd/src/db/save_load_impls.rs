@@ -2,16 +2,15 @@ use crate::{
     db,
     db::{
         tables::{Insert, InsertableSwap, IntoInsertable},
-        wrapper_types::{custom_sql_types::Text, Erc20Amount, EthereumAddress, Satoshis},
+        wrapper_types::custom_sql_types::Text,
         CreatedSwap, ForSwap, Save, Sqlite,
     },
     http_api, respawn,
-    storage::Load,
-    swap_protocols::{halight, herc20, LocalSwapId, Role, Side},
+    swap_protocols::{LocalSwapId, Role, Side},
 };
 use anyhow::Context;
-use comit::{asset, network, Protocol, RelativeTime, Timestamp};
-use diesel::{sql_types, ExpressionMethods, JoinOnDsl, QueryDsl, RunQueryDsl};
+use comit::{network, Protocol};
+use diesel::{prelude::*, sql_types};
 
 mod rfc003;
 
@@ -54,51 +53,6 @@ where
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::Swap<asset::Erc20, asset::Bitcoin>> for Sqlite {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<asset::Erc20, asset::Bitcoin>> {
-        use crate::db::schema::{halights, herc20s, swaps};
-
-        let (role, erc20_amount, token_contract, satoshis) = self
-            .do_in_transaction(move |conn| {
-                let key = Text(swap_id);
-
-                swaps::table
-                    .inner_join(halights::table.on(swaps::id.eq(halights::swap_id)))
-                    .inner_join(herc20s::table.on(swaps::id.eq(herc20s::swap_id)))
-                    .filter(swaps::local_swap_id.eq(key))
-                    .select((
-                        swaps::role,
-                        herc20s::amount,
-                        herc20s::token_contract,
-                        halights::amount,
-                    ))
-                    .first::<(
-                        Text<Role>,
-                        Text<Erc20Amount>,
-                        Text<EthereumAddress>,
-                        Text<Satoshis>,
-                    )>(conn)
-            })
-            .await
-            .map_err(|_| db::Error::SwapNotFound)?;
-
-        let swap = http_api::Swap {
-            role: role.0,
-            alpha: asset::Erc20 {
-                token_contract: token_contract.0.into(),
-                quantity: erc20_amount.0.into(),
-            },
-            beta: satoshis.0.into(),
-        };
-
-        Ok(swap)
-    }
-}
-
-#[async_trait::async_trait]
 impl Save<ForSwap<network::WhatAliceLearnedFromBob>> for Sqlite {
     async fn save(&self, swap: ForSwap<network::WhatAliceLearnedFromBob>) -> anyhow::Result<()> {
         let local_swap_id = swap.local_swap_id;
@@ -131,87 +85,6 @@ impl Save<ForSwap<network::WhatBobLearnedFromAlice>> for Sqlite {
             Ok(())
         })
         .await
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<Role> for Sqlite {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<Role> {
-        use crate::db::schema::swaps;
-
-        let role = self
-            .do_in_transaction(move |conn| {
-                let key = Text(swap_id);
-
-                swaps::table
-                    .filter(swaps::local_swap_id.eq(key))
-                    .select(swaps::role)
-                    .first::<Text<Role>>(conn)
-            })
-            .await
-            .map_err(|_| db::Error::SwapNotFound)?;
-
-        Ok(role.0)
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<(asset::Erc20, herc20::Identities, Timestamp)> for Sqlite {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<(asset::Erc20, herc20::Identities, Timestamp)> {
-        let herc20: db::tables::Herc20 = self.load_herc20(swap_id).await?;
-
-        let token_contract = herc20.token_contract.0.into();
-        let quantity = herc20.amount.0.into();
-        let redeem_identity = herc20
-            .redeem_identity
-            .ok_or(db::Error::IdentityNotSet)?
-            .0
-            .into();
-        let refund_identity = herc20
-            .refund_identity
-            .ok_or(db::Error::IdentityNotSet)?
-            .0
-            .into();
-        let expiry = herc20.expiry.0.into();
-
-        Ok((
-            asset::Erc20 {
-                token_contract,
-                quantity,
-            },
-            herc20::Identities {
-                redeem_identity,
-                refund_identity,
-            },
-            expiry,
-        ))
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<(asset::Bitcoin, halight::Identities, RelativeTime)> for Sqlite {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<(asset::Bitcoin, halight::Identities, RelativeTime)> {
-        let halight = self.load_halight(swap_id).await?;
-
-        let redeem_identity = halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0;
-        let refund_identity = halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0;
-        let cltv_expiry = halight.cltv_expiry.0.into();
-        let asset = halight.amount.0.into();
-
-        Ok((
-            asset,
-            halight::Identities {
-                redeem_identity,
-                refund_identity,
-            },
-            cltv_expiry,
-        ))
     }
 }
 

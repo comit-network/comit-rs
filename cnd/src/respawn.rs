@@ -6,8 +6,8 @@
 
 use crate::{
     protocol_spawner::{ProtocolSpawner, Spawn},
-    storage::{Load, LoadAll},
-    swap_protocols::{halight, herc20, Facade, LocalSwapId, Side},
+    storage::{Load, LoadAll, Storage},
+    swap_protocols::{halight, herc20, LocalSwapId, Side},
 };
 use chrono::Utc;
 use comit::{Protocol, Role};
@@ -26,8 +26,8 @@ pub struct Swap<A, B> {
 }
 
 /// Respawn the protocols for all swaps that are not yet done.
-pub async fn respawn(facade: Facade, protocol_spawner: ProtocolSpawner) -> anyhow::Result<()> {
-    let swaps = facade.load_all().await?;
+pub async fn respawn(storage: Storage, protocol_spawner: ProtocolSpawner) -> anyhow::Result<()> {
+    let swaps = storage.load_all().await?;
 
     for swap in swaps {
         match swap {
@@ -37,7 +37,7 @@ pub async fn respawn(facade: Facade, protocol_spawner: ProtocolSpawner) -> anyho
                 alpha: Protocol::Herc20,
                 beta: Protocol::Halight,
             } => {
-                let swap: Swap<herc20::Params, halight::Params> = match facade.load(id).await {
+                let swap: Swap<herc20::Params, halight::Params> = match storage.load(id).await {
                     Ok(swap) => swap,
                     Err(e) => {
                         tracing::warn!("failed to load data for swap {}: {:?}", id, e);

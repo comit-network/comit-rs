@@ -6,8 +6,7 @@
 //! `crate::identity::Bitcoin` is defined at
 //! `crate::proptest::identity::bitcoin()`.
 
-use crate::swap_protocols::{LocalSwapId, Role};
-use libp2p::PeerId;
+use crate::swap_protocols::{LocalSwapId, Role, Side};
 use proptest::prelude::*;
 use uuid::Uuid;
 
@@ -15,22 +14,43 @@ pub fn role() -> impl Strategy<Value = Role> {
     prop_oneof![Just(Role::Alice), Just(Role::Bob)]
 }
 
+pub fn side() -> impl Strategy<Value = Side> {
+    prop_oneof![Just(Side::Alpha), Just(Side::Beta)]
+}
+
 pub fn local_swap_id() -> impl Strategy<Value = LocalSwapId> {
     prop::num::u128::ANY.prop_map(|v| LocalSwapId::from(Uuid::from_u128(v)))
 }
 
-pub fn peer_id() -> impl Strategy<Value = PeerId> {
-    use libp2p::{
+pub mod libp2p {
+    use super::*;
+    use ::libp2p::{
         core::PublicKey,
         identity::secp256k1::{Keypair, SecretKey},
+        Multiaddr, PeerId,
     };
+    use std::net::Ipv4Addr;
 
-    prop::array::uniform32(1u8..)
-        .prop_map(|bytes| {
-            SecretKey::from_bytes(bytes).expect("any 32 bytes are a valid secret key")
-        })
-        .prop_map(|sk| PublicKey::Secp256k1(Keypair::from(sk).public().clone()))
-        .prop_map(PeerId::from_public_key)
+    pub fn peer_id() -> impl Strategy<Value = PeerId> {
+        prop::array::uniform32(1u8..)
+            .prop_map(|bytes| {
+                SecretKey::from_bytes(bytes).expect("any 32 bytes are a valid secret key")
+            })
+            .prop_map(|sk| PublicKey::Secp256k1(Keypair::from(sk).public().clone()))
+            .prop_map(PeerId::from_public_key)
+    }
+
+    prop_compose! {
+        // we just generate a random ipv4 multiaddress, there are a lot more combinations but for our purposes, this is fine
+        pub fn multiaddr()(
+            a in any::<u8>(),
+            b in any::<u8>(),
+            c in any::<u8>(),
+            d in any::<u8>(),
+        ) -> Multiaddr {
+            Ipv4Addr::new(a, b, c, d).into()
+        }
+    }
 }
 
 pub mod identity {
@@ -184,7 +204,7 @@ pub mod db {
         A: Debug,
         B: Debug,
     {
-        (local_swap_id(), alpha, beta, peer_id(), role()).prop_map(
+        (local_swap_id(), alpha, beta, libp2p::peer_id(), role()).prop_map(
             |(swap_id, alpha, beta, peer, role)| db::CreatedSwap {
                 swap_id,
                 alpha,
@@ -194,5 +214,31 @@ pub mod db {
                 role,
             },
         )
+    }
+
+    pub mod tables {
+        use super::*;
+        use db::{tables, tables::IntoInsertable};
+
+        prop_compose! {
+            pub fn insertable_swap()(
+                local_swap_id in local_swap_id(),
+                role in role(),
+                peer in libp2p::peer_id(),
+            ) -> tables::InsertableSwap {
+                tables::InsertableSwap::new(local_swap_id, peer, role)
+            }
+        }
+
+        prop_compose! {
+            pub fn insertable_halight()(
+                created in halight::created_swap(),
+                swap_id in any::<i32>(),
+                role in role(),
+                side in side(),
+            ) -> tables::InsertableHalight {
+                created.into_insertable(swap_id, role, side)
+            }
+        }
     }
 }
