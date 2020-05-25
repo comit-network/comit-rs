@@ -1,14 +1,19 @@
+pub mod halight;
+pub mod halight_herc20;
+pub mod herc20;
+pub mod herc20_halight;
 pub mod route_factory;
 pub mod routes;
 #[macro_use]
 pub mod impl_serialize_http;
 pub mod action;
 mod problem;
+mod protocol;
 mod swap_resource;
 
 pub use self::{
     problem::*,
-    routes::{AliceHerc20HalightBitcoinSwap, BobHerc20HalightBitcoinSwap},
+    protocol::{AliceSwap, BobSwap},
     swap_resource::{OnFail, SwapParameters, SwapResource, SwapStatus},
 };
 use crate::swap_protocols::actions::lnd::Chain;
@@ -523,6 +528,10 @@ impl From<asset::Erc20> for HttpAsset {
         HttpAsset::Erc20(erc20)
     }
 }
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("action not found")]
+pub struct ActionNotFound;
 
 #[cfg(test)]
 mod tests {

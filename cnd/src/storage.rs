@@ -6,7 +6,9 @@ use crate::{
         NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHerc20RedeemIdentity,
         NoHerc20RefundIdentity, NoSecretHash, Sqlite,
     },
-    http_api, respawn,
+    http_api,
+    http_api::{halight::HalightFinalized, herc20::Herc20Finalized},
+    respawn,
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get, LocalSwapId},
 };
@@ -147,11 +149,15 @@ impl LoadAll<respawn::Swap<comit::Protocol, comit::Protocol>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::AliceHerc20HalightBitcoinSwap> for Storage {
+impl Load<http_api::AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>>
+    for Storage
+{
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::AliceHerc20HalightBitcoinSwap> {
+    ) -> anyhow::Result<
+        http_api::AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>,
+    > {
         use crate::db::schema::swaps;
 
         let alpha_state = self.herc20_states.get(&swap_id).await?;
@@ -183,10 +189,14 @@ impl Load<http_api::AliceHerc20HalightBitcoinSwap> for Storage {
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                Ok(http_api::AliceHerc20HalightBitcoinSwap::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                Herc20Finalized,
+                HalightFinalized,
+            >::Finalized {
+                alpha_finalized: Herc20Finalized {
                     herc20_asset,
-                    halight_asset,
                     herc20_refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -199,6 +209,9 @@ impl Load<http_api::AliceHerc20HalightBitcoinSwap> for Storage {
                         .into(),
                     herc20_expiry: herc20.expiry.0.into(),
                     herc20_state: alpha_state,
+                },
+                beta_finalized: HalightFinalized {
+                    halight_asset,
                     halight_refund_identity: halight
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -209,23 +222,122 @@ impl Load<http_api::AliceHerc20HalightBitcoinSwap> for Storage {
                         .0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
                     halight_state: beta_state,
-                    secret,
-                })
-            }
-            _ => Ok(http_api::AliceHerc20HalightBitcoinSwap::Created {
-                herc20_asset,
-                halight_asset,
+                },
+                secret,
+            }),
+            _ => Ok(http_api::AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                Herc20Finalized,
+                HalightFinalized,
+            >::Created {
+                alpha_created: herc20_asset,
+                beta_created: halight_asset,
             }),
         }
     }
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::BobHerc20HalightBitcoinSwap> for Storage {
+impl Load<http_api::AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>>
+    for Storage
+{
     async fn load(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::BobHerc20HalightBitcoinSwap> {
+    ) -> anyhow::Result<
+        http_api::AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>,
+    > {
+        use crate::db::schema::swaps;
+
+        let alpha_state = self.herc20_states.get(&swap_id).await?;
+        let beta_state = self.halight_states.get(&swap_id).await?;
+
+        let (halight, herc20) = self
+            .db
+            .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
+                let key = Text(swap_id);
+
+                let swap: Swap = swaps::table
+                    .filter(swaps::local_swap_id.eq(key))
+                    .first(conn)?;
+
+                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
+
+                Ok((halight, herc20))
+            })
+            .await
+            .context(db::Error::SwapNotFound)?;
+
+        let herc20_asset = asset::Erc20 {
+            quantity: herc20.amount.0.into(),
+            token_contract: herc20.token_contract.0.into(),
+        };
+        let halight_asset = halight.amount.0.into();
+
+        let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
+
+        match (alpha_state, beta_state) {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
+                asset::Bitcoin,
+                asset::Erc20,
+                HalightFinalized,
+                Herc20Finalized,
+            >::Finalized {
+                beta_finalized: Herc20Finalized {
+                    herc20_asset,
+                    herc20_refund_identity: herc20
+                        .refund_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0
+                        .into(),
+                    herc20_redeem_identity: herc20
+                        .redeem_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0
+                        .into(),
+                    herc20_expiry: herc20.expiry.0.into(),
+                    herc20_state: alpha_state,
+                },
+                alpha_finalized: HalightFinalized {
+                    halight_asset,
+                    halight_refund_identity: halight
+                        .refund_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0,
+                    halight_redeem_identity: halight
+                        .redeem_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0,
+                    cltv_expiry: halight.cltv_expiry.0.into(),
+                    halight_state: beta_state,
+                },
+                secret,
+            }),
+            _ => Ok(http_api::AliceSwap::<
+                asset::Bitcoin,
+                asset::Erc20,
+                HalightFinalized,
+                Herc20Finalized,
+            >::Created {
+                beta_created: herc20_asset,
+                alpha_created: halight_asset,
+            }),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<http_api::BobSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>>
+    for Storage
+{
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<
+        http_api::BobSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>,
+    > {
         use crate::db::schema::swaps;
 
         let alpha_state = self.herc20_states.get(&swap_id).await?;
@@ -256,10 +368,14 @@ impl Load<http_api::BobHerc20HalightBitcoinSwap> for Storage {
         let halight_asset = halight.amount.0.into();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => {
-                Ok(http_api::BobHerc20HalightBitcoinSwap::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                Herc20Finalized,
+                HalightFinalized,
+            >::Finalized {
+                alpha_finalized: Herc20Finalized {
                     herc20_asset,
-                    halight_asset,
                     herc20_refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -272,6 +388,9 @@ impl Load<http_api::BobHerc20HalightBitcoinSwap> for Storage {
                         .into(),
                     herc20_expiry: herc20.expiry.0.into(),
                     herc20_state: alpha_state,
+                },
+                beta_finalized: HalightFinalized {
+                    halight_asset,
                     halight_refund_identity: halight
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -282,12 +401,106 @@ impl Load<http_api::BobHerc20HalightBitcoinSwap> for Storage {
                         .0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
                     halight_state: beta_state,
-                    secret_hash: secret_hash.0,
-                })
-            }
-            _ => Ok(http_api::BobHerc20HalightBitcoinSwap::Created {
-                herc20_asset,
-                halight_asset,
+                },
+                secret_hash: secret_hash.0,
+            }),
+            _ => Ok(http_api::BobSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                Herc20Finalized,
+                HalightFinalized,
+            >::Created {
+                alpha_created: herc20_asset,
+                beta_created: halight_asset,
+            }),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl Load<http_api::BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>>
+    for Storage
+{
+    async fn load(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<
+        http_api::BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>,
+    > {
+        use crate::db::schema::swaps;
+
+        let alpha_state = self.halight_states.get(&swap_id).await?;
+        let beta_state = self.herc20_states.get(&swap_id).await?;
+
+        let (halight, herc20, secret_hash) = self
+            .db
+            .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
+                let key = Text(swap_id);
+
+                let swap: Swap = swaps::table
+                    .filter(swaps::local_swap_id.eq(key))
+                    .first(conn)?;
+
+                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
+                let secret_hash: SecretHash = SecretHash::belonging_to(&swap).first(conn)?;
+
+                Ok((halight, herc20, secret_hash.secret_hash))
+            })
+            .await
+            .context(db::Error::SwapNotFound)?;
+
+        let herc20_asset = asset::Erc20 {
+            quantity: herc20.amount.0.into(),
+            token_contract: herc20.token_contract.0.into(),
+        };
+        let halight_asset = halight.amount.0.into();
+
+        match (alpha_state, beta_state) {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
+                asset::Bitcoin,
+                asset::Erc20,
+                HalightFinalized,
+                Herc20Finalized,
+            >::Finalized {
+                alpha_finalized: HalightFinalized {
+                    halight_asset,
+                    halight_refund_identity: halight
+                        .refund_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0,
+                    halight_redeem_identity: halight
+                        .redeem_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0,
+                    cltv_expiry: halight.cltv_expiry.0.into(),
+                    halight_state: alpha_state,
+                },
+                beta_finalized: Herc20Finalized {
+                    herc20_asset,
+                    herc20_refund_identity: herc20
+                        .refund_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0
+                        .into(),
+                    herc20_redeem_identity: herc20
+                        .redeem_identity
+                        .ok_or(db::Error::IdentityNotSet)?
+                        .0
+                        .into(),
+                    herc20_expiry: herc20.expiry.0.into(),
+                    herc20_state: beta_state,
+                },
+                secret_hash: secret_hash.0,
+            }),
+            _ => Ok(http_api::BobSwap::<
+                asset::Bitcoin,
+                asset::Erc20,
+                HalightFinalized,
+                Herc20Finalized,
+            >::Created {
+                alpha_created: halight_asset,
+                beta_created: herc20_asset,
             }),
         }
     }

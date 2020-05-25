@@ -1,7 +1,9 @@
 use crate::{
     db,
-    http_api::routes::{
-        rfc003::handlers::{post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation},
+    http_api::{
+        routes::rfc003::handlers::{
+            post_swap::UnsupportedSwap, InvalidAction, InvalidActionInvocation,
+        },
         ActionNotFound,
     },
     network::comit::SwapExists,

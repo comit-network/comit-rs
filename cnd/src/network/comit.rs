@@ -1,16 +1,13 @@
 use crate::{
-    asset,
     db::CreatedSwap,
-    ethereum::ChainId,
     identity,
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{
         hbit, herc20,
-        ledger::{self},
-        rfc003::{create_swap::HtlcParams, DeriveSecret, Secret, SecretHash},
+        rfc003::{DeriveSecret, SecretHash},
         Herc20HalightBitcoinCreateSwapParams, LocalSwapId, Role, SharedSwapId,
     },
-    timestamp::{RelativeTime, Timestamp},
+    timestamp::Timestamp,
 };
 use ::comit::network::{
     oneshot_behaviour,
@@ -264,35 +261,6 @@ impl fmt::Display for SwapExists {
         // This impl is required to build but want to use a static string for
         // this when returning it via the REST API.
         write!(f, "")
-    }
-}
-
-#[derive(Clone, Debug)]
-pub struct FinalizedSwap {
-    pub alpha_asset: asset::Erc20,
-    pub beta_asset: asset::Bitcoin,
-    pub alpha_ledger_refund_identity: identity::Ethereum,
-    pub alpha_ledger_redeem_identity: identity::Ethereum,
-    pub beta_ledger_refund_identity: identity::Lightning,
-    pub beta_ledger_redeem_identity: identity::Lightning,
-    pub alpha_expiry: Timestamp,
-    pub beta_expiry: RelativeTime,
-    pub swap_id: LocalSwapId,
-    pub secret_hash: SecretHash,
-    pub secret: Option<Secret>,
-    pub role: Role,
-}
-
-impl FinalizedSwap {
-    pub fn herc20_params(&self) -> HtlcParams<ledger::Ethereum, asset::Erc20, identity::Ethereum> {
-        HtlcParams {
-            asset: self.alpha_asset.clone(),
-            ledger: ledger::Ethereum::new(ChainId::regtest()),
-            redeem_identity: self.alpha_ledger_redeem_identity,
-            refund_identity: self.alpha_ledger_refund_identity,
-            expiry: self.alpha_expiry,
-            secret_hash: self.secret_hash,
-        }
     }
 }
 
@@ -573,6 +541,7 @@ mod tests {
         lightning,
         network::{test_swarm, DialInformation},
     };
+    use comit::{asset, RelativeTime};
     use digest::Digest;
     use futures::future;
     use libp2p::{multiaddr::Multiaddr, PeerId};
