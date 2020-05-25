@@ -229,10 +229,7 @@ impl<T> Swaps<T> {
 
     /// Either role finalizes a swap that was in the communication phase
     /// This also proceeds with clean up from the various _pending_ stores.
-    pub fn finalize_swap(
-        &mut self,
-        shared_swap_id: &SharedSwapId,
-    ) -> Result<(LocalSwapId, LocalData), Error> {
+    pub fn finalize_swap(&mut self, shared_swap_id: &SharedSwapId) -> Result<LocalSwapId, Error> {
         let local_swap_id = match self.swap_ids.iter().find_map(|(key, value)| {
             if *value == *shared_swap_id {
                 Some(key)
@@ -244,12 +241,7 @@ impl<T> Swaps<T> {
             None => return Err(Error::NotFound),
         };
 
-        let data = match self.swaps.get(&local_swap_id) {
-            Some(create_params) => create_params,
-            None => return Err(Error::NotFound),
-        };
-
-        Ok((*local_swap_id, *data))
+        Ok(*local_swap_id)
     }
 
     /// Remove all pending (not finalized) swap older than `older_than`

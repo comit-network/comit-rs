@@ -264,7 +264,7 @@ impl fmt::Display for SwapExists {
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Message>> for Comit {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<secret_hash::Message>) {
-        let (peer, swap_id) = match event {
+        let option = match event {
             oneshot_behaviour::OutEvent::Received {
                 peer,
                 message:
@@ -275,14 +275,20 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
             } => {
                 self.remote_data_insert(swap_id.clone(), SecretHash::from(secret_hash));
 
-                let state = self
-                    .communication_states
-                    .get_mut(&swap_id)
-                    .expect("must exist");
-
-                state.secret_hash_sent_or_received = true;
-
-                (peer, swap_id)
+                match self.communication_states.get_mut(&swap_id) {
+                    Some(state) => {
+                        state.secret_hash_sent_or_received = true;
+                        Some((peer, swap_id))
+                    }
+                    None => {
+                        tracing::warn!(
+                            "Secret hash received for unknown swap {} from {}",
+                            swap_id,
+                            peer
+                        );
+                        None
+                    }
+                }
             }
             oneshot_behaviour::OutEvent::Sent {
                 peer,
@@ -295,15 +301,17 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                 let state = self
                     .communication_states
                     .get_mut(&swap_id)
-                    .expect("should exist");
+                    .expect("Swap should be known as we sent a message about it");
 
                 state.secret_hash_sent_or_received = true;
 
-                (peer, swap_id)
+                Some((peer, swap_id))
             }
         };
 
-        self.finalize(peer, swap_id)
+        if let Some((peer, swap_id)) = option {
+            self.finalize(peer, swap_id)
+        }
     }
 }
 
@@ -349,12 +357,18 @@ impl NetworkBehaviourEventProcess<announce::behaviour::BehaviourOutEvent> for Co
                 swap_digest,
                 swap_id: shared_swap_id,
             } => {
-                let (_local_swap_id, data) = self
+                if let Some((_local_swap_id, data)) = self
                     .swaps
                     .move_pending_confirmation_to_communicate(&swap_digest, shared_swap_id)
-                    .expect("we must know about this digest");
-
-                self.communicate(shared_swap_id, peer, data);
+                {
+                    self.communicate(shared_swap_id, peer, data);
+                } else {
+                    tracing::warn!(
+                        "Confirmation received for unknown swap {} from {}",
+                        shared_swap_id,
+                        peer
+                    );
+                }
             }
             announce::behaviour::BehaviourOutEvent::Error { peer, error } => {
                 tracing::warn!(
@@ -387,7 +401,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<ethereum_identity:
                 let state = self
                     .communication_states
                     .get_mut(&swap_id)
-                    .expect("this should exist");
+                    .expect("Swap should be known as we sent a message about it");
 
                 state.ethereum_identity_sent = true;
 
@@ -428,7 +442,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 let state = self
                     .communication_states
                     .get_mut(&swap_id)
-                    .expect("this should exist");
+                    .expect("Swap should be known as we sent a message about it");
 
                 state.lightning_identity_sent = true;
 
@@ -442,57 +456,53 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
 
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>> for Comit {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<finalize::Message>) {
-        let (_, swap_id) = match event {
+        let swap_id = match event {
             oneshot_behaviour::OutEvent::Received {
                 peer,
                 message: finalize::Message { swap_id },
             } => {
-                let state = self
-                    .communication_states
-                    .get_mut(&swap_id)
-                    .expect("this should exist");
+                if let Some(state) = self.communication_states.get_mut(&swap_id) {
+                    state.received_finalized = true;
 
-                state.received_finalized = true;
-
-                (peer, swap_id)
+                    Some(swap_id)
+                } else {
+                    tracing::warn!(
+                        "finalize message received for unknown swap {} from {}",
+                        swap_id,
+                        peer
+                    );
+                    None
+                }
             }
             oneshot_behaviour::OutEvent::Sent {
-                peer,
+                peer: _,
                 message: finalize::Message { swap_id },
             } => {
                 let state = self
                     .communication_states
                     .get_mut(&swap_id)
-                    .expect("this should exist");
+                    .expect("Swap should be known as we sent a message about it");
 
                 state.sent_finalized = true;
 
-                (peer, swap_id)
+                Some(swap_id)
             }
         };
 
-        let state = self
-            .communication_states
-            .get_mut(&swap_id)
-            .expect("this should exist");
-
-        if state.sent_finalized && state.received_finalized {
-            tracing::info!("Swap {} is finalized.", swap_id);
-            let (local_swap_id, _local_data) = self
-                .swaps
-                .finalize_swap(&swap_id)
-                .expect("swap should be known");
-
-            let remote_data = self
-                .remote_data
-                .get(&swap_id)
-                .cloned()
-                .expect("valid remote data");
-
-            self.events.push_back(BehaviourOutEvent {
-                local_swap_id,
-                remote_data,
-            });
+        if let Some(swap_id) = swap_id {
+            if let Some(state) = self.communication_states.get_mut(&swap_id) {
+                if state.sent_finalized && state.received_finalized {
+                    tracing::info!("Swap {} is finalized.", swap_id);
+                    if let Ok(local_swap_id) = self.swaps.finalize_swap(&swap_id) {
+                        if let Some(remote_data) = self.remote_data.get(&swap_id).cloned() {
+                            self.events.push_back(BehaviourOutEvent {
+                                local_swap_id,
+                                remote_data,
+                            });
+                        }
+                    }
+                }
+            }
         }
     }
 }
