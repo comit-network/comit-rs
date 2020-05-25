@@ -40,7 +40,7 @@
         "glob": "^7.1.6",
         "jasmine": "^3.5.0",
         "jest": "^26.0.1",
-        "log4js": "^6.2.1",
+        "log4js": "^6.3.0",
         "p-timeout": "^3.2.0",
         "prettier": "^2.0.5",
         "process-exists": "^4.0.0",
