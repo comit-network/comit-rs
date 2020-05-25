@@ -1,6 +1,6 @@
 /**
- * @ledger ethereum
  * @ledger lightning
+ * @ledger ethereum
  */
 
 import SwapFactory from "../src/actors/swap_factory";
@@ -8,23 +8,23 @@ import { sleep } from "../src/utils";
 import { twoActorTest } from "../src/actor_test";
 
 it(
-    "herc20-ethereum-erc20-halight-lightning-bitcoin-alice-redeems-bob-redeems",
+    "halight-lightning-bitcoin-herc20-ethereum-erc20-alice-redeems-bob-redeems",
     twoActorTest(async ({ alice, bob }) => {
         const bodies = (await SwapFactory.newSwap(alice, bob))
-            .herc20EthereumErc20HalightLightningBitcoin;
+            .halightLightningBitcoinHerc20EthereumErc20;
 
-        await alice.createHerc20HalightSwap(bodies.alice);
+        await alice.createHalightHerc20Swap(bodies.alice);
         await sleep(500);
-        await bob.createHerc20HalightSwap(bodies.bob);
+        await bob.createHalightHerc20Swap(bodies.bob);
 
-        await alice.init();
-
-        await alice.deploy();
-        await alice.fund();
+        await bob.init();
 
         // we must not wait for bob's funding because `sendpayment` on a hold-invoice is a blocking call.
         // tslint:disable-next-line:no-floating-promises
-        bob.fund();
+        alice.fund();
+
+        await bob.deploy();
+        await bob.fund();
 
         await alice.redeem();
         await bob.redeem();
