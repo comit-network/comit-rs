@@ -22,21 +22,21 @@ pub struct HbitHerc20SwapParams {
     pub peer: DialInformation,
     #[digest(ignore)]
     pub bitcoin_identity: identity::Bitcoin,
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "e6ca")]
     pub bitcoin_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "052d")]
     pub bitcoin_amount: asset::Bitcoin,
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "3003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
-    #[digest(ignore)]
+    #[digest(prefix = "41f4")]
     pub alpha_protocol: SwapProtocol,
-    #[digest(ignore)]
+    #[digest(prefix = "be74")]
     pub beta_protocol: SwapProtocol,
 }
 
@@ -72,21 +72,21 @@ pub struct Herc20HbitSwapParams {
     pub peer: DialInformation,
     #[digest(ignore)]
     pub ethereum_identity: identity::Ethereum,
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
     #[digest(ignore)]
     pub bitcoin_identity: identity::Bitcoin,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "e6ca")]
     pub bitcoin_expiry: Timestamp,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "052d")]
     pub bitcoin_amount: asset::Bitcoin,
-    #[digest(ignore)]
+    #[digest(prefix = "41f4")]
     pub alpha_protocol: SwapProtocol,
-    #[digest(ignore)]
+    #[digest(prefix = "be74")]
     pub beta_protocol: SwapProtocol,
 }
 

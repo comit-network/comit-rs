@@ -25,18 +25,18 @@ impl ToDigestInput for SwapProtocol {
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
 pub struct Herc20Halight {
-    #[digest(prefix = "2001")]
+    #[digest(prefix = "99ef")]
     pub ethereum_expiry: Timestamp,
-    #[digest(prefix = "2002")]
+    #[digest(prefix = "f0ec")]
     pub erc20_amount: asset::Erc20Quantity,
-    #[digest(prefix = "2003")]
+    #[digest(prefix = "944a")]
     pub token_contract: identity::Ethereum,
-    #[digest(prefix = "3001")]
+    #[digest(prefix = "d07f")]
     pub lightning_cltv_expiry: RelativeTime,
-    #[digest(prefix = "3002")]
+    #[digest(prefix = "1475")]
     pub lightning_amount: asset::Bitcoin,
-    #[digest(ignore)]
+    #[digest(prefix = "41f4")]
     pub alpha_protocol: SwapProtocol,
-    #[digest(ignore)]
+    #[digest(prefix = "be74")]
     pub beta_protocol: SwapProtocol,
 }
