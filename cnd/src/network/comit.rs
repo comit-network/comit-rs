@@ -20,7 +20,6 @@ use libp2p::{
 };
 use std::{
     collections::{HashMap, VecDeque},
-    fmt,
     task::{Context, Poll},
 };
 use swaps::Swaps;
@@ -246,17 +245,6 @@ impl Comit {
                     .send(peer, finalize::Message::new(shared_swap_id));
             }
         }
-    }
-}
-
-#[derive(thiserror::Error, Clone, Copy, Debug)]
-pub struct SwapExists;
-
-impl fmt::Display for SwapExists {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        // This impl is required to build but want to use a static string for
-        // this when returning it via the REST API.
-        write!(f, "")
     }
 }
 
