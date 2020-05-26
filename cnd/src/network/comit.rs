@@ -50,7 +50,7 @@ pub struct Comit {
     #[behaviour(ignore)]
     events: VecDeque<BehaviourOutEvent>,
     #[behaviour(ignore)]
-    swaps: Swaps<ReplySubstream<NegotiatedSubstream>>,
+    swaps: Swaps,
     #[behaviour(ignore)]
     remote_data: HashMap<SharedSwapId, RemoteData>,
     #[behaviour(ignore)]

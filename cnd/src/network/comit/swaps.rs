@@ -19,10 +19,12 @@ pub enum Error {
     InternalFailure,
 }
 
-/// Tracks the state of a swap in the communication phase, T is
-/// ReplySubstream<NegotiatedSubstream>
+/// Tracks the state of a swap in the communication phase.
+///
+/// We use a type parameter for the substream type so we can write unit tests
+/// without creating actual substreams.
 #[derive(Debug)]
-pub struct Swaps<T> {
+pub struct Swaps<T = ReplySubstream<NegotiatedSubstream>> {
     /// In role of Alice; swaps exist in here once a swap is created by Alice
     /// (and up until an announce confirmation is received from Bob).
     pending_confirmation: HashMap<SwapDigest, LocalSwapId>,
