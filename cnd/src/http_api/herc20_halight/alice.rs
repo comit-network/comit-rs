@@ -1,7 +1,6 @@
 use crate::{
+    http_api,
     http_api::{
-        halight::HalightFinalized,
-        herc20::Herc20Finalized,
         protocol::{
             GetAlphaEvents, GetAlphaParams, GetBetaEvents, GetBetaParams, Halight, Herc20,
             LedgerEvents,
@@ -24,17 +23,45 @@ use comit::{
     SecretHash,
 };
 
-impl From<AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>> for Herc20 {
+impl
+    From<
+        AliceSwap<
+            asset::Erc20,
+            asset::Bitcoin,
+            http_api::herc20::Finalized,
+            http_api::halight::Finalized,
+        >,
+    > for Herc20
+{
     fn from(
-        from: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>,
+        from: AliceSwap<
+            asset::Erc20,
+            asset::Bitcoin,
+            http_api::herc20::Finalized,
+            http_api::halight::Finalized,
+        >,
     ) -> Self {
         match from {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Created {
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Created {
                 alpha_created: herc20_asset,
                 ..
             }
-            | AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                alpha_finalized: Herc20Finalized { herc20_asset, .. },
+            | AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                alpha_finalized:
+                    http_api::herc20::Finalized {
+                        asset: herc20_asset,
+                        ..
+                    },
                 ..
             } => Self {
                 protocol: "herc20".to_owned(),
@@ -45,17 +72,45 @@ impl From<AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinali
     }
 }
 
-impl From<AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>> for Halight {
+impl
+    From<
+        AliceSwap<
+            asset::Erc20,
+            asset::Bitcoin,
+            http_api::herc20::Finalized,
+            http_api::halight::Finalized,
+        >,
+    > for Halight
+{
     fn from(
-        from: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>,
+        from: AliceSwap<
+            asset::Erc20,
+            asset::Bitcoin,
+            http_api::herc20::Finalized,
+            http_api::halight::Finalized,
+        >,
     ) -> Self {
         match from {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Created {
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Created {
                 beta_created: halight_asset,
                 ..
             }
-            | AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                beta_finalized: HalightFinalized { halight_asset, .. },
+            | AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                beta_finalized:
+                    http_api::halight::Finalized {
+                        asset: halight_asset,
+                        ..
+                    },
                 ..
             } => Self {
                 protocol: "halight".to_owned(),
@@ -65,55 +120,127 @@ impl From<AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinali
     }
 }
 
-impl GetAlphaParams for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl GetAlphaParams
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = Herc20;
     fn get_alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl GetAlphaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl GetAlphaEvents
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     fn get_alpha_events(&self) -> Option<LedgerEvents> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                alpha_finalized: Herc20Finalized { herc20_state, .. },
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Created {
+                ..
+            } => None,
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                alpha_finalized:
+                    http_api::herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
                 ..
             } => Some(From::<herc20::State>::from(herc20_state.clone())),
         }
     }
 }
 
-impl GetBetaParams for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl GetBetaParams
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = Halight;
     fn get_beta_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl GetBetaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl GetBetaEvents
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     fn get_beta_events(&self) -> Option<LedgerEvents> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                beta_finalized: HalightFinalized { halight_state, .. },
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Created {
+                ..
+            } => None,
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                beta_finalized:
+                    http_api::halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
                 ..
             } => Some(From::<halight::State>::from(*halight_state)),
         }
     }
 }
 
-impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl InitAction
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = lnd::AddHoldInvoice;
 
     fn init_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
                 beta_finalized:
-                    HalightFinalized {
-                        halight_state: halight::State::None,
-                        halight_asset,
-                        halight_redeem_identity,
+                    http_api::halight::Finalized {
+                        state: halight::State::None,
+                        asset: halight_asset,
+                        redeem_identity: halight_redeem_identity,
                         cltv_expiry,
                         ..
                     },
@@ -143,23 +270,35 @@ impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, Hal
     }
 }
 
-impl DeployAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl DeployAction
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = ethereum::DeployContract;
 
     fn deploy_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                beta_finalized:
-                    HalightFinalized {
-                        halight_state: halight::State::Opened(_),
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                alpha_finalized:
+                    http_api::herc20::Finalized {
+                        asset: herc20_asset,
+                        refund_identity: herc20_refund_identity,
+                        redeem_identity: herc20_redeem_identity,
+                        expiry: herc20_expiry,
                         ..
                     },
-                alpha_finalized:
-                    Herc20Finalized {
-                        herc20_asset,
-                        herc20_refund_identity,
-                        herc20_redeem_identity,
-                        herc20_expiry,
+                beta_finalized:
+                    http_api::halight::Finalized {
+                        state: halight::State::Opened(_),
                         ..
                     },
                 secret,
@@ -187,21 +326,33 @@ impl DeployAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, H
     }
 }
 
-impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl FundAction
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = ethereum::CallContract;
 
     fn fund_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
-                beta_finalized:
-                    HalightFinalized {
-                        halight_state: halight::State::Opened(_),
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
+                alpha_finalized:
+                    http_api::herc20::Finalized {
+                        state: herc20::State::Deployed { htlc_location, .. },
+                        asset: herc20_asset,
                         ..
                     },
-                alpha_finalized:
-                    Herc20Finalized {
-                        herc20_state: herc20::State::Deployed { htlc_location, .. },
-                        herc20_asset,
+                beta_finalized:
+                    http_api::halight::Finalized {
+                        state: halight::State::Opened(_),
                         ..
                     },
                 ..
@@ -232,16 +383,28 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, Hal
     }
 }
 
-impl RedeemAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl RedeemAction
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = lnd::SettleInvoice;
 
     fn redeem_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
                 beta_finalized:
-                    HalightFinalized {
-                        halight_state: halight::State::Accepted(_),
-                        halight_redeem_identity,
+                    http_api::halight::Finalized {
+                        state: halight::State::Accepted(_),
+                        redeem_identity: halight_redeem_identity,
                         ..
                     },
                 secret,
@@ -264,21 +427,33 @@ impl RedeemAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, H
     }
 }
 
-impl RefundAction for AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> {
+impl RefundAction
+    for AliceSwap<
+        asset::Erc20,
+        asset::Bitcoin,
+        http_api::herc20::Finalized,
+        http_api::halight::Finalized,
+    >
+{
     type Output = ethereum::CallContract;
 
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized>::Finalized {
+            AliceSwap::<
+                asset::Erc20,
+                asset::Bitcoin,
+                http_api::herc20::Finalized,
+                http_api::halight::Finalized,
+            >::Finalized {
                 alpha_finalized:
-                    Herc20Finalized {
-                        herc20_state: herc20::State::Funded { htlc_location, .. },
-                        herc20_expiry,
+                    http_api::herc20::Finalized {
+                        state: herc20::State::Funded { htlc_location, .. },
+                        expiry: herc20_expiry,
                         ..
                     },
                 beta_finalized:
-                    HalightFinalized {
-                        halight_state: halight::State::Accepted(_),
+                    http_api::halight::Finalized {
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 ..
