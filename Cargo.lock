@@ -2389,9 +2389,9 @@ dependencies = [
 
 [[package]]
 name = "paste"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "678f27e19361472a23717f11d229a7522ef64605baf0715c896a94b8b6b13a06"
+checksum = "3431e8f72b90f8a7af91dec890d9814000cb371258e0ec7370d93e085361f531"
 dependencies = [
  "paste-impl",
  "proc-macro-hack",
@@ -2399,9 +2399,9 @@ dependencies = [
 
 [[package]]
 name = "paste-impl"
-version = "0.1.13"
+version = "0.1.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "149089128a45d8e377677b08873b4bad2a56618f80e4f28a83862ba250994a30"
+checksum = "25af5fc872ba284d8d84608bf8a0fa9b5376c96c23f503b007dfd9e34dde5606"
 dependencies = [
  "proc-macro-hack",
  "proc-macro2 1.0.17",
