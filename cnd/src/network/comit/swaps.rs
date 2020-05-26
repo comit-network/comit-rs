@@ -310,9 +310,12 @@ mod tests {
     use crate::{
         asset::{self, ethereum::FromWei},
         identity,
-        network::LocalData,
+        network::comit::LocalData,
     };
-    use ::comit::network::{protocols::announce::SwapDigest, swap_digest::Herc20Halight};
+    use ::comit::network::{
+        protocols::announce::SwapDigest,
+        swap_digest::{Herc20Halight, SwapProtocol},
+    };
     use digest::Digest;
 
     // Usage of this function relies on the fact that token_contract is
@@ -324,6 +327,8 @@ mod tests {
             token_contract: identity::Ethereum::random(),
             lightning_cltv_expiry: 12345.into(),
             lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+            alpha_protocol: SwapProtocol::Herc20,
+            beta_protocol: SwapProtocol::Halight,
         }
         .digest()
     }

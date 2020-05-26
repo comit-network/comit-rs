@@ -588,7 +588,10 @@ mod tests {
         asset::ethereum::FromWei,
         network::{test_swarm, DialInformation},
     };
-    use comit::{asset, network::swap_digest::Herc20Halight};
+    use comit::{
+        asset,
+        network::swap_digest::{Herc20Halight, SwapProtocol},
+    };
     use digest::Digest;
     use futures::future;
     use rand::thread_rng;
@@ -623,11 +626,13 @@ mod tests {
         };
 
         let digest = Herc20Halight {
-            ethereum_absolute_expiry: 12345.into(),
+            ethereum_expiry: 12345.into(),
             erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             token_contract: identity::Ethereum::random(),
             lightning_cltv_expiry: 12345.into(),
             lightning_amount: asset::Bitcoin::from_sat(1_000_000_000),
+            alpha_protocol: SwapProtocol::Herc20,
+            beta_protocol: SwapProtocol::Halight,
         }
         .digest();
 

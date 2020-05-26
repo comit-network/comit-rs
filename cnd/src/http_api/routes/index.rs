@@ -6,7 +6,7 @@ use crate::{
     network::{Identities, ListenAddresses},
     swap_protocols::{halight, herc20, ledger, Facade, LocalSwapId, Rfc003Facade, Role},
 };
-use comit::network::swap_digest;
+use comit::network::{swap_digest, swap_digest::SwapProtocol};
 use digest::Digest;
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -132,6 +132,8 @@ impl From<Body<Herc20EthereumErc20, HalightLightningBitcoin>> for swap_digest::H
             token_contract: body.alpha.contract_address,
             lightning_cltv_expiry: body.beta.cltv_expiry.into(),
             lightning_amount: body.beta.amount.0,
+            alpha_protocol: SwapProtocol::Herc20,
+            beta_protocol: SwapProtocol::Halight,
         }
     }
 }

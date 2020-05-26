@@ -5,9 +5,10 @@ use crate::{
     network::{DialInformation, Identities, Swarm},
     storage::{Load, LoadAll, Storage},
     swap_protocols::{hbit, herc20, LocalSwapId, Role},
-    timestamp::Timestamp,
+    timestamp::{RelativeTime, Timestamp},
 };
 use ::comit::network::protocols::announce::SwapDigest;
+use comit::network::swap_digest::SwapProtocol;
 use digest::Digest;
 
 /// This represents the information available on a swap
@@ -33,6 +34,10 @@ pub struct HbitHerc20SwapParams {
     pub erc20_amount: asset::Erc20Quantity,
     #[digest(prefix = "3003")]
     pub token_contract: identity::Ethereum,
+    #[digest(ignore)]
+    pub alpha_protocol: SwapProtocol,
+    #[digest(ignore)]
+    pub beta_protocol: SwapProtocol,
 }
 
 impl From<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for HbitHerc20SwapParams {
@@ -52,6 +57,8 @@ impl From<CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap>> for HbitHerc20Swa
             ethereum_expiry: swap.beta.absolute_expiry.into(),
             erc20_amount: swap.beta.asset.quantity,
             token_contract: swap.beta.asset.token_contract,
+            alpha_protocol: SwapProtocol::Hbit,
+            beta_protocol: SwapProtocol::Herc20,
         }
     }
 }
@@ -77,6 +84,10 @@ pub struct Herc20HbitSwapParams {
     pub bitcoin_expiry: Timestamp,
     #[digest(prefix = "3002")]
     pub bitcoin_amount: asset::Bitcoin,
+    #[digest(ignore)]
+    pub alpha_protocol: SwapProtocol,
+    #[digest(ignore)]
+    pub beta_protocol: SwapProtocol,
 }
 
 impl From<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Herc20HbitSwapParams {
@@ -96,6 +107,8 @@ impl From<CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap>> for Herc20HbitSwa
             bitcoin_identity: swap.beta.identity,
             bitcoin_expiry: swap.beta.absolute_expiry.into(),
             bitcoin_amount: swap.beta.amount,
+            alpha_protocol: SwapProtocol::Herc20,
+            beta_protocol: SwapProtocol::Hbit,
         }
     }
 }
