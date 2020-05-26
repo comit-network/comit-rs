@@ -22,7 +22,7 @@ hex = "0.4"
 lazy_static = "1"
 levenshtein = "1"
 libp2p = { version = "0.18", default-features = false, features = ["tcp", "secio", "yamux", "mplex"] }
-lru = "0.4.4"
+lru = "0.4.5"
 num = "0.2"
 primitive-types = { version = "0.7.2", features = ["serde"] }
 rand = "0.7"
