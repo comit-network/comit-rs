@@ -59,6 +59,16 @@ fn main() -> anyhow::Result<()> {
     }
 
     crate::trace::init_tracing(settings.logging.level)?;
+    std::panic::set_hook(Box::new(|panic_info| {
+        tracing::error!(
+            "thread panicked at {}: {}",
+            panic_info.location().expect("location is always present"),
+            panic_info
+                .payload()
+                .downcast_ref::<String>()
+                .unwrap_or(&String::from("no panic message"))
+        )
+    }));
 
     let database = Sqlite::new_in_dir(&settings.data.dir)?;
 
