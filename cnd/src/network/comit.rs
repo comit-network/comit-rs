@@ -9,7 +9,6 @@ use crate::{
         },
         DialInformation, Identities,
     },
-    seed::RootSeed,
     LocalSwapId, SecretHash, SharedSwapId, Timestamp,
 };
 use libp2p::{
@@ -38,7 +37,7 @@ pub struct BehaviourOutEvent {
     pub remote_data: RemoteData,
 }
 
-#[derive(NetworkBehaviour, Debug)]
+#[derive(NetworkBehaviour, Debug, Default)]
 #[behaviour(out_event = "BehaviourOutEvent", poll_method = "poll")]
 pub struct Comit {
     announce: Announce,
@@ -56,8 +55,6 @@ pub struct Comit {
     remote_data: HashMap<SharedSwapId, RemoteData>,
     #[behaviour(ignore)]
     communication_states: HashMap<SharedSwapId, CommunicationState>,
-    #[behaviour(ignore)]
-    pub seed: RootSeed,
 }
 
 #[derive(Debug, Default)]
@@ -71,22 +68,6 @@ struct CommunicationState {
 }
 
 impl Comit {
-    pub fn new(seed: RootSeed) -> Self {
-        Comit {
-            announce: Default::default(),
-            secret_hash: Default::default(),
-            ethereum_identity: Default::default(),
-            lightning_identity: Default::default(),
-            bitcoin_identity: Default::default(),
-            finalize: Default::default(),
-            events: VecDeque::new(),
-            swaps: Default::default(),
-            remote_data: Default::default(),
-            communication_states: Default::default(),
-            seed,
-        }
-    }
-
     pub fn initiate_communication_for_alice(
         &mut self,
         local_swap_id: LocalSwapId,
@@ -654,16 +635,13 @@ mod tests {
     use comit::{asset, network::Herc20Halight};
     use digest::Digest;
     use futures::future;
-    use rand::thread_rng;
     use std::str::FromStr;
 
     #[tokio::test]
     async fn finalize_lightning_ethereum_swap_success() {
         // arrange
-        let (mut alice_swarm, _, alice_peer_id) =
-            test_swarm::new(Comit::new(RootSeed::new_random(thread_rng()).unwrap()));
-        let (mut bob_swarm, bob_addr, bob_peer_id) =
-            test_swarm::new(Comit::new(RootSeed::new_random(thread_rng()).unwrap()));
+        let (mut alice_swarm, _, alice_peer_id) = test_swarm::new(Comit::default());
+        let (mut bob_swarm, bob_addr, bob_peer_id) = test_swarm::new(Comit::default());
 
         let secret_hash = SecretHash::from_str(
             "bfbfbfbfbfbfbfbfbfbfbfbfbfbfbfbf\

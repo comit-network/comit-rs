@@ -263,7 +263,7 @@ impl ComitNode {
         Ok(Self {
             rfc003_comit: Rfc003Comit::new(known_headers),
             mdns: Mdns::new()?,
-            comit: Comit::new(seed),
+            comit: Comit::default(),
             bitcoin_connector,
             ethereum_connector,
             rfc003_alpha_ledger_states,
