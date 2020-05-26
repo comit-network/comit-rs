@@ -245,11 +245,7 @@ impl From<Body<Herc20, Hbit>> for swap_digest::Herc20Hbit {
     }
 }
 
-trait ToCreatedSwap<A, B> {
-    fn to_created_swap(&self, id: LocalSwapId) -> CreatedSwap<A, B>;
-}
-
-impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, Halight> {
+impl Body<Herc20, Halight> {
     fn to_created_swap(
         &self,
         swap_id: LocalSwapId,
@@ -270,28 +266,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, H
     }
 }
 
-impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, Herc20> {
-    fn to_created_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> CreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> {
-        let body = self.clone();
-
-        let alpha = halight::CreatedSwap::from(body.alpha);
-        let beta = herc20::CreatedSwap::from(body.beta);
-
-        CreatedSwap {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role.0,
-        }
-    }
-}
-
-impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit> {
+impl Body<Herc20, Hbit> {
     fn to_created_swap(
         &self,
         swap_id: LocalSwapId,
@@ -312,7 +287,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit
     }
 }
 
-impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20> {
+impl Body<Hbit, Herc20> {
     fn to_created_swap(
         &self,
         swap_id: LocalSwapId,
