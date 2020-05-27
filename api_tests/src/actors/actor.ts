@@ -1,5 +1,6 @@
 import {
     Cnd,
+    HalightLightningBitcoinHerc20EthereumErc20RequestBody,
     Herc20EthereumErc20HalightLightningBitcoinRequestBody,
     LedgerAction,
     Swap,
@@ -97,10 +98,10 @@ export class Actor {
      */
 
     /**
-     * Create a Swap
+     * Create a herc20-halight Swap
      * @param createSwapPayload
      */
-    public async createSwap(
+    public async createHerc20HalightSwap(
         createSwapPayload: Herc20EthereumErc20HalightLightningBitcoinRequestBody
     ) {
         this.alphaLedger = {
@@ -162,6 +163,85 @@ export class Actor {
         }
 
         const location = await this.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
+            createSwapPayload
+        );
+
+        this.swap = new Swap(
+            this.cnd,
+            location,
+            new SdkWallets({
+                ethereum: this.wallets.ethereum.inner,
+                lightning: this.wallets.lightning.inner,
+            })
+        );
+    }
+
+    /**
+     * Create a halight-herc20 Swap
+     * @param createSwapPayload
+     */
+    public async createHalightHerc20Swap(
+        createSwapPayload: HalightLightningBitcoinHerc20EthereumErc20RequestBody
+    ) {
+        this.alphaLedger = {
+            name: LedgerKind.Lightning,
+            network: createSwapPayload.alpha.network,
+        };
+        this.betaLedger = {
+            name: LedgerKind.Ethereum,
+            chain_id: createSwapPayload.beta.chain_id,
+        };
+        this.alphaAsset = {
+            name: AssetKind.Bitcoin,
+            quantity: createSwapPayload.alpha.amount,
+            ledger: LedgerKind.Lightning,
+        };
+        this.betaAsset = {
+            name: AssetKind.Erc20,
+            quantity: createSwapPayload.beta.amount,
+            ledger: LedgerKind.Ethereum,
+            tokenContract: createSwapPayload.beta.contract_address,
+        };
+
+        switch (this.name) {
+            case "alice": {
+                // Alice purchases beta asset with alpha asset
+                await this.setStartingBalance([
+                    this.alphaAsset,
+                    {
+                        ...this.betaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.betaAsset),
+                    BigInt(this.betaAsset.quantity)
+                );
+                break;
+            }
+            case "bob": {
+                // Bob purchases alpha asset with beta asset
+                await this.setStartingBalance([
+                    this.betaAsset,
+                    {
+                        ...this.alphaAsset,
+                        quantity: "0",
+                    },
+                ]);
+                this.expectedBalanceChanges.set(
+                    toKey(this.alphaAsset),
+                    BigInt(this.alphaAsset.quantity)
+                );
+                break;
+            }
+            default: {
+                throw new Error(
+                    `createSwap does not support the actor ${this.name} yet`
+                );
+            }
+        }
+
+        const location = await this.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
             createSwapPayload
         );
 

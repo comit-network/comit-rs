@@ -171,6 +171,8 @@ pub enum Error {
     SwapNotFound,
     #[error("identity is not set")]
     IdentityNotSet,
+    #[error("secret hash is not set")]
+    SecretHashNotSet,
 }
 
 /// Data required to create a swap.

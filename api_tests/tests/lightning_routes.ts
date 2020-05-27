@@ -37,21 +37,28 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-route-not-supported",
+        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (await SwapFactory.newSwap(alice, bob, true))
                 .halightLightningBitcoinHerc20EthereumErc20;
+
+            const expectedProblem = {
+                status: 400,
+                title: "lightning is not configured.",
+                detail:
+                    "lightning ledger is not properly configured, swap involving this ledger are not available.",
+            };
 
             await expect(
                 alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
                     bodies.alice
                 )
-            ).rejects.toThrow("Route not yet supported.");
+            ).rejects.toMatchObject(expectedProblem);
             await expect(
                 bob.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
                     bodies.bob
                 )
-            ).rejects.toThrow("Route not yet supported.");
+            ).rejects.toMatchObject(expectedProblem);
         })
     );
 

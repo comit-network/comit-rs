@@ -3,7 +3,7 @@ pub mod oneshot_protocol;
 pub mod protocols;
 pub mod swap_digest;
 
-use crate::{identity, SecretHash};
+use crate::SecretHash;
 use libp2p::{Multiaddr, PeerId};
 use std::fmt;
 
@@ -22,19 +22,17 @@ impl fmt::Display for DialInformation {
     }
 }
 
-/// All the data Alice learned from Bob during the communication phase of a
-/// herc20 <-> halight swap.
+/// Data Alice learned from Bob during the communication phase.
 #[derive(Clone, Copy, Debug)]
-pub struct WhatAliceLearnedFromBob {
-    pub redeem_ethereum_identity: identity::Ethereum,
-    pub refund_lightning_identity: identity::Lightning,
+pub struct WhatAliceLearnedFromBob<A, B> {
+    pub alpha_redeem_identity: A,
+    pub beta_refund_identity: B,
 }
 
-/// All the data Bob learned from Alice during the communication phase of a
-/// herc20 <-> halight swap.
+/// Data Bob learned from Alice during the communication phase.
 #[derive(Clone, Copy, Debug)]
-pub struct WhatBobLearnedFromAlice {
+pub struct WhatBobLearnedFromAlice<A, B> {
     pub secret_hash: SecretHash,
-    pub refund_ethereum_identity: identity::Ethereum,
-    pub redeem_lightning_identity: identity::Lightning,
+    pub alpha_refund_identity: A,
+    pub beta_redeem_identity: B,
 }
