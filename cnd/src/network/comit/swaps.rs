@@ -332,6 +332,7 @@ mod tests {
             shared_swap_id: Some(SharedSwapId::default()),
             ethereum_identity: Some(identity::Ethereum::random()),
             lightning_identity: Some(identity::Lightning::random()),
+            bitcoin_identity: None,
         }
     }
 

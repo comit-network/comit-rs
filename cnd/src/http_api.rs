@@ -1,7 +1,10 @@
 pub mod halight;
 pub mod halight_herc20;
+pub mod hbit;
+pub mod hbit_herc20;
 pub mod herc20;
 pub mod herc20_halight;
+pub mod herc20_hbit;
 pub mod route_factory;
 pub mod routes;
 #[macro_use]
@@ -252,6 +255,19 @@ impl<'de> Deserialize<'de> for Http<PeerId> {
         let peer_id = value.parse().map_err(D::Error::custom)?;
 
         Ok(Http(peer_id))
+    }
+}
+
+impl<'de> Deserialize<'de> for Http<bitcoin::Address> {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let address = String::deserialize(deserializer)?;
+        let address = bitcoin::Address::from_str(address.as_str())
+            .map_err(<D as Deserializer<'de>>::Error::custom)?;
+
+        Ok(Http(address))
     }
 }
 

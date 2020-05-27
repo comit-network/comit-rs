@@ -99,31 +99,41 @@ pub fn create(
         .and_then(http_api::routes::index::get_info);
 
     let herc20_halight_bitcoin = warp::post()
-        .and(warp::path!(
-            "swaps" / "herc20" / "ethereum" / "erc20" / "halight" / "lightning" / "bitcoin"
-        ))
+        .and(warp::path!("swaps" / "herc20" / "halight"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
         .and_then(http_api::routes::index::post_herc20_halight_bitcoin);
 
     let halight_bitcoin_herc20 = warp::post()
-        .and(warp::path!(
-            "swaps" / "halight" / "lightning" / "bitcoin" / "herc20" / "ethereum" / "erc20"
-        ))
+        .and(warp::path!("swaps" / "halight" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
         .and_then(http_api::routes::index::post_halight_bitcoin_herc20);
 
-    let get_halight_swap = swaps
+    let herc20_hbit = warp::post()
+        .and(warp::path!("swaps" / "herc20" / "hbit"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(http_api::routes::index::post_herc20_hbit);
+
+    let hbit_herc20 = warp::post()
+        .and(warp::path!("swaps" / "hbit" / "herc20"))
+        .and(warp::path::end())
+        .and(warp::body::json())
+        .and(facade.clone())
+        .and_then(http_api::routes::index::post_hbit_herc20);
+
+    let get_swap = swaps
         .and(warp::get())
         .and(warp::path::param())
         .and(warp::path::end())
         .and(facade.clone())
         .and_then(http_api::routes::get_swap);
 
-    let lightning_action_init = swaps
+    let action_init = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("init"))
@@ -131,7 +141,7 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::action_init);
 
-    let lightning_action_fund = swaps
+    let action_fund = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("fund"))
@@ -139,7 +149,7 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::action_fund);
 
-    let lightning_action_deploy = swaps
+    let action_deploy = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("deploy"))
@@ -147,7 +157,7 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::action_deploy);
 
-    let lightning_action_redeem = swaps
+    let action_redeem = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("redeem"))
@@ -155,27 +165,13 @@ pub fn create(
         .and(facade.clone())
         .and_then(http_api::routes::action_redeem);
 
-    let lightning_action_refund = swaps
+    let action_refund = swaps
         .and(warp::get())
         .and(warp::path::param::<LocalSwapId>())
         .and(warp::path("refund"))
         .and(warp::path::end())
-        .and(facade.clone())
-        .and_then(http_api::routes::action_refund);
-
-    let hbit_herc20 = warp::post()
-        .and(warp::path!("swaps" / "hbit" / "herc20"))
-        .and(warp::path::end())
-        .and(warp::body::json())
-        .and(facade.clone())
-        .and_then(http_api::routes::post::post_hbit_herc20);
-
-    let herc20_hbit = warp::post()
-        .and(warp::path!("swaps" / "herc20" / "hbit"))
-        .and(warp::path::end())
-        .and(warp::body::json())
         .and(facade)
-        .and_then(http_api::routes::post::post_herc20_hbit);
+        .and_then(http_api::routes::action_refund);
 
     preflight_cors_route
         .or(rfc003_get_swap)
@@ -187,12 +183,12 @@ pub fn create(
         .or(get_info)
         .or(herc20_halight_bitcoin)
         .or(halight_bitcoin_herc20)
-        .or(get_halight_swap)
-        .or(lightning_action_init)
-        .or(lightning_action_fund)
-        .or(lightning_action_deploy)
-        .or(lightning_action_redeem)
-        .or(lightning_action_refund)
+        .or(get_swap)
+        .or(action_init)
+        .or(action_fund)
+        .or(action_deploy)
+        .or(action_redeem)
+        .or(action_refund)
         .or(hbit_herc20)
         .or(herc20_hbit)
         .recover(http_api::unpack_problem)

@@ -56,6 +56,7 @@ where
     Ok((transaction, txin))
 }
 
+#[tracing::instrument(level = "trace", skip(blockchain_connector, start_of_swap))]
 pub async fn watch_for_created_outpoint<C>(
     blockchain_connector: &C,
     start_of_swap: NaiveDateTime,

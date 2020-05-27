@@ -5,7 +5,7 @@ use crate::{
         protocols::{
             announce,
             announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
-            ethereum_identity, finalize, lightning_identity, secret_hash,
+            bitcoin_identity, ethereum_identity, finalize, lightning_identity, secret_hash,
         },
         DialInformation, Identities,
     },
@@ -45,6 +45,7 @@ pub struct Comit {
     secret_hash: oneshot_behaviour::Behaviour<secret_hash::Message>,
     ethereum_identity: oneshot_behaviour::Behaviour<ethereum_identity::Message>,
     lightning_identity: oneshot_behaviour::Behaviour<lightning_identity::Message>,
+    bitcoin_identity: oneshot_behaviour::Behaviour<bitcoin_identity::Message>,
     finalize: oneshot_behaviour::Behaviour<finalize::Message>,
 
     #[behaviour(ignore)]
@@ -63,6 +64,7 @@ pub struct Comit {
 struct CommunicationState {
     ethereum_identity_sent: bool,
     lightning_identity_sent: bool,
+    bitcoin_identity_sent: bool,
     received_finalized: bool,
     sent_finalized: bool,
     secret_hash_sent_or_received: bool,
@@ -75,6 +77,7 @@ impl Comit {
             secret_hash: Default::default(),
             ethereum_identity: Default::default(),
             lightning_identity: Default::default(),
+            bitcoin_identity: Default::default(),
             finalize: Default::default(),
             events: VecDeque::new(),
             swaps: Default::default(),
@@ -150,6 +153,8 @@ impl Comit {
             .register_addresses(peer_id.clone(), addresses.clone());
         self.lightning_identity
             .register_addresses(peer_id.clone(), addresses.clone());
+        self.bitcoin_identity
+            .register_addresses(peer_id.clone(), addresses.clone());
         self.finalize.register_addresses(peer_id.clone(), addresses);
 
         // Communicate
@@ -164,6 +169,13 @@ impl Comit {
             self.lightning_identity.send(
                 peer_id.clone(),
                 lightning_identity::Message::new(shared_swap_id, lightning_identity),
+            );
+        }
+
+        if let Some(bitcoin_identity) = data.bitcoin_identity {
+            self.bitcoin_identity.send(
+                peer_id.clone(),
+                bitcoin_identity::Message::new(shared_swap_id, bitcoin_identity),
             );
         }
 
@@ -238,7 +250,17 @@ impl Comit {
                 true
             };
 
-            if ethereum_sorted && lightning_sorted && state.secret_hash_sent_or_received {
+            let bitcoin_sorted = if data.bitcoin_identity.is_some() {
+                remote_data.bitcoin_identity.is_some() && state.bitcoin_identity_sent
+            } else {
+                true
+            };
+
+            if ethereum_sorted
+                && lightning_sorted
+                && bitcoin_sorted
+                && state.secret_hash_sent_or_received
+            {
                 self.finalize
                     .send(peer, finalize::Message::new(shared_swap_id));
             }
@@ -449,6 +471,45 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
     }
 }
 
+impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<bitcoin_identity::Message>>
+    for Comit
+{
+    fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<bitcoin_identity::Message>) {
+        let (peer, swap_id) = match event {
+            oneshot_behaviour::OutEvent::Received {
+                peer,
+                message: bitcoin_identity::Message { swap_id, pubkey },
+            } => {
+                match bitcoin::PublicKey::from_slice(&pubkey) {
+                    Ok(identity) => self
+                        .remote_data_insert::<identity::Bitcoin>(swap_id.clone(), identity.into()),
+                    Err(_) => {
+                        tracing::warn!("received an invalid bitcoin identity from counterparty");
+                        return;
+                    }
+                };
+
+                (peer, swap_id)
+            }
+            oneshot_behaviour::OutEvent::Sent {
+                peer,
+                message: bitcoin_identity::Message { swap_id, .. },
+            } => {
+                let state = self
+                    .communication_states
+                    .get_mut(&swap_id)
+                    .expect("Swap should be known as we sent a message about it");
+
+                state.bitcoin_identity_sent = true;
+
+                (peer, swap_id)
+            }
+        };
+
+        self.finalize(peer, swap_id)
+    }
+}
+
 impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>> for Comit {
     fn inject_event(&mut self, event: oneshot_behaviour::OutEvent<finalize::Message>) {
         let swap_id = match event {
@@ -506,12 +567,11 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<finalize::Message>
 /// combination.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct LocalData {
-    // Currently we only support herc20/halight swap, as we add protocol
-    // combinations the identities will be added here.
-    pub secret_hash: Option<SecretHash>,
-    pub shared_swap_id: Option<SharedSwapId>,
+    pub secret_hash: Option<SecretHash>,      // Known by Alice.
+    pub shared_swap_id: Option<SharedSwapId>, // Known by Bob.
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 impl LocalData {
@@ -521,6 +581,7 @@ impl LocalData {
             shared_swap_id: None,
             ethereum_identity: identities.ethereum_identity,
             lightning_identity: identities.lightning_identity,
+            bitcoin_identity: identities.bitcoin_identity,
         }
     }
 
@@ -530,6 +591,7 @@ impl LocalData {
             shared_swap_id: Some(shared_swap_id),
             ethereum_identity: identities.ethereum_identity,
             lightning_identity: identities.lightning_identity,
+            bitcoin_identity: identities.bitcoin_identity,
         }
     }
 }
@@ -537,11 +599,10 @@ impl LocalData {
 /// All possible data that can be received from the remote node.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct RemoteData {
-    // Currently we only support herc20/halight swap, as we add protocol
-    // combinations the identities will be added here.
+    pub secret_hash: Option<SecretHash>, // Received by Bob from Alice.
     pub ethereum_identity: Option<identity::Ethereum>,
     pub lightning_identity: Option<identity::Lightning>,
-    pub secret_hash: Option<SecretHash>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 impl Default for RemoteData {
@@ -549,6 +610,7 @@ impl Default for RemoteData {
         RemoteData {
             ethereum_identity: None,
             lightning_identity: None,
+            bitcoin_identity: None,
             secret_hash: None,
         }
     }
@@ -567,6 +629,12 @@ impl Set<identity::Ethereum> for RemoteData {
 impl Set<identity::Lightning> for RemoteData {
     fn set(&mut self, value: identity::Lightning) {
         self.lightning_identity = Some(value);
+    }
+}
+
+impl Set<identity::Bitcoin> for RemoteData {
+    fn set(&mut self, value: identity::Bitcoin) {
+        self.bitcoin_identity = Some(value);
     }
 }
 
@@ -608,6 +676,7 @@ mod tests {
             shared_swap_id: None,
             ethereum_identity: Some(identity::Ethereum::random()),
             lightning_identity: Some(identity::Lightning::random()),
+            bitcoin_identity: None,
         };
 
         let bob_local_data = LocalData {
@@ -615,6 +684,7 @@ mod tests {
             shared_swap_id: None, // We don't test this here.
             ethereum_identity: Some(identity::Ethereum::random()),
             lightning_identity: Some(identity::Lightning::random()),
+            bitcoin_identity: None,
         };
 
         let digest = Herc20Halight {
@@ -627,16 +697,18 @@ mod tests {
         .digest();
 
         let want_alice_to_learn_from_bob = RemoteData {
+            secret_hash: alice_local_data.secret_hash,
             ethereum_identity: bob_local_data.ethereum_identity,
             lightning_identity: bob_local_data.lightning_identity,
             // This is not exactly 'learned' but it is in the behaviour out event for both roles.
-            secret_hash: alice_local_data.secret_hash,
+            bitcoin_identity: None,
         };
 
         let want_bob_to_learn_from_alice = RemoteData {
+            secret_hash: alice_local_data.secret_hash,
             ethereum_identity: alice_local_data.ethereum_identity,
             lightning_identity: alice_local_data.lightning_identity,
-            secret_hash: alice_local_data.secret_hash,
+            bitcoin_identity: None,
         };
 
         alice_swarm

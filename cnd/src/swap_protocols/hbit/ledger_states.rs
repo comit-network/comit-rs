@@ -32,7 +32,6 @@ impl LedgerStates {
         };
 
         match event {
-            Event::Deployed(deployed) => ledger_state.transition_to_deployed(deployed),
             Event::Funded(funded) => ledger_state.transition_to_funded(funded),
             Event::Redeemed(redeemed) => {
                 // what if redeemed.secret.hash() != secret_hash in request ??

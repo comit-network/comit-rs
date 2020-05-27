@@ -1,9 +1,6 @@
 import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
-import {
-    HalightLightningBitcoinHerc20EthereumErc20RequestBody,
-    Herc20EthereumErc20HalightLightningBitcoinRequestBody,
-} from "comit-sdk";
+import { HalightHerc20RequestBody, Herc20HalightRequestBody } from "comit-sdk";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -13,8 +10,8 @@ describe("Lightning routes tests", () => {
     it(
         "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .herc20EthereumErc20HalightLightningBitcoin;
+            const bodies = (await SwapFactory.newSwap(alice, bob))
+                .herc20Halight;
 
             const expectedProblem = {
                 status: 400,
@@ -24,14 +21,10 @@ describe("Lightning routes tests", () => {
             };
 
             await expect(
-                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                    bodies.alice
-                )
+                alice.cnd.createHerc20Halight(bodies.alice)
             ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                    bodies.bob
-                )
+                bob.cnd.createHerc20Halight(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
         })
     );
@@ -39,8 +32,8 @@ describe("Lightning routes tests", () => {
     it(
         "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob, true))
-                .halightLightningBitcoinHerc20EthereumErc20;
+            const bodies = (await SwapFactory.newSwap(alice, bob))
+                .halightHerc20;
 
             const expectedProblem = {
                 status: 400,
@@ -50,14 +43,10 @@ describe("Lightning routes tests", () => {
             };
 
             await expect(
-                alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                    bodies.alice
-                )
+                alice.cnd.createHalightHerc20(bodies.alice)
             ).rejects.toMatchObject(expectedProblem);
             await expect(
-                bob.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                    bodies.bob
-                )
+                bob.cnd.createHalightHerc20(bodies.bob)
             ).rejects.toMatchObject(expectedProblem);
         })
     );
@@ -66,9 +55,7 @@ describe("Lightning routes tests", () => {
         "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-invalid-body",
         twoActorTest(async ({ alice }) => {
             await expect(
-                alice.cnd.createHerc20EthereumErc20HalightLightningBitcoin(
-                    {} as Herc20EthereumErc20HalightLightningBitcoinRequestBody
-                )
+                alice.cnd.createHerc20Halight({} as Herc20HalightRequestBody)
             ).rejects.toThrow("Invalid body.");
         })
     );
@@ -77,9 +64,7 @@ describe("Lightning routes tests", () => {
         "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-invalid-body",
         twoActorTest(async ({ alice }) => {
             await expect(
-                alice.cnd.createHalightLightningBitcoinHerc20EthereumErc20(
-                    {} as HalightLightningBitcoinHerc20EthereumErc20RequestBody
-                )
+                alice.cnd.createHalightHerc20({} as HalightHerc20RequestBody)
             ).rejects.toThrow("Invalid body.");
         })
     );

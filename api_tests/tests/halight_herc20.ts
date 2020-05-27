@@ -8,10 +8,14 @@ import { sleep } from "../src/utils";
 import { twoActorTest } from "../src/actor_test";
 
 it(
-    "halight-lightning-bitcoin-herc20-ethereum-erc20-alice-redeems-bob-redeems",
+    "halight-herc20-alice-redeems-bob-redeems",
     twoActorTest(async ({ alice, bob }) => {
-        const bodies = (await SwapFactory.newSwap(alice, bob))
-            .halightLightningBitcoinHerc20EthereumErc20;
+        const bodies = (
+            await SwapFactory.newSwap(alice, bob, {
+                alpha: "lightning",
+                beta: "ethereum",
+            })
+        ).halightHerc20;
 
         await alice.createHalightHerc20Swap(bodies.alice);
         await bob.createHalightHerc20Swap(bodies.bob);

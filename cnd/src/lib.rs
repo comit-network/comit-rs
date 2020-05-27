@@ -45,6 +45,7 @@ pub mod connectors;
 mod facade;
 pub mod file_lock;
 pub mod halight;
+pub mod hbit;
 pub mod herc20;
 pub mod http_api;
 pub mod init_swap;
@@ -163,7 +164,7 @@ pub mod ethereum {
 }
 
 pub mod bitcoin {
-    pub use comit::bitcoin::PublicKey;
+    pub use comit::bitcoin::{Address, PublicKey};
 }
 
 pub mod lightning {

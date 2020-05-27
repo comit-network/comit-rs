@@ -12,8 +12,14 @@ pub trait Actions {
 
 pub mod bitcoin {
     use crate::asset;
-    use bitcoin::Address;
-    use blockchain_contracts::bitcoin::witness::{PrimedInput, PrimedTransaction};
+    use bitcoin::{
+        secp256k1::{self, Secp256k1},
+        OutPoint,
+    };
+    use blockchain_contracts::bitcoin::witness::PrimedInput;
+
+    pub use bitcoin::{Address, Amount, Network, Transaction};
+    pub use blockchain_contracts::bitcoin::witness::{PrimedTransaction, UnlockParameters};
 
     #[derive(Debug, Clone, PartialEq)]
     pub struct SendToAddress {
@@ -30,12 +36,43 @@ pub mod bitcoin {
     }
 
     impl SpendOutput {
+        pub fn new(
+            previous_output: OutPoint,
+            value: Amount,
+            input_parameters: UnlockParameters,
+            network: Network,
+        ) -> Self {
+            Self {
+                output: PrimedInput::new(previous_output, value, input_parameters),
+                network,
+            }
+        }
+
         pub fn spend_to(self, to_address: Address) -> PrimedTransaction {
             PrimedTransaction {
                 inputs: vec![self.output],
                 output_address: to_address,
             }
         }
+    }
+
+    pub fn sign_with_fixed_rate<C>(
+        secp: &Secp256k1<C>,
+        primed_transaction: PrimedTransaction,
+    ) -> anyhow::Result<Transaction>
+    where
+        C: secp256k1::Signing,
+    {
+        let rate = 10;
+        primed_transaction
+            .sign_with_rate(secp, rate)
+            .map_err(|_| anyhow::anyhow!("failed to sign with {} rate", rate))
+    }
+
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct BroadcastSignedTransaction {
+        pub transaction: Transaction,
+        pub network: bitcoin::Network,
     }
 }
 

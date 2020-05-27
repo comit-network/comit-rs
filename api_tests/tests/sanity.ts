@@ -1,5 +1,4 @@
 import { oneActorTest } from "../src/actor_test";
-import { Problem } from "comit-sdk";
 
 // ******************************************** //
 // Sanity tests                                 //
@@ -13,12 +12,10 @@ describe("Sanity", () => {
                 "/swaps/rfc003/deadbeef-dead-beef-dead-deadbeefdead"
             );
 
-            await expect(promise).rejects.toMatchObject(
-                new Problem({
-                    status: 404,
-                    title: "Swap not found.",
-                })
-            );
+            await expect(promise).rejects.toMatchObject({
+                status: 404,
+                title: "Swap not found.",
+            });
         })
     );
 
@@ -58,12 +55,10 @@ describe("Sanity", () => {
                 peer: "QmPRNaiDUcJmnuJWUyoADoqvFotwaMRFKV2RyZ7ZVr1fqd",
             });
 
-            await expect(promise).rejects.toMatchObject(
-                new Problem({
-                    status: 400,
-                    title: "Invalid body.",
-                })
-            );
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
         })
     );
 
@@ -75,12 +70,10 @@ describe("Sanity", () => {
                 garbage: true,
             });
 
-            await expect(promise).rejects.toMatchObject(
-                new Problem({
-                    status: 400,
-                    title: "Invalid body.",
-                })
-            );
+            await expect(promise).rejects.toMatchObject({
+                status: 400,
+                title: "Invalid body.",
+            });
         })
     );
 

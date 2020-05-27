@@ -5,7 +5,7 @@
 //! database which have not been completed yet.
 
 use crate::{
-    halight, herc20,
+    halight, hbit, herc20,
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Protocol, Role, Side,
@@ -38,6 +38,57 @@ pub async fn respawn(storage: Storage, protocol_spawner: ProtocolSpawner) -> any
                 beta: Protocol::Halight,
             } => {
                 let swap: Swap<herc20::Params, halight::Params> = match storage.load(id).await {
+                    Ok(swap) => swap,
+                    Err(e) => {
+                        tracing::warn!("failed to load data for swap {}: {:?}", id, e);
+                        continue;
+                    }
+                };
+
+                protocol_spawner.spawn(id, swap.alpha, Utc::now().naive_local(), Side::Alpha, role);
+                protocol_spawner.spawn(id, swap.beta, Utc::now().naive_local(), Side::Beta, role);
+            }
+            Swap {
+                id,
+                role,
+                alpha: Protocol::Halight,
+                beta: Protocol::Herc20,
+            } => {
+                let swap: Swap<halight::Params, herc20::Params> = match storage.load(id).await {
+                    Ok(swap) => swap,
+                    Err(e) => {
+                        tracing::warn!("failed to load data for swap {}: {:?}", id, e);
+                        continue;
+                    }
+                };
+
+                protocol_spawner.spawn(id, swap.alpha, Utc::now().naive_local(), Side::Alpha, role);
+                protocol_spawner.spawn(id, swap.beta, Utc::now().naive_local(), Side::Beta, role);
+            }
+            Swap {
+                id,
+                role,
+                alpha: Protocol::Hbit,
+                beta: Protocol::Herc20,
+            } => {
+                let swap: Swap<hbit::Params, herc20::Params> = match storage.load(id).await {
+                    Ok(swap) => swap,
+                    Err(e) => {
+                        tracing::warn!("failed to load data for swap {}: {:?}", id, e);
+                        continue;
+                    }
+                };
+
+                protocol_spawner.spawn(id, swap.alpha, Utc::now().naive_local(), Side::Alpha, role);
+                protocol_spawner.spawn(id, swap.beta, Utc::now().naive_local(), Side::Beta, role);
+            }
+            Swap {
+                id,
+                role,
+                alpha: Protocol::Herc20,
+                beta: Protocol::Hbit,
+            } => {
+                let swap: Swap<herc20::Params, hbit::Params> = match storage.load(id).await {
                     Ok(swap) => swap,
                     Err(e) => {
                         tracing::warn!("failed to load data for swap {}: {:?}", id, e);

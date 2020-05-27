@@ -10,7 +10,7 @@ import { Logger } from "log4js";
 import { Rfc003Actors } from "./index";
 import {
     ComitClient,
-    Entity,
+    siren,
     LedgerAction,
     Swap,
     SwapDetails,
@@ -775,8 +775,8 @@ export class Rfc003Actor {
 
     public async pollCndUntil(
         location: string,
-        predicate: (body: Entity) => boolean
-    ): Promise<Entity> {
+        predicate: (body: siren.Entity) => boolean
+    ): Promise<siren.Entity> {
         const response = await this.actor.cnd.fetch(location);
 
         expect(response.status).toEqual(200);

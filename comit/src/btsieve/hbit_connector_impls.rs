@@ -23,7 +23,7 @@ impl WaitForFunded for Cache<BitcoindConnector> {
 
         let (transaction, location) =
             watch_for_created_outpoint(self, start_of_swap, params.compute_address())
-                .instrument(tracing::info_span!("wait_for_funded"))
+                .instrument(tracing::info_span!("watch_fund"))
                 .await?;
 
         let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
@@ -55,7 +55,7 @@ impl WaitForRedeemed for Cache<BitcoindConnector> {
     ) -> anyhow::Result<Redeemed> {
         let (transaction, _) =
             watch_for_spent_outpoint(self, start_of_swap, location, params.redeem_identity)
-                .instrument(tracing::info_span!("wait_for_redeemed"))
+                .instrument(tracing::info_span!("watch_redeem"))
                 .await?;
 
         let secret = hbit::extract_secret(&transaction, &params.secret_hash)
@@ -78,7 +78,7 @@ impl WaitForRefunded for Cache<BitcoindConnector> {
     ) -> anyhow::Result<Refunded> {
         let (transaction, _) =
             watch_for_spent_outpoint(self, start_of_swap, location, params.refund_identity)
-                .instrument(tracing::info_span!("wait_for_refunded"))
+                .instrument(tracing::info_span!("watch_refund"))
                 .await?;
 
         Ok(Refunded { transaction })

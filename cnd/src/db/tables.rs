@@ -8,9 +8,7 @@ use crate::{
         },
         Sqlite,
     },
-    halight, herc20, identity, lightning,
-    swap_protocols::{hbit, rfc003},
-    LocalSwapId, Role, Side,
+    halight, hbit, herc20, identity, lightning, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};
@@ -59,14 +57,14 @@ impl InsertableSwap {
 pub struct SecretHash {
     id: i32,
     swap_id: i32,
-    pub secret_hash: Text<rfc003::SecretHash>,
+    pub secret_hash: Text<comit::SecretHash>,
 }
 
 #[derive(Insertable, Debug, Clone, Copy)]
 #[table_name = "secret_hashes"]
 pub struct InsertableSecretHash {
     swap_id: i32,
-    secret_hash: Text<rfc003::SecretHash>,
+    secret_hash: Text<comit::SecretHash>,
 }
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
@@ -193,7 +191,7 @@ impl IntoInsertable for halight::CreatedSwap {
     }
 }
 
-#[derive(Associations, Clone, Copy, Debug, Identifiable, Queryable, PartialEq)]
+#[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
 #[belongs_to(Swap)]
 #[table_name = "hbits"]
 pub struct Hbit {
@@ -201,42 +199,36 @@ pub struct Hbit {
     swap_id: i32,
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
-    pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
-    pub refund_identity: Option<Text<bitcoin::PublicKey>>,
+    pub expiry: U32,
+    pub final_identity: Text<bitcoin::Address>,
+    pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
 }
 
-#[derive(Insertable, Clone, Copy, Debug)]
+#[derive(Insertable, Clone, Debug)]
 #[table_name = "hbits"]
 pub struct InsertableHbit {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
-    pub redeem_identity: Option<Text<bitcoin::PublicKey>>,
-    pub refund_identity: Option<Text<bitcoin::PublicKey>>,
+    pub expiry: U32,
+    pub final_identity: Text<bitcoin::Address>,
+    pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
 }
 
 impl IntoInsertable for hbit::CreatedSwap {
     type Insertable = InsertableHbit;
 
-    fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
-        let redeem_identity = match role {
-            Role::Alice => Some(Text(self.identity)),
-            Role::Bob => None,
-        };
-        let refund_identity = match role {
-            Role::Alice => None,
-            Role::Bob => Some(Text(self.identity)),
-        };
-        assert!(redeem_identity.is_some() || refund_identity.is_some());
-
+    fn into_insertable(self, swap_id: i32, _: Role, side: Side) -> Self::Insertable {
         InsertableHbit {
             swap_id,
             amount: Text(self.amount.into()),
             network: Text(self.network.into()),
-            redeem_identity,
-            refund_identity,
+            expiry: U32(self.absolute_expiry),
+            final_identity: Text(self.final_identity.into()),
+            // We always retrieve the transient identity from the other party
+            transient_identity: None,
             side: Text(side),
         }
     }
@@ -327,7 +319,7 @@ impl Sqlite {
         &self,
         connection: &SqliteConnection,
         local_swap_id: LocalSwapId,
-        secret_hash: rfc003::SecretHash,
+        secret_hash: comit::SecretHash,
     ) -> anyhow::Result<()> {
         let swap_id = swap_id_fk!(local_swap_id)
             .first(connection)
@@ -424,6 +416,26 @@ impl Sqlite {
             .with_context(|| {
                 format!(
                     "failed to update herc20 redeem identity for swap {}",
+                    local_swap_id
+                )
+            })?;
+        Ok(())
+    }
+
+    pub fn update_hbit_transient_identity(
+        &self,
+        connection: &SqliteConnection,
+        local_swap_id: LocalSwapId,
+        identity: identity::Bitcoin,
+    ) -> anyhow::Result<()> {
+        diesel::update(hbits::table)
+            .filter(hbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(hbits::transient_identity.eq(Text(identity)))
+            .execute(connection)?
+            .ensure_single_row_affected()
+            .with_context(|| {
+                format!(
+                    "failed to update hbit transient identity for swap {}",
                     local_swap_id
                 )
             })?;

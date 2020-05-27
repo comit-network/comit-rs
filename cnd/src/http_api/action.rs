@@ -5,7 +5,7 @@ use crate::{
     identity,
     swap_protocols::{
         actions::{
-            bitcoin::{SendToAddress, SpendOutput},
+            bitcoin::{self, SendToAddress, SpendOutput},
             ethereum, lnd,
             lnd::Chain,
         },
@@ -104,7 +104,7 @@ pub enum ActionResponseBody {
 }
 
 impl ActionResponseBody {
-    fn bitcoin_broadcast_signed_transaction(
+    pub fn bitcoin_broadcast_signed_transaction(
         transaction: &transaction::Bitcoin,
         network: bitcoin::Network,
     ) -> Self {
@@ -118,7 +118,7 @@ impl ActionResponseBody {
         };
 
         ActionResponseBody::BitcoinBroadcastSignedTransaction {
-            hex: bitcoin::consensus::encode::serialize_hex(transaction),
+            hex: ::bitcoin::consensus::encode::serialize_hex(transaction),
             network: Http(network),
             min_median_block_time,
         }
@@ -147,7 +147,7 @@ impl IntoResponsePayload for SendToAddress {
     }
 }
 
-impl From<SendToAddress> for ActionResponseBody {
+impl From<bitcoin::SendToAddress> for ActionResponseBody {
     fn from(action: SendToAddress) -> Self {
         let SendToAddress {
             to,
@@ -159,6 +159,17 @@ impl From<SendToAddress> for ActionResponseBody {
             amount: amount.as_sat().to_string(),
             network: Http(network),
         }
+    }
+}
+
+impl From<bitcoin::BroadcastSignedTransaction> for ActionResponseBody {
+    fn from(
+        bitcoin::BroadcastSignedTransaction {
+            transaction,
+            network,
+        }: bitcoin::BroadcastSignedTransaction,
+    ) -> Self {
+        Self::bitcoin_broadcast_signed_transaction(&transaction, network)
     }
 }
 
@@ -424,8 +435,7 @@ impl IntoResponsePayload for Infallible {
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::{ethereum::U256, identity};
-    use bitcoin::Address as BitcoinAddress;
+    use crate::{bitcoin::Address as BitcoinAddress, ethereum::U256, identity};
     use std::str::FromStr;
 
     #[test]
@@ -476,17 +486,17 @@ mod test {
 
         let input = &[
             ActionResponseBody::from(SendToAddress {
-                to: to.clone(),
+                to: to.clone().into(),
                 amount,
                 network: bitcoin::Network::Bitcoin,
             }),
             ActionResponseBody::from(SendToAddress {
-                to: to.clone(),
+                to: to.clone().into(),
                 amount,
                 network: bitcoin::Network::Testnet,
             }),
             ActionResponseBody::from(SendToAddress {
-                to,
+                to: to.into(),
                 amount,
                 network: bitcoin::Network::Regtest,
             }),
