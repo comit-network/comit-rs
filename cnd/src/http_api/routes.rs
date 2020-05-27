@@ -9,7 +9,7 @@ use crate::{
         halight::HalightFinalized,
         herc20::Herc20Finalized,
         problem,
-        protocol::{GetAlphaEvents, GetAlphaParams, GetBetaEvents, GetBetaParams, GetRole},
+        protocol::{AlphaEvents, AlphaParams, BetaEvents, BetaParams, GetRole},
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
     storage::Load,
@@ -85,10 +85,10 @@ pub async fn handle_get_swap(
 fn make_swap_entity<S>(swap_id: LocalSwapId, swap: S) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
-        + GetAlphaParams
-        + GetBetaParams
-        + GetAlphaEvents
-        + GetBetaEvents
+        + AlphaParams
+        + BetaParams
+        + AlphaEvents
+        + BetaEvents
         + DeployAction
         + InitAction
         + FundAction
@@ -111,7 +111,7 @@ where
             route_factory::swap_path(swap_id),
         ));
 
-    let alpha_params = swap.get_alpha_params();
+    let alpha_params = swap.alpha_params();
     let alpha_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("parameters")
@@ -124,7 +124,7 @@ where
     );
     entity.push_sub_entity(alpha_params_sub);
 
-    let beta_params = swap.get_beta_params();
+    let beta_params = swap.beta_params();
     let beta_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("parameters")
@@ -137,7 +137,7 @@ where
     );
     entity.push_sub_entity(beta_params_sub);
 
-    match (swap.get_alpha_events(), swap.get_beta_events()) {
+    match (swap.alpha_events(), swap.beta_events()) {
         (Some(alpha_tx), Some(beta_tx)) => {
             let alpha_state_sub = siren::SubEntity::from_entity(
                 siren::Entity::default()

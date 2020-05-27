@@ -3,8 +3,7 @@ use crate::{
         halight::HalightFinalized,
         herc20::Herc20Finalized,
         protocol::{
-            GetAlphaEvents, GetAlphaParams, GetBetaEvents, GetBetaParams, Halight, Herc20,
-            LedgerEvents,
+            AlphaEvents, AlphaParams, BetaEvents, BetaParams, Halight, Herc20, LedgerEvents,
         },
         ActionNotFound, BobSwap,
     },
@@ -226,8 +225,8 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, He
     }
 }
 
-impl GetAlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
-    fn get_alpha_events(&self) -> Option<LedgerEvents> {
+impl AlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+    fn alpha_events(&self) -> Option<LedgerEvents> {
         match self {
             BobSwap::Created { .. } => None,
             BobSwap::Finalized {
@@ -238,8 +237,8 @@ impl GetAlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, 
     }
 }
 
-impl GetBetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
-    fn get_beta_events(&self) -> Option<LedgerEvents> {
+impl BetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+    fn beta_events(&self) -> Option<LedgerEvents> {
         match self {
             BobSwap::Created { .. } => None,
             BobSwap::Finalized {
@@ -250,16 +249,16 @@ impl GetBetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, H
     }
 }
 
-impl GetAlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+impl AlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
     type Output = Herc20;
-    fn get_alpha_params(&self) -> Self::Output {
+    fn alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl GetBetaParams for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+impl BetaParams for BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
     type Output = Halight;
-    fn get_beta_params(&self) -> Self::Output {
+    fn beta_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
