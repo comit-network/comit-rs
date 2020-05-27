@@ -6,9 +6,7 @@ pub mod rfc003;
 use crate::{
     http_api::{
         action::ActionResponseBody,
-        halight::HalightFinalized,
-        herc20::Herc20Finalized,
-        problem,
+        halight, herc20, problem,
         protocol::{AlphaEvents, AlphaParams, BetaEvents, BetaParams, GetRole},
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
@@ -47,8 +45,12 @@ pub async fn handle_get_swap(
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(swap_id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
         Swap {
@@ -56,7 +58,7 @@ pub async fn handle_get_swap(
             beta: Protocol::Halight,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
+            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
                 facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
@@ -65,8 +67,12 @@ pub async fn handle_get_swap(
             beta: Protocol::Herc20,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
-                facade.load(swap_id).await?;
+            let swap: AliceSwap<
+                asset::Bitcoin,
+                asset::Erc20,
+                halight::Finalized,
+                herc20::Finalized,
+            > = facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
         Swap {
@@ -74,7 +80,7 @@ pub async fn handle_get_swap(
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(swap_id).await?;
             make_swap_entity(swap_id, swap)
         }
@@ -253,8 +259,12 @@ async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(id).await?;
             swap.init_action()?
         }
         Swap {
@@ -262,7 +272,7 @@ async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(id).await?;
             swap.init_action()?
         }
@@ -294,8 +304,12 @@ async fn handle_action_deploy(
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(id).await?;
             swap.deploy_action()?
         }
         Swap {
@@ -303,7 +317,7 @@ async fn handle_action_deploy(
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(id).await?;
             swap.deploy_action()?
         }
@@ -332,8 +346,12 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(id).await?;
             let action = swap.fund_action()?;
 
             ActionResponseBody::from(action)
@@ -343,7 +361,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Halight,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
+            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
                 facade.load(id).await?;
             let action = swap.fund_action()?;
 
@@ -354,8 +372,12 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Herc20,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Bitcoin,
+                asset::Erc20,
+                halight::Finalized,
+                herc20::Finalized,
+            > = facade.load(id).await?;
             let action = swap.fund_action()?;
 
             ActionResponseBody::from(action)
@@ -365,7 +387,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(id).await?;
             let action = swap.fund_action()?;
 
@@ -397,8 +419,12 @@ async fn handle_action_redeem(
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(id).await?;
             let action = swap.redeem_action()?;
 
             ActionResponseBody::from(action)
@@ -408,7 +434,7 @@ async fn handle_action_redeem(
             beta: Protocol::Halight,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
+            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
                 facade.load(id).await?;
             let action = swap.redeem_action()?;
 
@@ -419,8 +445,12 @@ async fn handle_action_redeem(
             beta: Protocol::Herc20,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Bitcoin,
+                asset::Erc20,
+                halight::Finalized,
+                herc20::Finalized,
+            > = facade.load(id).await?;
             let action = swap.redeem_action()?;
 
             ActionResponseBody::from(action)
@@ -430,7 +460,7 @@ async fn handle_action_redeem(
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(id).await?;
             let action = swap.redeem_action()?;
 
@@ -462,8 +492,12 @@ async fn handle_action_refund(
             beta: Protocol::Halight,
             role: Role::Alice,
         } => {
-            let swap: AliceSwap<asset::Erc20, asset::Bitcoin, Herc20Finalized, HalightFinalized> =
-                facade.load(id).await?;
+            let swap: AliceSwap<
+                asset::Erc20,
+                asset::Bitcoin,
+                herc20::Finalized,
+                halight::Finalized,
+            > = facade.load(id).await?;
             let action = swap.refund_action()?;
             let response = ActionResponseBody::from(action);
 
@@ -474,7 +508,7 @@ async fn handle_action_refund(
             beta: Protocol::Herc20,
             role: Role::Bob,
         } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> =
+            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(id).await?;
             let action = swap.refund_action()?;
             let response = ActionResponseBody::from(action);
