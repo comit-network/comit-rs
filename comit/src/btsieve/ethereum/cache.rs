@@ -4,10 +4,12 @@ use crate::{
         BlockByHash, LatestBlock,
     },
     ethereum::TransactionReceipt,
+    HasPassed, Timestamp,
 };
 use async_trait::async_trait;
 use derivative::Derivative;
 use lru::LruCache;
+pub use primitive_types::U256;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
@@ -110,5 +112,31 @@ where
         guard.put(transaction_hash, receipt.clone());
 
         Ok(receipt)
+    }
+}
+
+/// We define, for the Web3 connector, a timestamp to have passed if the
+/// connector has seen a block with a block-timestamp smaller than the
+/// timestamp.
+#[async_trait]
+impl<C> HasPassed for Cache<C>
+where
+    C: LatestBlock<Block = Block>,
+{
+    async fn has_passed(&self, timestamp: Timestamp) -> bool {
+        match self.latest_block().await {
+            Err(e) => {
+                tracing::warn!("failed to get block time: {}", e);
+                false
+            }
+            Ok(block) => U256::from(timestamp) < block.timestamp,
+        }
+    }
+}
+
+impl From<Timestamp> for U256 {
+    fn from(t: Timestamp) -> Self {
+        let u: u32 = t.into();
+        U256::from(u)
     }
 }

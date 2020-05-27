@@ -1,4 +1,7 @@
-use crate::btsieve::{BlockByHash, LatestBlock};
+use crate::{
+    btsieve::{BlockByHash, LatestBlock},
+    HasPassed, Timestamp,
+};
 use async_trait::async_trait;
 use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
@@ -67,5 +70,46 @@ where
         guard.put(block_hash, block.clone());
 
         Ok(block)
+    }
+}
+
+impl<C> Cache<C>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+{
+    /// Median block time is defined as the median time of the last 11 blocks.
+    pub async fn median_time_past(&self) -> anyhow::Result<Timestamp> {
+        let mut block_times = vec![];
+
+        let mut current = self.latest_block().await?;
+        block_times.push(current.header.time);
+
+        for _ in 0..10 {
+            let prev = current.header.prev_blockhash;
+            current = self.block_by_hash(prev).await?;
+            block_times.push(current.header.time);
+        }
+
+        block_times.sort();
+        let median = block_times[5];
+        Ok(Timestamp::from(median))
+    }
+}
+
+/// We define, for the Bitcoind connector, a timestamp to have passed if the
+/// connector has seen a block with median time-past smaller than the timestamp.
+#[async_trait]
+impl<C> HasPassed for Cache<C>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
+{
+    async fn has_passed(&self, timestamp: Timestamp) -> bool {
+        match self.median_time_past().await {
+            Err(e) => {
+                tracing::warn!("failed to get median time-past: {}", e);
+                false
+            }
+            Ok(time_past) => timestamp < time_past,
+        }
     }
 }
