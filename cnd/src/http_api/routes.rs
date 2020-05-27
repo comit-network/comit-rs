@@ -8,7 +8,8 @@ use crate::{
         action::ActionResponseBody,
         halight, herc20, problem,
         protocol::{AlphaEvents, AlphaParams, BetaEvents, BetaParams, GetRole},
-        route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
+        route_factory, ActionNotFound, AliceSwap, BobSwap, Http, NextAction, RecommendedNextAction,
+        Swap,
     },
     storage::Load,
     swap_protocols::{
@@ -51,7 +52,7 @@ pub async fn handle_get_swap(
                 herc20::Finalized,
                 halight::Finalized,
             > = facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(swap_id, swap, &facade).await
         }
         Swap {
             alpha: Protocol::Herc20,
@@ -60,7 +61,7 @@ pub async fn handle_get_swap(
         } => {
             let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
                 facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(swap_id, swap, &facade).await
         }
         Swap {
             alpha: Protocol::Halight,
@@ -73,7 +74,7 @@ pub async fn handle_get_swap(
                 halight::Finalized,
                 herc20::Finalized,
             > = facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(swap_id, swap, &facade).await
         }
         Swap {
             alpha: Protocol::Halight,
@@ -82,24 +83,24 @@ pub async fn handle_get_swap(
         } => {
             let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(swap_id, swap, &facade).await
         }
         _ => unimplemented!("other combinations not suported yet"),
     }
 }
 
-fn make_swap_entity<S>(swap_id: LocalSwapId, swap: S) -> anyhow::Result<siren::Entity>
+async fn make_swap_entity<S>(
+    swap_id: LocalSwapId,
+    swap: S,
+    facade: &Facade,
+) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
         + AlphaParams
         + BetaParams
         + AlphaEvents
         + BetaEvents
-        + DeployAction
-        + InitAction
-        + FundAction
-        + RedeemAction
-        + RefundAction
+        + RecommendedNextAction
         + Clone,
 {
     let role = swap.get_role();
@@ -173,27 +174,18 @@ where
             );
             entity.push_sub_entity(beta_state_sub);
 
-            let maybe_action_names = vec![
-                swap.init_action().map(|_| ActionName::Init),
-                swap.deploy_action().map(|_| ActionName::Deploy),
-                swap.fund_action().map(|_| ActionName::Fund),
-                swap.redeem_action().map(|_| ActionName::Redeem),
-                swap.refund_action().map(|_| ActionName::Refund),
-            ];
+            if let Some(action_name) = swap.recommended_next_action(facade).await {
+                let siren_action = make_siren_action(swap_id, action_name);
+                entity = entity.with_action(siren_action);
+            }
 
-            Ok(maybe_action_names
-                .into_iter()
-                .filter_map(|action| action.ok())
-                .fold(entity, |acc, action_name| {
-                    let siren_action = make_siren_action(swap_id, action_name);
-                    acc.with_action(siren_action)
-                }))
+            Ok(entity)
         }
         _ => Ok(entity),
     }
 }
 
-fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Action {
+fn make_siren_action(swap_id: LocalSwapId, action_name: NextAction) -> siren::Action {
     siren::Action {
         name: action_name.to_string(),
         class: vec![],
@@ -202,28 +194,6 @@ fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Ac
         title: None,
         _type: None,
         fields: vec![],
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum ActionName {
-    Init,
-    Deploy,
-    Fund,
-    Redeem,
-    Refund,
-}
-
-impl std::fmt::Display for ActionName {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
-        let str = match self {
-            ActionName::Init => "init",
-            ActionName::Deploy => "deploy",
-            ActionName::Fund => "fund",
-            ActionName::Redeem => "redeem",
-            ActionName::Refund => "refund",
-        };
-        write!(f, "{}", str)
     }
 }
 

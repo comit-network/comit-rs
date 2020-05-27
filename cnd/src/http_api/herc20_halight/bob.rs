@@ -5,11 +5,11 @@ use crate::{
             AlphaEvents, AlphaParams, BetaEvents, BetaParams, BobSwap, Halight, Herc20,
             LedgerEvents,
         },
-        ActionNotFound,
+        ActionNotFound, NextAction, RecommendedNextAction,
     },
     swap_protocols::{
         actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
+        DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction,
     },
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
@@ -165,6 +165,42 @@ impl RefundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
     type Output = Never;
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
+    }
+}
+
+#[async_trait::async_trait]
+impl RecommendedNextAction
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+{
+    async fn recommended_next_action(&self, _facade: &Facade) -> Option<NextAction> {
+        match self {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
+                alpha_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
+                beta_finalized:
+                    halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
+                ..
+            } => {
+                // Bob can only refund by closing the lightning channel.
+
+                match (herc20_state, halight_state) {
+                    (herc20::State::Funded { .. }, halight::State::Opened(_)) => {
+                        Some(NextAction::Fund)
+                    }
+                    (herc20::State::Funded { .. }, halight::State::Settled(_)) => {
+                        Some(NextAction::Redeem)
+                    }
+                    (..) => None,
+                }
+            }
+        }
     }
 }
 

@@ -4,11 +4,11 @@ use crate::{
         protocol::{
             AlphaEvents, AlphaParams, BetaEvents, BetaParams, Halight, Herc20, LedgerEvents,
         },
-        ActionNotFound, AliceSwap,
+        ActionNotFound, AliceSwap, NextAction, RecommendedNextAction,
     },
     swap_protocols::{
         actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
+        DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction,
     },
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
@@ -207,5 +207,38 @@ impl RefundAction
     type Output = Never;
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
+    }
+}
+
+#[async_trait::async_trait]
+impl RecommendedNextAction
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    async fn recommended_next_action(&self, _facade: &Facade) -> Option<NextAction> {
+        match self {
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
+                alpha_finalized:
+                    halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
+                beta_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
+                ..
+            } => {
+                // Alice can only refund by closing the lightning channel.
+
+                match (halight_state, herc20_state) {
+                    (halight::State::Opened(_), herc20::State::None) => Some(NextAction::Fund),
+                    (_, herc20::State::Funded { .. }) => Some(NextAction::Redeem),
+
+                    (..) => None,
+                }
+            }
+        }
     }
 }

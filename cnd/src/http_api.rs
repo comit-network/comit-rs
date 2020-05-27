@@ -24,7 +24,7 @@ use crate::{
     asset,
     ethereum::ChainId,
     htlc_location, identity,
-    swap_protocols::{ledger, rfc003::SwapId, Role, SwapProtocol},
+    swap_protocols::{ledger, rfc003::SwapId, Facade, Role, SwapProtocol},
     transaction,
 };
 use libp2p::{Multiaddr, PeerId};
@@ -526,6 +526,36 @@ impl From<asset::Ether> for HttpAsset {
 impl From<asset::Erc20> for HttpAsset {
     fn from(erc20: asset::Erc20) -> Self {
         HttpAsset::Erc20(erc20)
+    }
+}
+
+/// Returns the recommended action for a given swap
+#[async_trait::async_trait]
+pub trait RecommendedNextAction {
+    async fn recommended_next_action(&self, facade: &Facade) -> Option<NextAction>;
+}
+
+/// Actions a user can take during a swap. This represents a superset
+/// of all actions for all currently supported trading pairs.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum NextAction {
+    Init,
+    Deploy,
+    Fund,
+    Redeem,
+    Refund,
+}
+
+impl std::fmt::Display for NextAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
+        let str = match self {
+            NextAction::Init => "init",
+            NextAction::Deploy => "deploy",
+            NextAction::Fund => "fund",
+            NextAction::Redeem => "redeem",
+            NextAction::Refund => "refund",
+        };
+        write!(f, "{}", str)
     }
 }
 

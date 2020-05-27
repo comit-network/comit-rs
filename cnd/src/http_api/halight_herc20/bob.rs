@@ -7,11 +7,11 @@ use crate::{
         protocol::{
             AlphaEvents, AlphaParams, BetaEvents, BetaParams, Halight, Herc20, LedgerEvents,
         },
-        ActionNotFound, BobSwap,
+        ActionNotFound, BobSwap, NextAction, RecommendedNextAction,
     },
     swap_protocols::{
         actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
+        DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction,
     },
 };
 use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
@@ -215,6 +215,48 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                 })
             }
             _ => anyhow::bail!(ActionNotFound),
+        }
+    }
+}
+
+#[async_trait::async_trait]
+impl RecommendedNextAction
+    for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    async fn recommended_next_action(&self, facade: &Facade) -> Option<NextAction> {
+        match self {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
+                alpha_finalized:
+                    halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
+                beta_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        expiry,
+                        ..
+                    },
+                ..
+            } => {
+                // Anytime user can refund, that is the action we give them.
+                if let herc20::State::Funded { .. } = herc20_state {
+                    if let Ok(true) = facade.can_refund_ethereum(*expiry).await {
+                        return Some(NextAction::Refund);
+                    }
+                }
+
+                match (halight_state, herc20_state) {
+                    (halight::State::None, herc20::State::None) => Some(NextAction::Init),
+                    (halight::State::Accepted(_), herc20::State::None) => Some(NextAction::Deploy),
+                    (halight::State::Accepted(_), herc20::State::Deployed { .. }) => {
+                        Some(NextAction::Fund)
+                    }
+                    (_, herc20::State::Redeemed { .. }) => Some(NextAction::Redeem),
+                    (..) => None,
+                }
+            }
         }
     }
 }
