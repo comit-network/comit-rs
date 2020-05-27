@@ -28,26 +28,26 @@ enum EscrowStatus {
     IncorrectlyFunded,
 }
 
-pub trait GetAlphaEvents {
-    fn get_alpha_events(&self) -> Option<LedgerEvents>;
+pub trait AlphaEvents {
+    fn alpha_events(&self) -> Option<LedgerEvents>;
 }
 
-pub trait GetBetaEvents {
-    fn get_beta_events(&self) -> Option<LedgerEvents>;
+pub trait BetaEvents {
+    fn beta_events(&self) -> Option<LedgerEvents>;
 }
 
 pub trait GetRole {
     fn get_role(&self) -> Role;
 }
 
-pub trait GetAlphaParams {
+pub trait AlphaParams {
     type Output: Serialize;
-    fn get_alpha_params(&self) -> Self::Output;
+    fn alpha_params(&self) -> Self::Output;
 }
 
-pub trait GetBetaParams {
+pub trait BetaParams {
     type Output: Serialize;
-    fn get_beta_params(&self) -> Self::Output;
+    fn beta_params(&self) -> Self::Output;
 }
 
 #[derive(Debug, Serialize)]

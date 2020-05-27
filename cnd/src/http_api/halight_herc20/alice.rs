@@ -3,8 +3,7 @@ use crate::{
         halight::HalightFinalized,
         herc20::Herc20Finalized,
         protocol::{
-            GetAlphaEvents, GetAlphaParams, GetBetaEvents, GetBetaParams, Halight, Herc20,
-            LedgerEvents,
+            AlphaEvents, AlphaParams, BetaEvents, BetaParams, Halight, Herc20, LedgerEvents,
         },
         ActionNotFound, AliceSwap,
     },
@@ -61,15 +60,15 @@ impl From<AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finali
     }
 }
 
-impl GetBetaParams for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+impl BetaParams for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
     type Output = Herc20;
-    fn get_beta_params(&self) -> Self::Output {
+    fn beta_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl GetBetaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
-    fn get_beta_events(&self) -> Option<LedgerEvents> {
+impl BetaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+    fn beta_events(&self) -> Option<LedgerEvents> {
         match self {
             AliceSwap::<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>::Created { .. } => None,
             AliceSwap::<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>::Finalized {
@@ -80,15 +79,15 @@ impl GetBetaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized,
     }
 }
 
-impl GetAlphaParams for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+impl AlphaParams for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
     type Output = Halight;
-    fn get_alpha_params(&self) -> Self::Output {
+    fn alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl GetAlphaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
-    fn get_alpha_events(&self) -> Option<LedgerEvents> {
+impl AlphaEvents for AliceSwap<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized> {
+    fn alpha_events(&self) -> Option<LedgerEvents> {
         match self {
             AliceSwap::<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>::Created { .. } => None,
             AliceSwap::<asset::Bitcoin, asset::Erc20, HalightFinalized, Herc20Finalized>::Finalized {
