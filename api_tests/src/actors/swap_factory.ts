@@ -273,8 +273,8 @@ function defaultHerc20EthereumErc20RequestParams(
 }
 
 function defaultHalightHanHerc20Expiries() {
-    const alphaAbsoluteExpiry = Math.round(Date.now() / 1000) + 8;
-    const betaAbsoluteExpiry = Math.round(Date.now() / 1000) + 3;
+    const alphaAbsoluteExpiry = Math.round(Date.now() / 1000) + 120;
+    const betaAbsoluteExpiry = Math.round(Date.now() / 1000) + 60;
 
     return {
         alphaAbsoluteExpiry,
