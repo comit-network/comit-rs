@@ -45,32 +45,22 @@ pub struct States(Mutex<HashMap<LocalSwapId, State>>);
 
 impl State {
     pub fn transition_to_deployed(&mut self, deployed: Deployed) {
-        let Deployed {
-            transaction,
-            location,
-        } = deployed;
-
         match std::mem::replace(self, State::None) {
-            State::None => {
-                *self = State::Deployed {
-                    deploy_transaction: transaction,
-                    htlc_location: location,
-                }
-            }
+            State::None => *self = State::Deployed(deployed),
             other => panic!("expected state NotDeployed, got {}", other),
         }
     }
 
     pub fn transition_to_funded(&mut self, funded: Funded) {
         match std::mem::replace(self, State::None) {
-            State::Deployed {
-                deploy_transaction,
-                htlc_location,
-            } => match funded {
+            State::Deployed(Deployed {
+                transaction: deploy_transaction,
+                location,
+            }) => match funded {
                 Funded::Correctly { asset, transaction } => {
                     *self = State::Funded {
                         deploy_transaction,
-                        htlc_location,
+                        htlc_location: location,
                         fund_transaction: transaction,
                         asset,
                     }
@@ -78,7 +68,7 @@ impl State {
                 Funded::Incorrectly { asset, transaction } => {
                     *self = State::IncorrectlyFunded {
                         deploy_transaction,
-                        htlc_location,
+                        htlc_location: location,
                         fund_transaction: transaction,
                         asset,
                     }
@@ -193,10 +183,7 @@ impl state::Update<Event> for States {
 #[allow(clippy::large_enum_variant)]
 pub enum State {
     None,
-    Deployed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-    },
+    Deployed(Deployed),
     Funded {
         htlc_location: htlc_location::Ethereum,
         deploy_transaction: transaction::Ethereum,

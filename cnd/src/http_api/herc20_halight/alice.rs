@@ -202,7 +202,7 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
             AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Deployed { htlc_location, .. },
+                        state: herc20::State::Deployed (deployed),
                         asset: herc20_asset,
                         ..
                     },
@@ -215,7 +215,7 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
             } => {
                 let herc20_asset = herc20_asset.clone();
                 let to = herc20_asset.token_contract;
-                let htlc_address = blockchain_contracts::ethereum::Address((*htlc_location).into());
+                let htlc_address = blockchain_contracts::ethereum::Address((deployed.location).into());
                 let data = Erc20Htlc::transfer_erc20_tx_payload(
                     herc20_asset.quantity.into(),
                     htlc_address,
