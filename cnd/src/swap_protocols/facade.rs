@@ -128,12 +128,12 @@ impl Facade {
     }
 
     /// True if expiry time has elapsed according to the Bitcoin connector.
-    pub async fn can_refund_bitcoin(&self, expiry: Timestamp) -> bool {
+    pub async fn can_refund_bitcoin(&self, expiry: Timestamp) -> anyhow::Result<bool> {
         self.connectors.bitcoin.has_passed(expiry).await
     }
 
     /// True if expiry time has elapsed according to the Ethereum connector.
-    pub async fn can_refund_ethereum(&self, expiry: Timestamp) -> bool {
+    pub async fn can_refund_ethereum(&self, expiry: Timestamp) -> anyhow::Result<bool> {
         self.connectors.ethereum.has_passed(expiry).await
     }
 }

@@ -123,5 +123,5 @@ impl ToDigestInput for asset::Erc20Quantity {
 /// in the past and should document this when implementing this trait.
 #[async_trait]
 pub trait HasPassed {
-    async fn has_passed(&self, unix: Timestamp) -> bool;
+    async fn has_passed(&self, unix: Timestamp) -> anyhow::Result<bool>;
 }

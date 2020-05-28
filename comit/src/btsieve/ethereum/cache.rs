@@ -123,14 +123,10 @@ impl<C> HasPassed for Cache<C>
 where
     C: LatestBlock<Block = Block>,
 {
-    async fn has_passed(&self, timestamp: Timestamp) -> bool {
-        match self.latest_block().await {
-            Err(e) => {
-                tracing::warn!("failed to get block time: {}", e);
-                false
-            }
-            Ok(block) => U256::from(timestamp) < block.timestamp,
-        }
+    async fn has_passed(&self, timestamp: Timestamp) -> anyhow::Result<bool> {
+        let block = self.latest_block().await?;
+        let has_passed = U256::from(timestamp) < block.timestamp;
+        Ok(has_passed)
     }
 }
 

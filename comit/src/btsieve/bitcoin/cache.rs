@@ -103,13 +103,9 @@ impl<C> HasPassed for Cache<C>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
 {
-    async fn has_passed(&self, timestamp: Timestamp) -> bool {
-        match self.median_time_past().await {
-            Err(e) => {
-                tracing::warn!("failed to get median time-past: {}", e);
-                false
-            }
-            Ok(time_past) => timestamp < time_past,
-        }
+    async fn has_passed(&self, timestamp: Timestamp) -> anyhow::Result<bool> {
+        let time_past = self.median_time_past().await?;
+        let has_passed = timestamp < time_past;
+        Ok(has_passed)
     }
 }
