@@ -56,24 +56,31 @@ impl State {
             State::Deployed(Deployed {
                 transaction: deploy_transaction,
                 location,
-            }) => match funded {
-                Funded::Correctly { asset, transaction } => {
-                    *self = State::Funded {
-                        deploy_transaction,
-                        htlc_location: location,
-                        fund_transaction: transaction,
-                        asset,
-                    }
+            }) => {
+                *self = State::Funded {
+                    deploy_transaction,
+                    htlc_location: location,
+                    fund_transaction: funded.transaction,
+                    asset: funded.asset,
                 }
-                Funded::Incorrectly { asset, transaction } => {
-                    *self = State::IncorrectlyFunded {
-                        deploy_transaction,
-                        htlc_location: location,
-                        fund_transaction: transaction,
-                        asset,
-                    }
+            }
+            other => panic!("expected state Deployed, got {}", other),
+        }
+    }
+
+    pub fn transition_to_incorrectly_funded(&mut self, funded: Funded) {
+        match std::mem::replace(self, State::None) {
+            State::Deployed(Deployed {
+                transaction: deploy_transaction,
+                location,
+            }) => {
+                *self = State::IncorrectlyFunded {
+                    deploy_transaction,
+                    htlc_location: location,
+                    fund_transaction: funded.transaction,
+                    asset: funded.asset,
                 }
-            },
+            }
             other => panic!("expected state Deployed, got {}", other),
         }
     }
@@ -158,6 +165,9 @@ impl state::Update<Event> for States {
             }
             (Event::Funded(funded), Entry::Occupied(mut state)) => {
                 state.get_mut().transition_to_funded(funded)
+            }
+            (Event::IncorrectlyFunded(funded), Entry::Occupied(mut state)) => {
+                state.get_mut().transition_to_incorrectly_funded(funded)
             }
             (Event::Redeemed(redeemed), Entry::Occupied(mut state)) => {
                 state.get_mut().transition_to_redeemed(redeemed)

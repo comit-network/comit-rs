@@ -71,6 +71,9 @@ pub enum Event {
     /// The HTLC has been funded with ERC20 tokens.
     Funded(Funded),
 
+    /// The HTLC has been funded with an incorrect amount of ERC20 tokens.
+    IncorrectlyFunded(Funded),
+
     /// The HTLC has been destroyed via the redeem path, token have been sent to
     /// the redeemer.
     Redeemed(Redeemed),
@@ -88,15 +91,11 @@ pub struct Deployed {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum Funded {
-    Correctly {
-        transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-    Incorrectly {
-        transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
+pub struct Funded {
+    pub transaction: transaction::Ethereum,
+    pub deploy_transaction: transaction::Ethereum,
+    pub location: htlc_location::Ethereum,
+    pub asset: asset::Erc20,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -150,7 +149,12 @@ where
     let funded = connector
         .wait_for_funded(params.clone(), start_of_swap, deployed.clone())
         .await?;
-    co.yield_(Ok(Event::Funded(funded))).await;
+
+    let expected_asset = &params.asset;
+    match expected_asset.cmp(&funded.asset) {
+        std::cmp::Ordering::Equal => co.yield_(Ok(Event::Funded(funded))).await,
+        _ => co.yield_(Ok(Event::IncorrectlyFunded(funded))).await,
+    };
 
     let redeemed = connector.wait_for_redeemed(start_of_swap, deployed.clone());
     let refunded = connector.wait_for_refunded(start_of_swap, deployed);

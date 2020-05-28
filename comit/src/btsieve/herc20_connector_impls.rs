@@ -11,7 +11,6 @@ use crate::{
     Secret,
 };
 use chrono::NaiveDateTime;
-use std::cmp::Ordering;
 use tracing_futures::Instrument;
 
 lazy_static::lazy_static! {
@@ -65,17 +64,15 @@ impl WaitForFunded for Cache<Web3Connector> {
             .instrument(tracing::trace_span!("funded"))
             .await?;
 
-        let expected_asset = &params.asset;
-
         let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
         let asset = Erc20::new(log.address, quantity);
 
-        let event = match expected_asset.cmp(&asset) {
-            Ordering::Equal => Funded::Correctly { transaction, asset },
-            _ => Funded::Incorrectly { transaction, asset },
-        };
-
-        Ok(event)
+        Ok(Funded {
+            transaction,
+            asset,
+            deploy_transaction: deployed.transaction,
+            location: deployed.location,
+        })
     }
 }
 
