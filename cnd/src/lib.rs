@@ -40,6 +40,7 @@ pub mod spectral_ext;
 
 pub mod comit_api;
 pub mod config;
+pub mod connectors;
 pub mod file_lock;
 pub mod http_api;
 pub mod init_swap;

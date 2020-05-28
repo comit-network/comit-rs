@@ -1,4 +1,5 @@
 use bitcoin::hashes::core::fmt::Formatter;
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use std::{fmt, time::SystemTime};
 
@@ -50,6 +51,13 @@ impl From<Timestamp> for u32 {
 impl From<Timestamp> for i64 {
     fn from(item: Timestamp) -> Self {
         i64::from(item.0)
+    }
+}
+
+impl From<Timestamp> for NaiveDateTime {
+    fn from(t: Timestamp) -> Self {
+        let secs = i64::from(t);
+        NaiveDateTime::from_timestamp(secs, 0)
     }
 }
 

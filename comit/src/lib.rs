@@ -25,6 +25,7 @@ pub use self::{
     swap_id::SharedSwapId,
     timestamp::{RelativeTime, Timestamp},
 };
+use async_trait::async_trait;
 use digest::ToDigestInput;
 
 #[derive(
@@ -114,4 +115,13 @@ impl ToDigestInput for asset::Erc20Quantity {
     fn to_digest_input(&self) -> Vec<u8> {
         self.to_bytes()
     }
+}
+
+/// Returns true if time has passed according to self. Time is
+/// measured as a unix timestamp i.e., seconds since epoch.
+/// Implementers are free to define their own concept of a time being
+/// in the past and should document this when implementing this trait.
+#[async_trait]
+pub trait HasPassed {
+    async fn has_passed(&self, unix: Timestamp) -> anyhow::Result<bool>;
 }

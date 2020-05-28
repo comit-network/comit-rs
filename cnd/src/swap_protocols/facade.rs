@@ -1,5 +1,6 @@
 use crate::{
     asset,
+    connectors::Connectors,
     db::{CreatedSwap, Save, Sqlite},
     identity,
     network::{DialInformation, Identities, Swarm},
@@ -8,6 +9,7 @@ use crate::{
     timestamp::Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
+use comit::HasPassed;
 use digest::Digest;
 
 /// This represents the information available on a swap
@@ -108,6 +110,7 @@ pub struct Facade {
     pub swarm: Swarm,
     pub db: Sqlite,
     pub storage: Storage,
+    pub connectors: Connectors,
 }
 
 impl Facade {
@@ -122,6 +125,16 @@ impl Facade {
         self.swarm
             .initiate_communication(id, peer, role, digest, identities)
             .await
+    }
+
+    /// True if expiry time has elapsed according to the Bitcoin connector.
+    pub async fn can_refund_bitcoin(&self, expiry: Timestamp) -> anyhow::Result<bool> {
+        self.connectors.bitcoin.has_passed(expiry).await
+    }
+
+    /// True if expiry time has elapsed according to the Ethereum connector.
+    pub async fn can_refund_ethereum(&self, expiry: Timestamp) -> anyhow::Result<bool> {
+        self.connectors.ethereum.has_passed(expiry).await
     }
 }
 

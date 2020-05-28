@@ -20,6 +20,7 @@ use cnd::{
         ethereum::{self, Web3Connector},
     },
     config::{self, validation::validate_connection_to_network, Settings},
+    connectors::Connectors,
     db::Sqlite,
     file_lock::TryLockExclusive,
     http_api::route_factory,
@@ -141,6 +142,11 @@ fn main() -> anyhow::Result<()> {
     })
     .ok();
 
+    let connectors = Connectors {
+        bitcoin: Arc::clone(&bitcoin_connector),
+        ethereum: Arc::clone(&ethereum_connector),
+    };
+
     // RCF003 protocol
     let rfc003_alpha_ledger_states = Arc::new(rfc003::LedgerStates::default());
     let rfc003_beta_ledger_states = Arc::new(rfc003::LedgerStates::default());
@@ -198,6 +204,7 @@ fn main() -> anyhow::Result<()> {
         swarm: swarm.clone(),
         db: database,
         storage: storage.clone(),
+        connectors,
     };
 
     let http_api_listener = runtime.block_on(bind_http_api_socket(&settings))?;
