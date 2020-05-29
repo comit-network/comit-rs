@@ -68,11 +68,12 @@ impl DeployAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             BobSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::Opened(_),
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 beta_finalized:
                     herc20::Finalized {
+                        state: herc20::State::None,
                         asset: herc20_asset,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
@@ -112,7 +113,7 @@ impl FundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
             BobSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::Opened(_),
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 beta_finalized:
