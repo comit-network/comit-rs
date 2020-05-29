@@ -158,6 +158,7 @@ impl DeployAction
             AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
+                        state: herc20::State::None,
                         asset: herc20_asset,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
