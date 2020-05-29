@@ -3,8 +3,8 @@ use crate::{
     tracing_ext::InstrumentProtocol,
 };
 use chrono::NaiveDateTime;
-use comit::{asset, htlc_location, transaction, Protocol, Role, Side};
 pub use comit::{herc20::*, identity};
+use comit::{Protocol, Role, Side};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -73,29 +73,8 @@ impl State {
     }
 
     pub fn transition_to_refunded(&mut self, refunded: Refunded) {
-        let Refunded { transaction } = refunded;
-
         match std::mem::replace(self, State::None) {
-            State::Funded(Funded {
-                deploy_transaction,
-                location,
-                asset,
-                transaction: fund_transaction,
-            })
-            | State::IncorrectlyFunded(Funded {
-                deploy_transaction,
-                location,
-                asset,
-                transaction: fund_transaction,
-            }) => {
-                *self = State::Refunded {
-                    deploy_transaction,
-                    htlc_location: location,
-                    fund_transaction,
-                    refund_transaction: transaction,
-                    asset,
-                }
-            }
+            State::Funded(_) | State::IncorrectlyFunded(_) => *self = State::Refunded(refunded),
             other => panic!("expected state Funded or IncorrectlyFunded, got {}", other),
         }
     }
@@ -158,13 +137,7 @@ pub enum State {
     Funded(Funded),
     IncorrectlyFunded(Funded),
     Redeemed(Redeemed),
-    Refunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        refund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
+    Refunded(Refunded),
 }
 
 #[derive(Clone, Copy, Debug)]
