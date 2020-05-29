@@ -46,7 +46,7 @@ pub trait WaitForRedeemed {
     async fn wait_for_redeemed(
         &self,
         start_of_swap: NaiveDateTime,
-        deployed: Deployed,
+        funded: Funded,
     ) -> anyhow::Result<Redeemed>;
 }
 
@@ -102,7 +102,10 @@ pub struct Funded {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Redeemed {
     pub transaction: transaction::Ethereum,
+    pub deploy_transaction: transaction::Ethereum,
+    pub funded_transaction: transaction::Ethereum,
     pub secret: Secret,
+    pub location: htlc_location::Ethereum,
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -153,11 +156,14 @@ where
 
     let expected_asset = &params.asset;
     match expected_asset.cmp(&funded.asset) {
-        std::cmp::Ordering::Equal => co.yield_(Ok(Event::Funded(funded))).await,
-        _ => co.yield_(Ok(Event::IncorrectlyFunded(funded))).await,
+        std::cmp::Ordering::Equal => co.yield_(Ok(Event::Funded(funded.clone()))).await,
+        _ => {
+            co.yield_(Ok(Event::IncorrectlyFunded(funded.clone())))
+                .await
+        }
     };
 
-    let redeemed = connector.wait_for_redeemed(start_of_swap, deployed.clone());
+    let redeemed = connector.wait_for_redeemed(start_of_swap, funded);
     let refunded = connector.wait_for_refunded(start_of_swap, deployed);
 
     match future::try_select(redeemed, refunded).await {

@@ -3,7 +3,7 @@ use crate::{
     tracing_ext::InstrumentProtocol,
 };
 use chrono::NaiveDateTime;
-use comit::{asset, htlc_location, transaction, Protocol, Role, Secret, Side};
+use comit::{asset, htlc_location, transaction, Protocol, Role, Side};
 pub use comit::{herc20::*, identity};
 use futures::TryStreamExt;
 use std::{
@@ -66,27 +66,8 @@ impl State {
     }
 
     pub fn transition_to_redeemed(&mut self, redeemed: Redeemed) {
-        let Redeemed {
-            transaction,
-            secret,
-        } = redeemed;
-
         match std::mem::replace(self, State::None) {
-            State::Funded(Funded {
-                deploy_transaction,
-                location,
-                asset,
-                transaction: fund_transaction,
-            }) => {
-                *self = State::Redeemed {
-                    deploy_transaction,
-                    htlc_location: location,
-                    fund_transaction,
-                    redeem_transaction: transaction,
-                    asset,
-                    secret,
-                }
-            }
+            State::Funded(_) => *self = State::Redeemed(redeemed),
             other => panic!("expected state Funded, got {}", other),
         }
     }
@@ -176,14 +157,7 @@ pub enum State {
     Deployed(Deployed),
     Funded(Funded),
     IncorrectlyFunded(Funded),
-    Redeemed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        redeem_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-        secret: Secret,
-    },
+    Redeemed(Redeemed),
     Refunded {
         htlc_location: htlc_location::Ethereum,
         deploy_transaction: transaction::Ethereum,

@@ -81,10 +81,10 @@ impl WaitForRedeemed for Cache<Web3Connector> {
     async fn wait_for_redeemed(
         &self,
         start_of_swap: NaiveDateTime,
-        deployed: Deployed,
+        funded: Funded,
     ) -> anyhow::Result<Redeemed> {
         let event = Event {
-            address: deployed.location,
+            address: funded.location,
             topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
         };
 
@@ -97,6 +97,9 @@ impl WaitForRedeemed for Cache<Web3Connector> {
             Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
 
         Ok(Redeemed {
+            funded_transaction: funded.transaction,
+            deploy_transaction: funded.deploy_transaction,
+            location: funded.location,
             transaction,
             secret,
         })

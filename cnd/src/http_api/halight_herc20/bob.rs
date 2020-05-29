@@ -18,7 +18,7 @@ use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 use comit::{
     asset,
     ethereum::{Bytes, ChainId},
-    herc20::Funded,
+    herc20::{Funded, Redeemed},
 };
 
 impl InitAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
@@ -166,7 +166,7 @@ impl RedeemAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                     },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Redeemed { secret, .. },
+                        state: herc20::State::Redeemed(Redeemed { secret, .. }),
                         ..
                     },
                 ..
