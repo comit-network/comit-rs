@@ -156,17 +156,17 @@ impl DeployAction
     fn deploy_action(&self) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
-                beta_finalized:
-                    halight::Finalized {
-                        state: halight::State::Opened(_),
-                        ..
-                    },
                 alpha_finalized:
                     herc20::Finalized {
                         asset: herc20_asset,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
                         expiry: herc20_expiry,
+                        ..
+                    },
+                beta_finalized:
+                    halight::Finalized {
+                        state: halight::State::Opened(_),
                         ..
                     },
                 secret,
@@ -200,15 +200,15 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
     fn fund_action(&self) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
-                beta_finalized:
-                    halight::Finalized {
-                        state: halight::State::Opened(_),
-                        ..
-                    },
                 alpha_finalized:
                     herc20::Finalized {
                         state: herc20::State::Deployed { htlc_location, .. },
                         asset: herc20_asset,
+                        ..
+                    },
+                beta_finalized:
+                    halight::Finalized {
+                        state: halight::State::Opened(_),
                         ..
                     },
                 ..
@@ -285,11 +285,6 @@ impl RefundAction
                     herc20::Finalized {
                         state: herc20::State::Funded { htlc_location, .. },
                         expiry: herc20_expiry,
-                        ..
-                    },
-                beta_finalized:
-                    halight::Finalized {
-                        state: halight::State::Accepted(_),
                         ..
                     },
                 ..
