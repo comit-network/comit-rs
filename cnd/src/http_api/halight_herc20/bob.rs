@@ -68,7 +68,7 @@ impl DeployAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             BobSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::Opened(_),
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 beta_finalized:
