@@ -53,34 +53,14 @@ impl State {
 
     pub fn transition_to_funded(&mut self, funded: Funded) {
         match std::mem::replace(self, State::None) {
-            State::Deployed(Deployed {
-                transaction: deploy_transaction,
-                location,
-            }) => {
-                *self = State::Funded {
-                    deploy_transaction,
-                    htlc_location: location,
-                    fund_transaction: funded.transaction,
-                    asset: funded.asset,
-                }
-            }
+            State::Deployed(_) => *self = State::Funded(funded),
             other => panic!("expected state Deployed, got {}", other),
         }
     }
 
     pub fn transition_to_incorrectly_funded(&mut self, funded: Funded) {
         match std::mem::replace(self, State::None) {
-            State::Deployed(Deployed {
-                transaction: deploy_transaction,
-                location,
-            }) => {
-                *self = State::IncorrectlyFunded {
-                    deploy_transaction,
-                    htlc_location: location,
-                    fund_transaction: funded.transaction,
-                    asset: funded.asset,
-                }
-            }
+            State::Deployed(_) => *self = State::IncorrectlyFunded(funded),
             other => panic!("expected state Deployed, got {}", other),
         }
     }
@@ -92,15 +72,15 @@ impl State {
         } = redeemed;
 
         match std::mem::replace(self, State::None) {
-            State::Funded {
+            State::Funded(Funded {
                 deploy_transaction,
-                htlc_location,
+                location,
                 asset,
-                fund_transaction,
-            } => {
+                transaction: fund_transaction,
+            }) => {
                 *self = State::Redeemed {
                     deploy_transaction,
-                    htlc_location,
+                    htlc_location: location,
                     fund_transaction,
                     redeem_transaction: transaction,
                     asset,
@@ -115,21 +95,21 @@ impl State {
         let Refunded { transaction } = refunded;
 
         match std::mem::replace(self, State::None) {
-            State::Funded {
+            State::Funded(Funded {
                 deploy_transaction,
-                htlc_location,
+                location,
                 asset,
-                fund_transaction,
-            }
-            | State::IncorrectlyFunded {
+                transaction: fund_transaction,
+            })
+            | State::IncorrectlyFunded(Funded {
                 deploy_transaction,
-                htlc_location,
+                location,
                 asset,
-                fund_transaction,
-            } => {
+                transaction: fund_transaction,
+            }) => {
                 *self = State::Refunded {
                     deploy_transaction,
-                    htlc_location,
+                    htlc_location: location,
                     fund_transaction,
                     refund_transaction: transaction,
                     asset,
@@ -194,18 +174,8 @@ impl state::Update<Event> for States {
 pub enum State {
     None,
     Deployed(Deployed),
-    Funded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
-    IncorrectlyFunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
-    },
+    Funded(Funded),
+    IncorrectlyFunded(Funded),
     Redeemed {
         htlc_location: htlc_location::Ethereum,
         deploy_transaction: transaction::Ethereum,

@@ -17,6 +17,7 @@ use comit::{
     asset,
     ethereum::{Bytes, ChainId},
     halight::Settled,
+    herc20::Funded,
     Never,
 };
 
@@ -72,7 +73,7 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
             BobSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded(Funded { location, .. }),
                         ..
                     },
                 beta_finalized:
@@ -82,7 +83,7 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                     },
                 ..
             } => {
-                let to = *htlc_location;
+                let to = *location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
                 let chain_id = ChainId::regtest();

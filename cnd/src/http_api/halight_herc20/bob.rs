@@ -18,6 +18,7 @@ use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 use comit::{
     asset,
     ethereum::{Bytes, ChainId},
+    herc20::Funded,
 };
 
 impl InitAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
@@ -195,13 +196,13 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             BobSwap::Finalized {
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded(Funded { location, .. }),
                         expiry: herc20_expiry,
                         ..
                     },
                 ..
             } => {
-                let to = *htlc_location;
+                let to = *location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
                 let chain_id = ChainId::regtest();

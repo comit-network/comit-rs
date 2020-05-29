@@ -61,6 +61,7 @@ pub trait WaitForRefunded {
 
 /// Represents the events in the herc20 protocol.
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
+#[allow(clippy::large_enum_variant)]
 pub enum Event {
     /// The protocol was started.
     Started,

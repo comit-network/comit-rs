@@ -15,6 +15,7 @@ use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 use comit::{
     asset,
     ethereum::{Bytes, ChainId},
+    herc20::Funded,
     Never, SecretHash,
 };
 
@@ -160,13 +161,13 @@ impl RedeemAction
             AliceSwap::<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>::Finalized {
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded (Funded {location, ..}),
                         ..
                     },
                 secret,
                 ..
             } => {
-                let to = *htlc_location;
+                let to = *location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
                 let chain_id = ChainId::regtest();
