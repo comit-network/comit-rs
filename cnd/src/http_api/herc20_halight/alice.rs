@@ -114,6 +114,10 @@ impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
     fn init_action(&self) -> anyhow::Result<Self::Output> {
         match self {
             AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+                alpha_finalized: herc20::Finalized {
+                    state: herc20::State::None,
+                    ..
+                },
                 beta_finalized:
                     halight::Finalized {
                         state: halight::State::None,
