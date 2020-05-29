@@ -2,7 +2,8 @@ use crate::{
     http_api::{
         halight, herc20,
         protocol::{
-            AlphaEvents, AlphaParams, BetaEvents, BetaParams, BobSwap, Halight, Herc20,
+            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
+            BetaBlockchain, BetaEvents, BetaParams, Blockchain, BobSwap, Halight, Herc20,
             LedgerEvents,
         },
         ActionNotFound,
@@ -17,7 +18,7 @@ use comit::{
     asset,
     ethereum::{Bytes, ChainId},
     halight::Settled,
-    Never,
+    Never, Timestamp,
 };
 
 impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
@@ -216,5 +217,43 @@ impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Fina
                 quantity: halight_asset.as_sat().to_string(),
             },
         }
+    }
+}
+
+impl AlphaBlockchain
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+{
+    fn alpha_blockchain(&self) -> Blockchain {
+        Blockchain::Ethereum
+    }
+}
+
+impl BetaBlockchain
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+{
+    fn beta_blockchain(&self) -> Blockchain {
+        Blockchain::Bitcoin
+    }
+}
+
+impl AlphaAbsoluteExpiry
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+{
+    fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
+        match self {
+            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Created { .. } => None,
+            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+                alpha_finalized: herc20::Finalized { expiry, .. },
+                ..
+            } => Some(*expiry)
+        }
+    }
+}
+
+impl BetaAbsoluteExpiry
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+{
+    fn beta_absolute_expiry(&self) -> Option<Timestamp> {
+        None // No absolute expiry time for halight.
     }
 }

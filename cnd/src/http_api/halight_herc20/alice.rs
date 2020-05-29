@@ -2,7 +2,8 @@ use crate::{
     http_api::{
         halight, herc20,
         protocol::{
-            AlphaEvents, AlphaParams, BetaEvents, BetaParams, Halight, Herc20, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
+            BetaBlockchain, BetaEvents, BetaParams, Blockchain, Halight, Herc20, LedgerEvents,
         },
         ActionNotFound, AliceSwap,
     },
@@ -15,7 +16,7 @@ use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 use comit::{
     asset,
     ethereum::{Bytes, ChainId},
-    Never, SecretHash,
+    Never, SecretHash, Timestamp,
 };
 
 impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>>
@@ -207,5 +208,43 @@ impl RefundAction
     type Output = Never;
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
+    }
+}
+
+impl AlphaBlockchain
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    fn alpha_blockchain(&self) -> Blockchain {
+        Blockchain::Bitcoin
+    }
+}
+
+impl BetaBlockchain
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    fn beta_blockchain(&self) -> Blockchain {
+        Blockchain::Ethereum
+    }
+}
+
+impl AlphaAbsoluteExpiry
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
+        None // No absolute expiry time for halight.
+    }
+}
+
+impl BetaAbsoluteExpiry
+    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
+{
+    fn beta_absolute_expiry(&self) -> Option<Timestamp> {
+        match self {
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
+                beta_finalized: herc20::Finalized { expiry, .. },
+                ..
+            } => Some(*expiry),
+        }
     }
 }
