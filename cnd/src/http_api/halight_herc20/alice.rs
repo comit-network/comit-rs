@@ -121,7 +121,7 @@ impl FundAction for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                 },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { .. },
+                        state: herc20::State::None,
                         ..
                     },
                 secret,
