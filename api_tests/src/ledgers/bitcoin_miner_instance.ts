@@ -19,7 +19,7 @@ export default class BitcoinMinerInstance {
             stdio: "ignore",
         });
 
-        await asyncFs.writeFile(pidFile, miner.pid, {
+        await asyncFs.writeFile(pidFile, miner.pid.toString(), {
             encoding: "utf-8",
         });
 

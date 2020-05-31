@@ -75,7 +75,7 @@ export class BitcoindInstance implements LedgerInstance {
 
         this.logger.info("bitcoind started with PID", this.process.pid);
 
-        await asyncFs.writeFile(this.pidFile, this.process.pid, {
+        await asyncFs.writeFile(this.pidFile, this.process.pid.toString(), {
             encoding: "utf-8",
         });
     }
