@@ -1300,10 +1300,10 @@ bitcoin-ops@^1.3.0, bitcoin-ops@^1.4.0:
   resolved "https://registry.yarnpkg.com/bitcoin-ops/-/bitcoin-ops-1.4.1.tgz#e45de620398e22fd4ca6023de43974ff42240278"
   integrity sha512-pef6gxZFztEhaE9RY9HmWVmiIHqCb2OyS4HPKkpc6CIiiOa3Qmuoylxc5P2EkU3w+5eTSifI9SEZC88idAIGow==
 
-bitcoinjs-lib@^5.1.8:
-  version "5.1.8"
-  resolved "https://registry.yarnpkg.com/bitcoinjs-lib/-/bitcoinjs-lib-5.1.8.tgz#b61be4fab7cf82142cea76f82e70a324c9a57984"
-  integrity sha512-LQQ9uw33sqW3K1aSzYCy0Az8zbcsR1ttaNkjThFwApT/vbB7bibEesPIxf0zvzjf8V8It68v7D/fCkjd4bStMw==
+bitcoinjs-lib@^5.1.9:
+  version "5.1.9"
+  resolved "https://registry.yarnpkg.com/bitcoinjs-lib/-/bitcoinjs-lib-5.1.9.tgz#1b2ee3d38be15134e012079ce294f84e35e75842"
+  integrity sha512-jrmlaofoXtTSfRWAxiGJjgEaeyW/wjh8yIt511Lgg58bGh+Hemtt6PPby+FVT2D3Dfw3E8REIlU+lJg5s4PEPQ==
   dependencies:
     bech32 "^1.1.2"
     bip174 "^1.0.1"
