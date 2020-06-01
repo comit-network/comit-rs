@@ -30,10 +30,9 @@ use cnd::{
     respawn::respawn,
     storage::Storage,
     swap_protocols::{
-        halight, herc20, rfc003, rfc003::SwapCommunicationStates, Facade, Rfc003Facade,
-        SwapErrorStates,
+        halight, herc20, rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates,
     },
-    RootSeed,
+    Facade, RootSeed,
 };
 use comit::lnd::LndConnectorParams;
 use rand::rngs::OsRng;

@@ -15,8 +15,8 @@ use crate::{
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
     storage::Load,
-    swap_protocols::Facade,
-    DeployAction, FundAction, InitAction, LocalSwapId, Protocol, RedeemAction, RefundAction, Role,
+    DeployAction, Facade, FundAction, InitAction, LocalSwapId, Protocol, RedeemAction,
+    RefundAction, Role,
 };
 use anyhow::bail;
 use http_api_problem::HttpApiProblem;

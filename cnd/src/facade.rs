@@ -1,7 +1,6 @@
 use crate::{
     connectors::Connectors,
     db::{Save, Sqlite},
-    hbit, herc20,
     network::{DialInformation, Identities, Swarm},
     storage::{Load, LoadAll, Storage},
     LocalSwapId, Role, Timestamp,
