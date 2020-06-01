@@ -1,5 +1,4 @@
-use crate::swap_protocols::halight;
-use comit::{asset, identity, RelativeTime};
+use crate::{asset, identity, swap_protocols::halight, RelativeTime};
 
 pub use crate::swap_protocols::halight::*;
 

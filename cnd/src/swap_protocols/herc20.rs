@@ -1,17 +1,18 @@
 use crate::{
+    asset, htlc_location, identity,
     swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
-    LocalSwapId,
+    transaction, LocalSwapId, Protocol, Role, Secret, Side,
 };
 use chrono::NaiveDateTime;
-use comit::{asset, htlc_location, transaction, Protocol, Role, Secret, Side};
-pub use comit::{herc20::*, identity};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
     sync::Arc,
 };
 use tokio::sync::Mutex;
+
+pub use comit::herc20::*;
 
 /// Creates a new instance of the herc20 protocol, annotated with tracing spans
 /// and saves all events in the `States` hashmap.

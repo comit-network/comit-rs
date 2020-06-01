@@ -1,10 +1,9 @@
 use crate::{
+    identity,
     swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
-    LocalSwapId,
+    LocalSwapId, Protocol, RelativeTime, Role, Side,
 };
-pub use comit::{halight::*, identity};
-use comit::{Protocol, Role, Side};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -13,7 +12,6 @@ use std::{
 use tokio::sync::Mutex;
 
 pub use comit::halight::*;
-use comit::RelativeTime;
 
 /// The lightning invoice expiry is used to tell the receiving lnd
 /// until when should the payment of this invoice can be accepted.

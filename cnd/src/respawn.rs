@@ -8,10 +8,9 @@ use crate::{
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, LoadAll, Storage},
     swap_protocols::{halight, herc20},
-    LocalSwapId, Side,
+    LocalSwapId, Protocol, Role, Side,
 };
 use chrono::Utc;
-use comit::{Protocol, Role};
 
 /// Describes a swap that needs to be respawned.
 ///

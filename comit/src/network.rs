@@ -1,11 +1,13 @@
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
-pub mod swap_digest;
+mod swap_digest;
 
 use crate::SecretHash;
 use libp2p::{Multiaddr, PeerId};
 use std::fmt;
+
+pub use swap_digest::*;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DialInformation {

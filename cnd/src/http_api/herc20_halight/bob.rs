@@ -1,4 +1,6 @@
 use crate::{
+    asset,
+    ethereum::{Bytes, ChainId},
     http_api::{
         halight, herc20,
         protocol::{
@@ -9,16 +11,12 @@ use crate::{
     },
     swap_protocols::{
         actions::{ethereum, lnd, lnd::Chain},
+        halight::Settled,
         DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
     },
-};
-use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use comit::{
-    asset,
-    ethereum::{Bytes, ChainId},
-    halight::Settled,
     Never, Timestamp,
 };
+use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 
 impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
     type Output = lnd::SendPayment;

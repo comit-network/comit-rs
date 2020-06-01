@@ -54,7 +54,7 @@ impl Sqlite {
     pub async fn load_meta_swap(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<comit::Protocol, comit::Protocol>> {
+    ) -> anyhow::Result<http_api::Swap<Protocol, Protocol>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -103,7 +103,7 @@ impl Sqlite {
 
     pub async fn load_all_respawn_meta_swaps(
         &self,
-    ) -> anyhow::Result<Vec<respawn::Swap<comit::Protocol, comit::Protocol>>> {
+    ) -> anyhow::Result<Vec<respawn::Swap<Protocol, Protocol>>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]

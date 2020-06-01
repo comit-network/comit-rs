@@ -1,4 +1,5 @@
 use crate::{
+    asset,
     db::{
         self,
         tables::{Halight, Herc20},
@@ -11,11 +12,10 @@ use crate::{
     respawn,
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get},
-    LocalSwapId, Protocol,
+    LocalSwapId, Protocol, Role,
 };
 use anyhow::Context;
 use async_trait::async_trait;
-use comit::{asset, Role};
 use db::tables::{SecretHash, Swap};
 use diesel::{
     sql_types, BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,

@@ -1,4 +1,6 @@
 use crate::{
+    asset,
+    ethereum::{Bytes, ChainId},
     http_api::{
         halight, herc20,
         protocol::{
@@ -11,13 +13,9 @@ use crate::{
         actions::{ethereum, lnd, lnd::Chain},
         DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
     },
-};
-use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use comit::{
-    asset,
-    ethereum::{Bytes, ChainId},
     Never, SecretHash, Timestamp,
 };
+use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 
 impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>>
     for Herc20

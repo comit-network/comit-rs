@@ -4,9 +4,8 @@ use crate::{
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, Storage},
     swap_protocols::{halight, herc20},
-    LocalSwapId,
+    LocalSwapId, Protocol, Role, Side,
 };
-use ::comit::{Protocol, Role, Side};
 use chrono::offset::Utc;
 
 pub async fn start_swap(

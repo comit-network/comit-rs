@@ -3,11 +3,10 @@ use crate::{
     db::{CreatedSwap, Save},
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
-    network::{Identities, ListenAddresses},
+    network::{swap_digest, Identities, ListenAddresses},
     swap_protocols::{halight, herc20, ledger, Facade, Rfc003Facade},
     LocalSwapId, Role,
 };
-use comit::network::swap_digest;
 use digest::Digest;
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};

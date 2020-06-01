@@ -4,6 +4,7 @@ pub mod post;
 pub mod rfc003;
 
 use crate::{
+    asset,
     http_api::{
         action::ActionResponseBody,
         halight, herc20, problem,
@@ -18,7 +19,6 @@ use crate::{
     LocalSwapId, Protocol, Role,
 };
 use anyhow::bail;
-use comit::asset;
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
 use warp::{http, http::StatusCode, Rejection, Reply};
