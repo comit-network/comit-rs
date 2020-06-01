@@ -7,7 +7,10 @@ use crate::{
     http_api::{
         action::ActionResponseBody,
         halight, herc20, problem,
-        protocol::{AlphaEvents, AlphaParams, BetaEvents, BetaParams, GetRole},
+        protocol::{
+            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
+            BetaBlockchain, BetaEvents, BetaParams, Blockchain, GetRole, LedgerEvents,
+        },
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
     storage::Load,
@@ -51,7 +54,7 @@ pub async fn handle_get_swap(
                 herc20::Finalized,
                 halight::Finalized,
             > = facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(facade.clone(), swap_id, swap).await
         }
         Swap {
             alpha: Protocol::Herc20,
@@ -60,7 +63,7 @@ pub async fn handle_get_swap(
         } => {
             let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
                 facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(facade.clone(), swap_id, swap).await
         }
         Swap {
             alpha: Protocol::Halight,
@@ -73,7 +76,7 @@ pub async fn handle_get_swap(
                 halight::Finalized,
                 herc20::Finalized,
             > = facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(facade.clone(), swap_id, swap).await
         }
         Swap {
             alpha: Protocol::Halight,
@@ -82,13 +85,17 @@ pub async fn handle_get_swap(
         } => {
             let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
                 facade.load(swap_id).await?;
-            make_swap_entity(swap_id, swap)
+            make_swap_entity(facade.clone(), swap_id, swap).await
         }
         _ => unimplemented!("other combinations not suported yet"),
     }
 }
 
-fn make_swap_entity<S>(swap_id: LocalSwapId, swap: S) -> anyhow::Result<siren::Entity>
+async fn make_swap_entity<S>(
+    facade: Facade,
+    swap_id: LocalSwapId,
+    swap: S,
+) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
         + AlphaParams
@@ -100,12 +107,36 @@ where
         + FundAction
         + RedeemAction
         + RefundAction
-        + Clone,
+        + Clone
+        + AlphaBlockchain
+        + BetaBlockchain
+        + AlphaAbsoluteExpiry
+        + BetaAbsoluteExpiry,
 {
     let role = swap.get_role();
-    let swap_resource = SwapResource { role: Http(role) };
 
-    let mut entity = siren::Entity::default()
+    let mut entity = create_swap_entity(swap_id, role)?;
+    add_params(&mut entity, &swap)?;
+
+    match (swap.alpha_events(), swap.beta_events()) {
+        (Some(alpha), Some(beta)) => {
+            add_events(&mut entity, alpha, beta)?;
+
+            match next_available_action(facade, &swap).await? {
+                None => Ok(entity),
+                Some(action) => {
+                    let siren_action = make_siren_action(swap_id, action);
+                    Ok(entity.with_action(siren_action))
+                }
+            }
+        }
+        _ => Ok(entity),
+    }
+}
+
+fn create_swap_entity(id: LocalSwapId, role: Role) -> anyhow::Result<siren::Entity> {
+    let swap_resource = SwapResource { role: Http(role) };
+    let entity = siren::Entity::default()
         .with_class_member("swap")
         .with_properties(swap_resource)
         .map_err(|e| {
@@ -114,9 +145,16 @@ where
         })?
         .with_link(siren::NavigationalLink::new(
             &["self"],
-            route_factory::swap_path(swap_id),
+            route_factory::swap_path(id),
         ));
 
+    Ok(entity)
+}
+
+fn add_params<S>(entity: &mut siren::Entity, swap: &S) -> anyhow::Result<()>
+where
+    S: AlphaParams + BetaParams,
+{
     let alpha_params = swap.alpha_params();
     let alpha_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
@@ -143,54 +181,99 @@ where
     );
     entity.push_sub_entity(beta_params_sub);
 
-    match (swap.alpha_events(), swap.beta_events()) {
-        (Some(alpha_tx), Some(beta_tx)) => {
-            let alpha_state_sub = siren::SubEntity::from_entity(
-                siren::Entity::default()
-                    .with_class_member("state")
-                    .with_properties(alpha_tx)
-                    .map_err(|e| {
-                        tracing::error!("failed to set properties of entity: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                    })?,
-                &["alpha"],
-            );
-            entity.push_sub_entity(alpha_state_sub);
+    Ok(())
+}
 
-            let beta_state_sub = siren::SubEntity::from_entity(
-                siren::Entity::default()
-                    .with_class_member("state")
-                    .with_properties(beta_tx)
-                    .map_err(|e| {
-                        tracing::error!("failed to set properties of entity: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                    })?,
-                &["beta"],
-            );
-            entity.push_sub_entity(beta_state_sub);
+fn add_events(
+    entity: &mut siren::Entity,
+    alpha_events: LedgerEvents,
+    beta_events: LedgerEvents,
+) -> anyhow::Result<()> {
+    let alpha_state_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("state")
+            .with_properties(alpha_events)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["alpha"],
+    );
+    entity.push_sub_entity(alpha_state_sub);
 
-            let maybe_action_names = vec![
-                swap.init_action().map(|_| ActionName::Init),
-                swap.deploy_action().map(|_| ActionName::Deploy),
-                swap.fund_action().map(|_| ActionName::Fund),
-                swap.redeem_action().map(|_| ActionName::Redeem),
-                swap.refund_action().map(|_| ActionName::Refund),
-            ];
+    let beta_state_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("state")
+            .with_properties(beta_events)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["beta"],
+    );
+    entity.push_sub_entity(beta_state_sub);
 
-            Ok(maybe_action_names
-                .into_iter()
-                .filter_map(|action| action.ok())
-                .fold(entity, |acc, action_name| {
-                    let siren_action = make_siren_action(swap_id, action_name);
-                    acc.with_action(siren_action)
-                }))
-        }
-        _ => Ok(entity),
+    Ok(())
+}
+
+async fn next_available_action<S>(facade: Facade, swap: &S) -> anyhow::Result<Option<ActionName>>
+where
+    S: GetRole
+        + DeployAction
+        + InitAction
+        + FundAction
+        + RedeemAction
+        + RefundAction
+        + Clone
+        + AlphaBlockchain
+        + BetaBlockchain
+        + AlphaAbsoluteExpiry
+        + BetaAbsoluteExpiry,
+{
+    if swap.init_action().is_ok() {
+        return Ok(Some(ActionName::Init));
     }
+
+    if swap.deploy_action().is_ok() {
+        return Ok(Some(ActionName::Deploy));
+    }
+
+    if swap.fund_action().is_ok() {
+        return Ok(Some(ActionName::Fund));
+    }
+
+    if swap.refund_action().is_ok() {
+        let role = swap.get_role();
+        let (expiry, blockchain_time) = match role {
+            Role::Alice => {
+                let expiry = swap.alpha_absolute_expiry().unwrap();
+                let time = match swap.alpha_blockchain() {
+                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                };
+                (expiry, time)
+            }
+            Role::Bob => {
+                let expiry = swap.beta_absolute_expiry().unwrap();
+                let time = match swap.beta_blockchain() {
+                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                };
+                (expiry, time)
+            }
+        };
+
+        if expiry < blockchain_time {
+            tracing::debug!("We have decided it's time to refund.");
+            return Ok(Some(ActionName::Refund));
+        }
+    }
+
+    if swap.redeem_action().is_ok() {
+        return Ok(Some(ActionName::Redeem));
+    }
+
+    Ok(None)
 }
 
 fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Action {

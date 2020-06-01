@@ -61,6 +61,12 @@ impl From<Timestamp> for NaiveDateTime {
     }
 }
 
+impl From<crate::ethereum::U256> for Timestamp {
+    fn from(value: crate::ethereum::U256) -> Self {
+        value.low_u32().into()
+    }
+}
+
 /// A duration used to represent a relative timelock
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash, Deserialize, Serialize)]
 #[serde(transparent)]

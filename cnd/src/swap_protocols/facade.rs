@@ -9,7 +9,6 @@ use crate::{
     timestamp::Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
-use comit::HasPassed;
 use digest::Digest;
 
 /// This represents the information available on a swap
@@ -127,14 +126,15 @@ impl Facade {
             .await
     }
 
-    /// True if expiry time has elapsed according to the Bitcoin connector.
-    pub async fn can_refund_bitcoin(&self, expiry: Timestamp) -> anyhow::Result<bool> {
-        self.connectors.bitcoin.has_passed(expiry).await
+    /// Returns the Bitcoin median time past, used for nLockTime and
+    /// CheckLockTimeVerify.
+    pub async fn bitcoin_median_time_past(&self) -> anyhow::Result<Timestamp> {
+        self.connectors.bitcoin.median_time_past().await
     }
 
-    /// True if expiry time has elapsed according to the Ethereum connector.
-    pub async fn can_refund_ethereum(&self, expiry: Timestamp) -> anyhow::Result<bool> {
-        self.connectors.ethereum.has_passed(expiry).await
+    /// Returns the timestamp of the latest Ethereum block.
+    pub async fn ethereum_latest_time(&self) -> anyhow::Result<Timestamp> {
+        self.connectors.ethereum.latest_timestamp().await
     }
 }
 
