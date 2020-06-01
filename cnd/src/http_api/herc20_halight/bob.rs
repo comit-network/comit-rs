@@ -2,9 +2,8 @@ use crate::{
     http_api::{
         halight, herc20,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
-            BetaBlockchain, BetaEvents, BetaParams, Blockchain, BobSwap, Halight, Herc20,
-            LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
+            BetaEvents, BetaLedger, BetaParams, BobSwap, Halight, Herc20, Ledger, LedgerEvents,
         },
         ActionNotFound,
     },
@@ -220,19 +219,15 @@ impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Fina
     }
 }
 
-impl AlphaBlockchain
-    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
-{
-    fn alpha_blockchain(&self) -> Blockchain {
-        Blockchain::Ethereum
+impl AlphaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+    fn alpha_ledger(&self) -> Ledger {
+        Ledger::Ethereum
     }
 }
 
-impl BetaBlockchain
-    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
-{
-    fn beta_blockchain(&self) -> Blockchain {
-        Blockchain::Bitcoin
+impl BetaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+    fn beta_ledger(&self) -> Ledger {
+        Ledger::Bitcoin
     }
 }
 

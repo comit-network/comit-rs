@@ -8,8 +8,8 @@ use crate::{
         action::ActionResponseBody,
         halight, herc20, problem,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
-            BetaBlockchain, BetaEvents, BetaParams, Blockchain, GetRole, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
+            BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
         },
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
@@ -108,8 +108,8 @@ where
         + RedeemAction
         + RefundAction
         + Clone
-        + AlphaBlockchain
-        + BetaBlockchain
+        + AlphaLedger
+        + BetaLedger
         + AlphaAbsoluteExpiry
         + BetaAbsoluteExpiry,
 {
@@ -225,8 +225,8 @@ where
         + RedeemAction
         + RefundAction
         + Clone
-        + AlphaBlockchain
-        + BetaBlockchain
+        + AlphaLedger
+        + BetaLedger
         + AlphaAbsoluteExpiry
         + BetaAbsoluteExpiry,
 {
@@ -247,17 +247,17 @@ where
         let (expiry, blockchain_time) = match role {
             Role::Alice => {
                 let expiry = swap.alpha_absolute_expiry().unwrap();
-                let time = match swap.alpha_blockchain() {
-                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
-                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                let time = match swap.alpha_ledger() {
+                    Ledger::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Ledger::Ethereum => facade.ethereum_latest_time().await?,
                 };
                 (expiry, time)
             }
             Role::Bob => {
                 let expiry = swap.beta_absolute_expiry().unwrap();
-                let time = match swap.beta_blockchain() {
-                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
-                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                let time = match swap.beta_ledger() {
+                    Ledger::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Ledger::Ethereum => facade.ethereum_latest_time().await?,
                 };
                 (expiry, time)
             }

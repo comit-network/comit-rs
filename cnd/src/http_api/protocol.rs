@@ -36,14 +36,14 @@ pub trait BetaEvents {
     fn beta_events(&self) -> Option<LedgerEvents>;
 }
 
-/// Get the underlying blockchain used by the alpha protocol.
-pub trait AlphaBlockchain {
-    fn alpha_blockchain(&self) -> Blockchain;
+/// Get the underlying ledger used by the alpha protocol.
+pub trait AlphaLedger {
+    fn alpha_ledger(&self) -> Ledger;
 }
 
-/// Get the underlying blockchain used by the beta protocol.
-pub trait BetaBlockchain {
-    fn beta_blockchain(&self) -> Blockchain;
+/// Get the underlying ledger used by the beta protocol.
+pub trait BetaLedger {
+    fn beta_ledger(&self) -> Ledger;
 }
 
 /// Get the absolute expiry time for the alpha protocol.
@@ -56,9 +56,9 @@ pub trait BetaAbsoluteExpiry {
     fn beta_absolute_expiry(&self) -> Option<Timestamp>;
 }
 
-/// Blockchains we currently support swaps on top of.
+/// Ledgers we currently support swaps on top of.
 #[derive(Clone, Copy, Debug, PartialEq)]
-pub enum Blockchain {
+pub enum Ledger {
     Bitcoin,
     Ethereum,
 }
