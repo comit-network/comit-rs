@@ -226,52 +226,6 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
     }
 }
 
-impl AlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    fn alpha_events(&self) -> Option<LedgerEvents> {
-        match self {
-            BobSwap::Created { .. } => None,
-            BobSwap::Finalized {
-                alpha_finalized:
-                    halight::Finalized {
-                        state: halight_state,
-                        ..
-                    },
-                ..
-            } => Some(From::<halight::State>::from(*halight_state)),
-        }
-    }
-}
-
-impl BetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    fn beta_events(&self) -> Option<LedgerEvents> {
-        match self {
-            BobSwap::Created { .. } => None,
-            BobSwap::Finalized {
-                beta_finalized:
-                    herc20::Finalized {
-                        state: herc20_state,
-                        ..
-                    },
-                ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
-        }
-    }
-}
-
-impl AlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Herc20;
-    fn alpha_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
-impl BetaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Halight;
-    fn beta_params(&self) -> Self::Output {
-        self.clone().into()
-    }
-}
-
 impl From<BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>>
     for Halight
 {
@@ -319,6 +273,52 @@ impl From<BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Fina
                 quantity: herc20_asset.quantity.to_wei_dec(),
                 token_contract: herc20_asset.token_contract.to_string(),
             },
+        }
+    }
+}
+
+impl AlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    type Output = Herc20;
+    fn alpha_params(&self) -> Self::Output {
+        self.clone().into()
+    }
+}
+
+impl BetaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    type Output = Halight;
+    fn beta_params(&self) -> Self::Output {
+        self.clone().into()
+    }
+}
+
+impl AlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    fn alpha_events(&self) -> Option<LedgerEvents> {
+        match self {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
+                alpha_finalized:
+                    halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
+                ..
+            } => Some(From::<halight::State>::from(*halight_state)),
+        }
+    }
+}
+
+impl BetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    fn beta_events(&self) -> Option<LedgerEvents> {
+        match self {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
+                beta_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
+                ..
+            } => Some(From::<herc20::State>::from(herc20_state.clone())),
         }
     }
 }
