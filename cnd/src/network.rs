@@ -63,6 +63,9 @@ use std::{
 };
 use tokio::{runtime::Handle, sync::Mutex};
 
+// Export comit network types while maintaining the module abstraction.
+pub use ::comit::network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice};
+
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]
 #[allow(clippy::type_complexity)]

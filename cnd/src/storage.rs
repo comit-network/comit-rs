@@ -6,18 +6,16 @@ use crate::{
         ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHerc20RedeemIdentity,
         NoHerc20RefundIdentity, NoSecretHash, Save, Sqlite,
     },
-    http_api, identity, respawn,
+    http_api, identity,
+    network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
+    respawn,
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get},
     LocalSwapId, Protocol,
 };
 use anyhow::Context;
 use async_trait::async_trait;
-use comit::{
-    asset,
-    network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    Role,
-};
+use comit::{asset, Role};
 use db::tables::{SecretHash, Swap};
 use diesel::{
     sql_types, BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,
