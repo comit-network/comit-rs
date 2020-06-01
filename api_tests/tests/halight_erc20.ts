@@ -18,9 +18,7 @@ it(
 
         await bob.init();
 
-        // we must not wait for bob's funding because `sendpayment` on a hold-invoice is a blocking call.
-        // tslint:disable-next-line:no-floating-promises
-        alice.fund();
+        await alice.fund();
 
         await bob.deploy();
         await bob.fund();
