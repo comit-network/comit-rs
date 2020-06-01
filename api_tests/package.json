@@ -30,7 +30,7 @@
         "ajv": "^6.12.2",
         "bignumber.js": "^9.0.0",
         "bitcoin-core": "^3.0.0",
-        "bitcoinjs-lib": "^5.1.8",
+        "bitcoinjs-lib": "^5.1.10",
         "chmod": "^0.2.1",
         "comit-sdk": "^0.16.0",
         "download": "^8.0.0",
