@@ -15,9 +15,8 @@ use crate::{
     },
     storage::Load,
     swap_protocols::{DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction},
-    LocalSwapId, Role,
+    LocalSwapId, Protocol, Role,
 };
-use ::comit::Protocol;
 use anyhow::bail;
 use comit::asset;
 use http_api_problem::HttpApiProblem;

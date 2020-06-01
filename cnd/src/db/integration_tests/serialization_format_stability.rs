@@ -9,8 +9,8 @@ use crate::{
         rfc003::{SecretHash, SwapId},
         HashFunction,
     },
+    Protocol,
 };
-use comit::Protocol;
 use std::{fmt, str::FromStr};
 
 #[test]

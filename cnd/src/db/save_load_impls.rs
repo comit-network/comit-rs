@@ -5,10 +5,9 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, respawn, LocalSwapId, Role, Side,
+    http_api, respawn, LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
-use comit::Protocol;
 use diesel::{sql_types, RunQueryDsl};
 
 mod rfc003;

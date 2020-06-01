@@ -24,10 +24,10 @@ pub use self::{
 };
 
 use crate::{
-    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId, Role,
+    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId,
+    Protocol, Role,
 };
 use async_trait::async_trait;
-use comit::Protocol;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{

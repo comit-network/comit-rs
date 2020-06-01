@@ -9,14 +9,14 @@ use crate::{
     http_api, identity, respawn,
     seed::{DeriveSwapSeed, RootSeed},
     swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get},
-    LocalSwapId,
+    LocalSwapId, Protocol,
 };
 use anyhow::Context;
 use async_trait::async_trait;
 use comit::{
     asset,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    Protocol, Role,
+    Role,
 };
 use db::tables::{SecretHash, Swap};
 use diesel::{

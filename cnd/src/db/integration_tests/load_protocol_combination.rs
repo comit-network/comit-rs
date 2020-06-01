@@ -5,8 +5,8 @@ use crate::{
     },
     http_api,
     proptest::*,
+    Protocol,
 };
-use comit::Protocol;
 use proptest::prelude::*;
 use tokio::runtime::Runtime;
 
