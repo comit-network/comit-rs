@@ -1,6 +1,7 @@
 use crate::{
-    swap_protocols::{state, state::Update, LocalSwapId},
+    swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
+    LocalSwapId,
 };
 use chrono::NaiveDateTime;
 use comit::{asset, htlc_location, transaction, Protocol, Role, Secret, Side};

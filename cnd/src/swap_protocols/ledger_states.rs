@@ -1,6 +1,8 @@
-use crate::swap_protocols::{
-    rfc003::{create_swap::SwapEvent, LedgerState},
-    state::{Get, Insert, Update},
+use crate::{
+    swap_protocols::{
+        rfc003::{create_swap::SwapEvent, LedgerState},
+        state::{Get, Insert, Update},
+    },
     LocalSwapId,
 };
 use async_trait::async_trait;

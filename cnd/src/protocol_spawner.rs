@@ -1,6 +1,7 @@
 use crate::{
     http_api::LedgerNotConfigured,
-    swap_protocols::{halight, herc20, LocalSwapId},
+    swap_protocols::{halight, herc20},
+    LocalSwapId,
 };
 use chrono::NaiveDateTime;
 use comit::{

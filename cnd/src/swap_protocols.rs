@@ -7,7 +7,6 @@ pub mod rfc003;
 mod rfc003_facade;
 pub mod state;
 mod swap_error_states;
-mod swap_id;
 pub mod ledger {
     use crate::comit_api::LedgerKind;
     pub use comit::ledger::*;
@@ -40,7 +39,7 @@ pub mod actions {
     pub use comit::actions::*;
 }
 
-pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*, swap_id::*};
+pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*};
 pub use comit::{Role, Secret, SecretHash, Side};
 
 use serde::{Deserialize, Serialize};

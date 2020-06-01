@@ -1,7 +1,6 @@
 use crate::{
-    network::comit::LocalData,
-    swap_protocols::{LocalSwapId, Role, SharedSwapId},
-    timestamp::Timestamp,
+    network::comit::LocalData, swap_protocols::Role, timestamp::Timestamp, LocalSwapId,
+    SharedSwapId,
 };
 use ::comit::network::protocols::announce::{protocol::ReplySubstream, SwapDigest};
 use libp2p::{swarm::NegotiatedSubstream, PeerId};

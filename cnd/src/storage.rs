@@ -8,7 +8,8 @@ use crate::{
     },
     http_api, identity, respawn,
     seed::{DeriveSwapSeed, RootSeed},
-    swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get, LocalSwapId},
+    swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get},
+    LocalSwapId,
 };
 use anyhow::Context;
 use async_trait::async_trait;

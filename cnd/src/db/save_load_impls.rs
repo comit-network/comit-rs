@@ -6,7 +6,8 @@ use crate::{
         CreatedSwap, Save, Sqlite,
     },
     http_api, respawn,
-    swap_protocols::{LocalSwapId, Role, Side},
+    swap_protocols::{Role, Side},
+    LocalSwapId,
 };
 use anyhow::Context;
 use comit::Protocol;

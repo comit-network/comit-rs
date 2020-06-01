@@ -48,6 +48,7 @@ pub mod load_swaps;
 pub mod protocol_spawner;
 pub mod respawn;
 pub mod storage;
+mod swap_id;
 pub mod swap_protocols;
 mod tracing_ext;
 
@@ -56,6 +57,8 @@ use std::{
     env,
     path::{Path, PathBuf},
 };
+
+pub use self::swap_id::*;
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =

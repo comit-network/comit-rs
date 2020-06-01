@@ -4,7 +4,8 @@ use crate::{
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
     network::{Identities, ListenAddresses},
-    swap_protocols::{halight, herc20, ledger, Facade, LocalSwapId, Rfc003Facade, Role},
+    swap_protocols::{halight, herc20, ledger, Facade, Rfc003Facade, Role},
+    LocalSwapId,
 };
 use comit::network::swap_digest;
 use digest::Digest;

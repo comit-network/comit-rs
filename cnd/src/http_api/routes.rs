@@ -15,8 +15,9 @@ use crate::{
     },
     storage::Load,
     swap_protocols::{
-        DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
+        DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction, Role,
     },
+    LocalSwapId,
 };
 use ::comit::Protocol;
 use anyhow::bail;

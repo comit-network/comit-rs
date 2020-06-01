@@ -1,6 +1,7 @@
 use crate::{
-    swap_protocols::{state, state::Update, LocalSwapId},
+    swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
+    LocalSwapId,
 };
 pub use comit::{halight::*, identity};
 use comit::{Protocol, Role, Side};

@@ -3,7 +3,8 @@ use crate::{
     network::comit::RemoteData,
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, Storage},
-    swap_protocols::{halight, herc20, LocalSwapId},
+    swap_protocols::{halight, herc20},
+    LocalSwapId,
 };
 use ::comit::{
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},

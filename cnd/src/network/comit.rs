@@ -1,9 +1,5 @@
 use crate::{
-    identity,
-    network::Identities,
-    seed::RootSeed,
-    swap_protocols::{LocalSwapId, SharedSwapId},
-    timestamp::Timestamp,
+    identity, network::Identities, seed::RootSeed, timestamp::Timestamp, LocalSwapId, SharedSwapId,
 };
 use comit::{
     network::{

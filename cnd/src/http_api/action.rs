@@ -10,10 +10,9 @@ use crate::{
             lnd::Chain,
         },
         rfc003::{Secret, SecretHash},
-        LocalSwapId,
     },
     timestamp::{RelativeTime, Timestamp},
-    transaction,
+    transaction, LocalSwapId,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;

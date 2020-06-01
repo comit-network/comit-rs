@@ -3,7 +3,8 @@ use crate::{
     db::{CreatedSwap, Save},
     http_api::{problem, DialInformation, Http},
     identity,
-    swap_protocols::{hbit, herc20, Facade, LocalSwapId, Role},
+    swap_protocols::{hbit, herc20, Facade, Role},
+    LocalSwapId,
 };
 use serde::Deserialize;
 use warp::Rejection;
