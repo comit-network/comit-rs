@@ -2,8 +2,8 @@ use crate::{
     http_api::{
         halight, herc20,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
-            BetaBlockchain, BetaEvents, BetaParams, Blockchain, Halight, Herc20, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
+            BetaEvents, BetaLedger, BetaParams, Halight, Herc20, Ledger, LedgerEvents,
         },
         ActionNotFound, AliceSwap,
     },
@@ -211,19 +211,17 @@ impl RefundAction
     }
 }
 
-impl AlphaBlockchain
+impl AlphaLedger
     for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
 {
-    fn alpha_blockchain(&self) -> Blockchain {
-        Blockchain::Bitcoin
+    fn alpha_ledger(&self) -> Ledger {
+        Ledger::Bitcoin
     }
 }
 
-impl BetaBlockchain
-    for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
-{
-    fn beta_blockchain(&self) -> Blockchain {
-        Blockchain::Ethereum
+impl BetaLedger for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    fn beta_ledger(&self) -> Ledger {
+        Ledger::Ethereum
     }
 }
 

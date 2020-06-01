@@ -5,8 +5,8 @@ use crate::{
         herc20,
         herc20::build_erc20_htlc,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
-            BetaBlockchain, BetaEvents, BetaParams, Blockchain, Halight, Herc20, LedgerEvents,
+            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
+            BetaEvents, BetaLedger, BetaParams, Halight, Herc20, Ledger, LedgerEvents,
         },
         ActionNotFound, BobSwap,
     },
@@ -323,19 +323,15 @@ impl From<BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Fina
     }
 }
 
-impl AlphaBlockchain
-    for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
-{
-    fn alpha_blockchain(&self) -> Blockchain {
-        Blockchain::Bitcoin
+impl AlphaLedger for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    fn alpha_ledger(&self) -> Ledger {
+        Ledger::Bitcoin
     }
 }
 
-impl BetaBlockchain
-    for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>
-{
-    fn beta_blockchain(&self) -> Blockchain {
-        Blockchain::Ethereum
+impl BetaLedger for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
+    fn beta_ledger(&self) -> Ledger {
+        Ledger::Ethereum
     }
 }
 
