@@ -336,22 +336,7 @@ export class Actor {
         }
 
         this.logger.debug("Deployed swap %s in %s", this.swap.self, txid);
-
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaDeployed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaDeployed();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaDeployed();
-                }
-                await this.actors.bob.assertBetaDeployed();
-                break;
-        }
+        await this.assertDeployed();
     }
 
     /**
@@ -375,22 +360,7 @@ export class Actor {
         }
 
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
-
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaFunded();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaFunded();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaFunded();
-                }
-                await this.actors.bob.assertBetaFunded();
-                break;
-        }
+        await this.assertFunded();
     }
 
     /**
@@ -403,22 +373,7 @@ export class Actor {
 
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
-
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertBetaRedeemed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertBetaRedeemed();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertAlphaRedeemed();
-                }
-                await this.actors.bob.assertAlphaRedeemed();
-                break;
-        }
+        await this.assertRedeemed();
     }
 
     public async getSwapResponse(): Promise<SwapResponse> {
@@ -459,6 +414,60 @@ export class Actor {
 
     public async assertBetaDeployed() {
         await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+    }
+
+    private async assertDeployed() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaDeployed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaDeployed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaDeployed();
+                }
+                await this.actors.bob.assertBetaDeployed();
+                break;
+        }
+    }
+
+    private async assertFunded() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaFunded();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaFunded();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaFunded();
+                }
+                await this.actors.bob.assertBetaFunded();
+                break;
+        }
+    }
+
+    private async assertRedeemed() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertBetaRedeemed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertBetaRedeemed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertAlphaRedeemed();
+                }
+                await this.actors.bob.assertAlphaRedeemed();
+                break;
+        }
     }
 
     private async assertLedgerStatus(
