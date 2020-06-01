@@ -12,8 +12,9 @@ use crate::{
     swap_protocols::{
         ledger,
         rfc003::{Accept, Decline, Request, SecretHash, SwapId},
-        HashFunction, Role,
+        HashFunction,
     },
+    Role,
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;

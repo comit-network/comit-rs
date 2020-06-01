@@ -6,10 +6,7 @@
 //! `crate::identity::Bitcoin` is defined at
 //! `crate::proptest::identity::bitcoin()`.
 
-use crate::{
-    swap_protocols::{Role, Side},
-    LocalSwapId,
-};
+use crate::{LocalSwapId, Role, Side};
 use proptest::prelude::*;
 use uuid::Uuid;
 

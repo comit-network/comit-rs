@@ -24,8 +24,8 @@ use crate::{
     asset,
     ethereum::ChainId,
     htlc_location, identity,
-    swap_protocols::{ledger, rfc003::SwapId, Role, SwapProtocol},
-    transaction,
+    swap_protocols::{ledger, rfc003::SwapId, SwapProtocol},
+    transaction, Role,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{

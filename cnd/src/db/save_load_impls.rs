@@ -5,9 +5,7 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, respawn,
-    swap_protocols::{Role, Side},
-    LocalSwapId,
+    http_api, respawn, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use comit::Protocol;

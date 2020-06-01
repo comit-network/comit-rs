@@ -1,7 +1,8 @@
 use crate::{
     db::{rfc003_schema, wrapper_types::custom_sql_types::Text, Error, Sqlite},
     diesel::{ExpressionMethods, OptionalExtension, QueryDsl},
-    swap_protocols::{rfc003::SwapId, Role},
+    swap_protocols::rfc003::SwapId,
+    Role,
 };
 use async_trait::async_trait;
 use diesel::RunQueryDsl;

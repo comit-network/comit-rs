@@ -26,9 +26,9 @@ use crate::{
             state::Insert,
             DeriveSecret, LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HashFunction, Role, SwapProtocol,
+        HashFunction, SwapProtocol,
     },
-    transaction, LocalSwapId, SharedSwapId,
+    transaction, LocalSwapId, Role, SharedSwapId,
 };
 use ::comit::{
     btsieve::ethereum::{self, Web3Connector},

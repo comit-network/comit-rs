@@ -14,9 +14,9 @@ use crate::{
             Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
             SwapCommunication, SwapId,
         },
-        HashFunction, Rfc003Facade, Role,
+        HashFunction, Rfc003Facade,
     },
-    transaction, Timestamp,
+    transaction, Role, Timestamp,
 };
 use anyhow::Context;
 use futures::future::TryFutureExt;

@@ -9,8 +9,8 @@ use crate::{
         Sqlite,
     },
     identity, lightning,
-    swap_protocols::{halight, hbit, herc20, rfc003, Role, Side},
-    LocalSwapId,
+    swap_protocols::{halight, hbit, herc20, rfc003},
+    LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use diesel::{prelude::*, RunQueryDsl};

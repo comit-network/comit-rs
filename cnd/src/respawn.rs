@@ -7,8 +7,8 @@
 use crate::{
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, LoadAll, Storage},
-    swap_protocols::{halight, herc20, Side},
-    LocalSwapId,
+    swap_protocols::{halight, herc20},
+    LocalSwapId, Side,
 };
 use chrono::Utc;
 use comit::{Protocol, Role};

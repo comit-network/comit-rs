@@ -14,10 +14,8 @@ use crate::{
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
     storage::Load,
-    swap_protocols::{
-        DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction, Role,
-    },
-    LocalSwapId,
+    swap_protocols::{DeployAction, Facade, FundAction, InitAction, RedeemAction, RefundAction},
+    LocalSwapId, Role,
 };
 use ::comit::Protocol;
 use anyhow::bail;

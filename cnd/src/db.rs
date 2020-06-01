@@ -24,9 +24,7 @@ pub use self::{
 };
 
 use crate::{
-    db::wrapper_types::custom_sql_types::Text,
-    swap_protocols::{rfc003::SwapId, Role},
-    LocalSwapId,
+    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId, Role,
 };
 use async_trait::async_trait;
 use comit::Protocol;

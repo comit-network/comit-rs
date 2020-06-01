@@ -7,9 +7,9 @@ use crate::{
     swap_protocols::{
         ledger::{self},
         rfc003::{Accept, Request, SecretHash, SwapId},
-        HashFunction, Role,
+        HashFunction,
     },
-    transaction, Timestamp,
+    transaction, Role, Timestamp,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},

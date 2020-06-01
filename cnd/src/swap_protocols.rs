@@ -40,7 +40,6 @@ pub mod actions {
 }
 
 pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*};
-pub use comit::{Role, Secret, SecretHash, Side};
 
 use serde::{Deserialize, Serialize};
 
