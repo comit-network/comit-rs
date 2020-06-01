@@ -28,12 +28,12 @@ use cnd::{
     network::{Swarm, SwarmWorker},
     protocol_spawner::ProtocolSpawner,
     respawn::respawn,
-    seed::RootSeed,
     storage::Storage,
     swap_protocols::{
         halight, herc20, rfc003, rfc003::SwapCommunicationStates, Facade, Rfc003Facade,
         SwapErrorStates,
     },
+    RootSeed,
 };
 use comit::lnd::LndConnectorParams;
 use rand::rngs::OsRng;

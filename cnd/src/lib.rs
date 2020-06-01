@@ -34,7 +34,7 @@ pub mod proptest;
 #[cfg(test)]
 pub mod quickcheck;
 #[macro_use]
-pub mod seed;
+mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 
@@ -58,7 +58,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use self::swap_id::*;
+pub use self::{seed::*, swap_id::*};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
