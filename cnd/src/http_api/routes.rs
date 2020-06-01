@@ -9,7 +9,7 @@ use crate::{
         halight, herc20, problem,
         protocol::{
             AlphaAbsoluteExpiry, AlphaBlockchain, AlphaEvents, AlphaParams, BetaAbsoluteExpiry,
-            BetaBlockchain, BetaEvents, BetaParams, Blockchain, GetRole,
+            BetaBlockchain, BetaEvents, BetaParams, Blockchain, GetRole, LedgerEvents,
         },
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, Swap,
     },
@@ -114,9 +114,29 @@ where
         + BetaAbsoluteExpiry,
 {
     let role = swap.get_role();
-    let swap_resource = SwapResource { role: Http(role) };
 
-    let mut entity = siren::Entity::default()
+    let mut entity = create_swap_entity(swap_id, role)?;
+    add_params(&mut entity, &swap)?;
+
+    match (swap.alpha_events(), swap.beta_events()) {
+        (Some(alpha), Some(beta)) => {
+            add_events(&mut entity, alpha, beta)?;
+
+            match next_available_action(facade, &swap).await? {
+                None => Ok(entity),
+                Some(action) => {
+                    let siren_action = make_siren_action(swap_id, action);
+                    Ok(entity.with_action(siren_action))
+                }
+            }
+        }
+        _ => Ok(entity),
+    }
+}
+
+fn create_swap_entity(id: LocalSwapId, role: Role) -> anyhow::Result<siren::Entity> {
+    let swap_resource = SwapResource { role: Http(role) };
+    let entity = siren::Entity::default()
         .with_class_member("swap")
         .with_properties(swap_resource)
         .map_err(|e| {
@@ -125,9 +145,16 @@ where
         })?
         .with_link(siren::NavigationalLink::new(
             &["self"],
-            route_factory::swap_path(swap_id),
+            route_factory::swap_path(id),
         ));
 
+    Ok(entity)
+}
+
+fn add_params<S>(entity: &mut siren::Entity, swap: &S) -> anyhow::Result<()>
+where
+    S: AlphaParams + BetaParams,
+{
     let alpha_params = swap.alpha_params();
     let alpha_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
@@ -154,137 +181,99 @@ where
     );
     entity.push_sub_entity(beta_params_sub);
 
-    match (swap.alpha_events(), swap.beta_events()) {
-        (Some(alpha_tx), Some(beta_tx)) => {
-            let alpha_state_sub = siren::SubEntity::from_entity(
-                siren::Entity::default()
-                    .with_class_member("state")
-                    .with_properties(alpha_tx)
-                    .map_err(|e| {
-                        tracing::error!("failed to set properties of entity: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                    })?,
-                &["alpha"],
-            );
-            entity.push_sub_entity(alpha_state_sub);
-
-            let beta_state_sub = siren::SubEntity::from_entity(
-                siren::Entity::default()
-                    .with_class_member("state")
-                    .with_properties(beta_tx)
-                    .map_err(|e| {
-                        tracing::error!("failed to set properties of entity: {:?}", e);
-                        HttpApiProblem::with_title_and_type_from_status(
-                            StatusCode::INTERNAL_SERVER_ERROR,
-                        )
-                    })?,
-                &["beta"],
-            );
-            entity.push_sub_entity(beta_state_sub);
-
-            let available_actions = vec![
-                swap.init_action().map(|_| ActionName::Init),
-                swap.deploy_action().map(|_| ActionName::Deploy),
-                swap.fund_action().map(|_| ActionName::Fund),
-                swap.redeem_action().map(|_| ActionName::Redeem),
-                swap.refund_action().map(|_| ActionName::Refund),
-            ];
-            let v = available_actions
-                .into_iter()
-                .filter_map(|a| a.ok())
-                .collect();
-
-            let possible_next_actions = filter_for_next_possible_actions(v);
-            let next_action = match possible_next_actions.len() {
-                0 => None,
-                1|2 => {
-
-                    let refund = if possible_next_actions.contains(&ActionName::Refund) {
-                        let (expiry, blockchain_time) = match role {
-                            Role::Alice => {
-                                let expiry = swap.alpha_absolute_expiry().unwrap();
-                                let time = match swap.alpha_blockchain() {
-                                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
-                                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
-                                };
-                                (expiry, time)
-                            }
-                            Role::Bob => {
-                                let expiry = swap.beta_absolute_expiry().unwrap();
-                                let time = match swap.beta_blockchain() {
-                                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
-                                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
-                                };
-                                (expiry, time)
-                            }
-                        };
-
-                        tracing::debug!("expiry: {:?}", expiry);
-                        tracing::debug!("blockchain_time: {:?}", blockchain_time);
-
-                        if expiry < blockchain_time {
-                             Some(ActionName::Refund)
-                        } else {
-                            None
-                        }
-                    } else { None };
-
-                    if refund.is_some() {
-                        tracing::debug!("We have decided it's time to refund.");
-                        refund
-                    } else {
-                        let action = possible_next_actions.iter()
-                            .filter(|action_name| **action_name != ActionName::Refund)
-                            .collect::<Vec<_>>()
-                            .get(0)
-                            .copied()
-                            .copied();
-
-                        tracing::debug!("Remaining action is {:?}", action);
-                        action
-                    }
-                }
-                _ => unreachable!("Unexpected error encountered, there should not be more than 2 actions available at a given time"),
-            };
-
-            tracing::debug!("Next action is {:?}", next_action);
-
-            if let Some(action_name) = next_action {
-                let siren_action = make_siren_action(swap_id, action_name);
-                return Ok(entity.with_action(siren_action));
-            }
-
-            Ok(entity)
-        }
-        _ => Ok(entity),
-    }
+    Ok(())
 }
 
-fn filter_for_next_possible_actions(available: Vec<ActionName>) -> Vec<ActionName> {
-    tracing::debug!("Available actions: {:?}", available);
-    if available.contains(&ActionName::Init) {
-        return vec![ActionName::Init];
+fn add_events(
+    entity: &mut siren::Entity,
+    alpha_events: LedgerEvents,
+    beta_events: LedgerEvents,
+) -> anyhow::Result<()> {
+    let alpha_state_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("state")
+            .with_properties(alpha_events)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["alpha"],
+    );
+    entity.push_sub_entity(alpha_state_sub);
+
+    let beta_state_sub = siren::SubEntity::from_entity(
+        siren::Entity::default()
+            .with_class_member("state")
+            .with_properties(beta_events)
+            .map_err(|e| {
+                tracing::error!("failed to set properties of entity: {:?}", e);
+                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
+            })?,
+        &["beta"],
+    );
+    entity.push_sub_entity(beta_state_sub);
+
+    Ok(())
+}
+
+async fn next_available_action<S>(facade: Facade, swap: &S) -> anyhow::Result<Option<ActionName>>
+where
+    S: GetRole
+        + DeployAction
+        + InitAction
+        + FundAction
+        + RedeemAction
+        + RefundAction
+        + Clone
+        + AlphaBlockchain
+        + BetaBlockchain
+        + AlphaAbsoluteExpiry
+        + BetaAbsoluteExpiry,
+{
+    if swap.init_action().is_ok() {
+        return Ok(Some(ActionName::Init));
     }
-    if available.contains(&ActionName::Deploy) {
-        return vec![ActionName::Deploy];
+
+    if swap.deploy_action().is_ok() {
+        return Ok(Some(ActionName::Deploy));
     }
-    if available.contains(&ActionName::Fund) {
-        return vec![ActionName::Fund];
-    };
 
-    let mut possible = vec![];
+    if swap.fund_action().is_ok() {
+        return Ok(Some(ActionName::Fund));
+    }
 
-    if available.contains(&ActionName::Redeem) {
-        possible.push(ActionName::Redeem);
-    };
-    if available.contains(&ActionName::Refund) {
-        possible.push(ActionName::Refund);
-    };
+    if swap.refund_action().is_ok() {
+        let role = swap.get_role();
+        let (expiry, blockchain_time) = match role {
+            Role::Alice => {
+                let expiry = swap.alpha_absolute_expiry().unwrap();
+                let time = match swap.alpha_blockchain() {
+                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                };
+                (expiry, time)
+            }
+            Role::Bob => {
+                let expiry = swap.beta_absolute_expiry().unwrap();
+                let time = match swap.beta_blockchain() {
+                    Blockchain::Bitcoin => facade.bitcoin_median_time_past().await?,
+                    Blockchain::Ethereum => facade.ethereum_latest_time().await?,
+                };
+                (expiry, time)
+            }
+        };
 
-    tracing::debug!("Filtered actions: {:?}", possible);
-    possible
+        if expiry < blockchain_time {
+            tracing::debug!("We have decided it's time to refund.");
+            return Ok(Some(ActionName::Refund));
+        }
+    }
+
+    if swap.redeem_action().is_ok() {
+        return Ok(Some(ActionName::Redeem));
+    }
+
+    Ok(None)
 }
 
 fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Action {
