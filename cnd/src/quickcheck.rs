@@ -9,8 +9,7 @@ use crate::{
         rfc003::{Accept, Request, SecretHash, SwapId},
         HashFunction, Role,
     },
-    timestamp::Timestamp,
-    transaction,
+    transaction, Timestamp,
 };
 use ::bitcoin::{
     hashes::{sha256d, Hash},

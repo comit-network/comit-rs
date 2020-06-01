@@ -11,8 +11,7 @@ use crate::{
         },
         rfc003::{Secret, SecretHash},
     },
-    timestamp::{RelativeTime, Timestamp},
-    transaction, LocalSwapId,
+    transaction, LocalSwapId, RelativeTime, Timestamp,
 };
 use anyhow::Context;
 use blockchain_contracts::bitcoin::witness;

@@ -16,8 +16,7 @@ use crate::{
         },
         HashFunction, Rfc003Facade, Role,
     },
-    timestamp::Timestamp,
-    transaction,
+    transaction, Timestamp,
 };
 use anyhow::Context;
 use futures::future::TryFutureExt;

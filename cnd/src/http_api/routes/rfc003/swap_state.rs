@@ -2,7 +2,7 @@
 use crate::{
     http_api::{Http, SwapStatus},
     swap_protocols::rfc003::{self, SecretHash},
-    timestamp::Timestamp,
+    Timestamp,
 };
 use serde::Serialize;
 

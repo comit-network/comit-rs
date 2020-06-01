@@ -1,6 +1,4 @@
-use crate::{
-    identity, network::Identities, seed::RootSeed, timestamp::Timestamp, LocalSwapId, SharedSwapId,
-};
+use crate::{identity, network::Identities, seed::RootSeed, LocalSwapId, SharedSwapId, Timestamp};
 use comit::{
     network::{
         oneshot_behaviour,
