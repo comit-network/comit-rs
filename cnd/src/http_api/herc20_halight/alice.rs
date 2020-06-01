@@ -81,9 +81,13 @@ impl AlphaEvents
 {
     fn alpha_events(&self) -> Option<LedgerEvents> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
-                alpha_finalized: herc20::Finalized { state: herc20_state, .. },
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
+                alpha_finalized:
+                    herc20::Finalized {
+                        state: herc20_state,
+                        ..
+                    },
                 ..
             } => Some(From::<herc20::State>::from(herc20_state.clone())),
         }
@@ -100,9 +104,13 @@ impl BetaParams for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
 impl BetaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
     fn beta_events(&self) -> Option<LedgerEvents> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
-                beta_finalized: halight::Finalized { state: halight_state, .. },
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
+                beta_finalized:
+                    halight::Finalized {
+                        state: halight_state,
+                        ..
+                    },
                 ..
             } => Some(From::<halight::State>::from(*halight_state)),
         }
@@ -114,11 +122,12 @@ impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
 
     fn init_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
-                alpha_finalized: herc20::Finalized {
-                    state: herc20::State::None,
-                    ..
-                },
+            AliceSwap::Finalized {
+                alpha_finalized:
+                    herc20::Finalized {
+                        state: herc20::State::None,
+                        ..
+                    },
                 beta_finalized:
                     halight::Finalized {
                         state: halight::State::None,
@@ -160,7 +169,7 @@ impl DeployAction
 
     fn deploy_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
                         state: herc20::State::None,
@@ -205,7 +214,7 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
 
     fn fund_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
                         state: herc20::State::Deployed { htlc_location, .. },
@@ -252,7 +261,7 @@ impl RedeemAction
 
     fn redeem_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Finalized {
                 beta_finalized:
                     halight::Finalized {
                         state: halight::State::Accepted(_),
@@ -286,7 +295,7 @@ impl RefundAction
 
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
                         state: herc20::State::Funded { htlc_location, .. },
@@ -333,11 +342,11 @@ impl AlphaAbsoluteExpiry
 {
     fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
                 alpha_finalized: herc20::Finalized { expiry, .. },
                 ..
-            } => Some(*expiry)
+            } => Some(*expiry),
         }
     }
 }
