@@ -8,8 +8,8 @@ use crate::{
         },
         Sqlite,
     },
-    identity, lightning,
-    swap_protocols::{halight, hbit, herc20, rfc003},
+    halight, herc20, identity, lightning,
+    swap_protocols::{hbit, rfc003},
     LocalSwapId, Role, Side,
 };
 use anyhow::Context;

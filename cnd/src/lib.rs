@@ -44,6 +44,8 @@ pub mod config;
 pub mod connectors;
 mod facade;
 pub mod file_lock;
+pub mod halight;
+pub mod herc20;
 pub mod http_api;
 pub mod init_swap;
 pub mod load_swaps;

@@ -7,11 +7,11 @@ use crate::{
         ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHerc20RedeemIdentity,
         NoHerc20RefundIdentity, NoSecretHash, Save, Sqlite,
     },
-    http_api, identity,
+    halight, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     respawn,
     seed::{DeriveSwapSeed, RootSeed},
-    swap_protocols::{halight, herc20, rfc003::DeriveSecret, state::Get},
+    swap_protocols::{rfc003::DeriveSecret, state::Get},
     LocalSwapId, Protocol, Role,
 };
 use anyhow::Context;

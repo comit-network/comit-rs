@@ -1,6 +1,7 @@
 use crate::{
     asset,
     ethereum::{Bytes, ChainId},
+    halight::Settled,
     http_api::{
         halight, herc20,
         protocol::{
@@ -9,10 +10,7 @@ use crate::{
         },
         ActionNotFound,
     },
-    swap_protocols::{
-        actions::{ethereum, lnd, lnd::Chain},
-        halight::Settled,
-    },
+    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
     DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
