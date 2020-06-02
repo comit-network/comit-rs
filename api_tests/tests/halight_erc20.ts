@@ -16,15 +16,15 @@ it(
         await alice.createHalightHerc20Swap(bodies.alice);
         await bob.createHalightHerc20Swap(bodies.bob);
 
-        await bob.init();
+        await bob.assertAndExecuteNextAction("init");
 
-        await alice.fund();
+        await alice.assertAndExecuteNextAction("fund");
 
-        await bob.deploy();
-        await bob.fund();
+        await bob.assertAndExecuteNextAction("deploy");
+        await bob.assertAndExecuteNextAction("fund");
 
-        await alice.redeem();
-        await bob.redeem();
+        await alice.assertAndExecuteNextAction("redeem");
+        await bob.assertAndExecuteNextAction("redeem");
 
         // Wait until the wallet sees the new balance.
         await sleep(2000);

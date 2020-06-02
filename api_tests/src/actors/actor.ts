@@ -29,6 +29,7 @@ import {
     SwapResponse,
     SwapStatus,
 } from "../swap_response";
+import pTimeout from "p-timeout";
 
 export type ActorName = "alice" | "bob" | "charlie";
 
@@ -336,22 +337,7 @@ export class Actor {
         }
 
         this.logger.debug("Deployed swap %s in %s", this.swap.self, txid);
-
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaDeployed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaDeployed();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaDeployed();
-                }
-                await this.actors.bob.assertBetaDeployed();
-                break;
-        }
+        await this.assertDeployed();
     }
 
     /**
@@ -375,22 +361,7 @@ export class Actor {
         }
 
         this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
-
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertAlphaFunded();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertAlphaFunded();
-                }
-                break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertBetaFunded();
-                }
-                await this.actors.bob.assertBetaFunded();
-                break;
-        }
+        await this.assertFunded();
     }
 
     /**
@@ -403,20 +374,47 @@ export class Actor {
 
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
+        await this.assertRedeemed();
+    }
 
-        const role = await this.cryptoRole();
-        switch (role) {
-            case "Alice":
-                await this.actors.alice.assertBetaRedeemed();
-                if (this.actors.bob.cndInstance.isRunning()) {
-                    await this.actors.bob.assertBetaRedeemed();
+    public async assertAndExecuteNextAction(expectedActionName: string) {
+        if (!this.swap) {
+            throw new Error("Cannot do anything on non-existent swap");
+        }
+
+        const { action, transaction } = await pTimeout(
+            (async () => {
+                while (true) {
+                    const action = await this.swap.nextAction();
+
+                    if (action && action.name === expectedActionName) {
+                        const transaction = await action.execute();
+                        return { action, transaction };
+                    }
+
+                    await sleep(
+                        Actor.defaultActionConfig.tryIntervalSecs * 1000
+                    );
                 }
+            })(),
+            Actor.defaultActionConfig.maxTimeoutSecs * 1000
+        );
+
+        this.logger.debug(
+            "%s done on swap %s in %s",
+            action,
+            this.swap.self,
+            transaction
+        );
+        switch (action.name) {
+            case "deploy":
+                await this.assertDeployed();
                 break;
-            case "Bob":
-                if (this.actors.alice.cndInstance.isRunning()) {
-                    await this.actors.alice.assertAlphaRedeemed();
-                }
-                await this.actors.bob.assertAlphaRedeemed();
+            case "fund":
+                await this.assertFunded();
+                break;
+            case "redeem":
+                await this.assertRedeemed();
                 break;
         }
     }
@@ -459,6 +457,60 @@ export class Actor {
 
     public async assertBetaDeployed() {
         await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+    }
+
+    private async assertDeployed() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaDeployed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaDeployed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaDeployed();
+                }
+                await this.actors.bob.assertBetaDeployed();
+                break;
+        }
+    }
+
+    private async assertFunded() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaFunded();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaFunded();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaFunded();
+                }
+                await this.actors.bob.assertBetaFunded();
+                break;
+        }
+    }
+
+    private async assertRedeemed() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertBetaRedeemed();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertBetaRedeemed();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertAlphaRedeemed();
+                }
+                await this.actors.bob.assertAlphaRedeemed();
+                break;
+        }
     }
 
     private async assertLedgerStatus(

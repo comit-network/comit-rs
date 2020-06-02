@@ -3,7 +3,7 @@ import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
-import { Action, EmbeddedRepresentationSubEntity, Link } from "comit-sdk";
+import { EmbeddedRepresentationSubEntity, Link } from "comit-sdk";
 import "../src/schema_matcher";
 import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
@@ -138,7 +138,7 @@ describe("Rfc003 schema swap reject tests", () => {
 
             /// Decline the swap
             const decline = bobSwapDetails.actions.find(
-                (action: Action) => action.name === "decline"
+                (action: any) => action.name === "decline"
             );
             const declineRes = await bob.actor.cnd.executeSirenAction(decline);
 
