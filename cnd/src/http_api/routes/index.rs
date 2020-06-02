@@ -3,7 +3,7 @@ use crate::{
     db::{CreatedSwap, Save},
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
-    network::{swap_digest, Identities, ListenAddresses},
+    network::{HalightHerc20, Herc20Halight, Identities, ListenAddresses},
     swap_protocols::{halight, herc20, ledger, Facade, Rfc003Facade},
     LocalSwapId, Role,
 };
@@ -79,7 +79,7 @@ pub async fn post_herc20_halight_bitcoin(
         ethereum_identity: Some(body.alpha.identity),
         lightning_identity: Some(body.beta.identity),
     };
-    let digest = swap_digest::Herc20Halight::from(body.clone()).digest();
+    let digest = Herc20Halight::from(body.clone()).digest();
     let peer = body.peer.into();
     let role = body.role.0;
 
@@ -120,7 +120,7 @@ pub async fn post_halight_bitcoin_herc20(
         ethereum_identity: Some(body.beta.identity),
         lightning_identity: Some(body.alpha.identity),
     };
-    let digest = swap_digest::HalightHerc20::from(body.clone()).digest();
+    let digest = HalightHerc20::from(body.clone()).digest();
     let peer = body.peer.into();
     let role = body.role.0;
 
@@ -145,7 +145,7 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<Herc20, Halight>> for swap_digest::Herc20Halight {
+impl From<Body<Herc20, Halight>> for Herc20Halight {
     fn from(body: Body<Herc20, Halight>) -> Self {
         Self {
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
@@ -157,7 +157,7 @@ impl From<Body<Herc20, Halight>> for swap_digest::Herc20Halight {
     }
 }
 
-impl From<Body<Halight, Herc20>> for swap_digest::HalightHerc20 {
+impl From<Body<Halight, Herc20>> for HalightHerc20 {
     fn from(body: Body<Halight, Herc20>) -> Self {
         Self {
             lightning_cltv_expiry: body.alpha.cltv_expiry.into(),

@@ -1,5 +1,5 @@
-use crate::{identity, network::Identities, seed::RootSeed, LocalSwapId, SharedSwapId, Timestamp};
-use comit::{
+use crate::{
+    identity,
     network::{
         oneshot_behaviour,
         protocols::{
@@ -7,9 +7,10 @@ use comit::{
             announce::{behaviour::Announce, protocol::ReplySubstream, SwapDigest},
             ethereum_identity, finalize, lightning_identity, secret_hash,
         },
-        DialInformation,
+        DialInformation, Identities,
     },
-    SecretHash,
+    seed::RootSeed,
+    LocalSwapId, SecretHash, SharedSwapId, Timestamp,
 };
 use libp2p::{
     swarm::{
@@ -582,7 +583,7 @@ mod tests {
         asset::ethereum::FromWei,
         network::{test_swarm, DialInformation},
     };
-    use comit::{asset, network::swap_digest::Herc20Halight};
+    use comit::{asset, network::Herc20Halight};
     use digest::Digest;
     use futures::future;
     use rand::thread_rng;

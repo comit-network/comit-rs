@@ -6,7 +6,7 @@ use crate::{
         },
         ActionNotFound,
     },
-    network::comit::SwapExists,
+    network::SwapExists,
 };
 use http_api_problem::HttpApiProblem;
 use warp::{

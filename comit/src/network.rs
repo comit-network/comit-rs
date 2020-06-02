@@ -7,7 +7,10 @@ use crate::SecretHash;
 use libp2p::{Multiaddr, PeerId};
 use std::fmt;
 
-pub use swap_digest::*;
+pub use self::{
+    protocols::announce::{protocol::ReplySubstream, SwapDigest},
+    swap_digest::*,
+};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct DialInformation {
