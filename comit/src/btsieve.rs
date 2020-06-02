@@ -7,8 +7,8 @@ mod jsonrpc;
 use crate::Never;
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use genawaiter::sync::Co;
-use std::{collections::HashSet, hash::Hash};
+use genawaiter::sync::{Co, Gen};
+use std::{collections::HashSet, future::Future, hash::Hash};
 
 #[async_trait]
 pub trait LatestBlock: Send + Sync + 'static {
@@ -44,48 +44,49 @@ pub trait PreviousBlockHash {
     fn previous_block_hash(&self) -> Self::BlockHash;
 }
 
-/// This function uses the `connector` to find blocks relevant to a swap.  To do
-/// this we must get the latest block, for each latest block we receive we must
-/// ensure that we saw its parent i.e., that we did not miss any blocks between
-/// this latest block and the previous latest block we received.  Finally, we
-/// must also get each block back until the time that the swap started i.e.,
-/// look into the past (in case any action occurred on chain while we were not
-/// watching).
+/// Fetch blocks from a given timestamp on.
 ///
-/// It yields those blocks as part of the process.
-pub async fn find_relevant_blocks<C, B, H>(
-    connector: &C,
-    co: Co<B>,
+/// To do this reliably, we start with the current latest block and walk the
+/// blockchain backwards until we pass the given timestamp.
+///
+/// To make sure we don't miss any blocks as we keep fetching the latest block,
+/// we continuously check if we've seen a block's parent before. If we don't we
+/// walk back the ancestor chain again until we've seen a parent or we are past
+/// the given timestamp again.
+pub fn fetch_blocks_since<'a, C, B, H>(
+    connector: &'a C,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<Never>
+) -> Gen<B, (), impl Future<Output = anyhow::Result<Never>> + 'a>
 where
     C: LatestBlock<Block = B> + BlockByHash<Block = B, BlockHash = H>,
-    B: Predates + BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone,
+    B: Predates + BlockHash<BlockHash = H> + PreviousBlockHash<BlockHash = H> + Clone + 'a,
     H: Eq + Hash + Copy,
 {
-    let block = connector.latest_block().await?;
-
-    // Look back in time until we get a block that predates start_of_swap.
-    let mut seen_blocks =
-        walk_back_until(predates_start_of_swap(start_of_swap), block, connector, &co).await?;
-
-    // Look forward in time, but keep going back for missed blocks
-    loop {
+    Gen::new(|co| async move {
         let block = connector.latest_block().await?;
 
-        let missed_blocks = walk_back_until(
-            seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
-            block,
-            connector,
-            &co,
-        )
-        .await?;
+        // Look back in time until we get a block that predates start_of_swap.
+        let mut seen_blocks =
+            walk_back_until(predates_start_of_swap(start_of_swap), block, connector, &co).await?;
 
-        seen_blocks.extend(missed_blocks);
+        // Look forward in time, but keep going back for missed blocks
+        loop {
+            let block = connector.latest_block().await?;
 
-        // The duration of this timeout could/should depend on the network
-        tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
-    }
+            let missed_blocks = walk_back_until(
+                seen_block_or_predates_start_of_swap(&seen_blocks, start_of_swap),
+                block,
+                connector,
+                &co,
+            )
+            .await?;
+
+            seen_blocks.extend(missed_blocks);
+
+            // The duration of this timeout could/should depend on the network
+            tokio::time::delay_for(std::time::Duration::from_secs(1)).await;
+        }
+    })
 }
 
 /// Walks the blockchain backwards from the given hash until the predicate given
