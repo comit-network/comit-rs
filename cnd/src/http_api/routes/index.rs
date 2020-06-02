@@ -1,10 +1,11 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
+    halight, herc20,
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
     network::{HalightHerc20, Herc20Halight, Identities, ListenAddresses},
-    swap_protocols::{halight, herc20, ledger, Rfc003Facade},
+    swap_protocols::{ledger, Rfc003Facade},
     Facade, LocalSwapId, Role,
 };
 use digest::Digest;

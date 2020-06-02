@@ -5,9 +5,9 @@
 //! database which have not been completed yet.
 
 use crate::{
+    halight, herc20,
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, LoadAll, Storage},
-    swap_protocols::{halight, herc20},
     LocalSwapId, Protocol, Role, Side,
 };
 use chrono::Utc;

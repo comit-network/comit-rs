@@ -1,9 +1,10 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
+    herc20,
     http_api::{problem, DialInformation, Http},
     identity,
-    swap_protocols::{hbit, herc20},
+    swap_protocols::hbit,
     Facade, LocalSwapId, Role,
 };
 use serde::Deserialize;

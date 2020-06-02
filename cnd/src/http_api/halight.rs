@@ -1,6 +1,6 @@
-use crate::{asset, identity, swap_protocols::halight, RelativeTime};
+use crate::{asset, identity, RelativeTime};
 
-pub use crate::swap_protocols::halight::*;
+pub use crate::halight::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Finalized {
@@ -8,5 +8,5 @@ pub struct Finalized {
     pub refund_identity: identity::Lightning,
     pub redeem_identity: identity::Lightning,
     pub cltv_expiry: RelativeTime,
-    pub state: halight::State,
+    pub state: State,
 }

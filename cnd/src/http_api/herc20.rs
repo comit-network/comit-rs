@@ -1,6 +1,6 @@
-use crate::{asset, identity, swap_protocols::herc20, Timestamp};
+use crate::{asset, identity, Timestamp};
 
-pub use crate::swap_protocols::herc20::*;
+pub use crate::herc20::*;
 
 #[derive(Clone, Debug)]
 pub struct Finalized {
@@ -8,5 +8,5 @@ pub struct Finalized {
     pub refund_identity: identity::Ethereum,
     pub redeem_identity: identity::Ethereum,
     pub expiry: Timestamp,
-    pub state: herc20::State,
+    pub state: State,
 }

@@ -1,9 +1,4 @@
-use crate::{
-    btsieve,
-    http_api::LedgerNotConfigured,
-    swap_protocols::{halight, herc20},
-    LocalSwapId, Role, Side,
-};
+use crate::{btsieve, halight, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side};
 use chrono::NaiveDateTime;
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
 use std::sync::Arc;

@@ -23,15 +23,14 @@ use cnd::{
     connectors::Connectors,
     db::Sqlite,
     file_lock::TryLockExclusive,
+    halight, herc20,
     http_api::route_factory,
     load_swaps,
     network::{Swarm, SwarmWorker},
     protocol_spawner::ProtocolSpawner,
     respawn::respawn,
     storage::Storage,
-    swap_protocols::{
-        halight, herc20, rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates,
-    },
+    swap_protocols::{rfc003, rfc003::SwapCommunicationStates, Rfc003Facade, SwapErrorStates},
     Facade, RootSeed,
 };
 use comit::lnd::LndConnectorParams;
