@@ -12,11 +12,8 @@ use crate::{
         },
         ActionNotFound, AliceSwap,
     },
-    swap_protocols::{
-        actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
-    },
-    SecretHash, Timestamp,
+    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
+    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, SecretHash, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 

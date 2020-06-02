@@ -38,6 +38,7 @@ mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 
+mod actions;
 pub mod comit_api;
 pub mod config;
 pub mod connectors;
@@ -58,7 +59,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use self::{seed::*, swap_id::*};
+pub use self::{actions::*, seed::*, swap_id::*};
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side, Timestamp};
 

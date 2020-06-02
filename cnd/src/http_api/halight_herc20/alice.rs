@@ -9,11 +9,8 @@ use crate::{
         },
         ActionNotFound, AliceSwap,
     },
-    swap_protocols::{
-        actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
-    },
-    Never, SecretHash, Timestamp,
+    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
+    DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, SecretHash, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 

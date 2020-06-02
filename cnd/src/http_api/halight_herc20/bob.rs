@@ -12,11 +12,8 @@ use crate::{
         },
         ActionNotFound, BobSwap,
     },
-    swap_protocols::{
-        actions::{ethereum, lnd, lnd::Chain},
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
-    },
-    Timestamp,
+    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
+    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 

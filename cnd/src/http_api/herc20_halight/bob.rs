@@ -12,9 +12,8 @@ use crate::{
     swap_protocols::{
         actions::{ethereum, lnd, lnd::Chain},
         halight::Settled,
-        DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
     },
-    Never, Timestamp,
+    DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 
