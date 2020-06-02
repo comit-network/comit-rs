@@ -2,7 +2,8 @@ use crate::{
     config::settings::AllowedOrigins,
     http_api,
     network::LocalPeerId,
-    swap_protocols::{self, rfc003::SwapId, Facade, LocalSwapId, Rfc003Facade},
+    swap_protocols::{self, rfc003::SwapId, Facade, Rfc003Facade},
+    LocalSwapId,
 };
 use warp::{self, filters::BoxedFilter, Filter, Reply};
 

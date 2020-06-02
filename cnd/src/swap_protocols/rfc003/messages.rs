@@ -3,7 +3,7 @@ use crate::{
         rfc003::{DeriveIdentities, SecretHash, SwapId},
         HashFunction,
     },
-    timestamp::Timestamp,
+    Timestamp,
 };
 use serde::{Deserialize, Serialize};
 

@@ -1,13 +1,11 @@
 use crate::{
+    btsieve,
     http_api::LedgerNotConfigured,
-    swap_protocols::{halight, herc20, LocalSwapId},
+    swap_protocols::{halight, herc20},
+    LocalSwapId, Role, Side,
 };
 use chrono::NaiveDateTime;
-use comit::{
-    btsieve,
-    lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams},
-    Role, Side,
-};
+use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
 use std::sync::Arc;
 use tokio::runtime::Handle;
 

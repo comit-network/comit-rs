@@ -34,7 +34,7 @@ pub mod proptest;
 #[cfg(test)]
 pub mod quickcheck;
 #[macro_use]
-pub mod seed;
+mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
 
@@ -48,6 +48,7 @@ pub mod load_swaps;
 pub mod protocol_spawner;
 pub mod respawn;
 pub mod storage;
+mod swap_id;
 pub mod swap_protocols;
 mod tracing_ext;
 
@@ -56,6 +57,10 @@ use std::{
     env,
     path::{Path, PathBuf},
 };
+
+pub use self::{seed::*, swap_id::*};
+// Export comit types so we do not need to worry about where they come from.
+pub use comit::{Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side, Timestamp};
 
 lazy_static::lazy_static! {
     pub static ref SECP: ::bitcoin::secp256k1::Secp256k1<::bitcoin::secp256k1::All> =
@@ -159,10 +164,6 @@ pub mod bitcoin {
 
 pub mod lightning {
     pub use comit::lightning::PublicKey;
-}
-
-pub mod timestamp {
-    pub use comit::{RelativeTime, Timestamp};
 }
 
 pub mod btsieve {

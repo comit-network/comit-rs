@@ -1,4 +1,4 @@
-use crate::swap_protocols::LocalSwapId;
+use crate::LocalSwapId;
 use comit::{Protocol, Role, Side};
 use tracing_futures::{Instrument, Instrumented};
 

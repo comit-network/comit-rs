@@ -5,7 +5,7 @@
 //! describe a range of errors if you have to downcast from an anyhow::Error
 //! anyway.
 
-use crate::swap_protocols::LocalSwapId;
+use crate::LocalSwapId;
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no secret hash found in database for swap {0}")]

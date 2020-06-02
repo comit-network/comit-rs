@@ -1,4 +1,4 @@
-use crate::swap_protocols::LocalSwapId;
+use crate::LocalSwapId;
 use async_trait::async_trait;
 
 #[async_trait]

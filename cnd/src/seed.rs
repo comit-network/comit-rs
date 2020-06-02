@@ -1,4 +1,4 @@
-use crate::swap_protocols::{rfc003::SwapId, LocalSwapId};
+use crate::{swap_protocols::rfc003::SwapId, LocalSwapId};
 use pem::{encode, Pem};
 use rand::Rng;
 use sha2::{Digest, Sha256};

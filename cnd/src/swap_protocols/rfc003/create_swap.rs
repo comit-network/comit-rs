@@ -10,7 +10,7 @@ use crate::{
         },
         HashFunction, InsertFailedSwap,
     },
-    timestamp::Timestamp,
+    Timestamp,
 };
 use chrono::NaiveDateTime;
 use futures::future::{self, Either};

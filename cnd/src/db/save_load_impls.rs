@@ -5,11 +5,9 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, respawn,
-    swap_protocols::{LocalSwapId, Role, Side},
+    http_api, respawn, LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
-use comit::Protocol;
 use diesel::{sql_types, RunQueryDsl};
 
 mod rfc003;
@@ -56,7 +54,7 @@ impl Sqlite {
     pub async fn load_meta_swap(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<comit::Protocol, comit::Protocol>> {
+    ) -> anyhow::Result<http_api::Swap<Protocol, Protocol>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -105,7 +103,7 @@ impl Sqlite {
 
     pub async fn load_all_respawn_meta_swaps(
         &self,
-    ) -> anyhow::Result<Vec<respawn::Swap<comit::Protocol, comit::Protocol>>> {
+    ) -> anyhow::Result<Vec<respawn::Swap<Protocol, Protocol>>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]

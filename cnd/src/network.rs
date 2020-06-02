@@ -1,19 +1,24 @@
-pub mod comit;
+mod comit;
 pub mod start_swap;
 #[cfg(test)]
 pub mod test_swarm;
 pub mod transport;
 
-pub use ::comit::*;
+// Export comit network types while maintaining the module abstraction.
+pub use self::comit::*;
+pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
 use crate::{
     asset::AssetKind,
-    btsieve::bitcoin::{self, BitcoindConnector},
+    btsieve::{
+        bitcoin::{self, BitcoindConnector},
+        ethereum::{self, Web3Connector},
+    },
     comit_api::LedgerKind,
     config::Settings,
     db::{Rfc003Swap, Save, Sqlite},
-    htlc_location,
+    htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
@@ -26,13 +31,9 @@ use crate::{
             state::Insert,
             DeriveSecret, LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
-        HashFunction, LocalSwapId, Role, SharedSwapId, SwapProtocol,
+        HashFunction, SwapProtocol,
     },
-    transaction,
-};
-use ::comit::{
-    btsieve::ethereum::{self, Web3Connector},
-    network::protocols::announce::SwapDigest,
+    transaction, LocalSwapId, Role, SecretHash, SharedSwapId,
 };
 use anyhow::Context;
 use async_trait::async_trait;

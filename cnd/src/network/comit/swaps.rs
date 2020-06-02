@@ -1,9 +1,7 @@
 use crate::{
-    network::comit::LocalData,
-    swap_protocols::{LocalSwapId, Role, SharedSwapId},
-    timestamp::Timestamp,
+    network::{comit::LocalData, ReplySubstream, SwapDigest},
+    LocalSwapId, Role, SharedSwapId, Timestamp,
 };
-use ::comit::network::protocols::announce::{protocol::ReplySubstream, SwapDigest};
 use libp2p::{swarm::NegotiatedSubstream, PeerId};
 use std::collections::HashMap;
 
@@ -310,9 +308,8 @@ mod tests {
     use crate::{
         asset::{self, ethereum::FromWei},
         identity,
-        network::LocalData,
+        network::{Herc20Halight, LocalData, SwapDigest},
     };
-    use ::comit::network::{protocols::announce::SwapDigest, swap_digest::Herc20Halight};
     use digest::Digest;
 
     // Usage of this function relies on the fact that token_contract is

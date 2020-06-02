@@ -1,4 +1,6 @@
 use crate::{
+    asset,
+    ethereum::{Bytes, ChainId},
     http_api::{
         halight,
         halight::INVOICE_EXPIRY_SECS,
@@ -14,13 +16,9 @@ use crate::{
         actions::{ethereum, lnd, lnd::Chain},
         DeployAction, FundAction, InitAction, RedeemAction, RefundAction,
     },
-};
-use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
-use comit::{
-    asset,
-    ethereum::{Bytes, ChainId},
     SecretHash, Timestamp,
 };
+use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 
 impl From<AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>>
     for Herc20

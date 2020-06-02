@@ -1,7 +1,7 @@
 macro_rules! _match_role {
     ($role:ident, $fn:expr) => {{
-        use crate::swap_protocols::{
-            rfc003::{alice, bob},
+        use crate::{
+            swap_protocols::rfc003::{alice, bob},
             Role,
         };
 

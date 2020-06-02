@@ -1,5 +1,7 @@
-use crate::swap_protocols::{halight, herc20, Role, Secret};
-use comit::{SecretHash, Timestamp};
+use crate::{
+    swap_protocols::{halight, herc20},
+    Role, Secret, SecretHash, Timestamp,
+};
 use serde::Serialize;
 use std::collections::HashMap;
 

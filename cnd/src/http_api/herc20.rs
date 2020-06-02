@@ -1,5 +1,4 @@
-use crate::swap_protocols::herc20;
-use comit::{asset, identity, Timestamp};
+use crate::{asset, identity, swap_protocols::herc20, Timestamp};
 
 pub use crate::swap_protocols::herc20::*;
 

@@ -5,8 +5,8 @@ use crate::{
     identity,
     network::{DialInformation, Identities, Swarm},
     storage::{Load, LoadAll, Storage},
-    swap_protocols::{hbit, herc20, LocalSwapId, Role},
-    timestamp::Timestamp,
+    swap_protocols::{hbit, herc20},
+    LocalSwapId, Role, Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
 use digest::Digest;

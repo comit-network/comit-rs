@@ -1,13 +1,10 @@
 use crate::{
     db::{ForSwap, Save, Swap},
-    network::comit::RemoteData,
+    network::{comit::RemoteData, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, Storage},
-    swap_protocols::{halight, herc20, LocalSwapId},
-};
-use ::comit::{
-    network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    Protocol, Role, Side,
+    swap_protocols::{halight, herc20},
+    LocalSwapId, Protocol, Role, Side,
 };
 use chrono::offset::Utc;
 
