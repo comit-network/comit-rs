@@ -4,8 +4,8 @@ pub mod start_swap;
 pub mod test_swarm;
 pub mod transport;
 
-// Export comit network types while maintaining the module abstraction.
 pub use self::comit::*;
+// Export comit network types while maintaining the module abstraction.
 pub use ::comit::network::*;
 pub use transport::ComitTransport;
 
