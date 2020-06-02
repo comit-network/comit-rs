@@ -42,6 +42,7 @@ mod actions;
 pub mod comit_api;
 pub mod config;
 pub mod connectors;
+mod facade;
 pub mod file_lock;
 pub mod http_api;
 pub mod init_swap;
@@ -59,7 +60,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use self::{actions::*, seed::*, swap_id::*};
+pub use self::{actions::*, facade::Facade, seed::*, swap_id::*};
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side, Timestamp};
 

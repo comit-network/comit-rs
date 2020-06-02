@@ -1,4 +1,3 @@
-mod facade;
 pub mod halight;
 pub mod hbit;
 pub mod herc20;
@@ -39,7 +38,7 @@ pub mod actions {
     pub use comit::actions::*;
 }
 
-pub use self::{facade::*, ledger_states::*, rfc003_facade::*, swap_error_states::*};
+pub use self::{ledger_states::*, rfc003_facade::*, swap_error_states::*};
 
 use serde::{Deserialize, Serialize};
 
