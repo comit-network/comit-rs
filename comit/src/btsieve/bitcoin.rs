@@ -7,13 +7,13 @@ pub use self::{
 };
 use crate::{
     btsieve::{
-        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+        fetch_blocks_since, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
     identity,
 };
 use bitcoin::{self, BitcoinHash, OutPoint};
 use chrono::NaiveDateTime;
-use genawaiter::{sync::Gen, GeneratorState};
+use genawaiter::GeneratorState;
 
 type Hash = bitcoin::BlockHash;
 type Block = bitcoin::Block;
@@ -94,8 +94,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
     S: Fn(&bitcoin::Transaction) -> Option<M>,
 {
-    let mut block_generator =
-        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap);
 
     loop {
         match block_generator.async_resume().await {

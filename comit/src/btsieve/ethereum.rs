@@ -4,13 +4,13 @@ mod web3_connector;
 pub use self::{cache::Cache, web3_connector::Web3Connector};
 use crate::{
     btsieve::{
-        find_relevant_blocks, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
+        fetch_blocks_since, BlockByHash, BlockHash, LatestBlock, Predates, PreviousBlockHash,
     },
     ethereum::{Address, Block, Bytes, Hash, Input, Log, Transaction, TransactionReceipt, U256},
 };
 use async_trait::async_trait;
 use chrono::NaiveDateTime;
-use genawaiter::{sync::Gen, GeneratorState};
+use genawaiter::GeneratorState;
 
 #[async_trait]
 pub trait ReceiptByHash: Send + Sync + 'static {
@@ -138,8 +138,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(&Transaction) -> bool,
 {
-    let mut block_generator =
-        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap);
 
     loop {
         match block_generator.async_resume().await {
@@ -190,8 +189,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
     F: Fn(TransactionReceipt) -> Option<Log>,
 {
-    let mut block_generator =
-        Gen::new({ |co| async { find_relevant_blocks(connector, co, start_of_swap).await } });
+    let mut block_generator = fetch_blocks_since(connector, start_of_swap);
 
     loop {
         match block_generator.async_resume().await {
