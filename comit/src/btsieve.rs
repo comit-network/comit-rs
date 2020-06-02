@@ -1,7 +1,6 @@
 pub mod bitcoin;
 pub mod ethereum;
 mod hbit_connector_impls;
-mod herc20_connector_impls;
 mod jsonrpc;
 
 use crate::Never;

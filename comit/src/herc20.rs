@@ -1,8 +1,16 @@
 //! Htlc ERC20 Token atomic swap protocol.
 
 use crate::{
-    asset, ethereum::Bytes, htlc_location, identity, timestamp::Timestamp, transaction, Secret,
-    SecretHash,
+    asset,
+    asset::{ethereum::FromWei, Erc20, Erc20Quantity},
+    btsieve::{
+        ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
+        BlockByHash, LatestBlock,
+    },
+    ethereum::{Block, Bytes, Hash, U256},
+    htlc_location, identity,
+    timestamp::Timestamp,
+    transaction, Secret, SecretHash,
 };
 use blockchain_contracts::ethereum::rfc003::Erc20Htlc;
 use chrono::NaiveDateTime;
@@ -11,6 +19,14 @@ use futures::{
     Stream,
 };
 use genawaiter::sync::{Co, Gen};
+use std::cmp::Ordering;
+use tracing_futures::Instrument;
+
+lazy_static::lazy_static! {
+    static ref REDEEM_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REDEEMED_LOG_MSG.parse().expect("to be valid hex");
+    static ref REFUND_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::REFUNDED_LOG_MSG.parse().expect("to be valid hex");
+    static ref TRANSFER_LOG_MSG: Hash = blockchain_contracts::ethereum::rfc003::ERC20_TRANSFER.parse().expect("to be valid hex");
+}
 
 /// Data required to create a swap that involves an ERC20 token.
 #[derive(Clone, Debug, PartialEq)]
@@ -19,44 +35,6 @@ pub struct CreatedSwap {
     pub identity: identity::Ethereum,
     pub chain_id: u32,
     pub absolute_expiry: u32,
-}
-
-/// Resolves when said event has occurred.
-#[async_trait::async_trait]
-pub trait WaitForDeployed {
-    async fn wait_for_deployed(
-        &self,
-        params: Params,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Deployed>;
-}
-
-#[async_trait::async_trait]
-pub trait WaitForFunded {
-    async fn wait_for_funded(
-        &self,
-        params: Params,
-        start_of_swap: NaiveDateTime,
-        deployed: Deployed,
-    ) -> anyhow::Result<Funded>;
-}
-
-#[async_trait::async_trait]
-pub trait WaitForRedeemed {
-    async fn wait_for_redeemed(
-        &self,
-        start_of_swap: NaiveDateTime,
-        deployed: Deployed,
-    ) -> anyhow::Result<Redeemed>;
-}
-
-#[async_trait::async_trait]
-pub trait WaitForRefunded {
-    async fn wait_for_refunded(
-        &self,
-        start_of_swap: NaiveDateTime,
-        deployed: Deployed,
-    ) -> anyhow::Result<Refunded>;
 }
 
 /// Represents the events in the herc20 protocol.
@@ -119,7 +97,7 @@ pub fn new<'a, C>(
     start_of_swap: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
-    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     Gen::new({
         |co| async move {
@@ -137,23 +115,22 @@ async fn watch_ledger<C, R>(
     co: &Co<anyhow::Result<Event>, R>,
 ) -> anyhow::Result<()>
 where
-    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     co.yield_(Ok(Event::Started)).await;
 
-    let deployed = connector
-        .wait_for_deployed(params.clone(), start_of_swap)
-        .await?;
-
+    let deployed = watch_for_deployed(connector, params.clone(), start_of_swap).await?;
     co.yield_(Ok(Event::Deployed(deployed.clone()))).await;
 
-    let funded = connector
-        .wait_for_funded(params.clone(), start_of_swap, deployed.clone())
-        .await?;
+    let funded =
+        watch_for_funded(connector, params.clone(), start_of_swap, deployed.clone()).await?;
     co.yield_(Ok(Event::Funded(funded))).await;
 
-    let redeemed = connector.wait_for_redeemed(start_of_swap, deployed.clone());
-    let refunded = connector.wait_for_refunded(start_of_swap, deployed);
+    let redeemed = watch_for_redeemed(connector, start_of_swap, deployed.clone());
+    let refunded = watch_for_refunded(connector, start_of_swap, deployed);
+
+    futures::pin_mut!(redeemed);
+    futures::pin_mut!(refunded);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -169,6 +146,118 @@ where
     }
 
     Ok(())
+}
+
+async fn watch_for_deployed<C>(
+    connector: &C,
+    params: Params,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Deployed>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    let expected_bytecode = params.clone().bytecode();
+
+    let (transaction, location) =
+        watch_for_contract_creation(connector, start_of_swap, &expected_bytecode)
+            .instrument(tracing::trace_span!(
+                "deployed",
+                expected_bytecode = %hex::encode(&expected_bytecode.0)
+            ))
+            .await?;
+
+    Ok(Deployed {
+        transaction,
+        location,
+    })
+}
+
+async fn watch_for_funded<C>(
+    connector: &C,
+    params: Params,
+    start_of_swap: NaiveDateTime,
+    deployed: Deployed,
+) -> anyhow::Result<Funded>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    use crate::btsieve::ethereum::Event;
+
+    let event = Event {
+        address: params.asset.token_contract,
+        topics: vec![
+            Some(Topic(*TRANSFER_LOG_MSG)),
+            None,
+            Some(Topic(deployed.location.into())),
+        ],
+    };
+
+    let (transaction, log) = watch_for_event(connector, start_of_swap, event)
+        .instrument(tracing::trace_span!("funded"))
+        .await?;
+
+    let expected_asset = &params.asset;
+
+    let quantity = Erc20Quantity::from_wei(U256::from_big_endian(log.data.0.as_ref()));
+    let asset = Erc20::new(log.address, quantity);
+
+    let event = match expected_asset.cmp(&asset) {
+        Ordering::Equal => Funded::Correctly { transaction, asset },
+        _ => Funded::Incorrectly { transaction, asset },
+    };
+
+    Ok(event)
+}
+
+async fn watch_for_redeemed<C>(
+    connector: &C,
+    start_of_swap: NaiveDateTime,
+    deployed: Deployed,
+) -> anyhow::Result<Redeemed>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    use crate::btsieve::ethereum::Event;
+
+    let event = Event {
+        address: deployed.location,
+        topics: vec![Some(Topic(*REDEEM_LOG_MSG))],
+    };
+
+    let (transaction, log) = watch_for_event(connector, start_of_swap, event)
+        .instrument(tracing::info_span!("redeemed"))
+        .await?;
+
+    let log_data = log.data.0.as_ref();
+    let secret =
+        Secret::from_vec(log_data).expect("Must be able to construct secret from log data");
+
+    Ok(Redeemed {
+        transaction,
+        secret,
+    })
+}
+
+async fn watch_for_refunded<C>(
+    connector: &C,
+    start_of_swap: NaiveDateTime,
+    deployed: Deployed,
+) -> anyhow::Result<Refunded>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+{
+    use crate::btsieve::ethereum::Event;
+
+    let event = Event {
+        address: deployed.location,
+        topics: vec![Some(Topic(*REFUND_LOG_MSG))],
+    };
+
+    let (transaction, _) = watch_for_event(connector, start_of_swap, event)
+        .instrument(tracing::info_span!("refunded"))
+        .await?;
+
+    Ok(Refunded { transaction })
 }
 
 #[derive(Clone, Debug)]
