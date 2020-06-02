@@ -29,6 +29,7 @@ import {
     SwapResponse,
     SwapStatus,
 } from "../swap_response";
+import pTimeout from "p-timeout";
 
 export type ActorName = "alice" | "bob" | "charlie";
 
@@ -374,6 +375,48 @@ export class Actor {
         const txid = await this.swap.redeem(Actor.defaultActionConfig);
         this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
         await this.assertRedeemed();
+    }
+
+    public async assertAndExecuteNextAction(expectedActionName: string) {
+        if (!this.swap) {
+            throw new Error("Cannot do anything on non-existent swap");
+        }
+
+        const { action, transaction } = await pTimeout(
+            (async () => {
+                while (true) {
+                    const action = await this.swap.nextAction();
+
+                    if (action && action.name === expectedActionName) {
+                        const transaction = await action.execute();
+                        return { action, transaction };
+                    }
+
+                    await sleep(
+                        Actor.defaultActionConfig.tryIntervalSecs * 1000
+                    );
+                }
+            })(),
+            Actor.defaultActionConfig.maxTimeoutSecs * 1000
+        );
+
+        this.logger.debug(
+            "%s done on swap %s in %s",
+            action,
+            this.swap.self,
+            transaction
+        );
+        switch (action.name) {
+            case "deploy":
+                await this.assertDeployed();
+                break;
+            case "fund":
+                await this.assertFunded();
+                break;
+            case "redeem":
+                await this.assertRedeemed();
+                break;
+        }
     }
 
     public async getSwapResponse(): Promise<SwapResponse> {
