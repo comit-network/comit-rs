@@ -80,33 +80,6 @@ impl From<[u8; SEED_LENGTH]> for Seed {
 #[derive(Clone, Copy, PartialEq)]
 pub struct RootSeed(Seed);
 
-impl fmt::Debug for RootSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl fmt::Display for RootSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
-#[derive(Clone, Copy, PartialEq)]
-pub struct SwapSeed(Seed);
-
-impl fmt::Debug for SwapSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self.0)
-    }
-}
-
-impl fmt::Display for SwapSeed {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.0)
-    }
-}
-
 impl RootSeed {
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         self.0.sha256_with_seed(slices)
@@ -201,9 +174,36 @@ impl RootSeed {
     }
 }
 
+impl fmt::Debug for RootSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl fmt::Display for RootSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Copy, PartialEq)]
+pub struct SwapSeed(Seed);
+
 impl SwapSeed {
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         self.0.sha256_with_seed(slices)
+    }
+}
+
+impl fmt::Debug for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self.0)
+    }
+}
+
+impl fmt::Display for SwapSeed {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
     }
 }
 
