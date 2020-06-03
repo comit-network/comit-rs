@@ -6,7 +6,7 @@ use crate::{
         rfc003::{
             actions::Accept,
             messages::{self, IntoAcceptMessage},
-            DeriveIdentities, SwapId,
+            Rfc003DeriveIdentities, SwapId,
         },
     },
 };
@@ -37,11 +37,11 @@ impl IntoAcceptMessage<identity::Ethereum, identity::Bitcoin> for OnlyRedeem<ide
     fn into_accept_message(
         self,
         id: SwapId,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> messages::Accept<identity::Ethereum, identity::Bitcoin> {
         let beta_ledger_refund_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_refund_identity(),
+            &secret_source.rfc003_derive_refund_identity(),
         );
         messages::Accept {
             swap_id: id,
@@ -76,11 +76,11 @@ impl IntoAcceptMessage<identity::Bitcoin, identity::Ethereum> for OnlyRefund<ide
     fn into_accept_message(
         self,
         id: SwapId,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> messages::Accept<identity::Bitcoin, identity::Ethereum> {
         let alpha_ledger_redeem_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_redeem_identity(),
+            &secret_source.rfc003_derive_redeem_identity(),
         );
         messages::Accept {
             swap_id: id,

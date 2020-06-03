@@ -1,4 +1,5 @@
 use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Secret};
+use ::bitcoin::secp256k1::SecretKey;
 use pem::{encode, Pem};
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -190,6 +191,18 @@ impl SwapSeed {
     /// Only Alice derives the secret, Bob learns the secret from Alice.
     pub fn derive_secret(&self) -> Secret {
         self.sha256_with_seed(&[b"SECRET"]).into()
+    }
+
+    /// Used to derive the transient redeem identity for hbit swaps.
+    pub fn derive_transient_redeem_identity(&self) -> SecretKey {
+        SecretKey::from_slice(self.sha256_with_seed(&[b"REDEEM"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
+    }
+
+    /// Used to derive the transient refund identity for hbit swaps.
+    pub fn derive_transient_refund_identity(&self) -> SecretKey {
+        SecretKey::from_slice(self.sha256_with_seed(&[b"REFUND"]).as_ref())
+            .expect("The probability of this happening is < 1 in 2^120")
     }
 }
 

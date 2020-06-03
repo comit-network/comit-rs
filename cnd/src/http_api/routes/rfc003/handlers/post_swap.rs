@@ -11,7 +11,7 @@ use crate::{
             self,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state::Insert,
-            Accept, Decline, DeriveIdentities, LedgerState, Request, Rfc003DeriveSecret,
+            Accept, Decline, LedgerState, Request, Rfc003DeriveIdentities, Rfc003DeriveSecret,
             SecretHash, SwapCommunication, SwapId,
         },
         HashFunction, Rfc003Facade,
@@ -372,7 +372,7 @@ struct HttpIdentities {
 impl HttpIdentities {
     fn into_bitcoin_ethereum_identities(
         self,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> anyhow::Result<Identities<identity::Bitcoin, identity::Ethereum>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
@@ -396,7 +396,7 @@ impl HttpIdentities {
 
         let alpha_ledger_refund_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_refund_identity(),
+            &secret_source.rfc003_derive_refund_identity(),
         );
 
         Ok(Identities {
@@ -407,7 +407,7 @@ impl HttpIdentities {
 
     fn into_ethereum_bitcoin_identities(
         self,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
     ) -> anyhow::Result<Identities<identity::Ethereum, identity::Bitcoin>> {
         let HttpIdentities {
             alpha_ledger_refund_identity,
@@ -431,7 +431,7 @@ impl HttpIdentities {
 
         let beta_ledger_redeem_identity = identity::Bitcoin::from_secret_key(
             &*crate::SECP,
-            &secret_source.derive_redeem_identity(),
+            &secret_source.rfc003_derive_redeem_identity(),
         );
 
         Ok(Identities {

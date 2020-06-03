@@ -11,7 +11,7 @@ use crate::{
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     respawn,
     seed::RootSeed,
-    swap_protocols::{rfc003::DeriveIdentities, state::Get},
+    swap_protocols::state::Get,
     LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
@@ -740,7 +740,7 @@ impl
                     transient_redeem_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
-                        .derive_redeem_identity(),
+                        .derive_transient_redeem_identity(),
                     final_redeem_identity: hbit.final_identity.0,
                     expiry: hbit.expiry.0.into(),
                     state: beta_state,
@@ -833,7 +833,7 @@ impl
                     transient_refund_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
-                        .derive_refund_identity(),
+                        .derive_transient_refund_identity(),
                     final_refund_identity: hbit.final_identity.0,
                     expiry: hbit.expiry.0.into(),
                     state: beta_state,
@@ -910,7 +910,7 @@ impl
                     transient_refund_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
-                        .derive_refund_identity(),
+                        .derive_transient_refund_identity(),
                     transient_redeem_identity: hbit
                         .transient_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -1003,7 +1003,7 @@ impl
                     transient_redeem_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
-                        .derive_redeem_identity(),
+                        .derive_transient_redeem_identity(),
                     transient_refund_identity: hbit
                         .transient_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -1245,7 +1245,10 @@ impl Load<identity::Bitcoin> for Storage {
                 role: Role::Bob,
                 beta: Protocol::Hbit,
                 ..
-            } => self.seed.derive_swap_seed(swap_id).derive_refund_identity(),
+            } => self
+                .seed
+                .derive_swap_seed(swap_id)
+                .derive_transient_refund_identity(),
             http_api::Swap {
                 role: Role::Alice,
                 beta: Protocol::Hbit,
@@ -1255,7 +1258,10 @@ impl Load<identity::Bitcoin> for Storage {
                 role: Role::Bob,
                 alpha: Protocol::Hbit,
                 ..
-            } => self.seed.derive_swap_seed(swap_id).derive_redeem_identity(),
+            } => self
+                .seed
+                .derive_swap_seed(swap_id)
+                .derive_transient_redeem_identity(),
             _ => anyhow::bail!(HbitNotInvolved(swap_id)),
         };
 
@@ -1526,7 +1532,7 @@ fn build_hbit_params(
         (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
             let redeem = comit::bitcoin::PublicKey::from_secret_key(
                 &*crate::SECP,
-                &seed.derive_swap_seed(id).derive_redeem_identity(),
+                &seed.derive_swap_seed(id).derive_transient_redeem_identity(),
             );
             let refund = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
 
@@ -1536,7 +1542,7 @@ fn build_hbit_params(
             let redeem = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
             let refund = comit::bitcoin::PublicKey::from_secret_key(
                 &*crate::SECP,
-                &seed.derive_swap_seed(id).derive_refund_identity(),
+                &seed.derive_swap_seed(id).derive_transient_refund_identity(),
             );
 
             (redeem, refund)

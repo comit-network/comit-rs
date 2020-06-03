@@ -8,7 +8,7 @@ use crate::{
         rfc003::{
             actions::{MakeFundAction, MakeRedeemAction, MakeRefundAction},
             create_swap::HtlcParams,
-            DeriveIdentities, Secret,
+            Rfc003DeriveIdentities, Secret,
         },
     },
 };
@@ -40,7 +40,7 @@ impl MakeRefundAction for (ledger::Ethereum, asset::Ether) {
     fn make_refund_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        _secret_source: &dyn DeriveIdentities,
+        _secret_source: &dyn Rfc003DeriveIdentities,
         _fund_transaction: &Self::FundTransaction,
     ) -> Self::Output {
         let gas_limit = EtherHtlc::refund_tx_gas_limit();
@@ -63,7 +63,7 @@ impl MakeRedeemAction for (ledger::Ethereum, asset::Ether) {
     fn make_redeem_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        _secret_source: &dyn DeriveIdentities,
+        _secret_source: &dyn Rfc003DeriveIdentities,
         secret: Secret,
     ) -> Self::Output {
         let data = Bytes::from(secret.as_raw_secret().to_vec());
