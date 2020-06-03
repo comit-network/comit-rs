@@ -11,10 +11,7 @@ use crate::{
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     respawn,
     seed::RootSeed,
-    swap_protocols::{
-        rfc003::{DeriveIdentities, DeriveSecret},
-        state::Get,
-    },
+    swap_protocols::{rfc003::DeriveIdentities, state::Get},
     LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
@@ -104,7 +101,10 @@ impl Load<respawn::Swap<herc20::Params, halight::Params>> for Storage {
 
         let role = swap.role.0;
         let secret_hash = match role {
-            Role::Alice => comit::SecretHash::new(self.seed.derive_swap_seed(id).derive_secret()),
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(id);
+                comit::SecretHash::new(swap_seed.derive_secret())
+            }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
@@ -149,7 +149,10 @@ impl Load<respawn::Swap<halight::Params, herc20::Params>> for Storage {
 
         let role = swap.role.0;
         let secret_hash = match role {
-            Role::Alice => comit::SecretHash::new(self.seed.derive_swap_seed(id).derive_secret()),
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(id);
+                comit::SecretHash::new(swap_seed.derive_secret())
+            }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
@@ -194,7 +197,10 @@ impl Load<respawn::Swap<herc20::Params, hbit::Params>> for Storage {
 
         let role = swap.role.0;
         let secret_hash = match role {
-            Role::Alice => comit::SecretHash::new(self.seed.derive_swap_seed(id).derive_secret()),
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(id);
+                comit::SecretHash::new(swap_seed.derive_secret())
+            }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
@@ -239,7 +245,10 @@ impl Load<respawn::Swap<hbit::Params, herc20::Params>> for Storage {
 
         let role = swap.role.0;
         let secret_hash = match role {
-            Role::Alice => comit::SecretHash::new(self.seed.derive_swap_seed(id).derive_secret()),
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(id);
+                comit::SecretHash::new(swap_seed.derive_secret())
+            }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
@@ -1107,7 +1116,10 @@ impl Load<halight::Params> for Storage {
 
         let role = swap.role.0;
         let secret_hash = match role {
-            Role::Alice => comit::SecretHash::new(self.seed.derive_swap_seed(id).derive_secret()),
+            Role::Alice => {
+                let swap_seed = self.seed.derive_swap_seed(id);
+                comit::SecretHash::new(swap_seed.derive_secret())
+            }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 

@@ -1,4 +1,4 @@
-use crate::{swap_protocols::rfc003::SwapId, LocalSwapId};
+use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Secret};
 use pem::{encode, Pem};
 use rand::Rng;
 use sha2::{Digest, Sha256};
@@ -185,6 +185,11 @@ pub struct SwapSeed(Seed);
 impl SwapSeed {
     pub fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         self.0.sha256_with_seed(slices)
+    }
+
+    /// Only Alice derives the secret, Bob learns the secret from Alice.
+    pub fn derive_secret(&self) -> Secret {
+        self.sha256_with_seed(&[b"SECRET"]).into()
     }
 }
 

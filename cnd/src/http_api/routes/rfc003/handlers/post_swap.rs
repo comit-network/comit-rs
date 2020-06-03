@@ -11,8 +11,8 @@ use crate::{
             self,
             events::{HtlcDeployed, HtlcFunded, HtlcRedeemed, HtlcRefunded},
             state::Insert,
-            Accept, Decline, DeriveIdentities, DeriveSecret, LedgerState, Request, SecretHash,
-            SwapCommunication, SwapId,
+            Accept, Decline, DeriveIdentities, LedgerState, Request, Rfc003DeriveSecret,
+            SecretHash, SwapCommunication, SwapId,
         },
         HashFunction, Rfc003Facade,
     },
@@ -133,7 +133,7 @@ pub async fn handle_post_swap(
 ) -> anyhow::Result<SwapCreated> {
     let id = SwapId::default();
     let seed = dependencies.rfc003_derive_swap_seed(id);
-    let secret_hash = SecretHash::new(seed.derive_secret());
+    let secret_hash = SecretHash::new(seed.rfc003_derive_secret());
 
     let body = SwapRequestBody::deserialize(&body)?;
 

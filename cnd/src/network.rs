@@ -29,7 +29,7 @@ use crate::{
             self,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
             state::Insert,
-            DeriveSecret, LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
+            LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
         HashFunction, SwapProtocol,
     },

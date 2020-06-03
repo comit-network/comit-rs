@@ -73,13 +73,13 @@ impl DeriveIdentities for SwapSeed {
     }
 }
 
-pub trait DeriveSecret: Send + Sync + 'static {
-    fn derive_secret(&self) -> Secret;
+pub trait Rfc003DeriveSecret: Send + Sync + 'static {
+    fn rfc003_derive_secret(&self) -> Secret;
 }
 
 /// Only Alice derives the secret, Bob learns the secret from Alice.
-impl DeriveSecret for SwapSeed {
-    fn derive_secret(&self) -> Secret {
+impl Rfc003DeriveSecret for SwapSeed {
+    fn rfc003_derive_secret(&self) -> Secret {
         self.sha256_with_seed(&[b"SECRET"]).into()
     }
 }
