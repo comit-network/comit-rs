@@ -23,16 +23,16 @@ import { HbitRequestParams } from "comit-sdk/dist/src/cnd/swaps_payload";
 
 declare var global: HarnessGlobal;
 
-interface Ledgers {
-    alpha: keyof AllWallets;
-    beta: keyof AllWallets;
+interface SwapSettings {
+    ledgers?: { alpha: keyof AllWallets; beta: keyof AllWallets };
+    instantRefund?: boolean;
 }
 
 export default class SwapFactory {
     public static async newSwap(
         alice: Actor,
         bob: Actor,
-        ledgers?: Ledgers
+        settings: SwapSettings = { instantRefund: false }
     ): Promise<{
         herc20Halight: {
             alice: Herc20HalightRequestBody;
@@ -51,7 +51,9 @@ export default class SwapFactory {
             bob: Herc20HbitRequestBody;
         };
     }> {
-        const ledgerList = ledgers ? Object.values(ledgers) : [];
+        const ledgerList = settings.ledgers
+            ? Object.values(settings.ledgers)
+            : [];
         for (const ledger of ledgerList) {
             await alice.wallets.initializeForLedger(
                 ledger,
@@ -70,7 +72,7 @@ export default class SwapFactory {
             betaAbsoluteExpiry,
             alphaCltvExpiry,
             betaCltvExpiry,
-        } = defaultExpiries();
+        } = settings.instantRefund ? nowExpiries() : defaultExpiries();
 
         const aliceIdentities = await getIdentities(alice);
         const bobIdentities = await getIdentities(bob);
@@ -290,8 +292,24 @@ function defaultHerc20RequestParams(
 }
 
 function defaultExpiries() {
-    const alphaAbsoluteExpiry = Math.round(Date.now() / 1000) + 240;
-    const betaAbsoluteExpiry = Math.round(Date.now() / 1000) + 120;
+    const {
+        alphaAbsoluteExpiry,
+        betaAbsoluteExpiry,
+        alphaCltvExpiry,
+        betaCltvExpiry,
+    } = nowExpiries();
+
+    return {
+        alphaAbsoluteExpiry: alphaAbsoluteExpiry + 240,
+        betaAbsoluteExpiry: betaAbsoluteExpiry + 120,
+        alphaCltvExpiry,
+        betaCltvExpiry,
+    };
+}
+
+function nowExpiries() {
+    const alphaAbsoluteExpiry = Math.round(Date.now() / 1000);
+    const betaAbsoluteExpiry = Math.round(Date.now() / 1000);
 
     return {
         alphaAbsoluteExpiry,

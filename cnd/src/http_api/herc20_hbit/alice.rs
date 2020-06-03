@@ -191,11 +191,7 @@ impl RefundAction
                         expiry: herc20_expiry,
                         ..
                     },
-                beta_finalized:
-                    hbit::FinalizedAsRedeemer {
-                        state: hbit::State::Funded { .. },
-                        ..
-                    },
+                beta_finalized: hbit::FinalizedAsRedeemer { .. },
                 ..
             } => {
                 let to = *htlc_location;
