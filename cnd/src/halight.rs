@@ -144,7 +144,7 @@ impl State {
     pub fn transition_to_opened(&mut self, opened: Opened) {
         match std::mem::replace(self, State::None) {
             State::None => *self = State::Opened(opened),
-            other => panic!("expected state Unknown, got {:?}", other),
+            other => panic!("expected state None, got {:?}", other),
         }
     }
 

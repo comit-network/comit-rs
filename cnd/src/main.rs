@@ -23,7 +23,7 @@ use cnd::{
     connectors::Connectors,
     db::Sqlite,
     file_lock::TryLockExclusive,
-    halight, herc20,
+    halight, hbit, herc20,
     http_api::route_factory,
     load_swaps,
     network::{Swarm, SwarmWorker},
@@ -152,6 +152,7 @@ fn main() -> anyhow::Result<()> {
 
     let herc20_states = Arc::new(herc20::States::default());
     let halight_states = Arc::new(halight::States::default());
+    let hbit_states = Arc::new(hbit::States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
 
@@ -160,14 +161,17 @@ fn main() -> anyhow::Result<()> {
         seed,
         herc20_states.clone(),
         halight_states.clone(),
+        hbit_states.clone(),
     );
 
     let protocol_spawner = ProtocolSpawner::new(
         Arc::clone(&ethereum_connector),
+        Arc::clone(&bitcoin_connector),
         lnd_connector_params,
         runtime.handle().clone(),
         Arc::clone(&herc20_states),
         Arc::clone(&halight_states),
+        Arc::clone(&hbit_states),
     );
 
     let swarm = Swarm::new(

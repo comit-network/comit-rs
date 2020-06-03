@@ -3,7 +3,7 @@ import * as sirenJsonSchema from "../siren.schema.json";
 import * as swapPropertiesJsonSchema from "../swap.schema.json";
 import { twoActorTest } from "../src/actor_test";
 import { createDefaultSwapRequest, DEFAULT_ALPHA } from "../src/utils";
-import { EmbeddedRepresentationSubEntity, Link } from "comit-sdk";
+import { siren } from "comit-sdk";
 import "../src/schema_matcher";
 import { Rfc003Actor } from "../src/actors/rfc003_actor";
 
@@ -35,11 +35,12 @@ describe("Rfc003 schema tests", () => {
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
                     (body) =>
-                        body.entities[0] as EmbeddedRepresentationSubEntity
+                        body
+                            .entities[0] as siren.EmbeddedRepresentationSubEntity
                 );
 
-            const protocolLink = aliceSwapEntity.links.find((link: Link) =>
-                link.rel.includes("describedby")
+            const protocolLink = aliceSwapEntity.links.find(
+                (link: siren.Link) => link.rel.includes("describedby")
             );
 
             expect(protocolLink).toStrictEqual({
@@ -59,7 +60,9 @@ describe("Rfc003 schema tests", () => {
 
 async function assertSwapsInProgress(actor: Actor) {
     const res = await actor.cnd.fetch("/swaps");
-    const body = res.data as { entities: EmbeddedRepresentationSubEntity[] };
+    const body = res.data as {
+        entities: siren.EmbeddedRepresentationSubEntity[];
+    };
 
     expect(body.entities.length).toBeGreaterThan(0);
 

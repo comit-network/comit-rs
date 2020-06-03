@@ -1,4 +1,3 @@
-pub mod hbit;
 pub mod ledger_states;
 pub mod rfc003;
 mod rfc003_facade;

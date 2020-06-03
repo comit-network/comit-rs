@@ -1,6 +1,6 @@
 use crate::{
     db::{ForSwap, Save, Swap},
-    halight, herc20,
+    halight, hbit, herc20,
     network::{comit::RemoteData, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     protocol_spawner::{ProtocolSpawner, Spawn},
     storage::{Load, Storage},
@@ -30,8 +30,7 @@ where
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
                 lightning_identity: Some(lightning_identity),
-                // Do not make this None, secret_hash is in the behaviour event for Alice.
-                secret_hash: _,
+                ..
             },
         ) => {
             storage
@@ -60,6 +59,7 @@ where
                 ethereum_identity: Some(ethereum_identity),
                 lightning_identity: Some(lightning_identity),
                 secret_hash: Some(secret_hash),
+                ..
             },
         ) => {
             storage
@@ -117,6 +117,7 @@ where
                 ethereum_identity: Some(ethereum_identity),
                 lightning_identity: Some(lightning_identity),
                 secret_hash: Some(secret_hash),
+                ..
             },
         ) => {
             storage
@@ -134,6 +135,122 @@ where
             let herc20_params: herc20::Params = storage.load(id).await?;
 
             spawner.spawn(id, halight_params, start_of_swap, Side::Alpha, role);
+            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
+        }
+        (
+            Swap {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Hbit,
+                role: role @ Role::Alice,
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: ethereum_identity,
+                        beta_refund_identity: bitcoin_identity,
+                    },
+                })
+                .await?;
+
+            let herc20_params: herc20::Params = storage.load(id).await?;
+            let hbit_params: hbit::Params = storage.load(id).await?;
+
+            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
+            spawner.spawn(id, hbit_params, start_of_swap, Side::Beta, role);
+        }
+        (
+            Swap {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Hbit,
+                role: role @ Role::Bob,
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: ethereum_identity,
+                        beta_redeem_identity: bitcoin_identity,
+                    },
+                })
+                .await?;
+
+            let herc20_params: herc20::Params = storage.load(id).await?;
+            let hbit_params: hbit::Params = storage.load(id).await?;
+
+            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
+            spawner.spawn(id, hbit_params, start_of_swap, Side::Beta, role);
+        }
+        (
+            Swap {
+                alpha: Protocol::Hbit,
+                beta: Protocol::Herc20,
+                role: role @ Role::Alice,
+            },
+            RemoteData {
+                bitcoin_identity: Some(bitcoin_identity),
+                ethereum_identity: Some(ethereum_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: bitcoin_identity,
+                        beta_refund_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+
+            let hbit_params: hbit::Params = storage.load(id).await?;
+            let herc20_params: herc20::Params = storage.load(id).await?;
+
+            spawner.spawn(id, hbit_params, start_of_swap, Side::Alpha, role);
+            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
+        }
+        (
+            Swap {
+                alpha: Protocol::Hbit,
+                beta: Protocol::Herc20,
+                role: role @ Role::Bob,
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: bitcoin_identity,
+                        beta_redeem_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+
+            let hbit_params: hbit::Params = storage.load(id).await?;
+            let herc20_params: herc20::Params = storage.load(id).await?;
+
+            spawner.spawn(id, hbit_params, start_of_swap, Side::Alpha, role);
             spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
         }
         _ => tracing::info!("attempting to start an unsupported swap"),

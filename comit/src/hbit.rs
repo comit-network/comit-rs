@@ -1,11 +1,7 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
-    asset,
-    btsieve::bitcoin::{BitcoindConnector, Cache},
-    htlc_location, identity, ledger,
-    timestamp::Timestamp,
-    transaction, Secret, SecretHash,
+    asset, htlc_location, identity, ledger, timestamp::Timestamp, transaction, Secret, SecretHash,
 };
 use bitcoin::{
     hashes::{hash160, Hash},
@@ -18,13 +14,12 @@ use futures::{
     Stream,
 };
 use genawaiter::sync::{Co, Gen};
-use std::sync::Arc;
 
 /// Data required to create a swap that involves Bitcoin.
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Debug)]
 pub struct CreatedSwap {
     pub amount: asset::Bitcoin,
-    pub identity: identity::Bitcoin,
+    pub final_identity: bitcoin::Address,
     pub network: ledger::Bitcoin,
     pub absolute_expiry: u32,
 }
@@ -63,6 +58,9 @@ pub trait WaitForRefunded {
 /// Represents the events in the hbit protocol.
 #[derive(Debug, Clone, PartialEq, strum_macros::Display)]
 pub enum Event {
+    /// The protocol was started.
+    Started,
+
     /// The HTLC has been funded with bitcoin.
     Funded(Funded),
 
@@ -112,29 +110,34 @@ pub struct Refunded {
 ///
 /// It is highly unlikely for Bob to fund the HTLC now, yet the current
 /// implementation is still waiting for that.
-pub fn new(
-    connector: Arc<Cache<BitcoindConnector>>,
+pub fn new<'a, C>(
+    connector: &'a C,
     params: Params,
     start_of_swap: NaiveDateTime,
-) -> impl Stream<Item = anyhow::Result<Event>> {
+) -> impl Stream<Item = anyhow::Result<Event>> + 'a
+where
+    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
+{
     Gen::new({
         |co| async move {
-            if let Err(error) = watch_ledger(connector, params, &co, start_of_swap).await {
+            if let Err(error) = watch_ledger(connector, params, start_of_swap, &co).await {
                 co.yield_(Err(error)).await;
             }
         }
     })
 }
 
-/// Returns a future that waits for events to happen on a ledger.
-///
-/// Each event is yielded through the controller handle (co) of the coroutine.
-async fn watch_ledger(
-    connector: Arc<Cache<BitcoindConnector>>,
+async fn watch_ledger<C, R>(
+    connector: &C,
     params: Params,
-    co: &Co<anyhow::Result<Event>>,
     start_of_swap: NaiveDateTime,
-) -> anyhow::Result<()> {
+    co: &Co<anyhow::Result<Event>, R>,
+) -> anyhow::Result<()>
+where
+    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
+{
+    co.yield_(Ok(Event::Started)).await;
+
     let funded = connector.wait_for_funded(&params, start_of_swap).await?;
     co.yield_(Ok(Event::Funded(funded.clone()))).await;
 
@@ -174,17 +177,11 @@ pub struct Params {
 
 impl From<Params> for BitcoinHtlc {
     fn from(params: Params) -> Self {
-        let refund_public_key = ::bitcoin::PublicKey::from(params.refund_identity);
-        let redeem_public_key = ::bitcoin::PublicKey::from(params.redeem_identity);
-
-        let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
-        let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
-
-        BitcoinHtlc::new(
-            params.expiry.into(),
-            refund_identity,
-            redeem_identity,
-            params.secret_hash.into_raw(),
+        build_bitcoin_htlc(
+            params.redeem_identity,
+            params.refund_identity,
+            params.expiry,
+            params.secret_hash,
         )
     }
 }
@@ -205,6 +202,26 @@ pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Op
                 Err(_) => None,
             })
     })
+}
+
+pub fn build_bitcoin_htlc(
+    redeem_identity: identity::Bitcoin,
+    refund_identity: identity::Bitcoin,
+    expiry: Timestamp,
+    secret_hash: SecretHash,
+) -> BitcoinHtlc {
+    let refund_public_key = ::bitcoin::PublicKey::from(refund_identity);
+    let redeem_public_key = ::bitcoin::PublicKey::from(redeem_identity);
+
+    let refund_identity = hash160::Hash::hash(&refund_public_key.key.serialize());
+    let redeem_identity = hash160::Hash::hash(&redeem_public_key.key.serialize());
+
+    BitcoinHtlc::new(
+        expiry.into(),
+        refund_identity,
+        redeem_identity,
+        secret_hash.into_raw(),
+    )
 }
 
 #[cfg(test)]

@@ -1,7 +1,7 @@
 import { oneActorTest, twoActorTest } from "../src/actor_test";
 import "../src/schema_matcher";
 import * as sirenJsonSchema from "../siren.schema.json";
-import { EmbeddedRepresentationSubEntity, Entity, Link } from "comit-sdk";
+import { siren } from "comit-sdk";
 import axios from "axios";
 import { createDefaultSwapRequest } from "../src/utils";
 import { Actor } from "../src/actors/actor";
@@ -12,13 +12,16 @@ import { Rfc003Actor } from "../src/actors/rfc003_actor";
 // Siren Schema tests                                 //
 // ******************************************** //
 
-async function assertValidSirenDocument(swapsEntity: Entity, alice: Actor) {
-    const selfLink = swapsEntity.links.find((link: Link) =>
+async function assertValidSirenDocument(
+    swapsEntity: siren.Entity,
+    alice: Actor
+) {
+    const selfLink = swapsEntity.links.find((link: siren.Link) =>
         link.rel.includes("self")
     ).href;
 
     const swapResponse = await alice.cnd.fetch(selfLink);
-    const swapEntity = swapResponse.data as Entity;
+    const swapEntity = swapResponse.data as siren.Entity;
 
     expect(swapEntity).toMatchSchema(sirenJsonSchema);
     expect(swapEntity.properties).toMatchSchema(swapPropertiesJsonSchema);
@@ -68,7 +71,7 @@ describe("Siren Schema", () => {
             const links = body.links;
 
             const swapsLink = links.find(
-                (link: Link) =>
+                (link: siren.Link) =>
                     link.rel.length === 1 &&
                     link.rel.includes("collection") &&
                     link.class.length === 1 &&
@@ -82,7 +85,7 @@ describe("Siren Schema", () => {
             });
 
             const rfc003SwapsLink = links.find(
-                (link: Link) =>
+                (link: siren.Link) =>
                     link.rel.length === 2 &&
                     link.rel.includes("collection") &&
                     link.rel.includes("edit") &&
@@ -113,7 +116,8 @@ describe("Siren Schema", () => {
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
                     (body) =>
-                        body.entities[0] as EmbeddedRepresentationSubEntity
+                        body
+                            .entities[0] as siren.EmbeddedRepresentationSubEntity
                 );
 
             await assertValidSirenDocument(aliceSwapEntity, alice.actor);
@@ -122,7 +126,8 @@ describe("Siren Schema", () => {
                 .pollCndUntil("/swaps", (body) => body.entities.length > 0)
                 .then(
                     (body) =>
-                        body.entities[0] as EmbeddedRepresentationSubEntity
+                        body
+                            .entities[0] as siren.EmbeddedRepresentationSubEntity
                 );
             await assertValidSirenDocument(bobsSwapEntity, bob.actor);
         })

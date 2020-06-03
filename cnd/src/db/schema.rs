@@ -60,12 +60,15 @@ table! {
         swap_id -> Integer,
         amount -> Text,
         network -> Text,
-        redeem_identity -> Nullable<Text>,
-        refund_identity -> Nullable<Text>,
+        expiry -> BigInt,
+        final_identity -> Text,
+        transient_identity -> Nullable<Text>,
         side -> Text,
     }
 }
 
 allow_tables_to_appear_in_same_query!(swaps, halights);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
+allow_tables_to_appear_in_same_query!(swaps, hbits);
 allow_tables_to_appear_in_same_query!(halights, herc20s);
+allow_tables_to_appear_in_same_query!(hbits, herc20s);

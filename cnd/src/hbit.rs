@@ -1,13 +1,11 @@
 use crate::{
-    asset,
-    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
-    ethereum::{Block, Hash},
-    htlc_location, identity,
     swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
-    transaction, LocalSwapId, Protocol, Role, Secret, Side,
+    LocalSwapId, Role, Side,
 };
 use chrono::NaiveDateTime;
+use comit::{asset, htlc_location, transaction, Protocol, Secret};
+pub use comit::{hbit::*, identity};
 use futures::TryStreamExt;
 use std::{
     collections::{hash_map::Entry, HashMap},
@@ -15,9 +13,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-pub use comit::herc20::*;
-
-/// Creates a new instance of the herc20 protocol, annotated with tracing spans
+/// Creates a new instance of the hbit protocol, annotated with tracing spans
 /// and saves all events in the `States` hashmap.
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
@@ -31,10 +27,10 @@ pub async fn new<C>(
     states: Arc<States>,
     connector: Arc<C>,
 ) where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
+    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
 {
-    let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
-        .instrument_protocol(id, role, side, Protocol::Herc20)
+    let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
+        .instrument_protocol(id, role, side, Protocol::Hbit)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 
@@ -49,47 +45,33 @@ pub async fn new<C>(
 pub struct States(Mutex<HashMap<LocalSwapId, State>>);
 
 impl State {
-    pub fn transition_to_deployed(&mut self, deployed: Deployed) {
-        let Deployed {
-            transaction,
-            location,
-        } = deployed;
-
-        match std::mem::replace(self, State::None) {
-            State::None => {
-                *self = State::Deployed {
-                    deploy_transaction: transaction,
-                    htlc_location: location,
-                }
-            }
-            other => panic!("expected state None, got {}", other),
-        }
-    }
-
     pub fn transition_to_funded(&mut self, funded: Funded) {
         match std::mem::replace(self, State::None) {
-            State::Deployed {
-                deploy_transaction,
-                htlc_location,
-            } => match funded {
-                Funded::Correctly { asset, transaction } => {
+            State::None => match funded {
+                Funded::Correctly {
+                    asset,
+                    transaction,
+                    location,
+                } => {
                     *self = State::Funded {
-                        deploy_transaction,
-                        htlc_location,
+                        htlc_location: location,
                         fund_transaction: transaction,
                         asset,
                     }
                 }
-                Funded::Incorrectly { asset, transaction } => {
+                Funded::Incorrectly {
+                    asset,
+                    transaction,
+                    location,
+                } => {
                     *self = State::IncorrectlyFunded {
-                        deploy_transaction,
-                        htlc_location,
+                        htlc_location: location,
                         fund_transaction: transaction,
                         asset,
                     }
                 }
             },
-            other => panic!("expected state Deployed, got {}", other),
+            other => panic!("expected state None, got {}", other),
         }
     }
 
@@ -101,13 +83,11 @@ impl State {
 
         match std::mem::replace(self, State::None) {
             State::Funded {
-                deploy_transaction,
                 htlc_location,
                 asset,
                 fund_transaction,
             } => {
                 *self = State::Redeemed {
-                    deploy_transaction,
                     htlc_location,
                     fund_transaction,
                     redeem_transaction: transaction,
@@ -124,19 +104,16 @@ impl State {
 
         match std::mem::replace(self, State::None) {
             State::Funded {
-                deploy_transaction,
                 htlc_location,
                 asset,
                 fund_transaction,
             }
             | State::IncorrectlyFunded {
-                deploy_transaction,
                 htlc_location,
                 asset,
                 fund_transaction,
             } => {
                 *self = State::Refunded {
-                    deploy_transaction,
                     htlc_location,
                     fund_transaction,
                     refund_transaction: transaction,
@@ -168,9 +145,6 @@ impl state::Update<Event> for States {
             (Event::Started, Entry::Vacant(vacant)) => {
                 vacant.insert(State::None);
             }
-            (Event::Deployed(deployed), Entry::Occupied(mut state)) => {
-                state.get_mut().transition_to_deployed(deployed)
-            }
             (Event::Funded(funded), Entry::Occupied(mut state)) => {
                 state.get_mut().transition_to_funded(funded)
             }
@@ -193,46 +167,38 @@ impl state::Update<Event> for States {
     }
 }
 
-/// Represents states that an ERC20 HTLC can be in.
+/// Represents states that an Bitcoin HTLC can be in.
 #[derive(Debug, Clone, strum_macros::Display)]
 #[allow(clippy::large_enum_variant)]
 pub enum State {
     None,
-    Deployed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-    },
     Funded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
+        htlc_location: htlc_location::Bitcoin,
+        fund_transaction: transaction::Bitcoin,
+        asset: asset::Bitcoin,
     },
     IncorrectlyFunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
+        htlc_location: htlc_location::Bitcoin,
+        fund_transaction: transaction::Bitcoin,
+        asset: asset::Bitcoin,
     },
     Redeemed {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        redeem_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
+        htlc_location: htlc_location::Bitcoin,
+        fund_transaction: transaction::Bitcoin,
+        redeem_transaction: transaction::Bitcoin,
+        asset: asset::Bitcoin,
         secret: Secret,
     },
     Refunded {
-        htlc_location: htlc_location::Ethereum,
-        deploy_transaction: transaction::Ethereum,
-        fund_transaction: transaction::Ethereum,
-        refund_transaction: transaction::Ethereum,
-        asset: asset::Erc20,
+        htlc_location: htlc_location::Bitcoin,
+        fund_transaction: transaction::Bitcoin,
+        refund_transaction: transaction::Bitcoin,
+        asset: asset::Bitcoin,
     },
 }
 
 #[derive(Clone, Copy, Debug)]
 pub struct Identities {
-    pub redeem_identity: identity::Ethereum,
-    pub refund_identity: identity::Ethereum,
+    pub redeem_identity: identity::Bitcoin,
+    pub refund_identity: identity::Bitcoin,
 }

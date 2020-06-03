@@ -64,7 +64,7 @@ pub mod identity {
     pub fn bitcoin() -> impl Strategy<Value = identity::Bitcoin> {
         prop::array::uniform32(1u8..)
             .prop_map(|bytes| {
-                bitcoin::secp256k1::SecretKey::from_slice(&bytes)
+                ::bitcoin::secp256k1::SecretKey::from_slice(&bytes)
                     .expect("any 32 bytes are a valid secret key")
             })
             .prop_map(|sk| identity::Bitcoin::from_secret_key(&&crate::SECP, &sk))
@@ -73,7 +73,7 @@ pub mod identity {
     pub fn lightning() -> impl Strategy<Value = identity::Lightning> {
         prop::array::uniform32(1u8..)
             .prop_map(|bytes| {
-                bitcoin::secp256k1::SecretKey::from_slice(&bytes)
+                ::bitcoin::secp256k1::SecretKey::from_slice(&bytes)
                     .expect("any 32 bytes are a valid secret key")
             })
             .prop_map(|sk| identity::Lightning::from_secret_key(&&crate::SECP, &sk))
@@ -86,6 +86,19 @@ pub mod ethereum {
 
     pub fn erc20_quantity() -> impl Strategy<Value = Erc20Quantity> {
         prop::num::u128::ANY.prop_map(Erc20Quantity::from_wei)
+    }
+}
+
+pub mod bitcoin {
+    use super::*;
+
+    prop_compose! {
+        pub fn address()(
+            public_key in identity::bitcoin(),
+            network in ledger::bitcoin(),
+        ) -> ::bitcoin::Address {
+            ::bitcoin::Address::p2wpkh(&public_key.into(), network.into())
+        }
     }
 }
 
@@ -177,13 +190,13 @@ pub mod hbit {
     prop_compose! {
         pub fn created_swap()(
             amount in asset::bitcoin(),
-            identity in identity::bitcoin(),
+            final_identity in bitcoin::address(),
             network in ledger::bitcoin(),
             absolute_expiry in any::<u32>()
         ) -> hbit::CreatedSwap {
             hbit::CreatedSwap {
                 amount,
-                identity,
+                final_identity,
                 network,
                 absolute_expiry
             }

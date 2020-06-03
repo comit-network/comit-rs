@@ -10,47 +10,49 @@
 import { Actor } from "./actor";
 import {
     AllWallets,
-    HalightLightningBitcoinHanEthereumEtherRequestBody,
-    HalightLightningBitcoinHerc20EthereumErc20RequestBody,
-    HalightLightningBitcoinRequestParams,
-    HanEthereumEtherHalightLightningBitcoinRequestBody,
-    HanEthereumEtherRequestParams,
-    Herc20EthereumErc20HalightLightningBitcoinRequestBody,
-    Herc20EthereumErc20RequestParams,
+    HalightHerc20RequestBody,
+    HalightRequestParams,
+    HbitHerc20RequestBody,
+    Herc20HalightRequestBody,
+    Herc20HbitRequestBody,
+    Herc20RequestParams,
     Peer,
 } from "comit-sdk";
 import { HarnessGlobal } from "../utils";
+import { HbitRequestParams } from "comit-sdk/dist/src/cnd/swaps_payload";
 
 declare var global: HarnessGlobal;
+
+interface Ledgers {
+    alpha: keyof AllWallets;
+    beta: keyof AllWallets;
+}
 
 export default class SwapFactory {
     public static async newSwap(
         alice: Actor,
         bob: Actor,
-        dry?: boolean
+        ledgers?: Ledgers
     ): Promise<{
-        hanEthereumEtherHalightLightningBitcoin: {
-            alice: HanEthereumEtherHalightLightningBitcoinRequestBody;
-            bob: HanEthereumEtherHalightLightningBitcoinRequestBody;
+        herc20Halight: {
+            alice: Herc20HalightRequestBody;
+            bob: Herc20HalightRequestBody;
         };
-        herc20EthereumErc20HalightLightningBitcoin: {
-            alice: Herc20EthereumErc20HalightLightningBitcoinRequestBody;
-            bob: Herc20EthereumErc20HalightLightningBitcoinRequestBody;
+        halightHerc20: {
+            alice: HalightHerc20RequestBody;
+            bob: HalightHerc20RequestBody;
         };
-        halightLightningBitcoinHanEthereumEther: {
-            alice: HalightLightningBitcoinHanEthereumEtherRequestBody;
-            bob: HalightLightningBitcoinHanEthereumEtherRequestBody;
+        hbitHerc20: {
+            alice: HbitHerc20RequestBody;
+            bob: HbitHerc20RequestBody;
         };
-        halightLightningBitcoinHerc20EthereumErc20: {
-            alice: HalightLightningBitcoinHerc20EthereumErc20RequestBody;
-            bob: HalightLightningBitcoinHerc20EthereumErc20RequestBody;
+        herc20Hbit: {
+            alice: Herc20HbitRequestBody;
+            bob: Herc20HbitRequestBody;
         };
     }> {
-        const ledgers: (keyof AllWallets)[] = dry
-            ? []
-            : ["ethereum", "lightning"];
-
-        for (const ledger of ledgers) {
+        const ledgerList = ledgers ? Object.values(ledgers) : [];
+        for (const ledger of ledgerList) {
             await alice.wallets.initializeForLedger(
                 ledger,
                 alice.logger,
@@ -65,104 +67,108 @@ export default class SwapFactory {
 
         const {
             alphaAbsoluteExpiry,
+            betaAbsoluteExpiry,
+            alphaCltvExpiry,
             betaCltvExpiry,
-        } = defaultHalightHanHerc20Expiries();
+        } = defaultExpiries();
 
         const aliceIdentities = await getIdentities(alice);
         const bobIdentities = await getIdentities(bob);
 
-        const hanEthereumEtherHalightLightningBitcoin = {
+        const herc20Hbit = {
             alice: {
-                alpha: defaultHanEthereumEtherRequestParams(
-                    alphaAbsoluteExpiry,
-                    aliceIdentities.ethereum
-                ),
-                beta: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    aliceIdentities.lightning
-                ),
-                role: "Alice" as "Alice" | "Bob",
-                peer: await makePeer(bob),
-            },
-            bob: {
-                alpha: defaultHanEthereumEtherRequestParams(
-                    alphaAbsoluteExpiry,
-                    bobIdentities.ethereum
-                ),
-                beta: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    bobIdentities.lightning
-                ),
-                role: "Bob" as "Alice" | "Bob",
-                peer: await makePeer(alice),
-            },
-        };
-
-        const herc20EthereumErc20HalightLightningBitcoin = {
-            alice: {
-                alpha: defaultHerc20EthereumErc20RequestParams(
+                alpha: defaultHerc20RequestParams(
                     alphaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    aliceIdentities.lightning
+                beta: defaultHbitRequestParams(
+                    betaAbsoluteExpiry,
+                    aliceIdentities.bitcoin
                 ),
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHerc20EthereumErc20RequestParams(
+                alpha: defaultHerc20RequestParams(
                     alphaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    bobIdentities.lightning
+                beta: defaultHbitRequestParams(
+                    betaAbsoluteExpiry,
+                    bobIdentities.bitcoin
                 ),
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),
             },
         };
 
-        const halightLightningBitcoinHanEthereumEther = {
+        const hbitHerc20 = {
             alice: {
-                alpha: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    aliceIdentities.lightning
-                ),
-                beta: defaultHanEthereumEtherRequestParams(
+                alpha: defaultHbitRequestParams(
                     alphaAbsoluteExpiry,
-                    aliceIdentities.ethereum
+                    aliceIdentities.bitcoin
                 ),
-
+                beta: defaultHerc20RequestParams(
+                    betaAbsoluteExpiry,
+                    aliceIdentities.ethereum,
+                    erc20TokenContract
+                ),
                 role: "Alice" as "Alice" | "Bob",
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
-                    bobIdentities.lightning
-                ),
-                beta: defaultHanEthereumEtherRequestParams(
+                alpha: defaultHbitRequestParams(
                     alphaAbsoluteExpiry,
-                    bobIdentities.ethereum
+                    bobIdentities.bitcoin
                 ),
-
+                beta: defaultHerc20RequestParams(
+                    betaAbsoluteExpiry,
+                    bobIdentities.ethereum,
+                    erc20TokenContract
+                ),
                 role: "Bob" as "Alice" | "Bob",
                 peer: await makePeer(alice),
             },
         };
 
-        const halightLightningBitcoinHerc20EthereumErc20 = {
+        const herc20Halight = {
             alice: {
-                alpha: defaultHalightLightningBitcoinRequestParams(
+                alpha: defaultHerc20RequestParams(
+                    alphaAbsoluteExpiry,
+                    aliceIdentities.ethereum,
+                    erc20TokenContract
+                ),
+                beta: defaultHalightRequestParams(
                     betaCltvExpiry,
                     aliceIdentities.lightning
                 ),
-                beta: defaultHerc20EthereumErc20RequestParams(
+                role: "Alice" as "Alice" | "Bob",
+                peer: await makePeer(bob),
+            },
+            bob: {
+                alpha: defaultHerc20RequestParams(
+                    alphaAbsoluteExpiry,
+                    bobIdentities.ethereum,
+                    erc20TokenContract
+                ),
+                beta: defaultHalightRequestParams(
+                    betaCltvExpiry,
+                    bobIdentities.lightning
+                ),
+                role: "Bob" as "Alice" | "Bob",
+                peer: await makePeer(alice),
+            },
+        };
+
+        const halightHerc20 = {
+            alice: {
+                alpha: defaultHalightRequestParams(
+                    alphaCltvExpiry,
+                    aliceIdentities.lightning
+                ),
+                beta: defaultHerc20RequestParams(
                     alphaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
@@ -172,11 +178,11 @@ export default class SwapFactory {
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHalightLightningBitcoinRequestParams(
-                    betaCltvExpiry,
+                alpha: defaultHalightRequestParams(
+                    alphaCltvExpiry,
                     bobIdentities.lightning
                 ),
-                beta: defaultHerc20EthereumErc20RequestParams(
+                beta: defaultHerc20RequestParams(
                     alphaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
@@ -188,20 +194,22 @@ export default class SwapFactory {
         };
 
         return {
-            hanEthereumEtherHalightLightningBitcoin,
-            herc20EthereumErc20HalightLightningBitcoin,
-            halightLightningBitcoinHanEthereumEther,
-            halightLightningBitcoinHerc20EthereumErc20,
+            hbitHerc20,
+            herc20Hbit,
+            herc20Halight,
+            halightHerc20,
         };
     }
 }
 
 async function getIdentities(
     self: Actor
-): Promise<{ ethereum: string; lightning: string }> {
+): Promise<{ ethereum: string; lightning: string; bitcoin: string }> {
     let ethereum = "0x00a329c0648769a73afac7f9381e08fb43dbea72";
     let lightning =
         "02ed138aaed50d2d597f6fe8d30759fd3949fe73fdf961322713f1c19e10036a06";
+    let bitcoin =
+        "02c2a8efce029526d364c2cf39d89e3cdda05e5df7b2cbfc098b4e3d02b70b5275";
 
     try {
         ethereum = self.wallets.ethereum.account();
@@ -219,9 +227,18 @@ async function getIdentities(
         );
     }
 
+    try {
+        bitcoin = await self.wallets.bitcoin.address();
+    } catch (e) {
+        self.logger.warn(
+            "Bitcoin wallet not available, using static value for identity"
+        );
+    }
+
     return {
         ethereum,
         lightning,
+        bitcoin,
     };
 }
 
@@ -234,22 +251,22 @@ async function makePeer(actor: Actor): Promise<Peer> {
     };
 }
 
-function defaultHanEthereumEtherRequestParams(
+function defaultHbitRequestParams(
     absoluteExpiry: number,
     identity: string
-): HanEthereumEtherRequestParams {
+): HbitRequestParams {
     return {
-        amount: "5000000000000000000",
-        chain_id: 1337,
-        identity,
+        amount: "1000000",
+        network: "regtest",
         absolute_expiry: absoluteExpiry,
+        identity,
     };
 }
 
-function defaultHalightLightningBitcoinRequestParams(
+function defaultHalightRequestParams(
     cltvExpiry: number,
     lndPubkey: string
-): HalightLightningBitcoinRequestParams {
+): HalightRequestParams {
     return {
         amount: "10000",
         network: "regtest",
@@ -258,11 +275,11 @@ function defaultHalightLightningBitcoinRequestParams(
     };
 }
 
-function defaultHerc20EthereumErc20RequestParams(
+function defaultHerc20RequestParams(
     absoluteExpiry: number,
     identity: string,
     tokenContractAddress: string
-): Herc20EthereumErc20RequestParams {
+): Herc20RequestParams {
     return {
         amount: "9000000000000000000",
         contract_address: tokenContractAddress,
@@ -272,7 +289,7 @@ function defaultHerc20EthereumErc20RequestParams(
     };
 }
 
-function defaultHalightHanHerc20Expiries() {
+function defaultExpiries() {
     const alphaAbsoluteExpiry = Math.round(Date.now() / 1000) + 240;
     const betaAbsoluteExpiry = Math.round(Date.now() / 1000) + 120;
 

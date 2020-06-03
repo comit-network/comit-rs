@@ -1,4 +1,6 @@
-use crate::{btsieve, halight, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side};
+use crate::{
+    btsieve, halight, hbit, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side,
+};
 use chrono::NaiveDateTime;
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
 use std::sync::Arc;
@@ -9,11 +11,13 @@ use tokio::runtime::Handle;
 #[derive(Debug, Clone)]
 pub struct ProtocolSpawner {
     ethereum_connector: Arc<btsieve::ethereum::Cache<btsieve::ethereum::Web3Connector>>,
+    bitcoin_connector: Arc<btsieve::bitcoin::Cache<btsieve::bitcoin::BitcoindConnector>>,
     lnd_connector_params: Option<LndConnectorParams>,
     runtime_handle: Handle,
 
     herc20_states: Arc<herc20::States>,
     halight_states: Arc<halight::States>,
+    hbit_states: Arc<hbit::States>,
 }
 
 /// The `Spawn` trait abstracts over the functionality of spawning a particular
@@ -32,17 +36,21 @@ pub trait Spawn<P> {
 impl ProtocolSpawner {
     pub fn new(
         ethereum_connector: Arc<btsieve::ethereum::Cache<btsieve::ethereum::Web3Connector>>,
+        bitcoin_connector: Arc<btsieve::bitcoin::Cache<btsieve::bitcoin::BitcoindConnector>>,
         lnd_connector_params: Option<LndConnectorParams>,
         runtime_handle: Handle,
         herc20_states: Arc<herc20::States>,
         halight_states: Arc<halight::States>,
+        hbit_states: Arc<hbit::States>,
     ) -> Self {
         Self {
             ethereum_connector,
+            bitcoin_connector,
             lnd_connector_params,
             runtime_handle,
             herc20_states,
             halight_states,
+            hbit_states,
         }
     }
 
@@ -73,6 +81,29 @@ impl Spawn<herc20::Params> for ProtocolSpawner {
             side,
             self.herc20_states.clone(),
             self.ethereum_connector.clone(),
+        );
+
+        self.runtime_handle.spawn(task);
+    }
+}
+
+impl Spawn<hbit::Params> for ProtocolSpawner {
+    fn spawn(
+        &self,
+        id: LocalSwapId,
+        params: hbit::Params,
+        start_of_swap: NaiveDateTime,
+        side: Side,
+        role: Role,
+    ) {
+        let task = hbit::new(
+            id,
+            params,
+            start_of_swap,
+            role,
+            side,
+            self.hbit_states.clone(),
+            self.bitcoin_connector.clone(),
         );
 
         self.runtime_handle.spawn(task);
