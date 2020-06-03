@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Return an error when creating a halight swap if lnd certificate or macaroon are unavailable instead of failing silently.
 -   Only return a single action on the get swaps endpoint. This is now the recommended action available to the user.
 
-## Changed
+### Changed
 
 -   **Breaking Change**: Rename `parity` to `geth` in the configuration file as we are only testing the software with Geth as part of the CI.
 
