@@ -10,7 +10,7 @@ use crate::{
     halight, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     respawn,
-    seed::{DeriveSwapSeed, RootSeed},
+    seed::RootSeed,
     swap_protocols::{
         rfc003::{DeriveIdentities, DeriveSecret},
         state::Get,

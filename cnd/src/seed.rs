@@ -30,18 +30,6 @@ impl Rfc003DeriveSwapSeed for RootSeed {
     }
 }
 
-#[ambassador::delegatable_trait]
-pub trait DeriveSwapSeed {
-    fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed;
-}
-
-impl DeriveSwapSeed for RootSeed {
-    fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed {
-        let data = self.sha256_with_seed(&[b"SWAP", swap_id.as_bytes()]);
-        SwapSeed(Seed(data))
-    }
-}
-
 const SEED_LENGTH: usize = 32;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -124,6 +112,11 @@ impl RootSeed {
         tracing::info!("No seed file found, creating at: {}", path.display());
 
         Ok(random_seed)
+    }
+
+    pub fn derive_swap_seed(&self, swap_id: LocalSwapId) -> SwapSeed {
+        let data = self.sha256_with_seed(&[b"SWAP", swap_id.as_bytes()]);
+        SwapSeed(Seed(data))
     }
 
     fn from_file<D>(seed_file: D) -> Result<RootSeed, Error>

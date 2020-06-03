@@ -22,7 +22,7 @@ use crate::{
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
-    seed::{DeriveSwapSeed, RootSeed},
+    seed::RootSeed,
     storage::Storage,
     swap_protocols::{
         rfc003::{
