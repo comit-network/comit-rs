@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2020-06-03
+
 ### Fixed
 
 -   Fix windows build.
@@ -131,7 +133,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 -   Move config files to standard location based on platform (OSX, Windows, Linux).
 -   Align implementation with RFC-002 to use the decision header instead of status codes.
 
-[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.7.3...HEAD
+[Unreleased]: https://github.com/comit-network/comit-rs/compare/0.8.0...HEAD
+
+[0.8.0]: https://github.com/comit-network/comit-rs/compare/0.7.3...0.8.0
 
 [0.7.3]: https://github.com/comit-network/comit-rs/compare/0.7.2...0.7.3
 
