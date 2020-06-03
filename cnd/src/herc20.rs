@@ -1,5 +1,8 @@
 use crate::{
-    asset, htlc_location, identity,
+    asset,
+    btsieve::{ethereum::ReceiptByHash, BlockByHash, LatestBlock},
+    ethereum::{Block, Hash},
+    htlc_location, identity,
     swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
     transaction, LocalSwapId, Protocol, Role, Secret, Side,
@@ -28,7 +31,7 @@ pub async fn new<C>(
     states: Arc<States>,
     connector: Arc<C>,
 ) where
-    C: WaitForDeployed + WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     let mut events = comit::herc20::new(connector.as_ref(), params, start_of_swap)
         .instrument_protocol(id, role, side, Protocol::Herc20)

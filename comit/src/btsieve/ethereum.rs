@@ -34,7 +34,7 @@ impl PreviousBlockHash for Block {
 }
 
 pub async fn watch_for_contract_creation<C>(
-    blockchain_connector: &C,
+    connector: &C,
     start_of_swap: NaiveDateTime,
     bytecode: &Bytes,
 ) -> anyhow::Result<(Transaction, Address)>
@@ -42,7 +42,7 @@ where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
     let (transaction, receipt) =
-        matching_transaction_and_receipt(blockchain_connector, start_of_swap, |transaction| {
+        matching_transaction_and_receipt(connector, start_of_swap, |transaction| {
             // transaction.to address is None if, and only if, the transaction
             // creates a contract.
 
@@ -81,19 +81,16 @@ where
 }
 
 pub async fn watch_for_event<C>(
-    blockchain_connector: &C,
+    connector: &C,
     start_of_swap: NaiveDateTime,
     event: Event,
 ) -> anyhow::Result<(Transaction, Log)>
 where
     C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash> + ReceiptByHash,
 {
-    matching_transaction_and_log(
-        blockchain_connector,
-        start_of_swap,
-        event.topics.clone(),
-        |receipt| find_log_for_event_in_receipt(&event, receipt),
-    )
+    matching_transaction_and_log(connector, start_of_swap, event.topics.clone(), |receipt| {
+        find_log_for_event_in_receipt(&event, receipt)
+    })
     .await
 }
 
