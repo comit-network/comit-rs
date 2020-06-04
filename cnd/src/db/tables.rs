@@ -11,6 +11,7 @@ use crate::{
     halight, hbit, herc20, identity, lightning, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
+use chrono::NaiveDateTime;
 use diesel::{prelude::*, RunQueryDsl};
 use libp2p::PeerId;
 
@@ -21,6 +22,7 @@ pub struct Swap {
     pub local_swap_id: Text<LocalSwapId>,
     pub role: Text<Role>,
     pub counterparty_peer_id: Text<PeerId>,
+    pub start_of_swap: NaiveDateTime,
 }
 
 impl From<Swap> for InsertableSwap {
@@ -29,6 +31,7 @@ impl From<Swap> for InsertableSwap {
             local_swap_id: swap.local_swap_id,
             role: swap.role,
             counterparty_peer_id: swap.counterparty_peer_id,
+            start_of_swap: swap.start_of_swap,
         }
     }
 }
@@ -39,14 +42,21 @@ pub struct InsertableSwap {
     local_swap_id: Text<LocalSwapId>,
     role: Text<Role>,
     counterparty_peer_id: Text<PeerId>,
+    start_of_swap: NaiveDateTime,
 }
 
 impl InsertableSwap {
-    pub fn new(swap_id: LocalSwapId, counterparty: PeerId, role: Role) -> Self {
+    pub fn new(
+        swap_id: LocalSwapId,
+        counterparty: PeerId,
+        role: Role,
+        start_of_swap: NaiveDateTime,
+    ) -> Self {
         InsertableSwap {
             local_swap_id: Text(swap_id),
             role: Text(role),
             counterparty_peer_id: Text(counterparty),
+            start_of_swap,
         }
     }
 }

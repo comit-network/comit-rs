@@ -10,6 +10,7 @@ use crate::{
     swap_protocols::{ledger, Rfc003Facade},
     Facade, LocalSwapId, Role,
 };
+use chrono::offset::Utc;
 use digest::Digest;
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -308,6 +309,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, H
 
         let alpha = herc20::CreatedSwap::from(body.alpha);
         let beta = halight::CreatedSwap::from(body.beta);
+        let start_of_swap = Utc::now().naive_local();
 
         CreatedSwap {
             swap_id,
@@ -316,6 +318,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, H
             peer: body.peer.into(),
             address_hint: None,
             role: body.role.0,
+            start_of_swap,
         }
     }
 }
@@ -329,6 +332,7 @@ impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, 
 
         let alpha = halight::CreatedSwap::from(body.alpha);
         let beta = herc20::CreatedSwap::from(body.beta);
+        let start_of_swap = Utc::now().naive_local();
 
         CreatedSwap {
             swap_id,
@@ -337,6 +341,7 @@ impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, 
             peer: body.peer.into(),
             address_hint: None,
             role: body.role.0,
+            start_of_swap,
         }
     }
 }
@@ -350,6 +355,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit
 
         let alpha = herc20::CreatedSwap::from(body.alpha);
         let beta = hbit::CreatedSwap::from(body.beta);
+        let start_of_swap = Utc::now().naive_local();
 
         CreatedSwap::<herc20::CreatedSwap, hbit::CreatedSwap> {
             swap_id,
@@ -358,6 +364,7 @@ impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit
             peer: body.peer.into(),
             address_hint: None,
             role: body.role.0,
+            start_of_swap,
         }
     }
 }
@@ -371,6 +378,7 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
 
         let alpha = hbit::CreatedSwap::from(body.alpha);
         let beta = herc20::CreatedSwap::from(body.beta);
+        let start_of_swap = Utc::now().naive_local();
 
         CreatedSwap {
             swap_id,
@@ -379,6 +387,7 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
             peer: body.peer.into(),
             address_hint: None,
             role: body.role.0,
+            start_of_swap,
         }
     }
 }

@@ -5,7 +5,7 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, respawn, LocalSwapId, Protocol, Role, Side,
+    http_api, DecisionSwap, LocalSwapId, Protocol, Role, Side,
 };
 use anyhow::Context;
 use diesel::{sql_types, RunQueryDsl};
@@ -30,11 +30,15 @@ where
             peer,
             alpha,
             beta,
+            start_of_swap,
             ..
         }: CreatedSwap<TCreatedA, TCreatedB>,
     ) -> anyhow::Result<()> {
         self.do_in_transaction::<_, _, anyhow::Error>(move |conn| {
-            let swap_id = self.save_swap(conn, &InsertableSwap::new(swap_id, peer, role))?;
+            let swap_id = self.save_swap(
+                conn,
+                &InsertableSwap::new(swap_id, peer, role, start_of_swap),
+            )?;
 
             let insertable_alpha = alpha.into_insertable(swap_id, role, Side::Alpha);
             let insertable_beta = beta.into_insertable(swap_id, role, Side::Beta);
@@ -51,7 +55,10 @@ where
 }
 
 impl Sqlite {
-    pub async fn load_meta_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::Swap> {
+    pub async fn load_meta_swap(
+        &self,
+        swap_id: LocalSwapId,
+    ) -> anyhow::Result<http_api::DecisionSwap> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -91,16 +98,14 @@ impl Sqlite {
                 .get_result(connection)
         }).await.context(db::Error::SwapNotFound)?;
 
-        Ok(http_api::Swap {
+        Ok(http_api::DecisionSwap {
             role: role.0,
             alpha: alpha_protocol.0,
             beta: beta_protocol.0,
         })
     }
 
-    pub async fn load_all_respawn_meta_swaps(
-        &self,
-    ) -> anyhow::Result<Vec<respawn::Swap<Protocol, Protocol>>> {
+    pub async fn load_all_respawn_meta_swaps(&self) -> anyhow::Result<Vec<DecisionSwap>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -135,7 +140,7 @@ impl Sqlite {
         })
             .await?
             .into_iter()
-            .map(|row| respawn::Swap {
+            .map(|row| DecisionSwap {
                 id: row.local_swap_id.0,
                 role: row.role.0,
                 alpha: row.alpha_protocol.0,

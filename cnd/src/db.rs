@@ -24,10 +24,10 @@ pub use self::{
 };
 
 use crate::{
-    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId,
-    Protocol, Role,
+    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId, Role,
 };
 use async_trait::async_trait;
+use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
@@ -38,13 +38,6 @@ use std::{
 use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
-
-#[derive(Clone, Copy, Debug)]
-pub struct Swap {
-    pub role: Role,
-    pub alpha: Protocol,
-    pub beta: Protocol,
-}
 
 /// Save date to the database.
 #[async_trait]
@@ -195,6 +188,8 @@ pub struct CreatedSwap<A, B> {
     pub address_hint: Option<libp2p::Multiaddr>,
     /// Role of the node in this swap, Alice or Bob.
     pub role: Role,
+    /// Timestamp when cnd has first learned about the swap.
+    pub start_of_swap: NaiveDateTime,
 }
 
 #[cfg(test)]
