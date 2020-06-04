@@ -42,7 +42,7 @@ export class BitcoindInstance implements LedgerInstance {
     ) {}
 
     public async start() {
-        const bin = await this.findBinary("0.19.1");
+        const bin = await this.findBinary("0.20.0");
 
         this.logger.info("Using binary", bin);
 
@@ -164,6 +164,7 @@ rest=1
 acceptnonstdtxn=0
 zmqpubrawblock=tcp://127.0.0.1:${this.zmqPubRawBlockPort}
 zmqpubrawtx=tcp://127.0.0.1:${this.zmqPubRawTxPort}
+fallbackfee=0.0002
 
 [regtest]
 bind=0.0.0.0:${this.p2pPort}
