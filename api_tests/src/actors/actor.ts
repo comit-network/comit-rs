@@ -3,9 +3,7 @@ import {
     HalightHerc20RequestBody,
     Herc20HalightRequestBody,
     Herc20HbitRequestBody,
-    LedgerAction,
     Swap,
-    Transaction,
     Wallets as SdkWallets,
     HbitHerc20RequestBody,
 } from "comit-sdk";
@@ -345,86 +343,6 @@ export class Actor {
         }
     }
 
-    /**
-     * Wait for and execute the init action
-     * @param config Timeout parameters
-     */
-    public async init(config?: {
-        maxTimeoutSecs: number;
-        tryIntervalSecs: number;
-    }) {
-        if (!this.swap) {
-            throw new Error("Cannot init nonexistent swap");
-        }
-
-        const response = await this.swap.tryExecuteSirenAction<LedgerAction>(
-            "init",
-            config ? config : Actor.defaultActionConfig
-        );
-        await this.swap.doLedgerAction(response.data);
-    }
-
-    /**
-     * Wait for and execute the deploy action
-     * @param config Timeout parameters
-     */
-    public async deploy(config?: {
-        maxTimeoutSecs: number;
-        tryIntervalSecs: number;
-    }) {
-        if (!this.swap) {
-            throw new Error("Cannot deploy nonexistent swap");
-        }
-
-        const txid = await this.swap.deploy(
-            config ? config : Actor.defaultActionConfig
-        );
-
-        if (txid instanceof Transaction) {
-            await txid.status(1);
-        }
-
-        this.logger.debug("Deployed swap %s in %s", this.swap.self, txid);
-        await this.assertDeployed();
-    }
-
-    /**
-     * Wait for and execute the fund action
-     * @param config Timeout parameters
-     */
-    public async fund(config?: {
-        maxTimeoutSecs: number;
-        tryIntervalSecs: number;
-    }) {
-        if (!this.swap) {
-            throw new Error("Cannot fund nonexistent swap");
-        }
-
-        const txid = await this.swap.fund(
-            config ? config : Actor.defaultActionConfig
-        );
-
-        if (txid instanceof Transaction) {
-            await txid.status(1);
-        }
-
-        this.logger.debug("Funded swap %s in %s", this.swap.self, txid);
-        await this.assertFunded();
-    }
-
-    /**
-     * Wait for and execute the redeem action
-     */
-    public async redeem() {
-        if (!this.swap) {
-            throw new Error("Cannot redeem non-existent swap");
-        }
-
-        const txid = await this.swap.redeem(Actor.defaultActionConfig);
-        this.logger.debug("Redeemed swap %s in %s", this.swap.self, txid);
-        await this.assertRedeemed();
-    }
-
     public async assertAndExecuteNextAction(expectedActionName: string) {
         if (!this.swap) {
             throw new Error("Cannot do anything on non-existent swap");
@@ -450,7 +368,7 @@ export class Actor {
 
         this.logger.debug(
             "%s done on swap %s in %s",
-            action,
+            action.name,
             this.swap.self,
             transaction
         );
@@ -464,6 +382,8 @@ export class Actor {
             case "redeem":
                 await this.assertRedeemed();
                 break;
+            case "refund":
+                await this.assertRefunded();
         }
     }
 
@@ -483,6 +403,14 @@ export class Actor {
      * Assertions against cnd API Only
      */
 
+    public async assertAlphaDeployed() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
+    }
+
+    public async assertBetaDeployed() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+    }
+
     public async assertAlphaFunded(): Promise<void> {
         await this.assertLedgerStatus("alpha", EscrowStatus.Funded);
     }
@@ -499,12 +427,12 @@ export class Actor {
         await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
     }
 
-    public async assertAlphaDeployed() {
-        await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
+    public async assertAlphaRefunded() {
+        await this.assertLedgerStatus("alpha", EscrowStatus.Refunded);
     }
 
-    public async assertBetaDeployed() {
-        await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+    public async assertBetaRefunded() {
+        await this.assertLedgerStatus("beta", EscrowStatus.Refunded);
     }
 
     private async assertDeployed() {
@@ -561,6 +489,24 @@ export class Actor {
         }
     }
 
+    private async assertRefunded() {
+        const role = await this.cryptoRole();
+        switch (role) {
+            case "Alice":
+                await this.actors.alice.assertAlphaRefunded();
+                if (this.actors.bob.cndInstance.isRunning()) {
+                    await this.actors.bob.assertAlphaRefunded();
+                }
+                break;
+            case "Bob":
+                if (this.actors.alice.cndInstance.isRunning()) {
+                    await this.actors.alice.assertBetaRefunded();
+                }
+                await this.actors.bob.assertBetaRefunded();
+                break;
+        }
+    }
+
     private async assertLedgerStatus(
         ledgerRel: "alpha" | "beta",
         status: EscrowStatus
@@ -593,10 +539,10 @@ export class Actor {
             }
         }
 
-        await this.assertBalances();
+        await this.assertBalancesAfterSwap();
     }
 
-    public async assertBalances() {
+    public async assertBalancesAfterSwap() {
         for (const [
             assetAsKey,
             expectedBalanceChange,
@@ -626,6 +572,31 @@ export class Actor {
             this.logger.debug(
                 "Balance check was positive, current balance is %d",
                 currentWalletBalance
+            );
+        }
+    }
+
+    public async assertBalancesAfterRefund() {
+        this.logger.debug("Checking if swap @ %s was refunded", this.swap.self);
+
+        for (const [assetKey] of this.startingBalances.entries()) {
+            const { asset, ledger } = toKind(assetKey);
+
+            const wallet = this.wallets[ledger];
+            const maximumFee = BigInt(wallet.MaximumFee);
+
+            this.logger.debug(
+                "Checking that %s balance changed by max %d (MaximumFee)",
+                assetKey,
+                maximumFee
+            );
+            const expectedBalance = this.startingBalances.get(assetKey);
+            const currentWalletBalance = await wallet.getBalanceByAsset(
+                defaultAssetValue(asset, ledger)
+            );
+            const balanceInclFees = expectedBalance - maximumFee;
+            expect(currentWalletBalance).toBeGreaterThanOrEqual(
+                balanceInclFees
             );
         }
     }
