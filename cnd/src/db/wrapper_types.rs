@@ -1,8 +1,6 @@
 use crate::{
     asset, identity,
-    swap_protocols::ledger::{
-        Lightning, {self},
-    },
+    swap_protocols::ledger::{self},
 };
 use std::{fmt, str::FromStr};
 
@@ -131,60 +129,6 @@ impl From<EthereumAddress> for identity::Ethereum {
 impl From<identity::Ethereum> for EthereumAddress {
     fn from(address: identity::Ethereum) -> Self {
         EthereumAddress(address)
-    }
-}
-
-/// A wrapper type for Lightning networks.
-///
-/// This is then wrapped in the db::custom_sql_types::Text to be stored in DB
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub enum LightningNetwork {
-    Mainnet,
-    Testnet,
-    Regtest,
-}
-
-impl From<Lightning> for LightningNetwork {
-    fn from(lightning: Lightning) -> Self {
-        match lightning {
-            Lightning::Mainnet => LightningNetwork::Mainnet,
-            Lightning::Testnet => LightningNetwork::Testnet,
-            Lightning::Regtest => LightningNetwork::Regtest,
-        }
-    }
-}
-
-impl From<LightningNetwork> for Lightning {
-    fn from(network: LightningNetwork) -> Self {
-        match network {
-            LightningNetwork::Mainnet => Lightning::Mainnet,
-            LightningNetwork::Testnet => Lightning::Testnet,
-            LightningNetwork::Regtest => Lightning::Regtest,
-        }
-    }
-}
-
-impl FromStr for LightningNetwork {
-    type Err = UnknownVariant;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s {
-            "mainnet" => Ok(Self::Mainnet),
-            "testnet" => Ok(Self::Testnet),
-            "regtest" => Ok(Self::Regtest),
-            _ => Err(UnknownVariant),
-        }
-    }
-}
-
-impl fmt::Display for LightningNetwork {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let s = match self {
-            Self::Mainnet => "mainnet",
-            Self::Testnet => "testnet",
-            Self::Regtest => "regtest",
-        };
-        write!(f, "{}", s)
     }
 }
 

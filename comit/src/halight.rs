@@ -1,4 +1,4 @@
-use crate::{asset, identity, ledger, RelativeTime, Secret, SecretHash};
+use crate::{asset, identity, RelativeTime, Secret, SecretHash};
 use bitcoin::hashes::core::fmt::Formatter;
 use futures::{future, future::Either, Stream, TryFutureExt};
 use genawaiter::sync::Gen;
@@ -56,7 +56,7 @@ where
 pub struct CreatedSwap {
     pub asset: asset::Bitcoin,
     pub identity: identity::Lightning,
-    pub network: ledger::Lightning,
+    pub network: Network,
     pub cltv_expiry: u32,
 }
 
@@ -148,3 +148,11 @@ pub struct Settled {
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Cancelled;
+
+/// Which layer 1 network we are running on (implicitly refers to the Bitcoin)
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Network {
+    Mainnet,
+    Testnet,
+    Regtest,
+}

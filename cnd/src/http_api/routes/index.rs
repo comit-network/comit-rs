@@ -6,7 +6,7 @@ use crate::{
     identity,
     network::{HalightHerc20, HbitHerc20, Herc20Halight, Herc20Hbit, Identities, ListenAddresses},
     storage::Load,
-    swap_protocols::{ledger, Rfc003Facade},
+    swap_protocols::Rfc003Facade,
     Facade, LocalSwapId, Role,
 };
 use digest::Digest;
@@ -388,7 +388,7 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
 pub struct Halight {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
-    pub network: Http<ledger::Lightning>,
+    pub network: Http<halight::Network>,
     pub cltv_expiry: u32,
 }
 

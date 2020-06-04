@@ -175,30 +175,30 @@ impl Serialize for Http<PeerId> {
     }
 }
 
-impl Serialize for Http<ledger::Lightning> {
+impl Serialize for Http<halight::Network> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let str = match self {
-            Http(ledger::Lightning::Mainnet) => "mainnet",
-            Http(ledger::Lightning::Testnet) => "testnet",
-            Http(ledger::Lightning::Regtest) => "regtest",
+            Http(halight::Network::Mainnet) => "mainnet",
+            Http(halight::Network::Testnet) => "testnet",
+            Http(halight::Network::Regtest) => "regtest",
         };
 
         serializer.serialize_str(str)
     }
 }
 
-impl<'de> Deserialize<'de> for Http<ledger::Lightning> {
-    fn deserialize<D>(deserializer: D) -> Result<Http<ledger::Lightning>, D::Error>
+impl<'de> Deserialize<'de> for Http<halight::Network> {
+    fn deserialize<D>(deserializer: D) -> Result<Http<halight::Network>, D::Error>
     where
         D: Deserializer<'de>,
     {
         let network = match String::deserialize(deserializer)?.as_str() {
-            "mainnet" => ledger::Lightning::Mainnet,
-            "testnet" => ledger::Lightning::Testnet,
-            "regtest" => ledger::Lightning::Regtest,
+            "mainnet" => halight::Network::Mainnet,
+            "testnet" => halight::Network::Testnet,
+            "regtest" => halight::Network::Regtest,
 
             network => {
                 return Err(<D as Deserializer<'de>>::Error::custom(format!(
@@ -551,6 +551,7 @@ pub struct ActionNotFound;
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::{
         asset,
         asset::ethereum::FromWei,
@@ -757,5 +758,20 @@ mod tests {
             serialized,
             r#""QmfUfpC2frwFvcDzpspnfZitHt5wct6n4kpG5jzgRdsxkY""#
         );
+    }
+
+    #[test]
+    fn http_halight_network_serializes_correctly_to_json() {
+        let network = Http(halight::Network::Mainnet);
+        let serialized = serde_json::to_string(&network).unwrap();
+        assert_eq!(serialized, r#""mainnet""#);
+
+        let network = Http(halight::Network::Testnet);
+        let serialized = serde_json::to_string(&network).unwrap();
+        assert_eq!(serialized, r#""testnet""#);
+
+        let network = Http(halight::Network::Regtest);
+        let serialized = serde_json::to_string(&network).unwrap();
+        assert_eq!(serialized, r#""regtest""#);
     }
 }

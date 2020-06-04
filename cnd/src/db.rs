@@ -24,15 +24,18 @@ pub use self::{
 };
 
 use crate::{
-    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId,
-    Protocol, Role,
+    db::wrapper_types::custom_sql_types::Text, halight, swap_protocols::rfc003::SwapId,
+    LocalSwapId, Protocol, Role,
 };
 use async_trait::async_trait;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
 use std::{
     ffi::OsStr,
+    fmt,
+    ops::Deref,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
 };
 use tokio::sync::Mutex;
@@ -197,11 +200,56 @@ pub struct CreatedSwap<A, B> {
     pub role: Role,
 }
 
+#[derive(Clone, Debug, PartialEq)]
+pub struct Db<I>(pub I);
+
+impl<I> From<I> for Db<I> {
+    fn from(inner: I) -> Self {
+        Db(inner)
+    }
+}
+
+impl<I> Deref for Db<I> {
+    type Target = I;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl fmt::Display for Db<halight::Network> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self.0 {
+            halight::Network::Mainnet => "mainnet",
+            halight::Network::Testnet => "testnet",
+            halight::Network::Regtest => "regtest",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+impl FromStr for Db<halight::Network> {
+    type Err = UnknownLightningNetwork;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "mainnet" => Ok(Db(halight::Network::Mainnet)),
+            "testnet" => Ok(Db(halight::Network::Testnet)),
+            "regtest" => Ok(Db(halight::Network::Regtest)),
+            _ => Err(UnknownLightningNetwork),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, thiserror::Error)]
+#[error("Unknown lightning network")]
+pub struct UnknownLightningNetwork;
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use spectral::prelude::*;
-    use std::path::PathBuf;
+    use std::{path::PathBuf, str::FromStr};
 
     fn temp_db() -> PathBuf {
         let temp_file = tempfile::Builder::new()
@@ -253,5 +301,29 @@ mod tests {
 
         assert_that(&db).is_ok();
         assert_that(&path).exists();
+    }
+
+    #[test]
+    fn stability_of_serialization_halight_network() {
+        let ser = format!("{}", Db(halight::Network::Mainnet));
+        assert_eq!(ser, "mainnet");
+
+        let ser = format!("{}", Db(halight::Network::Testnet));
+        assert_eq!(ser, "testnet");
+
+        let ser = format!("{}", Db(halight::Network::Regtest));
+        assert_eq!(ser, "regtest");
+    }
+
+    #[test]
+    fn stability_of_deserialization_halight_network() {
+        let der = Db::<halight::Network>::from_str("mainnet").expect("mainnet invalid");
+        assert_eq!(der, Db(halight::Network::Mainnet));
+
+        let der = Db::<halight::Network>::from_str("testnet").expect("testnet invalid");
+        assert_eq!(der, Db(halight::Network::Testnet));
+
+        let der = Db::<halight::Network>::from_str("regtest").expect("regtest invalid");
+        assert_eq!(der, Db(halight::Network::Regtest));
     }
 }
