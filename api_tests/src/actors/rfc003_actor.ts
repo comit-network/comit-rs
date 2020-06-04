@@ -507,8 +507,6 @@ export class Rfc003Actor {
             );
             const balanceInclFees = expectedBalance - maximumFee;
             expect(currentWalletBalance).toBeGreaterThanOrEqual(
-                // @ts-ignore: Jest supports bigint, types to be fixed updated with
-                // https://github.com/DefinitelyTyped/DefinitelyTyped/pull/44368
                 balanceInclFees
             );
         }
