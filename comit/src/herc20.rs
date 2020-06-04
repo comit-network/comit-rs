@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 pub struct CreatedSwap {
     pub asset: asset::Erc20,
     pub identity: identity::Ethereum,
-    pub chain_id: u32,
+    pub chain_id: u32, // FIXME: Why is this not a ChainId?
     pub absolute_expiry: u32,
 }
 

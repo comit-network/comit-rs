@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    ethereum::{Bytes, ChainId},
+    ethereum::Bytes,
     http_api::{
         halight,
         halight::INVOICE_EXPIRY_SECS,
@@ -133,10 +133,11 @@ impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                     },
                 beta_finalized:
                     halight::Finalized {
-                        state: halight::State::None,
                         asset: halight_asset,
+                        network,
                         redeem_identity: halight_redeem_identity,
                         cltv_expiry,
+                        state: halight::State::None,
                         ..
                     },
                 secret,
@@ -147,7 +148,7 @@ impl InitAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                 let expiry = INVOICE_EXPIRY_SECS;
                 let cltv_expiry = *cltv_expiry;
                 let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let self_public_key = *halight_redeem_identity;
 
                 Ok(lnd::AddHoldInvoice {
@@ -175,11 +176,12 @@ impl DeployAction
             AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
-                        state: herc20::State::None,
                         asset: herc20_asset,
+                        chain_id,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
                         expiry: herc20_expiry,
+                        state: herc20::State::None,
                         ..
                     },
                 beta_finalized:
@@ -198,13 +200,12 @@ impl DeployAction
                     SecretHash::new(*secret),
                 );
                 let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-                let chain_id = ChainId::regtest();
 
                 Ok(ethereum::DeployContract {
                     data: htlc.into(),
                     amount: asset::Ether::zero(),
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                 })
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -220,8 +221,9 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
             AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Deployed { htlc_location, .. },
                         asset: herc20_asset,
+                        chain_id,
+                        state: herc20::State::Deployed { htlc_location, .. },
                         ..
                     },
                 beta_finalized:
@@ -241,14 +243,13 @@ impl FundAction for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                 let data = Some(Bytes(data));
 
                 let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
@@ -267,8 +268,9 @@ impl RedeemAction
             AliceSwap::Finalized {
                 beta_finalized:
                     halight::Finalized {
-                        state: halight::State::Accepted(_),
+                        network,
                         redeem_identity: halight_redeem_identity,
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 secret,
@@ -276,7 +278,7 @@ impl RedeemAction
             } => {
                 let secret = *secret;
                 let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let self_public_key = *halight_redeem_identity;
 
                 Ok(lnd::SettleInvoice {
@@ -301,8 +303,9 @@ impl RefundAction
             AliceSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        chain_id,
                         expiry: herc20_expiry,
+                        state: herc20::State::Funded { htlc_location, .. },
                         ..
                     },
                 ..
@@ -310,14 +313,13 @@ impl RefundAction
                 let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = Some(*herc20_expiry);
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }

@@ -44,6 +44,12 @@ impl Ethereum {
     }
 }
 
+impl From<u32> for Ethereum {
+    fn from(chain_id: u32) -> Self {
+        Ethereum::new(chain_id.into())
+    }
+}
+
 impl Default for Ethereum {
     fn default() -> Self {
         Ethereum {

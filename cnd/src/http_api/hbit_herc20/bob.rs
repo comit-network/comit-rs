@@ -12,13 +12,7 @@ use crate::{
     identity, DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
-use comit::{
-    actions::ethereum,
-    asset,
-    ethereum::{Bytes, ChainId},
-    hbit::build_bitcoin_htlc,
-    Never,
-};
+use comit::{actions::ethereum, asset, ethereum::Bytes, hbit::build_bitcoin_htlc, Never};
 
 impl DeployAction
     for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
@@ -35,11 +29,12 @@ impl DeployAction
                     },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::None,
                         asset: herc20_asset,
+                        chain_id,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
                         expiry: herc20_expiry,
+                        state: herc20::State::None,
                     },
                 secret_hash,
                 ..
@@ -52,13 +47,12 @@ impl DeployAction
                     *secret_hash,
                 );
                 let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-                let chain_id = ChainId::regtest();
 
                 Ok(ethereum::DeployContract {
                     data: htlc.into(),
                     amount: asset::Ether::zero(),
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                 })
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -81,8 +75,9 @@ impl FundAction
                     },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Deployed { htlc_location, .. },
                         asset: herc20_asset,
+                        chain_id,
+                        state: herc20::State::Deployed { htlc_location, .. },
                         ..
                     },
                 ..
@@ -97,14 +92,13 @@ impl FundAction
                 let data = Some(Bytes(data));
 
                 let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
@@ -123,16 +117,17 @@ impl RedeemAction
             BobSwap::Finalized {
                 alpha_finalized:
                     hbit::FinalizedAsRedeemer {
+                        network,
+                        final_redeem_identity,
+                        transient_redeem_identity: transient_redeem_sk,
+                        transient_refund_identity,
+                        expiry,
                         state:
                             hbit::State::Funded {
                                 htlc_location,
                                 fund_transaction,
                                 ..
                             },
-                        final_redeem_identity,
-                        transient_redeem_identity: transient_redeem_sk,
-                        transient_refund_identity,
-                        expiry,
                         ..
                     },
                 beta_finalized:
@@ -143,7 +138,7 @@ impl RedeemAction
                 secret_hash,
                 ..
             } => {
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let spend_output = {
                     let transient_redeem_identity =
                         identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
@@ -191,8 +186,9 @@ impl RefundAction
             BobSwap::Finalized {
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        chain_id,
                         expiry: herc20_expiry,
+                        state: herc20::State::Funded { htlc_location, .. },
                         ..
                     },
                 ..
@@ -200,14 +196,13 @@ impl RefundAction
                 let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = Some(*herc20_expiry);
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }

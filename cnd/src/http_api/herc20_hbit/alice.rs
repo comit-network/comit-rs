@@ -13,11 +13,7 @@ use crate::{
 };
 use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
 use comit::{
-    actions::ethereum,
-    asset,
-    ethereum::{Bytes, ChainId},
-    hbit::build_bitcoin_htlc,
-    Never, SecretHash,
+    actions::ethereum, asset, ethereum::Bytes, hbit::build_bitcoin_htlc, Never, SecretHash,
 };
 
 impl DeployAction
@@ -32,6 +28,7 @@ impl DeployAction
                     herc20::Finalized {
                         state: herc20::State::None,
                         asset: herc20_asset,
+                        chain_id,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
                         expiry: herc20_expiry,
@@ -53,13 +50,12 @@ impl DeployAction
                     SecretHash::new(*secret),
                 );
                 let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-                let chain_id = ChainId::regtest();
 
                 Ok(ethereum::DeployContract {
                     data: htlc.into(),
                     amount: asset::Ether::zero(),
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                 })
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -79,6 +75,7 @@ impl FundAction
                     herc20::Finalized {
                         state: herc20::State::Deployed { htlc_location, .. },
                         asset: herc20_asset,
+                        chain_id,
                         ..
                     },
                 beta_finalized:
@@ -98,14 +95,13 @@ impl FundAction
                 let data = Some(Bytes(data));
 
                 let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
@@ -124,22 +120,23 @@ impl RedeemAction
             AliceSwap::Finalized {
                 beta_finalized:
                     hbit::FinalizedAsRedeemer {
+                        network,
+                        final_redeem_identity,
+                        transient_redeem_identity: transient_redeem_sk,
+                        transient_refund_identity,
+                        expiry,
                         state:
                             hbit::State::Funded {
                                 htlc_location,
                                 fund_transaction,
                                 ..
                             },
-                        final_redeem_identity,
-                        transient_redeem_identity: transient_redeem_sk,
-                        transient_refund_identity,
-                        expiry,
                         ..
                     },
                 secret,
                 ..
             } => {
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let spend_output = {
                     let transient_redeem_identity =
                         identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
@@ -189,6 +186,7 @@ impl RefundAction
                     herc20::Finalized {
                         state: herc20::State::Funded { htlc_location, .. },
                         expiry: herc20_expiry,
+                        chain_id,
                         ..
                     },
                 beta_finalized: hbit::FinalizedAsRedeemer { .. },
@@ -197,14 +195,13 @@ impl RefundAction
                 let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = Some(*herc20_expiry);
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
