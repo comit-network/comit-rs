@@ -65,11 +65,8 @@ impl Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::Swap<comit::Protocol, comit::Protocol>> for Storage {
-    async fn load(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<comit::Protocol, comit::Protocol>> {
+impl Load<http_api::Swap> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::Swap> {
         self.db.load_meta_swap(swap_id).await
     }
 }
@@ -1221,7 +1218,7 @@ impl Load<hbit::Params> for Storage {
 #[async_trait::async_trait]
 impl Load<identity::Bitcoin> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<identity::Bitcoin> {
-        let swap: http_api::Swap<comit::Protocol, comit::Protocol> = self.load(swap_id).await?;
+        let swap: http_api::Swap = self.load(swap_id).await?;
 
         let sk = match swap {
             http_api::Swap {

@@ -12,7 +12,7 @@ use tokio::runtime::Runtime;
 
 proptest! {
     /// Test strategy:
-    /// To be sure that Load<http_api::Swap<Protocol, Protocol>> works as expected, we insert several(!) swaps into the DB.
+    /// To be sure that Load<http_api::Swap> works as expected, we insert several(!) swaps into the DB.
     /// With only a single swap, we would not be sure that the custom SQL query actually outputs the correct combination.
     #[test]
     fn given_several_swaps_can_correctly_load_protocol_combinations(
@@ -41,10 +41,7 @@ proptest! {
     }
 }
 
-async fn save_and_load<A, B>(
-    db: &Sqlite,
-    swap: &CreatedSwap<A, B>,
-) -> http_api::Swap<Protocol, Protocol>
+async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::Swap
 where
     A: Clone + IntoInsertable + Send + 'static,
     B: Clone + IntoInsertable + Send + 'static,

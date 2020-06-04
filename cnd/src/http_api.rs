@@ -28,7 +28,7 @@ use crate::{
     ethereum::ChainId,
     htlc_location, identity,
     swap_protocols::{ledger, rfc003::SwapId, SwapProtocol},
-    transaction, Role,
+    transaction, Protocol, Role,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
@@ -40,11 +40,11 @@ use std::{
     str::FromStr,
 };
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct Swap<A, B> {
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Swap {
     pub role: Role,
-    pub alpha: A,
-    pub beta: B,
+    pub alpha: Protocol,
+    pub beta: Protocol,
     /* pub status: SwapStatus (if you want to have this, you need to save ledger state to the
      * database) */
 }
