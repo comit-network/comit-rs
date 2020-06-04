@@ -388,7 +388,7 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
 pub struct Halight {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
-    pub network: Http<ledger::Lightning>,
+    pub network: Http<ledger::Bitcoin>,
     pub cltv_expiry: u32,
 }
 

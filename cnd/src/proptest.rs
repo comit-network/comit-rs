@@ -106,14 +106,6 @@ pub mod ledger {
     use super::*;
     use comit::ledger;
 
-    pub fn lightning() -> impl Strategy<Value = ledger::Lightning> {
-        prop_oneof![
-            Just(ledger::Lightning::Mainnet),
-            Just(ledger::Lightning::Testnet),
-            Just(ledger::Lightning::Regtest)
-        ]
-    }
-
     pub fn bitcoin() -> impl Strategy<Value = ledger::Bitcoin> {
         prop_oneof![
             Just(ledger::Bitcoin::Mainnet),
@@ -170,7 +162,7 @@ pub mod halight {
         pub fn created_swap()(
             asset in asset::bitcoin(),
             identity in identity::lightning(),
-            network in ledger::lightning(),
+            network in ledger::bitcoin(),
             cltv_expiry in any::<u32>()
         ) -> halight::CreatedSwap {
             halight::CreatedSwap {
