@@ -55,31 +55,31 @@ impl<AL, BL, AA, BA, AI, BI> SwapCommunication<AL, BL, AA, BA, AI, BI> {
     }
 }
 
-pub trait DeriveIdentities: Send + Sync + 'static {
-    fn derive_redeem_identity(&self) -> SecretKey;
-    fn derive_refund_identity(&self) -> SecretKey;
+pub trait Rfc003DeriveIdentities: Send + Sync + 'static {
+    fn rfc003_derive_redeem_identity(&self) -> SecretKey;
+    fn rfc003_derive_refund_identity(&self) -> SecretKey;
 }
 
 /// Both Alice and Bob use their `SwapSeed` to derive identities.
-impl DeriveIdentities for SwapSeed {
-    fn derive_redeem_identity(&self) -> SecretKey {
+impl Rfc003DeriveIdentities for SwapSeed {
+    fn rfc003_derive_redeem_identity(&self) -> SecretKey {
         SecretKey::from_slice(self.sha256_with_seed(&[b"REDEEM"]).as_ref())
             .expect("The probability of this happening is < 1 in 2^120")
     }
 
-    fn derive_refund_identity(&self) -> SecretKey {
+    fn rfc003_derive_refund_identity(&self) -> SecretKey {
         SecretKey::from_slice(self.sha256_with_seed(&[b"REFUND"]).as_ref())
             .expect("The probability of this happening is < 1 in 2^120")
     }
 }
 
-pub trait DeriveSecret: Send + Sync + 'static {
-    fn derive_secret(&self) -> Secret;
+pub trait Rfc003DeriveSecret: Send + Sync + 'static {
+    fn rfc003_derive_secret(&self) -> Secret;
 }
 
 /// Only Alice derives the secret, Bob learns the secret from Alice.
-impl DeriveSecret for SwapSeed {
-    fn derive_secret(&self) -> Secret {
+impl Rfc003DeriveSecret for SwapSeed {
+    fn rfc003_derive_secret(&self) -> Secret {
         self.sha256_with_seed(&[b"SECRET"]).into()
     }
 }

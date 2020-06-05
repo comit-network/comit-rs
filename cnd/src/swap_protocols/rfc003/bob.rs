@@ -3,7 +3,7 @@ pub mod actions;
 use crate::{
     seed::SwapSeed,
     swap_protocols::rfc003::{
-        ledger_state::LedgerState, messages::Request, DeriveIdentities, SwapCommunication,
+        ledger_state::LedgerState, messages::Request, Rfc003DeriveIdentities, SwapCommunication,
     },
 };
 use derivative::Derivative;
@@ -16,7 +16,7 @@ pub struct State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> {
     pub alpha_ledger_state: LedgerState<AA, AH, AT>,
     pub beta_ledger_state: LedgerState<BA, BH, BT>,
     #[derivative(Debug = "ignore")]
-    pub secret_source: Arc<dyn DeriveIdentities>,
+    pub secret_source: Arc<dyn Rfc003DeriveIdentities>,
 }
 
 impl<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> State<AL, BL, AA, BA, AH, BH, AI, BI, AT, BT> {

@@ -6,7 +6,7 @@ use crate::{
         rfc003::{
             actions::{MakeFundAction, MakeRedeemAction, MakeRefundAction},
             create_swap::HtlcParams,
-            DeriveIdentities, Secret,
+            Rfc003DeriveIdentities, Secret,
         },
     },
 };
@@ -37,7 +37,7 @@ impl MakeRefundAction for (ledger::Bitcoin, asset::Bitcoin) {
     fn make_refund_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
         fund_transaction: &Self::FundTransaction,
     ) -> Self::Output {
         let htlc = BitcoinHtlc::from(htlc_params);
@@ -46,7 +46,10 @@ impl MakeRefundAction for (ledger::Bitcoin, asset::Bitcoin) {
             output: PrimedInput::new(
                 htlc_location,
                 Amount::from_sat(fund_transaction.output[htlc_location.vout as usize].value),
-                htlc.unlock_after_timeout(&*crate::SECP, secret_source.derive_refund_identity()),
+                htlc.unlock_after_timeout(
+                    &*crate::SECP,
+                    secret_source.rfc003_derive_refund_identity(),
+                ),
             ),
             network: htlc_params.ledger.into(),
         }
@@ -61,7 +64,7 @@ impl MakeRedeemAction for (ledger::Bitcoin, asset::Bitcoin) {
     fn make_redeem_action(
         htlc_params: Self::HtlcParams,
         htlc_location: Self::HtlcLocation,
-        secret_source: &dyn DeriveIdentities,
+        secret_source: &dyn Rfc003DeriveIdentities,
         secret: Secret,
     ) -> Self::Output {
         let htlc = BitcoinHtlc::from(htlc_params);
@@ -72,7 +75,7 @@ impl MakeRedeemAction for (ledger::Bitcoin, asset::Bitcoin) {
                 htlc_params.asset.clone().into(),
                 htlc.unlock_with_secret(
                     &*crate::SECP,
-                    secret_source.derive_redeem_identity(),
+                    secret_source.rfc003_derive_redeem_identity(),
                     secret.into_raw_secret(),
                 ),
             ),

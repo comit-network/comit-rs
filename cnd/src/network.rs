@@ -22,14 +22,14 @@ use crate::{
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
-    seed::{DeriveSwapSeed, RootSeed},
+    seed::RootSeed,
     storage::Storage,
     swap_protocols::{
         rfc003::{
             self,
             messages::{Decision, DeclineResponseBody, Request, RequestBody, SwapDeclineReason},
             state::Insert,
-            DeriveSecret, LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
+            LedgerState, SwapCommunication, SwapCommunicationStates, SwapId,
         },
         HashFunction, SwapProtocol,
     },
