@@ -330,6 +330,7 @@ impl
             >::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -345,6 +346,7 @@ impl
                 },
                 beta_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
+                    network: halight.network.0.into(),
                     refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
@@ -426,6 +428,7 @@ impl
             >::Finalized {
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -441,6 +444,7 @@ impl
                 },
                 alpha_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
+                    network: halight.network.0.into(),
                     refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
@@ -522,6 +526,7 @@ impl
             >::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -537,6 +542,7 @@ impl
                 },
                 beta_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
+                    network: halight.network.0.into(),
                     refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
@@ -621,6 +627,7 @@ impl
             >::Finalized {
                 alpha_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
+                    network: halight.network.0.into(),
                     refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
                     cltv_expiry: halight.cltv_expiry.0.into(),
@@ -628,6 +635,7 @@ impl
                 },
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -715,6 +723,7 @@ impl
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -730,6 +739,7 @@ impl
                 },
                 beta_finalized: http_api::hbit::FinalizedAsRedeemer {
                     asset: hbit_asset,
+                    network: hbit.network.0.into(),
                     transient_refund_identity: hbit
                         .transient_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -808,6 +818,7 @@ impl
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -823,6 +834,7 @@ impl
                 },
                 beta_finalized: http_api::hbit::FinalizedAsFunder {
                     asset: hbit_asset,
+                    network: hbit.network.0.into(),
                     transient_redeem_identity: hbit
                         .transient_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -904,6 +916,7 @@ impl
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 alpha_finalized: http_api::hbit::FinalizedAsFunder {
                     asset: hbit_asset,
+                    network: hbit.network.0.into(),
                     transient_refund_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
@@ -918,6 +931,7 @@ impl
                 },
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?
@@ -997,6 +1011,7 @@ impl
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::hbit::FinalizedAsRedeemer {
                     asset: hbit_asset,
+                    network: hbit.network.0.into(),
                     transient_redeem_identity: self
                         .seed
                         .derive_swap_seed(swap_id)
@@ -1011,6 +1026,7 @@ impl
                 },
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
+                    chain_id: herc20.chain_id.0.into(),
                     refund_identity: herc20
                         .refund_identity
                         .ok_or(db::Error::IdentityNotSet)?

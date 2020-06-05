@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    ethereum::{Bytes, ChainId},
+    ethereum::Bytes,
     http_api::{
         halight, herc20,
         protocol::{
@@ -125,11 +125,12 @@ impl FundAction for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             AliceSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::Opened(_),
                         asset: halight_asset,
+                        network,
                         refund_identity: halight_refund_identity,
                         redeem_identity: halight_redeem_identity,
                         cltv_expiry,
+                        state: halight::State::Opened(_),
                     },
                 beta_finalized:
                     herc20::Finalized {
@@ -144,7 +145,7 @@ impl FundAction for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                 let secret_hash = SecretHash::new(*secret);
                 let final_cltv_delta = *cltv_expiry;
                 let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let self_public_key = *halight_refund_identity;
 
                 Ok(lnd::SendPayment {
@@ -172,6 +173,7 @@ impl RedeemAction
             AliceSwap::Finalized {
                 beta_finalized:
                     herc20::Finalized {
+                        chain_id,
                         state: herc20::State::Funded { htlc_location, .. },
                         ..
                     },
@@ -181,14 +183,13 @@ impl RedeemAction
                 let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }

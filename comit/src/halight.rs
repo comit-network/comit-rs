@@ -56,7 +56,7 @@ where
 pub struct CreatedSwap {
     pub asset: asset::Bitcoin,
     pub identity: identity::Lightning,
-    pub network: ledger::Lightning,
+    pub network: ledger::Bitcoin,
     pub cltv_expiry: u32,
 }
 

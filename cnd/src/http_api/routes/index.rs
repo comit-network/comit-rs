@@ -1,6 +1,7 @@
 use crate::{
     asset,
     db::{CreatedSwap, Save},
+    ethereum::ChainId,
     halight, hbit, herc20,
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
@@ -388,7 +389,7 @@ impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20
 pub struct Halight {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
-    pub network: Http<ledger::Lightning>,
+    pub network: Http<ledger::Bitcoin>,
     pub cltv_expiry: u32,
 }
 
@@ -398,7 +399,7 @@ pub struct Halight {
 pub struct Herc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
-    pub chain_id: u32,
+    pub chain_id: ChainId,
     // This should re-named to token_contract but doing so is a breaking API change.
     pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,

@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    ethereum::{Bytes, ChainId},
+    ethereum::Bytes,
     http_api::{
         halight,
         halight::INVOICE_EXPIRY_SECS,
@@ -25,10 +25,11 @@ impl InitAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
             BobSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::None,
                         asset: halight_asset,
+                        network,
                         redeem_identity: halight_redeem_identity,
                         cltv_expiry,
+                        state: halight::State::None,
                         ..
                     },
                 secret_hash,
@@ -39,7 +40,7 @@ impl InitAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
                 let expiry = INVOICE_EXPIRY_SECS;
                 let cltv_expiry = *cltv_expiry;
                 let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let self_public_key = *halight_redeem_identity;
 
                 Ok(lnd::AddHoldInvoice {
@@ -70,11 +71,12 @@ impl DeployAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                     },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::None,
                         asset: herc20_asset,
+                        chain_id,
                         refund_identity: herc20_refund_identity,
                         redeem_identity: herc20_redeem_identity,
                         expiry: herc20_expiry,
+                        state: herc20::State::None,
                         ..
                     },
                 secret_hash,
@@ -88,13 +90,12 @@ impl DeployAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                     *secret_hash,
                 );
                 let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-                let chain_id = ChainId::regtest();
 
                 Ok(ethereum::DeployContract {
                     data: htlc.into(),
                     amount: asset::Ether::zero(),
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                 })
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -116,6 +117,7 @@ impl FundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
                 beta_finalized:
                     herc20::Finalized {
                         asset: herc20_asset,
+                        chain_id,
                         state: herc20::State::Deployed { htlc_location, .. },
                         ..
                     },
@@ -131,14 +133,13 @@ impl FundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
                 let data = Some(Bytes(data));
 
                 let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
@@ -155,8 +156,9 @@ impl RedeemAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             BobSwap::Finalized {
                 alpha_finalized:
                     halight::Finalized {
-                        state: halight::State::Accepted(_),
+                        network,
                         redeem_identity: halight_redeem_identity,
+                        state: halight::State::Accepted(_),
                         ..
                     },
                 beta_finalized:
@@ -168,7 +170,7 @@ impl RedeemAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
             } => {
                 let secret = *secret;
                 let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let self_public_key = *halight_redeem_identity;
 
                 Ok(lnd::SettleInvoice {
@@ -196,8 +198,9 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                     },
                 beta_finalized:
                     herc20::Finalized {
-                        state: herc20::State::Funded { htlc_location, .. },
+                        chain_id,
                         expiry: herc20_expiry,
+                        state: herc20::State::Funded { htlc_location, .. },
                         ..
                     },
                 ..
@@ -205,14 +208,13 @@ impl RefundAction for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                 let to = *htlc_location;
                 let data = None;
                 let gas_limit = EtherHtlc::refund_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = Some(*herc20_expiry);
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }

@@ -13,12 +13,7 @@ use crate::{
     identity, DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
 use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use comit::{
-    actions::ethereum,
-    asset,
-    ethereum::{Bytes, ChainId},
-    Never,
-};
+use comit::{actions::ethereum, asset, ethereum::Bytes, Never};
 use hbit::build_bitcoin_htlc;
 
 impl FundAction
@@ -36,11 +31,12 @@ impl FundAction
                     },
                 beta_finalized:
                     hbit::FinalizedAsFunder {
-                        state: hbit::State::None,
                         asset,
+                        network,
                         transient_redeem_identity: redeem_identity,
                         transient_refund_identity: transient_refund_sk,
                         expiry,
+                        state: hbit::State::None,
                         ..
                     },
                 secret_hash,
@@ -49,7 +45,7 @@ impl FundAction
                     identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
                 let htlc =
                     build_bitcoin_htlc(*redeem_identity, refund_identity, *expiry, *secret_hash);
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let to = htlc.compute_address(network);
                 let amount = *asset;
 
@@ -74,6 +70,7 @@ impl RedeemAction
             BobSwap::Finalized {
                 alpha_finalized:
                     herc20::Finalized {
+                        chain_id,
                         state: herc20::State::Funded { htlc_location, .. },
                         ..
                     },
@@ -87,14 +84,13 @@ impl RedeemAction
                 let to = *htlc_location;
                 let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
                 let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let chain_id = ChainId::regtest();
                 let min_block_timestamp = None;
 
                 Ok(ethereum::CallContract {
                     to,
                     data,
                     gas_limit,
-                    chain_id,
+                    chain_id: *chain_id,
                     min_block_timestamp,
                 })
             }
@@ -112,22 +108,23 @@ impl RefundAction
             BobSwap::Finalized {
                 beta_finalized:
                     hbit::FinalizedAsFunder {
+                        network,
+                        transient_redeem_identity,
+                        transient_refund_identity: transient_refund_sk,
+                        final_refund_identity,
+                        expiry,
                         state:
                             hbit::State::Funded {
                                 htlc_location,
                                 fund_transaction,
                                 ..
                             },
-                        transient_redeem_identity,
-                        transient_refund_identity: transient_refund_sk,
-                        final_refund_identity,
-                        expiry,
                         ..
                     },
                 secret_hash,
                 ..
             } => {
-                let network = bitcoin::Network::Regtest;
+                let network = bitcoin::Network::from(*network);
                 let spend_output = {
                     let transient_refund_identity =
                         identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);

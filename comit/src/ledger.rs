@@ -44,17 +44,16 @@ impl Ethereum {
     }
 }
 
+impl From<u32> for Ethereum {
+    fn from(chain_id: u32) -> Self {
+        Ethereum::new(chain_id.into())
+    }
+}
+
 impl Default for Ethereum {
     fn default() -> Self {
         Ethereum {
             chain_id: ChainId::regtest(),
         }
     }
-}
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
-pub enum Lightning {
-    Mainnet,
-    Testnet,
-    Regtest,
 }

@@ -4,7 +4,7 @@ use crate::{
         schema::{address_book, halights, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
-            BitcoinNetwork, Erc20Amount, EthereumAddress, LightningNetwork, Satoshis,
+            BitcoinNetwork, Erc20Amount, EthereumAddress, Satoshis,
         },
         Sqlite,
     },
@@ -126,7 +126,7 @@ impl IntoInsertable for herc20::CreatedSwap {
         InsertableHerc20 {
             swap_id,
             amount: Text(self.asset.quantity.into()),
-            chain_id: U32(self.chain_id),
+            chain_id: U32(self.chain_id.into()),
             expiry: U32(self.absolute_expiry),
             token_contract: Text(self.asset.token_contract.into()),
             redeem_identity,
@@ -143,7 +143,7 @@ pub struct Halight {
     id: i32,
     swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<LightningNetwork>,
+    pub network: Text<BitcoinNetwork>,
     pub chain: String,
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
@@ -156,7 +156,7 @@ pub struct Halight {
 pub struct InsertableHalight {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
-    pub network: Text<LightningNetwork>,
+    pub network: Text<BitcoinNetwork>,
     pub chain: String,
     pub cltv_expiry: U32,
     pub redeem_identity: Option<Text<lightning::PublicKey>>,
