@@ -6,7 +6,7 @@
 
 use crate::{
     protocol_spawner::ProtocolSpawner,
-    start_swap::start_swap,
+    spawn::spawn,
     storage::{LoadAll, Storage},
 };
 
@@ -16,7 +16,7 @@ pub async fn respawn(storage: Storage, spawner: ProtocolSpawner) -> anyhow::Resu
 
     for swap in swaps {
         let id = swap.id;
-        match start_swap(&spawner, &storage, swap).await {
+        match spawn(&spawner, &storage, swap).await {
             Err(e) => {
                 tracing::warn!("failed to load data for swap {}: {:?}", id, e);
                 continue;

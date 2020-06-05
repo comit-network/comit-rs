@@ -19,7 +19,7 @@ pub struct Swap<A, B> {
     pub start_of_swap: NaiveDateTime,
 }
 
-pub async fn start_swap(
+pub async fn spawn(
     spawner: &ProtocolSpawner,
     storage: &Storage,
     swap_context: SwapContext,

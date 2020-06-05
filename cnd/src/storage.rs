@@ -10,7 +10,7 @@ use crate::{
     halight, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     seed::RootSeed,
-    start_swap,
+    spawn,
     swap_protocols::state::Get,
     LocalSwapId, Protocol, Role, Side, SwapContext,
 };
@@ -69,11 +69,11 @@ impl Load<http_api::SwapContext> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
+impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<herc20::Params, halight::Params>> {
+    ) -> anyhow::Result<spawn::Swap<herc20::Params, halight::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, halight, herc20, secret_hash) = self
@@ -105,7 +105,7 @@ impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
             beta: build_halight_params(halight, secret_hash, id)?,
@@ -117,11 +117,11 @@ impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
+impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<halight::Params, herc20::Params>> {
+    ) -> anyhow::Result<spawn::Swap<halight::Params, herc20::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, halight, herc20, secret_hash) = self
@@ -153,7 +153,7 @@ impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_halight_params(halight, secret_hash, id)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
@@ -165,11 +165,11 @@ impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
+impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<herc20::Params, hbit::Params>> {
+    ) -> anyhow::Result<spawn::Swap<herc20::Params, hbit::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, hbit, herc20, secret_hash) = self
@@ -201,7 +201,7 @@ impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
             beta: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
@@ -213,11 +213,11 @@ impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
+impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<hbit::Params, herc20::Params>> {
+    ) -> anyhow::Result<spawn::Swap<hbit::Params, herc20::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, hbit, herc20, secret_hash) = self
@@ -249,7 +249,7 @@ impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,

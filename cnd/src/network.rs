@@ -22,7 +22,7 @@ use crate::{
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
     seed::RootSeed,
-    start_swap::start_swap,
+    spawn::spawn,
     storage::Storage,
     swap_protocols::{
         rfc003::{
@@ -850,7 +850,7 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
         let save_and_start_swap = async move {
             let swap = storage.load(local_swap_id).await?;
             save_swap_remote_data(&storage, swap, remote_data).await?;
-            start_swap(&spawner, &storage, swap).await?;
+            spawn(&spawner, &storage, swap).await?;
 
             Ok::<(), anyhow::Error>(())
         };
