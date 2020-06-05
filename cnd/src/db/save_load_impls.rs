@@ -51,10 +51,7 @@ where
 }
 
 impl Sqlite {
-    pub async fn load_meta_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::Swap<Protocol, Protocol>> {
+    pub async fn load_meta_swap(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::Swap> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
