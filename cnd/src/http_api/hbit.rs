@@ -1,7 +1,7 @@
+use bitcoin::secp256k1::SecretKey;
 use comit::{asset, ledger, Timestamp};
 
 pub use crate::hbit::*;
-use bitcoin::secp256k1::SecretKey;
 
 #[derive(Clone, Debug)]
 pub struct FinalizedAsFunder {
