@@ -1,8 +1,10 @@
 use crate::{
+    btsieve::{BlockByHash, LatestBlock},
     swap_protocols::{state, state::Update},
     tracing_ext::InstrumentProtocol,
     LocalSwapId, Role, Side,
 };
+use bitcoin::{Block, BlockHash};
 use chrono::NaiveDateTime;
 use comit::{asset, htlc_location, transaction, Protocol, Secret};
 pub use comit::{hbit::*, identity};
@@ -27,7 +29,7 @@ pub async fn new<C>(
     states: Arc<States>,
     connector: Arc<C>,
 ) where
-    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
     let mut events = comit::hbit::new(connector.as_ref(), params, start_of_swap)
         .instrument_protocol(id, role, side, Protocol::Hbit)

@@ -1,11 +1,18 @@
 //! Htlc Bitcoin atomic swap protocol.
 
 use crate::{
-    asset, htlc_location, identity, ledger, timestamp::Timestamp, transaction, Secret, SecretHash,
+    asset,
+    btsieve::{
+        bitcoin::{watch_for_created_outpoint, watch_for_spent_outpoint},
+        BlockByHash, LatestBlock,
+    },
+    htlc_location, identity, ledger,
+    timestamp::Timestamp,
+    transaction, Secret, SecretHash,
 };
 use bitcoin::{
     hashes::{hash160, Hash},
-    Address, Transaction,
+    Address, Block, BlockHash, Transaction,
 };
 use blockchain_contracts::bitcoin::rfc003::bitcoin_htlc::BitcoinHtlc;
 use chrono::NaiveDateTime;
@@ -14,6 +21,8 @@ use futures::{
     Stream,
 };
 use genawaiter::sync::{Co, Gen};
+use std::cmp::Ordering;
+use tracing_futures::Instrument;
 
 /// Data required to create a swap that involves Bitcoin.
 #[derive(Clone, Debug)]
@@ -22,37 +31,6 @@ pub struct CreatedSwap {
     pub final_identity: bitcoin::Address,
     pub network: ledger::Bitcoin,
     pub absolute_expiry: u32,
-}
-
-/// Resolves when said event has occurred.
-
-#[async_trait::async_trait]
-pub trait WaitForFunded {
-    async fn wait_for_funded(
-        &self,
-        params: &Params,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Funded>;
-}
-
-#[async_trait::async_trait]
-pub trait WaitForRedeemed {
-    async fn wait_for_redeemed(
-        &self,
-        params: &Params,
-        location: htlc_location::Bitcoin,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Redeemed>;
-}
-
-#[async_trait::async_trait]
-pub trait WaitForRefunded {
-    async fn wait_for_refunded(
-        &self,
-        params: &Params,
-        location: htlc_location::Bitcoin,
-        start_of_swap: NaiveDateTime,
-    ) -> anyhow::Result<Refunded>;
 }
 
 /// Represents the events in the hbit protocol.
@@ -116,7 +94,7 @@ pub fn new<'a, C>(
     start_of_swap: NaiveDateTime,
 ) -> impl Stream<Item = anyhow::Result<Event>> + 'a
 where
-    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
     Gen::new({
         |co| async move {
@@ -134,11 +112,11 @@ async fn watch_ledger<C, R>(
     co: &Co<anyhow::Result<Event>, R>,
 ) -> anyhow::Result<()>
 where
-    C: WaitForFunded + WaitForRedeemed + WaitForRefunded,
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
 {
     co.yield_(Ok(Event::Started)).await;
 
-    let funded = connector.wait_for_funded(&params, start_of_swap).await?;
+    let funded = watch_for_funded(connector, &params, start_of_swap).await?;
     co.yield_(Ok(Event::Funded(funded.clone()))).await;
 
     let location = match funded {
@@ -146,8 +124,11 @@ where
         Funded::Incorrectly { location, .. } => location,
     };
 
-    let redeemed = connector.wait_for_redeemed(&params, location, start_of_swap);
-    let refunded = connector.wait_for_refunded(&params, location, start_of_swap);
+    let redeemed = watch_for_redeemed(connector, &params, location, start_of_swap);
+    let refunded = watch_for_refunded(connector, &params, location, start_of_swap);
+
+    futures::pin_mut!(redeemed);
+    futures::pin_mut!(refunded);
 
     match future::try_select(redeemed, refunded).await {
         Ok(Either::Left((redeemed, _))) => {
@@ -163,6 +144,79 @@ where
     }
 
     Ok(())
+}
+
+async fn watch_for_funded<C>(
+    connector: &C,
+    params: &Params,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Funded>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+{
+    let expected_asset = params.asset;
+
+    let (transaction, location) =
+        watch_for_created_outpoint(connector, start_of_swap, params.compute_address())
+            .instrument(tracing::info_span!("watch_fund"))
+            .await?;
+
+    let asset = asset::Bitcoin::from_sat(transaction.output[location.vout as usize].value);
+
+    let event = match expected_asset.cmp(&asset) {
+        Ordering::Equal => Funded::Correctly {
+            asset,
+            transaction,
+            location,
+        },
+        _ => Funded::Incorrectly {
+            asset,
+            transaction,
+            location,
+        },
+    };
+
+    Ok(event)
+}
+
+async fn watch_for_redeemed<C>(
+    connector: &C,
+    params: &Params,
+    location: htlc_location::Bitcoin,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Redeemed>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+{
+    let (transaction, _) =
+        watch_for_spent_outpoint(connector, start_of_swap, location, params.redeem_identity)
+            .instrument(tracing::info_span!("watch_redeem"))
+            .await?;
+
+    let secret = extract_secret(&transaction, &params.secret_hash)
+        .expect("Redeem transaction must contain secret");
+
+    Ok(Redeemed {
+        transaction,
+        secret,
+    })
+}
+
+async fn watch_for_refunded<C>(
+    connector: &C,
+    params: &Params,
+    location: htlc_location::Bitcoin,
+    start_of_swap: NaiveDateTime,
+) -> anyhow::Result<Refunded>
+where
+    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = BlockHash>,
+{
+    let (transaction, _) =
+        watch_for_spent_outpoint(connector, start_of_swap, location, params.refund_identity)
+            .instrument(tracing::info_span!("watch_refund"))
+            .await?;
+
+    Ok(Refunded { transaction })
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -192,7 +246,7 @@ impl Params {
     }
 }
 
-pub fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
+fn extract_secret(transaction: &Transaction, secret_hash: &SecretHash) -> Option<Secret> {
     transaction.input.iter().find_map(|txin| {
         txin.witness
             .iter()
