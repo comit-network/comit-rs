@@ -256,14 +256,14 @@ impl BetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
 }
 
 impl AlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Herc20;
+    type Output = Halight;
     fn alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
 impl BetaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Halight;
+    type Output = Herc20;
     fn beta_params(&self) -> Self::Output {
         self.clone().into()
     }
