@@ -94,7 +94,7 @@ impl Comit {
             &digest,
             local_swap_id,
             dial_info.peer_id.clone(),
-            data.clone(),
+            data,
         ) {
             tracing::info!("Confirm & communicate for swap: {}", digest);
             Self::confirm(shared_swap_id, io);
@@ -259,7 +259,7 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<secret_hash::Messa
                         secret_hash,
                     },
             } => {
-                self.remote_data_insert(swap_id.clone(), SecretHash::from(secret_hash));
+                self.remote_data_insert(swap_id, SecretHash::from(secret_hash));
 
                 match self.communication_states.get_mut(&swap_id) {
                     Some(state) => {
@@ -409,10 +409,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<lightning_identity
                 message: lightning_identity::Message { swap_id, pubkey },
             } => {
                 match bitcoin::PublicKey::from_slice(&pubkey) {
-                    Ok(identity) => self.remote_data_insert::<identity::Lightning>(
-                        swap_id.clone(),
-                        identity.into(),
-                    ),
+                    Ok(identity) => {
+                        self.remote_data_insert::<identity::Lightning>(swap_id, identity.into())
+                    }
                     Err(_) => {
                         tracing::warn!("received an invalid lightning identity from counterparty");
                         return;
@@ -450,8 +449,9 @@ impl NetworkBehaviourEventProcess<oneshot_behaviour::OutEvent<bitcoin_identity::
                 message: bitcoin_identity::Message { swap_id, pubkey },
             } => {
                 match bitcoin::PublicKey::from_slice(&pubkey) {
-                    Ok(identity) => self
-                        .remote_data_insert::<identity::Bitcoin>(swap_id.clone(), identity.into()),
+                    Ok(identity) => {
+                        self.remote_data_insert::<identity::Bitcoin>(swap_id, identity.into())
+                    }
                     Err(_) => {
                         tracing::warn!("received an invalid bitcoin identity from counterparty");
                         return;
