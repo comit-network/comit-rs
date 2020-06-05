@@ -862,6 +862,14 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
     }
 }
 
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error(
+    "unable to save swap with id {local_swap_id} in database because the protocol combination is not supported"
+)]
+struct SaveUnsupportedSwap {
+    local_swap_id: LocalSwapId,
+}
+
 async fn save_swap_remote_data(
     storage: &Storage,
     swap: SwapContext,
@@ -1060,7 +1068,9 @@ async fn save_swap_remote_data(
                 })
                 .await?;
         }
-        _ => tracing::info!("attempting to save for an unsupported swap"),
+        _ => anyhow::bail!(SaveUnsupportedSwap {
+            local_swap_id: swap.id,
+        }),
     };
 
     Ok(())
