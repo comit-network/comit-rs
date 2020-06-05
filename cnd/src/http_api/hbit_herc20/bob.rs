@@ -232,7 +232,7 @@ impl AlphaEvents
                         ..
                     },
                 ..
-            } => Some(From::<hbit::State>::from(bitcoin_state.clone())),
+            } => Some(bitcoin_state.clone().into()),
             _ => None,
         }
     }
@@ -259,7 +259,7 @@ impl BetaEvents
                         ..
                     },
                 ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
+            } => Some(herc20_state.clone().into()),
             _ => None,
         }
     }

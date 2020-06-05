@@ -92,7 +92,7 @@ impl AlphaEvents
                         ..
                     },
                 ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
+            } => Some(herc20_state.clone().into()),
         }
     }
 }
@@ -115,7 +115,7 @@ impl BetaEvents for AliceSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                         ..
                     },
                 ..
-            } => Some(From::<halight::State>::from(*halight_state)),
+            } => Some(halight_state.clone().into()),
         }
     }
 }
