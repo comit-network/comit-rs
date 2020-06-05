@@ -52,6 +52,7 @@ pub mod init_swap;
 pub mod load_swaps;
 pub mod protocol_spawner;
 pub mod respawn;
+pub mod start_swap;
 pub mod storage;
 mod swap_id;
 pub mod swap_protocols;
@@ -63,7 +64,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-pub use self::{actions::*, facade::Facade, seed::*, swap_id::*};
+pub use self::{
+    actions::*, facade::Facade, protocol_spawner::*, seed::*, start_swap::*, storage::*, swap_id::*,
+};
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{ledger, Never, Protocol, RelativeTime, Role, Secret, SecretHash, Side, Timestamp};
 

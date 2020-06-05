@@ -26,20 +26,34 @@ use std::{
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum InvoiceState {
     Open,
+    Accepted,
     Settled,
     Cancelled,
-    Accepted,
 }
 
 /// Payment status.  These mirror the payment status' used by lnd.
 // ref: https://api.lightning.community/#paymentstatus
-#[derive(Copy, Clone, Debug, Deserialize, PartialEq)]
+#[derive(Copy, Clone, Debug, Deserialize, PartialEq, strum_macros::Display)]
 #[serde(rename_all = "SCREAMING_SNAKE_CASE")]
 pub enum PaymentStatus {
     Unknown,
     InFlight,
     Succeeded,
     Failed,
+}
+
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("payment statuses don't match: expected {expected} but received {received}")]
+pub struct StatusMismatch {
+    expected: PaymentStatus,
+    received: PaymentStatus,
+}
+
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error("invoice states don't match: expected {expected} but received {received}")]
+pub struct StateMismatch {
+    expected: InvoiceState,
+    received: InvoiceState,
 }
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
@@ -204,11 +218,7 @@ impl LndConnectorAsSender {
             .expect("append valid string to url")
     }
 
-    async fn find_payment(
-        &self,
-        params: &Params,
-        status: PaymentStatus,
-    ) -> anyhow::Result<Option<Payment>> {
+    async fn find_payment(&self, params: &Params) -> anyhow::Result<Option<Payment>> {
         let url = self.payment_url();
         let response = client(&self.certificate, &self.macaroon)?
             .get(url.clone())
@@ -222,7 +232,7 @@ impl LndConnectorAsSender {
             .payments
             .unwrap_or_default()
             .into_iter()
-            .find(|payment| payment.payment_hash == params.secret_hash && payment.status == status);
+            .find(|payment| payment.payment_hash == params.secret_hash);
 
         if let Some(payment) = payment {
             payment
@@ -248,15 +258,23 @@ impl WaitForAccepted for LndConnectorAsSender {
     async fn wait_for_accepted(&self, params: &Params) -> anyhow::Result<Accepted> {
         // No validation of the parameters because once the payment has been
         // sent the sender cannot cancel it.
-        while self
-            .find_payment(params, PaymentStatus::InFlight)
-            .await?
-            .is_none()
-        {
+        loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
-        }
 
-        Ok(Accepted)
+            let payment = match self.find_payment(params).await? {
+                Some(payment) => payment,
+                None => continue,
+            };
+
+            match payment.status {
+                PaymentStatus::InFlight | PaymentStatus::Succeeded => return Ok(Accepted),
+                PaymentStatus::Unknown => continue,
+                PaymentStatus::Failed => bail!(StatusMismatch {
+                    expected: PaymentStatus::InFlight,
+                    received: payment.status,
+                }),
+            }
+        }
     }
 }
 
@@ -264,11 +282,20 @@ impl WaitForAccepted for LndConnectorAsSender {
 impl WaitForSettled for LndConnectorAsSender {
     async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled> {
         let payment = loop {
-            match self.find_payment(params, PaymentStatus::Succeeded).await? {
-                Some(payment) => break payment,
-                None => {
-                    tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
-                }
+            tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
+
+            let payment = match self.find_payment(params).await? {
+                Some(payment) => payment,
+                None => continue,
+            };
+
+            match payment.status {
+                PaymentStatus::Succeeded => break payment,
+                PaymentStatus::Unknown | PaymentStatus::InFlight => continue,
+                PaymentStatus::Failed => bail!(StatusMismatch {
+                    expected: PaymentStatus::Succeeded,
+                    received: payment.status,
+                }),
             }
         };
         let secret = match payment.payment_preimage {
@@ -285,15 +312,19 @@ impl WaitForSettled for LndConnectorAsSender {
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsSender {
     async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled> {
-        while self
-            .find_payment(params, PaymentStatus::Failed)
-            .await?
-            .is_none()
-        {
+        loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
-        }
 
-        Ok(Cancelled)
+            let payment = match self.find_payment(params).await? {
+                Some(payment) => payment,
+                None => continue,
+            };
+
+            match payment.status {
+                PaymentStatus::Failed => return Ok(Cancelled),
+                _ => continue,
+            }
+        }
     }
 }
 
@@ -332,11 +363,7 @@ impl LndConnectorAsReceiver {
     }
 
     #[tracing::instrument(level = "debug", skip(self))]
-    async fn find_invoice(
-        &self,
-        params: &Params,
-        expected_state: InvoiceState,
-    ) -> anyhow::Result<Option<Invoice>> {
+    async fn find_invoice(&self, params: &Params) -> anyhow::Result<Option<Invoice>> {
         let url = self.invoice_url(params.secret_hash)?;
         let response = client(&self.certificate, &self.macaroon)?
             .get(url.clone())
@@ -375,12 +402,7 @@ impl LndConnectorAsReceiver {
             .validate(params)
             .with_context(|| format!("validation for invoice {} failed", params.secret_hash))?;
 
-        if invoice.state == expected_state {
-            Ok(Some(invoice))
-        } else {
-            tracing::debug!("invoice exists but is in state {}", invoice.state);
-            Ok(None)
-        }
+        Ok(Some(invoice))
     }
 }
 
@@ -397,15 +419,24 @@ impl WaitForOpened for LndConnectorAsReceiver {
     async fn wait_for_opened(&self, params: &Params) -> anyhow::Result<Opened> {
         // Do we want to validate that the user used the correct swap parameters
         // when adding the invoice?
-        while self
-            .find_invoice(params, InvoiceState::Open)
-            .await?
-            .is_none()
-        {
+        loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
-        }
 
-        Ok(Opened)
+            let invoice = match self.find_invoice(params).await? {
+                Some(invoice) => invoice,
+                None => continue,
+            };
+
+            match invoice.state {
+                InvoiceState::Cancelled => bail!(StateMismatch {
+                    expected: InvoiceState::Open,
+                    received: invoice.state,
+                }),
+                InvoiceState::Open | InvoiceState::Accepted | InvoiceState::Settled => {
+                    return Ok(Opened)
+                }
+            }
+        }
     }
 }
 
@@ -416,14 +447,23 @@ impl WaitForAccepted for LndConnectorAsReceiver {
         // Since the sender uses the params to make the payment (as apposed to
         // the invoice) LND guarantees that the params match the invoice when
         // updating the invoice status.
-        while self
-            .find_invoice(params, InvoiceState::Accepted)
-            .await?
-            .is_none()
-        {
+        loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
+
+            let invoice = match self.find_invoice(params).await? {
+                Some(invoice) => invoice,
+                None => continue,
+            };
+
+            match invoice.state {
+                InvoiceState::Cancelled => bail!(StateMismatch {
+                    expected: InvoiceState::Accepted,
+                    received: invoice.state,
+                }),
+                InvoiceState::Open => continue,
+                InvoiceState::Accepted | InvoiceState::Settled => return Ok(Accepted),
+            }
         }
-        Ok(Accepted)
     }
 }
 
@@ -431,9 +471,20 @@ impl WaitForAccepted for LndConnectorAsReceiver {
 impl WaitForSettled for LndConnectorAsReceiver {
     async fn wait_for_settled(&self, params: &Params) -> anyhow::Result<Settled> {
         let invoice = loop {
-            match self.find_invoice(params, InvoiceState::Settled).await? {
-                Some(invoice) => break invoice,
-                None => tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await,
+            tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
+
+            let invoice = match self.find_invoice(params).await? {
+                Some(invoice) => invoice,
+                None => continue,
+            };
+
+            match invoice.state {
+                InvoiceState::Cancelled => bail!(StateMismatch {
+                    expected: InvoiceState::Settled,
+                    received: invoice.state,
+                }),
+                InvoiceState::Open | InvoiceState::Accepted => continue,
+                InvoiceState::Settled => break invoice,
             }
         };
 
@@ -450,14 +501,19 @@ impl WaitForSettled for LndConnectorAsReceiver {
 #[async_trait::async_trait]
 impl WaitForCancelled for LndConnectorAsReceiver {
     async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled> {
-        while self
-            .find_invoice(params, InvoiceState::Cancelled)
-            .await?
-            .is_none()
-        {
+        loop {
             tokio::time::delay_for(Duration::from_millis(self.retry_interval_ms)).await;
+
+            let invoice = match self.find_invoice(params).await? {
+                Some(invoice) => invoice,
+                None => continue,
+            };
+
+            match invoice.state {
+                InvoiceState::Cancelled => return Ok(Cancelled),
+                _ => continue,
+            }
         }
-        Ok(Cancelled)
     }
 }
 

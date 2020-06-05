@@ -1,31 +1,41 @@
 use crate::{
-    db::{ForSwap, Save, Swap},
+    db::{ForSwap, Save},
     halight, hbit, herc20,
-    network::{comit::RemoteData, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
-    protocol_spawner::{ProtocolSpawner, Spawn},
-    storage::{Load, Storage},
-    LocalSwapId, Protocol, Role, Side,
+    network::{RemoteData, WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
+    Load, LocalSwapId, Protocol, ProtocolSpawner, Role, Side, Spawn, Storage,
 };
-use chrono::offset::Utc;
+use chrono::NaiveDateTime;
 
-pub async fn start_swap(
+#[derive(Clone, Copy, Debug)]
+pub struct DecisionSwap {
+    pub id: LocalSwapId,
+    pub role: Role,
+    pub alpha: Protocol,
+    pub beta: Protocol,
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct Swap<A, B> {
+    pub role: Role,
+    pub alpha: A,
+    pub beta: B,
+    pub start_of_swap: NaiveDateTime,
+}
+
+pub async fn save_and_start_swap(
     storage: Storage,
     spawner: ProtocolSpawner,
     id: LocalSwapId,
     data: RemoteData,
-) -> anyhow::Result<()>
-where
-    ProtocolSpawner: Spawn<herc20::Params> + Spawn<halight::Params>,
-{
-    let start_of_swap = Utc::now().naive_local();
+) -> anyhow::Result<()> {
     let swap = storage.load(id).await?;
-
-    match (swap, data) {
+    match (&swap, data) {
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Halight,
-                role: role @ Role::Alice,
+                role: Role::Alice,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -42,18 +52,13 @@ where
                     },
                 })
                 .await?;
-
-            let herc20_params: herc20::Params = storage.load(id).await?;
-            let halight_params: halight::Params = storage.load(id).await?;
-
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, halight_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Halight,
-                role: role @ Role::Bob,
+                role: Role::Bob,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -72,18 +77,13 @@ where
                     },
                 })
                 .await?;
-
-            let herc20_params: herc20::Params = storage.load(id).await?;
-            let halight_params: halight::Params = storage.load(id).await?;
-
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, halight_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Halight,
                 beta: Protocol::Herc20,
-                role: role @ Role::Alice,
+                role: Role::Alice,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -100,18 +100,13 @@ where
                     },
                 })
                 .await?;
-
-            let halight_params: halight::Params = storage.load(id).await?;
-            let herc20_params: herc20::Params = storage.load(id).await?;
-
-            spawner.spawn(id, halight_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Halight,
                 beta: Protocol::Herc20,
-                role: role @ Role::Bob,
+                role: Role::Bob,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -130,18 +125,13 @@ where
                     },
                 })
                 .await?;
-
-            let halight_params: halight::Params = storage.load(id).await?;
-            let herc20_params: herc20::Params = storage.load(id).await?;
-
-            spawner.spawn(id, halight_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Hbit,
-                role: role @ Role::Alice,
+                role: Role::Alice,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -158,18 +148,13 @@ where
                     },
                 })
                 .await?;
-
-            let herc20_params: herc20::Params = storage.load(id).await?;
-            let hbit_params: hbit::Params = storage.load(id).await?;
-
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, hbit_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Hbit,
-                role: role @ Role::Bob,
+                role: Role::Bob,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -188,18 +173,13 @@ where
                     },
                 })
                 .await?;
-
-            let herc20_params: herc20::Params = storage.load(id).await?;
-            let hbit_params: hbit::Params = storage.load(id).await?;
-
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, hbit_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Hbit,
                 beta: Protocol::Herc20,
-                role: role @ Role::Alice,
+                role: Role::Alice,
+                ..
             },
             RemoteData {
                 bitcoin_identity: Some(bitcoin_identity),
@@ -216,18 +196,13 @@ where
                     },
                 })
                 .await?;
-
-            let hbit_params: hbit::Params = storage.load(id).await?;
-            let herc20_params: herc20::Params = storage.load(id).await?;
-
-            spawner.spawn(id, hbit_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
         }
         (
-            Swap {
+            DecisionSwap {
                 alpha: Protocol::Hbit,
                 beta: Protocol::Herc20,
-                role: role @ Role::Bob,
+                role: Role::Bob,
+                ..
             },
             RemoteData {
                 ethereum_identity: Some(ethereum_identity),
@@ -246,12 +221,109 @@ where
                     },
                 })
                 .await?;
+        }
+        _ => tracing::info!("attempting to save for an unsupported swap"),
+    };
 
-            let hbit_params: hbit::Params = storage.load(id).await?;
-            let herc20_params: herc20::Params = storage.load(id).await?;
+    start_swap(&spawner, &storage, swap).await?;
 
-            spawner.spawn(id, hbit_params, start_of_swap, Side::Alpha, role);
-            spawner.spawn(id, herc20_params, start_of_swap, Side::Beta, role);
+    Ok(())
+}
+
+pub async fn start_swap(
+    spawner: &ProtocolSpawner,
+    storage: &Storage,
+    meta_swap: DecisionSwap,
+) -> anyhow::Result<()> {
+    match meta_swap {
+        DecisionSwap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Halight,
+            ..
+        } => {
+            let swap =
+                Load::<Swap<herc20::Params, halight::Params>>::load(storage, meta_swap.id).await?;
+            spawner.spawn(
+                meta_swap.id,
+                swap.alpha,
+                swap.start_of_swap,
+                Side::Alpha,
+                swap.role,
+            );
+            spawner.spawn(
+                meta_swap.id,
+                swap.beta,
+                swap.start_of_swap,
+                Side::Beta,
+                swap.role,
+            );
+        }
+        DecisionSwap {
+            alpha: Protocol::Halight,
+            beta: Protocol::Herc20,
+            ..
+        } => {
+            let swap =
+                Load::<Swap<halight::Params, herc20::Params>>::load(storage, meta_swap.id).await?;
+            spawner.spawn(
+                meta_swap.id,
+                swap.alpha,
+                swap.start_of_swap,
+                Side::Alpha,
+                swap.role,
+            );
+            spawner.spawn(
+                meta_swap.id,
+                swap.beta,
+                swap.start_of_swap,
+                Side::Beta,
+                swap.role,
+            );
+        }
+        DecisionSwap {
+            alpha: Protocol::Herc20,
+            beta: Protocol::Hbit,
+            ..
+        } => {
+            let swap =
+                Load::<Swap<herc20::Params, hbit::Params>>::load(storage, meta_swap.id).await?;
+            spawner.spawn(
+                meta_swap.id,
+                swap.alpha,
+                swap.start_of_swap,
+                Side::Alpha,
+                swap.role,
+            );
+            spawner.spawn(
+                meta_swap.id,
+                swap.beta,
+                swap.start_of_swap,
+                Side::Beta,
+                swap.role,
+            );
+        }
+
+        DecisionSwap {
+            alpha: Protocol::Hbit,
+            beta: Protocol::Herc20,
+            ..
+        } => {
+            let swap =
+                Load::<Swap<hbit::Params, herc20::Params>>::load(storage, meta_swap.id).await?;
+            spawner.spawn(
+                meta_swap.id,
+                swap.alpha,
+                swap.start_of_swap,
+                Side::Alpha,
+                swap.role,
+            );
+            spawner.spawn(
+                meta_swap.id,
+                swap.beta,
+                swap.start_of_swap,
+                Side::Beta,
+                swap.role,
+            );
         }
         _ => tracing::info!("attempting to start an unsupported swap"),
     };

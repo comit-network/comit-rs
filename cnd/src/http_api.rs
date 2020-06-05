@@ -41,12 +41,10 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Swap {
+pub struct DecisionSwap {
     pub role: Role,
     pub alpha: Protocol,
     pub beta: Protocol,
-    /* pub status: SwapStatus (if you want to have this, you need to save ledger state to the
-     * database) */
 }
 
 #[derive(Clone, Debug, PartialEq)]

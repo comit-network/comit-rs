@@ -7,6 +7,7 @@ table! {
        local_swap_id -> Text,
        role -> Text,
        counterparty_peer_id -> Text,
+       start_of_swap -> Timestamp,
    }
 }
 

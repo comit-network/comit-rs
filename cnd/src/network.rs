@@ -1,5 +1,4 @@
 mod comit;
-pub mod start_swap;
 #[cfg(test)]
 pub mod test_swarm;
 pub mod transport;
@@ -22,6 +21,7 @@ use crate::{
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
+    save_and_start_swap,
     seed::RootSeed,
     storage::Storage,
     swap_protocols::{
@@ -40,7 +40,7 @@ use async_trait::async_trait;
 use futures::{
     channel::oneshot::{self, Sender},
     stream::StreamExt,
-    Future,
+    Future, TryFutureExt,
 };
 use libp2p::{
     identity::{ed25519, Keypair},
@@ -847,12 +847,13 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
         let storage = self.storage.clone();
         let spawner = self.protocol_spawner.clone();
 
-        self.task_executor.spawn(start_swap::start_swap(
-            storage,
-            spawner,
-            local_swap_id,
-            remote_data,
-        ));
+        self.task_executor.spawn(
+            save_and_start_swap(storage, spawner, local_swap_id, remote_data).map_err(
+                |e: anyhow::Error| {
+                    tracing::error!("{}", e);
+                },
+            ),
+        );
     }
 }
 

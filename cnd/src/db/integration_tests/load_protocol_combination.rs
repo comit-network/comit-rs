@@ -41,7 +41,7 @@ proptest! {
     }
 }
 
-async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::Swap
+async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::DecisionSwap
 where
     A: Clone + IntoInsertable + Send + 'static,
     B: Clone + IntoInsertable + Send + 'static,

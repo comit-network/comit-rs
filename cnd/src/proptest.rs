@@ -7,6 +7,7 @@
 //! `crate::proptest::identity::bitcoin()`.
 
 use crate::{ethereum::ChainId, LocalSwapId, Role, Side};
+use chrono::NaiveDateTime;
 use proptest::prelude::*;
 use uuid::Uuid;
 
@@ -16,6 +17,14 @@ pub fn role() -> impl Strategy<Value = Role> {
 
 pub fn side() -> impl Strategy<Value = Side> {
     prop_oneof![Just(Side::Alpha), Just(Side::Beta)]
+}
+
+prop_compose! {
+    pub fn timestamp()(
+        secs in any::<u32>(),
+    ) -> NaiveDateTime {
+        NaiveDateTime::from_timestamp(secs as i64, 0)
+    }
 }
 
 pub fn local_swap_id() -> impl Strategy<Value = LocalSwapId> {
@@ -213,16 +222,25 @@ pub mod db {
         A: Debug,
         B: Debug,
     {
-        (local_swap_id(), alpha, beta, libp2p::peer_id(), role()).prop_map(
-            |(swap_id, alpha, beta, peer, role)| db::CreatedSwap {
-                swap_id,
-                alpha,
-                beta,
-                peer,
-                address_hint: None,
-                role,
-            },
+        (
+            local_swap_id(),
+            alpha,
+            beta,
+            libp2p::peer_id(),
+            role(),
+            timestamp(),
         )
+            .prop_map(|(swap_id, alpha, beta, peer, role, start_of_swap)| {
+                db::CreatedSwap {
+                    swap_id,
+                    alpha,
+                    beta,
+                    peer,
+                    address_hint: None,
+                    role,
+                    start_of_swap,
+                }
+            })
     }
 
     pub mod tables {
@@ -234,8 +252,9 @@ pub mod db {
                 local_swap_id in local_swap_id(),
                 role in role(),
                 peer in libp2p::peer_id(),
+                start_of_swap in timestamp(),
             ) -> tables::InsertableSwap {
-                tables::InsertableSwap::new(local_swap_id, peer, role)
+                tables::InsertableSwap::new(local_swap_id, peer, role, start_of_swap)
             }
         }
 
