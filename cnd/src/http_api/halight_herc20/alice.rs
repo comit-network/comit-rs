@@ -112,7 +112,7 @@ impl AlphaEvents
                         ..
                     },
                 ..
-            } => Some(From::<halight::State>::from(*halight_state)),
+            } => Some((*halight_state).into()),
         }
     }
 }
