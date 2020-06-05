@@ -41,7 +41,7 @@ proptest! {
     }
 }
 
-async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::DecisionSwap
+async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::SwapContext
 where
     A: Clone + IntoInsertable + Send + 'static,
     B: Clone + IntoInsertable + Send + 'static,
@@ -50,5 +50,5 @@ where
     Sqlite: Insert<<A as IntoInsertable>::Insertable> + Insert<<B as IntoInsertable>::Insertable>,
 {
     db.save(swap.clone()).await.unwrap();
-    db.load_meta_swap(swap.swap_id).await.unwrap()
+    db.load_swap_context(swap.swap_id).await.unwrap()
 }

@@ -12,7 +12,7 @@ use crate::{
     seed::RootSeed,
     start_swap,
     swap_protocols::state::Get,
-    DecisionSwap, LocalSwapId, Protocol, Role, Side,
+    LocalSwapId, Protocol, Role, Side, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -62,9 +62,9 @@ impl Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::DecisionSwap> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::DecisionSwap> {
-        self.db.load_meta_swap(swap_id).await
+impl Load<http_api::SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapContext> {
+        self.db.load_swap_context(swap_id).await
     }
 }
 
@@ -261,9 +261,9 @@ impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl LoadAll<DecisionSwap> for Storage {
-    async fn load_all(&self) -> anyhow::Result<Vec<DecisionSwap>> {
-        self.db.load_all_respawn_meta_swaps().await
+impl LoadAll<SwapContext> for Storage {
+    async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
+        self.db.load_all_respawn_swap_context().await
     }
 }
 
@@ -1052,8 +1052,8 @@ impl
 }
 
 #[async_trait::async_trait]
-impl Load<DecisionSwap> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<DecisionSwap> {
+impl Load<SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -1093,7 +1093,7 @@ impl Load<DecisionSwap> for Storage {
                 .get_result(connection)
         }).await.context(db::Error::SwapNotFound)?;
 
-        Ok(DecisionSwap {
+        Ok(SwapContext {
             id: swap_id,
             role: role.0,
             alpha: alpha_protocol.0,
@@ -1105,15 +1105,15 @@ impl Load<DecisionSwap> for Storage {
 #[async_trait::async_trait]
 impl Load<identity::Bitcoin> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<identity::Bitcoin> {
-        let swap: http_api::DecisionSwap = self.load(swap_id).await?;
+        let swap: http_api::SwapContext = self.load(swap_id).await?;
 
         let sk = match swap {
-            http_api::DecisionSwap {
+            http_api::SwapContext {
                 role: Role::Alice,
                 alpha: Protocol::Hbit,
                 ..
             }
-            | http_api::DecisionSwap {
+            | http_api::SwapContext {
                 role: Role::Bob,
                 beta: Protocol::Hbit,
                 ..
@@ -1121,12 +1121,12 @@ impl Load<identity::Bitcoin> for Storage {
                 .seed
                 .derive_swap_seed(swap_id)
                 .derive_transient_refund_identity(),
-            http_api::DecisionSwap {
+            http_api::SwapContext {
                 role: Role::Alice,
                 beta: Protocol::Hbit,
                 ..
             }
-            | http_api::DecisionSwap {
+            | http_api::SwapContext {
                 role: Role::Bob,
                 alpha: Protocol::Hbit,
                 ..

@@ -4,7 +4,7 @@ use crate::{
 use chrono::NaiveDateTime;
 
 #[derive(Clone, Copy, Debug)]
-pub struct DecisionSwap {
+pub struct SwapContext {
     pub id: LocalSwapId,
     pub role: Role,
     pub alpha: Protocol,
@@ -22,69 +22,71 @@ pub struct Swap<A, B> {
 pub async fn start_swap(
     spawner: &ProtocolSpawner,
     storage: &Storage,
-    meta_swap: DecisionSwap,
+    swap_context: SwapContext,
 ) -> anyhow::Result<()> {
-    match meta_swap {
-        DecisionSwap {
+    match swap_context {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             ..
         } => {
             let swap =
-                Load::<Swap<herc20::Params, halight::Params>>::load(storage, meta_swap.id).await?;
+                Load::<Swap<herc20::Params, halight::Params>>::load(storage, swap_context.id)
+                    .await?;
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.alpha,
                 swap.start_of_swap,
                 Side::Alpha,
                 swap.role,
             );
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.beta,
                 swap.start_of_swap,
                 Side::Beta,
                 swap.role,
             );
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             ..
         } => {
             let swap =
-                Load::<Swap<halight::Params, herc20::Params>>::load(storage, meta_swap.id).await?;
+                Load::<Swap<halight::Params, herc20::Params>>::load(storage, swap_context.id)
+                    .await?;
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.alpha,
                 swap.start_of_swap,
                 Side::Alpha,
                 swap.role,
             );
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.beta,
                 swap.start_of_swap,
                 Side::Beta,
                 swap.role,
             );
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             ..
         } => {
             let swap =
-                Load::<Swap<herc20::Params, hbit::Params>>::load(storage, meta_swap.id).await?;
+                Load::<Swap<herc20::Params, hbit::Params>>::load(storage, swap_context.id).await?;
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.alpha,
                 swap.start_of_swap,
                 Side::Alpha,
                 swap.role,
             );
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.beta,
                 swap.start_of_swap,
                 Side::Beta,
@@ -92,22 +94,22 @@ pub async fn start_swap(
             );
         }
 
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             ..
         } => {
             let swap =
-                Load::<Swap<hbit::Params, herc20::Params>>::load(storage, meta_swap.id).await?;
+                Load::<Swap<hbit::Params, herc20::Params>>::load(storage, swap_context.id).await?;
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.alpha,
                 swap.start_of_swap,
                 Side::Alpha,
                 swap.role,
             );
             spawner.spawn(
-                meta_swap.id,
+                swap_context.id,
                 swap.beta,
                 swap.start_of_swap,
                 Side::Beta,

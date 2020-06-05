@@ -33,7 +33,7 @@ use crate::{
         },
         HashFunction, SwapProtocol,
     },
-    transaction, DecisionSwap, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId,
+    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -864,12 +864,12 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
 
 async fn save_swap_remote_data(
     storage: &Storage,
-    swap: DecisionSwap,
+    swap: SwapContext,
     data: RemoteData,
 ) -> anyhow::Result<()> {
     match (&swap, data) {
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Halight,
                 role: Role::Alice,
@@ -892,7 +892,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Halight,
                 role: Role::Bob,
@@ -917,7 +917,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Halight,
                 beta: Protocol::Herc20,
                 role: Role::Alice,
@@ -940,7 +940,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Halight,
                 beta: Protocol::Herc20,
                 role: Role::Bob,
@@ -965,7 +965,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Hbit,
                 role: Role::Alice,
@@ -988,7 +988,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Herc20,
                 beta: Protocol::Hbit,
                 role: Role::Bob,
@@ -1013,7 +1013,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Hbit,
                 beta: Protocol::Herc20,
                 role: Role::Alice,
@@ -1036,7 +1036,7 @@ async fn save_swap_remote_data(
                 .await?;
         }
         (
-            DecisionSwap {
+            SwapContext {
                 alpha: Protocol::Hbit,
                 beta: Protocol::Herc20,
                 role: Role::Bob,
