@@ -126,7 +126,7 @@ impl IntoInsertable for herc20::CreatedSwap {
         InsertableHerc20 {
             swap_id,
             amount: Text(self.asset.quantity.into()),
-            chain_id: U32(self.chain_id),
+            chain_id: U32(self.chain_id.into()),
             expiry: U32(self.absolute_expiry),
             token_contract: Text(self.asset.token_contract.into()),
             redeem_identity,

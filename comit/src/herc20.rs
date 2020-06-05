@@ -7,7 +7,7 @@ use crate::{
         ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
         BlockByHash, LatestBlock,
     },
-    ethereum::{Block, Bytes, Hash, U256},
+    ethereum::{Block, Bytes, ChainId, Hash, U256},
     htlc_location, identity,
     timestamp::Timestamp,
     transaction, Secret, SecretHash,
@@ -33,7 +33,7 @@ lazy_static::lazy_static! {
 pub struct CreatedSwap {
     pub asset: asset::Erc20,
     pub identity: identity::Ethereum,
-    pub chain_id: u32, // FIXME: Why is this not a ChainId?
+    pub chain_id: ChainId,
     pub absolute_expiry: u32,
 }
 

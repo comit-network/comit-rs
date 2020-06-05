@@ -6,7 +6,7 @@
 //! `crate::identity::Bitcoin` is defined at
 //! `crate::proptest::identity::bitcoin()`.
 
-use crate::{LocalSwapId, Role, Side};
+use crate::{ethereum::ChainId, LocalSwapId, Role, Side};
 use proptest::prelude::*;
 use uuid::Uuid;
 
@@ -20,6 +20,10 @@ pub fn side() -> impl Strategy<Value = Side> {
 
 pub fn local_swap_id() -> impl Strategy<Value = LocalSwapId> {
     prop::num::u128::ANY.prop_map(|v| LocalSwapId::from(Uuid::from_u128(v)))
+}
+
+pub fn chain_id() -> impl Strategy<Value = ChainId> {
+    prop::num::u32::ANY.prop_map(ChainId::from)
 }
 
 pub mod libp2p {
@@ -141,7 +145,7 @@ pub mod herc20 {
         pub fn created_swap()(
             asset in asset::erc20(),
             identity in identity::ethereum(),
-            chain_id in any::<u32>(),
+            chain_id in chain_id(),
             absolute_expiry in any::<u32>()
         ) -> herc20::CreatedSwap {
             herc20::CreatedSwap {
