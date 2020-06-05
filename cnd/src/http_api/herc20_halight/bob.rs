@@ -1,6 +1,5 @@
 use crate::{
     asset,
-    ethereum::Bytes,
     halight::Settled,
     http_api::{
         halight, herc20,
@@ -10,10 +9,9 @@ use crate::{
         },
         ActionNotFound,
     },
-    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
+    swap_protocols::actions::{ethereum, lnd},
     DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, Timestamp,
 };
-use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 
 impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
     type Output = lnd::SendPayment;
@@ -27,33 +25,16 @@ impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
                         ..
                     },
                 beta_finalized:
+                    halight
+                    @
                     halight::Finalized {
-                        asset: halight_asset,
-                        network,
-                        refund_identity: halight_refund_identity,
-                        redeem_identity: halight_redeem_identity,
-                        cltv_expiry,
                         state: halight::State::Opened(_),
+                        ..
                     },
                 secret_hash,
             } => {
-                let to_public_key = *halight_redeem_identity;
-                let amount = *halight_asset;
-                let secret_hash = *secret_hash;
-                let final_cltv_delta = *cltv_expiry;
-                let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::from(*network);
-                let self_public_key = *halight_refund_identity;
-
-                Ok(lnd::SendPayment {
-                    to_public_key,
-                    amount,
-                    secret_hash,
-                    final_cltv_delta,
-                    chain,
-                    network,
-                    self_public_key,
-                })
+                let fund_action = halight.build_fund_action(*secret_hash);
+                Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -66,12 +47,7 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
     fn redeem_action(&self) -> anyhow::Result<Self::Output> {
         match self {
             BobSwap::Finalized {
-                alpha_finalized:
-                    herc20::Finalized {
-                        chain_id,
-                        state: herc20::State::Funded { htlc_location, .. },
-                        ..
-                    },
+                alpha_finalized: herc20 @ herc20::Finalized { .. },
                 beta_finalized:
                     halight::Finalized {
                         state: halight::State::Settled(Settled { secret }),
@@ -79,18 +55,8 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
                     },
                 ..
             } => {
-                let to = *htlc_location;
-                let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
-                let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let min_block_timestamp = None;
-
-                Ok(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id: *chain_id,
-                    min_block_timestamp,
-                })
+                let redeem_action = herc20.build_redeem_action(*secret)?;
+                Ok(redeem_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }

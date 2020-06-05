@@ -1,18 +1,16 @@
 use crate::{
-    actions::bitcoin::{sign_with_fixed_rate, BroadcastSignedTransaction, SpendOutput},
+    actions::bitcoin::BroadcastSignedTransaction,
     http_api::{
         hbit, herc20,
-        herc20::build_erc20_htlc,
         protocol::{
             AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
             BetaEvents, BetaLedger, BetaParams, Hbit, Herc20, Ledger, LedgerEvents,
         },
         ActionNotFound, BobSwap,
     },
-    identity, DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
+    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
-use blockchain_contracts::ethereum::rfc003::{Erc20Htlc, EtherHtlc};
-use comit::{actions::ethereum, asset, ethereum::Bytes, hbit::build_bitcoin_htlc, Never};
+use comit::{actions::ethereum, asset, Never};
 
 impl DeployAction
     for BobSwap<asset::Bitcoin, asset::Erc20, hbit::FinalizedAsRedeemer, herc20::Finalized>
@@ -28,32 +26,17 @@ impl DeployAction
                         ..
                     },
                 beta_finalized:
+                    herc20
+                    @
                     herc20::Finalized {
-                        asset: herc20_asset,
-                        chain_id,
-                        refund_identity: herc20_refund_identity,
-                        redeem_identity: herc20_redeem_identity,
-                        expiry: herc20_expiry,
                         state: herc20::State::None,
+                        ..
                     },
                 secret_hash,
                 ..
             } => {
-                let htlc = build_erc20_htlc(
-                    herc20_asset.clone(),
-                    *herc20_redeem_identity,
-                    *herc20_refund_identity,
-                    *herc20_expiry,
-                    *secret_hash,
-                );
-                let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
-
-                Ok(ethereum::DeployContract {
-                    data: htlc.into(),
-                    amount: asset::Ether::zero(),
-                    gas_limit,
-                    chain_id: *chain_id,
-                })
+                let deploy_action = herc20.build_deploy_action(*secret_hash);
+                Ok(deploy_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -74,33 +57,16 @@ impl FundAction
                         ..
                     },
                 beta_finalized:
+                    herc20
+                    @
                     herc20::Finalized {
-                        asset: herc20_asset,
-                        chain_id,
-                        state: herc20::State::Deployed { htlc_location, .. },
+                        state: herc20::State::Deployed { .. },
                         ..
                     },
                 ..
             } => {
-                let herc20_asset = herc20_asset.clone();
-                let to = herc20_asset.token_contract;
-                let htlc_address = blockchain_contracts::ethereum::Address((*htlc_location).into());
-                let data = Erc20Htlc::transfer_erc20_tx_payload(
-                    herc20_asset.quantity.into(),
-                    htlc_address,
-                );
-                let data = Some(Bytes(data));
-
-                let gas_limit = Erc20Htlc::fund_tx_gas_limit();
-                let min_block_timestamp = None;
-
-                Ok(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id: *chain_id,
-                    min_block_timestamp,
-                })
+                let fund_action = herc20.build_fund_action()?;
+                Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -116,18 +82,10 @@ impl RedeemAction
         match self {
             BobSwap::Finalized {
                 alpha_finalized:
+                    hbit
+                    @
                     hbit::FinalizedAsRedeemer {
-                        network,
-                        final_redeem_identity,
-                        transient_redeem_identity: transient_redeem_sk,
-                        transient_refund_identity,
-                        expiry,
-                        state:
-                            hbit::State::Funded {
-                                htlc_location,
-                                fund_transaction,
-                                ..
-                            },
+                        state: hbit::State::Funded { .. },
                         ..
                     },
                 beta_finalized:
@@ -135,41 +93,10 @@ impl RedeemAction
                         state: herc20::State::Redeemed { secret, .. },
                         ..
                     },
-                secret_hash,
                 ..
             } => {
-                let network = bitcoin::Network::from(*network);
-                let spend_output = {
-                    let transient_redeem_identity =
-                        identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_redeem_sk);
-                    let htlc = build_bitcoin_htlc(
-                        transient_redeem_identity,
-                        *transient_refund_identity,
-                        *expiry,
-                        *secret_hash,
-                    );
-
-                    let previous_output = *htlc_location;
-                    let value = bitcoin::Amount::from_sat(
-                        fund_transaction.output[htlc_location.vout as usize].value,
-                    );
-                    let input_parameters = htlc.unlock_with_secret(
-                        &*crate::SECP,
-                        *transient_redeem_sk,
-                        secret.into_raw_secret(),
-                    );
-
-                    SpendOutput::new(previous_output, value, input_parameters, network)
-                };
-
-                let primed_transaction =
-                    spend_output.spend_to(final_redeem_identity.clone().into());
-                let transaction = sign_with_fixed_rate(&*crate::SECP, primed_transaction)?;
-
-                Ok(BroadcastSignedTransaction {
-                    transaction,
-                    network,
-                })
+                let redeem_action = hbit.build_redeem_action(*secret)?;
+                Ok(redeem_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -185,26 +112,16 @@ impl RefundAction
         match self {
             BobSwap::Finalized {
                 beta_finalized:
+                    herc20
+                    @
                     herc20::Finalized {
-                        chain_id,
-                        expiry: herc20_expiry,
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded { .. },
                         ..
                     },
                 ..
             } => {
-                let to = *htlc_location;
-                let data = None;
-                let gas_limit = EtherHtlc::refund_tx_gas_limit();
-                let min_block_timestamp = Some(*herc20_expiry);
-
-                Ok(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id: *chain_id,
-                    min_block_timestamp,
-                })
+                let refund_action = herc20.build_refund_action()?;
+                Ok(refund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }

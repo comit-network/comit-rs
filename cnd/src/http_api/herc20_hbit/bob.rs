@@ -1,7 +1,5 @@
 use crate::{
-    actions::bitcoin::{
-        sign_with_fixed_rate, BroadcastSignedTransaction, SendToAddress, SpendOutput,
-    },
+    actions::bitcoin::{BroadcastSignedTransaction, SendToAddress},
     http_api::{
         hbit, herc20,
         protocol::{
@@ -10,11 +8,9 @@ use crate::{
         },
         ActionNotFound,
     },
-    identity, DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
+    DeployAction, FundAction, InitAction, RedeemAction, RefundAction, Timestamp,
 };
-use blockchain_contracts::ethereum::rfc003::EtherHtlc;
-use comit::{actions::ethereum, asset, ethereum::Bytes, Never};
-use hbit::build_bitcoin_htlc;
+use comit::{actions::ethereum, asset, Never};
 
 impl FundAction
     for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>
@@ -30,30 +26,16 @@ impl FundAction
                         ..
                     },
                 beta_finalized:
+                    hbit
+                    @
                     hbit::FinalizedAsFunder {
-                        asset,
-                        network,
-                        transient_redeem_identity: redeem_identity,
-                        transient_refund_identity: transient_refund_sk,
-                        expiry,
                         state: hbit::State::None,
                         ..
                     },
                 secret_hash,
             } => {
-                let refund_identity =
-                    identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
-                let htlc =
-                    build_bitcoin_htlc(*redeem_identity, refund_identity, *expiry, *secret_hash);
-                let network = bitcoin::Network::from(*network);
-                let to = htlc.compute_address(network);
-                let amount = *asset;
-
-                Ok(SendToAddress {
-                    to,
-                    amount,
-                    network,
-                })
+                let fund_action = hbit.build_fund_action(*secret_hash);
+                Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -69,9 +51,10 @@ impl RedeemAction
         match self {
             BobSwap::Finalized {
                 alpha_finalized:
+                    herc20
+                    @
                     herc20::Finalized {
-                        chain_id,
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded { .. },
                         ..
                     },
                 beta_finalized:
@@ -81,18 +64,8 @@ impl RedeemAction
                     },
                 ..
             } => {
-                let to = *htlc_location;
-                let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
-                let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let min_block_timestamp = None;
-
-                Ok(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id: *chain_id,
-                    min_block_timestamp,
-                })
+                let redeem_action = herc20.build_redeem_action(*secret)?;
+                Ok(redeem_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -107,52 +80,17 @@ impl RefundAction
         match self {
             BobSwap::Finalized {
                 beta_finalized:
+                    hbit
+                    @
                     hbit::FinalizedAsFunder {
-                        network,
-                        transient_redeem_identity,
-                        transient_refund_identity: transient_refund_sk,
-                        final_refund_identity,
-                        expiry,
-                        state:
-                            hbit::State::Funded {
-                                htlc_location,
-                                fund_transaction,
-                                ..
-                            },
+                        state: hbit::State::Funded { .. },
                         ..
                     },
                 secret_hash,
                 ..
             } => {
-                let network = bitcoin::Network::from(*network);
-                let spend_output = {
-                    let transient_refund_identity =
-                        identity::Bitcoin::from_secret_key(&*crate::SECP, &transient_refund_sk);
-                    let htlc = build_bitcoin_htlc(
-                        *transient_redeem_identity,
-                        transient_refund_identity,
-                        *expiry,
-                        *secret_hash,
-                    );
-
-                    let previous_output = *htlc_location;
-                    let value = bitcoin::Amount::from_sat(
-                        fund_transaction.output[htlc_location.vout as usize].value,
-                    );
-                    let input_parameters =
-                        htlc.unlock_after_timeout(&*crate::SECP, *transient_refund_sk);
-
-                    SpendOutput::new(previous_output, value, input_parameters, network)
-                };
-
-                let primed_transaction =
-                    spend_output.spend_to(final_refund_identity.clone().into());
-                let transaction = sign_with_fixed_rate(&*crate::SECP, primed_transaction)?;
-
-                Ok(BroadcastSignedTransaction {
-                    transaction,
-                    network,
-                })
+                let refund_action = hbit.build_refund_action(*secret_hash)?;
+                Ok(refund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
