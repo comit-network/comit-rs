@@ -3,6 +3,16 @@ use comit::{asset, ledger, Timestamp};
 
 pub use crate::hbit::*;
 
+/// Data known by the party funding the HTLC in the Hbit protocol, after the
+/// swap has been finalized.
+///
+/// The funder of the HTLC knows the following identities:
+/// - `transient_redeem_identity`: the public identity of the redeemer.
+/// - `transient_refund_identity`: their own secret identity, from which their
+///   public identity can be derived, and which can be used to produce a
+///   signature that will enable the refund action.
+/// -`final_refund_identity`: the address where the HTLC funds will go if the
+///   refund action is executed.
 #[derive(Clone, Debug)]
 pub struct FinalizedAsFunder {
     pub asset: asset::Bitcoin,
@@ -14,6 +24,16 @@ pub struct FinalizedAsFunder {
     pub state: State,
 }
 
+/// Data known by the party redeeming the HTLC in the Hbit protocol, after the
+/// swap has been finalized.
+///
+/// The redeemer of the HTLC knows the following identities:
+/// - `transient_refund_identity`: the public identity of the funder.
+/// - `transient_redeem_identity`: their own secret identity, from which their
+///   public identity can be derived, and which can be used to produce a
+///   signature that will enable the redeem action.
+/// -`final_refund_identity`: the address where the HTLC funds will go if the
+///   redeem action is executed.
 #[derive(Clone, Debug)]
 pub struct FinalizedAsRedeemer {
     pub asset: asset::Bitcoin,
