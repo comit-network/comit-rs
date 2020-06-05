@@ -33,6 +33,16 @@ enum EscrowStatus {
     IncorrectlyFunded,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Hash)]
+#[serde(rename_all = "snake_case")]
+pub enum ActionName {
+    Init,
+    Deploy,
+    Fund,
+    Redeem,
+    Refund,
+}
+
 pub trait AlphaEvents {
     fn alpha_events(&self) -> Option<LedgerEvents>;
 }
@@ -84,33 +94,71 @@ pub trait BetaParams {
 
 #[derive(Debug, Serialize)]
 pub struct LedgerEvents {
-    /// Keys are on of: "init", "deploy", "fund", "redeem", "refund".
-    /// Values are transactions.
-    transactions: HashMap<String, String>,
+    events: HashMap<ActionName, String>,
     status: EscrowStatus,
 }
 
 impl LedgerEvents {
-    fn new(status: EscrowStatus) -> Self {
-        Self {
-            transactions: HashMap::new(), /* if we want transaction here, we should save the
-                                           * events to the DB */
-            status,
-        }
+    fn new(status: EscrowStatus, events: HashMap<ActionName, String>) -> Self {
+        Self { events, status }
     }
 }
 
 impl From<herc20::State> for LedgerEvents {
     fn from(state: herc20::State) -> Self {
         match state {
-            herc20::State::None => LedgerEvents::new(EscrowStatus::None),
-            herc20::State::Deployed { .. } => LedgerEvents::new(EscrowStatus::Deployed),
-            herc20::State::Funded { .. } => LedgerEvents::new(EscrowStatus::Funded),
-            herc20::State::IncorrectlyFunded { .. } => {
-                LedgerEvents::new(EscrowStatus::IncorrectlyFunded)
+            herc20::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            herc20::State::Deployed {
+                deploy_transaction, ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                LedgerEvents::new(EscrowStatus::Deployed, transactions)
             }
-            herc20::State::Redeemed { .. } => LedgerEvents::new(EscrowStatus::Redeemed),
-            herc20::State::Refunded { .. } => LedgerEvents::new(EscrowStatus::Refunded),
+            herc20::State::Funded {
+                deploy_transaction,
+                fund_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                LedgerEvents::new(EscrowStatus::Funded, transactions)
+            }
+            herc20::State::IncorrectlyFunded {
+                deploy_transaction,
+                fund_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                LedgerEvents::new(EscrowStatus::IncorrectlyFunded, transactions)
+            }
+            herc20::State::Redeemed {
+                deploy_transaction,
+                fund_transaction,
+                redeem_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                transactions.insert(ActionName::Redeem, format!("{:x}", redeem_transaction.hash));
+                LedgerEvents::new(EscrowStatus::Redeemed, transactions)
+            }
+            herc20::State::Refunded {
+                deploy_transaction,
+                fund_transaction,
+                refund_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Deploy, format!("{:x}", deploy_transaction.hash));
+                transactions.insert(ActionName::Fund, format!("{:x}", fund_transaction.hash));
+                transactions.insert(ActionName::Refund, format!("{:x}", refund_transaction.hash));
+                LedgerEvents::new(EscrowStatus::Refunded, transactions)
+            }
         }
     }
 }
@@ -118,13 +166,41 @@ impl From<herc20::State> for LedgerEvents {
 impl From<hbit::State> for LedgerEvents {
     fn from(state: hbit::State) -> Self {
         match state {
-            hbit::State::None => LedgerEvents::new(EscrowStatus::None),
-            hbit::State::Funded { .. } => LedgerEvents::new(EscrowStatus::Funded),
-            hbit::State::IncorrectlyFunded { .. } => {
-                LedgerEvents::new(EscrowStatus::IncorrectlyFunded)
+            hbit::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            hbit::State::Funded {
+                fund_transaction, ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
+                LedgerEvents::new(EscrowStatus::Funded, transactions)
             }
-            hbit::State::Redeemed { .. } => LedgerEvents::new(EscrowStatus::Redeemed),
-            hbit::State::Refunded { .. } => LedgerEvents::new(EscrowStatus::Refunded),
+            hbit::State::IncorrectlyFunded {
+                fund_transaction, ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
+                LedgerEvents::new(EscrowStatus::IncorrectlyFunded, transactions)
+            }
+            hbit::State::Redeemed {
+                fund_transaction,
+                redeem_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
+                transactions.insert(ActionName::Redeem, redeem_transaction.txid().to_string());
+                LedgerEvents::new(EscrowStatus::Redeemed, transactions)
+            }
+            hbit::State::Refunded {
+                fund_transaction,
+                refund_transaction,
+                ..
+            } => {
+                let mut transactions = HashMap::new();
+                transactions.insert(ActionName::Fund, fund_transaction.txid().to_string());
+                transactions.insert(ActionName::Refund, refund_transaction.txid().to_string());
+                LedgerEvents::new(EscrowStatus::Refunded, transactions)
+            }
         }
     }
 }
@@ -132,26 +208,15 @@ impl From<hbit::State> for LedgerEvents {
 impl From<halight::State> for LedgerEvents {
     fn from(state: halight::State) -> Self {
         match state {
-            halight::State::None => LedgerEvents {
-                transactions: HashMap::new(),
-                status: EscrowStatus::None,
-            },
-            halight::State::Opened(_) => LedgerEvents {
-                transactions: HashMap::new(),
-                status: EscrowStatus::Initialized,
-            },
-            halight::State::Accepted(_) => LedgerEvents {
-                transactions: HashMap::new(),
-                status: EscrowStatus::Funded,
-            },
-            halight::State::Settled(_) => LedgerEvents {
-                transactions: HashMap::new(),
-                status: EscrowStatus::Redeemed,
-            },
-            halight::State::Cancelled(_) => LedgerEvents {
-                transactions: HashMap::new(),
-                status: EscrowStatus::Refunded,
-            },
+            halight::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            halight::State::Opened(_) => {
+                LedgerEvents::new(EscrowStatus::Initialized, HashMap::new())
+            }
+            halight::State::Accepted(_) => LedgerEvents::new(EscrowStatus::Funded, HashMap::new()),
+            halight::State::Settled(_) => LedgerEvents::new(EscrowStatus::Redeemed, HashMap::new()),
+            halight::State::Cancelled(_) => {
+                LedgerEvents::new(EscrowStatus::Refunded, HashMap::new())
+            }
         }
     }
 }

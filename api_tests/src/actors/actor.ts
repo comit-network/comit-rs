@@ -6,6 +6,8 @@ import {
     Swap,
     Wallets as SdkWallets,
     HbitHerc20RequestBody,
+    Step,
+    LedgerParameters,
 } from "comit-sdk";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
@@ -405,34 +407,42 @@ export class Actor {
 
     public async assertAlphaDeployed() {
         await this.assertLedgerStatus("alpha", EscrowStatus.Deployed);
+        await this.assertLedgerEventPresence("alpha", Step.Deploy);
     }
 
     public async assertBetaDeployed() {
         await this.assertLedgerStatus("beta", EscrowStatus.Deployed);
+        await this.assertLedgerEventPresence("beta", Step.Deploy);
     }
 
     public async assertAlphaFunded(): Promise<void> {
         await this.assertLedgerStatus("alpha", EscrowStatus.Funded);
+        await this.assertLedgerEventPresence("alpha", Step.Fund);
     }
 
     public async assertBetaFunded() {
         await this.assertLedgerStatus("beta", EscrowStatus.Funded);
+        await this.assertLedgerEventPresence("beta", Step.Fund);
     }
 
     public async assertAlphaRedeemed() {
         await this.assertLedgerStatus("alpha", EscrowStatus.Redeemed);
+        await this.assertLedgerEventPresence("alpha", Step.Redeem);
     }
 
     public async assertBetaRedeemed() {
         await this.assertLedgerStatus("beta", EscrowStatus.Redeemed);
+        await this.assertLedgerEventPresence("beta", Step.Redeem);
     }
 
     public async assertAlphaRefunded() {
         await this.assertLedgerStatus("alpha", EscrowStatus.Refunded);
+        await this.assertLedgerEventPresence("alpha", Step.Refund);
     }
 
     public async assertBetaRefunded() {
         await this.assertLedgerStatus("beta", EscrowStatus.Refunded);
+        await this.assertLedgerEventPresence("beta", Step.Refund);
     }
 
     private async assertDeployed() {
@@ -519,6 +529,40 @@ export class Actor {
                     ledgerState.rel.includes(ledgerRel)
                 ) {
                     return ledgerState.properties.status === status;
+                }
+            }
+        });
+    }
+
+    private async assertLedgerEventPresence(
+        ledgerRel: "alpha" | "beta",
+        step: Step
+    ): Promise<void> {
+        await this.pollCndUntil(this.swap.self, (swapResponse) => {
+            let protocol;
+            for (const entity of swapResponse.entities) {
+                const ledgerParameters = entity as LedgerParameters;
+                if (
+                    ledgerParameters.class.includes("parameters") &&
+                    ledgerParameters.rel.includes(ledgerRel)
+                ) {
+                    protocol = ledgerParameters.properties.protocol;
+                    break;
+                }
+            }
+
+            // No events are set for halight
+            if (protocol === "halight") {
+                return true;
+            }
+
+            for (const entity of swapResponse.entities) {
+                const ledgerState = entity as LedgerState;
+                if (
+                    ledgerState.class.includes("state") &&
+                    ledgerState.rel.includes(ledgerRel)
+                ) {
+                    return !!ledgerState.properties.events[step];
                 }
             }
         });
