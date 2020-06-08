@@ -234,7 +234,7 @@ impl AlphaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, h
                         ..
                     },
                 ..
-            } => Some(From::<halight::State>::from(*halight_state)),
+            } => Some((*halight_state).into()),
         }
     }
 }
@@ -250,20 +250,20 @@ impl BetaEvents for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, he
                         ..
                     },
                 ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
+            } => Some(herc20_state.clone().into()),
         }
     }
 }
 
 impl AlphaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Herc20;
+    type Output = Halight;
     fn alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
 impl BetaParams for BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> {
-    type Output = Halight;
+    type Output = Herc20;
     fn beta_params(&self) -> Self::Output {
         self.clone().into()
     }

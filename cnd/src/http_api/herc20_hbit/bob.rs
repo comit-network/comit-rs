@@ -172,7 +172,7 @@ impl AlphaEvents
                         ..
                     },
                 ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
+            } => Some(herc20_state.clone().into()),
         }
     }
 }
@@ -186,7 +186,7 @@ impl BetaEvents
             BobSwap::Finalized {
                 beta_finalized: hbit::FinalizedAsFunder { state, .. },
                 ..
-            } => Some(From::<hbit::State>::from(state.clone())),
+            } => Some(state.clone().into()),
         }
     }
 }

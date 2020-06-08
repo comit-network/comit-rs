@@ -8,8 +8,8 @@ use crate::{
         action::ActionResponseBody,
         halight, hbit, herc20, problem,
         protocol::{
-            AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
-            BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
+            ActionName, AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams,
+            BetaAbsoluteExpiry, BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
         },
         route_factory, ActionNotFound, AliceSwap, BobSwap, Http, SwapContext,
     },
@@ -335,15 +335,6 @@ fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Ac
         _type: None,
         fields: vec![],
     }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-enum ActionName {
-    Init,
-    Deploy,
-    Fund,
-    Redeem,
-    Refund,
 }
 
 impl std::fmt::Display for ActionName {

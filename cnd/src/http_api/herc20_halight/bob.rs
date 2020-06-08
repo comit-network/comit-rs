@@ -108,7 +108,7 @@ impl AlphaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, ha
                         ..
                     },
                 ..
-            } => Some(From::<herc20::State>::from(herc20_state.clone())),
+            } => Some(herc20_state.clone().into()),
         }
     }
 }
@@ -124,7 +124,7 @@ impl BetaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
                         ..
                     },
                 ..
-            } => Some(From::<halight::State>::from(*halight_state)),
+            } => Some(halight_state.clone().into()),
         }
     }
 }

@@ -117,7 +117,7 @@ export interface HalightBitcoin {
     /**
      * Quantity in satoshi
      */
-    protocol: "halight-bitcoin";
+    protocol: "halight";
 }
 /**
  * The detailed description of the ledger state.
@@ -137,9 +137,9 @@ export interface LedgerState extends EmbeddedRepresentationSubEntity {
     class: ["state"];
     properties: {
         /**
-         * Blockchain Transactions
+         * Ledger event
          */
-        transactions: StepTransaction[];
+        events: LedgerEvent;
         /**
          * The status of the escrow (HTLC or Invoice).
          */
@@ -147,11 +147,12 @@ export interface LedgerState extends EmbeddedRepresentationSubEntity {
     };
 }
 /**
- * The blockchain transactions related to a given step.
+ * The ledger events related to a given step.
  */
-export type StepTransaction = {
+export type LedgerEvent = {
     [k in Step]: string;
 };
+
 /**
  * The status of the escrow (htlc, lightning invoice, etc) on the ledger.
  */
