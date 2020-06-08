@@ -5,7 +5,7 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, DecisionSwap, LocalSwapId, Protocol, Role, Side,
+    http_api, LocalSwapId, Protocol, Role, Side, SwapContext,
 };
 use anyhow::Context;
 use diesel::{sql_types, RunQueryDsl};
@@ -55,10 +55,10 @@ where
 }
 
 impl Sqlite {
-    pub async fn load_meta_swap(
+    pub async fn load_swap_context(
         &self,
         swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::DecisionSwap> {
+    ) -> anyhow::Result<http_api::SwapContext> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -98,14 +98,14 @@ impl Sqlite {
                 .get_result(connection)
         }).await.context(db::Error::SwapNotFound)?;
 
-        Ok(http_api::DecisionSwap {
+        Ok(http_api::SwapContext {
             role: role.0,
             alpha: alpha_protocol.0,
             beta: beta_protocol.0,
         })
     }
 
-    pub async fn load_all_respawn_meta_swaps(&self) -> anyhow::Result<Vec<DecisionSwap>> {
+    pub async fn load_all_respawn_swap_context(&self) -> anyhow::Result<Vec<SwapContext>> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -140,7 +140,7 @@ impl Sqlite {
         })
             .await?
             .into_iter()
-            .map(|row| DecisionSwap {
+            .map(|row| SwapContext {
                 id: row.local_swap_id.0,
                 role: row.role.0,
                 alpha: row.alpha_protocol.0,

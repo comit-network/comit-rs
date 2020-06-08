@@ -41,7 +41,7 @@ use std::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub struct DecisionSwap {
+pub struct SwapContext {
     pub role: Role,
     pub alpha: Protocol,
     pub beta: Protocol,

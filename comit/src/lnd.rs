@@ -44,14 +44,14 @@ pub enum PaymentStatus {
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
 #[error("payment statuses don't match: expected {expected} but received {received}")]
-pub struct StatusMismatch {
+pub struct PaymentStatusMismatch {
     expected: PaymentStatus,
     received: PaymentStatus,
 }
 
 #[derive(Copy, Clone, Debug, thiserror::Error)]
 #[error("invoice states don't match: expected {expected} but received {received}")]
-pub struct StateMismatch {
+pub struct InvoiceStateMismatch {
     expected: InvoiceState,
     received: InvoiceState,
 }
@@ -269,7 +269,7 @@ impl WaitForAccepted for LndConnectorAsSender {
             match payment.status {
                 PaymentStatus::InFlight | PaymentStatus::Succeeded => return Ok(Accepted),
                 PaymentStatus::Unknown => continue,
-                PaymentStatus::Failed => bail!(StatusMismatch {
+                PaymentStatus::Failed => bail!(PaymentStatusMismatch {
                     expected: PaymentStatus::InFlight,
                     received: payment.status,
                 }),
@@ -292,7 +292,7 @@ impl WaitForSettled for LndConnectorAsSender {
             match payment.status {
                 PaymentStatus::Succeeded => break payment,
                 PaymentStatus::Unknown | PaymentStatus::InFlight => continue,
-                PaymentStatus::Failed => bail!(StatusMismatch {
+                PaymentStatus::Failed => bail!(PaymentStatusMismatch {
                     expected: PaymentStatus::Succeeded,
                     received: payment.status,
                 }),
@@ -428,7 +428,7 @@ impl WaitForOpened for LndConnectorAsReceiver {
             };
 
             match invoice.state {
-                InvoiceState::Cancelled => bail!(StateMismatch {
+                InvoiceState::Cancelled => bail!(InvoiceStateMismatch {
                     expected: InvoiceState::Open,
                     received: invoice.state,
                 }),
@@ -456,7 +456,7 @@ impl WaitForAccepted for LndConnectorAsReceiver {
             };
 
             match invoice.state {
-                InvoiceState::Cancelled => bail!(StateMismatch {
+                InvoiceState::Cancelled => bail!(InvoiceStateMismatch {
                     expected: InvoiceState::Accepted,
                     received: invoice.state,
                 }),
@@ -479,7 +479,7 @@ impl WaitForSettled for LndConnectorAsReceiver {
             };
 
             match invoice.state {
-                InvoiceState::Cancelled => bail!(StateMismatch {
+                InvoiceState::Cancelled => bail!(InvoiceStateMismatch {
                     expected: InvoiceState::Settled,
                     received: invoice.state,
                 }),

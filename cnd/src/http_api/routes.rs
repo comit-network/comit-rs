@@ -11,7 +11,7 @@ use crate::{
             AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
             BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
         },
-        route_factory, ActionNotFound, AliceSwap, BobSwap, DecisionSwap, Http,
+        route_factory, ActionNotFound, AliceSwap, BobSwap, Http, SwapContext,
     },
     storage::Load,
     DeployAction, Facade, FundAction, InitAction, LocalSwapId, Protocol, RedeemAction,
@@ -40,7 +40,7 @@ pub async fn handle_get_swap(
     swap_id: LocalSwapId,
 ) -> anyhow::Result<siren::Entity> {
     match facade.load(swap_id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -53,7 +53,7 @@ pub async fn handle_get_swap(
             > = facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Bob,
@@ -62,7 +62,7 @@ pub async fn handle_get_swap(
                 facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -75,7 +75,7 @@ pub async fn handle_get_swap(
             > = facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -84,7 +84,7 @@ pub async fn handle_get_swap(
                 facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Alice,
@@ -97,7 +97,7 @@ pub async fn handle_get_swap(
             > = facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Bob,
@@ -110,7 +110,7 @@ pub async fn handle_get_swap(
             > = facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -123,7 +123,7 @@ pub async fn handle_get_swap(
             > = facade.load(swap_id).await?;
             make_swap_entity(facade.clone(), swap_id, swap).await
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -386,7 +386,7 @@ pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
     let action = match facade.load(id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -399,7 +399,7 @@ async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             > = facade.load(id).await?;
             swap.init_action()?
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -431,7 +431,7 @@ async fn handle_action_deploy(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let action = match facade.load(id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -444,7 +444,7 @@ async fn handle_action_deploy(
             > = facade.load(id).await?;
             swap.deploy_action()?
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -453,7 +453,7 @@ async fn handle_action_deploy(
                 facade.load(id).await?;
             swap.deploy_action()?
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Alice,
@@ -466,7 +466,7 @@ async fn handle_action_deploy(
             > = facade.load(id).await?;
             swap.deploy_action()?
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -499,7 +499,7 @@ pub async fn action_fund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
     let response = match facade.load(id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -514,7 +514,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Bob,
@@ -525,7 +525,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -540,7 +540,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -551,7 +551,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Alice,
@@ -566,7 +566,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Bob,
@@ -581,7 +581,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -596,7 +596,7 @@ async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<A
             let action = swap.fund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -632,7 +632,7 @@ async fn handle_action_redeem(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let response = match facade.load(id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -647,7 +647,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Bob,
@@ -658,7 +658,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -673,7 +673,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -684,7 +684,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Alice,
@@ -699,7 +699,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Bob,
@@ -714,7 +714,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -729,7 +729,7 @@ async fn handle_action_redeem(
             let action = swap.redeem_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -765,7 +765,7 @@ async fn handle_action_refund(
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
     let response = match facade.load(id).await? {
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Halight,
             role: Role::Alice,
@@ -780,7 +780,7 @@ async fn handle_action_refund(
             let action = swap.refund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Halight,
             beta: Protocol::Herc20,
             role: Role::Bob,
@@ -791,7 +791,7 @@ async fn handle_action_refund(
             let action = swap.refund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Alice,
@@ -806,7 +806,7 @@ async fn handle_action_refund(
             let action = swap.refund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Herc20,
             beta: Protocol::Hbit,
             role: Role::Bob,
@@ -821,7 +821,7 @@ async fn handle_action_refund(
             let action = swap.refund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Alice,
@@ -836,7 +836,7 @@ async fn handle_action_refund(
             let action = swap.refund_action()?;
             ActionResponseBody::from(action)
         }
-        DecisionSwap {
+        SwapContext {
             alpha: Protocol::Hbit,
             beta: Protocol::Herc20,
             role: Role::Bob,

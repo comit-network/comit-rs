@@ -16,13 +16,13 @@ use crate::{
     },
     comit_api::LedgerKind,
     config::Settings,
-    db::{Rfc003Swap, Save, Sqlite},
+    db::{ForSwap, Rfc003Swap, Save, Sqlite},
     htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
     network::comit::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
-    save_and_start_swap,
     seed::RootSeed,
+    spawn::spawn,
     storage::Storage,
     swap_protocols::{
         rfc003::{
@@ -33,7 +33,7 @@ use crate::{
         },
         HashFunction, SwapProtocol,
     },
-    transaction, LocalSwapId, Role, SecretHash, SharedSwapId,
+    transaction, Load, LocalSwapId, Protocol, Role, SecretHash, SharedSwapId, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -847,14 +847,233 @@ impl libp2p::swarm::NetworkBehaviourEventProcess<comit::BehaviourOutEvent> for C
         let storage = self.storage.clone();
         let spawner = self.protocol_spawner.clone();
 
-        self.task_executor.spawn(
-            save_and_start_swap(storage, spawner, local_swap_id, remote_data).map_err(
-                |e: anyhow::Error| {
-                    tracing::error!("{}", e);
-                },
-            ),
-        );
+        let save_and_start_swap = async move {
+            let swap = storage.load(local_swap_id).await?;
+            save_swap_remote_data(&storage, swap, remote_data).await?;
+            spawn(&spawner, &storage, swap).await?;
+
+            Ok::<(), anyhow::Error>(())
+        };
+
+        self.task_executor
+            .spawn(save_and_start_swap.map_err(|e: anyhow::Error| {
+                tracing::error!("{}", e);
+            }));
     }
+}
+
+#[derive(Copy, Clone, Debug, thiserror::Error)]
+#[error(
+    "unable to save swap with id {local_swap_id} in database because the protocol combination is not supported"
+)]
+struct SaveUnsupportedSwap {
+    local_swap_id: LocalSwapId,
+}
+
+async fn save_swap_remote_data(
+    storage: &Storage,
+    swap: SwapContext,
+    data: RemoteData,
+) -> anyhow::Result<()> {
+    match (&swap, data) {
+        (
+            SwapContext {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Halight,
+                role: Role::Alice,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                lightning_identity: Some(lightning_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: ethereum_identity,
+                        beta_refund_identity: lightning_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Halight,
+                role: Role::Bob,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                lightning_identity: Some(lightning_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: ethereum_identity,
+                        beta_redeem_identity: lightning_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Halight,
+                beta: Protocol::Herc20,
+                role: Role::Alice,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                lightning_identity: Some(lightning_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: lightning_identity,
+                        beta_refund_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Halight,
+                beta: Protocol::Herc20,
+                role: Role::Bob,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                lightning_identity: Some(lightning_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: lightning_identity,
+                        beta_redeem_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Hbit,
+                role: Role::Alice,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: ethereum_identity,
+                        beta_refund_identity: bitcoin_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Herc20,
+                beta: Protocol::Hbit,
+                role: Role::Bob,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: ethereum_identity,
+                        beta_redeem_identity: bitcoin_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Hbit,
+                beta: Protocol::Herc20,
+                role: Role::Alice,
+                ..
+            },
+            RemoteData {
+                bitcoin_identity: Some(bitcoin_identity),
+                ethereum_identity: Some(ethereum_identity),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatAliceLearnedFromBob {
+                        alpha_redeem_identity: bitcoin_identity,
+                        beta_refund_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+        }
+        (
+            SwapContext {
+                alpha: Protocol::Hbit,
+                beta: Protocol::Herc20,
+                role: Role::Bob,
+                ..
+            },
+            RemoteData {
+                ethereum_identity: Some(ethereum_identity),
+                bitcoin_identity: Some(bitcoin_identity),
+                secret_hash: Some(secret_hash),
+                ..
+            },
+        ) => {
+            storage
+                .save(ForSwap {
+                    local_swap_id: swap.id,
+                    data: WhatBobLearnedFromAlice {
+                        secret_hash,
+                        alpha_refund_identity: bitcoin_identity,
+                        beta_redeem_identity: ethereum_identity,
+                    },
+                })
+                .await?;
+        }
+        _ => anyhow::bail!(SaveUnsupportedSwap {
+            local_swap_id: swap.id,
+        }),
+    };
+
+    Ok(())
 }
 
 impl<AL, BL, AA, BA, AI, BI> TryFrom<Request<AL, BL, AA, BA, AI, BI>> for OutboundRequest

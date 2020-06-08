@@ -10,9 +10,9 @@ use crate::{
     halight, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     seed::RootSeed,
-    start_swap,
+    spawn,
     swap_protocols::state::Get,
-    DecisionSwap, LocalSwapId, Protocol, Role, Side,
+    LocalSwapId, Protocol, Role, Side, SwapContext,
 };
 use anyhow::Context;
 use async_trait::async_trait;
@@ -62,18 +62,18 @@ impl Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::DecisionSwap> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::DecisionSwap> {
-        self.db.load_meta_swap(swap_id).await
+impl Load<http_api::SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapContext> {
+        self.db.load_swap_context(swap_id).await
     }
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
+impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<herc20::Params, halight::Params>> {
+    ) -> anyhow::Result<spawn::Swap<herc20::Params, halight::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, halight, herc20, secret_hash) = self
@@ -105,7 +105,7 @@ impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
             beta: build_halight_params(halight, secret_hash, id)?,
@@ -117,11 +117,11 @@ impl Load<start_swap::Swap<herc20::Params, halight::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
+impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<halight::Params, herc20::Params>> {
+    ) -> anyhow::Result<spawn::Swap<halight::Params, herc20::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, halight, herc20, secret_hash) = self
@@ -153,7 +153,7 @@ impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_halight_params(halight, secret_hash, id)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
@@ -165,11 +165,11 @@ impl Load<start_swap::Swap<halight::Params, herc20::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
+impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<herc20::Params, hbit::Params>> {
+    ) -> anyhow::Result<spawn::Swap<herc20::Params, hbit::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, hbit, herc20, secret_hash) = self
@@ -201,7 +201,7 @@ impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
             beta: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
@@ -213,11 +213,11 @@ impl Load<start_swap::Swap<herc20::Params, hbit::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
+impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<start_swap::Swap<hbit::Params, herc20::Params>> {
+    ) -> anyhow::Result<spawn::Swap<hbit::Params, herc20::Params>> {
         use crate::db::schema::swaps;
 
         let (swap, hbit, herc20, secret_hash) = self
@@ -249,7 +249,7 @@ impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
-        let swap = start_swap::Swap {
+        let swap = spawn::Swap {
             role,
             alpha: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
@@ -261,9 +261,9 @@ impl Load<start_swap::Swap<hbit::Params, herc20::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl LoadAll<DecisionSwap> for Storage {
-    async fn load_all(&self) -> anyhow::Result<Vec<DecisionSwap>> {
-        self.db.load_all_respawn_meta_swaps().await
+impl LoadAll<SwapContext> for Storage {
+    async fn load_all(&self) -> anyhow::Result<Vec<SwapContext>> {
+        self.db.load_all_respawn_swap_context().await
     }
 }
 
@@ -1052,8 +1052,8 @@ impl
 }
 
 #[async_trait::async_trait]
-impl Load<DecisionSwap> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<DecisionSwap> {
+impl Load<SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -1093,7 +1093,7 @@ impl Load<DecisionSwap> for Storage {
                 .get_result(connection)
         }).await.context(db::Error::SwapNotFound)?;
 
-        Ok(DecisionSwap {
+        Ok(SwapContext {
             id: swap_id,
             role: role.0,
             alpha: alpha_protocol.0,
@@ -1105,15 +1105,15 @@ impl Load<DecisionSwap> for Storage {
 #[async_trait::async_trait]
 impl Load<identity::Bitcoin> for Storage {
     async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<identity::Bitcoin> {
-        let swap: http_api::DecisionSwap = self.load(swap_id).await?;
+        let swap: http_api::SwapContext = self.load(swap_id).await?;
 
         let sk = match swap {
-            http_api::DecisionSwap {
+            http_api::SwapContext {
                 role: Role::Alice,
                 alpha: Protocol::Hbit,
                 ..
             }
-            | http_api::DecisionSwap {
+            | http_api::SwapContext {
                 role: Role::Bob,
                 beta: Protocol::Hbit,
                 ..
@@ -1121,12 +1121,12 @@ impl Load<identity::Bitcoin> for Storage {
                 .seed
                 .derive_swap_seed(swap_id)
                 .derive_transient_refund_identity(),
-            http_api::DecisionSwap {
+            http_api::SwapContext {
                 role: Role::Alice,
                 beta: Protocol::Hbit,
                 ..
             }
-            | http_api::DecisionSwap {
+            | http_api::SwapContext {
                 role: Role::Bob,
                 alpha: Protocol::Hbit,
                 ..
