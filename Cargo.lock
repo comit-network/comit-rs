@@ -2411,11 +2411,11 @@ dependencies = [
 
 [[package]]
 name = "pem"
-version = "0.7.0"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a1581760c757a756a41f0ee3ff01256227bdf64cb752839779b95ffb01c59793"
+checksum = "9373ed1ecd3d9c034b6ecb1b4b1ff74b9edd32099ad9ddc4d2acccb1d4bbdfb3"
 dependencies = [
- "base64 0.11.0",
+ "base64 0.12.1",
  "lazy_static",
  "regex",
 ]
