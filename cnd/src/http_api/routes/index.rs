@@ -10,7 +10,7 @@ use crate::{
     swap_protocols::{ledger, Rfc003Facade},
     Facade, LocalSwapId, Role,
 };
-use chrono::offset::Utc;
+use chrono::Utc;
 use digest::Digest;
 use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
@@ -72,7 +72,7 @@ pub async fn post_herc20_halight_bitcoin(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap(swap_id);
+    let swap = body.to_created_swap::<herc20::CreatedSwap, halight::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -114,7 +114,7 @@ pub async fn post_halight_bitcoin_herc20(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap(swap_id);
+    let swap = body.to_created_swap::<halight::CreatedSwap, herc20::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -156,7 +156,7 @@ pub async fn post_herc20_hbit(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap(swap_id);
+    let swap = body.to_created_swap::<herc20::CreatedSwap, hbit::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -204,7 +204,7 @@ pub async fn post_hbit_herc20(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap(swap_id);
+    let swap = body.to_created_swap::<hbit::CreatedSwap, herc20::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -296,88 +296,18 @@ impl From<Body<Hbit, Herc20>> for HbitHerc20 {
     }
 }
 
-trait ToCreatedSwap<A, B> {
-    fn to_created_swap(&self, id: LocalSwapId) -> CreatedSwap<A, B>;
-}
-
-impl ToCreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> for Body<Herc20, Halight> {
-    fn to_created_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> CreatedSwap<herc20::CreatedSwap, halight::CreatedSwap> {
+impl<A, B> Body<A, B> {
+    fn to_created_swap<CA, CB>(&self, swap_id: LocalSwapId) -> CreatedSwap<CA, CB>
+    where
+        CA: From<A>,
+        CB: From<B>,
+        Self: Clone,
+    {
         let body = self.clone();
 
-        let alpha = herc20::CreatedSwap::from(body.alpha);
-        let beta = halight::CreatedSwap::from(body.beta);
-        let start_of_swap = Utc::now().naive_local();
+        let alpha = CA::from(body.alpha);
+        let beta = CB::from(body.beta);
 
-        CreatedSwap {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role.0,
-            start_of_swap,
-        }
-    }
-}
-
-impl ToCreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> for Body<Halight, Herc20> {
-    fn to_created_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> CreatedSwap<halight::CreatedSwap, herc20::CreatedSwap> {
-        let body = self.clone();
-
-        let alpha = halight::CreatedSwap::from(body.alpha);
-        let beta = herc20::CreatedSwap::from(body.beta);
-        let start_of_swap = Utc::now().naive_local();
-
-        CreatedSwap {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role.0,
-            start_of_swap,
-        }
-    }
-}
-
-impl ToCreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> for Body<Herc20, Hbit> {
-    fn to_created_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> CreatedSwap<herc20::CreatedSwap, hbit::CreatedSwap> {
-        let body = self.clone();
-
-        let alpha = herc20::CreatedSwap::from(body.alpha);
-        let beta = hbit::CreatedSwap::from(body.beta);
-        let start_of_swap = Utc::now().naive_local();
-
-        CreatedSwap::<herc20::CreatedSwap, hbit::CreatedSwap> {
-            swap_id,
-            alpha,
-            beta,
-            peer: body.peer.into(),
-            address_hint: None,
-            role: body.role.0,
-            start_of_swap,
-        }
-    }
-}
-
-impl ToCreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> for Body<Hbit, Herc20> {
-    fn to_created_swap(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> CreatedSwap<hbit::CreatedSwap, herc20::CreatedSwap> {
-        let body = self.clone();
-
-        let alpha = hbit::CreatedSwap::from(body.alpha);
-        let beta = herc20::CreatedSwap::from(body.beta);
         let start_of_swap = Utc::now().naive_local();
 
         CreatedSwap {
