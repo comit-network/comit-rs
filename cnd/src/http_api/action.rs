@@ -277,6 +277,12 @@ impl From<ethereum::CallContract> for ActionResponseBody {
     }
 }
 
+impl From<comit::Never> for ActionResponseBody {
+    fn from(_: comit::Never) -> Self {
+        unreachable!("impl should be removed once ! type is stabilised")
+    }
+}
+
 impl ListRequiredFields for SendToAddress {
     fn list_required_fields() -> Vec<siren::Field> {
         vec![]

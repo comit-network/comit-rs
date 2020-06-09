@@ -13,14 +13,12 @@ use crate::{
     seed::RootSeed,
     spawn,
     swap_protocols::state::Get,
-    LocalSwapId, Protocol, Role, SecretHash, Side, SwapContext,
+    LocalSwapId, Protocol, Role, SecretHash, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
-use diesel::{
-    sql_types, BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,
-};
+use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
 /// Load data for a particular swap from the storage layer.
@@ -81,9 +79,17 @@ impl Storage {
     }
 }
 
+#[derive(Clone, Copy, Debug)]
+pub struct SwapContext {
+    pub id: LocalSwapId,
+    pub role: Role,
+    pub alpha: Protocol,
+    pub beta: Protocol,
+}
+
 #[async_trait::async_trait]
-impl Load<http_api::SwapContext> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapContext> {
+impl Load<SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         self.db.load_swap_context(swap_id).await
     }
 }
@@ -1036,57 +1042,6 @@ impl
                 beta_created: herc20_asset,
             }),
         }
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<SwapContext> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
-        #[derive(QueryableByName)]
-        struct Result {
-            #[sql_type = "sql_types::Text"]
-            role: Text<Role>,
-            #[sql_type = "sql_types::Text"]
-            alpha_protocol: Text<Protocol>,
-            #[sql_type = "sql_types::Text"]
-            beta_protocol: Text<Protocol>,
-        }
-
-        let Result { role, alpha_protocol, beta_protocol } = self.db.do_in_transaction(|connection| {
-            // Here is how this works:
-            // - COALESCE selects the first non-null value from a list of values
-            // - We use 3 sub-selects to select a static value (i.e. 'halight', etc) if that particular child table has a row with a foreign key to the parent table
-            // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
-            //
-            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halight`, `herc20` or `hbit`
-            diesel::sql_query(
-                r#"
-                SELECT
-                    role,
-                    COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
-                    ) as alpha_protocol,
-                    COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
-                    ) as beta_protocol
-                from swaps
-                    where local_swap_id = ?
-            "#,
-            )
-                .bind::<sql_types::Text, _>(Text(swap_id))
-                .get_result(connection)
-        }).await.context(db::Error::SwapNotFound)?;
-
-        Ok(SwapContext {
-            id: swap_id,
-            role: role.0,
-            alpha: alpha_protocol.0,
-            beta: beta_protocol.0,
-        })
     }
 }
 

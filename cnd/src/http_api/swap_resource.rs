@@ -90,7 +90,7 @@ pub async fn build_rfc003_siren_entity(
 ) -> anyhow::Result<siren::Entity> {
     let id = swap.swap_id;
 
-    with_swap_types!(types, {
+    rfc003_with_swap_types!(types, {
         let swap_has_failed = dependencies.swap_error_states.has_failed(&id).await;
 
         if swap_has_failed && on_fail == OnFail::Error {

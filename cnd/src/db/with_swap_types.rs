@@ -22,7 +22,7 @@ macro_rules! _match_role {
 }
 
 #[macro_export]
-macro_rules! with_swap_types {
+macro_rules! rfc003_with_swap_types {
     ($swap_types:expr, $fn:expr) => {{
         use crate::{
             asset,

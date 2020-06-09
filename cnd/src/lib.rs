@@ -37,6 +37,8 @@ pub mod quickcheck;
 mod seed;
 #[cfg(test)]
 pub mod spectral_ext;
+#[macro_use]
+pub mod with_swap_types;
 
 mod actions;
 pub mod comit_api;

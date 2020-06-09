@@ -3,21 +3,18 @@ pub mod peers;
 pub mod rfc003;
 
 use crate::{
-    asset,
     http_api::{
         action::ActionResponseBody,
-        halight, hbit, herc20, problem,
+        problem,
         protocol::{
             ActionName, AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams,
             BetaAbsoluteExpiry, BetaEvents, BetaLedger, BetaParams, GetRole, Ledger, LedgerEvents,
         },
-        route_factory, ActionNotFound, AliceSwap, BobSwap, Http, SwapContext,
+        route_factory, Http,
     },
     storage::Load,
-    DeployAction, Facade, FundAction, InitAction, LocalSwapId, Protocol, RedeemAction,
-    RefundAction, Role,
+    DeployAction, Facade, FundAction, InitAction, LocalSwapId, RedeemAction, RefundAction, Role,
 };
-use anyhow::bail;
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
 use warp::{http, http::StatusCode, Rejection, Reply};
@@ -27,123 +24,28 @@ pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn get_swap(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_get_swap(facade, swap_id)
+pub async fn get_swap(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_get_swap(id, facade)
         .await
         .map(|swap_resource| warp::reply::json(&swap_resource))
         .map_err(problem::from_anyhow)
         .map_err(into_rejection)
 }
 
-pub async fn handle_get_swap(
-    facade: Facade,
-    swap_id: LocalSwapId,
-) -> anyhow::Result<siren::Entity> {
-    match facade.load(swap_id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
-                facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                halight::Finalized,
-                herc20::Finalized,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsRedeemer,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsFunder,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsFunder,
-                herc20::Finalized,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsRedeemer,
-                herc20::Finalized,
-            > = facade.load(swap_id).await?;
-            make_swap_entity(facade.clone(), swap_id, swap).await
-        }
-        _ => unimplemented!("other combinations not suported yet"),
-    }
+pub async fn handle_get_swap(id: LocalSwapId, facade: Facade) -> anyhow::Result<siren::Entity> {
+    let swap_context = facade.load(id).await?;
+    within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let swap_entity = make_swap_entity(id, swap, facade.clone()).await?;
+
+        Ok(swap_entity)
+    })
 }
 
 async fn make_swap_entity<S>(
-    facade: Facade,
-    swap_id: LocalSwapId,
+    id: LocalSwapId,
     swap: S,
+    facade: Facade,
 ) -> anyhow::Result<siren::Entity>
 where
     S: GetRole
@@ -164,17 +66,17 @@ where
 {
     let role = swap.get_role();
 
-    let mut entity = create_swap_entity(swap_id, role)?;
+    let mut entity = create_swap_entity(id, role)?;
     add_params(&mut entity, &swap)?;
 
     match (swap.alpha_events(), swap.beta_events()) {
         (Some(alpha), Some(beta)) => {
             add_events(&mut entity, alpha, beta)?;
 
-            match next_available_action(facade, &swap).await? {
+            match next_available_action(&swap, facade).await? {
                 None => Ok(entity),
                 Some(action) => {
-                    let siren_action = make_siren_action(swap_id, action);
+                    let siren_action = make_siren_action(id, action);
                     Ok(entity.with_action(siren_action))
                 }
             }
@@ -265,7 +167,7 @@ fn add_events(
     Ok(())
 }
 
-async fn next_available_action<S>(facade: Facade, swap: &S) -> anyhow::Result<Option<ActionName>>
+async fn next_available_action<S>(swap: &S, facade: Facade) -> anyhow::Result<Option<ActionName>>
 where
     S: GetRole
         + DeployAction
@@ -325,12 +227,12 @@ where
     Ok(None)
 }
 
-fn make_siren_action(swap_id: LocalSwapId, action_name: ActionName) -> siren::Action {
+fn make_siren_action(id: LocalSwapId, action_name: ActionName) -> siren::Action {
     siren::Action {
         name: action_name.to_string(),
         class: vec![],
         method: Some(http::Method::GET),
-        href: format!("/swaps/{}/{}", swap_id, action_name),
+        href: format!("/swaps/{}/{}", id, action_name),
         title: None,
         _type: None,
         fields: vec![],
@@ -366,8 +268,8 @@ struct SwapResource {
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_init(swap_id, facade)
+pub async fn action_init(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_init(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -376,40 +278,19 @@ pub async fn action_init(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_init(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    let action = match facade.load(id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(id).await?;
-            swap.init_action()?
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(id).await?;
-            swap.init_action()?
-        }
-        _ => bail!(ActionNotFound),
-    };
-
-    let response = ActionResponseBody::from(action);
+    let swap_context = facade.load(id).await?;
+    let response = within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let action = swap.init_action()?;
+        ActionResponseBody::from(action)
+    });
 
     Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_deploy(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_deploy(swap_id, facade)
+pub async fn action_deploy(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_deploy(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -421,66 +302,19 @@ async fn handle_action_deploy(
     id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let action = match facade.load(id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(id).await?;
-            swap.deploy_action()?
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(id).await?;
-            swap.deploy_action()?
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsRedeemer,
-            > = facade.load(id).await?;
-            swap.deploy_action()?
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsRedeemer,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-            swap.deploy_action()?
-        }
-        _ => bail!(ActionNotFound),
-    };
-
-    let response = ActionResponseBody::from(action);
+    let swap_context = facade.load(id).await?;
+    let response = within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let action = swap.deploy_action()?;
+        ActionResponseBody::from(action)
+    });
 
     Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_fund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_fund(swap_id, facade)
+pub async fn action_fund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_fund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -489,128 +323,19 @@ pub async fn action_fund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Re
 
 #[allow(clippy::unit_arg, clippy::let_unit_value, clippy::cognitive_complexity)]
 async fn handle_action_fund(id: LocalSwapId, facade: Facade) -> anyhow::Result<ActionResponseBody> {
-    let response = match facade.load(id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
-                facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                halight::Finalized,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsRedeemer,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsFunder,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsFunder,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsRedeemer,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.fund_action()?;
-            ActionResponseBody::from(action)
-        }
-        _ => anyhow::bail!(ActionNotFound),
-    };
+    let swap_context = facade.load(id).await?;
+    let response = within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let action = swap.fund_action()?;
+        ActionResponseBody::from(action)
+    });
 
     Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_redeem(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_redeem(swap_id, facade)
+pub async fn action_redeem(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_redeem(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -622,128 +347,19 @@ async fn handle_action_redeem(
     id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let response = match facade.load(id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> =
-                facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                halight::Finalized,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsRedeemer,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsFunder,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsFunder,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsRedeemer,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.redeem_action()?;
-            ActionResponseBody::from(action)
-        }
-        _ => return Err(ActionNotFound.into()),
-    };
+    let swap_context = facade.load(id).await?;
+    let response = within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let action = swap.redeem_action()?;
+        ActionResponseBody::from(action)
+    });
 
     Ok(response)
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn action_refund(swap_id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
-    handle_action_refund(swap_id, facade)
+pub async fn action_refund(id: LocalSwapId, facade: Facade) -> Result<impl Reply, Rejection> {
+    handle_action_refund(id, facade)
         .await
         .map(|body| warp::reply::json(&body))
         .map_err(problem::from_anyhow)
@@ -755,95 +371,12 @@ async fn handle_action_refund(
     id: LocalSwapId,
     facade: Facade,
 ) -> anyhow::Result<ActionResponseBody> {
-    let response = match facade.load(id).await? {
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Halight,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                halight::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Halight,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized> =
-                facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsRedeemer,
-            > = facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Herc20,
-            beta: Protocol::Hbit,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Erc20,
-                asset::Bitcoin,
-                herc20::Finalized,
-                hbit::FinalizedAsFunder,
-            > = facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Alice,
-        } => {
-            let swap: AliceSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsFunder,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        SwapContext {
-            alpha: Protocol::Hbit,
-            beta: Protocol::Herc20,
-            role: Role::Bob,
-        } => {
-            let swap: BobSwap<
-                asset::Bitcoin,
-                asset::Erc20,
-                hbit::FinalizedAsRedeemer,
-                herc20::Finalized,
-            > = facade.load(id).await?;
-
-            let action = swap.refund_action()?;
-            ActionResponseBody::from(action)
-        }
-        _ => anyhow::bail!(ActionNotFound),
-    };
+    let swap_context = facade.load(id).await?;
+    let response = within_swap_context!(swap_context, {
+        let swap: ActorSwap = facade.load(id).await?;
+        let action = swap.refund_action()?;
+        ActionResponseBody::from(action)
+    });
 
     Ok(response)
 }

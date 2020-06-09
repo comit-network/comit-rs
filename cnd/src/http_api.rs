@@ -28,7 +28,7 @@ use crate::{
     ethereum::ChainId,
     htlc_location, identity,
     swap_protocols::{ledger, rfc003::SwapId, SwapProtocol},
-    transaction, Protocol, Role,
+    transaction, Role,
 };
 use libp2p::{Multiaddr, PeerId};
 use serde::{
@@ -39,13 +39,6 @@ use std::{
     ops::Deref,
     str::FromStr,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct SwapContext {
-    pub role: Role,
-    pub alpha: Protocol,
-    pub beta: Protocol,
-}
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Http<I>(pub I);
