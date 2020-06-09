@@ -328,7 +328,7 @@ impl ComitNode {
         identity: Option<identity::Lightning>,
     ) -> anyhow::Result<()> {
         if identity.is_some() {
-            return self.protocol_spawner.supports_halight();
+            return self.protocol_spawner.supports_halbit();
         }
         Ok(())
     }
@@ -879,7 +879,7 @@ async fn save_swap_remote_data(
         (
             SwapContext {
                 alpha: Protocol::Herc20,
-                beta: Protocol::Halight,
+                beta: Protocol::Halbit,
                 role: Role::Alice,
                 ..
             },
@@ -902,7 +902,7 @@ async fn save_swap_remote_data(
         (
             SwapContext {
                 alpha: Protocol::Herc20,
-                beta: Protocol::Halight,
+                beta: Protocol::Halbit,
                 role: Role::Bob,
                 ..
             },
@@ -926,7 +926,7 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Halight,
+                alpha: Protocol::Halbit,
                 beta: Protocol::Herc20,
                 role: Role::Alice,
                 ..
@@ -949,7 +949,7 @@ async fn save_swap_remote_data(
         }
         (
             SwapContext {
-                alpha: Protocol::Halight,
+                alpha: Protocol::Halbit,
                 beta: Protocol::Herc20,
                 role: Role::Bob,
                 ..

@@ -1,6 +1,6 @@
 use crate::{
     asset,
-    halight::{
+    halbit::{
         Accepted, Cancelled, Opened, Params, Settled, WaitForAccepted, WaitForCancelled,
         WaitForOpened, WaitForSettled,
     },

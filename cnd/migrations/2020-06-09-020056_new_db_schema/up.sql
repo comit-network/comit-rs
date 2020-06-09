@@ -36,7 +36,7 @@ CREATE TABLE herc20s
     FOREIGN KEY(swap_id)        REFERENCES swaps(id)
 );
 
-CREATE TABLE halights
+CREATE TABLE halbits
 (
     id                          INTEGER NOT NULL PRIMARY KEY,
     swap_id                     INTEGER NOT NULL,

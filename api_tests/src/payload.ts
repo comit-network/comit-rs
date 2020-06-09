@@ -1,19 +1,56 @@
-/**
- * cnd's REST API swap response for the split protocols (han, herc20, halight).
- *
- * Defined here until it is stabilized. Once stabilized, it can be moved to the SDK.
- */
-
 import {
     Action,
     EmbeddedRepresentationSubEntity,
     Entity,
     Link,
 } from "comit-sdk/dist/src/cnd/siren";
+import { Peer } from "comit-sdk";
+
+/**
+ * Payloads for the `/swaps/` REST API.
+ */
+
+/*
+ * The payload for POST requests to create a swap on the cnd REST API.
+ */
+interface Payload<A, B> {
+    alpha: A;
+    beta: B;
+    role: "Alice" | "Bob";
+    peer: Peer;
+}
+
+export type HalbitHerc20Payload = Payload<HalbitPayload, Herc20Payload>;
+export type Herc20HalbitPayload = Payload<Herc20Payload, HalbitPayload>;
+export type HbitHerc20Payload = Payload<HbitPayload, Herc20Payload>;
+export type Herc20HbitPayload = Payload<Herc20Payload, HbitPayload>;
+
+export type HalbitPayload = {
+    amount: string;
+    identity: string;
+    network: string;
+    cltv_expiry: number;
+};
+
+export type Herc20Payload = {
+    amount: string;
+    identity: string;
+    token_contract: string;
+    absolute_expiry: number;
+    chain_id: number;
+};
+
+export type HbitPayload = {
+    amount: string;
+    final_identity: string;
+    network: string;
+    absolute_expiry: number;
+};
 
 /**
  * The payload returned when fetching one swap on the `/swaps/:id` endpoint
  */
+
 export interface SwapResponse extends Entity {
     properties: Properties;
     entities: (LedgerState | LedgerParameters)[];
@@ -23,6 +60,7 @@ export interface SwapResponse extends Entity {
      */
     links: Link[];
 }
+
 /**
  * Element of the array in the payload returned when fetching all swaps on the `/swaps/` endpoint
  */
@@ -35,6 +73,7 @@ export interface SwapElementResponse extends EmbeddedRepresentationSubEntity {
      */
     links: Link[];
 }
+
 /**
  * The properties of a swap
  */
@@ -48,31 +87,17 @@ export interface Properties {
      */
     role: "Alice" | "Bob";
 }
+
 /**
  * The overall status of a swap
  */
 export enum SwapStatus {
-    /**
-     * The swap was created via the REST API but the communication phase hasn't yet been finalized.
-     */
     Created = "CREATED",
-    /**
-     * The communication was finalized and blockchain actions are needed or happening.
-     */
     InProgress = "IN_PROGRESS",
-    /**
-     * The swap is finished and the assets were swapped.
-     */
     Swapped = "SWAPPED",
-    /**
-     * The swap is finished and the assets were not swapped.
-     */
     NotSwapped = "NOT_SWAPPED",
-    /**
-     * An unexpected internal failure aborted the swap.
-     */
-    InternalFailure = "INTERNAL_FAILURE",
 }
+
 /**
  * The parameters of a given ledger
  */
@@ -89,36 +114,25 @@ export interface LedgerParameters extends EmbeddedRepresentationSubEntity {
      * Class of this sub-entity to facilitate parsing.
      */
     class: ["parameters"];
-    properties: HanEthereum | HanBitcoin | Herc20 | HalightBitcoin;
+    properties: Hbit | Herc20 | Halbit;
 }
-export interface HanEthereum {
-    protocol: "han-ethereum";
-    /**
-     * Quantity in wei
-     */
-    quantity: string;
+
+export interface Hbit {
+    protocol: "hbit";
+    quantity: string; // In Satoshi.
 }
-export interface HanBitcoin {
-    protocol: "han-bitcoin";
-    /**
-     * Quantity in satoshi
-     */
-    quantity: string;
-}
+
 export interface Herc20 {
     protocol: "herc20";
-    /**
-     * Quantity in wei
-     */
-    quantity: string;
+    quantity: string; // In Wei.
     contract_address: string;
 }
-export interface HalightBitcoin {
-    /**
-     * Quantity in satoshi
-     */
-    protocol: "halight";
+
+export interface Halbit {
+    protocol: "halbit";
+    quantity: string; // In Satoshi.
 }
+//
 /**
  * The detailed description of the ledger state.
  */
@@ -136,16 +150,11 @@ export interface LedgerState extends EmbeddedRepresentationSubEntity {
      */
     class: ["state"];
     properties: {
-        /**
-         * Ledger event
-         */
         events: LedgerEvent;
-        /**
-         * The status of the escrow (HTLC or Invoice).
-         */
         status: EscrowStatus;
     };
 }
+
 /**
  * The ledger events related to a given step.
  */
@@ -199,6 +208,7 @@ export enum EscrowStatus {
      */
     IncorrectlyFunded = "INCORRECTLY_FUNDED",
 }
+
 /**
  * The possible steps needed on each side of the swap for its execution.
  *
@@ -212,6 +222,7 @@ export enum Step {
     Redeem = "redeem",
     Refund = "refund",
 }
+
 /**
  * An action that is available for the given swap.
  */

@@ -69,21 +69,21 @@ impl Sqlite {
         let Result { role, alpha_protocol, beta_protocol } = self.do_in_transaction(|connection| {
             // Here is how this works:
             // - COALESCE selects the first non-null value from a list of values
-            // - We use 3 sub-selects to select a static value (i.e. 'halight', etc) if that particular child table has a row with a foreign key to the parent table
+            // - We use 3 sub-selects to select a static value (i.e. 'halbit', etc) if that particular child table has a row with a foreign key to the parent table
             // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
             //
-            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halight`, `herc20` or `hbit`
+            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halbit`, `herc20` or `hbit`
             diesel::sql_query(
                 r#"
                 SELECT
                     role,
                     COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
+                       (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),
                        (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
                        (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
                     ) as alpha_protocol,
                     COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
+                       (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Beta'),
                        (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
                        (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
                     ) as beta_protocol
@@ -123,12 +123,12 @@ impl Sqlite {
                         local_swap_id,
                         role,
                         COALESCE(
-                           (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
+                           (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Alpha'),
                            (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
                            (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
                         ) as alpha_protocol,
                         COALESCE(
-                           (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
+                           (SELECT 'halbit' from halbits where halbits.swap_id = swaps.id and halbits.side = 'Beta'),
                            (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
                            (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
                         ) as beta_protocol

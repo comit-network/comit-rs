@@ -98,19 +98,19 @@ pub fn create(
         .and(rfc003_facade)
         .and_then(http_api::routes::index::get_info);
 
-    let herc20_halight_bitcoin = warp::post()
-        .and(warp::path!("swaps" / "herc20" / "halight"))
+    let herc20_halbit = warp::post()
+        .and(warp::path!("swaps" / "herc20" / "halbit"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_herc20_halight_bitcoin);
+        .and_then(http_api::routes::index::post_herc20_halbit);
 
-    let halight_bitcoin_herc20 = warp::post()
-        .and(warp::path!("swaps" / "halight" / "herc20"))
+    let halbit_herc20 = warp::post()
+        .and(warp::path!("swaps" / "halbit" / "herc20"))
         .and(warp::path::end())
         .and(warp::body::json())
         .and(facade.clone())
-        .and_then(http_api::routes::index::post_halight_bitcoin_herc20);
+        .and_then(http_api::routes::index::post_halbit_herc20);
 
     let herc20_hbit = warp::post()
         .and(warp::path!("swaps" / "herc20" / "hbit"))
@@ -181,8 +181,8 @@ pub fn create(
         .or(get_peers)
         .or(get_info_siren)
         .or(get_info)
-        .or(herc20_halight_bitcoin)
-        .or(halight_bitcoin_herc20)
+        .or(herc20_halbit)
+        .or(halbit_herc20)
         .or(get_swap)
         .or(action_init)
         .or(action_fund)

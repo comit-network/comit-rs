@@ -620,7 +620,7 @@ mod tests {
         asset::ethereum::FromWei,
         network::{test_swarm, DialInformation},
     };
-    use comit::{asset, network::Herc20Halight};
+    use comit::{asset, network::Herc20Halbit};
     use digest::Digest;
     use futures::future;
     use std::str::FromStr;
@@ -653,7 +653,7 @@ mod tests {
             bitcoin_identity: None,
         };
 
-        let digest = Herc20Halight {
+        let digest = Herc20Halbit {
             ethereum_absolute_expiry: 12345.into(),
             erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             token_contract: identity::Ethereum::random(),

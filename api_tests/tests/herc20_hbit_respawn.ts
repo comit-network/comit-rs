@@ -9,7 +9,7 @@ import { twoActorTest } from "../src/actor_test";
 
 describe("herc20-hbit-respawn", () => {
     it(
-        "herc20-hbit-alice-misses-bob-fund",
+        "herc20-hbit-alice-misses-bob-funds",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
@@ -46,7 +46,7 @@ describe("herc20-hbit-respawn", () => {
     );
 
     it(
-        "herc20-hbit-bob-misses-alice-redeem",
+        "herc20-hbit-bob-misses-alice-redeems",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
@@ -84,7 +84,7 @@ describe("herc20-hbit-respawn", () => {
     );
 
     it(
-        "hbit-herc20-alice-misses-bob-deploy-and-fund",
+        "hbit-herc20-alice-misses-bob-deploys-and-funds",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
@@ -121,7 +121,7 @@ describe("herc20-hbit-respawn", () => {
     );
 
     it(
-        "hbit-herc20-bob-down-misses-alice-redeem",
+        "hbit-herc20-bob-down-misses-alice-redeems",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {

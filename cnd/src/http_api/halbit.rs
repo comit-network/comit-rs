@@ -4,7 +4,7 @@ use crate::{
     RelativeTime, Secret, SecretHash,
 };
 
-pub use crate::halight::*;
+pub use crate::halbit::*;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Finalized {

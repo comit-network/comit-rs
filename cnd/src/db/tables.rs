@@ -1,14 +1,14 @@
 use crate::{
     bitcoin,
     db::{
-        schema::{address_book, halights, hbits, herc20s, secret_hashes, swaps},
+        schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
             custom_sql_types::{Text, U32},
             BitcoinNetwork, Erc20Amount, EthereumAddress, Satoshis,
         },
         Sqlite,
     },
-    halight, hbit, herc20, identity, lightning, LocalSwapId, Role, Side,
+    halbit, hbit, herc20, identity, lightning, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;
@@ -148,8 +148,8 @@ impl IntoInsertable for herc20::CreatedSwap {
 
 #[derive(Associations, Clone, Debug, Identifiable, Queryable, PartialEq)]
 #[belongs_to(Swap)]
-#[table_name = "halights"]
-pub struct Halight {
+#[table_name = "halbits"]
+pub struct Halbit {
     id: i32,
     swap_id: i32,
     pub amount: Text<Satoshis>,
@@ -162,8 +162,8 @@ pub struct Halight {
 }
 
 #[derive(Insertable, Debug, Clone)]
-#[table_name = "halights"]
-pub struct InsertableHalight {
+#[table_name = "halbits"]
+pub struct InsertableHalbit {
     pub swap_id: i32,
     pub amount: Text<Satoshis>,
     pub network: Text<BitcoinNetwork>,
@@ -174,8 +174,8 @@ pub struct InsertableHalight {
     pub side: Text<Side>,
 }
 
-impl IntoInsertable for halight::CreatedSwap {
-    type Insertable = InsertableHalight;
+impl IntoInsertable for halbit::CreatedSwap {
+    type Insertable = InsertableHalbit;
 
     fn into_insertable(self, swap_id: i32, role: Role, side: Side) -> Self::Insertable {
         let redeem_identity = match (role, side) {
@@ -188,7 +188,7 @@ impl IntoInsertable for halight::CreatedSwap {
         };
         assert!(redeem_identity.is_some() || refund_identity.is_some());
 
-        InsertableHalight {
+        InsertableHalbit {
             swap_id,
             amount: Text(self.asset.into()),
             network: Text(self.network.into()),
@@ -258,13 +258,13 @@ impl Insert<InsertableHerc20> for Sqlite {
     }
 }
 
-impl Insert<InsertableHalight> for Sqlite {
+impl Insert<InsertableHalbit> for Sqlite {
     fn insert(
         &self,
         connection: &SqliteConnection,
-        insertable: &InsertableHalight,
+        insertable: &InsertableHalbit,
     ) -> anyhow::Result<()> {
-        diesel::insert_into(halights::dsl::halights)
+        diesel::insert_into(halbits::dsl::halbits)
             .values(insertable)
             .execute(connection)?;
 
@@ -352,40 +352,40 @@ impl Sqlite {
         Ok(())
     }
 
-    pub fn update_halight_refund_identity(
+    pub fn update_halbit_refund_identity(
         &self,
         connection: &SqliteConnection,
         local_swap_id: LocalSwapId,
         identity: identity::Lightning,
     ) -> anyhow::Result<()> {
-        diesel::update(halights::table)
-            .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(halights::refund_identity.eq(Text(identity)))
+        diesel::update(halbits::table)
+            .filter(halbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(halbits::refund_identity.eq(Text(identity)))
             .execute(connection)?
             .ensure_single_row_affected()
             .with_context(|| {
                 format!(
-                    "failed to update halight refund identity for swap {}",
+                    "failed to update halbit refund identity for swap {}",
                     local_swap_id
                 )
             })?;
         Ok(())
     }
 
-    pub fn update_halight_redeem_identity(
+    pub fn update_halbit_redeem_identity(
         &self,
         connection: &SqliteConnection,
         local_swap_id: LocalSwapId,
         identity: identity::Lightning,
     ) -> anyhow::Result<()> {
-        diesel::update(halights::table)
-            .filter(halights::swap_id.eq_any(swap_id_fk!(local_swap_id)))
-            .set(halights::redeem_identity.eq(Text(identity)))
+        diesel::update(halbits::table)
+            .filter(halbits::swap_id.eq_any(swap_id_fk!(local_swap_id)))
+            .set(halbits::redeem_identity.eq(Text(identity)))
             .execute(connection)?
             .ensure_single_row_affected()
             .with_context(|| {
                 format!(
-                    "failed to update halight redeem identity for swap {}",
+                    "failed to update halbit redeem identity for swap {}",
                     local_swap_id
                 )
             })?;
@@ -565,18 +565,18 @@ mod tests {
     proptest! {
         /// Verify that our database enforces foreign key relations
         ///
-        /// We generate a random InsertableHalight. This comes with a
+        /// We generate a random InsertableHalbit. This comes with a
         /// random swap_id already.
         /// We start with an empty database, so there is no swap that
         /// exists with this swap_id.
         #[test]
         fn fk_relations_are_enforced(
-            insertable_halight in db::tables::insertable_halight(),
+            insertable_halbit in db::tables::insertable_halbit(),
         ) {
             let db = Sqlite::test();
             let mut runtime = Runtime::new().unwrap();
 
-            let result = runtime.block_on(db.do_in_transaction(|conn| db.insert(conn, &insertable_halight)));
+            let result = runtime.block_on(db.do_in_transaction(|conn| db.insert(conn, &insertable_halbit)));
 
             result.unwrap_err();
         }

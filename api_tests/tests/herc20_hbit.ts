@@ -40,7 +40,7 @@ describe("herc20-hbit", () => {
     );
 
     it(
-        "herc20-hbit-alice-refunds-bob-refunds",
+        "herc20-hbit-bob-refunds-alice-refunds",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
