@@ -10,7 +10,7 @@ use crate::{
     btsieve::{BlockByHash, LatestBlock},
     Timestamp,
 };
-use bitcoin::{hashes::core::fmt::Formatter, secp256k1};
+use bitcoin::secp256k1;
 use serde::{
     de::{self, Visitor},
     Deserialize, Deserializer, Serialize, Serializer,
@@ -45,7 +45,7 @@ impl fmt::Display for PublicKey {
 }
 
 impl fmt::Display for Address {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
     }
 }
