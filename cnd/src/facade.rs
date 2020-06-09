@@ -1,4 +1,5 @@
 use crate::{
+    btsieve::LatestBlock,
     connectors::Connectors,
     db::{Save, Sqlite},
     network::{DialInformation, Identities, Swarm},
@@ -6,6 +7,7 @@ use crate::{
     LocalSwapId, Role, Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
+use comit::bitcoin;
 
 /// This is a facade that implements all the required traits and forwards them
 /// to another implementation. This allows us to keep the number of arguments to
@@ -32,15 +34,24 @@ impl Facade {
             .await
     }
 
-    /// Returns the Bitcoin median time past, used for nLockTime and
-    /// CheckLockTimeVerify.
+    /// Returns the current Bitcoin median time past.
     pub async fn bitcoin_median_time_past(&self) -> anyhow::Result<Timestamp> {
-        self.connectors.bitcoin.median_time_past().await
+        let timestamp = bitcoin::median_time_past(self.connectors.bitcoin.as_ref()).await?;
+
+        Ok(timestamp)
     }
 
     /// Returns the timestamp of the latest Ethereum block.
     pub async fn ethereum_latest_time(&self) -> anyhow::Result<Timestamp> {
-        self.connectors.ethereum.latest_timestamp().await
+        let timestamp = self
+            .connectors
+            .ethereum
+            .latest_block()
+            .await?
+            .timestamp
+            .into();
+
+        Ok(timestamp)
     }
 }
 

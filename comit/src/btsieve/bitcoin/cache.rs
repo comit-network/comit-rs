@@ -1,7 +1,4 @@
-use crate::{
-    btsieve::{BlockByHash, LatestBlock},
-    Timestamp,
-};
+use crate::btsieve::{BlockByHash, LatestBlock};
 use async_trait::async_trait;
 use bitcoin::{util::hash::BitcoinHash, Block, BlockHash as Hash, BlockHash};
 use derivative::Derivative;
@@ -70,29 +67,5 @@ where
         guard.put(block_hash, block.clone());
 
         Ok(block)
-    }
-}
-
-impl<C> Cache<C>
-where
-    C: LatestBlock<Block = Block> + BlockByHash<Block = Block, BlockHash = Hash>,
-{
-    /// Median time past is defined as the median of the blocktimes from the
-    /// last 11 blocks.
-    pub async fn median_time_past(&self) -> anyhow::Result<Timestamp> {
-        let mut block_times = vec![];
-
-        let mut current = self.latest_block().await?;
-        block_times.push(current.header.time);
-
-        for _ in 0..10 {
-            let prev = current.header.prev_blockhash;
-            current = self.block_by_hash(prev).await?;
-            block_times.push(current.header.time);
-        }
-
-        block_times.sort();
-        let median = block_times[5];
-        Ok(Timestamp::from(median))
     }
 }
