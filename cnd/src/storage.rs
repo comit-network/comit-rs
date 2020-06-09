@@ -320,12 +320,7 @@ impl
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -352,12 +347,7 @@ impl
                 },
                 secret,
             }),
-            _ => Ok(http_api::AliceSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Created {
+            _ => Ok(http_api::AliceSwap::Created {
                 alpha_created: herc20_asset,
                 beta_created: halight_asset,
             }),
@@ -418,12 +408,7 @@ impl
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -450,12 +435,7 @@ impl
                 },
                 secret,
             }),
-            _ => Ok(http_api::AliceSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Created {
+            _ => Ok(http_api::AliceSwap::Created {
                 beta_created: herc20_asset,
                 alpha_created: halight_asset,
             }),
@@ -516,12 +496,7 @@ impl
         let halight_asset = halight.amount.0.into();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -551,12 +526,7 @@ impl
                     .secret_hash
                     .0,
             }),
-            _ => Ok(http_api::BobSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Created {
+            _ => Ok(http_api::BobSwap::Created {
                 alpha_created: herc20_asset,
                 beta_created: halight_asset,
             }),
@@ -617,12 +587,7 @@ impl
         let halight_asset = halight.amount.0.into();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
                     network: halight.network.0.into(),
@@ -652,12 +617,7 @@ impl
                     .secret_hash
                     .0,
             }),
-            _ => Ok(http_api::BobSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Created {
+            _ => Ok(http_api::BobSwap::Created {
                 alpha_created: halight_asset,
                 beta_created: herc20_asset,
             }),

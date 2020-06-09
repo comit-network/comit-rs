@@ -275,11 +275,11 @@ impl AlphaAbsoluteExpiry
 {
     fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
         match self {
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Created { .. } => None,
-            AliceSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>::Finalized {
+            AliceSwap::Created { .. } => None,
+            AliceSwap::Finalized {
                 alpha_finalized: herc20::Finalized { expiry, .. },
                 ..
-            } => Some(*expiry)
+            } => Some(*expiry),
         }
     }
 }

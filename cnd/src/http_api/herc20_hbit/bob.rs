@@ -235,11 +235,11 @@ impl AlphaAbsoluteExpiry
 {
     fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
         match self {
-            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>::Created { .. } => None,
-            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>::Finalized {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
                 alpha_finalized: herc20::Finalized { expiry, .. },
                 ..
-            } => Some(*expiry)
+            } => Some(*expiry),
         }
     }
 }
@@ -249,11 +249,11 @@ impl BetaAbsoluteExpiry
 {
     fn beta_absolute_expiry(&self) -> Option<Timestamp> {
         match self {
-            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>::Created { .. } => None,
-            BobSwap::<asset::Erc20, asset::Bitcoin, herc20::Finalized, hbit::FinalizedAsFunder>::Finalized {
+            BobSwap::Created { .. } => None,
+            BobSwap::Finalized {
                 beta_finalized: hbit::FinalizedAsFunder { expiry, .. },
                 ..
-            } => Some(*expiry)
+            } => Some(*expiry),
         }
     }
 }
