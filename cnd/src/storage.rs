@@ -4,8 +4,9 @@ use crate::{
         self,
         tables::{Halight, Hbit, Herc20, Swap},
         wrapper_types::custom_sql_types::Text,
-        ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHerc20RedeemIdentity,
-        NoHerc20RefundIdentity, NoSecretHash, Save, Sqlite,
+        ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHbitRedeemIdentity,
+        NoHbitRefundIdentity, NoHerc20RedeemIdentity, NoHerc20RefundIdentity, NoSecretHash, Save,
+        Sqlite,
     },
     halight, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
@@ -223,7 +224,7 @@ impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
         let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
-            beta: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
+            beta: build_hbit_params(hbit, self.seed, role, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
 
@@ -270,7 +271,7 @@ impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
 
         let swap = spawn::Swap {
             role,
-            alpha: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
+            alpha: build_hbit_params(hbit, self.seed, role, secret_hash, id)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
@@ -1342,11 +1343,11 @@ impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Bitcoin, identity::Ethereum>
 }
 
 fn build_hbit_params(
-    seed: RootSeed,
     hbit: Hbit,
-    id: LocalSwapId,
+    seed: RootSeed,
     role: Role,
     secret_hash: SecretHash,
+    id: LocalSwapId,
 ) -> anyhow::Result<hbit::Params> {
     let (redeem, refund) = match (hbit.side.0, role) {
         (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
@@ -1354,12 +1355,12 @@ fn build_hbit_params(
                 &*crate::SECP,
                 &seed.derive_swap_seed(id).derive_transient_redeem_identity(),
             );
-            let refund = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
+            let refund = hbit.transient_identity.ok_or(NoHbitRefundIdentity(id))?.0;
 
             (redeem, refund)
         }
         (Side::Alpha, Role::Alice) | (Side::Beta, Role::Bob) => {
-            let redeem = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
+            let redeem = hbit.transient_identity.ok_or(NoHbitRedeemIdentity(id))?.0;
             let refund = identity::Bitcoin::from_secret_key(
                 &*crate::SECP,
                 &seed.derive_swap_seed(id).derive_transient_refund_identity(),
