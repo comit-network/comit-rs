@@ -12,12 +12,12 @@ use crate::LocalSwapId;
 pub struct NoSecretHash(pub LocalSwapId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no halight refund identity found in database for swap {0}")]
-pub struct NoHalightRefundIdentity(pub LocalSwapId);
+#[error("no halbit refund identity found in database for swap {0}")]
+pub struct NoHalbitRefundIdentity(pub LocalSwapId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
-#[error("no halight redeem identity found in database for swap {0}")]
-pub struct NoHalightRedeemIdentity(pub LocalSwapId);
+#[error("no halbit redeem identity found in database for swap {0}")]
+pub struct NoHalbitRedeemIdentity(pub LocalSwapId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no herc20 refund identity found in database for swap {0}")]

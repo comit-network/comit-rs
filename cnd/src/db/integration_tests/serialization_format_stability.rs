@@ -67,7 +67,7 @@ fn secrethash() {
 
 #[test]
 fn protocol() {
-    roundtrip_test::<Protocol>("halight");
+    roundtrip_test::<Protocol>("halbit");
     roundtrip_test::<Protocol>("hbit");
     roundtrip_test::<Protocol>("herc20");
     assert_num_variants::<Protocol>(3)

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Start using protocol name `halbit` instead of `halight` for Bitcoin swaps done on the Lightning network.
 -   **Breaking Change**: Rename `parity` to `geth` in the configuration file as we are only testing the software with Geth as part of the CI.
 
 ## [0.7.3] - 2020-04-14

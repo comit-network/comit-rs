@@ -11,7 +11,7 @@ use std::{
 };
 use tokio::sync::Mutex;
 
-pub use comit::halight::*;
+pub use comit::halbit::*;
 
 /// The lightning invoice expiry is used to tell the receiving lnd
 /// until when should the payment of this invoice can be accepted.
@@ -19,8 +19,7 @@ pub use comit::halight::*;
 /// If a payer tries to pay an expired invoice, lnd will automatically
 /// reject the payment.
 ///
-/// In the case of han-ether-halight, there are 3 expiries to take in
-/// account:
+/// In the case of halbit, there are 3 expiries to take in account:
 /// 1. alpha expiry: The absolute time from when ether can be refunded to
 /// Alice
 /// 2. cltv or beta expiry: The relative time from when Bob can go on chain
@@ -101,7 +100,7 @@ pub const INVOICE_EXPIRY_SECS: RelativeTime = RelativeTime::new(3600);
 
 /// HTLC Lightning Bitcoin atomic swap protocol.
 
-/// Creates a new instance of the halight protocol.
+/// Creates a new instance of the halbit protocol.
 ///
 /// This wrapper functions allows us to reuse code within `cnd` without having
 /// to give knowledge about tracing or the state hashmaps to the `comit` crate.
@@ -115,8 +114,8 @@ pub async fn new<C>(
 ) where
     C: WaitForOpened + WaitForAccepted + WaitForSettled + WaitForCancelled,
 {
-    let mut events = comit::halight::new(&connector, params)
-        .instrument_protocol(id, role, side, Protocol::Halight)
+    let mut events = comit::halbit::new(&connector, params)
+        .instrument_protocol(id, role, side, Protocol::Halbit)
         .inspect_ok(|event| tracing::info!("yielded event {}", event))
         .inspect_err(|error| tracing::error!("swap failed with {:?}", error));
 

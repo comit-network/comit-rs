@@ -1,5 +1,5 @@
 use crate::{
-    btsieve, halight, hbit, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side,
+    btsieve, halbit, hbit, herc20, http_api::LedgerNotConfigured, LocalSwapId, Role, Side,
 };
 use chrono::NaiveDateTime;
 use comit::lnd::{LndConnectorAsReceiver, LndConnectorAsSender, LndConnectorParams};
@@ -16,7 +16,7 @@ pub struct ProtocolSpawner {
     runtime_handle: Handle,
 
     herc20_states: Arc<herc20::States>,
-    halight_states: Arc<halight::States>,
+    halbit_states: Arc<halbit::States>,
     hbit_states: Arc<hbit::States>,
 }
 
@@ -40,7 +40,7 @@ impl ProtocolSpawner {
         lnd_connector_params: Option<LndConnectorParams>,
         runtime_handle: Handle,
         herc20_states: Arc<herc20::States>,
-        halight_states: Arc<halight::States>,
+        halbit_states: Arc<halbit::States>,
         hbit_states: Arc<hbit::States>,
     ) -> Self {
         Self {
@@ -49,12 +49,12 @@ impl ProtocolSpawner {
             lnd_connector_params,
             runtime_handle,
             herc20_states,
-            halight_states,
+            halbit_states,
             hbit_states,
         }
     }
 
-    pub fn supports_halight(&self) -> anyhow::Result<()> {
+    pub fn supports_halbit(&self) -> anyhow::Result<()> {
         match self.lnd_connector_params {
             Some(_) => Ok(()),
             None => Err(anyhow::Error::from(LedgerNotConfigured {
@@ -110,11 +110,11 @@ impl Spawn<hbit::Params> for ProtocolSpawner {
     }
 }
 
-impl Spawn<halight::Params> for ProtocolSpawner {
+impl Spawn<halbit::Params> for ProtocolSpawner {
     fn spawn(
         &self,
         id: LocalSwapId,
-        params: halight::Params,
+        params: halbit::Params,
         _: NaiveDateTime,
         side: Side,
         role: Role,
@@ -132,22 +132,22 @@ impl Spawn<halight::Params> for ProtocolSpawner {
 
         match (role, side) {
             (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
-                self.runtime_handle.spawn(halight::new(
+                self.runtime_handle.spawn(halbit::new(
                     id,
                     params,
                     role,
                     side,
-                    self.halight_states.clone(),
+                    self.halbit_states.clone(),
                     LndConnectorAsSender::from(lnd_connector_params.clone()),
                 ));
             }
             (Role::Bob, Side::Alpha) | (Role::Alice, Side::Beta) => {
-                self.runtime_handle.spawn(halight::new(
+                self.runtime_handle.spawn(halbit::new(
                     id,
                     params,
                     role,
                     side,
-                    self.halight_states.clone(),
+                    self.halbit_states.clone(),
                     LndConnectorAsReceiver::from(lnd_connector_params.clone()),
                 ));
             }

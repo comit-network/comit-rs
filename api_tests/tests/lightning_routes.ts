@@ -1,6 +1,6 @@
 import { oneActorTest, twoActorTest } from "../src/actor_test";
 import SwapFactory from "../src/actors/swap_factory";
-import { HalightHerc20RequestBody, Herc20HalightRequestBody } from "comit-sdk";
+import { HalbitHerc20Create, Herc20HalbitCreate } from "../src/payload";
 
 // ******************************************** //
 // Lightning routes                               //
@@ -8,10 +8,9 @@ import { HalightHerc20RequestBody, Herc20HalightRequestBody } from "comit-sdk";
 
 describe("Lightning routes tests", () => {
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-bad-request",
+        "create-herc20-halbit-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob))
-                .herc20Halight;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).herc20Halbit;
 
             const expectedProblem = {
                 status: 400,
@@ -30,10 +29,9 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-bad-request",
+        "create-halbit-herc20-returns-bad-request",
         twoActorTest(async ({ alice, bob }) => {
-            const bodies = (await SwapFactory.newSwap(alice, bob))
-                .halightHerc20;
+            const bodies = (await SwapFactory.newSwap(alice, bob)).halbitHerc20;
 
             const expectedProblem = {
                 status: 400,
@@ -52,19 +50,19 @@ describe("Lightning routes tests", () => {
     );
 
     it(
-        "create-herc20-ethereum-erc20-halight-lightning-bitcoin-returns-invalid-body",
+        "create-herc20-halbit-returns-invalid-body",
         twoActorTest(async ({ alice }) => {
             await expect(
-                alice.cnd.createHerc20Halight({} as Herc20HalightRequestBody)
+                alice.cnd.createHerc20Halight({} as Herc20HalbitCreate)
             ).rejects.toThrow("Invalid body.");
         })
     );
 
     it(
-        "create-halight-lightning-bitcoin-herc20-ethereum-erc20-returns-invalid-body",
+        "create-halbit-herc20-returns-invalid-body",
         twoActorTest(async ({ alice }) => {
             await expect(
-                alice.cnd.createHalightHerc20({} as HalightHerc20RequestBody)
+                alice.cnd.createHalightHerc20({} as HalbitHerc20Create)
             ).rejects.toThrow("Invalid body.");
         })
     );

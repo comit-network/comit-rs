@@ -8,18 +8,17 @@
  * It is a replacement for a negotiation/order protocol that takes care of this in a real application.
  */
 import { Actor } from "./actor";
+import { AllWallets, Peer } from "comit-sdk";
 import {
-    AllWallets,
-    HalightHerc20RequestBody,
-    HalightRequestParams,
-    HbitHerc20RequestBody,
-    Herc20HalightRequestBody,
-    Herc20HbitRequestBody,
-    Herc20RequestParams,
-    Peer,
-} from "comit-sdk";
+    HalbitHerc20Create,
+    Herc20HalbitCreate,
+    HbitHerc20Create,
+    Herc20HbitCreate,
+    HalbitCreate,
+    Herc20Create,
+    HbitCreate,
+} from "../payload";
 import { HarnessGlobal } from "../utils";
-import { HbitRequestParams } from "comit-sdk/dist/src/cnd/swaps_payload";
 
 declare var global: HarnessGlobal;
 
@@ -34,21 +33,21 @@ export default class SwapFactory {
         bob: Actor,
         settings: SwapSettings = { instantRefund: false }
     ): Promise<{
-        herc20Halight: {
-            alice: Herc20HalightRequestBody;
-            bob: Herc20HalightRequestBody;
+        herc20Halbit: {
+            alice: Herc20HalbitCreate;
+            bob: Herc20HalbitCreate;
         };
-        halightHerc20: {
-            alice: HalightHerc20RequestBody;
-            bob: HalightHerc20RequestBody;
+        halbitHerc20: {
+            alice: HalbitHerc20Create;
+            bob: HalbitHerc20Create;
         };
         hbitHerc20: {
-            alice: HbitHerc20RequestBody;
-            bob: HbitHerc20RequestBody;
+            alice: HbitHerc20Create;
+            bob: HbitHerc20Create;
         };
         herc20Hbit: {
-            alice: Herc20HbitRequestBody;
-            bob: Herc20HbitRequestBody;
+            alice: Herc20HbitCreate;
+            bob: Herc20HbitCreate;
         };
     }> {
         const ledgerList = settings.ledgers
@@ -79,12 +78,12 @@ export default class SwapFactory {
 
         const herc20Hbit = {
             alice: {
-                alpha: defaultHerc20RequestParams(
+                alpha: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHbitRequestParams(
+                beta: defaultHbitCreate(
                     betaAbsoluteExpiry,
                     aliceIdentities.bitcoin
                 ),
@@ -92,12 +91,12 @@ export default class SwapFactory {
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHerc20RequestParams(
+                alpha: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHbitRequestParams(
+                beta: defaultHbitCreate(
                     betaAbsoluteExpiry,
                     bobIdentities.bitcoin
                 ),
@@ -108,11 +107,11 @@ export default class SwapFactory {
 
         const hbitHerc20 = {
             alice: {
-                alpha: defaultHbitRequestParams(
+                alpha: defaultHbitCreate(
                     alphaAbsoluteExpiry,
                     aliceIdentities.bitcoin
                 ),
-                beta: defaultHerc20RequestParams(
+                beta: defaultHerc20Create(
                     betaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
@@ -121,11 +120,11 @@ export default class SwapFactory {
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHbitRequestParams(
+                alpha: defaultHbitCreate(
                     alphaAbsoluteExpiry,
                     bobIdentities.bitcoin
                 ),
-                beta: defaultHerc20RequestParams(
+                beta: defaultHerc20Create(
                     betaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
@@ -135,14 +134,14 @@ export default class SwapFactory {
             },
         };
 
-        const herc20Halight = {
+        const herc20Halbit = {
             alice: {
-                alpha: defaultHerc20RequestParams(
+                alpha: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHalightRequestParams(
+                beta: defaultHalbitCreate(
                     betaCltvExpiry,
                     aliceIdentities.lightning
                 ),
@@ -150,12 +149,12 @@ export default class SwapFactory {
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHerc20RequestParams(
+                alpha: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
                 ),
-                beta: defaultHalightRequestParams(
+                beta: defaultHalbitCreate(
                     betaCltvExpiry,
                     bobIdentities.lightning
                 ),
@@ -164,13 +163,13 @@ export default class SwapFactory {
             },
         };
 
-        const halightHerc20 = {
+        const halbitHerc20 = {
             alice: {
-                alpha: defaultHalightRequestParams(
+                alpha: defaultHalbitCreate(
                     alphaCltvExpiry,
                     aliceIdentities.lightning
                 ),
-                beta: defaultHerc20RequestParams(
+                beta: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     aliceIdentities.ethereum,
                     erc20TokenContract
@@ -180,11 +179,11 @@ export default class SwapFactory {
                 peer: await makePeer(bob),
             },
             bob: {
-                alpha: defaultHalightRequestParams(
+                alpha: defaultHalbitCreate(
                     alphaCltvExpiry,
                     bobIdentities.lightning
                 ),
-                beta: defaultHerc20RequestParams(
+                beta: defaultHerc20Create(
                     alphaAbsoluteExpiry,
                     bobIdentities.ethereum,
                     erc20TokenContract
@@ -198,8 +197,8 @@ export default class SwapFactory {
         return {
             hbitHerc20,
             herc20Hbit,
-            herc20Halight,
-            halightHerc20,
+            herc20Halbit,
+            halbitHerc20,
         };
     }
 }
@@ -253,22 +252,22 @@ async function makePeer(actor: Actor): Promise<Peer> {
     };
 }
 
-function defaultHbitRequestParams(
+function defaultHbitCreate(
     absoluteExpiry: number,
     identity: string
-): HbitRequestParams {
+): HbitCreate {
     return {
         amount: "1000000",
+        identity,
         network: "regtest",
         absolute_expiry: absoluteExpiry,
-        identity,
     };
 }
 
-function defaultHalightRequestParams(
+function defaultHalbitCreate(
     cltvExpiry: number,
     lndPubkey: string
-): HalightRequestParams {
+): HalbitCreate {
     return {
         amount: "10000",
         network: "regtest",
@@ -277,11 +276,11 @@ function defaultHalightRequestParams(
     };
 }
 
-function defaultHerc20RequestParams(
+function defaultHerc20Create(
     absoluteExpiry: number,
     identity: string,
     tokenContractAddress: string
-): Herc20RequestParams {
+): Herc20Create {
     return {
         amount: "9000000000000000000",
         contract_address: tokenContractAddress,

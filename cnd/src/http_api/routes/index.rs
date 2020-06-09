@@ -2,10 +2,10 @@ use crate::{
     asset,
     db::{CreatedSwap, Save},
     ethereum::ChainId,
-    halight, hbit, herc20,
+    halbit, hbit, herc20,
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
-    network::{HalightHerc20, HbitHerc20, Herc20Halight, Herc20Hbit, Identities, ListenAddresses},
+    network::{HalbitHerc20, HbitHerc20, Herc20Halbit, Herc20Hbit, Identities, ListenAddresses},
     swap_protocols::{ledger, Rfc003Facade},
     Facade, LocalSwapId, Role, Side,
 };
@@ -59,11 +59,11 @@ pub async fn get_info_siren(
     ))
 }
 
-pub async fn post_herc20_halight_bitcoin(
+pub async fn post_herc20_halbit(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = Body::<Herc20, Halight>::deserialize(&body)
+    let body = Body::<Herc20, Halbit>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -71,7 +71,7 @@ pub async fn post_herc20_halight_bitcoin(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap::<herc20::CreatedSwap, halight::CreatedSwap>(swap_id);
+    let swap = body.to_created_swap::<herc20::CreatedSwap, halbit::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -83,7 +83,7 @@ pub async fn post_herc20_halight_bitcoin(
         lightning_identity: Some(body.beta.identity),
         bitcoin_identity: None,
     };
-    let digest = Herc20Halight::from(body.clone()).digest();
+    let digest = Herc20Halbit::from(body.clone()).digest();
     let peer = body.peer.into();
     let role = body.role.0;
 
@@ -101,11 +101,11 @@ pub async fn post_herc20_halight_bitcoin(
 }
 
 #[allow(clippy::needless_pass_by_value)]
-pub async fn post_halight_bitcoin_herc20(
+pub async fn post_halbit_herc20(
     body: serde_json::Value,
     facade: Facade,
 ) -> Result<impl Reply, Rejection> {
-    let body = Body::<Halight, Herc20>::deserialize(&body)
+    let body = Body::<Halbit, Herc20>::deserialize(&body)
         .map_err(anyhow::Error::new)
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
@@ -113,7 +113,7 @@ pub async fn post_halight_bitcoin_herc20(
     let swap_id = LocalSwapId::default();
     let reply = warp::reply::reply();
 
-    let swap = body.to_created_swap::<halight::CreatedSwap, herc20::CreatedSwap>(swap_id);
+    let swap = body.to_created_swap::<halbit::CreatedSwap, herc20::CreatedSwap>(swap_id);
     facade
         .save(swap)
         .await
@@ -125,7 +125,7 @@ pub async fn post_halight_bitcoin_herc20(
         lightning_identity: Some(body.alpha.identity),
         bitcoin_identity: None,
     };
-    let digest = HalightHerc20::from(body.clone()).digest();
+    let digest = HalbitHerc20::from(body.clone()).digest();
     let peer = body.peer.into();
     let role = body.role.0;
 
@@ -242,8 +242,8 @@ pub struct Body<A, B> {
     pub role: Http<Role>,
 }
 
-impl From<Body<Herc20, Halight>> for Herc20Halight {
-    fn from(body: Body<Herc20, Halight>) -> Self {
+impl From<Body<Herc20, Halbit>> for Herc20Halbit {
+    fn from(body: Body<Herc20, Halbit>) -> Self {
         Self {
             ethereum_absolute_expiry: body.alpha.absolute_expiry.into(),
             erc20_amount: body.alpha.amount,
@@ -254,8 +254,8 @@ impl From<Body<Herc20, Halight>> for Herc20Halight {
     }
 }
 
-impl From<Body<Halight, Herc20>> for HalightHerc20 {
-    fn from(body: Body<Halight, Herc20>) -> Self {
+impl From<Body<Halbit, Herc20>> for HalbitHerc20 {
+    fn from(body: Body<Halbit, Herc20>) -> Self {
         Self {
             lightning_cltv_expiry: body.alpha.cltv_expiry.into(),
             lightning_amount: body.alpha.amount.0,
@@ -316,10 +316,10 @@ impl<A, B> Body<A, B> {
     }
 }
 
-/// Data for the halight protocol, wrapped where needed to control
+/// Data for the halbit protocol, wrapped where needed to control
 /// serialization/deserialization.
 #[derive(serde::Deserialize, Clone, Debug)]
-pub struct Halight {
+pub struct Halbit {
     pub amount: Http<asset::Bitcoin>,
     pub identity: identity::Lightning,
     pub network: Http<ledger::Bitcoin>,
@@ -333,7 +333,7 @@ pub struct Herc20 {
     pub amount: asset::Erc20Quantity,
     pub identity: identity::Ethereum,
     pub chain_id: ChainId,
-    // This should re-named to token_contract but doing so is a breaking API change.
+    // TODO: This should re-named to token_contract but doing so is a breaking API change.
     pub contract_address: identity::Ethereum,
     pub absolute_expiry: u32,
 }
@@ -343,14 +343,15 @@ pub struct Herc20 {
 #[derive(serde::Deserialize, Clone, Debug)]
 struct Hbit {
     pub amount: Http<asset::Bitcoin>,
+    // TODO: This should re-named to final_identity but doing so is a breaking API change.
     pub identity: Http<bitcoin::Address>,
     pub network: Http<bitcoin::Network>,
     pub absolute_expiry: u32,
 }
 
-impl From<Halight> for halight::CreatedSwap {
-    fn from(p: Halight) -> Self {
-        halight::CreatedSwap {
+impl From<Halbit> for halbit::CreatedSwap {
+    fn from(p: Halbit) -> Self {
+        halbit::CreatedSwap {
             asset: *p.amount,
             identity: p.identity,
             network: *p.network,

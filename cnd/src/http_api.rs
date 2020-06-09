@@ -1,9 +1,9 @@
-pub mod halight;
-pub mod halight_herc20;
+pub mod halbit;
+pub mod halbit_herc20;
 pub mod hbit;
 pub mod hbit_herc20;
 pub mod herc20;
-pub mod herc20_halight;
+pub mod herc20_halbit;
 pub mod herc20_hbit;
 pub mod route_factory;
 pub mod routes;
