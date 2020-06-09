@@ -75,7 +75,7 @@ where
             return Ok(block.clone());
         }
 
-        let block = self.connector.block_by_hash(block_hash.clone()).await?;
+        let block = self.connector.block_by_hash(block_hash).await?;
         tracing::trace!("Fetched block from connector: {:x}", block_hash);
 
         // We dropped the lock so at this stage the block may have been inserted by
@@ -98,10 +98,7 @@ where
             return Ok(receipt.clone());
         }
 
-        let receipt = self
-            .connector
-            .receipt_by_hash(transaction_hash.clone())
-            .await?;
+        let receipt = self.connector.receipt_by_hash(transaction_hash).await?;
 
         tracing::trace!("Fetched receipt from connector: {:x}", transaction_hash);
 

@@ -135,7 +135,7 @@ impl ToHeader for AssetKind {
                 Header::with_str_value("ether").with_parameter("quantity", ether)?
             }
             AssetKind::Erc20(erc20) => Header::with_str_value("erc20")
-                .with_parameter("address", erc20.token_contract.clone())?
+                .with_parameter("address", erc20.token_contract)?
                 .with_parameter("quantity", erc20.quantity.clone())?,
         })
     }

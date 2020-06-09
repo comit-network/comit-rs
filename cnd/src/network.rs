@@ -89,7 +89,7 @@ impl Swarm {
         protocol_spawner: ProtocolSpawner,
     ) -> anyhow::Result<Self> {
         let local_key_pair = derive_key_pair(&seed);
-        let local_peer_id = PeerId::from(local_key_pair.clone().public());
+        let local_peer_id = PeerId::from(local_key_pair.public());
         tracing::info!("Starting with peer_id: {}", local_peer_id);
 
         let transport = transport::build_comit_transport(local_key_pair)?;

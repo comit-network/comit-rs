@@ -187,7 +187,7 @@ impl<T> Swaps<T> {
             .expect("We did a `get` on the hashmap already.");
 
         let shared_swap_id = SharedSwapId::default();
-        self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
+        self.swap_ids.insert(local_swap_id, shared_swap_id);
 
         Ok((shared_swap_id, *data))
     }
@@ -222,7 +222,7 @@ impl<T> Swaps<T> {
         self.swaps.insert(local_swap_id, data);
 
         let shared_swap_id = SharedSwapId::default();
-        self.swap_ids.insert(local_swap_id, shared_swap_id.clone());
+        self.swap_ids.insert(local_swap_id, shared_swap_id);
 
         Ok((shared_swap_id, stored_peer_id, io))
     }
@@ -385,7 +385,7 @@ mod tests {
         let peer_id = PeerId::random();
 
         swaps
-            .create_as_pending_announcement(digest.clone(), id, peer_id.clone(), data.clone())
+            .create_as_pending_announcement(digest.clone(), id, peer_id.clone(), data)
             .unwrap();
 
         let (shared_swap_id, _) = swaps
