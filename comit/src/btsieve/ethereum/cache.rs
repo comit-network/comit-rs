@@ -4,7 +4,6 @@ use crate::{
         BlockByHash, LatestBlock,
     },
     ethereum::TransactionReceipt,
-    Timestamp,
 };
 use async_trait::async_trait;
 use derivative::Derivative;
@@ -40,17 +39,6 @@ impl<C> Cache<C> {
             block_cache,
             receipt_cache,
         }
-    }
-}
-
-impl<C> Cache<C>
-where
-    C: LatestBlock<Block = Block>,
-{
-    /// Timestamp of the latest block on the Ethereum chain.
-    pub async fn latest_timestamp(&self) -> anyhow::Result<Timestamp> {
-        let block = self.latest_block().await?;
-        Ok(block.timestamp.into())
     }
 }
 
