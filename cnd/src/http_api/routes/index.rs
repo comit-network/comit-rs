@@ -6,9 +6,8 @@ use crate::{
     http_api::{problem, routes::into_rejection, DialInformation, Http},
     identity,
     network::{HalightHerc20, HbitHerc20, Herc20Halight, Herc20Hbit, Identities, ListenAddresses},
-    storage::Load,
     swap_protocols::{ledger, Rfc003Facade},
-    Facade, LocalSwapId, Role,
+    Facade, LocalSwapId, Role, Side,
 };
 use chrono::Utc;
 use digest::Digest;
@@ -163,12 +162,11 @@ pub async fn post_herc20_hbit(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
+    let role = body.role.0;
     let transient_key = facade
         .storage
-        .load(swap_id)
-        .await
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
+        .derive_transient_identity(swap_id, role, Side::Beta);
+
     let identities = Identities {
         ethereum_identity: Some(body.alpha.identity),
         bitcoin_identity: Some(transient_key),
@@ -176,7 +174,6 @@ pub async fn post_herc20_hbit(
     };
     let digest = Herc20Hbit::from(body.clone()).digest();
     let peer = body.peer.into();
-    let role = body.role.0;
 
     facade
         .initiate_communication(swap_id, peer, role, digest, identities)
@@ -211,12 +208,10 @@ pub async fn post_hbit_herc20(
         .map_err(problem::from_anyhow)
         .map_err(warp::reject::custom)?;
 
+    let role = body.role.0;
     let transient_identity = facade
         .storage
-        .load(swap_id)
-        .await
-        .map_err(problem::from_anyhow)
-        .map_err(warp::reject::custom)?;
+        .derive_transient_identity(swap_id, role, Side::Alpha);
 
     let identities = Identities {
         bitcoin_identity: Some(transient_identity),
@@ -225,7 +220,6 @@ pub async fn post_hbit_herc20(
     };
     let digest = HbitHerc20::from(body.clone()).digest();
     let peer = body.peer.into();
-    let role = body.role.0;
 
     facade
         .initiate_communication(swap_id, peer, role, digest, identities)
