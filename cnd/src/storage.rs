@@ -115,8 +115,8 @@ impl Load<spawn::Swap<herc20::Params, halbit::Params>> for Storage {
 
                 let halbit = Halbit::belonging_to(&swap).first::<Halbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
-                    .first::<db::tables::SecretHash>(conn)
+                let secret_hash = db::SecretHash::belonging_to(&swap)
+                    .first::<db::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, halbit, herc20, secret_hash))
@@ -163,8 +163,8 @@ impl Load<spawn::Swap<halbit::Params, herc20::Params>> for Storage {
 
                 let halbit = Halbit::belonging_to(&swap).first::<Halbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
-                    .first::<db::tables::SecretHash>(conn)
+                let secret_hash = db::SecretHash::belonging_to(&swap)
+                    .first::<db::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, halbit, herc20, secret_hash))
@@ -211,8 +211,8 @@ impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
 
                 let hbit = Hbit::belonging_to(&swap).first::<Hbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
-                    .first::<db::tables::SecretHash>(conn)
+                let secret_hash = db::SecretHash::belonging_to(&swap)
+                    .first::<db::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, hbit, herc20, secret_hash))
@@ -259,8 +259,8 @@ impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
 
                 let hbit = Hbit::belonging_to(&swap).first::<Hbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
-                    .first::<db::tables::SecretHash>(conn)
+                let secret_hash = db::SecretHash::belonging_to(&swap)
+                    .first::<db::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, hbit, herc20, secret_hash))
@@ -552,10 +552,8 @@ impl
 
                 let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<db::tables::SecretHash> =
-                    db::tables::SecretHash::belonging_to(&swap)
-                        .first(conn)
-                        .optional()?;
+                let secret_hash: Option<db::SecretHash> =
+                    db::SecretHash::belonging_to(&swap).first(conn).optional()?;
 
                 Ok((halbit, herc20, secret_hash))
             })
@@ -645,10 +643,8 @@ impl
 
                 let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<db::tables::SecretHash> =
-                    db::tables::SecretHash::belonging_to(&swap)
-                        .first(conn)
-                        .optional()?;
+                let secret_hash: Option<db::SecretHash> =
+                    db::SecretHash::belonging_to(&swap).first(conn).optional()?;
 
                 Ok((halbit, herc20, secret_hash))
             })
@@ -833,10 +829,8 @@ impl
 
                 let hbit: Hbit = Hbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<db::tables::SecretHash> =
-                    db::tables::SecretHash::belonging_to(&swap)
-                        .first(conn)
-                        .optional()?;
+                let secret_hash: Option<db::SecretHash> =
+                    db::SecretHash::belonging_to(&swap).first(conn).optional()?;
 
                 Ok((herc20, hbit, secret_hash))
             })
@@ -1028,10 +1022,8 @@ impl
 
                 let hbit: Hbit = Hbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<db::tables::SecretHash> =
-                    db::tables::SecretHash::belonging_to(&swap)
-                        .first(conn)
-                        .optional()?;
+                let secret_hash: Option<db::SecretHash> =
+                    db::SecretHash::belonging_to(&swap).first(conn).optional()?;
 
                 Ok((hbit, herc20, secret_hash))
             })
