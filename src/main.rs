@@ -14,6 +14,7 @@
 #![forbid(unsafe_code)]
 
 mod ongoing_swaps;
+mod publish;
 
 fn main() {
     println!("Hello, world!");
