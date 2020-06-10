@@ -16,21 +16,18 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Extract toolchain version from rust-toolchain
-        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
-
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust
+        id: toolchain
         uses: actions-rs/toolchain@v1
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
 
       - name: Cache ~/.cargo/bin directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/bin
-          key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}-cargo-bin-directory
 
       - name: Check formatting
         run: make check_format
@@ -50,27 +47,24 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v2
 
-      - name: Extract toolchain version from rust-toolchain
-        run: echo "::set-env name=RUST_TOOLCHAIN::$(cat rust-toolchain)"
-
-      - name: Install ${{ env.RUST_TOOLCHAIN }} toolchain
+      - name: Install Rust
         uses: actions-rs/toolchain@v1
+        id: toolchain
         with:
           profile: minimal
-          toolchain: ${{ env.RUST_TOOLCHAIN }}
           override: true
 
       - name: Cache target directory
         uses: actions/cache@v1
         with:
           path: target
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-v2-target-directory-${{ hashFiles('Cargo.lock') }}
+          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc-hash }}-target-directory-${{ hashFiles('Cargo.lock') }}
 
       - name: Cache ~/.cargo/registry directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ env.RUST_TOOLCHAIN }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}
+          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc-hash }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}
 
       - name: Build ${{ matrix.os }} binary
         run: make build
