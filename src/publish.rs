@@ -34,9 +34,11 @@ where
     let sell_amount =
         min(sell_wallet.balance() - book.locked_funds(), max_sell_amount) - sell_wallet.fees();
 
-    let rate = mid_market_rate;
+    let rate = mid_market_rate / (1.0 + spread);
 
     let buy_amount = sell_amount as f64 / rate;
+
+    dbg!(&buy_amount);
 
     Order {
         sell_amount,
@@ -157,10 +159,9 @@ mod tests {
         // ? Buy => 1000 sell
         // 100 Buy => 1000 Sell
         // 3% spread
-        // 100 Buy => 1030 Sell
-        // 97.08 Buy => 1000 Sell
+        // 103 Buy => 1000 Sell
 
         assert_eq!(order.sell_amount, 1000);
-        assert_eq!(order.buy_amount, 98)
+        assert_eq!(order.buy_amount, 104); // Rounding up taking in account precision loss
     }
 }
