@@ -38,6 +38,8 @@ impl Spread {
 /// mid_market_rate is buy/sell: 1 Buy => mid_market_rate Sell: = sell/buy
 /// spread_pc: percent value to be added to the buy amount
 #[allow(clippy::cast_precision_loss)] // It's ok because it just means we are applying slightly more than the given spread
+#[allow(clippy::cast_possible_truncation)] // We probably want to use custom amounts down the line
+#[allow(clippy::cast_sign_loss)] // It's ok because all values should be positive
 fn new_order<W, B>(
     sell_wallet: W,
     book: B,
