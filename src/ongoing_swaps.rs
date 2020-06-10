@@ -34,7 +34,6 @@ impl OngoingSwaps {
             Ok(())
         }
     }
-
     fn remove(&mut self, order: &Order) {
         self.peers.remove(&order.peer);
     }
