@@ -20,7 +20,13 @@ struct Order {
 /// mid_market_rate is buy/sell: 1 Buy => mid_market_rate Sell: = sell/buy
 /// spread_pc: percent value to be added to the buy amount
 #[allow(clippy::cast_precision_loss)] // It's ok because it just means we are applying slightly more than the given spread
-fn new_order<W, B>(sell_wallet: W, book: B, max_sell_amount: u64, mid_market_rate: f64) -> Order
+fn new_order<W, B>(
+    sell_wallet: W,
+    book: B,
+    max_sell_amount: u64,
+    mid_market_rate: f64,
+    spread: f64,
+) -> Order
 where
     W: Balance + Fees,
     B: LockedFunds,
@@ -87,7 +93,7 @@ mod tests {
 
         let book = Book::new(0);
 
-        let order = new_order(wallet, book, 100, 1.0);
+        let order = new_order(wallet, book, 100, 1.0, 0.0);
 
         assert_eq!(order.sell_amount, 10);
     }
@@ -98,7 +104,7 @@ mod tests {
 
         let book = Book::new(2);
 
-        let order = new_order(wallet, book, 100, 1.0);
+        let order = new_order(wallet, book, 100, 1.0, 0.0);
 
         assert_eq!(order.sell_amount, 8);
     }
@@ -109,7 +115,7 @@ mod tests {
 
         let book = Book::new(2);
 
-        let order = new_order(wallet, book, 2, 1.0);
+        let order = new_order(wallet, book, 2, 1.0, 0.0);
 
         assert_eq!(order.sell_amount, 2);
     }
@@ -120,7 +126,7 @@ mod tests {
 
         let book = Book::new(2);
 
-        let order = new_order(wallet, book, 2, 1.0);
+        let order = new_order(wallet, book, 2, 1.0, 0.0);
 
         assert_eq!(order.sell_amount, 1);
     }
@@ -131,12 +137,30 @@ mod tests {
 
         let book = Book::new(50);
 
-        let order = new_order(wallet, book, 9999, 10.0);
+        let order = new_order(wallet, book, 9999, 10.0, 0.0);
         // 1 Buy => 10 Sell
         // ? Buy => 1000 sell
         // 100 Buy => 1000 Sell
 
         assert_eq!(order.sell_amount, 1000);
         assert_eq!(order.buy_amount, 100)
+    }
+
+    #[test]
+    fn given_a_rate_and_spread_return_order_with_both_amounts() {
+        let wallet = Wallet::new(1051, 1);
+
+        let book = Book::new(50);
+
+        let order = new_order(wallet, book, 9999, 10.0, 0.03);
+        // 1 Buy => 10 Sell
+        // ? Buy => 1000 sell
+        // 100 Buy => 1000 Sell
+        // 3% spread
+        // 100 Buy => 1030 Sell
+        // 97.08 Buy => 1000 Sell
+
+        assert_eq!(order.sell_amount, 1000);
+        assert_eq!(order.buy_amount, 98)
     }
 }
