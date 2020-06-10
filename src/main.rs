@@ -4,7 +4,7 @@ fn main() {
 
 #[derive(Copy, Clone)]
 struct Order {
-    pub peer: Peer
+    pub peer: Peer,
 }
 
 impl Order {
@@ -13,12 +13,18 @@ impl Order {
     }
 }
 
-#[derive(Copy, Clone, Default, Eq, PartialEq)]
-struct Peer;
+#[derive(Copy, Clone, Eq, PartialEq)]
+struct Peer(u32);
+
+impl Peer {
+    fn new(index: u32) -> Peer {
+        Peer(index)
+    }
+}
 
 #[derive(Default)]
 struct State {
-    peer_with_ongoing_orders: Vec<Peer>
+    peer_with_ongoing_orders: Vec<Peer>,
 }
 
 impl State {
@@ -32,7 +38,6 @@ impl State {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -41,7 +46,7 @@ mod tests {
     fn given_a_taken_order_return_yes_proceed() {
         let mut state = State::default();
 
-        let order = Order::new(Peer::default());
+        let order = Order::new(Peer::new(0));
 
         let proceed = state.proceed(order);
 
@@ -52,7 +57,7 @@ mod tests {
     fn given_two_orders_from_same_peer_dont_proceed_second_one() {
         let mut state = State::default();
 
-        let peer = Peer::default();
+        let peer = Peer::new(0);
 
         let order_1 = Order::new(peer);
         let order_2 = Order::new(peer);
@@ -63,5 +68,23 @@ mod tests {
 
         assert!(proceed_1.is_ok());
         assert!(proceed_2.is_err());
+    }
+
+    #[test]
+    fn given_two_orders_from_diff_peer_do_proceed_with_both() {
+        let mut state = State::default();
+
+        let peer_1 = Peer::new(1);
+        let peer_2 = Peer::new(2);
+
+        let order_1 = Order::new(peer_1);
+        let order_2 = Order::new(peer_2);
+
+        let proceed_1 = state.proceed(order_1);
+
+        let proceed_2 = state.proceed(order_2);
+
+        assert!(proceed_1.is_ok());
+        assert!(proceed_2.is_ok());
     }
 }
