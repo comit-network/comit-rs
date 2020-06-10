@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 fn main() {
     println!("Hello, world!");
 }
@@ -13,7 +15,7 @@ impl Order {
     }
 }
 
-#[derive(Copy, Clone, Eq, PartialEq)]
+#[derive(Copy, Clone, Eq, PartialEq, Hash)]
 struct Peer(u32);
 
 impl Peer {
@@ -23,18 +25,22 @@ impl Peer {
 }
 
 #[derive(Default)]
-struct State {
-    peer_with_ongoing_orders: Vec<Peer>,
+struct OngoingSwaps {
+    peers: HashSet<Peer>,
 }
 
-impl State {
-    fn proceed(&mut self, order: Order) -> Result<(), ()> {
-        if self.peer_with_ongoing_orders.contains(&order.peer) {
+impl OngoingSwaps {
+    fn insert(&mut self, order: Order) -> Result<(), ()> {
+        if self.peers.contains(&order.peer) {
             Err(())
         } else {
-            self.peer_with_ongoing_orders.push(order.peer);
+            self.peers.insert(order.peer);
             Ok(())
         }
+    }
+
+    fn remove(&mut self, order: &Order) {
+        self.peers.remove(&order.peer);
     }
 }
 
@@ -44,35 +50,35 @@ mod tests {
 
     #[test]
     fn given_a_taken_order_return_yes_proceed() {
-        let mut state = State::default();
+        let mut ongoing_swaps = OngoingSwaps::default();
 
         let order = Order::new(Peer::new(0));
 
-        let proceed = state.proceed(order);
+        let insertion = ongoing_swaps.insert(order);
 
-        assert!(proceed.is_ok());
+        assert!(insertion.is_ok());
     }
 
     #[test]
     fn given_two_orders_from_same_peer_dont_proceed_second_one() {
-        let mut state = State::default();
+        let mut state = OngoingSwaps::default();
 
         let peer = Peer::new(0);
 
         let order_1 = Order::new(peer);
         let order_2 = Order::new(peer);
 
-        let proceed_1 = state.proceed(order_1);
+        let insertion_1 = state.insert(order_1);
 
-        let proceed_2 = state.proceed(order_2);
+        let insertion_2 = state.insert(order_2);
 
-        assert!(proceed_1.is_ok());
-        assert!(proceed_2.is_err());
+        assert!(insertion_1.is_ok());
+        assert!(insertion_2.is_err());
     }
 
     #[test]
     fn given_two_orders_from_diff_peer_do_proceed_with_both() {
-        let mut state = State::default();
+        let mut state = OngoingSwaps::default();
 
         let peer_1 = Peer::new(1);
         let peer_2 = Peer::new(2);
@@ -80,11 +86,30 @@ mod tests {
         let order_1 = Order::new(peer_1);
         let order_2 = Order::new(peer_2);
 
-        let proceed_1 = state.proceed(order_1);
+        let insertion_1 = state.insert(order_1);
 
-        let proceed_2 = state.proceed(order_2);
+        let insertion_2 = state.insert(order_2);
 
-        assert!(proceed_1.is_ok());
-        assert!(proceed_2.is_ok());
+        assert!(insertion_1.is_ok());
+        assert!(insertion_2.is_ok());
+    }
+
+    #[test]
+    fn given_two_orders_from_same_peer_do_proceed_if_first_execution_is_done() {
+        let mut state = OngoingSwaps::default();
+
+        let peer = Peer::new(0);
+
+        let order_1 = Order::new(peer);
+        let order_2 = Order::new(peer);
+
+        let insertion_1 = state.insert(order_1);
+        // Execution is not represented in the test, order should be removed once execution is done.
+        state.remove(&order_1);
+
+        let insertion_2 = state.insert(order_2);
+
+        assert!(insertion_1.is_ok());
+        assert!(insertion_2.is_ok());
     }
 }
