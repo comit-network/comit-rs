@@ -4,6 +4,15 @@ version = "0.1.0"
 authors = ["CoBloX Team <team@coblox.tech>"]
 edition = "2018"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
+anyhow = "1"
+bitcoin = "0.23.0"
+chrono = "0.4"
+comit = { git = "https://github.com/comit-network/comit-rs", package = "comit", rev = "f2b7e156fcf02445e4e68be24f1f5a2ddbdbf102" }
+cnd = { git = "https://github.com/comit-network/comit-rs", package = "cnd", rev = "f2b7e156fcf02445e4e68be24f1f5a2ddbdbf102" }
+futures = "0.3.5"
+reqwest = "0.10.6"
+
+[dev-dependencies]
+testcontainers = "0.9"
+tokio = { version = "0.2.21", features = ["macros"] }
