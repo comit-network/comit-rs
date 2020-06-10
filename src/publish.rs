@@ -1,3 +1,5 @@
+use std::cmp::min;
+
 pub trait LockedFunds {
     fn locked_funds(&self) -> u32;
 }
@@ -10,13 +12,13 @@ struct Order {
     pub sell_amount: u32,
 }
 
-fn new_order<W, B>(wallet: W, book: B) -> Order
+fn new_order<W, B>(wallet: W, book: B, max_amount: u32) -> Order
 where
     W: Balance,
     B: LockedFunds,
 {
     Order {
-        sell_amount: wallet.balance() - book.locked_funds(),
+        sell_amount: min(wallet.balance() - book.locked_funds(), max_amount),
     }
 }
 
@@ -62,7 +64,7 @@ mod tests {
 
         let book = Book::new(0);
 
-        let order = new_order(wallet, book);
+        let order = new_order(wallet, book, 100);
 
         assert_eq!(order.sell_amount, 10u32);
     }
@@ -73,8 +75,19 @@ mod tests {
 
         let book = Book::new(2);
 
-        let order = new_order(wallet, book);
+        let order = new_order(wallet, book, 100);
 
         assert_eq!(order.sell_amount, 8u32);
+    }
+
+    #[test]
+    fn given_an_available_balance_and_a_max_amount_sell_min_of_either() {
+        let wallet = Wallet::new(10);
+
+        let book = Book::new(2);
+
+        let order = new_order(wallet, book, 2);
+
+        assert_eq!(order.sell_amount, 2u32);
     }
 }
