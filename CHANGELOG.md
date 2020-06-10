@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 -   **Breaking Change**: Rename `parity` to `geth` in the configuration file as we are only testing the software with Geth as part of the CI.
 
+### Added
+
+-   Support for `herc20-halight`, `halight-herc20`, `hbit-herc20` and `herc20-hbit` swaps.
+
 ## [0.7.3] - 2020-04-14
 
 ### Fixed
