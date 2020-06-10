@@ -8,3 +8,4 @@
 /httpRequests/
 
 .idea
+/target/
