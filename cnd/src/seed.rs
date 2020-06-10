@@ -2,7 +2,7 @@ use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Secret};
 use ::bitcoin::secp256k1::SecretKey;
 use pem::{encode, Pem};
 use rand::Rng;
-use sha2::{Digest, Sha256};
+use sha2::{digest::FixedOutput as _, Digest, Sha256};
 use std::{
     ffi::OsStr,
     fmt,
@@ -51,12 +51,12 @@ impl fmt::Display for Seed {
 impl Seed {
     fn sha256_with_seed(&self, slices: &[&[u8]]) -> [u8; SEED_LENGTH] {
         let mut sha = Sha256::new();
-        sha.input(&self.0);
+        sha.update(&self.0);
         for slice in slices {
-            sha.input(slice);
+            sha.update(slice);
         }
 
-        sha.result().into()
+        sha.finalize_fixed().into()
     }
 }
 
