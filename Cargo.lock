@@ -3282,11 +3282,10 @@ dependencies = [
 
 [[package]]
 name = "siren-types"
-version = "0.2.0"
+version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2795d361da761822a8681fd70bde6bdd7ad4955413ffb8ad883520ee5684c870"
+checksum = "e4f28b24ac5bf312b2b4bf35e59443365180b6e3747b21be0a0d74f97538b416"
 dependencies = [
- "derivative 1.0.4",
  "http",
  "readonly",
  "serde",

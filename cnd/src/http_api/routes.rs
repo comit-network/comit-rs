@@ -17,7 +17,7 @@ use crate::{
 };
 use http_api_problem::HttpApiProblem;
 use serde::Serialize;
-use warp::{http, http::StatusCode, Rejection, Reply};
+use warp::{http, Rejection, Reply};
 
 pub fn into_rejection(problem: HttpApiProblem) -> Rejection {
     warp::reject::custom(problem)
@@ -89,11 +89,7 @@ fn create_swap_entity(id: LocalSwapId, role: Role) -> anyhow::Result<siren::Enti
     let swap_resource = SwapResource { role: Http(role) };
     let entity = siren::Entity::default()
         .with_class_member("swap")
-        .with_properties(swap_resource)
-        .map_err(|e| {
-            tracing::error!("failed to set properties of entity: {:?}", e);
-            HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-        })?
+        .with_properties(swap_resource)?
         .with_link(siren::NavigationalLink::new(
             &["self"],
             route_factory::swap_path(id),
@@ -110,11 +106,7 @@ where
     let alpha_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("parameters")
-            .with_properties(alpha_params)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
+            .with_properties(alpha_params)?,
         &["alpha"],
     );
     entity.push_sub_entity(alpha_params_sub);
@@ -123,11 +115,7 @@ where
     let beta_params_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("parameters")
-            .with_properties(beta_params)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
+            .with_properties(beta_params)?,
         &["beta"],
     );
     entity.push_sub_entity(beta_params_sub);
@@ -143,11 +131,7 @@ fn add_events(
     let alpha_state_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("state")
-            .with_properties(alpha_events)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
+            .with_properties(alpha_events)?,
         &["alpha"],
     );
     entity.push_sub_entity(alpha_state_sub);
@@ -155,11 +139,7 @@ fn add_events(
     let beta_state_sub = siren::SubEntity::from_entity(
         siren::Entity::default()
             .with_class_member("state")
-            .with_properties(beta_events)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?,
+            .with_properties(beta_events)?,
         &["beta"],
     );
     entity.push_sub_entity(beta_state_sub);

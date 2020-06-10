@@ -11,7 +11,6 @@ use crate::{
 };
 use chrono::Utc;
 use digest::Digest;
-use http_api_problem::HttpApiProblem;
 use libp2p::{Multiaddr, PeerId};
 use serde::{Deserialize, Serialize};
 use warp::{http::StatusCode, Rejection, Reply};
@@ -43,10 +42,8 @@ pub async fn get_info_siren(
                 id: Http(id),
                 listen_addresses,
             })
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })
+            .map_err(anyhow::Error::from)
+            .map_err(problem::from_anyhow)
             .map_err(into_rejection)?
             .with_link(
                 siren::NavigationalLink::new(&["collection"], "/swaps").with_class_member("swaps"),

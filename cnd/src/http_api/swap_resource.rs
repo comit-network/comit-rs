@@ -156,11 +156,7 @@ pub async fn build_rfc003_siren_entity(
 
         let entity = siren::Entity::default()
             .with_class_member("swap")
-            .with_properties(swap)
-            .map_err(|e| {
-                tracing::error!("failed to set properties of entity: {:?}", e);
-                HttpApiProblem::with_title_and_type_from_status(StatusCode::INTERNAL_SERVER_ERROR)
-            })?
+            .with_properties(swap)?
             .with_link(siren::NavigationalLink::new(
                 &["self"],
                 route_factory::rfc003_swap_path(id),
