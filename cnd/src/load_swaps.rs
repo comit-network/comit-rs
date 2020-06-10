@@ -13,7 +13,7 @@ pub async fn load_swaps_from_database(facade: Rfc003Facade) -> anyhow::Result<()
 
         let types = DetermineTypes::determine_types(&facade, &swap_id).await?;
 
-        with_swap_types!(types, {
+        rfc003_with_swap_types!(types, {
             let accepted =
                 LoadAcceptedSwap::<AL, BL, AA, BA, AI, BI>::load_accepted_swap(&facade, &swap_id)
                     .await;

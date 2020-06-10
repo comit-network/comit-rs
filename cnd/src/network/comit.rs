@@ -663,10 +663,10 @@ mod tests {
         .digest();
 
         let want_alice_to_learn_from_bob = RemoteData {
+            // This is not exactly 'learned' but it is in the behaviour out event for both roles.
             secret_hash: alice_local_data.secret_hash,
             ethereum_identity: bob_local_data.ethereum_identity,
             lightning_identity: bob_local_data.lightning_identity,
-            // This is not exactly 'learned' but it is in the behaviour out event for both roles.
             bitcoin_identity: None,
         };
 

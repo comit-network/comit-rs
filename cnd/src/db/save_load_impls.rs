@@ -5,7 +5,7 @@ use crate::{
         wrapper_types::custom_sql_types::Text,
         CreatedSwap, Save, Sqlite,
     },
-    http_api, LocalSwapId, Protocol, Role, Side, SwapContext,
+    LocalSwapId, Protocol, Role, Side, SwapContext,
 };
 use anyhow::Context;
 use diesel::{sql_types, RunQueryDsl};
@@ -55,10 +55,7 @@ where
 }
 
 impl Sqlite {
-    pub async fn load_swap_context(
-        &self,
-        swap_id: LocalSwapId,
-    ) -> anyhow::Result<http_api::SwapContext> {
+    pub async fn load_swap_context(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         #[derive(QueryableByName)]
         struct Result {
             #[sql_type = "sql_types::Text"]
@@ -98,7 +95,8 @@ impl Sqlite {
                 .get_result(connection)
         }).await.context(db::Error::SwapNotFound)?;
 
-        Ok(http_api::SwapContext {
+        Ok(SwapContext {
+            id: swap_id,
             role: role.0,
             alpha: alpha_protocol.0,
             beta: beta_protocol.0,

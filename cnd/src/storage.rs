@@ -2,24 +2,23 @@ use crate::{
     asset,
     db::{
         self,
-        tables::{Halight, Hbit, Herc20, SecretHash, Swap},
+        tables::{Halight, Hbit, Herc20, Swap},
         wrapper_types::custom_sql_types::Text,
-        ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHerc20RedeemIdentity,
-        NoHerc20RefundIdentity, NoSecretHash, Save, Sqlite,
+        ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHbitRedeemIdentity,
+        NoHbitRefundIdentity, NoHerc20RedeemIdentity, NoHerc20RefundIdentity, NoSecretHash, Save,
+        Sqlite,
     },
     halight, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     seed::RootSeed,
     spawn,
     swap_protocols::state::Get,
-    LocalSwapId, Protocol, Role, Side, SwapContext,
+    LocalSwapId, Protocol, Role, SecretHash, Side,
 };
 use anyhow::Context;
 use async_trait::async_trait;
 use bitcoin::Network;
-use diesel::{
-    sql_types, BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl,
-};
+use diesel::{BelongingToDsl, ExpressionMethods, OptionalExtension, QueryDsl, RunQueryDsl};
 use std::sync::Arc;
 
 /// Load data for a particular swap from the storage layer.
@@ -59,11 +58,38 @@ impl Storage {
             hbit_states,
         }
     }
+
+    pub fn derive_transient_identity(
+        &self,
+        swap_id: LocalSwapId,
+        role: Role,
+        hbit_side: Side,
+    ) -> identity::Bitcoin {
+        let swap_seed = self.seed.derive_swap_seed(swap_id);
+        let sk = match (role, hbit_side) {
+            (Role::Alice, Side::Alpha) | (Role::Bob, Side::Beta) => {
+                swap_seed.derive_transient_refund_identity()
+            }
+            (Role::Alice, Side::Beta) | (Role::Bob, Side::Alpha) => {
+                swap_seed.derive_transient_redeem_identity()
+            }
+        };
+
+        identity::Bitcoin::from_secret_key(&*crate::SECP, &sk)
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub struct SwapContext {
+    pub id: LocalSwapId,
+    pub role: Role,
+    pub alpha: Protocol,
+    pub beta: Protocol,
 }
 
 #[async_trait::async_trait]
-impl Load<http_api::SwapContext> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<http_api::SwapContext> {
+impl Load<SwapContext> for Storage {
+    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
         self.db.load_swap_context(swap_id).await
     }
 }
@@ -87,8 +113,8 @@ impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
 
                 let halight = Halight::belonging_to(&swap).first::<Halight>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = SecretHash::belonging_to(&swap)
-                    .first::<SecretHash>(conn)
+                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
+                    .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, halight, herc20, secret_hash))
@@ -100,7 +126,7 @@ impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
         let secret_hash = match role {
             Role::Alice => {
                 let swap_seed = self.seed.derive_swap_seed(id);
-                comit::SecretHash::new(swap_seed.derive_secret())
+                SecretHash::new(swap_seed.derive_secret())
             }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
@@ -135,8 +161,8 @@ impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
 
                 let halight = Halight::belonging_to(&swap).first::<Halight>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = SecretHash::belonging_to(&swap)
-                    .first::<SecretHash>(conn)
+                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
+                    .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, halight, herc20, secret_hash))
@@ -148,7 +174,7 @@ impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
         let secret_hash = match role {
             Role::Alice => {
                 let swap_seed = self.seed.derive_swap_seed(id);
-                comit::SecretHash::new(swap_seed.derive_secret())
+                SecretHash::new(swap_seed.derive_secret())
             }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
@@ -183,8 +209,8 @@ impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
 
                 let hbit = Hbit::belonging_to(&swap).first::<Hbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = SecretHash::belonging_to(&swap)
-                    .first::<SecretHash>(conn)
+                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
+                    .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, hbit, herc20, secret_hash))
@@ -196,7 +222,7 @@ impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
         let secret_hash = match role {
             Role::Alice => {
                 let swap_seed = self.seed.derive_swap_seed(id);
-                comit::SecretHash::new(swap_seed.derive_secret())
+                SecretHash::new(swap_seed.derive_secret())
             }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
@@ -204,7 +230,7 @@ impl Load<spawn::Swap<herc20::Params, hbit::Params>> for Storage {
         let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
-            beta: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
+            beta: build_hbit_params(hbit, self.seed, role, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
 
@@ -231,8 +257,8 @@ impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
 
                 let hbit = Hbit::belonging_to(&swap).first::<Hbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
-                let secret_hash = SecretHash::belonging_to(&swap)
-                    .first::<SecretHash>(conn)
+                let secret_hash = db::tables::SecretHash::belonging_to(&swap)
+                    .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
                 Ok((swap, hbit, herc20, secret_hash))
@@ -244,14 +270,14 @@ impl Load<spawn::Swap<hbit::Params, herc20::Params>> for Storage {
         let secret_hash = match role {
             Role::Alice => {
                 let swap_seed = self.seed.derive_swap_seed(id);
-                comit::SecretHash::new(swap_seed.derive_secret())
+                SecretHash::new(swap_seed.derive_secret())
             }
             Role::Bob => secret_hash.ok_or_else(|| NoSecretHash(id))?.secret_hash.0,
         };
 
         let swap = spawn::Swap {
             role,
-            alpha: build_hbit_params(self.seed, hbit, id, role, secret_hash)?,
+            alpha: build_hbit_params(hbit, self.seed, role, secret_hash, id)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
@@ -320,12 +346,7 @@ impl
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -352,12 +373,7 @@ impl
                 },
                 secret,
             }),
-            _ => Ok(http_api::AliceSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Created {
+            _ => Ok(http_api::AliceSwap::Created {
                 alpha_created: herc20_asset,
                 beta_created: halight_asset,
             }),
@@ -418,12 +434,7 @@ impl
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::AliceSwap::Finalized {
                 beta_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -450,12 +461,7 @@ impl
                 },
                 secret,
             }),
-            _ => Ok(http_api::AliceSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Created {
+            _ => Ok(http_api::AliceSwap::Created {
                 beta_created: herc20_asset,
                 alpha_created: halight_asset,
             }),
@@ -501,8 +507,10 @@ impl
 
                 let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<SecretHash> =
-                    SecretHash::belonging_to(&swap).first(conn).optional()?;
+                let secret_hash: Option<db::tables::SecretHash> =
+                    db::tables::SecretHash::belonging_to(&swap)
+                        .first(conn)
+                        .optional()?;
 
                 Ok((halight, herc20, secret_hash))
             })
@@ -516,12 +524,7 @@ impl
         let halight_asset = halight.amount.0.into();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::herc20::Finalized {
                     asset: herc20_asset,
                     chain_id: herc20.chain_id.0.into(),
@@ -551,12 +554,7 @@ impl
                     .secret_hash
                     .0,
             }),
-            _ => Ok(http_api::BobSwap::<
-                asset::Erc20,
-                asset::Bitcoin,
-                http_api::herc20::Finalized,
-                http_api::halight::Finalized,
-            >::Created {
+            _ => Ok(http_api::BobSwap::Created {
                 alpha_created: herc20_asset,
                 beta_created: halight_asset,
             }),
@@ -602,8 +600,10 @@ impl
 
                 let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<SecretHash> =
-                    SecretHash::belonging_to(&swap).first(conn).optional()?;
+                let secret_hash: Option<db::tables::SecretHash> =
+                    db::tables::SecretHash::belonging_to(&swap)
+                        .first(conn)
+                        .optional()?;
 
                 Ok((halight, herc20, secret_hash))
             })
@@ -617,12 +617,7 @@ impl
         let halight_asset = halight.amount.0.into();
 
         match (alpha_state, beta_state) {
-            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Finalized {
+            (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
                 alpha_finalized: http_api::halight::Finalized {
                     asset: halight_asset,
                     network: halight.network.0.into(),
@@ -652,12 +647,7 @@ impl
                     .secret_hash
                     .0,
             }),
-            _ => Ok(http_api::BobSwap::<
-                asset::Bitcoin,
-                asset::Erc20,
-                http_api::halight::Finalized,
-                http_api::herc20::Finalized,
-            >::Created {
+            _ => Ok(http_api::BobSwap::Created {
                 alpha_created: halight_asset,
                 beta_created: herc20_asset,
             }),
@@ -798,8 +788,10 @@ impl
 
                 let hbit: Hbit = Hbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<SecretHash> =
-                    SecretHash::belonging_to(&swap).first(conn).optional()?;
+                let secret_hash: Option<db::tables::SecretHash> =
+                    db::tables::SecretHash::belonging_to(&swap)
+                        .first(conn)
+                        .optional()?;
 
                 Ok((herc20, hbit, secret_hash))
             })
@@ -991,8 +983,10 @@ impl
 
                 let hbit: Hbit = Hbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
-                let secret_hash: Option<SecretHash> =
-                    SecretHash::belonging_to(&swap).first(conn).optional()?;
+                let secret_hash: Option<db::tables::SecretHash> =
+                    db::tables::SecretHash::belonging_to(&swap)
+                        .first(conn)
+                        .optional()?;
 
                 Ok((hbit, herc20, secret_hash))
             })
@@ -1048,96 +1042,6 @@ impl
                 beta_created: herc20_asset,
             }),
         }
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<SwapContext> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<SwapContext> {
-        #[derive(QueryableByName)]
-        struct Result {
-            #[sql_type = "sql_types::Text"]
-            role: Text<Role>,
-            #[sql_type = "sql_types::Text"]
-            alpha_protocol: Text<Protocol>,
-            #[sql_type = "sql_types::Text"]
-            beta_protocol: Text<Protocol>,
-        }
-
-        let Result { role, alpha_protocol, beta_protocol } = self.db.do_in_transaction(|connection| {
-            // Here is how this works:
-            // - COALESCE selects the first non-null value from a list of values
-            // - We use 3 sub-selects to select a static value (i.e. 'halight', etc) if that particular child table has a row with a foreign key to the parent table
-            // - We do this two times, once where we limit the results to rows that have `ledger` set to `Alpha` and once where `ledger` is set to `Beta`
-            //
-            // The result is a view with 3 columns: `role`, `alpha_protocol` and `beta_protocol` where the `*_protocol` columns have one of the values `halight`, `herc20` or `hbit`
-            diesel::sql_query(
-                r#"
-                SELECT
-                    role,
-                    COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Alpha'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Alpha'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Alpha')
-                    ) as alpha_protocol,
-                    COALESCE(
-                       (SELECT 'halight' from halights where halights.swap_id = swaps.id and halights.side = 'Beta'),
-                       (SELECT 'herc20' from herc20s where herc20s.swap_id = swaps.id and herc20s.side = 'Beta'),
-                       (SELECT 'hbit' from hbits where hbits.swap_id = swaps.id and hbits.side = 'Beta')
-                    ) as beta_protocol
-                from swaps
-                    where local_swap_id = ?
-            "#,
-            )
-                .bind::<sql_types::Text, _>(Text(swap_id))
-                .get_result(connection)
-        }).await.context(db::Error::SwapNotFound)?;
-
-        Ok(SwapContext {
-            id: swap_id,
-            role: role.0,
-            alpha: alpha_protocol.0,
-            beta: beta_protocol.0,
-        })
-    }
-}
-
-#[async_trait::async_trait]
-impl Load<identity::Bitcoin> for Storage {
-    async fn load(&self, swap_id: LocalSwapId) -> anyhow::Result<identity::Bitcoin> {
-        let swap: http_api::SwapContext = self.load(swap_id).await?;
-
-        let sk = match swap {
-            http_api::SwapContext {
-                role: Role::Alice,
-                alpha: Protocol::Hbit,
-                ..
-            }
-            | http_api::SwapContext {
-                role: Role::Bob,
-                beta: Protocol::Hbit,
-                ..
-            } => self
-                .seed
-                .derive_swap_seed(swap_id)
-                .derive_transient_refund_identity(),
-            http_api::SwapContext {
-                role: Role::Alice,
-                beta: Protocol::Hbit,
-                ..
-            }
-            | http_api::SwapContext {
-                role: Role::Bob,
-                alpha: Protocol::Hbit,
-                ..
-            } => self
-                .seed
-                .derive_swap_seed(swap_id)
-                .derive_transient_redeem_identity(),
-            _ => anyhow::bail!(HbitNotInvolved(swap_id)),
-        };
-
-        Ok(identity::Bitcoin::from_secret_key(&*crate::SECP, &sk))
     }
 }
 
@@ -1394,25 +1298,25 @@ impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Bitcoin, identity::Ethereum>
 }
 
 fn build_hbit_params(
-    seed: RootSeed,
     hbit: Hbit,
-    id: LocalSwapId,
+    seed: RootSeed,
     role: Role,
-    secret_hash: comit::SecretHash,
+    secret_hash: SecretHash,
+    id: LocalSwapId,
 ) -> anyhow::Result<hbit::Params> {
     let (redeem, refund) = match (hbit.side.0, role) {
         (Side::Alpha, Role::Bob) | (Side::Beta, Role::Alice) => {
-            let redeem = comit::bitcoin::PublicKey::from_secret_key(
+            let redeem = identity::Bitcoin::from_secret_key(
                 &*crate::SECP,
                 &seed.derive_swap_seed(id).derive_transient_redeem_identity(),
             );
-            let refund = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
+            let refund = hbit.transient_identity.ok_or(NoHbitRefundIdentity(id))?.0;
 
             (redeem, refund)
         }
         (Side::Alpha, Role::Alice) | (Side::Beta, Role::Bob) => {
-            let redeem = hbit.transient_identity.ok_or(db::Error::IdentityNotSet)?.0;
-            let refund = comit::bitcoin::PublicKey::from_secret_key(
+            let redeem = hbit.transient_identity.ok_or(NoHbitRedeemIdentity(id))?.0;
+            let refund = identity::Bitcoin::from_secret_key(
                 &*crate::SECP,
                 &seed.derive_swap_seed(id).derive_transient_refund_identity(),
             );
@@ -1433,7 +1337,7 @@ fn build_hbit_params(
 
 fn build_halight_params(
     halight: Halight,
-    secret_hash: comit::SecretHash,
+    secret_hash: SecretHash,
     id: LocalSwapId,
 ) -> anyhow::Result<halight::Params> {
     Ok(halight::Params {
@@ -1453,7 +1357,7 @@ fn build_halight_params(
 
 fn build_herc20_params(
     herc20: Herc20,
-    secret_hash: comit::SecretHash,
+    secret_hash: SecretHash,
     id: LocalSwapId,
 ) -> anyhow::Result<herc20::Params> {
     Ok(herc20::Params {

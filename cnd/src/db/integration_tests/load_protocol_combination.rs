@@ -3,9 +3,8 @@ use crate::{
         tables::{Insert, IntoInsertable},
         CreatedSwap, Save, Sqlite,
     },
-    http_api,
     proptest::*,
-    Protocol,
+    Protocol, SwapContext,
 };
 use proptest::prelude::*;
 use tokio::runtime::Runtime;
@@ -41,7 +40,7 @@ proptest! {
     }
 }
 
-async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> http_api::SwapContext
+async fn save_and_load<A, B>(db: &Sqlite, swap: &CreatedSwap<A, B>) -> SwapContext
 where
     A: Clone + IntoInsertable + Send + 'static,
     B: Clone + IntoInsertable + Send + 'static,

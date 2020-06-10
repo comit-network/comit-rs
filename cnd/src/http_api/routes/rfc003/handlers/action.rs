@@ -43,7 +43,7 @@ pub async fn handle_action(
 ) -> anyhow::Result<ActionResponseBody> {
     let types = dependencies.determine_types(&swap_id).await?;
 
-    with_swap_types!(types, {
+    rfc003_with_swap_types!(types, {
         let swap_communication: SwapCommunication<AL, BL, AA, BA, AI, BI> = dependencies
             .get(&swap_id)
             .await?

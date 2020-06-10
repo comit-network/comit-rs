@@ -1,6 +1,5 @@
 use crate::{
     asset,
-    ethereum::Bytes,
     http_api::{
         halight, herc20,
         protocol::{
@@ -9,10 +8,9 @@ use crate::{
         },
         ActionNotFound, AliceSwap,
     },
-    swap_protocols::actions::{ethereum, lnd, lnd::Chain},
+    swap_protocols::actions::{ethereum, lnd},
     DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, SecretHash, Timestamp,
 };
-use blockchain_contracts::ethereum::rfc003::EtherHtlc;
 
 impl From<AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, herc20::Finalized>>
     for Herc20
@@ -124,13 +122,11 @@ impl FundAction for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
         match self {
             AliceSwap::Finalized {
                 alpha_finalized:
+                    halight
+                    @
                     halight::Finalized {
-                        asset: halight_asset,
-                        network,
-                        refund_identity: halight_refund_identity,
-                        redeem_identity: halight_redeem_identity,
-                        cltv_expiry,
                         state: halight::State::Opened(_),
+                        ..
                     },
                 beta_finalized:
                     herc20::Finalized {
@@ -140,23 +136,9 @@ impl FundAction for AliceSwap<asset::Bitcoin, asset::Erc20, halight::Finalized, 
                 secret,
                 ..
             } => {
-                let to_public_key = *halight_redeem_identity;
-                let amount = *halight_asset;
                 let secret_hash = SecretHash::new(*secret);
-                let final_cltv_delta = *cltv_expiry;
-                let chain = Chain::Bitcoin;
-                let network = bitcoin::Network::from(*network);
-                let self_public_key = *halight_refund_identity;
-
-                Ok(lnd::SendPayment {
-                    to_public_key,
-                    amount,
-                    secret_hash,
-                    final_cltv_delta,
-                    chain,
-                    network,
-                    self_public_key,
-                })
+                let fund_action = halight.build_fund_action(secret_hash);
+                Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }
@@ -172,26 +154,17 @@ impl RedeemAction
         match self {
             AliceSwap::Finalized {
                 beta_finalized:
+                    herc20
+                    @
                     herc20::Finalized {
-                        chain_id,
-                        state: herc20::State::Funded { htlc_location, .. },
+                        state: herc20::State::Funded { .. },
                         ..
                     },
                 secret,
                 ..
             } => {
-                let to = *htlc_location;
-                let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
-                let gas_limit = EtherHtlc::redeem_tx_gas_limit();
-                let min_block_timestamp = None;
-
-                Ok(ethereum::CallContract {
-                    to,
-                    data,
-                    gas_limit,
-                    chain_id: *chain_id,
-                    min_block_timestamp,
-                })
+                let redeem_action = herc20.build_redeem_action(*secret)?;
+                Ok(redeem_action)
             }
             _ => anyhow::bail!(ActionNotFound),
         }

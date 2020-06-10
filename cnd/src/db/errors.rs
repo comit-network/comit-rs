@@ -33,4 +33,4 @@ pub struct NoHbitRefundIdentity(pub LocalSwapId);
 
 #[derive(thiserror::Error, Debug, Clone, Copy)]
 #[error("no hbit redeem identity found in database for swap {0}")]
-pub struct NoHbit20RedeemIdentity(pub LocalSwapId);
+pub struct NoHbitRedeemIdentity(pub LocalSwapId);
