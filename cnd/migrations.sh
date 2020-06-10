@@ -24,7 +24,7 @@ if [[ $TAG_LIST == *"${RELEASE_VERSION}"* ]]; then
   echo "Naming according to Diesel conventions, separating words with '_'."
   read MIGRATION_NAME
   cd $MIGRATIONS_FOLDER
-  cargo install diesel_cli --no-default-features --features sqlite
+  which diesel || cargo install diesel_cli --no-default-features --features sqlite
   diesel migration generate $MIGRATION_NAME
   navigate_to_last_folder
   LATEST_MIGRATION=$(pwd)
