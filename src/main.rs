@@ -2,27 +2,35 @@ fn main() {
     println!("Hello, world!");
 }
 
-#[derive(Default)]
-struct Order;
+#[derive(Copy, Clone)]
+struct Order {
+    pub peer: Peer
+}
 
 impl Order {
     pub fn new(peer: Peer) -> Order {
-        Order
+        Order { peer }
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Eq, PartialEq)]
 struct Peer;
 
 #[derive(Default)]
-struct State;
-
-impl State {
-    fn proceed(&self, _order: Order) -> Result<(), ()> {
-        Ok(())
-    }
+struct State {
+    peer_with_ongoing_orders: Vec<Peer>
 }
 
+impl State {
+    fn proceed(&mut self, order: Order) -> Result<(), ()> {
+        if self.peer_with_ongoing_orders.contains(&order.peer) {
+            Err(())
+        } else {
+            self.peer_with_ongoing_orders.push(order.peer);
+            Ok(())
+        }
+    }
+}
 
 
 #[cfg(test)]
@@ -31,9 +39,9 @@ mod tests {
 
     #[test]
     fn given_a_taken_order_return_yes_proceed() {
-        let state = State::default();
+        let mut state = State::default();
 
-        let order = Order::default();
+        let order = Order::new(Peer::default());
 
         let proceed = state.proceed(order);
 
@@ -42,7 +50,7 @@ mod tests {
 
     #[test]
     fn given_two_orders_from_same_peer_dont_proceed_second_one() {
-        let state = State::default();
+        let mut state = State::default();
 
         let peer = Peer::default();
 
