@@ -21,11 +21,20 @@ jobs:
           override: true
           components: rustfmt, clippy
 
+      - name: Install tomlfmt
+        uses: actions-rs/install@v0.1
+        with:
+          crate: cargo-tomlfmt
+          version: latest
+
       - name: Cache ~/.cargo/bin directory
         uses: actions/cache@v1
         with:
           path: ~/.cargo/bin
           key: ubuntu-rust-${{ env.RUST_TOOLCHAIN }}-cargo-bin-directory-v1
+
+      - name: Check Cargo.toml formatting
+        run: cargo tomlfmt -d -p Cargo.toml
 
       - name: Check code formatting
         run: cargo fmt -- --check
