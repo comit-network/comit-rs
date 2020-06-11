@@ -17,9 +17,7 @@ pub struct SecretHash([u8; LENGTH]);
 
 impl SecretHash {
     pub fn new(secret: Secret) -> Self {
-        let mut sha = Sha256::new();
-        sha.input(secret.as_raw_secret());
-        let hash: [u8; LENGTH] = sha.result().into();
+        let hash = Sha256::digest(secret.as_raw_secret()).into();
 
         SecretHash(hash)
     }
