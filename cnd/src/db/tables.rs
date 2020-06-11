@@ -1,5 +1,5 @@
 use crate::{
-    bitcoin,
+    asset, bitcoin,
     db::{
         schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
@@ -105,6 +105,15 @@ pub struct InsertableHerc20 {
     pub side: Text<Side>,
 }
 
+impl From<Herc20> for asset::Erc20 {
+    fn from(herc20: Herc20) -> asset::Erc20 {
+        asset::Erc20 {
+            quantity: herc20.amount.0.into(),
+            token_contract: herc20.token_contract.0.into(),
+        }
+    }
+}
+
 pub trait IntoInsertable {
     type Insertable;
 
@@ -174,6 +183,12 @@ pub struct InsertableHalbit {
     pub side: Text<Side>,
 }
 
+impl From<Halbit> for asset::Bitcoin {
+    fn from(halbit: Halbit) -> Self {
+        halbit.amount.0.into()
+    }
+}
+
 impl IntoInsertable for halbit::CreatedSwap {
     type Insertable = InsertableHalbit;
 
@@ -225,6 +240,12 @@ pub struct InsertableHbit {
     pub final_identity: Text<bitcoin::Address>,
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
+}
+
+impl From<Hbit> for asset::Bitcoin {
+    fn from(hbit: Hbit) -> Self {
+        hbit.amount.0.into()
+    }
 }
 
 impl IntoInsertable for hbit::CreatedSwap {
