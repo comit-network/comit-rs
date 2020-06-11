@@ -231,6 +231,7 @@ impl IntoParams for herc20::Params {
                 .into(),
             expiry: herc20.expiry.0.into(),
             secret_hash,
+            chain_id: herc20.chain_id.0.into(),
         })
     }
 }

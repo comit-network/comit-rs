@@ -64,9 +64,11 @@ impl FundAction
                         state: hbit::State::None,
                         ..
                     },
+                secret,
                 ..
             } => {
-                let fund_action = herc20.build_fund_action()?;
+                let secret_hash = SecretHash::new(*secret);
+                let fund_action = herc20.build_fund_action(secret_hash)?;
                 Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -116,9 +118,11 @@ impl RefundAction
                         ..
                     },
                 beta_finalized: hbit::FinalizedAsRedeemer { .. },
+                secret,
                 ..
             } => {
-                let refund_action = herc20.build_refund_action()?;
+                let secret_hash = SecretHash::new(*secret);
+                let refund_action = herc20.build_refund_action(secret_hash)?;
                 Ok(refund_action)
             }
             _ => anyhow::bail!(ActionNotFound),

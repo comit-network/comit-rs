@@ -1,7 +1,7 @@
 //! Htlc ERC20 Token atomic swap protocol.
 
 use crate::{
-    asset,
+    actions, asset,
     asset::{ethereum::FromWei, Erc20, Erc20Quantity},
     btsieve::{
         ethereum::{watch_for_contract_creation, watch_for_event, ReceiptByHash, Topic},
@@ -267,11 +267,82 @@ pub struct Params {
     pub refund_identity: identity::Ethereum,
     pub expiry: Timestamp,
     pub secret_hash: SecretHash,
+    pub chain_id: ChainId,
 }
 
 impl Params {
     pub fn bytecode(&self) -> Bytes {
         Erc20Htlc::from(self.clone()).into()
+    }
+
+    pub fn build_deploy_action(&self) -> actions::ethereum::DeployContract {
+        let chain_id = self.chain_id;
+        let htlc = Erc20Htlc::from(self.clone());
+        let gas_limit = Erc20Htlc::deploy_tx_gas_limit();
+
+        actions::ethereum::DeployContract {
+            data: htlc.into(),
+            amount: asset::Ether::zero(),
+            gas_limit,
+            chain_id,
+        }
+    }
+
+    pub fn build_fund_action(
+        &self,
+        htlc_location: htlc_location::Ethereum,
+    ) -> anyhow::Result<actions::ethereum::CallContract> {
+        let to = self.asset.token_contract;
+        let htlc_address = blockchain_contracts::ethereum::Address(htlc_location.into());
+        let data =
+            Erc20Htlc::transfer_erc20_tx_payload(self.asset.clone().quantity.into(), htlc_address);
+        let data = Some(Bytes(data));
+
+        let gas_limit = Erc20Htlc::fund_tx_gas_limit();
+        let min_block_timestamp = None;
+
+        Ok(actions::ethereum::CallContract {
+            to,
+            data,
+            gas_limit,
+            chain_id: self.chain_id,
+            min_block_timestamp,
+        })
+    }
+
+    pub fn build_refund_action(
+        &self,
+        htlc_location: htlc_location::Ethereum,
+    ) -> anyhow::Result<actions::ethereum::CallContract> {
+        let data = None;
+        let gas_limit = Erc20Htlc::refund_tx_gas_limit();
+        let min_block_timestamp = Some(self.expiry);
+
+        Ok(actions::ethereum::CallContract {
+            to: htlc_location,
+            data,
+            gas_limit,
+            chain_id: self.chain_id,
+            min_block_timestamp,
+        })
+    }
+
+    pub fn build_redeem_action(
+        &self,
+        htlc_location: htlc_location::Ethereum,
+        secret: Secret,
+    ) -> anyhow::Result<actions::ethereum::CallContract> {
+        let data = Some(Bytes::from(secret.into_raw_secret().to_vec()));
+        let gas_limit = Erc20Htlc::redeem_tx_gas_limit();
+        let min_block_timestamp = None;
+
+        Ok(actions::ethereum::CallContract {
+            to: htlc_location,
+            data,
+            gas_limit,
+            chain_id: self.chain_id,
+            min_block_timestamp,
+        })
     }
 }
 
