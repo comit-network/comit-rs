@@ -2,8 +2,8 @@ mod errors;
 #[cfg(test)]
 mod integration_tests;
 mod load_swaps;
+mod rfc003_save_load_impls;
 mod rfc003_schema;
-mod save_load_impls;
 pub mod schema;
 pub mod tables;
 pub mod wrapper_types;
@@ -18,15 +18,15 @@ embed_migrations!("./migrations");
 pub use self::{
     errors::*,
     load_swaps::{AcceptedSwap, LoadAcceptedSwap},
-    save_load_impls::*,
+    rfc003_save_load_impls::*,
     swap::*,
     swap_types::*,
 };
+pub use crate::storage::{ForSwap, Save};
 
 use crate::{
     db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId, Role,
 };
-use async_trait::async_trait;
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, sqlite::SqliteConnection};
 use libp2p::PeerId;
@@ -38,20 +38,6 @@ use std::{
 use tokio::sync::Mutex;
 
 /// This module provides persistent storage by way of Sqlite.
-
-/// Save date to the database.
-#[async_trait]
-pub trait Save<T>: Send + Sync + 'static {
-    async fn save(&self, swap: T) -> anyhow::Result<()>;
-}
-
-/// Convenience struct to use with `Save` for saving some data T that relates to
-/// a LocalSwapId.
-#[derive(Debug)]
-pub struct ForSwap<T> {
-    pub local_swap_id: LocalSwapId,
-    pub data: T,
-}
 
 #[derive(Clone, derivative::Derivative)]
 #[derivative(Debug)]

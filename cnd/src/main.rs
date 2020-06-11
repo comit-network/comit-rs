@@ -197,14 +197,13 @@ fn main() -> anyhow::Result<()> {
         swap_communication_states,
         swap_error_states,
         seed,
-        db: database.clone(),
+        db: database,
         swarm: swarm.clone(),
     };
 
     // split protocols
     let facade = Facade {
         swarm: swarm.clone(),
-        db: database,
         storage: storage.clone(),
         connectors,
     };
