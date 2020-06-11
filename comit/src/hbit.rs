@@ -146,7 +146,7 @@ where
     Ok(())
 }
 
-async fn watch_for_funded<C>(
+pub async fn watch_for_funded<C>(
     connector: &C,
     params: &Params,
     start_of_swap: NaiveDateTime,
@@ -179,7 +179,7 @@ where
     Ok(event)
 }
 
-async fn watch_for_redeemed<C>(
+pub async fn watch_for_redeemed<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
@@ -202,7 +202,7 @@ where
     })
 }
 
-async fn watch_for_refunded<C>(
+pub async fn watch_for_refunded<C>(
     connector: &C,
     params: &Params,
     location: htlc_location::Bitcoin,
