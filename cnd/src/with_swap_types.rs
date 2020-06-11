@@ -4,7 +4,8 @@ macro_rules! within_swap_context {
         use crate::{
             asset,
             http_api::{halbit, hbit, herc20, AliceSwap, BobSwap},
-            Protocol, Role, SwapContext,
+            storage::SwapContext,
+            Protocol, Role,
         };
 
         let swap_context: SwapContext = $swap_context;

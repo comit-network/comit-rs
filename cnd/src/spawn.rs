@@ -1,4 +1,4 @@
-use crate::{Load, ProtocolSpawner, Role, Side, Spawn, Storage, SwapContext};
+use crate::{storage::SwapContext, Load, ProtocolSpawner, Role, Side, Spawn, Storage};
 use chrono::NaiveDateTime;
 
 #[derive(Clone, Copy, Debug)]
