@@ -23,11 +23,14 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache ~/.cargo/bin directory
-        uses: actions/cache@v1
+      - name: Cache cargo binaries, registry and target directory
+        uses: actions/cache@v2
         with:
-          path: ~/.cargo/bin
-          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}-cargo-bin-directory
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            target
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
 
       - name: Check formatting
         run: make check_format
@@ -54,17 +57,14 @@ jobs:
           profile: minimal
           override: true
 
-      - name: Cache target directory
-        uses: actions/cache@v1
+      - name: Cache cargo binaries, registry and target directory
+        uses: actions/cache@v2
         with:
-          path: target
-          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc-hash }}-target-directory-${{ hashFiles('Cargo.lock') }}
-
-      - name: Cache ~/.cargo/registry directory
-        uses: actions/cache@v1
-        with:
-          path: ~/.cargo/registry
-          key: ${{ matrix.os }}-rust-${{ steps.toolchain.outputs.rustc-hash }}-cargo-registry-directory-${{ hashFiles('Cargo.lock') }}
+          path: |
+            ~/.cargo/bin
+            ~/.cargo/registry
+            target
+          key: ubuntu-rust-${{ steps.toolchain.outputs.rustc-hash }}
 
       - name: Build ${{ matrix.os }} binary
         run: make build
@@ -93,7 +93,7 @@ jobs:
 
       - name: Cache node_modules directory
         if: matrix.e2e
-        uses: actions/cache@v1
+        uses: actions/cache@v2
         with:
           path: api_tests/node_modules
           key: ${{ matrix.os }}-node-modules-directory-${{ hashFiles('api_tests/package.json') }}
