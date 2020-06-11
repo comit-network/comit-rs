@@ -16,8 +16,8 @@ proptest! {
     #[test]
     fn given_several_swaps_can_correctly_load_protocol_combinations(
         first_swap in db::created_swap(hbit::created_swap(), herc20::created_swap()),
-        second_swap in db::created_swap(halight::created_swap(), herc20::created_swap()),
-        third_swap in db::created_swap(herc20::created_swap(), halight::created_swap()),
+        second_swap in db::created_swap(halbit::created_swap(), herc20::created_swap()),
+        third_swap in db::created_swap(herc20::created_swap(), halbit::created_swap()),
     ) {
         // GIVEN a database and three swaps
         let db = Sqlite::test();
@@ -32,11 +32,11 @@ proptest! {
         assert_eq!(loaded_first_swap.alpha, Protocol::Hbit);
         assert_eq!(loaded_first_swap.beta, Protocol::Herc20);
 
-        assert_eq!(loaded_second_swap.alpha, Protocol::Halight);
+        assert_eq!(loaded_second_swap.alpha, Protocol::Halbit);
         assert_eq!(loaded_second_swap.beta, Protocol::Herc20);
 
         assert_eq!(loaded_third_swap.alpha, Protocol::Herc20);
-        assert_eq!(loaded_third_swap.beta, Protocol::Halight);
+        assert_eq!(loaded_third_swap.beta, Protocol::Halbit);
     }
 }
 

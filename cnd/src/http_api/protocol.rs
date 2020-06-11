@@ -1,4 +1,4 @@
-use crate::{halight, hbit, herc20, Role, Secret, SecretHash, Timestamp};
+use crate::{halbit, hbit, herc20, Role, Secret, SecretHash, Timestamp};
 use serde::Serialize;
 use std::collections::HashMap;
 
@@ -10,7 +10,7 @@ pub struct Herc20 {
 }
 
 #[derive(Debug, Serialize)]
-pub struct Halight {
+pub struct Halbit {
     pub protocol: String,
     pub quantity: String, // In Satoshi.
 }
@@ -205,16 +205,16 @@ impl From<hbit::State> for LedgerEvents {
     }
 }
 
-impl From<halight::State> for LedgerEvents {
-    fn from(state: halight::State) -> Self {
+impl From<halbit::State> for LedgerEvents {
+    fn from(state: halbit::State) -> Self {
         match state {
-            halight::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
-            halight::State::Opened(_) => {
+            halbit::State::None => LedgerEvents::new(EscrowStatus::None, HashMap::new()),
+            halbit::State::Opened(_) => {
                 LedgerEvents::new(EscrowStatus::Initialized, HashMap::new())
             }
-            halight::State::Accepted(_) => LedgerEvents::new(EscrowStatus::Funded, HashMap::new()),
-            halight::State::Settled(_) => LedgerEvents::new(EscrowStatus::Redeemed, HashMap::new()),
-            halight::State::Cancelled(_) => {
+            halbit::State::Accepted(_) => LedgerEvents::new(EscrowStatus::Funded, HashMap::new()),
+            halbit::State::Settled(_) => LedgerEvents::new(EscrowStatus::Redeemed, HashMap::new()),
+            halbit::State::Cancelled(_) => {
                 LedgerEvents::new(EscrowStatus::Refunded, HashMap::new())
             }
         }

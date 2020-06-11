@@ -310,14 +310,14 @@ mod tests {
     use crate::{
         asset::{self, ethereum::FromWei},
         identity,
-        network::{Herc20Halight, LocalData, SwapDigest},
+        network::{Herc20Halbit, LocalData, SwapDigest},
     };
     use digest::Digest;
 
     // Usage of this function relies on the fact that token_contract is
     // random. We should use property based testing.
     fn digest() -> SwapDigest {
-        Herc20Halight {
+        Herc20Halbit {
             ethereum_absolute_expiry: 12345.into(),
             erc20_amount: asset::Erc20Quantity::from_wei(9_001_000_000_000_000_000_000u128),
             token_contract: identity::Ethereum::random(),

@@ -42,7 +42,7 @@ table! {
 }
 
 table! {
-    halights {
+    halbits {
         id -> Integer,
         swap_id -> Integer,
         amount -> Text,
@@ -68,8 +68,8 @@ table! {
     }
 }
 
-allow_tables_to_appear_in_same_query!(swaps, halights);
+allow_tables_to_appear_in_same_query!(swaps, halbits);
 allow_tables_to_appear_in_same_query!(swaps, herc20s);
 allow_tables_to_appear_in_same_query!(swaps, hbits);
-allow_tables_to_appear_in_same_query!(halights, herc20s);
+allow_tables_to_appear_in_same_query!(halbits, herc20s);
 allow_tables_to_appear_in_same_query!(hbits, herc20s);

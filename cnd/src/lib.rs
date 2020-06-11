@@ -46,7 +46,7 @@ pub mod config;
 pub mod connectors;
 mod facade;
 pub mod file_lock;
-pub mod halight;
+pub mod halbit;
 pub mod hbit;
 pub mod herc20;
 pub mod http_api;

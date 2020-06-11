@@ -167,9 +167,9 @@ pub mod herc20 {
     }
 }
 
-pub mod halight {
+pub mod halbit {
     use super::*;
-    use comit::halight;
+    use comit::halbit;
 
     prop_compose! {
         pub fn created_swap()(
@@ -177,8 +177,8 @@ pub mod halight {
             identity in identity::lightning(),
             network in ledger::bitcoin(),
             cltv_expiry in any::<u32>()
-        ) -> halight::CreatedSwap {
-            halight::CreatedSwap {
+        ) -> halbit::CreatedSwap {
+            halbit::CreatedSwap {
                 asset,
                 identity,
                 network,
@@ -259,12 +259,12 @@ pub mod db {
         }
 
         prop_compose! {
-            pub fn insertable_halight()(
-                created in halight::created_swap(),
+            pub fn insertable_halbit()(
+                created in halbit::created_swap(),
                 swap_id in any::<i32>(),
                 role in role(),
                 side in side(),
-            ) -> tables::InsertableHalight {
+            ) -> tables::InsertableHalbit {
                 created.into_insertable(swap_id, role, side)
             }
         }

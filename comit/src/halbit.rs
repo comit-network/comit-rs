@@ -4,7 +4,7 @@ use futures::{future, future::Either, Stream, TryFutureExt};
 use genawaiter::sync::Gen;
 use std::fmt;
 
-/// Creates a new instance of the halight protocol.
+/// Creates a new instance of the halbit protocol.
 ///
 /// Returns a stream of events happening during the execution.
 pub fn new<'a, C>(
@@ -90,10 +90,10 @@ pub trait WaitForCancelled {
     async fn wait_for_cancelled(&self, params: &Params) -> anyhow::Result<Cancelled>;
 }
 
-/// Represents the events in the halight protocol.
+/// Represents the events in the halbit protocol.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Event {
-    /// The halight protocol was started.
+    /// The halbit protocol was started.
     Started,
 
     /// The invoice was opened and is ready to accept a payment.

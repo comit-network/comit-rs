@@ -23,7 +23,7 @@ use cnd::{
     connectors::Connectors,
     db::Sqlite,
     file_lock::TryLockExclusive,
-    halight, hbit, herc20,
+    halbit, hbit, herc20,
     http_api::route_factory,
     load_swaps,
     network::{Swarm, SwarmWorker},
@@ -134,7 +134,7 @@ fn main() -> anyhow::Result<()> {
     )
     .map_err(|err| {
         tracing::warn!(
-            "Could not read initialise lnd configuration, halight will not be available: {:?}",
+            "Could not read initialise lnd configuration, halbit will not be available: {:?}",
             err
         );
     })
@@ -151,7 +151,7 @@ fn main() -> anyhow::Result<()> {
     let swap_communication_states = Arc::new(SwapCommunicationStates::default());
 
     let herc20_states = Arc::new(herc20::States::default());
-    let halight_states = Arc::new(halight::States::default());
+    let halbit_states = Arc::new(halbit::States::default());
     let hbit_states = Arc::new(hbit::States::default());
 
     let swap_error_states = Arc::new(SwapErrorStates::default());
@@ -160,7 +160,7 @@ fn main() -> anyhow::Result<()> {
         database.clone(),
         seed,
         herc20_states.clone(),
-        halight_states.clone(),
+        halbit_states.clone(),
         hbit_states.clone(),
     );
 
@@ -170,7 +170,7 @@ fn main() -> anyhow::Result<()> {
         lnd_connector_params,
         runtime.handle().clone(),
         Arc::clone(&herc20_states),
-        Arc::clone(&halight_states),
+        Arc::clone(&halbit_states),
         Arc::clone(&hbit_states),
     );
 

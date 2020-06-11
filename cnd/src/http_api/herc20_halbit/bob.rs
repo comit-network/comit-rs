@@ -1,11 +1,11 @@
 use crate::{
     asset,
-    halight::Settled,
+    halbit::Settled,
     http_api::{
-        halight, herc20,
+        halbit, herc20,
         protocol::{
             AlphaAbsoluteExpiry, AlphaEvents, AlphaLedger, AlphaParams, BetaAbsoluteExpiry,
-            BetaEvents, BetaLedger, BetaParams, BobSwap, Halight, Herc20, Ledger, LedgerEvents,
+            BetaEvents, BetaLedger, BetaParams, BobSwap, Halbit, Herc20, Ledger, LedgerEvents,
         },
         ActionNotFound,
     },
@@ -13,7 +13,7 @@ use crate::{
     DeployAction, FundAction, InitAction, Never, RedeemAction, RefundAction, Timestamp,
 };
 
-impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = lnd::SendPayment;
 
     fn fund_action(&self) -> anyhow::Result<Self::Output> {
@@ -25,15 +25,15 @@ impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
                         ..
                     },
                 beta_finalized:
-                    halight
+                    halbit
                     @
-                    halight::Finalized {
-                        state: halight::State::Opened(_),
+                    halbit::Finalized {
+                        state: halbit::State::Opened(_),
                         ..
                     },
                 secret_hash,
             } => {
-                let fund_action = halight.build_fund_action(*secret_hash);
+                let fund_action = halbit.build_fund_action(*secret_hash);
                 Ok(fund_action)
             }
             _ => anyhow::bail!(ActionNotFound),
@@ -41,7 +41,7 @@ impl FundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, hal
     }
 }
 
-impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = ethereum::CallContract;
 
     fn redeem_action(&self) -> anyhow::Result<Self::Output> {
@@ -49,8 +49,8 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
             BobSwap::Finalized {
                 alpha_finalized: herc20 @ herc20::Finalized { .. },
                 beta_finalized:
-                    halight::Finalized {
-                        state: halight::State::Settled(Settled { secret }),
+                    halbit::Finalized {
+                        state: halbit::State::Settled(Settled { secret }),
                         ..
                     },
                 ..
@@ -63,7 +63,7 @@ impl RedeemAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, h
     }
 }
 
-impl AlphaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl AlphaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     fn alpha_events(&self) -> Option<LedgerEvents> {
         match self {
             BobSwap::Created { .. } => None,
@@ -79,60 +79,60 @@ impl AlphaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, ha
     }
 }
 
-impl BetaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl BetaEvents for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     fn beta_events(&self) -> Option<LedgerEvents> {
         match self {
             BobSwap::Created { .. } => None,
             BobSwap::Finalized {
                 beta_finalized:
-                    halight::Finalized {
-                        state: halight_state,
+                    halbit::Finalized {
+                        state: halbit_state,
                         ..
                     },
                 ..
-            } => Some(halight_state.clone().into()),
+            } => Some(halbit_state.clone().into()),
         }
     }
 }
 
-impl AlphaParams for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl AlphaParams for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = Herc20;
     fn alpha_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl BetaParams for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
-    type Output = Halight;
+impl BetaParams for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
+    type Output = Halbit;
     fn beta_params(&self) -> Self::Output {
         self.clone().into()
     }
 }
 
-impl DeployAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl DeployAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = Never;
     fn deploy_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }
 
-impl InitAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl InitAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = Never;
     fn init_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }
 
-impl RefundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl RefundAction for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     type Output = Never;
     fn refund_action(&self) -> anyhow::Result<Self::Output> {
         anyhow::bail!(ActionNotFound)
     }
 }
 
-impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>> for Herc20 {
+impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>> for Herc20 {
     fn from(
-        from: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>,
+        from: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>,
     ) -> Self {
         match from {
             BobSwap::Created {
@@ -155,46 +155,44 @@ impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Fina
     }
 }
 
-impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>>
-    for Halight
-{
+impl From<BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>> for Halbit {
     fn from(
-        from: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>,
+        from: BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>,
     ) -> Self {
         match from {
             BobSwap::Created {
-                beta_created: halight_asset,
+                beta_created: halbit_asset,
                 ..
             }
             | BobSwap::Finalized {
                 beta_finalized:
-                    halight::Finalized {
-                        asset: halight_asset,
+                    halbit::Finalized {
+                        asset: halbit_asset,
                         ..
                     },
                 ..
             } => Self {
-                protocol: "halight".to_owned(),
-                quantity: halight_asset.as_sat().to_string(),
+                protocol: "halbit".to_owned(),
+                quantity: halbit_asset.as_sat().to_string(),
             },
         }
     }
 }
 
-impl AlphaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl AlphaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     fn alpha_ledger(&self) -> Ledger {
         Ledger::Ethereum
     }
 }
 
-impl BetaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized> {
+impl BetaLedger for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized> {
     fn beta_ledger(&self) -> Ledger {
         Ledger::Bitcoin
     }
 }
 
 impl AlphaAbsoluteExpiry
-    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>
 {
     fn alpha_absolute_expiry(&self) -> Option<Timestamp> {
         match self {
@@ -208,9 +206,9 @@ impl AlphaAbsoluteExpiry
 }
 
 impl BetaAbsoluteExpiry
-    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halight::Finalized>
+    for BobSwap<asset::Erc20, asset::Bitcoin, herc20::Finalized, halbit::Finalized>
 {
     fn beta_absolute_expiry(&self) -> Option<Timestamp> {
-        None // No absolute expiry time for halight.
+        None // No absolute expiry time for halbit.
     }
 }

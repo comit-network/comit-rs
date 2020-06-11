@@ -1,14 +1,20 @@
 import {
     Cnd,
-    HalightHerc20RequestBody,
-    Herc20HalightRequestBody,
-    Herc20HbitRequestBody,
     Swap,
     Wallets as SdkWallets,
-    HbitHerc20RequestBody,
     Step,
     LedgerParameters,
 } from "comit-sdk";
+import {
+    HalbitHerc20Payload,
+    Herc20HalbitPayload,
+    HbitHerc20Payload,
+    Herc20HbitPayload,
+    EscrowStatus,
+    LedgerState,
+    SwapResponse,
+    SwapStatus,
+} from "../payload";
 import { Logger } from "log4js";
 import { E2ETestActorConfig } from "../config";
 import {
@@ -25,12 +31,6 @@ import { LedgerConfig, sleep } from "../utils";
 import { Actors } from "./index";
 import { Wallets } from "../wallets";
 import { defaultLedgerDescriptionForLedger } from "./defaults";
-import {
-    EscrowStatus,
-    LedgerState,
-    SwapResponse,
-    SwapStatus,
-} from "../swap_response";
 import pTimeout from "p-timeout";
 
 export type ActorName = "alice" | "bob" | "charlie";
@@ -101,35 +101,33 @@ export class Actor {
      */
 
     /**
-     * Create a herc20-halight Swap
-     * @param createSwapPayload
+     * Create a herc20<->halbit Swap
+     * @param create
      */
-    public async createHerc20HalightSwap(
-        createSwapPayload: Herc20HalightRequestBody
-    ) {
+    public async createHerc20HalbitSwap(create: Herc20HalbitPayload) {
         this.alphaLedger = {
             name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.alpha.chain_id,
+            chain_id: create.alpha.chain_id,
         };
         this.betaLedger = {
             name: LedgerKind.Lightning,
-            network: createSwapPayload.beta.network,
+            network: create.beta.network,
         };
         this.alphaAsset = {
             name: AssetKind.Erc20,
-            quantity: createSwapPayload.alpha.amount,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Ethereum,
-            tokenContract: createSwapPayload.alpha.contract_address,
+            tokenContract: create.alpha.token_contract,
         };
         this.betaAsset = {
             name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.beta.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Lightning,
         };
 
         await this.setStartingBalances();
 
-        const location = await this.cnd.createHerc20Halight(createSwapPayload);
+        const location = await this.createHerc20Halbit(create);
 
         this.swap = new Swap(
             this.cnd,
@@ -142,35 +140,33 @@ export class Actor {
     }
 
     /**
-     * Create a halight-herc20 Swap
-     * @param createSwapPayload
+     * Create a halbit<->herc20 Swap
+     * @param create
      */
-    public async createHalightHerc20Swap(
-        createSwapPayload: HalightHerc20RequestBody
-    ) {
+    public async createHalbitHerc20Swap(create: HalbitHerc20Payload) {
         this.alphaLedger = {
             name: LedgerKind.Lightning,
-            network: createSwapPayload.alpha.network,
+            network: create.alpha.network,
         };
         this.betaLedger = {
             name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.beta.chain_id,
+            chain_id: create.beta.chain_id,
         };
         this.alphaAsset = {
             name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.alpha.amount,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Lightning,
         };
         this.betaAsset = {
             name: AssetKind.Erc20,
-            quantity: createSwapPayload.beta.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Ethereum,
-            tokenContract: createSwapPayload.beta.contract_address,
+            tokenContract: create.beta.token_contract,
         };
 
         await this.setStartingBalances();
 
-        const location = await this.cnd.createHalightHerc20(createSwapPayload);
+        const location = await this.createHalbitHerc20(create);
 
         this.swap = new Swap(
             this.cnd,
@@ -184,34 +180,32 @@ export class Actor {
 
     /**
      * Create a herc20-hbit Swap
-     * @param createSwapPayload
+     * @param create
      */
-    public async createHerc20HbitSwap(
-        createSwapPayload: Herc20HbitRequestBody
-    ) {
+    public async createHerc20HbitSwap(create: Herc20HbitPayload) {
         this.alphaLedger = {
             name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.alpha.chain_id,
+            chain_id: create.alpha.chain_id,
         };
         this.betaLedger = {
             name: LedgerKind.Bitcoin,
-            network: createSwapPayload.beta.network,
+            network: create.beta.network,
         };
         this.alphaAsset = {
             name: AssetKind.Erc20,
-            quantity: createSwapPayload.alpha.amount,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Ethereum,
-            tokenContract: createSwapPayload.alpha.contract_address,
+            tokenContract: create.alpha.token_contract,
         };
         this.betaAsset = {
             name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.beta.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Bitcoin,
         };
 
         await this.setStartingBalances();
 
-        const location = await this.cnd.createHerc20Hbit(createSwapPayload);
+        const location = await this.createHerc20Hbit(create);
 
         this.swap = new Swap(
             this.cnd,
@@ -225,34 +219,32 @@ export class Actor {
 
     /**
      * Create a hbit-herc20 Swap
-     * @param createSwapPayload
+     * @param create
      */
-    public async createHbitHerc20Swap(
-        createSwapPayload: HbitHerc20RequestBody
-    ) {
+    public async createHbitHerc20Swap(create: HbitHerc20Payload) {
         this.alphaLedger = {
             name: LedgerKind.Bitcoin,
-            network: createSwapPayload.alpha.network,
+            network: create.alpha.network,
         };
         this.betaLedger = {
             name: LedgerKind.Ethereum,
-            chain_id: createSwapPayload.beta.chain_id,
+            chain_id: create.beta.chain_id,
         };
         this.alphaAsset = {
             name: AssetKind.Bitcoin,
-            quantity: createSwapPayload.alpha.amount,
+            quantity: create.alpha.amount,
             ledger: LedgerKind.Bitcoin,
         };
         this.betaAsset = {
             name: AssetKind.Erc20,
-            quantity: createSwapPayload.beta.amount,
+            quantity: create.beta.amount,
             ledger: LedgerKind.Ethereum,
-            tokenContract: createSwapPayload.beta.contract_address,
+            tokenContract: create.beta.token_contract,
         };
 
         await this.setStartingBalances();
 
-        const location = await this.cnd.createHbitHerc20(createSwapPayload);
+        const location = await this.createHbitHerc20(create);
 
         this.swap = new Swap(
             this.cnd,
@@ -551,8 +543,8 @@ export class Actor {
                 }
             }
 
-            // No events are set for halight
-            if (protocol === "halight") {
+            // No events are set for halbit
+            if (protocol === "halbit") {
                 return true;
             }
 
@@ -679,6 +671,44 @@ export class Actor {
                 await this.betaLedgerWallet.getBalanceByAsset(this.betaAsset)
             );
         }
+    }
+
+    public async createHerc20Halbit(
+        body: Herc20HalbitPayload
+    ): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post(
+            "swaps/herc20/halbit",
+            body
+        );
+
+        return response.headers.location;
+    }
+
+    public async createHalbitHerc20(
+        body: HalbitHerc20Payload
+    ): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post(
+            "swaps/halbit/herc20",
+            body
+        );
+
+        return response.headers.location;
+    }
+
+    public async createHerc20Hbit(body: Herc20HbitPayload): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post("swaps/herc20/hbit", body);
+
+        return response.headers.location;
+    }
+
+    public async createHbitHerc20(body: HbitHerc20Payload): Promise<string> {
+        // @ts-ignore
+        const response = await this.cnd.client.post("swaps/hbit/herc20", body);
+
+        return response.headers.location;
     }
 
     /**

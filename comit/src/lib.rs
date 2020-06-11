@@ -3,7 +3,7 @@ pub mod asset;
 pub mod bitcoin;
 pub mod btsieve;
 pub mod ethereum;
-pub mod halight;
+pub mod halbit;
 pub mod hbit;
 pub mod herc20;
 pub mod htlc_location;
@@ -41,7 +41,7 @@ use digest::ToDigestInput;
 #[strum(serialize_all = "lowercase")]
 pub enum Protocol {
     Hbit,
-    Halight,
+    Halbit,
     Herc20,
 }
 

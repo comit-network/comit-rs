@@ -7,9 +7,9 @@ import SwapFactory from "../src/actors/swap_factory";
 import { sleep } from "../src/utils";
 import { twoActorTest } from "../src/actor_test";
 
-describe("herc20-halight", () => {
+describe("herc20-halbit", () => {
     it(
-        "herc20-halight-alice-redeems-bob-redeems",
+        "herc20-halbit-alice-redeems-bob-redeems",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
@@ -18,10 +18,10 @@ describe("herc20-halight", () => {
                         beta: "lightning",
                     },
                 })
-            ).herc20Halight;
+            ).herc20Halbit;
 
-            await alice.createHerc20HalightSwap(bodies.alice);
-            await bob.createHerc20HalightSwap(bodies.bob);
+            await alice.createHerc20HalbitSwap(bodies.alice);
+            await bob.createHerc20HalbitSwap(bodies.bob);
 
             await alice.assertAndExecuteNextAction("init");
 
@@ -42,7 +42,7 @@ describe("herc20-halight", () => {
     );
 
     it(
-        "herc20-halight-alice-refunds",
+        "herc20-halbit-alice-refunds",
         twoActorTest(async ({ alice, bob }) => {
             const bodies = (
                 await SwapFactory.newSwap(alice, bob, {
@@ -52,10 +52,10 @@ describe("herc20-halight", () => {
                     },
                     instantRefund: true,
                 })
-            ).herc20Halight;
+            ).herc20Halbit;
 
-            await alice.createHerc20HalightSwap(bodies.alice);
-            await bob.createHerc20HalightSwap(bodies.bob);
+            await alice.createHerc20HalbitSwap(bodies.alice);
+            await bob.createHerc20HalbitSwap(bodies.bob);
 
             await alice.assertAndExecuteNextAction("init");
 

@@ -2,13 +2,13 @@ use crate::{
     asset,
     db::{
         self,
-        tables::{Halight, Hbit, Herc20, Swap},
+        tables::{Halbit, Hbit, Herc20, Swap},
         wrapper_types::custom_sql_types::Text,
-        ForSwap, NoHalightRedeemIdentity, NoHalightRefundIdentity, NoHbitRedeemIdentity,
+        ForSwap, NoHalbitRedeemIdentity, NoHalbitRefundIdentity, NoHbitRedeemIdentity,
         NoHbitRefundIdentity, NoHerc20RedeemIdentity, NoHerc20RefundIdentity, NoSecretHash, Save,
         Sqlite,
     },
-    halight, hbit, herc20, http_api, identity,
+    halbit, hbit, herc20, http_api, identity,
     network::{WhatAliceLearnedFromBob, WhatBobLearnedFromAlice},
     seed::RootSeed,
     spawn,
@@ -38,7 +38,7 @@ pub struct Storage {
     db: Sqlite,
     seed: RootSeed,
     herc20_states: Arc<herc20::States>,
-    halight_states: Arc<halight::States>,
+    halbit_states: Arc<halbit::States>,
     hbit_states: Arc<hbit::States>,
 }
 
@@ -47,14 +47,14 @@ impl Storage {
         db: Sqlite,
         seed: RootSeed,
         herc20_states: Arc<herc20::States>,
-        halight_states: Arc<halight::States>,
+        halbit_states: Arc<halbit::States>,
         hbit_states: Arc<hbit::States>,
     ) -> Self {
         Self {
             db,
             seed,
             herc20_states,
-            halight_states,
+            halbit_states,
             hbit_states,
         }
     }
@@ -95,14 +95,14 @@ impl Load<SwapContext> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
+impl Load<spawn::Swap<herc20::Params, halbit::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<spawn::Swap<herc20::Params, halight::Params>> {
+    ) -> anyhow::Result<spawn::Swap<herc20::Params, halbit::Params>> {
         use crate::db::schema::swaps;
 
-        let (swap, halight, herc20, secret_hash) = self
+        let (swap, halbit, herc20, secret_hash) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(id);
@@ -111,13 +111,13 @@ impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight = Halight::belonging_to(&swap).first::<Halight>(conn)?;
+                let halbit = Halbit::belonging_to(&swap).first::<Halbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
                 let secret_hash = db::tables::SecretHash::belonging_to(&swap)
                     .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
-                Ok((swap, halight, herc20, secret_hash))
+                Ok((swap, halbit, herc20, secret_hash))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -134,7 +134,7 @@ impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
         let swap = spawn::Swap {
             role,
             alpha: build_herc20_params(herc20, secret_hash, id)?,
-            beta: build_halight_params(halight, secret_hash, id)?,
+            beta: build_halbit_params(halbit, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
 
@@ -143,14 +143,14 @@ impl Load<spawn::Swap<herc20::Params, halight::Params>> for Storage {
 }
 
 #[async_trait::async_trait]
-impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
+impl Load<spawn::Swap<halbit::Params, herc20::Params>> for Storage {
     async fn load(
         &self,
         id: LocalSwapId,
-    ) -> anyhow::Result<spawn::Swap<halight::Params, herc20::Params>> {
+    ) -> anyhow::Result<spawn::Swap<halbit::Params, herc20::Params>> {
         use crate::db::schema::swaps;
 
-        let (swap, halight, herc20, secret_hash) = self
+        let (swap, halbit, herc20, secret_hash) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(id);
@@ -159,13 +159,13 @@ impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight = Halight::belonging_to(&swap).first::<Halight>(conn)?;
+                let halbit = Halbit::belonging_to(&swap).first::<Halbit>(conn)?;
                 let herc20 = Herc20::belonging_to(&swap).first::<Herc20>(conn)?;
                 let secret_hash = db::tables::SecretHash::belonging_to(&swap)
                     .first::<db::tables::SecretHash>(conn)
                     .optional()?;
 
-                Ok((swap, halight, herc20, secret_hash))
+                Ok((swap, halbit, herc20, secret_hash))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -181,7 +181,7 @@ impl Load<spawn::Swap<halight::Params, herc20::Params>> for Storage {
 
         let swap = spawn::Swap {
             role,
-            alpha: build_halight_params(halight, secret_hash, id)?,
+            alpha: build_halbit_params(halbit, secret_hash, id)?,
             beta: build_herc20_params(herc20, secret_hash, id)?,
             start_of_swap: swap.start_of_swap,
         };
@@ -300,7 +300,7 @@ impl
             asset::Erc20,
             asset::Bitcoin,
             http_api::herc20::Finalized,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
         >,
     > for Storage
 {
@@ -312,15 +312,15 @@ impl
             asset::Erc20,
             asset::Bitcoin,
             http_api::herc20::Finalized,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
         >,
     > {
         use crate::db::schema::swaps;
 
         let alpha_state = self.herc20_states.get(&swap_id).await?;
-        let beta_state = self.halight_states.get(&swap_id).await?;
+        let beta_state = self.halbit_states.get(&swap_id).await?;
 
-        let (halight, herc20) = self
+        let (halbit, herc20) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(swap_id);
@@ -329,10 +329,10 @@ impl
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
 
-                Ok((halight, herc20))
+                Ok((halbit, herc20))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -341,7 +341,7 @@ impl
             quantity: herc20.amount.0.into(),
             token_contract: herc20.token_contract.0.into(),
         };
-        let halight_asset = halight.amount.0.into();
+        let halbit_asset = halbit.amount.0.into();
 
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
@@ -363,19 +363,19 @@ impl
                     expiry: herc20.expiry.0.into(),
                     state: alpha_state,
                 },
-                beta_finalized: http_api::halight::Finalized {
-                    asset: halight_asset,
-                    network: halight.network.0.into(),
-                    refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    cltv_expiry: halight.cltv_expiry.0.into(),
+                beta_finalized: http_api::halbit::Finalized {
+                    asset: halbit_asset,
+                    network: halbit.network.0.into(),
+                    refund_identity: halbit.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    redeem_identity: halbit.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    cltv_expiry: halbit.cltv_expiry.0.into(),
                     state: beta_state,
                 },
                 secret,
             }),
             _ => Ok(http_api::AliceSwap::Created {
                 alpha_created: herc20_asset,
-                beta_created: halight_asset,
+                beta_created: halbit_asset,
             }),
         }
     }
@@ -387,7 +387,7 @@ impl
         http_api::AliceSwap<
             asset::Bitcoin,
             asset::Erc20,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
             http_api::herc20::Finalized,
         >,
     > for Storage
@@ -399,16 +399,16 @@ impl
         http_api::AliceSwap<
             asset::Bitcoin,
             asset::Erc20,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
             http_api::herc20::Finalized,
         >,
     > {
         use crate::db::schema::swaps;
 
         let alpha_state = self.herc20_states.get(&swap_id).await?;
-        let beta_state = self.halight_states.get(&swap_id).await?;
+        let beta_state = self.halbit_states.get(&swap_id).await?;
 
-        let (halight, herc20) = self
+        let (halbit, herc20) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(swap_id);
@@ -417,10 +417,10 @@ impl
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
 
-                Ok((halight, herc20))
+                Ok((halbit, herc20))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -429,7 +429,7 @@ impl
             quantity: herc20.amount.0.into(),
             token_contract: herc20.token_contract.0.into(),
         };
-        let halight_asset = halight.amount.0.into();
+        let halbit_asset = halbit.amount.0.into();
 
         let secret = self.seed.derive_swap_seed(swap_id).derive_secret();
 
@@ -451,19 +451,19 @@ impl
                     expiry: herc20.expiry.0.into(),
                     state: alpha_state,
                 },
-                alpha_finalized: http_api::halight::Finalized {
-                    asset: halight_asset,
-                    network: halight.network.0.into(),
-                    refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    cltv_expiry: halight.cltv_expiry.0.into(),
+                alpha_finalized: http_api::halbit::Finalized {
+                    asset: halbit_asset,
+                    network: halbit.network.0.into(),
+                    refund_identity: halbit.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    redeem_identity: halbit.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    cltv_expiry: halbit.cltv_expiry.0.into(),
                     state: beta_state,
                 },
                 secret,
             }),
             _ => Ok(http_api::AliceSwap::Created {
                 beta_created: herc20_asset,
-                alpha_created: halight_asset,
+                alpha_created: halbit_asset,
             }),
         }
     }
@@ -476,7 +476,7 @@ impl
             asset::Erc20,
             asset::Bitcoin,
             http_api::herc20::Finalized,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
         >,
     > for Storage
 {
@@ -488,15 +488,15 @@ impl
             asset::Erc20,
             asset::Bitcoin,
             http_api::herc20::Finalized,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
         >,
     > {
         use crate::db::schema::swaps;
 
         let alpha_state = self.herc20_states.get(&swap_id).await?;
-        let beta_state = self.halight_states.get(&swap_id).await?;
+        let beta_state = self.halbit_states.get(&swap_id).await?;
 
-        let (halight, herc20, secret_hash) = self
+        let (halbit, herc20, secret_hash) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(swap_id);
@@ -505,14 +505,14 @@ impl
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
                 let secret_hash: Option<db::tables::SecretHash> =
                     db::tables::SecretHash::belonging_to(&swap)
                         .first(conn)
                         .optional()?;
 
-                Ok((halight, herc20, secret_hash))
+                Ok((halbit, herc20, secret_hash))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -521,7 +521,7 @@ impl
             quantity: herc20.amount.0.into(),
             token_contract: herc20.token_contract.0.into(),
         };
-        let halight_asset = halight.amount.0.into();
+        let halbit_asset = halbit.amount.0.into();
 
         match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
@@ -541,12 +541,12 @@ impl
                     expiry: herc20.expiry.0.into(),
                     state: alpha_state,
                 },
-                beta_finalized: http_api::halight::Finalized {
-                    asset: halight_asset,
-                    network: halight.network.0.into(),
-                    refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    cltv_expiry: halight.cltv_expiry.0.into(),
+                beta_finalized: http_api::halbit::Finalized {
+                    asset: halbit_asset,
+                    network: halbit.network.0.into(),
+                    refund_identity: halbit.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    redeem_identity: halbit.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    cltv_expiry: halbit.cltv_expiry.0.into(),
                     state: beta_state,
                 },
                 secret_hash: secret_hash
@@ -556,7 +556,7 @@ impl
             }),
             _ => Ok(http_api::BobSwap::Created {
                 alpha_created: herc20_asset,
-                beta_created: halight_asset,
+                beta_created: halbit_asset,
             }),
         }
     }
@@ -568,7 +568,7 @@ impl
         http_api::BobSwap<
             asset::Bitcoin,
             asset::Erc20,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
             http_api::herc20::Finalized,
         >,
     > for Storage
@@ -580,16 +580,16 @@ impl
         http_api::BobSwap<
             asset::Bitcoin,
             asset::Erc20,
-            http_api::halight::Finalized,
+            http_api::halbit::Finalized,
             http_api::herc20::Finalized,
         >,
     > {
         use crate::db::schema::swaps;
 
-        let alpha_state = self.halight_states.get(&swap_id).await?;
+        let alpha_state = self.halbit_states.get(&swap_id).await?;
         let beta_state = self.herc20_states.get(&swap_id).await?;
 
-        let (halight, herc20, secret_hash) = self
+        let (halbit, herc20, secret_hash) = self
             .db
             .do_in_transaction::<_, _, anyhow::Error>(move |conn| {
                 let key = Text(swap_id);
@@ -598,14 +598,14 @@ impl
                     .filter(swaps::local_swap_id.eq(key))
                     .first(conn)?;
 
-                let halight: Halight = Halight::belonging_to(&swap).first(conn)?;
+                let halbit: Halbit = Halbit::belonging_to(&swap).first(conn)?;
                 let herc20: Herc20 = Herc20::belonging_to(&swap).first(conn)?;
                 let secret_hash: Option<db::tables::SecretHash> =
                     db::tables::SecretHash::belonging_to(&swap)
                         .first(conn)
                         .optional()?;
 
-                Ok((halight, herc20, secret_hash))
+                Ok((halbit, herc20, secret_hash))
             })
             .await
             .context(db::Error::SwapNotFound)?;
@@ -614,16 +614,16 @@ impl
             quantity: herc20.amount.0.into(),
             token_contract: herc20.token_contract.0.into(),
         };
-        let halight_asset = halight.amount.0.into();
+        let halbit_asset = halbit.amount.0.into();
 
         match (alpha_state, beta_state) {
             (Some(alpha_state), Some(beta_state)) => Ok(http_api::BobSwap::Finalized {
-                alpha_finalized: http_api::halight::Finalized {
-                    asset: halight_asset,
-                    network: halight.network.0.into(),
-                    refund_identity: halight.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    redeem_identity: halight.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
-                    cltv_expiry: halight.cltv_expiry.0.into(),
+                alpha_finalized: http_api::halbit::Finalized {
+                    asset: halbit_asset,
+                    network: halbit.network.0.into(),
+                    refund_identity: halbit.refund_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    redeem_identity: halbit.redeem_identity.ok_or(db::Error::IdentityNotSet)?.0,
+                    cltv_expiry: halbit.cltv_expiry.0.into(),
                     state: alpha_state,
                 },
                 beta_finalized: http_api::herc20::Finalized {
@@ -648,7 +648,7 @@ impl
                     .0,
             }),
             _ => Ok(http_api::BobSwap::Created {
-                alpha_created: halight_asset,
+                alpha_created: halbit_asset,
                 beta_created: herc20_asset,
             }),
         }
@@ -1066,7 +1066,7 @@ impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightnin
                     local_swap_id,
                     redeem_ethereum_identity,
                 )?;
-                self.db.update_halight_refund_identity(
+                self.db.update_halbit_refund_identity(
                     conn,
                     local_swap_id,
                     refund_lightning_identity,
@@ -1091,7 +1091,7 @@ impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Ethereum, identity::Lightnin
 
         self.db
             .do_in_transaction(|conn| {
-                self.db.update_halight_redeem_identity(
+                self.db.update_halbit_redeem_identity(
                     conn,
                     local_swap_id,
                     redeem_lightning_identity,
@@ -1122,7 +1122,7 @@ impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Lightning, identity::Ethereu
 
         self.db
             .do_in_transaction(|conn| {
-                self.db.update_halight_redeem_identity(
+                self.db.update_halbit_redeem_identity(
                     conn,
                     local_swap_id,
                     redeem_lightning_identity,
@@ -1157,7 +1157,7 @@ impl Save<ForSwap<WhatBobLearnedFromAlice<identity::Lightning, identity::Ethereu
                     local_swap_id,
                     redeem_ethereum_identity,
                 )?;
-                self.db.update_halight_refund_identity(
+                self.db.update_halbit_refund_identity(
                     conn,
                     local_swap_id,
                     refund_lightning_identity,
@@ -1335,22 +1335,22 @@ fn build_hbit_params(
     })
 }
 
-fn build_halight_params(
-    halight: Halight,
+fn build_halbit_params(
+    halbit: Halbit,
     secret_hash: SecretHash,
     id: LocalSwapId,
-) -> anyhow::Result<halight::Params> {
-    Ok(halight::Params {
-        redeem_identity: halight
+) -> anyhow::Result<halbit::Params> {
+    Ok(halbit::Params {
+        redeem_identity: halbit
             .redeem_identity
-            .ok_or_else(|| NoHalightRedeemIdentity(id))?
+            .ok_or_else(|| NoHalbitRedeemIdentity(id))?
             .0,
-        refund_identity: halight
+        refund_identity: halbit
             .refund_identity
-            .ok_or_else(|| NoHalightRefundIdentity(id))?
+            .ok_or_else(|| NoHalbitRefundIdentity(id))?
             .0,
-        cltv_expiry: halight.cltv_expiry.0.into(),
-        asset: halight.amount.0.into(),
+        cltv_expiry: halbit.cltv_expiry.0.into(),
+        asset: halbit.amount.0.into(),
         secret_hash,
     })
 }

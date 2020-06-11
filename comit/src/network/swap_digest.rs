@@ -2,10 +2,10 @@ use crate::{asset, identity, network::protocols::announce::SwapDigest, RelativeT
 use digest::Digest;
 
 /// This represents the information that we use to create a swap digest for
-/// herc20 <-> halight swaps.
+/// herc20 <-> halbit swaps.
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
-pub struct Herc20Halight {
+pub struct Herc20Halbit {
     #[digest(prefix = "2001")]
     pub ethereum_absolute_expiry: Timestamp,
     #[digest(prefix = "2002")]
@@ -19,10 +19,10 @@ pub struct Herc20Halight {
 }
 
 /// This represents the information that we use to create a swap digest for
-/// halight <-> herc20 swaps.
+/// halbit <-> herc20 swaps.
 #[derive(Clone, Digest, Debug)]
 #[digest(hash = "SwapDigest")]
-pub struct HalightHerc20 {
+pub struct HalbitHerc20 {
     #[digest(prefix = "2001")]
     pub lightning_cltv_expiry: RelativeTime,
     #[digest(prefix = "2002")]
