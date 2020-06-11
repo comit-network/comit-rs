@@ -70,7 +70,9 @@ jobs:
       - name: Cargo check ${{ matrix.os }}
         run: cargo check
 
+      # Ignore tests on macos due to missing docker
       - name: Cargo test
+        if: matrix.os == 'ubuntu-latest'
         run: cargo test
 
       - name: Build the binary for ${{ matrix.os }}
