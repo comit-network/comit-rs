@@ -218,6 +218,7 @@ impl Swap<hbit::FinalizedAsRedeemer, herc20::Finalized, Bob> {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::ledgers::{BitcoinBlockchain, EthereumBlockchain};
     use bitcoin::{secp256k1, Network};
     use chrono::Utc;
     use comit::{
@@ -228,71 +229,8 @@ mod test {
         btsieve::{bitcoin::BitcoindConnector, ethereum::Web3Connector},
         ethereum, identity, Secret, SecretHash, Timestamp,
     };
-    use reqwest::Url;
     use std::str::FromStr;
-    use testcontainers::{
-        clients,
-        images::coblox_bitcoincore::BitcoinCore,
-        images::generic::{GenericImage, Stream, WaitFor},
-        Container, Docker, Image,
-    };
-
-    struct BitcoinBlockchain<'c> {
-        _container: Container<'c, clients::Cli, BitcoinCore>,
-        node_url: Url,
-    }
-
-    impl<'c> BitcoinBlockchain<'c> {
-        pub fn new(client: &'c clients::Cli) -> anyhow::Result<Self> {
-            let container = client.run(BitcoinCore::default().with_tag("0.20.0"));
-            let port = container.get_host_port(18443);
-
-            let auth = container.image().auth();
-            let url = format!(
-                "http://{}:{}@localhost:{}",
-                &auth.username,
-                &auth.password,
-                port.unwrap()
-            );
-            let url = Url::parse(&url)?;
-
-            Ok(Self {
-                _container: container,
-                node_url: url,
-            })
-        }
-    }
-
-    struct EthereumBlockchain<'c> {
-        _container: Container<'c, clients::Cli, GenericImage>,
-        node_url: Url,
-    }
-
-    impl<'c> EthereumBlockchain<'c> {
-        pub fn new(client: &'c clients::Cli) -> anyhow::Result<Self> {
-            let geth_image = GenericImage::new("ethereum/client-go")
-                .with_wait_for(WaitFor::LogMessage {
-                    message: String::from("mined potential block"),
-                    stream: Stream::StdErr,
-                })
-                .with_args(vec![
-                    String::from("--dev"), // TODO: Most definitely missing arguments, see comit-rs geth_instance.ts
-                    String::from("--dev.period=1"),
-                    String::from("--rpc"),
-                ]);
-
-            let container = client.run(geth_image);
-            let port = container.get_host_port(8545);
-
-            let url = format!("http://localhost:{}", port.unwrap());
-            let url = Url::parse(&url)?;
-
-            Ok(Self {
-                _container: container,
-                node_url: url,
-            })
-        }
-    }
+    use testcontainers::clients;
 
     fn hbit_finalized<C>(
         secp: &bitcoin::secp256k1::Secp256k1<C>,
