@@ -22,7 +22,7 @@ pub use self::{
     network::DialInformation,
     secret::Secret,
     secret_hash::SecretHash,
-    swap_id::SharedSwapId,
+    swap_id::{LocalSwapId, SharedSwapId},
     timestamp::{RelativeTime, Timestamp},
 };
 use digest::ToDigestInput;
