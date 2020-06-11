@@ -22,10 +22,7 @@ jobs:
           components: rustfmt, clippy
 
       - name: Install tomlfmt
-        uses: actions-rs/install@v0.1
-        with:
-          crate: cargo-tomlfmt
-          version: latest
+        run: which cargo-tomlfmt || cargo install cargo-tomlfmt
 
       - name: Cache ~/.cargo/bin directory
         uses: actions/cache@v1
