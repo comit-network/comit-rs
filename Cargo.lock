@@ -1579,6 +1579,8 @@ dependencies = [
  "reqwest",
  "serde",
  "serde_json",
+ "strum",
+ "strum_macros",
  "testcontainers",
  "thiserror",
  "tokio",
