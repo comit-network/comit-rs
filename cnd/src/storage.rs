@@ -425,8 +425,8 @@ impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightnin
         swap: ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Lightning>>,
     ) -> anyhow::Result<()> {
         let local_swap_id = swap.local_swap_id;
-        let refund_lightning_identity = swap.data.beta_refund_identity;
         let redeem_ethereum_identity = swap.data.alpha_redeem_identity;
+        let refund_lightning_identity = swap.data.beta_refund_identity;
 
         self.db
             .do_in_transaction(|conn| {
@@ -546,11 +546,9 @@ impl Save<ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Bitcoin>
         &self,
         swap: ForSwap<WhatAliceLearnedFromBob<identity::Ethereum, identity::Bitcoin>>,
     ) -> anyhow::Result<()> {
-        // identity is the transient one in here
-
         let local_swap_id = swap.local_swap_id;
-        let refund_bitcoin_identity = swap.data.beta_refund_identity;
         let redeem_ethereum_identity = swap.data.alpha_redeem_identity;
+        let refund_bitcoin_identity = swap.data.beta_refund_identity;
 
         self.db
             .do_in_transaction(|conn| {
