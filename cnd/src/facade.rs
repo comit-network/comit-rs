@@ -1,10 +1,9 @@
 use crate::{
     btsieve::LatestBlock,
     connectors::Connectors,
-    db::{Save, Sqlite},
     network::{DialInformation, Identities, Swarm},
     storage::{Load, LoadAll, Storage},
-    LocalSwapId, Role, Timestamp,
+    LocalSwapId, Role, Save, Timestamp,
 };
 use ::comit::network::protocols::announce::SwapDigest;
 use comit::bitcoin;
@@ -15,7 +14,6 @@ use comit::bitcoin;
 #[derive(Clone, Debug)]
 pub struct Facade {
     pub swarm: Swarm,
-    pub db: Sqlite,
     pub storage: Storage,
     pub connectors: Connectors,
 }
@@ -58,11 +56,11 @@ impl Facade {
 #[async_trait::async_trait]
 impl<T> Save<T> for Facade
 where
-    Sqlite: Save<T>,
+    Storage: Save<T>,
     T: Send + 'static,
 {
     async fn save(&self, data: T) -> anyhow::Result<()> {
-        self.db.save(data).await
+        self.storage.save(data).await
     }
 }
 
