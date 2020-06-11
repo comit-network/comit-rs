@@ -1,185 +1,218 @@
+use crate::bitcoin;
+use crate::dai;
+use crate::rate::{Rate, Spread};
 use std::cmp::min;
 
-pub trait LockedFunds {
-    fn locked_funds(&self) -> u64;
+pub trait BitcoinLockedFunds {
+    fn bitcoin_locked_funds(&self) -> bitcoin::Amount;
 }
 
-pub trait Balance {
-    fn balance(&self) -> u64;
+pub trait BitcoinBalance {
+    fn bitcoin_balance(&self) -> bitcoin::Amount;
 }
 
-pub trait Fees {
-    fn fees(&self) -> u64;
+pub trait BitcoinFees {
+    fn bitcoin_fees(&self) -> bitcoin::Amount;
 }
 
-struct Order {
-    pub sell_amount: u64,
-    pub buy_amount: u64,
+struct DaiBitcoinOrder {
+    pub buy_amount: dai::Amount,
+    pub sell_amount: bitcoin::Amount,
 }
 
-/// Contains a positive percentage value expressed in ratio: 1 is 100%
-/// To avoid human errors, the max value is 1.
-struct Spread(f64);
-
-impl Spread {
-    pub fn new(spread: f64) -> Result<Spread, ()> {
-        if spread.is_sign_positive() && spread <= 1.0 {
-            Ok(Spread(spread))
-        } else {
-            Err(())
-        }
-    }
-
-    pub fn as_f64(&self) -> f64 {
-        self.0
-    }
+/// Allow to know the worth of self in a different asset using
+/// The given conversion rate.
+/// MAX_PRECISION_EXP is the maximum precision allowed (number of digits after
+/// the comma) for the rate passed in. This is to ensure that no precision is loss
+/// or truncation done when doing the conversion.
+pub trait WorthIn<Asset> {
+    fn worth_in(&self, rate: Rate) -> anyhow::Result<Asset>;
 }
 
-/// mid_market_rate is buy/sell: 1 Buy => mid_market_rate Sell: = sell/buy
-/// spread_pc: percent value to be added to the buy amount
-#[allow(clippy::cast_precision_loss)] // It's ok because it just means we are applying slightly more than the given spread
-#[allow(clippy::cast_possible_truncation)] // We probably want to use custom amounts down the line
-#[allow(clippy::cast_sign_loss)] // It's ok because all values should be positive
-fn new_order<W, B>(
-    sell_wallet: W,
+/// The maker creates an order that defines how much he wants to buy for the amount he is selling.
+/// order's buy amount = what the maker wants from a taker
+/// order's sell amount = what the maker is offering to a taker
+///
+/// mid_market_rate is set as 1 sell => x buy, where x is the mid_market_rate
+///
+/// BTC-DAI: When selling 1 BTC we should buy 9000 DAI, mid_market_rate is 1:9000
+/// Given BTC:DAI and the rate of 1:9000
+///     selling 1.0 BTC with spread_pc of 3% => buy 9270 DAI
+///     selling 0.5 BTC with spread_pc of 3% => buy 4635 DAI
+/// Given DAI:BTC and a rate of 1:0.0001
+///     selling 10000 DAI with spread_pc of 3% => buy 1.03 BTC
+///     selling 1000 DAI with spread_pc of 3% => buy 0.103 DAI
+///
+fn new_dai_bitcoin_order<W, B>(
+    bitcoin_wallet: W,
     book: B,
-    max_sell_amount: u64,
-    mid_market_rate: f64,
+    max_sell_amount: bitcoin::Amount,
+    mid_market_rate: Rate,
     spread: Spread,
-) -> Order
+) -> anyhow::Result<DaiBitcoinOrder>
 where
-    W: Balance + Fees,
-    B: LockedFunds,
+    W: BitcoinBalance + BitcoinFees,
+    B: BitcoinLockedFunds,
 {
-    let sell_amount =
-        min(sell_wallet.balance() - book.locked_funds(), max_sell_amount) - sell_wallet.fees();
+    let sell_amount = min(
+        bitcoin_wallet.bitcoin_balance() - book.bitcoin_locked_funds(),
+        max_sell_amount,
+    ) - bitcoin_wallet.bitcoin_fees();
 
-    let rate = mid_market_rate / (1.0 + spread.as_f64());
+    let rate = spread.apply(mid_market_rate)?;
 
-    let buy_amount = sell_amount as f64 / rate;
+    let buy_amount = sell_amount.worth_in(rate).unwrap();
 
-    Order {
+    Ok(DaiBitcoinOrder {
         sell_amount,
-        buy_amount: buy_amount.ceil() as u64,
-    }
+        buy_amount,
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
+    #[derive(Copy, Clone)]
     struct Book {
-        locked_funds: u64,
+        locked_funds: bitcoin::Amount,
     }
 
+    #[derive(Copy, Clone)]
     struct Wallet {
-        balance: u64,
-        fees: u64,
+        balance: bitcoin::Amount,
+        fees: bitcoin::Amount,
     }
 
     impl Wallet {
-        fn new(balance: u64, fees: u64) -> Wallet {
-            Wallet { balance, fees }
+        fn new<A: Into<bitcoin::Amount>>(balance: A, fees: A) -> Wallet {
+            Wallet {
+                balance: balance.into(),
+                fees: fees.into(),
+            }
         }
     }
 
-    impl Balance for Wallet {
-        fn balance(&self) -> u64 {
+    impl BitcoinBalance for Wallet {
+        fn bitcoin_balance(&self) -> bitcoin::Amount {
             self.balance
         }
     }
 
-    impl Fees for Wallet {
-        fn fees(&self) -> u64 {
+    impl BitcoinFees for Wallet {
+        fn bitcoin_fees(&self) -> bitcoin::Amount {
             self.fees
         }
     }
 
     impl Book {
-        fn new(locked_funds: u64) -> Book {
-            Book { locked_funds }
+        fn new<A: Into<bitcoin::Amount>>(locked_funds: A) -> Book {
+            Book {
+                locked_funds: locked_funds.into(),
+            }
         }
     }
 
-    impl LockedFunds for Book {
-        fn locked_funds(&self) -> u64 {
+    impl BitcoinLockedFunds for Book {
+        fn bitcoin_locked_funds(&self) -> bitcoin::Amount {
             self.locked_funds
         }
     }
 
+    fn btc(btc: f64) -> bitcoin::Amount {
+        bitcoin::Amount::from_btc(btc).unwrap()
+    }
+
+    fn dai(dai: f64) -> dai::Amount {
+        dai::Amount::from_dai_trunc(dai).unwrap()
+    }
+
     #[test]
     fn given_a_balance_return_order_selling_full_balance() {
-        let wallet = Wallet::new(10, 0);
+        let wallet = Wallet::new(btc(10.0), btc(0.0));
+        let book = Book::new(btc(0.0));
+        let rate = Rate::from_f64(1.0).unwrap();
 
-        let book = Book::new(0);
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0.0).unwrap())
+                .unwrap();
 
-        let order = new_order(wallet, book, 100, 1.0, Spread::new(0.0).unwrap());
-
-        assert_eq!(order.sell_amount, 10);
+        assert_eq!(order.sell_amount, btc(10.0));
     }
 
     #[test]
     fn given_a_balance_and_locked_funds_return_order_selling_available_balance() {
-        let wallet = Wallet::new(10, 0);
+        let wallet = Wallet::new(btc(10.0), btc(0.0));
+        let book = Book::new(btc(2.0));
+        let rate = Rate::from_f64(1.0).unwrap();
 
-        let book = Book::new(2);
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(100.0), rate, Spread::new(0.0).unwrap())
+                .unwrap();
 
-        let order = new_order(wallet, book, 100, 1.0, Spread::new(0.0).unwrap());
-
-        assert_eq!(order.sell_amount, 8);
+        assert_eq!(order.sell_amount, btc(8.0));
     }
 
     #[test]
     fn given_an_available_balance_and_a_max_amount_sell_min_of_either() {
-        let wallet = Wallet::new(10, 0);
+        let wallet = Wallet::new(btc(10.0), btc(0.0));
+        let book = Book::new(btc(2.0));
+        let rate = Rate::from_f64(1.0).unwrap();
 
-        let book = Book::new(2);
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(2.0), rate, Spread::new(0.0).unwrap()).unwrap();
 
-        let order = new_order(wallet, book, 2, 1.0, Spread::new(0.0).unwrap());
-
-        assert_eq!(order.sell_amount, 2);
+        assert_eq!(order.sell_amount, btc(2.0));
     }
 
     #[test]
     fn given_an_available_balance_and_fees_sell_balance_minus_fees() {
-        let wallet = Wallet::new(10, 1);
+        let wallet = Wallet::new(btc(10.0), btc(1.0));
 
-        let book = Book::new(2);
+        let book = Book::new(btc(2.0));
 
-        let order = new_order(wallet, book, 2, 1.0, Spread::new(0.0).unwrap());
+        let rate = Rate::from_f64(1.0).unwrap();
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(2.0), rate, Spread::new(0.0).unwrap()).unwrap();
 
-        assert_eq!(order.sell_amount, 1);
+        assert_eq!(order.sell_amount, btc(1.0));
     }
 
     #[test]
     fn given_a_rate_return_order_with_both_amounts() {
-        let wallet = Wallet::new(1051, 1);
+        let wallet = Wallet::new(btc(1051.0), btc(1.0));
+        let book = Book::new(btc(50.0));
+        let rate = Rate::from_f64(0.1).unwrap();
 
-        let book = Book::new(50);
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, Spread::new(0.0).unwrap())
+                .unwrap();
 
-        let order = new_order(wallet, book, 9999, 10.0, Spread::new(0.0).unwrap());
-        // 1 Buy => 10 Sell
-        // ? Buy => 1000 sell
-        // 100 Buy => 1000 Sell
+        // 1 Sell => 0.1 Buy
+        // 1000 Sell => 100 Buy
+        assert_eq!(order.sell_amount, btc(1000.0));
+        assert_eq!(order.buy_amount, dai(100.0));
 
-        assert_eq!(order.sell_amount, 1000);
-        assert_eq!(order.buy_amount, 100)
+        let rate = Rate::from_f64(10.0).unwrap();
+
+        let order =
+            new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, Spread::new(0.0).unwrap())
+                .unwrap();
+
+        assert_eq!(order.sell_amount, btc(1000.0));
+        assert_eq!(order.buy_amount, dai(10_000.0));
     }
 
     #[test]
     fn given_a_rate_and_spread_return_order_with_both_amounts() {
-        let wallet = Wallet::new(1051, 1);
+        let wallet = Wallet::new(btc(1051.0), btc(1.0));
+        let book = Book::new(btc(50.0));
+        let rate = Rate::from_f64(0.1).unwrap();
+        let spread = Spread::new(3.0).unwrap();
 
-        let book = Book::new(50);
+        let order = new_dai_bitcoin_order(wallet, book, btc(9999.0), rate, spread).unwrap();
 
-        let order = new_order(wallet, book, 9999, 10.0, Spread::new(0.03).unwrap());
-        // 1 Buy => 10 Sell
-        // ? Buy => 1000 sell
-        // 100 Buy => 1000 Sell
-        // 3% spread
-        // 103 Buy => 1000 Sell
-
-        assert_eq!(order.sell_amount, 1000);
-        assert_eq!(order.buy_amount, 104); // Rounding up taking in account precision loss
+        assert_eq!(order.sell_amount, btc(1000.0));
+        assert_eq!(order.buy_amount, dai(103.0));
     }
 }

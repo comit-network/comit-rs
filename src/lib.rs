@@ -13,9 +13,15 @@
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
 
+pub mod bitcoin;
 pub mod bitcoin_wallet;
 pub mod bitcoind;
+pub mod dai;
+pub mod float_maths;
 pub mod jsonrpc;
+pub mod ongoing_swaps;
+pub mod publish;
+pub mod rate;
 pub mod swap;
 
 lazy_static::lazy_static! {

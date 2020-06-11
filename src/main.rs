@@ -12,13 +12,19 @@
 )]
 #![allow(dead_code)] // To be removed further down the line
 #![forbid(unsafe_code)]
+// TODO: Add no unwrap policy
 
+mod bitcoin;
 mod bitcoin_wallet;
 mod bitcoind;
+mod dai;
+mod float_maths;
 mod jsonrpc;
 mod markets;
 mod ongoing_swaps;
 mod publish;
+mod rate;
+mod swap;
 
 #[cfg(all(test, feature = "test-docker"))]
 pub mod test_harness;
