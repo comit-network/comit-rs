@@ -3,7 +3,7 @@ pub mod oneshot_protocol;
 pub mod protocols;
 mod swap_digest;
 
-use crate::SecretHash;
+use crate::{identity, SecretHash};
 use libp2p::{Multiaddr, PeerId};
 use std::fmt;
 
@@ -25,6 +25,15 @@ impl fmt::Display for DialInformation {
             Some(address_hint) => write!(f, "{}@{}", self.peer_id, address_hint),
         }
     }
+}
+
+/// All possible identities to be sent to the remote node for any protocol
+/// combination.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct Identities {
+    pub ethereum_identity: Option<identity::Ethereum>,
+    pub lightning_identity: Option<identity::Lightning>,
+    pub bitcoin_identity: Option<identity::Bitcoin>,
 }
 
 /// Data Alice learned from Bob during the communication phase.

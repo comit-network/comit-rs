@@ -334,15 +334,6 @@ impl ComitNode {
     }
 }
 
-/// All possible identities to be sent to the remote node for any protocol
-/// combination.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Identities {
-    pub ethereum_identity: Option<identity::Ethereum>,
-    pub lightning_identity: Option<identity::Lightning>,
-    pub bitcoin_identity: Option<identity::Bitcoin>,
-}
-
 async fn handle_request(
     db: Sqlite,
     swap_communication_states: Arc<SwapCommunicationStates>,
