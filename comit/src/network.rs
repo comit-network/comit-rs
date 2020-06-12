@@ -1,13 +1,17 @@
+pub mod comit;
 pub mod oneshot_behaviour;
 pub mod oneshot_protocol;
 pub mod protocols;
 mod swap_digest;
+#[cfg(test)]
+pub mod test_swarm;
 
 use crate::{identity, SecretHash};
 use libp2p::{Multiaddr, PeerId};
 use std::fmt;
 
 pub use self::{
+    comit::*,
     protocols::announce::{protocol::ReplySubstream, SwapDigest},
     swap_digest::*,
 };

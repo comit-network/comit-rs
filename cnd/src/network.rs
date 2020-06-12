@@ -1,9 +1,5 @@
-mod comit;
-#[cfg(test)]
-pub mod test_swarm;
 pub mod transport;
 
-pub use self::comit::*;
 // Export comit network types while maintaining the module abstraction.
 pub use ::comit::network::*;
 pub use transport::ComitTransport;
@@ -19,7 +15,7 @@ use crate::{
     db::{ForSwap, Rfc003Swap, Save, Sqlite},
     htlc_location, identity,
     libp2p_comit_ext::{FromHeader, ToHeader},
-    network::comit::{Comit, LocalData},
+    network::{Comit, LocalData},
     protocol_spawner::ProtocolSpawner,
     seed::RootSeed,
     spawn::spawn,

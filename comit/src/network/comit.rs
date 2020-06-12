@@ -617,10 +617,9 @@ impl Set<SecretHash> for RemoteData {
 mod tests {
     use super::*;
     use crate::{
-        asset::ethereum::FromWei,
-        network::{test_swarm, DialInformation},
+        asset::{self, ethereum::FromWei},
+        network::{test_swarm, DialInformation, Herc20Halbit},
     };
-    use comit::{asset, network::Herc20Halbit};
     use digest::Digest;
     use futures::future;
     use std::str::FromStr;
