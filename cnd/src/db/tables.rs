@@ -1,5 +1,5 @@
 use crate::{
-    bitcoin,
+    asset, bitcoin,
     db::{
         schema::{address_book, halbits, hbits, herc20s, secret_hashes, swaps},
         wrapper_types::{
@@ -8,7 +8,7 @@ use crate::{
         },
         Sqlite,
     },
-    halbit, hbit, herc20, identity, lightning, LocalSwapId, Role, Side,
+    halbit, hbit, herc20, identity, lightning, AssertSide, LocalSwapId, Role, Side,
 };
 use anyhow::Context;
 use chrono::NaiveDateTime;
@@ -105,6 +105,15 @@ pub struct InsertableHerc20 {
     pub side: Text<Side>,
 }
 
+impl From<Herc20> for asset::Erc20 {
+    fn from(herc20: Herc20) -> asset::Erc20 {
+        asset::Erc20 {
+            quantity: herc20.amount.0.into(),
+            token_contract: herc20.token_contract.0.into(),
+        }
+    }
+}
+
 pub trait IntoInsertable {
     type Insertable;
 
@@ -174,6 +183,12 @@ pub struct InsertableHalbit {
     pub side: Text<Side>,
 }
 
+impl From<Halbit> for asset::Bitcoin {
+    fn from(halbit: Halbit) -> Self {
+        halbit.amount.0.into()
+    }
+}
+
 impl IntoInsertable for halbit::CreatedSwap {
     type Insertable = InsertableHalbit;
 
@@ -225,6 +240,12 @@ pub struct InsertableHbit {
     pub final_identity: Text<bitcoin::Address>,
     pub transient_identity: Option<Text<bitcoin::PublicKey>>,
     pub side: Text<Side>,
+}
+
+impl From<Hbit> for asset::Bitcoin {
+    fn from(hbit: Hbit) -> Self {
+        hbit.amount.0.into()
+    }
 }
 
 impl IntoInsertable for hbit::CreatedSwap {
@@ -293,6 +314,27 @@ macro_rules! swap_id_fk {
             .select(swaps::id)
     };
 }
+
+macro_rules! impl_assert_side {
+    ($target:tt) => {
+        impl AssertSide for $target {
+            fn assert_side(&self, expected: Side) -> anyhow::Result<()> {
+                let actual = self.side.0;
+                if actual != expected {
+                    anyhow::bail!(
+                        "side assertion failed: actual: {} expected: {}",
+                        actual,
+                        expected
+                    )
+                }
+                Ok(())
+            }
+        }
+    };
+}
+impl_assert_side!(Herc20);
+impl_assert_side!(Halbit);
+impl_assert_side!(Hbit);
 
 trait EnsureSingleRowAffected {
     fn ensure_single_row_affected(self) -> anyhow::Result<usize>;

@@ -21,13 +21,12 @@ pub use self::{
     rfc003_save_load_impls::*,
     swap::*,
     swap_types::*,
+    tables::*,
+    wrapper_types::custom_sql_types::Text,
 };
 pub use crate::storage::{ForSwap, Save};
 
-use crate::{
-    db::wrapper_types::custom_sql_types::Text, swap_protocols::rfc003::SwapId, LocalSwapId,
-    Protocol, Role,
-};
+use crate::{swap_protocols::rfc003::SwapId, LocalSwapId, Protocol, Role};
 use chrono::NaiveDateTime;
 use diesel::{self, prelude::*, sql_types, sqlite::SqliteConnection};
 use libp2p::PeerId;

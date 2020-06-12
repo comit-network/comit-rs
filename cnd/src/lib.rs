@@ -67,7 +67,7 @@ use std::{
 
 pub use self::{
     actions::*, asset::AssetKind, comit_api::LedgerKind, facade::Facade, protocol_spawner::*,
-    seed::*, spawn::*, storage::*,
+    seed::*, spawn::*, storage::*, swap_protocols::state,
 };
 // Export comit types so we do not need to worry about where they come from.
 pub use comit::{
