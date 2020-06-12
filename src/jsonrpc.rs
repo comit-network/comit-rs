@@ -3,7 +3,7 @@ use futures::TryFutureExt;
 use serde::{de::DeserializeOwned, Serialize};
 use std::fmt::Debug;
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct Client {
     inner: reqwest::Client,
     url: reqwest::Url,
@@ -20,9 +20,21 @@ impl Client {
     pub async fn send<Req, Res>(&self, request: Request<Req>) -> anyhow::Result<Res>
     where
         Req: Debug + Serialize,
-        Res: DeserializeOwned,
+        Res: Debug + DeserializeOwned,
     {
-        let url = self.url.clone();
+        self.send_with_path("".into(), request).await
+    }
+
+    pub async fn send_with_path<Req, Res>(
+        &self,
+        path: String,
+        request: Request<Req>,
+    ) -> anyhow::Result<Res>
+    where
+        Req: Debug + Serialize,
+        Res: Debug + DeserializeOwned,
+    {
+        let url = self.url.clone().join(&path)?;
         let response = self
             .inner
             .post(url.clone())
@@ -55,7 +67,7 @@ impl<T> Request<T> {
     pub fn new(method: &str, params: T) -> Self {
         Self {
             id: "1".to_owned(),
-            jsonrpc: "2.0".to_owned(),
+            jsonrpc: "1.0".to_owned(),
             method: method.to_owned(),
             params,
         }
